@@ -4,12 +4,11 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-commitment = { path = "../commitment" }
-oracle = { path = "../oracle" }
-rand = "0.4"
-colored = "1.8"
-sprs = "0.7.0"
-rand_core = { version = "0.5" }
-
 algebra = { git = "https://github.com/scipr-lab/zexe/", features = [ "parallel" ] }
 ff-fft = { git = "https://github.com/scipr-lab/zexe/" }
+commitment = { path = "../commitment" }
+oracle = { path = "../oracle" }
+rand_core = { version = "0.5" }
+colored = "1.9.0"
+rand = "0.7.2"
+sprs = "0.7.1"
