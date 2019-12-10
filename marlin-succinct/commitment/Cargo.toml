@@ -1,0 +1,12 @@
+[package]
+name = "commitment"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+rand = "0.4"
+colored = "1.8"
+rand_core = { version = "0.5" }
+
+algebra = { git = "https://github.com/scipr-lab/zexe/", features = [ "parallel" ] }
+ff-fft = { git = "https://github.com/scipr-lab/zexe/" }
