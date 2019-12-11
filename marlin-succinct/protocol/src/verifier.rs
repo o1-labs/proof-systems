@@ -29,8 +29,8 @@ impl<E: PairingEngine> ProverProof<E>
         {
             // compute ra*zm - ram*z ?= h*v + b*g, verify the first sumcheck argument
             rzrzg += &((oracles.alpha.pow([index.h_group.size]) -
-                &oracles.betta[0].pow([index.h_group.size])) /
-                &(oracles.alpha - &oracles.betta[0]) * &oracles.gamma[i] *
+                &oracles.beta[0].pow([index.h_group.size])) /
+                &(oracles.alpha - &oracles.beta[0]) * &oracles.eta[i] *
                 &match i
                 {
                     0 => {self.za_eval}
@@ -42,10 +42,10 @@ impl<E: PairingEngine> ProverProof<E>
 
         rzrzg ==
         (
-            self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.betta[0]) +
-            &(oracles.betta[0] * &self.g1_eval) +
+            self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            &(oracles.beta[0] * &self.g1_eval) +
             &(self.sigma2 * &E::Fr::from_repr(<<E as PairingEngine>::Fr as PrimeField>::BigInt::from(index.h_group.size)) *
-            &(self.w_eval + &Evaluations::<E::Fr>::from_vec_and_domain(self.public.0.clone(), index.h_group).interpolate().evaluate(oracles.betta[0])))
+            &(self.w_eval + &Evaluations::<E::Fr>::from_vec_and_domain(self.public.0.clone(), index.h_group).interpolate().evaluate(oracles.beta[0])))
         )
     }
 
@@ -63,12 +63,12 @@ impl<E: PairingEngine> ProverProof<E>
         // evaluate ra polynomial succinctly
         // verify the second sumcheck argument
         self.sigma3 *
-            &((oracles.alpha.pow([index.h_group.size]) - &oracles.betta[1].pow([index.h_group.size])) / &(oracles.alpha - &oracles.betta[1])) * 
+            &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[1].pow([index.h_group.size])) / &(oracles.alpha - &oracles.beta[1])) * 
             &E::Fr::from_repr(<<E as PairingEngine>::Fr as PrimeField>::BigInt::from(index.k_group.size))
         ==
         self.h2_eval *
-            &index.h_group.evaluate_vanishing_polynomial(oracles.betta[1]) +
-            &self.sigma2 + &(self.g2_eval * &oracles.betta[1])
+            &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]) +
+            &self.sigma2 + &(self.g2_eval * &oracles.beta[1])
     }
 
     // This function verifies the prover's third sumcheck argument values
@@ -84,23 +84,23 @@ impl<E: PairingEngine> ProverProof<E>
     {
         let crb: Vec<E::Fr> = (0..3).map
         (
-            |i| {(oracles.betta[1] - &self.row_eval[i]) * &(oracles.betta[0] - &self.col_eval[i])}
+            |i| {(oracles.beta[1] - &self.row_eval[i]) * &(oracles.beta[0] - &self.col_eval[i])}
         ).collect();
 
         let (mut acc1, mut acc2) = (E::Fr::zero(), E::Fr::one());
         for i in 0..3
         {
             acc2 *= &crb[i];
-            let mut x = self.val_eval[i] * &oracles.gamma[i];
+            let mut x = self.val_eval[i] * &oracles.eta[i];
             for j in 0..3 {if i != j {x *= &crb[j]}}
             acc1 += &x;
         }
 
-        index.k_group.evaluate_vanishing_polynomial(oracles.betta[2]) * &self.h3_eval
+        index.k_group.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.h3_eval
         ==
-        ((oracles.betta[0].pow(&[index.h_group.size]) - &E::Fr::one()) *
-            &(oracles.betta[1].pow(&[index.h_group.size]) - &E::Fr::one())) *
-            &acc1 - &((oracles.betta[2] * &self.g3_eval + &self.sigma3) * &acc2)
+        ((oracles.beta[0].pow(&[index.h_group.size]) - &E::Fr::one()) *
+            &(oracles.beta[1].pow(&[index.h_group.size]) - &E::Fr::one())) *
+            &acc1 - &((oracles.beta[2] * &self.g3_eval + &self.sigma3) * &acc2)
     }
 
     // This function verifies the prover's zk-proof
@@ -128,7 +128,7 @@ impl<E: PairingEngine> ProverProof<E>
             [
                 vec!
                 [(
-                    oracles.betta[0],
+                    oracles.beta[0],
                     oracles.batch[0],
                     vec!
                     [
@@ -142,7 +142,7 @@ impl<E: PairingEngine> ProverProof<E>
                 )],
                 vec!
                 [(
-                    oracles.betta[1],
+                    oracles.beta[1],
                     oracles.batch[1],
                     vec!
                     [
@@ -153,7 +153,7 @@ impl<E: PairingEngine> ProverProof<E>
                 )],
                 vec!
                 [(
-                    oracles.betta[2],
+                    oracles.beta[2],
                     oracles.batch[2],
                     vec!
                     [
