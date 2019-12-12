@@ -9,6 +9,7 @@ use rand_core::RngCore;
 use commitment::urs::URS;
 use algebra::PairingEngine;
 use ff_fft::EvaluationDomain;
+use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
@@ -43,9 +44,9 @@ impl<E: PairingEngine> Index<E>
         c: CsMat<E::Fr>,
         oracles: ArithmeticSpongeParams<E::Fr>,
         rng: &mut dyn RngCore
-    ) -> Option<Self>
+    ) -> Result<Self, ProofError>
     {
-        if a.shape() != b.shape() || a.shape() != c.shape() || a.shape().0 != a.shape().1 {return None}
+        if a.shape() != b.shape() || a.shape() != c.shape() || a.shape().0 != a.shape().1 {return Err(ProofError::ConstraintInconsist)}
 
         // compute the evaluation domains
         match
@@ -63,29 +64,22 @@ impl<E: PairingEngine> Index<E>
                 let urs = URS::<E>::create(max_degree, rng);
 
                 // compile the constraints
-                match
-                (
-                    Compiled::<E>::compile(&urs, h_group, k_group, a),
-                    Compiled::<E>::compile(&urs, h_group, k_group, b),
-                    Compiled::<E>::compile(&urs, h_group, k_group, c),
-                )
+                Ok(Index::<E>
                 {
-                    (Some(a), Some(b), Some(c)) =>
-                    {
-                        Some(Index::<E>
-                        {
-                            compiled: [a, b, c],
-                            oracle_params: oracles,
-                            max_degree: max_degree,
-                            h_group: h_group,
-                            k_group: k_group,
-                            urs: urs,
-                        })
-                    }
-                    (_,_,_) => None
-                }
+                    compiled:
+                    [
+                        Compiled::<E>::compile(&urs, h_group, k_group, a)?,
+                        Compiled::<E>::compile(&urs, h_group, k_group, b)?,
+                        Compiled::<E>::compile(&urs, h_group, k_group, c)?,
+                    ],
+                    oracle_params: oracles,
+                    max_degree: max_degree,
+                    h_group: h_group,
+                    k_group: k_group,
+                    urs: urs,
+                })
             }
-            (_,_) => None
+            (_,_) => Err(ProofError::EvaluationGroup)
         }
     }
 

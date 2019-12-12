@@ -118,7 +118,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     // field unity element
     let one = E::Fr::one();
 
-    for _ in 0..100
+    for _ in 0..1
     {
         points.push
         ((
@@ -250,9 +250,10 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     {
         Ok(proof) =>
         {
-            if proof.verify(&index, rng) == false
+            match proof.verify(&index, rng)
             {
-                panic!("Failure verifying the prover's proof");
+                Ok(_) => {}
+                _ => {panic!("Failure verifying the prover's proof")}
             }
         }
         Err(_) => {panic!("Failure creating the prover's proof")}
@@ -323,9 +324,10 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     {
         Ok(proof) =>
         {
-            if proof.verify(&index, rng) == true
+            match proof.verify(&index, rng)
             {
-                panic!("Failure invalidating the prover's proof");
+                Ok(_) => {panic!("Failure invalidating the prover's proof")}
+                _ => {}
             }
         }
         Err(_) => {/*this behavior is proper: proof creation should fail*/}

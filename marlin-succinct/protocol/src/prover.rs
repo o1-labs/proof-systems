@@ -60,38 +60,6 @@ impl<E: PairingEngine> ProverProof<E>
         index: &Index<E>
     ) -> Result<Self, ProofError>
     {
-        // polynomial commitments
-        let w_comm: E::G1Affine;
-        let za_comm: E::G1Affine;
-        let zb_comm: E::G1Affine;
-        let h1_comm: E::G1Affine;
-        let g1_comm: E::G1Affine;
-        let h2_comm: E::G1Affine;
-        let g2_comm: E::G1Affine;
-        let h3_comm: E::G1Affine;
-        let g3_comm: E::G1Affine;
-
-        // batched commitment opening proofs
-        let proof1: E::G1Affine;
-        let proof2: E::G1Affine;
-        let proof3: E::G1Affine;
-
-        // polynomial evaluations
-        let w_eval: E::Fr;
-        let za_eval: E::Fr;
-        let zb_eval: E::Fr;
-        let h1_eval: E::Fr;
-        let g1_eval: E::Fr;
-        let h2_eval: E::Fr;
-        let g2_eval: E::Fr;
-        let h3_eval: E::Fr;
-        let g3_eval: E::Fr;
-        let sigma2: E::Fr;
-        let sigma3: E::Fr;
-        let row_eval: [E::Fr; 3];
-        let col_eval: [E::Fr; 3];
-        let val_eval: [E::Fr; 3];
-
         if index.compiled[0].constraints.shape().1 != witness.0.len() || witness.1 == 0
         {
             return Err(ProofError::WitnessCsInconsistent)
@@ -132,31 +100,26 @@ impl<E: PairingEngine> ProverProof<E>
         // substitute ZC with ZA*ZB
         let zv = [za.clone(), zb.clone(), &za * &zb]; 
 
+        // commit to W, ZA, ZB polynomials
+        let w_comm = index.urs.commit(&w.clone(), index.h_group.size())?;
+        let za_comm = index.urs.commit(&za.clone(), index.h_group.size())?;
+        let zb_comm = index.urs.commit(&zb.clone(), index.h_group.size())?;
+
         // the transcript of the random oracle non-interactive argument
-        // the first part of the argument needs the following oracles:
-        // alpha, beta[0] in order to compute RA and evaluate Z, ZA & ZB polynomials
-
-        let mut argument = RandomOracleArgument::<E::Fr>::new(index.oracle_params.clone());
+        let mut argument = RandomOracleArgument::<E>::new(index.oracle_params.clone());
         
-        argument.commit_scalar(&E::Fr::one()); // this commit comes from the previous proof context
+        // absorb previous proof context into the argument
+        argument.commit_scalars(&[E::Fr::one()]);
+        // absorb the public input into the argument
+        argument.commit_scalars(&witness.0[0..witness.1]);
+        // absorb W, ZA, ZB polycommitments
+        argument.commit_points(&[w_comm, za_comm, zb_comm])?;
+
+        // sample alpha, eta[0..3] oracles
         oracles.alpha = argument.challenge();
-        // commit the public input into the argument
-        argument.commit_slice(&witness.0[0..witness.1]);
-        oracles.beta[0] = argument.challenge();
-
-        // evaluate Z, ZA & ZB polynomials
-        w_eval = w.evaluate(oracles.beta[0]);
-        za_eval = za.evaluate(oracles.beta[0]);
-        zb_eval = zb.evaluate(oracles.beta[0]);
-
-        // run the random oracle argument further to query
-        // oracles eta[0..3]
-        argument.commit_scalar(&w_eval);
-        oracles.eta[0] = argument.challenge();
-        argument.commit_scalar(&za_eval);
-        oracles.eta[1] = argument.challenge();
-        argument.commit_scalar(&zb_eval);
-        oracles.eta[2] = argument.challenge();
+        oracles.eta_a = argument.challenge();
+        oracles.eta_b = argument.challenge();
+        oracles.eta_c = argument.challenge();
 
         let mut apow = E::Fr::one();
         let mut r: Vec<E::Fr> = (0..index.h_group.size()).map
@@ -170,151 +133,81 @@ impl<E: PairingEngine> ProverProof<E>
         r.reverse();
         let ra = DensePolynomial::<E::Fr>::from_coefficients_vec(r);
 
-        // compute commitments, evaluations and openings for the first sumcheck argument
-        // proceed with the random oracle argument further to query additional oracles
-        // beta[1], batch[0]
-
+        // compute first sumcheck argument polynomials
         let (h1, mut g1) = Self::sumcheck_1_compute (index, &ra, &zv, &z, &oracles)?;
         if !g1.coeffs[0].is_zero() {return Err(ProofError::SumCheck)}
         g1.coeffs.remove(0);
 
-        // evaluate H1, G1 polynomials
-        h1_eval = h1.evaluate(oracles.beta[0]);
-        g1_eval = g1.evaluate(oracles.beta[0]);
+        // commit to H1 & G1 polynomials and
+        let h1_comm = index.urs.commit(&h1, index.h_group.size()*2)?;
+        let g1_comm = index.urs.commit(&g1, index.h_group.size()-1)?;
 
-        // query batch[0], beta[1] random oracles from the argument context
-        argument.commit_scalar(&h1_eval);
-        oracles.batch[0] = argument.challenge();
-        argument.commit_scalar(&g1_eval);
-        oracles.beta[1] = argument.challenge();
-                
-        // commit to W, ZA, ZB, H1 & G1 polynomials and
-        // open the commitments in batch at the first random oracle
-        match
-        (
-            index.urs.commit(&w, index.h_group.size()),
-            index.urs.commit(&zv[0], index.h_group.size()),
-            index.urs.commit(&zv[1], index.h_group.size()),
-            index.urs.commit(&h1, index.h_group.size()*2),
-            index.urs.commit(&g1, index.h_group.size()-1),
-            index.urs.open_batch
-            (
-                &vec!
-                [
-                    za,
-                    zb,
-                    w,
-                    h1,
-                    g1,
-                ],
-                oracles.batch[0],
-                oracles.beta[0]
-            )
-        )
-        {
-            (Some(w), Some(za), Some(zb), Some(h1), Some(g1), Some(open)) =>
-            {
-                w_comm = w;
-                za_comm = za;
-                zb_comm = zb;
-                h1_comm = h1;
-                g1_comm = g1;
-                proof1 = open;
-            }
-            (_,_,_,_,_,_) => return Err(ProofError::ProofCreation)
-        }
+        // absorb H1, G1 polycommitments
+        argument.commit_points(&[h1_comm, g1_comm])?;
+        // sample beta[0] oracle
+        oracles.beta[0] = argument.challenge();
 
-        // compute commitments, evaluations and openings for the second sumcheck argument
-        // proceed with the random oracle argument further to query additional oracles
-        // beta[2], batch[1]
-
+        // compute second sumcheck argument polynomials
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
-        sigma2 = g2.coeffs[0];
+        let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
 
-        // evaluate H2, G2 polynomials
-        h2_eval = h2.evaluate(oracles.beta[1]);
-        g2_eval = g2.evaluate(oracles.beta[1]);
+        // absorb sigma2 scalar
+        argument.commit_scalars(&[sigma2]);
+        // sample beta[1] oracle
+        oracles.beta[1] = argument.challenge();
 
-        // query batch[1], beta[2] random oracles from the argument context
-        argument.commit_scalar(&h2_eval);
-        oracles.batch[1] = argument.challenge();
-        argument.commit_scalar(&g2_eval);
-        oracles.beta[2] = argument.challenge();
-
-        // commit to polynomials H2 & G2 and
-        // open the commitments in batch at the second random oracle
-        match
-        (
-            index.urs.commit(&h2, index.h_group.size()),
-            index.urs.commit(&g2, index.h_group.size()-1),
-            index.urs.open_batch
-            (
-                &vec!
-                [
-                    h2,
-                    g2
-                ],
-                oracles.batch[1],
-                oracles.beta[1]
-            )
-        )
-        {
-            (Some(h2), Some(g2), Some(open)) =>
-            {
-                h2_comm = h2;
-                g2_comm = g2;
-                proof2 = open;
-            }
-            (_,_,_) => return Err(ProofError::ProofCreation)
-        }
-
-        // compute commitments, evaluations and openings for the third sumcheck argument
-        // proceed with the random oracle argument further to query additional oracle
-        // batch[2]
-
+        // compute third sumcheck argument polynomials
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
-        sigma3 = g3.coeffs[0];
+        let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
 
-        // evaluate the polynomials
-        h3_eval = h3.evaluate(oracles.beta[2]);
-        g3_eval = g3.evaluate(oracles.beta[2]);
-        row_eval =
-        [
-            index.compiled[0].row.evaluate(oracles.beta[2]),
-            index.compiled[1].row.evaluate(oracles.beta[2]),
-            index.compiled[2].row.evaluate(oracles.beta[2]),
-        ];
-        col_eval =
-        [
-            index.compiled[0].col.evaluate(oracles.beta[2]),
-            index.compiled[1].col.evaluate(oracles.beta[2]),
-            index.compiled[2].col.evaluate(oracles.beta[2]),
-        ];
-        val_eval =
-        [
-            index.compiled[0].val.evaluate(oracles.beta[2]),
-            index.compiled[1].val.evaluate(oracles.beta[2]),
-            index.compiled[2].val.evaluate(oracles.beta[2]),
-        ];
+        // absorb sigma3 scalar
+        argument.commit_scalars(&[sigma3]);
+        // sample beta[2] & batch oracles
+        oracles.beta[2] = argument.challenge();
+        oracles.batch = argument.challenge();
 
-        // query batch[2] random oracle from the argument context
-        argument.commit_scalar(&h3_eval);
-        oracles.batch[2] = argument.challenge();
-
-        // commit to the polynomials H3 &G3 and, with the index polynomial commitments,
-        // open the commitments in batch at the third random oracle
-        match
-        (
-            index.urs.commit(&h3, index.compiled[0].val.coeffs.len()*6),
-            index.urs.commit(&g3, index.compiled[0].val.coeffs.len()-1),
-            index.urs.open_batch
+        Ok(ProverProof
+        {
+            w_comm  : w_comm,
+            za_comm : za_comm,
+            zb_comm : zb_comm,
+            h1_comm : h1_comm,
+            g1_comm : g1_comm,
+            h2_comm : index.urs.commit(&h2, index.h_group.size())?,
+            g2_comm : index.urs.commit(&g2, index.h_group.size()-1)?,
+            h3_comm : index.urs.commit(&h3, index.h_group.size()*6)?,
+            g3_comm : index.urs.commit(&g3, index.h_group.size()-1)?,
+            proof1  : index.urs.open_batch
             (
                 &vec!
                 [
-                    h3,
-                    g3,
+                    za.clone(),
+                    zb.clone(),
+                    w.clone(),
+                    h1.clone(),
+                    g1.clone(),
+                ],
+                oracles.batch,
+                oracles.beta[0]
+            )?,
+            proof2 : index.urs.open_batch
+            (
+                &vec!
+                [
+                    h2.clone(),
+                    g2.clone()
+                ],
+                oracles.batch,
+                oracles.beta[1]
+            )?,
+            proof3 : index.urs.open_batch
+            (
+                &vec!
+                [
+                    h3.clone(),
+                    g3.clone(),
                     index.compiled[0].row.clone(),
                     index.compiled[1].row.clone(),
                     index.compiled[2].row.clone(),
@@ -325,49 +218,39 @@ impl<E: PairingEngine> ProverProof<E>
                     index.compiled[1].val.clone(),
                     index.compiled[2].val.clone(),
                 ],
-                oracles.batch[2],
+                oracles.batch,
                 oracles.beta[2]
-            )
-        )
-        {
-            (Some(h3), Some(g3), Some(open)) =>
-            {
-                h3_comm = h3;
-                g3_comm = g3;
-                proof3 = open;
-            }
-            (_,_,_) => return Err(ProofError::ProofCreation)
-        }
-
-        Ok(ProverProof
-        {
-            w_comm  : w_comm,
-            za_comm : za_comm,
-            zb_comm : zb_comm,
-            h1_comm : h1_comm,
-            g1_comm : g1_comm,
-            h2_comm : h2_comm,
-            g2_comm : g2_comm,
-            h3_comm : h3_comm,
-            g3_comm : g3_comm,
-            proof1  : proof1,
-            proof2  : proof2,
-            proof3  : proof3,
-            w_eval  : w_eval,
-            za_eval : za_eval,
-            zb_eval : zb_eval,
-            h1_eval : h1_eval,
-            g1_eval : g1_eval,
-            h2_eval : h2_eval,
-            g2_eval : g2_eval,
-            h3_eval : h3_eval,
-            g3_eval : g3_eval,
+            )?,
+            w_eval  : w.clone().evaluate(oracles.beta[0]),
+            za_eval : za.evaluate(oracles.beta[0]),
+            zb_eval : zb.evaluate(oracles.beta[0]),
+            h1_eval : h1.evaluate(oracles.beta[0]),
+            g1_eval : g1.evaluate(oracles.beta[0]),
+            h2_eval : h2.evaluate(oracles.beta[1]),
+            g2_eval : g2.evaluate(oracles.beta[1]),
+            h3_eval : h3.evaluate(oracles.beta[2]),
+            g3_eval : g3.evaluate(oracles.beta[2]),
             sigma2  : sigma2,
             sigma3  : sigma3,
-            row_eval: row_eval,
-            col_eval: col_eval,
-            val_eval: val_eval,
-            public  : public,
+            row_eval:
+            [
+                index.compiled[0].row.evaluate(oracles.beta[2]),
+                index.compiled[1].row.evaluate(oracles.beta[2]),
+                index.compiled[2].row.evaluate(oracles.beta[2]),
+            ],
+            col_eval:
+            [
+                index.compiled[0].col.evaluate(oracles.beta[2]),
+                index.compiled[1].col.evaluate(oracles.beta[2]),
+                index.compiled[2].col.evaluate(oracles.beta[2]),
+            ],
+            val_eval:
+            [
+                index.compiled[0].val.evaluate(oracles.beta[2]),
+                index.compiled[1].val.evaluate(oracles.beta[2]),
+                index.compiled[2].val.evaluate(oracles.beta[2]),
+            ],
+            public : public,
         })
     }
 
@@ -413,7 +296,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
 
             sumg += &(&(&(ra * &zm[i]) - &(&ram.interpolate() * &z)) *
-                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[oracles.eta[i]]));
+                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[[oracles.eta_a, oracles.eta_b, oracles.eta_c][i]]));
         }
         // compute quotients and remainders
         sumg.divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |r| Ok(r))
@@ -454,7 +337,7 @@ impl<E: PairingEngine> ProverProof<E>
 
             ramxbg +=
                 &(&(ra * &Evaluations::<E::Fr>::from_vec_and_domain(ramxbval, index.h_group).interpolate()) *
-                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[oracles.eta[i]]));
+                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[[oracles.eta_a, oracles.eta_b, oracles.eta_c][i]]));
         }
         // compute quotients and remainders
         ramxbg.divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |r| Ok(r))
@@ -487,7 +370,7 @@ impl<E: PairingEngine> ProverProof<E>
                         result += &(m * &index.compiled[i].val_eval[j as usize] /
                             &(oracles.beta[0] - &index.compiled[i].col_eval[j as usize]) /
                             &(oracles.beta[1] - &index.compiled[i].row_eval[j as usize]) *
-                            &oracles.eta[i]);
+                            &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i]);
                     }
                     result
                 }
@@ -503,7 +386,7 @@ impl<E: PairingEngine> ProverProof<E>
         for i in 0..3
         {
             let mut x = &index.compiled[i].val *
-                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[oracles.eta[i]]);
+                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[[oracles.eta_a, oracles.eta_b, oracles.eta_c][i]]);
             for j in 0..3 {if i != j {x = &x * &crb[j]}}
             a += &x;
         }
@@ -521,49 +404,16 @@ impl<E: PairingEngine> ProverProof<E>
             _ => return Err(ProofError::PolyDivision)
         }
     }
-
-    // This function queries random oracle values from non-interactive
-    // argument context by verifier
-    pub fn oracles
-    (
-        &self,
-        index: &Index<E>,
-    ) -> RandomOracles<E::Fr>
-    {
-        let mut oracles = RandomOracles::<E::Fr>::zero();
-        let mut argument = RandomOracleArgument::<E::Fr>::new(index.oracle_params.clone());
-
-        argument.commit_scalar(&E::Fr::one()); // this commit comes from the previous proof context
-        oracles.alpha = argument.challenge();
-        argument.commit_slice(&self.public.0[0..self.public.1]);
-        oracles.beta[0] = argument.challenge();
-        argument.commit_scalar(&self.w_eval);
-        oracles.eta[0] = argument.challenge();
-        argument.commit_scalar(&&self.za_eval);
-        oracles.eta[1] = argument.challenge();
-        argument.commit_scalar(&&self.zb_eval);
-        oracles.eta[2] = argument.challenge();
-        argument.commit_scalar(&&self.h1_eval);
-        oracles.batch[0] = argument.challenge();
-        argument.commit_scalar(&&self.g1_eval);
-        oracles.beta[1] = argument.challenge();
-        argument.commit_scalar(&&self.h2_eval);
-        oracles.batch[1] = argument.challenge();
-        argument.commit_scalar(&&self.g2_eval);
-        oracles.beta[2] = argument.challenge();
-        argument.commit_scalar(&&self.h3_eval);
-        oracles.batch[2] = argument.challenge();
-
-        oracles
-    }
 }
 
 pub struct RandomOracles<F: Field>
 {
     pub alpha: F,
+    pub eta_a: F,
+    pub eta_b: F,
+    pub eta_c: F,
+    pub batch: F,
     pub beta: [F; 3],
-    pub eta: [F; 3],
-    pub batch: [F; 3],
 }
 
 impl<F: Field> RandomOracles<F>
@@ -573,9 +423,11 @@ impl<F: Field> RandomOracles<F>
         Self
         {
             alpha: F::zero(),
+            eta_a: F::zero(),
+            eta_b: F::zero(),
+            eta_c: F::zero(),
+            batch: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
-            eta: [F::zero(), F::zero(), F::zero()],
-            batch: [F::zero(), F::zero(), F::zero()],
         }
     }
 }

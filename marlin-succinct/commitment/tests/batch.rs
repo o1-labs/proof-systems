@@ -80,11 +80,11 @@ fn test<E: PairingEngine>()
         let comm: Vec<E::G1Affine> = (plnms.iter().zip(max.iter())).map(|(p, m)| urs.commit(p, *m).unwrap()).collect();
         match urs.open_batch(&plnms, mask, elm)
         {
-            None => {panic!("This error should not happen");}
-            Some (prf) =>
+            Ok (prf) =>
             {
                 block.push((elm, mask, comm.into_iter().zip(eval.into_iter()).zip(max.into_iter()).map(|((x,y),z)| (x,y,z)).collect(), prf))
             }
+            _ => {panic!("This error should not happen");}
         }
     }
     assert_eq!(true, urs.verify(&vec![block; 1], rng));

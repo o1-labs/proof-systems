@@ -46,7 +46,7 @@ fn test<E: PairingEngine>()
         // Commit/Open and verify the polynomial commitments
         match (urs.commit(&plnm, plnm.coeffs.len()), urs.open(&plnm, y))
         {
-            (Some(comm), Some(prf)) => {plnms.push((y, E::Fr::one(), vec![(comm, plnm.evaluate(y), plnm.coeffs.len())], prf));}
+            (Ok(comm), Ok(prf)) => {plnms.push((y, E::Fr::one(), vec![(comm, plnm.evaluate(y), plnm.coeffs.len())], prf));}
             (_,_) => {panic!("This error should not happen")}
         }
     }

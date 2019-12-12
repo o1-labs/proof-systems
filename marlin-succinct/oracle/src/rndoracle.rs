@@ -5,7 +5,7 @@ This source file implements the random oracle argument API for Marlin.
 *****************************************************************************************************************/
 
 use std::fmt;
-use algebra::Field;
+use algebra::{PairingEngine, PrimeField, ToBytes, BigInteger, to_bytes};
 pub use super::poseidon::{ArithmeticSpongeParams, ArithmeticSponge, Sponge};
 
 #[derive(Debug, Clone, Copy)]
@@ -13,10 +13,15 @@ pub enum ProofError
 {
     WitnessCsInconsistent,
     PolyDivision,
+    PolyCommit,
+    PolyExponentiate,
     ProofCreation,
     ProofVerification,
     OpenProof,
     SumCheck,
+    ConstraintInconsist,
+    EvaluationGroup,
+    OracleCommit
 }
 
 // Implement `Display` for ProofError
@@ -28,37 +33,54 @@ impl fmt::Display for ProofError
     }
 }
 
-pub struct RandomOracleArgument<F: Field>
+pub struct RandomOracleArgument<E: PairingEngine>
 {
-    sponge: ArithmeticSponge<F>,
-    params: ArithmeticSpongeParams<F>,
+    sponge: ArithmeticSponge<E::Fr>,
+    params: ArithmeticSpongeParams<E::Fr>,
 }
 
-impl<F: Field> RandomOracleArgument<F>
+impl<E: PairingEngine> RandomOracleArgument<E>
 {
-    pub fn new(params: ArithmeticSpongeParams<F>) -> Self
+    pub fn new(params: ArithmeticSpongeParams<E::Fr>) -> Self
     {
-        RandomOracleArgument::<F>
+        RandomOracleArgument::<E>
         {
-            sponge: ArithmeticSponge::<F>::new(),
+            sponge: ArithmeticSponge::<E::Fr>::new(),
             params: params,
         }
     }
 
-    pub fn commit_scalar(&mut self, scalar: &F)
+    pub fn commit_points(&mut self, points: &[E::G1Affine]) -> Result<bool, ProofError>
     {
-        self.sponge.absorb(&self.params, scalar);
+        for point in points
+        {
+            let mut bytes: &[u8] = &to_bytes!(point).unwrap();
+            let mut limbs = <E::Fr as PrimeField>::BigInt::default();
+            let mut io_status = false;
+            while bytes.len() > 0
+            {
+                match limbs.read_le(&mut bytes)
+                {
+                    // make sure at least one scalar is obtained from the point
+                    Ok(_) => {io_status = true}
+                    _ => {}
+                }
+            }
+            if !io_status {return Err(ProofError::OracleCommit)}
+            self.sponge.absorb(&self.params, &E::Fr::from_repr(limbs));
+        }
+        Ok(true)
     }
 
-    pub fn commit_slice(&mut self, slice: &[F])
+    pub fn commit_scalars(&mut self, scalars: &[E::Fr])
     {
-        for x in slice.iter()
+        for scalar in scalars.iter()
         {
-            self.sponge.absorb(&self.params, x);
+            self.sponge.absorb(&self.params, scalar);
         }
     }
 
-    pub fn challenge(&mut self) -> F
+    pub fn challenge(&mut self) -> E::Fr
     {
         self.sponge.squeeze(&self.params)
     }    

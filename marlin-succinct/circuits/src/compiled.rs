@@ -6,6 +6,7 @@ This source file implements the compiled constraints primitive.
 
 use sprs::CsMat;
 use commitment::urs::URS;
+use oracle::rndoracle::ProofError;
 use algebra::{Field, PrimeField, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
 pub use super::index::Index;
@@ -42,7 +43,7 @@ impl<E: PairingEngine> Compiled<E>
         h_group: EvaluationDomain<E::Fr>,
         k_group: EvaluationDomain<E::Fr>,
         constraints: CsMat<E::Fr>,
-    ) -> Option<Self>
+    ) -> Result<Self, ProofError>
     {
         let shape = constraints.shape();
 
@@ -62,9 +63,9 @@ impl<E: PairingEngine> Compiled<E>
                 &E::Fr::from_repr(<<E as PairingEngine>::Fr as PrimeField>::BigInt::from(shape.0.pow(2) as u64)));
         }
 
-        let row_eval = Evaluations::<E::Fr>::from_vec_and_domain(row_eval, h_group);
-        let col_eval = Evaluations::<E::Fr>::from_vec_and_domain(col_eval, h_group);
-        let val_eval = Evaluations::<E::Fr>::from_vec_and_domain(val_eval, h_group);
+        let row_eval = Evaluations::<E::Fr>::from_vec_and_domain(row_eval, k_group);
+        let col_eval = Evaluations::<E::Fr>::from_vec_and_domain(col_eval, k_group);
+        let val_eval = Evaluations::<E::Fr>::from_vec_and_domain(val_eval, k_group);
         
         // interpolate the evaluations
         let row = row_eval.clone().interpolate();
@@ -72,31 +73,19 @@ impl<E: PairingEngine> Compiled<E>
         let val = val_eval.clone().interpolate();
 
         // commit to the index polynomials
-        match
-        (
-            urs.commit(&row, row.coeffs.len()),
-            urs.commit(&col, col.coeffs.len()),
-            urs.commit(&val, val.coeffs.len()),
-        )
+        Ok(Compiled::<E>
         {
-            (Some(row_comm), Some(col_comm), Some(val_comm)) =>
-            {
-                Some(Compiled::<E>
-                {
-                    constraints: constraints,
-                    row_comm: row_comm,
-                    col_comm: col_comm,
-                    val_comm: val_comm,
-                    col_eval: col_eval,
-                    row_eval: row_eval,
-                    val_eval: val_eval,
-                    row : row,
-                    col : col,
-                    val : val,
-                })
-            }
-            (_,_,_) => None
-        }
+            constraints: constraints,
+            row_comm: urs.commit(&row, row.coeffs.len())?,
+            col_comm: urs.commit(&col, col.coeffs.len())?,
+            val_comm: urs.commit(&val, val.coeffs.len())?,
+            col_eval: col_eval,
+            row_eval: row_eval,
+            val_eval: val_eval,
+            row : row,
+            col : col,
+            val : val,
+        })
     }
 
     // this function computes (row(X)-oracle1)*(col(X)-oracle2)

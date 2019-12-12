@@ -31,7 +31,7 @@ impl<E: PairingEngine> BatchProof<E>
         for proof in self.batch.iter()
         {
             let proof = proof.clone()?;
-            let oracles = proof.oracles(index);
+            let oracles = proof.oracles(index)?;
 
             // first, verify the sumcheck argument values
             if !proof.sumcheck_1_verify (index, &oracles) || !proof.sumcheck_2_verify (index, &oracles) || !proof.sumcheck_3_verify (index, &oracles)
@@ -42,7 +42,7 @@ impl<E: PairingEngine> BatchProof<E>
             batch[0].push
             ((
                 oracles.beta[0],
-                oracles.batch[0],
+                oracles.batch,
                 vec!
                 [
                     (proof.za_comm, proof.za_eval, index.h_group.size()),
@@ -56,7 +56,7 @@ impl<E: PairingEngine> BatchProof<E>
             batch[1].push
             ((
                 oracles.beta[1],
-                oracles.batch[1],
+                oracles.batch,
                 vec!
                 [
                     (proof.h2_comm, proof.h2_eval, index.h_group.size()),
@@ -67,7 +67,7 @@ impl<E: PairingEngine> BatchProof<E>
             batch[2].push
             ((
                 oracles.beta[2],
-                oracles.batch[2],
+                oracles.batch,
                 vec!
                 [
                     (proof.h3_comm, proof.h3_eval, index.compiled[0].val.coeffs.len()*6),

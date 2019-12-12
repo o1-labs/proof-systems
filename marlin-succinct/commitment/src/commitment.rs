@@ -16,6 +16,7 @@ knowledge protocol:
 
 *****************************************************************************************************************/
 
+use oracle::rndoracle::ProofError;
 use algebra::{AffineCurve, ProjectiveCurve, Field, PairingEngine, PairingCurve, UniformRand};
 use ff_fft::DensePolynomial;
 pub use super::urs::URS;
@@ -32,10 +33,10 @@ impl<E: PairingEngine> URS<E>
         &self,
         plnm: &DensePolynomial<E::Fr>,
         max: usize,
-    ) -> Option<E::G1Affine>
+    ) -> Result<E::G1Affine, ProofError>
     {
         let d = self.gp.len();
-        if d < max || plnm.coeffs.len() > max {return None}
+        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
 
         let mut exp: Vec<(E::G1Affine, E::Fr)> = vec![];
         for i in 0..plnm.coeffs.len()
@@ -43,7 +44,7 @@ impl<E: PairingEngine> URS<E>
             if plnm.coeffs[i].is_zero() {continue;}
             exp.push((self.gp[i + d - max], plnm.coeffs[i]));
         }
-        Some(Self::multiexp(&exp))
+        Ok(Self::multiexp(&exp))
     }
 
     // This function exponentiates a polynomial against URS instance
@@ -53,9 +54,9 @@ impl<E: PairingEngine> URS<E>
     (
         &self,
         plnm: &DensePolynomial<E::Fr>
-    ) -> Option<E::G1Affine>
+    ) -> Result<E::G1Affine, ProofError>
     {
-        if plnm.coeffs.len() > self.gp.len() {return None}
+        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyExponentiate)}
         let mut exp: Vec<(E::G1Affine, E::Fr)> = vec![];
 
         for (x, y) in plnm.coeffs.iter().zip(self.gp.iter())
@@ -63,7 +64,7 @@ impl<E: PairingEngine> URS<E>
             if x.is_zero() {continue;}
             exp.push((*y, *x));
         }
-        Some(Self::multiexp(&exp))
+        Ok(Self::multiexp(&exp))
     }
 
     // This function opens the polynomial commitment
@@ -75,7 +76,7 @@ impl<E: PairingEngine> URS<E>
         &self,
         plnm: &DensePolynomial<E::Fr>,
         elm: E::Fr
-    ) -> Option<E::G1Affine>
+    ) -> Result<E::G1Affine, ProofError>
     {
         // do polynomial division (F(x)-F(elm))/(x-elm)
         self.exponentiate(&plnm.divide(elm))
@@ -92,7 +93,7 @@ impl<E: PairingEngine> URS<E>
         plnms: &Vec<DensePolynomial<E::Fr>>,
         mask: E::Fr,
         elm: E::Fr
-    ) -> Option<E::G1Affine>
+    ) -> Result<E::G1Affine, ProofError>
     {
         let mut acc = DensePolynomial::<E::Fr>::zero();
         let mut scale = mask;
