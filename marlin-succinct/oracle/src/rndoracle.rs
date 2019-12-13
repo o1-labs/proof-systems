@@ -46,7 +46,7 @@ impl<E: PairingEngine> RandomOracleArgument<E>
         RandomOracleArgument::<E>
         {
             sponge: ArithmeticSponge::<E::Fr>::new(),
-            params: params,
+            params,
         }
     }
 

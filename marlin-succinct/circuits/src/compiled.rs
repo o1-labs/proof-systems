@@ -7,7 +7,7 @@ This source file implements the compiled constraints primitive.
 use sprs::CsMat;
 use commitment::urs::URS;
 use oracle::rndoracle::ProofError;
-use algebra::{Field, PrimeField, PairingEngine};
+use algebra::{Field, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
 pub use super::index::Index;
 
@@ -45,11 +45,11 @@ impl<E: PairingEngine> Compiled<E>
         constraints: CsMat<E::Fr>,
     ) -> Result<Self, ProofError>
     {
-        let shape = constraints.shape();
-
         let mut col_eval = vec![E::Fr::zero(); k_group.size as usize];
         let mut row_eval = vec![E::Fr::zero(); k_group.size as usize];
         let mut val_eval = vec![E::Fr::zero(); k_group.size as usize];
+
+        let h_elems: Vec<E::Fr> = h_group.elements().map(|elm| {elm}).collect();
 
         for (c, (val, (row, col))) in
         constraints.iter().zip(
@@ -57,10 +57,17 @@ impl<E: PairingEngine> Compiled<E>
                 row_eval.iter_mut().zip(
                     col_eval.iter_mut())))
         {
-            *col = h_group.group_gen.pow([(c.1).1 as u64]);
-            *row = h_group.group_gen.pow([(c.1).0 as u64]);
-            *val = *c.0 / &((*row * col).pow(&[(shape.0 - 1) as u64]) *
-                &E::Fr::from_repr(<<E as PairingEngine>::Fr as PrimeField>::BigInt::from(shape.0.pow(2) as u64)));
+            *row = h_elems[(c.1).0];
+            *col = h_elems[(c.1).1];
+            *val = h_group.size_as_field_element.square() *
+                // Lagrange polynomial evaluation trick
+                &h_elems[if (c.1).0 == 0 {0} else {h_group.size() - (c.1).0}] *
+                &h_elems[if (c.1).1 == 0 {0} else {h_group.size() - (c.1).1}];
+        }
+        algebra::fields::batch_inversion::<E::Fr>(&mut val_eval);
+        for (c, val) in constraints.iter().zip(val_eval.iter_mut())
+        {
+            *val = *c.0 * val;
         }
 
         let row_eval = Evaluations::<E::Fr>::from_vec_and_domain(row_eval, k_group);
@@ -79,12 +86,12 @@ impl<E: PairingEngine> Compiled<E>
             row_comm: urs.commit(&row, row.coeffs.len())?,
             col_comm: urs.commit(&col, col.coeffs.len())?,
             val_comm: urs.commit(&val, val.coeffs.len())?,
-            col_eval: col_eval,
-            row_eval: row_eval,
-            val_eval: val_eval,
-            row : row,
-            col : col,
-            val : val,
+            col_eval,
+            row_eval,
+            val_eval,
+            row,
+            col,
+            val,
         })
     }
 

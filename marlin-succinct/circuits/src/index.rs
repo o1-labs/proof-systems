@@ -42,7 +42,7 @@ impl<E: PairingEngine> Index<E>
         a: CsMat<E::Fr>,
         b: CsMat<E::Fr>,
         c: CsMat<E::Fr>,
-        oracles: ArithmeticSpongeParams<E::Fr>,
+        oracle_params: ArithmeticSpongeParams<E::Fr>,
         rng: &mut dyn RngCore
     ) -> Result<Self, ProofError>
     {
@@ -72,11 +72,11 @@ impl<E: PairingEngine> Index<E>
                         Compiled::<E>::compile(&urs, h_group, k_group, b)?,
                         Compiled::<E>::compile(&urs, h_group, k_group, c)?,
                     ],
-                    oracle_params: oracles,
-                    max_degree: max_degree,
-                    h_group: h_group,
-                    k_group: k_group,
-                    urs: urs,
+                    oracle_params,
+                    max_degree,
+                    h_group,
+                    k_group,
+                    urs,
                 })
             }
             (_,_) => Err(ProofError::EvaluationGroup)

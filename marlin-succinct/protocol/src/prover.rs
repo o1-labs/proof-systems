@@ -38,11 +38,13 @@ pub struct ProverProof<E: PairingEngine>
     pub g2_eval: E::Fr,
     pub h3_eval: E::Fr,
     pub g3_eval: E::Fr,
-    pub sigma2: E::Fr,
-    pub sigma3: E::Fr,
     pub row_eval: [E::Fr; 3],
     pub col_eval: [E::Fr; 3],
     pub val_eval: [E::Fr; 3],
+
+    // prover's scalars
+    pub sigma2: E::Fr,
+    pub sigma3: E::Fr,
 
     // public part of the witness
     pub public: Witness<E::Fr>
@@ -115,7 +117,7 @@ impl<E: PairingEngine> ProverProof<E>
         // absorb W, ZA, ZB polycommitments
         argument.commit_points(&[w_comm, za_comm, zb_comm])?;
 
-        // sample alpha, eta[0..3] oracles
+        // sample alpha, eta oracles
         oracles.alpha = argument.challenge();
         oracles.eta_a = argument.challenge();
         oracles.eta_b = argument.challenge();
@@ -134,6 +136,8 @@ impl<E: PairingEngine> ProverProof<E>
         let ra = DensePolynomial::<E::Fr>::from_coefficients_vec(r);
 
         // compute first sumcheck argument polynomials
+        // --------------------------------------------------------------------
+
         let (h1, mut g1) = Self::sumcheck_1_compute (index, &ra, &zv, &z, &oracles)?;
         if !g1.coeffs[0].is_zero() {return Err(ProofError::SumCheck)}
         g1.coeffs.remove(0);
@@ -148,6 +152,8 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.beta[0] = argument.challenge();
 
         // compute second sumcheck argument polynomials
+        // --------------------------------------------------------------------
+
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
@@ -158,6 +164,8 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.beta[1] = argument.challenge();
 
         // compute third sumcheck argument polynomials
+        // --------------------------------------------------------------------
+
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
@@ -168,17 +176,23 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.beta[2] = argument.challenge();
         oracles.batch = argument.challenge();
 
+        // construct the proof
+        // --------------------------------------------------------------------
+
         Ok(ProverProof
         {
-            w_comm  : w_comm,
-            za_comm : za_comm,
-            zb_comm : zb_comm,
-            h1_comm : h1_comm,
-            g1_comm : g1_comm,
+            // polynomial commitments
+            w_comm,
+            za_comm,
+            zb_comm,
+            h1_comm,
+            g1_comm,
             h2_comm : index.urs.commit(&h2, index.h_group.size())?,
             g2_comm : index.urs.commit(&g2, index.h_group.size()-1)?,
             h3_comm : index.urs.commit(&h3, index.h_group.size()*6)?,
             g3_comm : index.urs.commit(&g3, index.h_group.size()-1)?,
+
+            // polynomial commitment batched opening proofs
             proof1  : index.urs.open_batch
             (
                 &vec!
@@ -221,6 +235,8 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 oracles.beta[2]
             )?,
+
+            // polynomial evaluations
             w_eval  : w.clone().evaluate(oracles.beta[0]),
             za_eval : za.evaluate(oracles.beta[0]),
             zb_eval : zb.evaluate(oracles.beta[0]),
@@ -230,8 +246,6 @@ impl<E: PairingEngine> ProverProof<E>
             g2_eval : g2.evaluate(oracles.beta[1]),
             h3_eval : h3.evaluate(oracles.beta[2]),
             g3_eval : g3.evaluate(oracles.beta[2]),
-            sigma2  : sigma2,
-            sigma3  : sigma3,
             row_eval:
             [
                 index.compiled[0].row.evaluate(oracles.beta[2]),
@@ -250,6 +264,12 @@ impl<E: PairingEngine> ProverProof<E>
                 index.compiled[1].val.evaluate(oracles.beta[2]),
                 index.compiled[2].val.evaluate(oracles.beta[2]),
             ],
+
+            // prover's scalars
+            sigma2,
+            sigma3,
+
+            // public part of the witness
             public : public,
         })
     }
