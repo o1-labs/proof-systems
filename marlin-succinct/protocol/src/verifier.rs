@@ -117,8 +117,8 @@ impl<E: PairingEngine> ProverProof<E>
     {
         let oracles = self.oracles(index)?;
 
-        // first, verify sumcheck arguments
         match 
+            // first, verify sumcheck arguments
             self.sumcheck_1_verify (index, &oracles) &&
             self.sumcheck_2_verify (index, &oracles) &&
             self.sumcheck_3_verify (index, &oracles) &&

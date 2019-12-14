@@ -23,6 +23,7 @@ pub struct Index<E: PairingEngine>
     // evaluation domains as multiplicative groups of roots of unity
     pub h_group: EvaluationDomain<E::Fr>,
     pub k_group: EvaluationDomain<E::Fr>,
+    pub b_group: EvaluationDomain<E::Fr>,
 
     // maximal degree of the committed polynomials
     pub max_degree: usize,
@@ -52,10 +53,11 @@ impl<E: PairingEngine> Index<E>
         match
         (
             EvaluationDomain::<E::Fr>::new(a.shape().0),
-            EvaluationDomain::<E::Fr>::new([&a, &b, &c].iter().map(|x| x.nnz()).max().unwrap())
+            EvaluationDomain::<E::Fr>::new([&a, &b, &c].iter().map(|x| x.nnz()).max().unwrap()),
+            EvaluationDomain::<E::Fr>::new(a.shape().0 * 6 - 6),
         )
         {
-            (Some(h_group), Some(k_group)) =>
+            (Some(h_group), Some(k_group), Some(b_group)) =>
             {
                 // maximal degree of the committed polynomials
                 let max_degree = *[3*h_group.size, 6*k_group.size].iter().max().unwrap() as usize;
@@ -68,18 +70,19 @@ impl<E: PairingEngine> Index<E>
                 {
                     compiled:
                     [
-                        Compiled::<E>::compile(&urs, h_group, k_group, a)?,
-                        Compiled::<E>::compile(&urs, h_group, k_group, b)?,
-                        Compiled::<E>::compile(&urs, h_group, k_group, c)?,
+                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, a)?,
+                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, b)?,
+                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, c)?,
                     ],
                     oracle_params,
                     max_degree,
                     h_group,
                     k_group,
+                    b_group,
                     urs,
                 })
             }
-            (_,_) => Err(ProofError::EvaluationGroup)
+            (_,_,_) => Err(ProofError::EvaluationGroup)
         }
     }
 
