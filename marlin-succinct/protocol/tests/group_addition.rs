@@ -238,7 +238,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match batch[0].verify(&index, rng)
+    match ProverProof::<E>::verify(&vec![batch[0].clone()], &index, rng)
     {
         Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
@@ -247,7 +247,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::<E>::verify_batch(&batch, &index, rng)
+    match ProverProof::<E>::verify(&batch, &index, rng)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

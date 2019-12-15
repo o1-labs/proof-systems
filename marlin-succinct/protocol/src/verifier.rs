@@ -114,89 +114,12 @@ impl<E: PairingEngine> ProverProof<E>
             &acc1 - &((oracles.beta[2] * &self.g3_eval + &self.sigma3) * &acc2)
     }
 
-    // This function verifies the prover's zk-proof
-    //     index: Index
-    //     rng: randomness source context
-    //     RETURN: verification status
-    pub fn verify
-    (
-        &self,
-        index: &Index<E>,
-        rng: &mut dyn RngCore
-    ) -> Result<bool, ProofError>
-    {
-        let oracles = self.oracles(index)?;
-
-        match 
-            // first, verify sumcheck arguments
-            self.sumcheck_1_verify (index, &oracles) &&
-            self.sumcheck_2_verify (index, &oracles) &&
-            self.sumcheck_3_verify (index, &oracles) &&
-
-            // second, verify commitment opening proofs
-            index.urs.verify
-            (
-                &vec!
-                [
-                    vec!
-                    [(
-                        oracles.beta[0],
-                        oracles.batch,
-                        vec!
-                        [
-                            (self.za_comm,  self.za_eval,   index.h_group.size()),
-                            (self.zb_comm,  self.zb_eval,   index.h_group.size()),
-                            (self.w_comm,   self.w_eval,    index.h_group.size() - index.x_group.size()),
-                            (self.h1_comm,  self.h1_eval,   index.h_group.size()*2-2),
-                            (self.g1_comm,  self.g1_eval,   index.h_group.size()-1),
-                        ],
-                        self.proof1
-                    )],
-                    vec!
-                    [(
-                        oracles.beta[1],
-                        oracles.batch,
-                        vec!
-                        [
-                            (self.h2_comm, self.h2_eval, index.h_group.size()-1),
-                            (self.g2_comm, self.g2_eval, index.h_group.size()-1),
-                        ],
-                        self.proof2
-                    )],
-                    vec!
-                    [(
-                        oracles.beta[2],
-                        oracles.batch,
-                        vec!
-                        [
-                            (self.h3_comm, self.h3_eval, index.k_group.size()*6-6),
-                            (self.g3_comm, self.g3_eval, index.k_group.size()-1),
-                            (index.compiled[0].row_comm, self.row_eval[0], index.k_group.size()),
-                            (index.compiled[1].row_comm, self.row_eval[1], index.k_group.size()),
-                            (index.compiled[2].row_comm, self.row_eval[2], index.k_group.size()),
-                            (index.compiled[0].col_comm, self.col_eval[0], index.k_group.size()),
-                            (index.compiled[1].col_comm, self.col_eval[1], index.k_group.size()),
-                            (index.compiled[2].col_comm, self.col_eval[2], index.k_group.size()),
-                            (index.compiled[0].val_comm, self.val_eval[0], index.k_group.size()),
-                            (index.compiled[1].val_comm, self.val_eval[1], index.k_group.size()),
-                            (index.compiled[2].val_comm, self.val_eval[2], index.k_group.size()),
-                        ],
-                        self.proof3
-                    )]
-                ],
-                rng
-            )
-        {
-            false => Err(ProofError::OpenProof),
-            true => Ok(true)
-        }
-    }
     // This function verifies the batch of zk-proofs
     //     proofs: vector of Marlin proofs
     //     index: Index
     //     rng: randomness source context
     //     RETURN: verification status
-    pub fn verify_batch
+    pub fn verify
     (
         proofs: &Vec<ProverProof<E>>,
         index: &Index<E>,
@@ -210,7 +133,9 @@ impl<E: PairingEngine> ProverProof<E>
             let oracles = proof.oracles(index)?;
 
             // first, verify the sumcheck argument values
-            if !proof.sumcheck_1_verify (index, &oracles) || !proof.sumcheck_2_verify (index, &oracles) || !proof.sumcheck_3_verify (index, &oracles)
+            if !proof.sumcheck_1_verify (index, &oracles) ||
+                !proof.sumcheck_2_verify (index, &oracles) ||
+                !proof.sumcheck_3_verify (index, &oracles)
             {
                 return Err(ProofError::ProofVerification)
             }
