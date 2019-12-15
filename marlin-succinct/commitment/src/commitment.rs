@@ -39,7 +39,7 @@ impl<E: PairingEngine> URS<E>
         if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
 
         let mut exp: Vec<(E::G1Affine, E::Fr)> = vec![];
-        for i in 0..max
+        for i in 0..plnm.coeffs.len()
         {
             if plnm.coeffs[i].is_zero() {continue;}
             exp.push((self.gp[i + d - max], plnm.coeffs[i]));
