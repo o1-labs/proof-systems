@@ -111,7 +111,7 @@ impl<E: PairingEngine> ProverProof<E>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = index.urs.commit(&w.clone(), index.x_group.size())?;
+        let w_comm = index.urs.commit(&w.clone(), index.h_group.size() - index.x_group.size())?;
         let za_comm = index.urs.commit(&za.clone(), index.h_group.size())?;
         let zb_comm = index.urs.commit(&zb.clone(), index.h_group.size())?;
 

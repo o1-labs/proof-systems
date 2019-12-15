@@ -44,7 +44,7 @@ impl<E: PairingEngine> BatchProof<E>
                 [
                     (proof.za_comm, proof.za_eval, index.h_group.size()),
                     (proof.zb_comm, proof.zb_eval, index.h_group.size()),
-                    (proof.w_comm,  proof.w_eval,  index.x_group.size()),
+                    (proof.w_comm,  proof.w_eval,  index.h_group.size() - index.x_group.size()),
                     (proof.h1_comm, proof.h1_eval, index.h_group.size()*2-2),
                     (proof.g1_comm, proof.g1_eval, index.h_group.size()-1),
                 ],

@@ -146,7 +146,7 @@ impl<E: PairingEngine> ProverProof<E>
                         [
                             (self.za_comm,  self.za_eval,   index.h_group.size()),
                             (self.zb_comm,  self.zb_eval,   index.h_group.size()),
-                            (self.w_comm,   self.w_eval,    index.x_group.size()),
+                            (self.w_comm,   self.w_eval,    index.h_group.size() - index.x_group.size()),
                             (self.h1_comm,  self.h1_eval,   index.h_group.size()*2-2),
                             (self.g1_comm,  self.g1_eval,   index.h_group.size()-1),
                         ],

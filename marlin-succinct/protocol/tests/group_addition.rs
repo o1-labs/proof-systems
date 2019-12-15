@@ -118,7 +118,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     // field unity element
     let one = E::Fr::one();
 
-    for _ in 0..1
+    for _ in 0..100
     {
         points.push
         ((
