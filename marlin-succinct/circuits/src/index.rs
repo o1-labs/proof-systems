@@ -25,7 +25,7 @@ pub struct Index<E: PairingEngine>
     pub b_group: EvaluationDomain<E::Fr>,
     pub x_group: EvaluationDomain<E::Fr>,
 
-    // number of public inputs of the witness that are followed by the secret assignments
+    // number of public inputs
     pub public_inputs: usize,
 
     // maximal degree of the committed polynomials
@@ -72,8 +72,8 @@ impl<E: PairingEngine> Index<E>
             (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
             {
                 // maximal degree of the committed polynomials
-                let max_degree = *[3*h_group.size, 6*k_group.size].iter().max().unwrap() as usize;
-
+                let max_degree = *[3*h_group.size-1, 6*k_group.size-6].iter().max().unwrap() as usize;
+     
                 // compute public setup
                 let urs = URS::<E>::create(max_degree, rng);
 

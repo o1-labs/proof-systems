@@ -146,8 +146,8 @@ impl<E: PairingEngine> ProverProof<E>
                         [
                             (self.za_comm,  self.za_eval,   index.h_group.size()),
                             (self.zb_comm,  self.zb_eval,   index.h_group.size()),
-                            (self.w_comm,   self.w_eval,    index.h_group.size()),
-                            (self.h1_comm,  self.h1_eval,   index.h_group.size()*2),
+                            (self.w_comm,   self.w_eval,    index.x_group.size()),
+                            (self.h1_comm,  self.h1_eval,   index.h_group.size()*2-2),
                             (self.g1_comm,  self.g1_eval,   index.h_group.size()-1),
                         ],
                         self.proof1
@@ -158,8 +158,8 @@ impl<E: PairingEngine> ProverProof<E>
                         oracles.batch,
                         vec!
                         [
-                            (self.h2_comm, self.h2_eval, index.h_group.size()),
-                            (self.g2_comm, self.g2_eval, (index.h_group.size())-1),
+                            (self.h2_comm, self.h2_eval, index.h_group.size()-1),
+                            (self.g2_comm, self.g2_eval, index.h_group.size()-1),
                         ],
                         self.proof2
                     )],
@@ -169,8 +169,8 @@ impl<E: PairingEngine> ProverProof<E>
                         oracles.batch,
                         vec!
                         [
-                            (self.h3_comm, self.h3_eval, index.compiled[0].val.coeffs.len()*6),
-                            (self.g3_comm, self.g3_eval, index.compiled[0].val.coeffs.len()-1),
+                            (self.h3_comm, self.h3_eval, index.k_group.size()*6-6),
+                            (self.g3_comm, self.g3_eval, index.k_group.size()-1),
                             (index.compiled[0].row_comm, self.row_eval[0], index.k_group.size()),
                             (index.compiled[1].row_comm, self.row_eval[1], index.k_group.size()),
                             (index.compiled[2].row_comm, self.row_eval[2], index.k_group.size()),

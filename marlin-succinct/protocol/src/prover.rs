@@ -111,7 +111,7 @@ impl<E: PairingEngine> ProverProof<E>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = index.urs.commit(&w.clone(), index.h_group.size())?;
+        let w_comm = index.urs.commit(&w.clone(), index.x_group.size())?;
         let za_comm = index.urs.commit(&za.clone(), index.h_group.size())?;
         let zb_comm = index.urs.commit(&zb.clone(), index.h_group.size())?;
 
@@ -151,7 +151,7 @@ impl<E: PairingEngine> ProverProof<E>
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = index.urs.commit(&h1, index.h_group.size()*2)?;
+        let h1_comm = index.urs.commit(&h1, index.h_group.size()*2-2)?;
         let g1_comm = index.urs.commit(&g1, index.h_group.size()-1)?;
 
         // absorb H1, G1 polycommitments
@@ -195,10 +195,10 @@ impl<E: PairingEngine> ProverProof<E>
             zb_comm,
             h1_comm,
             g1_comm,
-            h2_comm: index.urs.commit(&h2, index.h_group.size())?,
+            h2_comm: index.urs.commit(&h2, index.h_group.size()-1)?,
             g2_comm: index.urs.commit(&g2, index.h_group.size()-1)?,
-            h3_comm: index.urs.commit(&h3, index.h_group.size()*6)?,
-            g3_comm: index.urs.commit(&g3, index.h_group.size()-1)?,
+            h3_comm: index.urs.commit(&h3, index.k_group.size()*6-6)?,
+            g3_comm: index.urs.commit(&g3, index.k_group.size()-1)?,
 
             // polynomial commitment batched opening proofs
             proof1: index.urs.open_batch
