@@ -1,9 +1,6 @@
 /********************************************************************************************
 
-This source file implements batch zk-proof primitives.
-
-This primitive is the top-level aggregate of Marlin zk-proof format that provides means of
-optimized batch verification of the individual constituent zk-proofs.
+This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 

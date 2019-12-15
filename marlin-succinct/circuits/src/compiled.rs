@@ -22,15 +22,15 @@ pub struct Compiled<E: PairingEngine>
     pub val_comm: E::G1Affine,
 
     // compiled polynomials and evaluations
-    pub col     : DensePolynomial<E::Fr>,
     pub row     : DensePolynomial<E::Fr>,
+    pub col     : DensePolynomial<E::Fr>,
     pub val     : DensePolynomial<E::Fr>,
-    pub val_eval_k: Evaluations<E::Fr>,
-    pub col_eval_k: Evaluations<E::Fr>,
     pub row_eval_k: Evaluations<E::Fr>,
-    pub val_eval_b: Evaluations<E::Fr>,
-    pub col_eval_b: Evaluations<E::Fr>,
+    pub col_eval_k: Evaluations<E::Fr>,
+    pub val_eval_k: Evaluations<E::Fr>,
     pub row_eval_b: Evaluations<E::Fr>,
+    pub col_eval_b: Evaluations<E::Fr>,
+    pub val_eval_b: Evaluations<E::Fr>,
 }
 
 impl<E: PairingEngine> Compiled<E>
@@ -104,18 +104,20 @@ impl<E: PairingEngine> Compiled<E>
     }
 
     // this function computes (row(X)-oracle1)*(col(X)-oracle2)
-    // polynomial for this compilation of constraints
-    pub fn compute_fraction
+    // evaluations over b_group for this compilation of constraints
+    pub fn compute_row_2_col_1
     (
         &self,
         oracle1: E::Fr,
         oracle2: E::Fr,
-    ) -> DensePolynomial<E::Fr>
+    ) -> Vec<E::Fr>
     {
-        let mut x = self.row.clone();
-        x.coeffs[0] -= &oracle2;
-        let mut y = self.col.clone();
-        y.coeffs[0] -= &oracle1;
-        &x * &y
+        self.row_eval_b.evals.iter().zip(self.col_eval_b.evals.iter()).map
+        (
+            |(row, col)|
+            {
+                (oracle2 - row) * &(oracle1 - col)
+            }
+        ).collect()
     }
 }

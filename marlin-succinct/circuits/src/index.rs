@@ -13,7 +13,6 @@ use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
-pub use super::witness::Witness;
 
 pub struct Index<E: PairingEngine>
 {
@@ -24,6 +23,10 @@ pub struct Index<E: PairingEngine>
     pub h_group: EvaluationDomain<E::Fr>,
     pub k_group: EvaluationDomain<E::Fr>,
     pub b_group: EvaluationDomain<E::Fr>,
+    pub x_group: EvaluationDomain<E::Fr>,
+
+    // number of public inputs of the witness that are followed by the secret assignments
+    pub public_inputs: usize,
 
     // maximal degree of the committed polynomials
     pub max_degree: usize,
@@ -43,11 +46,19 @@ impl<E: PairingEngine> Index<E>
         a: CsMat<E::Fr>,
         b: CsMat<E::Fr>,
         c: CsMat<E::Fr>,
+        public_inputs: usize,
         oracle_params: ArithmeticSpongeParams<E::Fr>,
         rng: &mut dyn RngCore
     ) -> Result<Self, ProofError>
     {
-        if a.shape() != b.shape() || a.shape() != c.shape() || a.shape().0 != a.shape().1 {return Err(ProofError::ConstraintInconsist)}
+        if a.shape() != b.shape() ||
+            a.shape() != c.shape() ||
+            a.shape().0 != a.shape().1 ||
+            public_inputs == a.shape().0 ||
+            public_inputs == 0
+        {
+            return Err(ProofError::ConstraintInconsist)
+        }
 
         // compute the evaluation domains
         match
@@ -55,9 +66,10 @@ impl<E: PairingEngine> Index<E>
             EvaluationDomain::<E::Fr>::new(a.shape().0),
             EvaluationDomain::<E::Fr>::new([&a, &b, &c].iter().map(|x| x.nnz()).max().unwrap()),
             EvaluationDomain::<E::Fr>::new(a.shape().0 * 6 - 6),
+            EvaluationDomain::<E::Fr>::new(public_inputs),
         )
         {
-            (Some(h_group), Some(k_group), Some(b_group)) =>
+            (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
             {
                 // maximal degree of the committed polynomials
                 let max_degree = *[3*h_group.size, 6*k_group.size].iter().max().unwrap() as usize;
@@ -75,14 +87,16 @@ impl<E: PairingEngine> Index<E>
                         Compiled::<E>::compile(&urs, h_group, k_group, b_group, c)?,
                     ],
                     oracle_params,
+                    public_inputs,
                     max_degree,
                     h_group,
                     k_group,
                     b_group,
+                    x_group,
                     urs,
                 })
             }
-            (_,_,_) => Err(ProofError::EvaluationGroup)
+            (_,_,_,_) => Err(ProofError::EvaluationGroup)
         }
     }
 
@@ -92,10 +106,10 @@ impl<E: PairingEngine> Index<E>
     pub fn verify
     (
         &self,
-        witness: &Witness<E::Fr>
+        witness: &Vec<E::Fr>
     ) -> bool
     {
-        if self.compiled[0].constraints.shape().1 != witness.0.len() {return false}
+        if self.compiled[0].constraints.shape().1 != witness.len() {return false}
 
         for (a, (b, c)) in
             self.compiled[0].constraints.outer_iterator().zip(
@@ -105,15 +119,15 @@ impl<E: PairingEngine> Index<E>
             let mut gate = CircuitGate::<E::Fr>::zero();
             for col in a.iter()
             {
-                gate.wire[0] += &(*col.1 * &witness.0[col.0]);
+                gate.wire[0] += &(*col.1 * &witness[col.0]);
             }
             for col in b.iter()
             {
-                gate.wire[1] += &(*col.1 * &witness.0[col.0]);
+                gate.wire[1] += &(*col.1 * &witness[col.0]);
             }
             for col in c.iter()
             {
-                gate.wire[2] += &(*col.1 * &witness.0[col.0]);
+                gate.wire[2] += &(*col.1 * &witness[col.0]);
             }
             if gate.wire[0] * &gate.wire[1] != gate.wire[2] {return false}
         }

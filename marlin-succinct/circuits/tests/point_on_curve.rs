@@ -25,8 +25,8 @@ The following tests are implemented:
 
 use sprs::{CsMat, CsVecView};
 use algebra::{Field, PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
-use circuits::{witness::Witness, index::Index};
 use oracle::poseidon::ArithmeticSpongeParams;
+use circuits::index::Index;
 use rand_core::OsRng;
 
 // Poseidon MDS Matrix from Vandermonde's A*(B^(-1)) for SPONGE_CAPACITY+SPONGE_RATE=3
@@ -106,7 +106,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         ).collect(),
     };
     
-    let index = Index::<E>::create(a, b, c, oracle_params, rng).unwrap();
+    let index = Index::<E>::create(a, b, c, 4, oracle_params, rng).unwrap();
 
     // We have the Index. Let's choose an example satisfying witness for Jubjub y^2-x^2=1+d*y^2*x^2
     let x = <E::Fr as std::str::FromStr>::from_str("47847771272602875687997868466650874407263908316223685522183521003714784842376").unwrap();
@@ -125,12 +125,12 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         Wire labels
         [1, x, y, xx, yy]
     */
-    let mut witness = Witness::<E::Fr>::create(8, 8);
-    witness.0[0] = one;
-    witness.0[1] = x;
-    witness.0[2] = y;
-    witness.0[3] = xx;
-    witness.0[4] = yy;
+    let mut witness = vec![E::Fr::zero(); 8];
+    witness[0] = one;
+    witness[1] = x;
+    witness[2] = y;
+    witness[3] = xx;
+    witness[4] = yy;
 
     // verify the circuit satisfiability by the computed witness
     assert_eq!(index.verify(&witness), true);
@@ -154,12 +154,12 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         Wire labels
         [1, x, y, xx, yy]
     */
-    let mut witness = Witness::<E::Fr>::create(8, 8);
-    witness.0[0] = one;
-    witness.0[1] = x;
-    witness.0[2] = y;
-    witness.0[3] = xx;
-    witness.0[4] = yy;
+    let mut witness = vec![E::Fr::zero(); 8];
+    witness[0] = one;
+    witness[1] = x;
+    witness[2] = y;
+    witness[3] = xx;
+    witness[4] = yy;
 
     // verify the circuit satisfiability by the computed witness
     assert_eq!(index.verify(&witness), false);

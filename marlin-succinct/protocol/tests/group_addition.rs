@@ -19,9 +19,9 @@ The following tests are implemented:
 
 **********************************************************************************************************/
 
+use circuits::index::Index;
 use sprs::{CsMat, CsVecView};
 use algebra::{Field, PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
-use circuits::{witness::Witness, index::Index};
 use oracle::poseidon::ArithmeticSpongeParams;
 use protocol::batch_prover::BatchProof;
 use rand_core::{RngCore, OsRng};
@@ -102,7 +102,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         ).collect(),
     };
     
-    let index = Index::<E>::create(a, b, c, oracle_params, rng).unwrap();
+    let index = Index::<E>::create(a, b, c, 4, oracle_params, rng).unwrap();
 
     positive::<E>(&index, rng);
     negative::<E>(&index, rng);
@@ -113,7 +113,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
     // We have the Index. Let's choose examples of satisfying witness for Jubjub
     let mut points = Vec::<(E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr)>::new();
-    let mut witness_batch = Vec::<Witness<E::Fr>>::new();
+    let mut witness_batch = Vec::<Vec<E::Fr>>::new();
 
     // field unity element
     let one = E::Fr::one();
@@ -221,15 +221,15 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         let (u1, v1, u2, v2, u3, v3) = points[i];
         let y = (v2 - &v1) / &(u2 - &u1);
         
-        let mut witness = Witness::<E::Fr>::create(8, 4);
-        witness.0[0] = one;
-        witness.0[1] = u1;
-        witness.0[2] = u2;
-        witness.0[3] = u3;
-        witness.0[4] = v1;
-        witness.0[5] = v2;
-        witness.0[6] = v3;
-        witness.0[7] = y;
+        let mut witness = vec![E::Fr::zero(); 8];
+        witness[0] = one;
+        witness[1] = u1;
+        witness[2] = u2;
+        witness[3] = u3;
+        witness[4] = v1;
+        witness[5] = v2;
+        witness[6] = v3;
+        witness[7] = y;
 
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.verify(&witness), true);
@@ -274,7 +274,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
     // We have the Index. Let's choose examples of satisfying witness for Jubjub
     let mut points = Vec::<(E::Fr, E::Fr, E::Fr, E::Fr, E::Fr, E::Fr)>::new();
-    let mut witness_batch = Vec::<Witness<E::Fr>>::new();
+    let mut witness_batch = Vec::<Vec<E::Fr>>::new();
 
     // field unity element
     let one = E::Fr::one();
@@ -299,15 +299,15 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         let (u1, v1, u2, v2, u3, v3) = points[i];
         let y = (v2 - &v1) / &(u2 - &u1);
         
-        let mut witness = Witness::<E::Fr>::create(8, 8);
-        witness.0[0] = one;
-        witness.0[1] = u1;
-        witness.0[2] = u2;
-        witness.0[3] = u3;
-        witness.0[4] = v1;
-        witness.0[5] = v2;
-        witness.0[6] = v3;
-        witness.0[7] = y;
+        let mut witness = vec![E::Fr::zero(); 8];
+        witness[0] = one;
+        witness[1] = u1;
+        witness[2] = u2;
+        witness[3] = u3;
+        witness[4] = v1;
+        witness[5] = v2;
+        witness[6] = v3;
+        witness[7] = y;
 
         // verify the circuit un-satisfiability by the computed witness
         assert_eq!(index.verify(&witness), false);

@@ -1,6 +1,6 @@
 /********************************************************************************************
 
-This source file implements prover's zk-proof primitive.
+This source file implements single zk-proof verifier functionality.
 
 *********************************************************************************************/
 
@@ -8,7 +8,7 @@ use rand_core::RngCore;
 use circuits::index::Index;
 use oracle::rndoracle::{ProofError, RandomOracleArgument};
 pub use super::prover::{ProverProof, RandomOracles};
-use algebra::{Field, PrimeField, PairingEngine};
+use algebra::{Field, PairingEngine};
 use ff_fft::Evaluations;
 
 impl<E: PairingEngine> ProverProof<E>
@@ -25,13 +25,11 @@ impl<E: PairingEngine> ProverProof<E>
     ) -> bool
     {
         let mut rzrzg = E::Fr::zero();
-        // compute values for the first sumcheck argument
+        // compute ra*zm - ram*z ?= h*v + b*g, verify the first sumcheck argument
         for i in 0..3
         {
-            // compute ra*zm - ram*z ?= h*v + b*g, verify the first sumcheck argument
-            rzrzg += &((oracles.alpha.pow([index.h_group.size]) -
-                &oracles.beta[0].pow([index.h_group.size])) /
-                &(oracles.alpha - &oracles.beta[0]) * &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] *
+            rzrzg +=
+                &([oracles.eta_a, oracles.eta_b, oracles.eta_c][i] *
                 &match i
                 {
                     0 => {self.za_eval}
@@ -41,12 +39,25 @@ impl<E: PairingEngine> ProverProof<E>
                 });
         }
 
+        rzrzg *= &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size])) /
+            &(oracles.alpha - &oracles.beta[0]));
+
         rzrzg ==
         (
             self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
             &(oracles.beta[0] * &self.g1_eval) +
-            &(self.sigma2 * &E::Fr::from_repr(<<E as PairingEngine>::Fr as PrimeField>::BigInt::from(index.h_group.size)) *
-            &(self.w_eval + &Evaluations::<E::Fr>::from_vec_and_domain(self.public.0.clone(), index.h_group).interpolate().evaluate(oracles.beta[0])))
+            &(self.sigma2 * &index.h_group.size_as_field_element *
+            &(self.w_eval * &index.x_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            // interpolating/evaluating public input over small domain x_group
+            // TODO: investigate which of the below is faster
+            &Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate().evaluate(oracles.beta[0])))
+            /*
+            &index.x_group.evaluate_all_lagrange_coefficients(oracles.beta[0])
+            .iter()
+            .zip(self.public.iter())
+            .map(|(l, x)| *l * x)
+            .fold(E::Fr::zero(), |x, y| x + &y)))
+            */
         )
     }
 
@@ -61,11 +72,10 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
-        // evaluate ra polynomial succinctly
-        // verify the second sumcheck argument
-        self.sigma3 *
-            &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[1].pow([index.h_group.size])) / &(oracles.alpha - &oracles.beta[1])) * 
-            &E::Fr::from_repr(<<E as PairingEngine>::Fr as PrimeField>::BigInt::from(index.k_group.size))
+        self.sigma3 * &index.k_group.size_as_field_element *
+            // evaluate ra polynomial succinctly
+            &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[1].pow([index.h_group.size])) /
+            &(oracles.alpha - &oracles.beta[1]))
         ==
         self.h2_eval *
             &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]) +
@@ -99,8 +109,8 @@ impl<E: PairingEngine> ProverProof<E>
 
         index.k_group.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.h3_eval
         ==
-        ((oracles.beta[0].pow(&[index.h_group.size]) - &E::Fr::one()) *
-            &(oracles.beta[1].pow(&[index.h_group.size]) - &E::Fr::one())) *
+        index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) *
+            &(index.h_group.evaluate_vanishing_polynomial(oracles.beta[1])) *
             &acc1 - &((oracles.beta[2] * &self.g3_eval + &self.sigma3) * &acc2)
     }
 
@@ -196,7 +206,7 @@ impl<E: PairingEngine> ProverProof<E>
         // absorb previous proof context into the argument
         argument.commit_scalars(&[E::Fr::one()]);
         // absorb the public input into the argument
-        argument.commit_scalars(&self.public.0[0..self.public.1]);
+        argument.commit_scalars(&self.public[..]);
         // absorb W, ZA, ZB polycommitments
         argument.commit_points(&[self.w_comm, self.za_comm, self.zb_comm])?;
         // sample alpha, eta[0..3] oracles

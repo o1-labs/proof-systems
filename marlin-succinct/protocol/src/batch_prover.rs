@@ -8,8 +8,8 @@ optimized batch verification of the individual constituent zk-proofs.
 *********************************************************************************************/
 
 use algebra::PairingEngine;
+use circuits::index::Index;
 use oracle::rndoracle::ProofError;
-use circuits::index::{Index, Witness};
 pub use super::prover::ProverProof;
 
 pub struct BatchProof<E: PairingEngine>
@@ -25,7 +25,7 @@ impl<E: PairingEngine> BatchProof<E>
     //     RETURN: zk-proof batch
     pub fn create
     (
-        witness: Vec::<Witness::<E::Fr>>,
+        witness: Vec::<Vec::<E::Fr>>,
         index: &Index<E>
     ) -> Self
     {
