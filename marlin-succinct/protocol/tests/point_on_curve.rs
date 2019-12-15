@@ -27,7 +27,7 @@ use circuits::index::Index;
 use sprs::{CsMat, CsVecView};
 use algebra::{Field, PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
 use oracle::poseidon::ArithmeticSpongeParams;
-use protocol::batch_prover::BatchProof;
+use protocol::prover::ProverProof;
 use rand_core::{RngCore, OsRng};
 use std::time::Instant;
 use colored::Colorize;
@@ -110,18 +110,14 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
     let index = Index::<E>::create(a, b, c, 4, oracle_params, rng).unwrap();
 
     positive::<E>(&index, d, rng);
-    negative::<E>(&index, d, rng);
+    negative::<E>(&index, d);
 }
 
 fn positive<E: PairingEngine>(index: &Index<E>, d: E::Fr, rng: &mut dyn RngCore)
 where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
-    // We have the Index. Let's choose examples of satisfying witness for Jubjub
+    // We have the Index. Choose examples of satisfying witness for Jubjub
     let mut points = Vec::<(E::Fr, E::Fr)>::new();
-    let mut witness_batch = Vec::<Vec<E::Fr>>::new();
-
-    // field unity element
-    let one = E::Fr::one();
 
     points.push
     ((
@@ -174,10 +170,10 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         <E::Fr as std::str::FromStr>::from_str("51398963553553644922019770691279615862813421731845531818251689044792926267778").unwrap()
     ));
 
-    // check that witness satisfies the constraints
-    println!("{}", "Preparing the computation statements for the prover".green());
+    println!("{}", "Prover zk-proofs computation".green());
     let mut start = Instant::now();
 
+    let mut batch = Vec::new();
     for i in 0..points.len()
     {
         let (x, y) = points[i];
@@ -185,7 +181,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         // check whether the point is on the curve
         let xx = x*&x;
         let yy = y*&y;
-        let yy_xx_1 = yy - &xx - &one;
+        let yy_xx_1 = yy - &xx - &E::Fr::one();
         let dxx = d * &xx;
         let dxxyy = dxx * &yy;
         assert_eq!(yy_xx_1, dxxyy);
@@ -196,7 +192,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
             [1, x, y, xx, yy]
         */
         let mut witness = vec![E::Fr::zero(); 8];
-        witness[0] = one;
+        witness[0] = E::Fr::one();
         witness[1] = x;
         witness[2] = y;
         witness[3] = xx;
@@ -205,100 +201,60 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.verify(&witness), true);
 
-        // add the witness to the batch
-        witness_batch.push(witness);
+        // add the proof to the batch
+        batch.push(ProverProof::<E>::create(&witness, &index).unwrap());
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
-    // The computation circuit is satisfied by the witness array
-    // create the vector of prover's proofs for the given witness vector
-    println!("{}", "Prover zk-proofs computation".green());
-    start = Instant::now();
-    let batch_proof = BatchProof::<E>::create(witness_batch, &index);
-    println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-
-    // verify random proof serially
-    match batch_proof.batch[0].clone()
+    // verify one proof serially
+    match batch[0].verify(&index, rng)
     {
-        Ok(proof) =>
-        {
-            match proof.verify(&index, rng)
-            {
-                Ok(_) => {}
-                _ => {panic!("Failure verifying the prover's proof")}
-            }
-        }
-        Err(_) => {panic!("Failure creating the prover's proof")}
+        Ok(_) => {}
+        _ => {panic!("Failure verifying the prover's proof")}
     }
 
     // verify the proofs in batch
-    println!("{}", "Verifier zk-proofs verification".green());
+    println!("{}", "Verifier zk-proof batch verification".green());
     start = Instant::now();
-    match batch_proof.verify(&index, rng)
+    match ProverProof::<E>::verify_batch(&batch, &index, rng)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 }
 
-fn negative<E: PairingEngine>(index: &Index<E>, d: E::Fr, rng: &mut dyn RngCore)
+fn negative<E: PairingEngine>(index: &Index<E>, d: E::Fr)
 where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
-    // We have the Index. Let's choose examples of satisfying witness for Jubjub
-    let mut points = Vec::<(E::Fr, E::Fr)>::new();
-    let mut witness_batch = Vec::<Vec<E::Fr>>::new();
-
     // field unity element
     let one = E::Fr::one();
 
-    points.push
-    ((
-        <E::Fr as std::str::FromStr>::from_str("45719850001957217643735562111452029570487585222534789798311082643976688162166").unwrap(),
-        <E::Fr as std::str::FromStr>::from_str("51398963553553644922019770691279615862813421731845531818251689044792926267779").unwrap()
-    ));
+    // choose example of non-satisfying assignement for Jubjub
+    let x = <E::Fr as std::str::FromStr>::from_str("45719850001957217643735562111452029570487585222534789798311082643976688162166").unwrap();
+    let y = <E::Fr as std::str::FromStr>::from_str("51398963553553644922019770691279615862813421731845531818251689044792926267779").unwrap();
 
-    // check that witness satisfies the constraints
-    for i in 0..points.len()
+    // check whether the point is on the curve
+    let xx = x*&x;
+    let yy = y*&y;
+    let yy_xx_1 = yy - &xx - &one;
+    let dxx = d * &xx;
+    let dxxyy = dxx * &yy;
+    assert_ne!(yy_xx_1, dxxyy);
+
+    let mut witness = vec![E::Fr::zero(); 8];
+    witness[0] = one;
+    witness[1] = x;
+    witness[2] = y;
+    witness[3] = xx;
+    witness[4] = yy;
+
+    // verify the circuit negative satisfiability by the computed witness
+    assert_eq!(index.verify(&witness), false);
+
+    // create proof
+    match ProverProof::<E>::create(&witness, &index)
     {
-        let (x, y) = points[i];
-
-        // check whether the point is on the curve
-        let xx = x*&x;
-        let yy = y*&y;
-        let yy_xx_1 = yy - &xx - &one;
-        let dxx = d * &xx;
-        let dxxyy = dxx * &yy;
-        assert_ne!(yy_xx_1, dxxyy);
-
-        let mut witness = vec![E::Fr::zero(); 8];
-        witness[0] = one;
-        witness[1] = x;
-        witness[2] = y;
-        witness[3] = xx;
-        witness[4] = yy;
-
-        // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.verify(&witness), false);
-
-        // add the witness to the batch
-        witness_batch.push(witness);
-    }
-
-    // The computation circuit is satisfied by the witness array
-    // create the vector of prover's proofs for the given witness vector
-    let batch_proof = BatchProof::<E>::create(witness_batch, &index);
-
-    // verify random proof serially
-    match batch_proof.batch[0].clone()
-    {
-        Ok(proof) =>
-        {
-            match proof.verify(&index, rng)
-            {
-                Ok(_) => {panic!("Failure invalidating the prover's proof")}
-                _ => {}
-            }
-        }
-        Err(_) => {/*this behavior is proper: proof creation should fail*/}
+        Ok(_) => {panic!("Failure invalidating the witness")}
+        _ => {}
     }
 }
