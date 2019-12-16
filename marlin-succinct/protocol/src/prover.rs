@@ -245,7 +245,7 @@ impl<E: PairingEngine> ProverProof<E>
             )?,
 
             // polynomial evaluations
-            w_eval  : w.clone().evaluate(oracles.beta[0]),
+            w_eval  : w.evaluate(oracles.beta[0]),
             za_eval : za.evaluate(oracles.beta[0]),
             zb_eval : zb.evaluate(oracles.beta[0]),
             h1_eval : h1.evaluate(oracles.beta[0]),
@@ -298,21 +298,26 @@ impl<E: PairingEngine> ProverProof<E>
         algebra::fields::batch_inversion::<E::Fr>(&mut lagrng);
         let vanish = index.h_group.evaluate_vanishing_polynomial(oracles.alpha);
 
-        let mut sumg = DensePolynomial::<E::Fr>::zero();
-        
-        for i in 0..3
-        {
-            let mut ram = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
-            for val in index.compiled[i].constraints.iter()
+        // compute and return H1 & G1 polynomials
+        (0..3).map
+        (
+            |i|
             {
-                ram.evals[(val.1).1] += &(vanish * val.0 * &lagrng[(val.1).0]);
+                let mut ram = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
+                for val in index.compiled[i].constraints.iter()
+                {
+                    ram.evals[(val.1).1] += &(vanish * val.0 * &lagrng[(val.1).0]);
+                }
+                (i, ram)
             }
-
+        ).fold
+        (
+            DensePolynomial::<E::Fr>::zero(),
+            |x, (i, ram)|
             // scale with eta's and add up
-            sumg += &(&(ra * &zm[i]) - &(&ram.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
-        }
+            &x + &(&(ra * &zm[i]) - &(&ram.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
         // compute quotient and remainder
-        sumg.divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
+        ).divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
 
     // This function computes polynomials for the second sumchek protocol
@@ -327,21 +332,27 @@ impl<E: PairingEngine> ProverProof<E>
         // precompute Lagrange polynomial evaluations
         let lagrng = index.h_group.evaluate_all_lagrange_coefficients(oracles.beta[0]);
 
+        // compute and return H2 & G2 polynomials
         // use the precomputed normalized Lagrange evaluations for interpolation evaluations
-        let mut ramxbg = DensePolynomial::<E::Fr>::zero();
-        for i in 0..3
-        {
-            let mut ramxbval = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
-            for val in index.compiled[i].constraints.iter()
+        (0..3).map
+        (
+            |i|
             {
-                ramxbval.evals[(val.1).0] += &(*val.0 * &lagrng[(val.1).1]);
+                let mut ramxbval = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
+                for val in index.compiled[i].constraints.iter()
+                {
+                    ramxbval.evals[(val.1).0] += &(*val.0 * &lagrng[(val.1).1]);
+                }
+                (i, ramxbval)
             }
-
+        ).fold
+        (
+            DensePolynomial::<E::Fr>::zero(),
+            |x, (i, ramxbval)|
             // scale with eta's and add up
-            ramxbg += &(ra * &ramxbval.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
-        }
+            &x + &(&(ra * &ramxbval.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i]))
         // compute quotient and remainder
-        ramxbg.divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
+        ).divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
 
     // This function computes polynomials for the third sumchek protocol
@@ -352,65 +363,73 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>
     ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
     {
-        // compute polynomials h3 & g3 for the third sumcheck argument
         let vanish = index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) *
             &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]);
 
         // compute polynomial f3
-        let mut f3 = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
-        for i in 0..3
-        {
-            // scale with eta's and add up
-            f3 += &Evaluations::<E::Fr>::from_vec_and_domain
-            (
-                {
-                    let mut fractions: Vec<E::Fr> = (0..index.k_group.size()).map
-                    (
-                        |j|
-                        {
-                            (oracles.beta[0] - &index.compiled[i].col_eval_k[j]) *
-                            &(oracles.beta[1] - &index.compiled[i].row_eval_k[j])
-                        }
-                    ).collect();
-                    algebra::fields::batch_inversion::<E::Fr>(&mut fractions);
-                    fractions.iter().enumerate().map
-                    (
-                        |(j, elm)|
-                        {
-                            vanish * &index.compiled[i].val_eval_k[j] *
-                            &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * &elm
-                        }
-                    
-                    ).collect()
-                },
-                index.h_group
-            );
-        }
-        let f3 = f3.interpolate();
+        let f3 = (0..3).map
+        (
+            |i|
+            {
+                Evaluations::<E::Fr>::from_vec_and_domain
+                (
+                    {
+                        let mut fractions: Vec<E::Fr> = (0..index.k_group.size()).map
+                        (
+                            |j|
+                            {
+                                (oracles.beta[0] - &index.compiled[i].col_eval_k[j]) *
+                                &(oracles.beta[1] - &index.compiled[i].row_eval_k[j])
+                            }
+                        ).collect();
+                        algebra::fields::batch_inversion::<E::Fr>(&mut fractions);
+                        fractions.iter().enumerate().map
+                        (
+                            |(j, elm)|
+                            {
+                                vanish * &index.compiled[i].val_eval_k[j] *
+                                // scale with eta's
+                                &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * &elm
+                            }
+                        ).collect()
+                    },
+                    index.h_group
+                )
+            }
+        ).fold
+        (
+            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group),
+            |x, partial| &x + &partial
+        ).interpolate();
 
         // precompute polynomials (row(X)-oracle1)*(col(X)-oracle2) in evaluation form over b_group
         let crb: Vec<Vec<E::Fr>> =
             (0..3).map(|i| index.compiled[i].compute_row_2_col_1(oracles.beta[0], oracles.beta[1])).collect();
 
         // compute polynomial a
-        let mut a = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.b_group.size()], index.b_group);
-        for i in 0..3
-        {
-            a += &Evaluations::<E::Fr>::from_vec_and_domain
-            (
-                index.compiled[i].val_eval_b.evals.iter().enumerate().map
+        let a = (0..3).map
+        (
+            |i|
+            {
+                Evaluations::<E::Fr>::from_vec_and_domain
                 (
-                    |(k, val)|
-                    {
-                        let mut eval = [oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * val * &vanish;
-                        for j in 0..3 {if i != j {eval *= &crb[j][k]}}
-                        eval
-                    }
-                ).collect(),
-                index.b_group
-            )
-        }
-        let a = a.interpolate();
+                    index.compiled[i].val_eval_b.evals.iter().enumerate().map
+                    (
+                        |(k, val)|
+                        {
+                            let mut eval = [oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * val * &vanish;
+                            for j in 0..3 {if i != j {eval *= &crb[j][k]}}
+                            eval
+                        }
+                    ).collect(),
+                    index.b_group
+                )
+            }
+        ).fold
+        (
+            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.b_group.size()], index.b_group),
+            |x, partial| &x + &partial
+        ).interpolate();
 
         // compute polynomial b
         let b = Evaluations::<E::Fr>::from_vec_and_domain

@@ -1,6 +1,6 @@
 /********************************************************************************************
 
-This source file implements single zk-proof verifier functionality.
+This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
@@ -15,7 +15,7 @@ impl<E: PairingEngine> ProverProof<E>
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
-    //     oracles: random oraclrs of the argument
+    //     oracles: random oracles of the argument
     //     RETURN: verification status
     pub fn sumcheck_1_verify
     (
@@ -24,23 +24,24 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
-        let mut rzrzg = E::Fr::zero();
-        // compute ra*zm - ram*z ?= h*v + b*g, verify the first sumcheck argument
-        for i in 0..3
-        {
-            rzrzg +=
-                &([oracles.eta_a, oracles.eta_b, oracles.eta_c][i] *
-                &match i
+        // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
+        (0..3).map
+        (
+            |i|
+            {
+                match i
                 {
-                    0 => {self.za_eval}
-                    1 => {self.zb_eval}
-                    2 => {self.za_eval * &self.zb_eval}
+                    0 => {self.za_eval * &oracles.eta_a}
+                    1 => {self.zb_eval * &oracles.eta_b}
+                    2 => {self.za_eval * &self.zb_eval * &oracles.eta_c}
                     _ => {E::Fr::zero()}
-                });
-        }
+                }
+            }
+        ).fold(E::Fr::zero(), |x, y| x + &y) *
+        &(oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size]))
 
-        rzrzg * &(oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size]))
         ==
+
         (oracles.alpha - &oracles.beta[0]) *
         &(
             self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
@@ -62,7 +63,7 @@ impl<E: PairingEngine> ProverProof<E>
 
     // This function verifies the prover's second sumcheck argument values
     //     index: Index
-    //     oracles: random oraclrs of the argument
+    //     oracles: random oracles of the argument
     //     RETURN: verification status
     pub fn sumcheck_2_verify
     (
@@ -81,7 +82,7 @@ impl<E: PairingEngine> ProverProof<E>
 
     // This function verifies the prover's third sumcheck argument values
     //     index: Index
-    //     oracles: random oraclrs of the argument
+    //     oracles: random oracles of the argument
     //     RETURN: verification status
     pub fn sumcheck_3_verify
     (
