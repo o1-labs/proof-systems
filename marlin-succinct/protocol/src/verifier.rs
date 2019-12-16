@@ -8,22 +8,20 @@ use rand_core::RngCore;
 use circuits::index::Index;
 use oracle::rndoracle::{ProofError, RandomOracleArgument};
 pub use super::prover::{ProverProof, RandomOracles};
-use algebra::{Field, PrimeField, PairingEngine};
-use ff_fft::{Evaluations, EvaluationDomain};
+use algebra::{Field, PairingEngine};
+use ff_fft::Evaluations;
 
 impl<E: PairingEngine> ProverProof<E>
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
     //     oracles: random oraclrs of the argument
-    //     lagrange_eval: Lagrange polynomial batch evaluation
     //     RETURN: verification status
     pub fn sumcheck_1_verify
     (
         &self,
         index: &Index<E>,
         oracles: &RandomOracles<E::Fr>,
-        lagrange_eval: &E::Fr,
     ) -> bool
     {
         let mut rzrzg = E::Fr::zero();
@@ -41,7 +39,7 @@ impl<E: PairingEngine> ProverProof<E>
                 });
         }
 
-        rzrzg * &lagrange_eval ==
+        rzrzg * &(oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size])) ==
         (
             self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
             &(oracles.beta[0] * &self.g1_eval) +
@@ -57,27 +55,26 @@ impl<E: PairingEngine> ProverProof<E>
             .map(|(l, x)| *l * x)
             .fold(E::Fr::zero(), |x, y| x + &y)))
             */
-        )
+        ) * &(oracles.alpha - &oracles.beta[0])
     }
 
     // This function verifies the prover's second sumcheck argument values
     //     index: Index
     //     oracles: random oraclrs of the argument
-    //     lagrange_eval: Lagrange polynomial batch evaluation
     //     RETURN: verification status
     pub fn sumcheck_2_verify
     (
         &self,
         index: &Index<E>,
         oracles: &RandomOracles<E::Fr>,
-        lagrange_eval: &E::Fr,
     ) -> bool
     {
-        self.sigma3 * &index.k_group.size_as_field_element * &lagrange_eval
+        self.sigma3 * &index.k_group.size_as_field_element *
+            &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[1].pow([index.h_group.size])))
         ==
-        self.h2_eval *
+        (oracles.alpha - &oracles.beta[1]) * &(self.h2_eval *
             &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]) +
-            &self.sigma2 + &(self.g2_eval * &oracles.beta[1])
+            &self.sigma2 + &(self.g2_eval * &oracles.beta[1]))
     }
 
     // This function verifies the prover's third sumcheck argument values
@@ -124,30 +121,16 @@ impl<E: PairingEngine> ProverProof<E>
         rng: &mut dyn RngCore
     ) -> Result<bool, ProofError>
     {
-        let mut oracles: Vec<RandomOracles<E::Fr>> = Vec::new();
-        for proof in proofs.iter() {oracles.push(proof.oracles(index)?)}
-
-        // evaluate Lagrange polynomial in batch
-        let lagrange_evals = index.h_group.lagrange_eval
-        (&{
-            let mut batch: Vec<(E::Fr, E::Fr)> = oracles.iter().map(|oracles| {(oracles.alpha, oracles.beta[0])}).collect();
-            let batch_1: Vec<(E::Fr, E::Fr)> = oracles.iter().map(|oracles| {(oracles.alpha, oracles.beta[1])}).collect();
-            batch.extend(&batch_1);
-            batch
-        });
-        let sumcheck_1_lagrange = lagrange_evals[0..oracles.len()].to_vec();
-        let sumcheck_2_lagrange = lagrange_evals[oracles.len()..2*oracles.len()].to_vec();
-
         let mut batch = vec![Vec::new(), Vec::new(), Vec::new()];
-        for (proof, (oracles, (sumcheck_1_eval, sumcheck_2_eval))) in
-        proofs.iter().zip(
-            oracles.iter().zip(
-                sumcheck_1_lagrange.iter().zip(
-                    sumcheck_2_lagrange.iter())))
+        for proof in proofs.iter()
         {
+            let proof = proof.clone();
+            let oracles = proof.oracles(index)?;
+
             // first, verify the sumcheck argument values
-            if !proof.sumcheck_1_verify (index, &oracles, sumcheck_1_eval) ||
-                !proof.sumcheck_2_verify (index, &oracles, sumcheck_2_eval) ||
+            if 
+                !proof.sumcheck_1_verify (index, &oracles) ||
+                !proof.sumcheck_2_verify (index, &oracles) ||
                 !proof.sumcheck_3_verify (index, &oracles)
             {
                 return Err(ProofError::ProofVerification)
@@ -244,21 +227,5 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.batch = argument.challenge();
 
         Ok(oracles)
-    }
-}
-
-pub trait LagrangeEval<F: PrimeField>
-{
-    fn lagrange_eval(&self, elms: &Vec<(F, F)>) -> Vec<F>;
-}
-
-impl<F: PrimeField> LagrangeEval<F> for EvaluationDomain<F>
-{
-    // This function batch-evaluates Lagrange polynomial for Marlin batch verifier
-    fn lagrange_eval(&self, elms: &Vec<(F, F)>) -> Vec<F>
-    {
-        let mut lagrng: Vec<F> = elms.iter().map(|elm| {elm.0 - &elm.1}).collect();
-        algebra::fields::batch_inversion::<F>(&mut lagrng);
-        elms.iter().zip(lagrng.iter()).map(|(elm, den)| {(elm.0.pow([self.size]) - &elm.1.pow([self.size])) * den}).collect()
     }
 }
