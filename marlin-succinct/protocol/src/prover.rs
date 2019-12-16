@@ -309,8 +309,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
 
             // scale with eta's and add up
-            sumg += &(&(&(ra * &zm[i]) - &(&ram.interpolate() * &z)) *
-                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[[oracles.eta_a, oracles.eta_b, oracles.eta_c][i]]));
+            sumg += &(&(ra * &zm[i]) - &(&ram.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
         }
         // compute quotient and remainder
         sumg.divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
@@ -339,9 +338,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
 
             // scale with eta's and add up
-            ramxbg +=
-                &(&(ra * &ramxbval.interpolate()) *
-                &DensePolynomial::<E::Fr>::from_coefficients_slice(&[[oracles.eta_a, oracles.eta_b, oracles.eta_c][i]]));
+            ramxbg += &(ra * &ramxbval.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
         }
         // compute quotient and remainder
         ramxbg.divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
@@ -457,5 +454,22 @@ impl<F: Field> RandomOracles<F>
             batch: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
         }
+    }
+}
+
+pub trait Scale<F: Field>
+{
+    fn scale(&self, elm: F) -> Self;
+}
+
+impl<F: Field> Scale<F> for DensePolynomial<F>
+{
+    // This function "scales" (multiplies) polynomaial with a scalar
+    // It is implemented to have the desired functionality for DensePolynomial
+    fn scale(&self, elm: F) -> Self
+    {
+        let mut result = self.clone();
+        for coeff in &mut result.coeffs {*coeff *= &elm}
+        result
     }
 }

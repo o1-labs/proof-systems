@@ -39,8 +39,10 @@ impl<E: PairingEngine> ProverProof<E>
                 });
         }
 
-        rzrzg * &(oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size])) ==
-        (
+        rzrzg * &(oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size]))
+        ==
+        (oracles.alpha - &oracles.beta[0]) *
+        &(
             self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
             &(oracles.beta[0] * &self.g1_eval) +
             &(self.sigma2 * &index.h_group.size_as_field_element *
@@ -55,7 +57,7 @@ impl<E: PairingEngine> ProverProof<E>
             .map(|(l, x)| *l * x)
             .fold(E::Fr::zero(), |x, y| x + &y)))
             */
-        ) * &(oracles.alpha - &oracles.beta[0])
+        )
     }
 
     // This function verifies the prover's second sumcheck argument values
