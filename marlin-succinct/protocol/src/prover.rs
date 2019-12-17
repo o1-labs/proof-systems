@@ -313,9 +313,9 @@ impl<E: PairingEngine> ProverProof<E>
         ).fold
         (
             DensePolynomial::<E::Fr>::zero(),
-            |x, (i, ram)|
+            |x, (i, y)|
             // scale with eta's and add up
-            &x + &(&(ra * &zm[i]) - &(&ram.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
+            &x + &(&(ra * &zm[i]) - &(&y.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
         // compute quotient and remainder
         ).divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
@@ -348,9 +348,9 @@ impl<E: PairingEngine> ProverProof<E>
         ).fold
         (
             DensePolynomial::<E::Fr>::zero(),
-            |x, (i, ramxbval)|
+            |x, (i, y)|
             // scale with eta's and add up
-            &x + &(&(ra * &ramxbval.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i]))
+            &x + &(&(ra * &y.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i]))
         // compute quotient and remainder
         ).divide_by_vanishing_poly(index.h_group).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
@@ -399,7 +399,7 @@ impl<E: PairingEngine> ProverProof<E>
         ).fold
         (
             Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group),
-            |x, partial| &x + &partial
+            |x, y| &x + &y
         ).interpolate();
 
         // precompute polynomials (row(X)-oracle1)*(col(X)-oracle2) in evaluation form over b_group
@@ -428,7 +428,7 @@ impl<E: PairingEngine> ProverProof<E>
         ).fold
         (
             Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.b_group.size()], index.b_group),
-            |x, partial| &x + &partial
+            |x, y| &x + &y
         ).interpolate();
 
         // compute polynomial b

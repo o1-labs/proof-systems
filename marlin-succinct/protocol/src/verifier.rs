@@ -25,23 +25,21 @@ impl<E: PairingEngine> ProverProof<E>
     ) -> bool
     {
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (0..3).map
-        (
-            |i|
-            {
-                match i
+        (oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size])) *
+            &(0..3).map
+            (
+                |i|
                 {
-                    0 => {self.za_eval * &oracles.eta_a}
-                    1 => {self.zb_eval * &oracles.eta_b}
-                    2 => {self.za_eval * &self.zb_eval * &oracles.eta_c}
-                    _ => {E::Fr::zero()}
+                    match i
+                    {
+                        0 => {self.za_eval * &oracles.eta_a}
+                        1 => {self.zb_eval * &oracles.eta_b}
+                        2 => {self.za_eval * &self.zb_eval * &oracles.eta_c}
+                        _ => {E::Fr::zero()}
+                    }
                 }
-            }
-        ).fold(E::Fr::zero(), |x, y| x + &y) *
-        &(oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size]))
-
+            ).fold(E::Fr::zero(), |x, y| x + &y)
         ==
-
         (oracles.alpha - &oracles.beta[0]) *
         &(
             self.h1_eval * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
@@ -96,20 +94,22 @@ impl<E: PairingEngine> ProverProof<E>
             |i| {(oracles.beta[1] - &self.row_eval[i]) * &(oracles.beta[0] - &self.col_eval[i])}
         ).collect();
 
-        let (mut acc1, mut acc2) = (E::Fr::zero(), E::Fr::one());
-        for i in 0..3
-        {
-            acc2 *= &crb[i];
-            let mut x = self.val_eval[i] * &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i];
-            for j in 0..3 {if i != j {x *= &crb[j]}}
-            acc1 += &x;
-        }
+        let acc = (0..3).map
+        (
+            |i|
+            {
+                let mut x = self.val_eval[i] * &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i];
+                for j in 0..3 {if i != j {x *= &crb[j]}}
+                x
+            }
+        ).fold(E::Fr::zero(), |x, y| x + &y);
 
         index.k_group.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.h3_eval
         ==
         index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) *
             &(index.h_group.evaluate_vanishing_polynomial(oracles.beta[1])) *
-            &acc1 - &((oracles.beta[2] * &self.g3_eval + &self.sigma3) * &acc2)
+            &acc - &((oracles.beta[2] * &self.g3_eval + &self.sigma3) *
+            &crb[0] * &crb[1] * &crb[2])
     }
 
     // This function verifies the batch of zk-proofs
