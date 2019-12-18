@@ -393,12 +393,12 @@ impl<E: PairingEngine> ProverProof<E>
                             }
                         ).collect()
                     },
-                    index.h_group
+                    index.k_group
                 )
             }
         ).fold
         (
-            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group),
+            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.k_group.size()], index.k_group),
             |x, y| &x + &y
         ).interpolate();
 
