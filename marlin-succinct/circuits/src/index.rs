@@ -115,25 +115,16 @@ impl<E: PairingEngine> Index<E>
     ) -> bool
     {
         if self.compiled[0].constraints.shape().1 != witness.len() {return false}
-
-        for (a, (b, c)) in
-            self.compiled[0].constraints.outer_iterator().zip(
-                self.compiled[1].constraints.outer_iterator().zip(
-                    self.compiled[2].constraints.outer_iterator()))
+        let mut gates = vec![CircuitGate::<E::Fr>::zero(); self.h_group.size()];
+        for i in 0..3
         {
-            let mut gate = CircuitGate::<E::Fr>::zero();
-            for col in a.iter()
+            for val in self.compiled[i].constraints.iter()
             {
-                gate.wire[0] += &(*col.1 * &witness[col.0]);
+                gates[(val.1).0].wire[i] += &(witness[(val.1).1] * &val.0)
             }
-            for col in b.iter()
-            {
-                gate.wire[1] += &(*col.1 * &witness[col.0]);
-            }
-            for col in c.iter()
-            {
-                gate.wire[2] += &(*col.1 * &witness[col.0]);
-            }
+        }
+        for gate in gates.iter()
+        {
             if gate.wire[0] * &gate.wire[1] != gate.wire[2] {return false}
         }
         true
