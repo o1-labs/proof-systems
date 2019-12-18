@@ -84,7 +84,8 @@ impl<E: PairingEngine> Index<E>
             (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
             {
                 // maximal degree of the committed polynomials
-                let max_degree = *[3*h_group.size-1, 6*k_group.size-6].iter().max().unwrap() as usize;
+                let max_degree = *[3*h_group.size()-1, b_group.size()].iter().max()
+                    .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
      
                 // compute public setup
                 let urs = URS::<E>::create(max_degree, rng);
