@@ -70,8 +70,10 @@ impl<E: PairingEngine> ProverProof<E>
         // prover computes z polynomial
         let z = Evaluations::<E::Fr>::from_vec_and_domain(witness.clone(), index.h_group).interpolate();
 
-        // extract/save public part of the witness
-        let ratio = witness.len() / index.public_inputs;
+        // extract/save public part of the padded witness
+        let mut witness = witness.clone();
+        witness.extend(vec![E::Fr::zero(); index.h_group.size() - witness.len()]);
+        let ratio = index.h_group.size() / index.x_group.size();
         let public: Vec<E::Fr> = (0..index.public_inputs).map(|i| {witness[i * ratio]}).collect();
 
         // evaluate public input polynomial over h_group
