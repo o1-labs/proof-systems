@@ -21,7 +21,8 @@ pub enum ProofError
     SumCheck,
     ConstraintInconsist,
     EvaluationGroup,
-    OracleCommit
+    OracleCommit,
+    RuntimeEnv
 }
 
 // Implement `Display` for ProofError

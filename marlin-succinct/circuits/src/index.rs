@@ -61,10 +61,17 @@ impl<E: PairingEngine> Index<E>
         }
 
         // compute the evaluation domains
-        let h_group_size = EvaluationDomain::<E::Fr>::compute_size_of_domain(a.shape().0).unwrap();
-        let x_group_size = EvaluationDomain::<E::Fr>::compute_size_of_domain(public_inputs).unwrap();
-        let k_group_size = EvaluationDomain::<E::Fr>::compute_size_of_domain
-            ([&a, &b, &c].iter().map(|x| x.nnz()).max().unwrap()).unwrap(); // TODO: handle errors properly
+        let h_group_size = 
+            EvaluationDomain::<E::Fr>::compute_size_of_domain(a.shape().0)
+            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
+        let x_group_size =
+            EvaluationDomain::<E::Fr>::compute_size_of_domain(public_inputs)
+            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
+        let k_group_size =
+            EvaluationDomain::<E::Fr>::compute_size_of_domain
+            ([&a, &b, &c].iter().map(|x| x.nnz()).max()
+            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?)
+            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
 
         match
         (
