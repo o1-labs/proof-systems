@@ -177,6 +177,7 @@ impl<E: PairingEngine> URS<E>
 
             for (z, y) in prf[0].2.iter().zip(pcomm.iter_mut())
             {
+                if !self.hn.contains_key(&(d-z.2)) {return false}
                 table.push
                 ((
                     Self::multiexp(&y).prepare(),
