@@ -38,6 +38,7 @@ fn test<E: PairingEngine>()
     let urs = URS::<E>::create
     (
         depth,
+        vec![depth-1, depth-2, depth-3],
         rng
     );
 
@@ -58,21 +59,21 @@ fn test<E: PairingEngine>()
         let mut max: Vec<usize> = Vec::new();
         let mut eval: Vec<E::Fr> = Vec::new();
 
-        let mut plnm = DensePolynomial::<E::Fr>::rand(depth-1, rng);
+        let mut plnm = DensePolynomial::<E::Fr>::rand(depth-2, rng);
 
-        max.push(plnm.coeffs.len());
-        eval.push(plnm.evaluate(elm));
-        plnms.push(plnm);
-
-        plnm = DensePolynomial::<E::Fr>::rand(depth-2, rng);
-        
-        max.push(plnm.coeffs.len());
+        max.push(depth-1);
         eval.push(plnm.evaluate(elm));
         plnms.push(plnm);
 
         plnm = DensePolynomial::<E::Fr>::rand(depth-3, rng);
         
-        max.push(plnm.coeffs.len());
+        max.push(depth-2);
+        eval.push(plnm.evaluate(elm));
+        plnms.push(plnm);
+
+        plnm = DensePolynomial::<E::Fr>::rand(depth-4, rng);
+        
+        max.push(depth-3);
         eval.push(plnm.evaluate(elm));
         plnms.push(plnm);
 

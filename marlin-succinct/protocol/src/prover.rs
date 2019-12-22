@@ -1,6 +1,6 @@
 /********************************************************************************************
 
-This source file implements prover's zk-proof primitives.
+This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
@@ -438,7 +438,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             (0..index.b_group.size()).map
             (
-                |i| {crb[0][i] * &crb[1][i] * &crb[2][i]}
+                |i| crb[0][i] * &crb[1][i] * &crb[2][i]
             ).collect(),
             index.b_group
         ).interpolate();

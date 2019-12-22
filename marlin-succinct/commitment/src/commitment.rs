@@ -180,12 +180,12 @@ impl<E: PairingEngine> URS<E>
                 table.push
                 ((
                     Self::multiexp(&y).prepare(),
-                    (-self.hn[d-z.2]).prepare()
+                    (-self.hn[&(d-z.2)]).prepare()
                 ));
             }
         }
         table.push((Self::multiexp(&open).prepare(), self.hx.prepare()));
-        table.push((Self::multiexp(&openy).prepare(), self.hn[0].prepare()));
+        table.push((Self::multiexp(&openy).prepare(), E::G2Affine::prime_subgroup_generator().prepare()));
     
         let x: Vec<(&<E::G1Affine as PairingCurve>::Prepared, &<E::G2Affine as PairingCurve>::Prepared)> = table.iter().map(|x| (&x.0, &x.1)).collect();
         E::final_exponentiation(&E::miller_loop(&x)).unwrap() == E::Fqk::one()

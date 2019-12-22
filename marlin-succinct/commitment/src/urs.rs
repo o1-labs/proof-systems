@@ -5,6 +5,7 @@ This source file implements the Marlin universal reference string primitive
 *****************************************************************************************************************/
 
 use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, BigInteger, PairingCurve, UniformRand};
+use std::collections::HashMap;
 use rand_core::RngCore;
 
 // check pairing of a&b vs c
@@ -16,7 +17,7 @@ macro_rules! pairing_check
 pub struct URS<E: PairingEngine>
 {
     pub gp: Vec<E::G1Affine>, // g^(x^i) for 0 <= i < d
-    pub hn: Vec<E::G2Affine>, // h^(x^i) for -d < i <= 0
+    pub hn: HashMap<usize, E::G2Affine>, // h^(x^-i) for 0 <= i < d
     pub hx: E::G2Affine,
     pub prf: E::G1Affine
 }
@@ -27,47 +28,40 @@ impl<E: PairingEngine> URS<E>
     pub fn callback(_i: usize) {}
 
     // This function creates URS instance for circuits up to depth d
-    //     depth: maximal depth of the circuits
+    //     depth: maximal depth of the supported circuits
+    //     commitment degrees of the committed polynomials for supported circuits
     //     rng: randomness source context
     pub fn create
     (
         depth: usize,
+        degrees: Vec<usize>,
         rng: &mut dyn RngCore
     ) -> Self
     {
-        let mut g1 = Wnaf::new();
-        let mut g1 = g1.base(E::G1Projective::prime_subgroup_generator(), depth * 4);
-        let mut g2 = Wnaf::new();
-        let mut g2 = g2.base(E::G2Projective::prime_subgroup_generator(), depth * 4);
+        let mut x = E::Fr::rand(rng);
+        let mut g = Wnaf::new();
+        let mut g = g.base(E::G1Projective::prime_subgroup_generator(), depth);
+        let mut cur = E::Fr::one();
+        let mut gp: Vec<E::G1Projective> = (0..depth).map(|_| {let ret = g.scalar(cur.into_repr()); cur *= &x; ret}).collect();
+        ProjectiveCurve::batch_normalization(&mut gp);
 
-        fn table<C: AffineCurve>
-        (
-            mut cur: C::ScalarField,
-            step: C::ScalarField,
-            num: usize,
-            table: &mut Wnaf<usize, &[C::Projective], &mut Vec<i64>>,
-        ) -> Vec<C>
-        {
-            let mut v = vec![];
-            for _ in 0..num
-            {
-                v.push(table.scalar(cur.into_repr()));
-                cur *= &step;
-            }
-            C::Projective::batch_normalization(&mut v);
-            v.into_iter().map(|e| e.into_affine()).collect()
-        }
-
-        let xp = E::Fr::rand(rng);
         let mut gx = E::G1Projective::prime_subgroup_generator();
-        gx.mul_assign(xp);
+        gx.mul_assign(x);
         let mut hx = E::G2Projective::prime_subgroup_generator();
-        hx.mul_assign(xp);
+        hx.mul_assign(x);
+
+        x = x.inverse().unwrap();
+        let mut h = Wnaf::new();
+        let mut h = h.base(E::G2Projective::prime_subgroup_generator(), depth);
+        let mut hn: Vec<E::G2Projective> = degrees.iter().map(|i| {h.scalar(x.pow([(depth - *i) as u64]).into_repr())}).collect();
+        ProjectiveCurve::batch_normalization(&mut hn);
+        let mut hnh: HashMap<usize, E::G2Affine> = HashMap::new();
+        for (i, p) in degrees.iter().zip(hn.iter()) {hnh.insert(depth - *i, p.into_affine());}
 
         URS
         {
-            gp: table(E::Fr::one(), xp, depth, &mut g1),
-            hn: table(E::Fr::one(), xp.inverse().unwrap(), depth, &mut g2),
+            hn: hnh,
+            gp: gp.into_iter().map(|e| e.into_affine()).collect(),
             prf: E::G1Affine::from(gx),
             hx: E::G2Affine::from(hx)
         }
@@ -82,32 +76,22 @@ impl<E: PairingEngine> URS<E>
         rng: &mut dyn RngCore
     )
     {
-        fn exponentiate<C: AffineCurve>
-        (
-            mut cur: C::ScalarField,
-            step: C::ScalarField,
-            urs: &mut Vec<C>,
-        )
+        let mut x = E::Fr::rand(rng);
+        let mut cur = E::Fr::one();
+        for i in 0..self.gp.len()
         {
-            for i in 0..urs.len()
-            {
-                urs[i] = urs[i].mul(cur).into_affine();
-                cur *= &step;
-            }
+            self.gp[i] = self.gp[i].mul(cur).into_affine();
+            cur *= &x;
         }
 
-        let xp = E::Fr::rand(rng);
-        let xn = xp.inverse().unwrap();
+        self.prf = E::G1Affine::prime_subgroup_generator().mul(x).into_affine();
+        self.hx = self.hx.mul(x).into_affine();
 
-        // Compute the URS update
-        exponentiate(E::Fr::one(), xp, &mut self.gp);
-        exponentiate(E::Fr::one(), xn, &mut self.hn);
-        
-        let mut gx = E::G1Projective::prime_subgroup_generator();
-        gx.mul_assign(xp);
-
-        self.hx = self.hx.mul(xp).into_affine();
-        self.prf = E::G1Affine::from(gx);
+        x = x.inverse().unwrap();
+        for p in self.hn.iter_mut()
+        {
+            *p.1 = p.1.mul(x.pow([*p.0 as u64])).into_affine();
+        }
     }
 
     // This function verifies the updated URS against the zk-proof and the previous URS instance
@@ -129,32 +113,29 @@ impl<E: PairingEngine> URS<E>
         // verify gp[1] consistency with zk-proof
         pairing_check!(E::G1Projective::from(self.gp[1]), E::G2Projective::prime_subgroup_generator(), xy);
 
+        let fk = <E>::pairing(E::G1Affine::prime_subgroup_generator(), E::G2Affine::prime_subgroup_generator());
+        for x in self.hn.iter()
+        {
+            // verify hn: e(g^x^i, h^x^-i) = e(g, h)
+            if <E>::pairing(self.gp[*x.0], *x.1) != fk {return false}
+        }
+
         let mut g0: Vec<(E::G1Affine, E::Fr)> = vec![];
         let mut g1: Vec<(E::G1Affine, E::Fr)> = vec![];
-        let mut h0: Vec<(E::G2Affine, E::Fr)> = vec![];
-        let mut h1: Vec<(E::G2Affine, E::Fr)> = vec![];
 
         for i in 1..self.gp.len()
         {
-            let randomiser: Vec::<E::Fr> = (0..2).map(|_| {E::Fr::rand(rng)}).collect();
-            // inductively verify gp
-            g0.push((self.gp[i], randomiser[0]));
-            g1.push((self.gp[i-1], randomiser[0]));
-            // inductively verify hn
-            h0.push((self.hn[i-1], randomiser[1]));
-            h1.push((self.hn[i], randomiser[1]));
+            // inductively verify gp: e(g^x^i, h) = e(g^x^i-1, h^x)
+            let randomiser = E::Fr::rand(rng);
+            g0.push((self.gp[i], randomiser));
+            g1.push((self.gp[i-1], randomiser));
             callback(i);
         }
+
         E::final_exponentiation(&E::miller_loop(&
         [
             (&Self::multiexp(&g0).prepare(), &E::G2Affine::prime_subgroup_generator().prepare()),
             (&Self::multiexp(&g1).prepare(), &(-self.hx).prepare()),
-        ])).unwrap() == E::Fqk::one() &&
-
-        E::final_exponentiation(&E::miller_loop(&
-        [
-            (&E::G1Affine::prime_subgroup_generator().prepare(), &Self::multiexp(&h0).prepare()),
-            (&(-self.gp[1]).prepare(), &Self::multiexp(&h1).prepare()),
         ])).unwrap() == E::Fqk::one()
     }
 

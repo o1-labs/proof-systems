@@ -35,18 +35,18 @@ fn test<E: PairingEngine>()
     let depth = 500;
 
     // generate sample URS
-    let urs = URS::<E>::create(depth, rng);
+    let urs = URS::<E>::create(depth, vec![300], rng);
 
     // generate sample random vector of polynomials over the base field, commit and evaluate them
     let mut plnms: Vec<(E::Fr, E::Fr, Vec<(E::G1Affine, E::Fr, usize)>, E::G1Affine)> = Vec::new();
     for _ in 0..10
     {
-        let plnm = DensePolynomial::<E::Fr>::rand(depth-1, rng);
+        let plnm = DensePolynomial::<E::Fr>::rand(299, rng);
         let y = E::Fr::rand(rng);
         // Commit/Open and verify the polynomial commitments
-        match (urs.commit(&plnm, plnm.coeffs.len()), urs.open(&plnm, y))
+        match (urs.commit(&plnm, 300), urs.open(&plnm, y))
         {
-            (Ok(comm), Ok(prf)) => {plnms.push((y, E::Fr::one(), vec![(comm, plnm.evaluate(y), plnm.coeffs.len())], prf));}
+            (Ok(comm), Ok(prf)) => {plnms.push((y, E::Fr::one(), vec![(comm, plnm.evaluate(y), 300)], prf));}
             (_,_) => {panic!("This error should not happen")}
         }
     }

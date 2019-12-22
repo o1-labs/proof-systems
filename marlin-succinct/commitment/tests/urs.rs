@@ -44,6 +44,7 @@ fn test<E: PairingEngine>()
     let mut urs = URS::<E>::create
     (
         depth,
+        vec![3,7],
         &mut rng
     );
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());

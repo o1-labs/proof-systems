@@ -36,7 +36,7 @@ pub struct Compiled<E: PairingEngine>
 impl<E: PairingEngine> Compiled<E>
 {
     // this function compiles the constraints
-    //  urs: univarsal reference string
+    //  urs: universal reference string
     //  h_group: evaluation domain for degere h (constrtraint matrix linear size)
     //  k_group: evaluation domain for degere k (constrtraint matrix number of non-zero elements)
     //  b_group: evaluation domain for degere b (h_group*6-6)
@@ -87,7 +87,7 @@ impl<E: PairingEngine> Compiled<E>
         // commit to the index polynomials
         Ok(Compiled::<E>
         {
-            constraints: constraints,
+            constraints,
             row_comm: urs.commit(&row, k_group.size())?,
             col_comm: urs.commit(&col, k_group.size())?,
             val_comm: urs.commit(&val, k_group.size())?,
