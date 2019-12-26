@@ -6,6 +6,7 @@ edition = "2018"
 [dependencies]
 algebra = { git = "https://github.com/scipr-lab/zexe/", features = [ "parallel" ] }
 ff-fft = { git = "https://github.com/scipr-lab/zexe/" }
+rayon = { version = "1" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.0"
