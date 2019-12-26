@@ -5,7 +5,9 @@ This source file implements the Marlin universal reference string primitive
 *****************************************************************************************************************/
 
 use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, BigInteger, PairingCurve, UniformRand};
+use algebra::msm::FixedBaseMSM;
 use rand_core::RngCore;
+use rayon::prelude::*;
 
 // check pairing of a&b vs c
 macro_rules! pairing_check
@@ -35,27 +37,25 @@ impl<E: PairingEngine> URS<E>
         rng: &mut dyn RngCore
     ) -> Self
     {
-        let mut g1 = Wnaf::new();
-        let mut g1 = g1.base(E::G1Projective::prime_subgroup_generator(), depth * 4);
-        let mut g2 = Wnaf::new();
-        let mut g2 = g2.base(E::G2Projective::prime_subgroup_generator(), depth * 4);
-
         fn table<C: AffineCurve>
         (
-            mut cur: C::ScalarField,
             step: C::ScalarField,
             num: usize,
-            table: &mut Wnaf<usize, &[C::Projective], &mut Vec<i64>>,
+            base : C::Projective
+            // table: &mut Wnaf<usize, &[C::Projective], &mut Vec<i64>>,
         ) -> Vec<C>
         {
-            let mut v = vec![];
-            for _ in 0..num
-            {
-                v.push(table.scalar(cur.into_repr()));
-                cur *= &step;
-            }
+            let scalar_size = C::ScalarField::size_in_bits();
+            let window_size = 15;
+            // 13: 13.402s
+            // 14: 12.832s, 12.976s
+            // 15: 12.947s, 12.309s, 12.409s
+            // 20: 29.968s
+            let scalars : Vec<C::ScalarField> = (0..num).into_par_iter().map(|i| step.pow(&[(i as u64)])).collect();
+            let table = FixedBaseMSM::get_window_table(scalar_size, window_size, base);
+            let mut v = FixedBaseMSM::multi_scalar_mul(scalar_size, window_size, & table, & scalars);
             C::Projective::batch_normalization(&mut v);
-            v.into_iter().map(|e| e.into_affine()).collect()
+            v.into_par_iter().map(|e| e.into_affine()).collect()
         }
 
         let xp = E::Fr::rand(rng);
@@ -66,8 +66,8 @@ impl<E: PairingEngine> URS<E>
 
         URS
         {
-            gp: table(E::Fr::one(), xp, depth, &mut g1),
-            hn: table(E::Fr::one(), xp.inverse().unwrap(), depth, &mut g2),
+            gp: table(xp, depth, E::G1Projective::prime_subgroup_generator()),
+            hn: table(xp.inverse().unwrap(), depth, E::G2Projective::prime_subgroup_generator()),
             prf: E::G1Affine::from(gx),
             hx: E::G2Affine::from(hx)
         }
