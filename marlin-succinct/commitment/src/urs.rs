@@ -4,7 +4,7 @@ This source file implements the Marlin universal reference string primitive
 
 *****************************************************************************************************************/
 
-use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, BigInteger, PairingCurve, UniformRand};
+use algebra::{VariableBaseMSM, AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, BigInteger, PairingCurve, UniformRand};
 use std::collections::HashMap;
 use rand_core::RngCore;
 
@@ -98,14 +98,12 @@ impl<E: PairingEngine> URS<E>
     //     hn1: previous URS gp[1]
     //     randomness source context
     //     RETURN: zk-proof verification status
-    pub fn check<F>
+    pub fn check
     (
         &mut self,
         hp1: E::G2Affine,
-        callback: F,
         rng: &mut dyn RngCore
     ) -> bool
-        where F: Fn(usize)
     {
         let xy = <E>::pairing(self.prf, hp1);
         // verify hx consistency with zk-proof
@@ -120,73 +118,22 @@ impl<E: PairingEngine> URS<E>
             if <E>::pairing(self.gp[*x.0], *x.1) != fk {return false}
         }
 
-        let mut g0: Vec<(E::G1Affine, E::Fr)> = vec![];
-        let mut g1: Vec<(E::G1Affine, E::Fr)> = vec![];
-
-        for i in 1..self.gp.len()
-        {
-            // inductively verify gp: e(g^x^i, h) = e(g^x^i-1, h^x)
-            let randomiser = E::Fr::rand(rng);
-            g0.push((self.gp[i], randomiser));
-            g1.push((self.gp[i-1], randomiser));
-            callback(i);
-        }
-
+        let rand = (1..self.gp.len()).map(|_| E::Fr::rand(rng).into_repr()).collect::<Vec<_>>();
         E::final_exponentiation(&E::miller_loop(&
         [
-            (&Self::multiexp(&g0).prepare(), &E::G2Affine::prime_subgroup_generator().prepare()),
-            (&Self::multiexp(&g1).prepare(), &(-self.hx).prepare()),
+            (&VariableBaseMSM::multi_scalar_mul
+                (
+                    &(1..self.gp.len()).map(|i| self.gp[i]).collect::<Vec<_>>(),
+                    &rand
+                ).into_affine().prepare(), &E::G2Affine::prime_subgroup_generator().prepare()
+            ),
+            (&VariableBaseMSM::multi_scalar_mul
+                (
+                    &(1..self.gp.len()).map(|i| self.gp[i-1]).collect::<Vec<_>>(),
+                    &rand
+                ).into_affine().prepare(), &(-self.hx).prepare()
+            ),
         ])).unwrap() == E::Fqk::one()
-    }
-
-    // This function multipoint exponentiates the array of group and scalar element tuples
-    //     RETURN: multipoint exponention result
-    pub fn multiexp<G: PairingCurve> (elm: &Vec<(G, G::ScalarField)>) -> G
-    {
-        let n = elm.len();
-        let c = if n < 32 {3u32} else {(f64::from(n as u32)).ln().ceil() as u32};
-
-        let g = elm.iter().map(|s| s.0);
-        // Convert all of the scalars into representations
-        let mut s = elm.iter().map(|s| s.1.into_repr()).collect::<Vec<_>>();
-
-        let mut windows = vec![];
-        let mut buckets = vec![];
-
-        let mask = (1u64 << c) - 1u64;
-        let mut cur = 0;
-        while cur <= G::ScalarField::size_in_bits()
-        {
-            let mut acc = G::Projective::zero();
-            buckets.truncate(0);
-            buckets.resize((1 << c) - 1, G::Projective::zero());
-            let g = g.clone();
-
-            for (s, g) in s.iter_mut().zip(g)
-            {
-                let t = s.as_ref();
-                let index = (t[0] & mask) as usize;
-                if index != 0 {buckets[index - 1].add_assign_mixed(&g);}
-                s.divn(c as u32);
-            }
-
-            let mut running_sum = G::Projective::zero();
-            for exp in buckets.iter().rev()
-            {
-                running_sum += exp;
-                acc += &running_sum;
-            }
-            windows.push(acc);
-            cur += c as usize;
-        }
-
-        let mut acc = G::Projective::zero();
-        for window in windows.into_iter().rev()
-        {
-            for _ in 0..c {acc = acc.double();}
-            acc += &window;
-        }
-        acc.into_affine()
     }
 }
 

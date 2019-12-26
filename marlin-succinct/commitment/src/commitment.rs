@@ -17,7 +17,7 @@ knowledge protocol:
 *****************************************************************************************************************/
 
 use oracle::rndoracle::ProofError;
-use algebra::{AffineCurve, ProjectiveCurve, Field, PairingEngine, PairingCurve, UniformRand};
+use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, PairingCurve, UniformRand, VariableBaseMSM};
 use ff_fft::DensePolynomial;
 pub use super::urs::URS;
 use rand_core::RngCore;
@@ -38,13 +38,11 @@ impl<E: PairingEngine> URS<E>
         let d = self.gp.len();
         if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
 
-        let mut exp: Vec<(E::G1Affine, E::Fr)> = vec![];
-        for i in 0..plnm.coeffs.len()
-        {
-            if plnm.coeffs[i].is_zero() {continue;}
-            exp.push((self.gp[i + d - max], plnm.coeffs[i]));
-        }
-        Ok(Self::multiexp(&exp))
+        Ok(VariableBaseMSM::multi_scalar_mul
+        (
+            &(0..plnm.len()).map(|i| self.gp[i + d - max]).collect::<Vec<_>>(),
+            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+        ).into_affine())
     }
 
     // This function exponentiates a polynomial against URS instance
@@ -57,14 +55,12 @@ impl<E: PairingEngine> URS<E>
     ) -> Result<E::G1Affine, ProofError>
     {
         if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyExponentiate)}
-        let mut exp: Vec<(E::G1Affine, E::Fr)> = vec![];
 
-        for (x, y) in plnm.coeffs.iter().zip(self.gp.iter())
-        {
-            if x.is_zero() {continue;}
-            exp.push((*y, *x));
-        }
-        Ok(Self::multiexp(&exp))
+        Ok(VariableBaseMSM::multi_scalar_mul
+        (
+            &(0..plnm.len()).map(|i| self.gp[i]).collect::<Vec<_>>(),
+            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+        ).into_affine())
     }
 
     // This function opens the polynomial commitment
@@ -100,13 +96,13 @@ impl<E: PairingEngine> URS<E>
         
         for x in plnms.iter()
         {
-            acc += &(x * &DensePolynomial::<E::Fr>::from_coefficients_slice(&[scale]));
+            acc += &(x.scale(scale));
             scale *= &mask;
         }
         self.exponentiate(&acc.divide(elm))
     }
 
-    // This function update the polynomial commitment opening batch with another opening proof
+    // This function updates the polynomial commitment opening batch with another opening proof
     //     batch: polynomial commitment opening batch to update
     //     proof: polynomial commitment opening proof to update with
     //     mask: base field element masking value
@@ -148,8 +144,10 @@ impl<E: PairingEngine> URS<E>
     {
         let d = self.gp.len();
         let mut table = vec![];
-        let mut open: Vec<(E::G1Affine, E::Fr)> = vec![];
-        let mut openy: Vec<(E::G1Affine, E::Fr)> = vec![];
+        let mut open_scalar = Vec::new();
+        let mut open_point = Vec::new();
+        let mut openy_scalar = Vec::new();
+        let mut openy_point = Vec::new();
 
         for prf in batch.iter()
         {
@@ -159,8 +157,10 @@ impl<E: PairingEngine> URS<E>
             for x in prf.iter()
             {
                 let rnd = E::Fr::rand(rng);
-                open.push((x.3, rnd));
-                openy.push((x.3, -(rnd * &x.0)));
+                open_scalar.push(rnd.into_repr());
+                open_point.push(x.3);
+                openy_scalar.push((-rnd * &x.0).into_repr());
+                openy_point.push(x.3);
                 let mut scale = x.1;
                 let mut v = E::Fr::zero();
                 
@@ -173,32 +173,38 @@ impl<E: PairingEngine> URS<E>
                 v *= &rnd;
                 eval += &v;
             };
-            openy.push((self.gp[0], eval));
+            openy_scalar.push(eval.into_repr());
+            openy_point.push(self.gp[0]);
 
             for (z, y) in prf[0].2.iter().zip(pcomm.iter_mut())
             {
                 if !self.hn.contains_key(&(d-z.2)) {return false}
                 table.push
                 ((
-                    Self::multiexp(&y).prepare(),
+                    VariableBaseMSM::multi_scalar_mul
+                    (
+                        &y.iter().map(|p| p.0).collect::<Vec<_>>(),
+                        &y.iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
+                    ).into_affine().prepare(),
                     (-self.hn[&(d-z.2)]).prepare()
                 ));
             }
         }
-        table.push((Self::multiexp(&open).prepare(), self.hx.prepare()));
-        table.push((Self::multiexp(&openy).prepare(), E::G2Affine::prime_subgroup_generator().prepare()));
+        table.push((VariableBaseMSM::multi_scalar_mul(&open_point, &open_scalar).into_affine().prepare(), self.hx.prepare()));
+        table.push((VariableBaseMSM::multi_scalar_mul(&openy_point, &openy_scalar).into_affine().prepare(), E::G2Affine::prime_subgroup_generator().prepare()));
     
         let x: Vec<(&<E::G1Affine as PairingCurve>::Prepared, &<E::G2Affine as PairingCurve>::Prepared)> = table.iter().map(|x| (&x.0, &x.1)).collect();
         E::final_exponentiation(&E::miller_loop(&x)).unwrap() == E::Fqk::one()
     }
 }
 
-pub trait KateDivision<F: Field>
+pub trait Utils<F: Field>
 {
     fn divide(&self, elm: F) -> Self;
+    fn scale(&self, elm: F) -> Self;
 }
 
-impl<F: Field> KateDivision<F> for DensePolynomial<F>
+impl<F: Field> Utils<F> for DensePolynomial<F>
 {
     // This function divides this polynomial difference: (F(x)-F(elm))/(x-elm)
     //    elm: base field element
@@ -219,5 +225,14 @@ impl<F: Field> KateDivision<F> for DensePolynomial<F>
             rcff = *y * &elm;
         }
         Self::from_coefficients_vec(pos)
+    }
+
+    // This function "scales" (multiplies) polynomaial with a scalar
+    // It is implemented to have the desired functionality for DensePolynomial
+    fn scale(&self, elm: F) -> Self
+    {
+        let mut result = self.clone();
+        for coeff in &mut result.coeffs {*coeff *= &elm}
+        result
     }
 }
