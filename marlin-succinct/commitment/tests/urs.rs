@@ -12,8 +12,6 @@ This source file, for now, implements URS unit test suite driver. The following 
 use algebra::{PairingEngine, curves::bls12_381::Bls12_381};
 use commitment::urs::URS;
 use colored::Colorize;
-use std::io;
-use std::io::Write;
 use std::time::{Instant};
 use rand_core::OsRng;
 
@@ -23,13 +21,6 @@ use rand_core::OsRng;
 fn urs_test()
 {
     test::<Bls12_381>();
-}
-
-#[allow(dead_code)]
-fn progress(depth: usize)
-{
-    print!("{:?}\r", depth);
-    io::stdout().flush().unwrap();
 }
 
 fn test<E: PairingEngine>()
@@ -44,6 +35,7 @@ fn test<E: PairingEngine>()
     let mut urs = URS::<E>::create
     (
         depth,
+        vec![3,7],
         &mut rng
     );
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
@@ -63,7 +55,7 @@ fn test<E: PairingEngine>()
 
         println!("{}", "Verifying the update against its zk-proof".green());
         start = Instant::now();
-        assert_eq!(urs.check(hx, progress, &mut rng), true);
+        assert_eq!(urs.check(hx, &mut rng), true);
         println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
     }
 }

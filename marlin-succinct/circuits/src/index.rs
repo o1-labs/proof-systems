@@ -88,7 +88,21 @@ impl<E: PairingEngine> Index<E>
                     .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
      
                 // compute public setup
-                let urs = URS::<E>::create(max_degree, rng);
+                let urs = URS::<E>::create
+                (
+                    max_degree,
+                    vec!
+                    [
+                        h_group.size(),
+                        h_group.size() - x_group.size(),
+                        h_group.size()*2-2,
+                        h_group.size()-1,
+                        k_group.size()*6-6,
+                        k_group.size()-1,
+                        k_group.size()
+                    ],
+                    rng
+                );
 
                 // compile the constraints
                 Ok(Index::<E>

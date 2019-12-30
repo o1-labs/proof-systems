@@ -1,12 +1,13 @@
 /********************************************************************************************
 
-This source file implements prover's zk-proof primitives.
+This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
 use algebra::{Field, PairingEngine};
 use oracle::rndoracle::{RandomOracleArgument, ProofError};
 use ff_fft::{DensePolynomial, Evaluations};
+use commitment::commitment::Utils;
 use circuits::index::Index;
 
 #[derive(Clone)]
@@ -438,7 +439,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             (0..index.b_group.size()).map
             (
-                |i| {crb[0][i] * &crb[1][i] * &crb[2][i]}
+                |i| crb[0][i] * &crb[1][i] * &crb[2][i]
             ).collect(),
             index.b_group
         ).interpolate();
@@ -475,22 +476,5 @@ impl<F: Field> RandomOracles<F>
             batch: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
         }
-    }
-}
-
-pub trait Scale<F: Field>
-{
-    fn scale(&self, elm: F) -> Self;
-}
-
-impl<F: Field> Scale<F> for DensePolynomial<F>
-{
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
-    fn scale(&self, elm: F) -> Self
-    {
-        let mut result = self.clone();
-        for coeff in &mut result.coeffs {*coeff *= &elm}
-        result
     }
 }
