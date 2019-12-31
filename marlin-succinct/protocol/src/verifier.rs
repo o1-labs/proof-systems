@@ -229,10 +229,14 @@ impl<E: SpongePairingEngine> ProverProof<E>
         oracles.beta[0] = fq_sponge.challenge();
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
+        fq_sponge.absorb_g(&self.g2_comm);
+        fq_sponge.absorb_g(&self.h2_comm);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
+        fq_sponge.absorb_g(&self.g3_comm);
+        fq_sponge.absorb_g(&self.h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
 
