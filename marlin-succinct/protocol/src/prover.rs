@@ -18,11 +18,11 @@ pub struct ProverProof<E: PairingEngine>
     pub za_comm: E::G1Affine,
     pub zb_comm: E::G1Affine,
     pub h1_comm: E::G1Affine,
-    pub g1_comm: E::G1Affine,
+    pub g1_comm: (E::G1Affine, E::G1Affine),
     pub h2_comm: E::G1Affine,
-    pub g2_comm: E::G1Affine,
+    pub g2_comm: (E::G1Affine, E::G1Affine),
     pub h3_comm: E::G1Affine,
-    pub g3_comm: E::G1Affine,
+    pub g3_comm: (E::G1Affine, E::G1Affine),
 
     // batched commitment opening proofs
     pub proof1: E::G1Affine,
@@ -114,9 +114,9 @@ impl<E: PairingEngine> ProverProof<E>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = index.urs.commit(&w.clone(), index.h_group.size() - index.x_group.size())?;
-        let za_comm = index.urs.commit(&za.clone(), index.h_group.size())?;
-        let zb_comm = index.urs.commit(&zb.clone(), index.h_group.size())?;
+        let w_comm = index.urs.commit(&w.clone())?;
+        let za_comm = index.urs.commit(&za.clone())?;
+        let zb_comm = index.urs.commit(&zb.clone())?;
 
         // the transcript of the random oracle non-interactive argument
         let mut argument = RandomOracleArgument::<E>::new(index.oracle_params.clone());
@@ -154,11 +154,11 @@ impl<E: PairingEngine> ProverProof<E>
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = index.urs.commit(&h1, index.h_group.size()*2-2)?;
-        let g1_comm = index.urs.commit(&g1, index.h_group.size()-1)?;
+        let h1_comm = index.urs.commit(&h1)?;
+        let g1_comm = index.urs.commit_with_degree_bound(&g1, index.h_group.size()-1)?;
 
         // absorb H1, G1 polycommitments
-        argument.commit_points(&[h1_comm, g1_comm])?;
+        argument.commit_points(&[h1_comm, g1_comm.0, g1_comm.1])?;
         // sample beta[0] oracle
         oracles.beta[0] = argument.challenge();
 
@@ -198,10 +198,10 @@ impl<E: PairingEngine> ProverProof<E>
             zb_comm,
             h1_comm,
             g1_comm,
-            h2_comm: index.urs.commit(&h2, index.h_group.size()-1)?,
-            g2_comm: index.urs.commit(&g2, index.h_group.size()-1)?,
-            h3_comm: index.urs.commit(&h3, index.k_group.size()*6-6)?,
-            g3_comm: index.urs.commit(&g3, index.k_group.size()-1)?,
+            h2_comm: index.urs.commit(&h2)?,
+            g2_comm: index.urs.commit_with_degree_bound(&g2, index.h_group.size()-1)?,
+            h3_comm: index.urs.commit(&h3)?,
+            g3_comm: index.urs.commit_with_degree_bound(&g3, index.k_group.size()-1)?,
 
             // polynomial commitment batched opening proofs
             proof1: index.urs.open_batch
@@ -212,7 +212,10 @@ impl<E: PairingEngine> ProverProof<E>
                     zb.clone(),
                     w.clone(),
                     h1.clone(),
-                    g1.clone(),
+                ],
+                &vec!
+                [
+                    (g1.clone(), index.h_group.size() - 1)
                 ],
                 oracles.batch,
                 oracles.beta[0]
@@ -221,8 +224,11 @@ impl<E: PairingEngine> ProverProof<E>
             (
                 &vec!
                 [
-                    h2.clone(),
-                    g2.clone()
+                    h2.clone()
+                ],
+                &vec!
+                [
+                    (g2.clone(), index.h_group.size() - 1)
                 ],
                 oracles.batch,
                 oracles.beta[1]
@@ -232,7 +238,6 @@ impl<E: PairingEngine> ProverProof<E>
                 &vec!
                 [
                     h3.clone(),
-                    g3.clone(),
                     index.compiled[0].row.clone(),
                     index.compiled[1].row.clone(),
                     index.compiled[2].row.clone(),
@@ -242,6 +247,10 @@ impl<E: PairingEngine> ProverProof<E>
                     index.compiled[0].val.clone(),
                     index.compiled[1].val.clone(),
                     index.compiled[2].val.clone(),
+                ],
+                &vec!
+                [
+                    (g3.clone(), index.k_group.size() - 1)
                 ],
                 oracles.batch,
                 oracles.beta[2]

@@ -13,8 +13,8 @@ pub enum ProofError
 {
     WitnessCsInconsistent,
     PolyDivision,
+    PolyCommitWithBound,
     PolyCommit,
-    PolyExponentiate,
     ProofCreation,
     ProofVerification,
     OpenProof,

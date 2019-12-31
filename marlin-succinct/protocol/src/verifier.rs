@@ -216,7 +216,7 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.eta_b = argument.challenge();
         oracles.eta_c = argument.challenge();
         // absorb H1, G1 polycommitments
-        argument.commit_points(&[self.h1_comm, self.g1_comm])?;
+        argument.commit_points(&[self.h1_comm, self.g1_comm.0, self.g1_comm.1])?;
         // sample beta[0] oracle
         oracles.beta[0] = argument.challenge();
         // absorb sigma2 scalar

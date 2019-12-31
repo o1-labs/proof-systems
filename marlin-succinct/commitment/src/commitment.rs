@@ -28,33 +28,38 @@ impl<E: PairingEngine> URS<E>
     //     plnm: polynomial to commit
     //     max: maximal degree of the polynomial
     //     RETURN: commitment group element
-    pub fn commit
+    pub fn commit_with_degree_bound
     (
         &self,
         plnm: &DensePolynomial<E::Fr>,
         max: usize,
-    ) -> Result<E::G1Affine, ProofError>
+    ) -> Result<(E::G1Affine, E::G1Affine), ProofError>
     {
         let d = self.gp.len();
-        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
+        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
 
-        Ok(VariableBaseMSM::multi_scalar_mul
-        (
-            &(0..plnm.len()).map(|i| self.gp[i + d - max]).collect::<Vec<_>>(),
-            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-        ).into_affine())
+        let shifted =
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &(0..plnm.len()).map(|i| self.gp[i + d - max]).collect::<Vec<_>>(),
+                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+            ).into_affine();
+
+        let unshifted = self.commit(plnm)?;
+
+        Ok((shifted, unshifted))
     }
 
-    // This function exponentiates a polynomial against URS instance
-    //     plnm: polynomial to exponentiate
+    // This function commits a polynomial against URS instance
+    //     plnm: polynomial to commit to
     //     RETURN: commitment group element
-    pub fn exponentiate
+    pub fn commit
     (
         &self,
         plnm: &DensePolynomial<E::Fr>
     ) -> Result<E::G1Affine, ProofError>
     {
-        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyExponentiate)}
+        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyCommit)}
 
         Ok(VariableBaseMSM::multi_scalar_mul
         (
@@ -75,31 +80,52 @@ impl<E: PairingEngine> URS<E>
     ) -> Result<E::G1Affine, ProofError>
     {
         // do polynomial division (F(x)-F(elm))/(x-elm)
-        self.exponentiate(&plnm.divide(elm))
+        self.commit(&plnm.divide(elm))
     }
 
     // This function opens the polynomial commitment batch
-    //     plnms: batch of commited polynomials
+    //     polys_without_degree_bound: commited polynomials with no degree bound
+    //     polys_with_degree_bound: commited polynomials with degree bound
     //     mask: base field element masking value
     //     elm: base field element to open the commitment at
     //     RETURN: commitment opening proof
     pub fn open_batch
     (
         &self,
-        plnms: &Vec<DensePolynomial<E::Fr>>,
+        polys_without_degree_bound: &Vec<DensePolynomial<E::Fr>>,
+        polys_with_degree_bound: &Vec<(DensePolynomial<E::Fr>, usize)>,
         mask: E::Fr,
         elm: E::Fr
     ) -> Result<E::G1Affine, ProofError>
     {
+        let max_degree = self.gp.len();
         let mut acc = DensePolynomial::<E::Fr>::zero();
         let mut scale = mask;
         
-        for x in plnms.iter()
+        for p in polys_without_degree_bound.iter()
         {
-            acc += &(x.scale(scale));
+            acc += &(p.scale(scale));
             scale *= &mask;
         }
-        self.exponentiate(&acc.divide(elm))
+
+        for (p, degree_bound) in polys_with_degree_bound.iter()
+        {
+            // First the unshifted version...
+            // let 
+            acc += &(p.scale(scale));
+            scale *= &mask;
+
+            // Then the shifted version...
+            let scaled_shifted_p = {
+                let mut coeffs = vec![E::Fr::zero(); max_degree - degree_bound];
+                coeffs.extend_from_slice(&p.scale(scale).coeffs);
+                DensePolynomial::from_coefficients_vec(coeffs)
+            };
+
+            acc += & scaled_shifted_p;
+            scale *= &mask;
+        }
+        self.commit(&acc.divide(elm))
     }
 
     // This function updates the polynomial commitment opening batch with another opening proof
