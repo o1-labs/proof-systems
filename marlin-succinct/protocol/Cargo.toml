@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { git = "https://github.com/scipr-lab/zexe/", features = [ "parallel" ] }
-ff-fft = { git = "https://github.com/scipr-lab/zexe/" }
+algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
+ff-fft = { git = "https://github.com/o1-labs/zexe/" }
 commitment = { path = "../commitment" }
 circuits = { path = "../circuits" }
 oracle = { path = "../oracle" }
