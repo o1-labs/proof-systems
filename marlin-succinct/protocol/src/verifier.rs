@@ -7,12 +7,12 @@ This source file implements zk-proof batch verifier functionality.
 use rand_core::RngCore;
 use circuits::index::Index;
 use oracle::rndoracle::{ProofError};
-pub use super::prover::{ProverProof, RandomOracles, SpongePairingEngine};
-use algebra::{Field};
+pub use super::prover::{ProverProof, RandomOracles};
+use algebra::{Field, PairingEngine};
 use ff_fft::Evaluations;
 use crate::marlin_sponge::{FqSponge, FrSponge};
 
-impl<E: SpongePairingEngine> ProverProof<E>
+impl<E: PairingEngine> ProverProof<E>
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
@@ -119,6 +119,9 @@ impl<E: SpongePairingEngine> ProverProof<E>
     //     rng: randomness source context
     //     RETURN: verification status
     pub fn verify
+        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
+         EFrSponge: FrSponge<E::Fr>,
+        >
     (
         proofs: &Vec<ProverProof<E>>,
         index: &Index<E>,
@@ -129,7 +132,7 @@ impl<E: SpongePairingEngine> ProverProof<E>
         for proof in proofs.iter()
         {
             let proof = proof.clone();
-            let oracles = proof.oracles(index)?;
+            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
 
             // first, verify the sumcheck argument values
             if 
@@ -197,13 +200,16 @@ impl<E: SpongePairingEngine> ProverProof<E>
     // This function queries random oracle values from non-interactive
     // argument context by verifier
     pub fn oracles
+        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
+         EFrSponge: FrSponge<E::Fr>,
+        >
     (
         &self,
         index: &Index<E>,
     ) -> Result<RandomOracles<E::Fr>, ProofError>
     {
         let mut oracles = RandomOracles::<E::Fr>::zero();
-        let mut fq_sponge = E::FqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // TODO: absorb previous proof context into the argument
         fq_sponge.absorb_fr(&E::Fr::one());
@@ -242,7 +248,7 @@ impl<E: SpongePairingEngine> ProverProof<E>
 
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.digest();
-            let mut s = E::FrSponge::new(index.fr_sponge_params.clone());
+            let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
         };

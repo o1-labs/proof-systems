@@ -57,18 +57,16 @@ pub struct ProverProof<E: PairingEngine>
     pub public: Vec<E::Fr>
 }
 
-pub trait SpongePairingEngine : PairingEngine {
-    type FqSponge : FqSponge<Self::Fq, Self::G1Affine, Self::Fr>;
-    type FrSponge : FrSponge<Self::Fr>;
-}
-
-impl<E: SpongePairingEngine> ProverProof<E>
+impl<E: PairingEngine> ProverProof<E>
 {
     // This function constructs prover's zk-proof from the witness & the Index against URS instance
     //     witness: computation witness
     //     index: Index
     //     RETURN: prover's zk-proof
     pub fn create
+        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
+         EFrSponge: FrSponge<E::Fr>,
+        >
     (
         witness: &Vec::<E::Fr>,
         index: &Index<E>
@@ -134,7 +132,7 @@ impl<E: SpongePairingEngine> ProverProof<E>
         let zb_comm = index.urs.commit(&zb.clone(), index.h_group.size())?;
 
         // the transcript of the random oracle non-interactive argument
-        let mut fq_sponge = E::FqSponge::new(index.fq_sponge_params.clone());
+        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // absorb previous proof context into the argument
         fq_sponge.absorb_fr(&E::Fr::one());
@@ -214,7 +212,7 @@ impl<E: SpongePairingEngine> ProverProof<E>
 
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.digest();
-            let mut s = E::FrSponge::new(index.fr_sponge_params.clone());
+            let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
         };
