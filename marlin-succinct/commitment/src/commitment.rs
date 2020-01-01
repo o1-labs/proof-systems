@@ -98,7 +98,6 @@ impl<E: PairingEngine> URS<E>
         elm: E::Fr
     ) -> Result<E::G1Affine, ProofError>
     {
-        let max_degree = self.gp.len();
         let mut acc = DensePolynomial::<E::Fr>::zero();
         let mut scale = mask;
         
@@ -108,21 +107,9 @@ impl<E: PairingEngine> URS<E>
             scale *= &mask;
         }
 
-        for (p, degree_bound) in polys_with_degree_bound.iter()
+        for (p, _degree_bound) in polys_with_degree_bound.iter()
         {
-            // First the unshifted version...
-            // let 
             acc += &(p.scale(scale));
-            scale *= &mask;
-
-            // Then the shifted version...
-            let scaled_shifted_p = {
-                let mut coeffs = vec![E::Fr::zero(); max_degree - degree_bound];
-                coeffs.extend_from_slice(&p.scale(scale).coeffs);
-                DensePolynomial::from_coefficients_vec(coeffs)
-            };
-
-            acc += & scaled_shifted_p;
             scale *= &mask;
         }
         self.commit(&acc.divide(elm))
