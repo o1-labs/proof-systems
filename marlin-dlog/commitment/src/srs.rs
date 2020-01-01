@@ -36,7 +36,7 @@ impl<E: PairingEngine> SRS<E>
                 window_size,
                 E::G1Projective::prime_subgroup_generator()
             ),
-            &(0..depth*2+1).map(|_| E::Fr::rand(rng)).collect::<Vec<E::Fr>>(),
+            &(0..depth+1).map(|_| E::Fr::rand(rng)).collect::<Vec<E::Fr>>(),
         );
         ProjectiveCurve::batch_normalization(&mut v);
 
