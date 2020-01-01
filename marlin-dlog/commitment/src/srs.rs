@@ -2,6 +2,10 @@
 
 This source file implements the Marlin structured reference string primitive
 
+NOTE: the current implementation profides faster SRS generation only for
+testing efficiency purpose. In production, the use of E::G1Projective::rand()
+or sequential hashing into the group has to be utilized. 
+
 *****************************************************************************************************************/
 
 use algebra::{ProjectiveCurve, PrimeField, PairingEngine, FixedBaseMSM, UniformRand};
