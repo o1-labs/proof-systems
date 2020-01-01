@@ -182,7 +182,6 @@ impl<E: PairingEngine> SRS<E>
         rng: &mut dyn RngCore
     ) -> bool
     {
-        let mut lpr = Vec::new();
         let mut points = Vec::new();
         let mut scalars = Vec::new();
 
@@ -215,8 +214,8 @@ impl<E: PairingEngine> SRS<E>
             let mut bf = (0..xp.len()).map(|i| xp[i] * &b[(2 as usize).pow(i as u32)] + &xn[i])
                 .fold(E::Fr::one(), |x, y| x * &y);
 
-            let mut sp: Vec<E::Fr> = vec![E::Fr::zero(); length];
-            sp[0] = xp.iter().map(|s| s).fold(E::Fr::one(), |x, y| x * y).inverse().unwrap();
+            let mut s: Vec<E::Fr> = vec![E::Fr::zero(); length];
+            s[0] = xp.iter().map(|s| s).fold(E::Fr::one(), |x, y| x * y).inverse().unwrap();
 
             let xp = xp.iter().map(|s| s.square()).collect::<Vec<_>>();
             let mut xn = xp.clone();
@@ -228,13 +227,17 @@ impl<E: PairingEngine> SRS<E>
             for i in 0..proof.2.len()
             {
                 scale *= &proof.1;
-                lpr.push((proof.2[i].0, scale * &rnd));
-                lpr.push((self.s, proof.2[i].1 * &rnd * &scale * &proof.0.pow([(max - proof.2[i].2) as u64])));
+                points.push(-proof.2[i].0);
+                scalars.push((scale * &rnd).into_repr());
+                points.push(-self.s);
+                scalars.push((proof.2[i].1 * &rnd * &scale * &proof.0.pow([(max - proof.2[i].2) as u64])).into_repr());
             }
             for (lr, (p, n)) in (proof.3).lr.iter().zip(xp.iter().rev().zip(xn.iter().rev()))
             {
-                lpr.push((lr.0, *p * &rnd));
-                lpr.push((lr.1, *n * &rnd));
+                points.push(-lr.0);
+                scalars.push((*p * &rnd).into_repr());
+                points.push(-lr.1);
+                scalars.push((*n * &rnd).into_repr());
             }
 
             // compute s scalars
@@ -244,27 +247,21 @@ impl<E: PairingEngine> SRS<E>
             {
                 k += if i == pow {1} else {0};
                 pow <<= if i == pow {1} else {0};
-                sp[i] = sp[i-(pow>>1)] * &xp[k-1];
+                s[i] = s[i-(pow>>1)] * &xp[k-1];
             }
 
             // adjust bf for the padding
-            bf -= &(max..sp.len()).map(|i| sp[i] * &b[i]).fold(E::Fr::zero(), |x, y| x + &y);
+            bf -= &(max..s.len()).map(|i| s[i] * &b[i]).fold(E::Fr::zero(), |x, y| x + &y);
 
             // prepare multiexp array for <G, s>
             let d = self.g.len();
             points.push(self.s);
             scalars.push(((proof.3).s * &rnd * &bf).into_repr());
             points.extend(self.g[d - max..].to_vec());
-            scalars.extend((0..self.g[d - max..].len()).map(|i| ((proof.3).s * &rnd * &sp[i]).into_repr()).collect::<Vec<_>>());
+            scalars.extend((0..self.g[d - max..].len()).map(|i| ((proof.3).s * &rnd * &s[i]).into_repr()).collect::<Vec<_>>());
         }
         // verify the equation
-        VariableBaseMSM::multi_scalar_mul(&points, &scalars)
-        ==
-        VariableBaseMSM::multi_scalar_mul
-        (
-            &lpr.iter().map(|p| p.0).collect::<Vec<_>>(),
-            &lpr.iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
-        )
+        VariableBaseMSM::multi_scalar_mul(&points, &scalars) == E::G1Projective::zero()
     }
 }
 
