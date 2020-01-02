@@ -5,10 +5,27 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, PairingEngine};
-use oracle::rndoracle::{RandomOracleArgument, ProofError};
+use oracle::{FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations};
 use commitment::commitment::{Utils, OpeningProof};
 use circuits::index::Index;
+use crate::marlin_sponge::{FrSponge};
+
+#[derive(Clone)]
+pub struct ProofEvaluations<Fr> {
+    pub w: Fr,
+    pub za: Fr,
+    pub zb: Fr,
+    pub h1: Fr,
+    pub g1: Fr,
+    pub h2: Fr,
+    pub g2: Fr,
+    pub h3: Fr,
+    pub g3: Fr,
+    pub row: [Fr; 3],
+    pub col: [Fr; 3],
+    pub val: [Fr; 3],
+}
 
 #[derive(Clone)]
 pub struct ProverProof<E: PairingEngine>
@@ -30,18 +47,7 @@ pub struct ProverProof<E: PairingEngine>
     pub proof3: OpeningProof<E>,
 
     // polynomial evaluations
-    pub w_eval: E::Fr,
-    pub za_eval: E::Fr,
-    pub zb_eval: E::Fr,
-    pub h1_eval: E::Fr,
-    pub g1_eval: E::Fr,
-    pub h2_eval: E::Fr,
-    pub g2_eval: E::Fr,
-    pub h3_eval: E::Fr,
-    pub g3_eval: E::Fr,
-    pub row_eval: [E::Fr; 3],
-    pub col_eval: [E::Fr; 3],
-    pub val_eval: [E::Fr; 3],
+    pub evals : ProofEvaluations<E::Fr>,
 
     // prover's scalars
     pub sigma2: E::Fr,
@@ -58,10 +64,14 @@ impl<E: PairingEngine> ProverProof<E>
     //     index: Index
     //     RETURN: prover's zk-proof
     pub fn create
+        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
+         EFrSponge: FrSponge<E::Fr>,
+        >
     (
         witness: &Vec::<E::Fr>,
         index: &Index<E>
-    ) -> Result<Self, ProofError>
+    ) 
+    -> Result<Self, ProofError>
     {
         // random oracles have to be retrieved from the non-interactive argument
         // context sequentually with adding argument-specific payload to the context
@@ -106,6 +116,11 @@ impl<E: PairingEngine> ProverProof<E>
             }
         }
 
+        let x_hat = 
+            Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.x_group).interpolate();
+         // TODO: Should have no degree bound when we add the correct degree bound method
+        let x_hat_comm = index.srs.commit(&x_hat, 0)?;
+
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.h_group).interpolate();
         let zb = Evaluations::<E::Fr>::from_vec_and_domain(zv[1].to_vec(), index.h_group).interpolate();
@@ -119,20 +134,22 @@ impl<E: PairingEngine> ProverProof<E>
         let zb_comm = index.srs.commit(&zb.clone(), index.h_group.size())?;
 
         // the transcript of the random oracle non-interactive argument
-        let mut argument = RandomOracleArgument::<E>::new(index.oracle_params.clone());
+        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         
         // absorb previous proof context into the argument
-        argument.commit_scalars(&[E::Fr::one()]);
+        fq_sponge.absorb_fr(&E::Fr::one());
         // absorb the public input into the argument
-        argument.commit_scalars(&public[..]);
+        fq_sponge.absorb_g(& x_hat_comm);
         // absorb W, ZA, ZB polycommitments
-        argument.commit_points(&[w_comm, za_comm, zb_comm])?;
+        fq_sponge.absorb_g(& w_comm);
+        fq_sponge.absorb_g(& za_comm);
+        fq_sponge.absorb_g(& zb_comm);
 
         // sample alpha, eta oracles
-        oracles.alpha = argument.challenge();
-        oracles.eta_a = argument.challenge();
-        oracles.eta_b = argument.challenge();
-        oracles.eta_c = argument.challenge();
+        oracles.alpha = fq_sponge.challenge();
+        oracles.eta_a = fq_sponge.challenge();
+        oracles.eta_b = fq_sponge.challenge();
+        oracles.eta_c = fq_sponge.challenge();
 
         let mut apow = E::Fr::one();
         let mut r: Vec<E::Fr> = (0..index.h_group.size()).map
@@ -158,9 +175,10 @@ impl<E: PairingEngine> ProverProof<E>
         let g1_comm = index.srs.commit(&g1, index.h_group.size()-1)?;
 
         // absorb H1, G1 polycommitments
-        argument.commit_points(&[h1_comm, g1_comm])?;
+        fq_sponge.absorb_g(&g1_comm);
+        fq_sponge.absorb_g(&h1_comm);
         // sample beta[0] oracle
-        oracles.beta[0] = argument.challenge();
+        oracles.beta[0] = fq_sponge.challenge();
 
         // compute second sumcheck argument polynomials
         // --------------------------------------------------------------------
@@ -168,11 +186,15 @@ impl<E: PairingEngine> ProverProof<E>
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
+        let h2_comm = index.srs.commit(&h2, index.h_group.size()-1)?;
+        let g2_comm = index.srs.commit(&g2, index.h_group.size()-1)?;
 
-        // absorb sigma2 scalar
-        argument.commit_scalars(&[sigma2]);
+        // absorb sigma2, g2, h2
+        fq_sponge.absorb_fr(&sigma2);
+        fq_sponge.absorb_g(&g2_comm);
+        fq_sponge.absorb_g(&h2_comm);
         // sample beta[1] oracle
-        oracles.beta[1] = argument.challenge();
+        oracles.beta[1] = fq_sponge.challenge();
 
         // compute third sumcheck argument polynomials
         // --------------------------------------------------------------------
@@ -180,12 +202,55 @@ impl<E: PairingEngine> ProverProof<E>
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
+        let h3_comm = index.srs.commit(&h3, index.k_group.size()*6-6)?;
+        let g3_comm = index.srs.commit(&g3, index.k_group.size()-1)?;
 
         // absorb sigma3 scalar
-        argument.commit_scalars(&[sigma3]);
+        fq_sponge.absorb_fr(&sigma3);
+        fq_sponge.absorb_g(&g3_comm);
+        fq_sponge.absorb_g(&h3_comm);
         // sample beta[2] & batch oracles
-        oracles.beta[2] = argument.challenge();
-        oracles.batch = argument.challenge();
+        oracles.beta[2] = fq_sponge.challenge();
+
+        let mut fr_sponge = {
+            let digest_before_evaluations = fq_sponge.digest();
+            let mut s = EFrSponge::new(index.fr_sponge_params.clone());
+            s.absorb(&digest_before_evaluations);
+            s
+        };
+
+        let evals = ProofEvaluations {
+            // polynomial evaluations
+            w: w.evaluate(oracles.beta[0]),
+            za: za.evaluate(oracles.beta[0]),
+            zb: zb.evaluate(oracles.beta[0]),
+            h1: h1.evaluate(oracles.beta[0]),
+            g1: g1.evaluate(oracles.beta[0]),
+            h2: h2.evaluate(oracles.beta[1]),
+            g2: g2.evaluate(oracles.beta[1]),
+            h3: h3.evaluate(oracles.beta[2]),
+            g3: g3.evaluate(oracles.beta[2]),
+            row:
+            [
+                index.compiled[0].row.evaluate(oracles.beta[2]),
+                index.compiled[1].row.evaluate(oracles.beta[2]),
+                index.compiled[2].row.evaluate(oracles.beta[2]),
+            ],
+            col:
+            [
+                index.compiled[0].col.evaluate(oracles.beta[2]),
+                index.compiled[1].col.evaluate(oracles.beta[2]),
+                index.compiled[2].col.evaluate(oracles.beta[2]),
+            ],
+            val:
+            [
+                index.compiled[0].val.evaluate(oracles.beta[2]),
+                index.compiled[1].val.evaluate(oracles.beta[2]),
+                index.compiled[2].val.evaluate(oracles.beta[2]),
+            ],
+        };
+
+        oracles.batch = fr_sponge.challenge();
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -198,13 +263,15 @@ impl<E: PairingEngine> ProverProof<E>
             zb_comm,
             h1_comm,
             g1_comm,
-            h2_comm: index.srs.commit(&h2, index.h_group.size()-1)?,
-            g2_comm: index.srs.commit(&g2, index.h_group.size()-1)?,
-            h3_comm: index.srs.commit(&h3, index.k_group.size()*6-6)?,
-            g3_comm: index.srs.commit(&g3, index.k_group.size()-1)?,
+            h2_comm,
+            g2_comm,
+            h3_comm,
+            g3_comm,
+
+            evals,
 
             // polynomial commitment batched opening proofs
-            proof1: index.srs.open
+            proof1: index.srs.open::<EFqSponge>
             (
                 &vec!
                 [
@@ -216,9 +283,9 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 oracles.batch,
                 oracles.beta[0],
-                &index.oracle_params.clone(),
+                &index.fq_sponge_params.clone(),
             )?,
-            proof2: index.srs.open
+            proof2: index.srs.open::<EFqSponge>
             (
                 &vec!
                 [
@@ -227,9 +294,9 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 oracles.batch,
                 oracles.beta[1],
-                &index.oracle_params.clone(),
+                &index.fq_sponge_params.clone(),
             )?,
-            proof3: index.srs.open
+            proof3: index.srs.open::<EFqSponge>
             (
                 &vec!
                 [
@@ -247,37 +314,8 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 oracles.batch,
                 oracles.beta[2],
-                &index.oracle_params.clone(),
+                &index.fq_sponge_params.clone(),
             )?,
-
-            // polynomial evaluations
-            w_eval  : w.evaluate(oracles.beta[0]),
-            za_eval : za.evaluate(oracles.beta[0]),
-            zb_eval : zb.evaluate(oracles.beta[0]),
-            h1_eval : h1.evaluate(oracles.beta[0]),
-            g1_eval : g1.evaluate(oracles.beta[0]),
-            h2_eval : h2.evaluate(oracles.beta[1]),
-            g2_eval : g2.evaluate(oracles.beta[1]),
-            h3_eval : h3.evaluate(oracles.beta[2]),
-            g3_eval : g3.evaluate(oracles.beta[2]),
-            row_eval:
-            [
-                index.compiled[0].row.evaluate(oracles.beta[2]),
-                index.compiled[1].row.evaluate(oracles.beta[2]),
-                index.compiled[2].row.evaluate(oracles.beta[2]),
-            ],
-            col_eval:
-            [
-                index.compiled[0].col.evaluate(oracles.beta[2]),
-                index.compiled[1].col.evaluate(oracles.beta[2]),
-                index.compiled[2].col.evaluate(oracles.beta[2]),
-            ],
-            val_eval:
-            [
-                index.compiled[0].val.evaluate(oracles.beta[2]),
-                index.compiled[1].val.evaluate(oracles.beta[2]),
-                index.compiled[2].val.evaluate(oracles.beta[2]),
-            ],
 
             // prover's scalars
             sigma2,
