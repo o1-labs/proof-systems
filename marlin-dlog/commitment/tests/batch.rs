@@ -87,7 +87,7 @@ where <E::Fr as std::str::FromStr>::Err : std::fmt::Debug
                 |_|
                 {
                     let len: usize = random.gen();
-                    (len % depth-2)+1
+                    (len % (depth-2))+1
                 }
             ).collect::<Vec<_>>();
             println!("{}{:?}", "sizes: ".bright_cyan(), size);
