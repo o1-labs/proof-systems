@@ -8,16 +8,16 @@ or sequential hashing into the group has to be utilized.
 
 *****************************************************************************************************************/
 
-use algebra::{ProjectiveCurve, PrimeField, PairingEngine, FixedBaseMSM, UniformRand};
+use algebra::{ProjectiveCurve, PrimeField, AffineCurve, FixedBaseMSM, UniformRand};
 use rand_core::RngCore;
 
-pub struct SRS<E: PairingEngine>
+pub struct SRS<G: AffineCurve>
 {
-    pub g: Vec<E::G1Affine>,    // for committing polynomials
-    pub s: E::G1Affine,         // for committing scalars, inner product
+    pub g: Vec<G>,    // for committing polynomials
+    pub s: G,         // for committing scalars, inner product
 }
 
-impl<E: PairingEngine> SRS<E>
+impl<G: AffineCurve> SRS<G>
 {
     // This function creates SRS instance for circuits up to depth d
     //     depth: maximal depth of the circuits
@@ -28,9 +28,9 @@ impl<E: PairingEngine> SRS<E>
         rng: &mut dyn RngCore
     ) -> Self
     {
-        let size_in_bits = E::Fr::size_in_bits();
+        let size_in_bits = G::ScalarField::size_in_bits();
         let window_size = FixedBaseMSM::get_mul_window_size(depth+1);
-        let mut v = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>
+        let mut v = FixedBaseMSM::multi_scalar_mul::<G::Projective>
         (
             size_in_bits,
             window_size,
@@ -38,9 +38,9 @@ impl<E: PairingEngine> SRS<E>
             (
                 size_in_bits,
                 window_size,
-                E::G1Projective::prime_subgroup_generator()
+                G::Projective::prime_subgroup_generator()
             ),
-            &(0..depth+1).map(|_| E::Fr::rand(rng)).collect::<Vec<E::Fr>>(),
+            &(0..depth+1).map(|_| G::ScalarField::rand(rng)).collect::<Vec<G::ScalarField>>(),
         );
         ProjectiveCurve::batch_normalization(&mut v);
 

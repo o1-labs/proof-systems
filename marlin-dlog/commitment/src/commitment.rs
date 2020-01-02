@@ -13,18 +13,21 @@ The folowing functionality is implemented
 use rand_core::RngCore;
 use oracle::rndoracle::{ArithmeticSpongeParams, ProofError};
 use oracle::FqSponge;
-use algebra::{PairingEngine, UniformRand, Field, PrimeField, AffineCurve, ProjectiveCurve, VariableBaseMSM};
+use algebra::{UniformRand, Field, PrimeField, AffineCurve, ProjectiveCurve, VariableBaseMSM};
 use ff_fft::DensePolynomial;
 pub use super::srs::SRS;
 
+type Fr<G> = <G as AffineCurve>::ScalarField;
+type Fq<G> = <G as AffineCurve>::BaseField;
+
 #[derive(Clone)]
-pub struct OpeningProof<E: PairingEngine>
+pub struct OpeningProof<G: AffineCurve>
 {
-    pub lr: Vec<(E::G1Affine, E::G1Affine)>,    // vector of rounds of L & R commitments
-    pub s: E::Fr,                               // folded witness value revealed
+    pub lr: Vec<(G, G)>,    // vector of rounds of L & R commitments
+    pub s: Fr<G>,                               // folded witness value revealed
 }
 
-impl<E: PairingEngine> SRS<E>
+impl<G: AffineCurve> SRS<G>
 {
     // This function commits the polynomial against SRS instance
     //     plnm: polynomial to commit
@@ -33,9 +36,9 @@ impl<E: PairingEngine> SRS<E>
     pub fn commit
     (
         &self,
-        plnm: &DensePolynomial<E::Fr>,
+        plnm: &DensePolynomial<Fr<G>>,
         max: usize,
-    ) -> Result<E::G1Affine, ProofError>
+    ) -> Result<G, ProofError>
     {
         let d = self.g.len();
         if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
@@ -48,13 +51,13 @@ impl<E: PairingEngine> SRS<E>
     }
 
     fn recursion
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>>
+        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>
     (
-        srs: &SRS<E>,
-        a: &DensePolynomial<E::Fr>,
-        b: &DensePolynomial<E::Fr>,
+        srs: &SRS<G>,
+        a: &DensePolynomial<Fr<G>>,
+        b: &DensePolynomial<Fr<G>>,
         sponge: &mut EFqSponge,
-    ) -> Result<(Vec<(E::G1Affine, E::G1Affine)>, E::Fr), ProofError>
+    ) -> Result<(Vec<(G, G)>, Fr<G>), ProofError>
     {
         if a.coeffs.len() == 1
         {
@@ -69,13 +72,13 @@ impl<E: PairingEngine> SRS<E>
         // slice the polynomials into chunks
         let a =
         [
-            DensePolynomial::<E::Fr>::from_coefficients_vec(a.coeffs[0..length].to_vec()),
-            DensePolynomial::<E::Fr>::from_coefficients_vec(a.coeffs[length..].to_vec())
+            DensePolynomial::<Fr<G>>::from_coefficients_vec(a.coeffs[0..length].to_vec()),
+            DensePolynomial::<Fr<G>>::from_coefficients_vec(a.coeffs[length..].to_vec())
         ];
         let b =
         [
-            DensePolynomial::<E::Fr>::from_coefficients_vec(b.coeffs[0..length].to_vec()),
-            DensePolynomial::<E::Fr>::from_coefficients_vec(b.coeffs[length..].to_vec())
+            DensePolynomial::<Fr<G>>::from_coefficients_vec(b.coeffs[0..length].to_vec()),
+            DensePolynomial::<Fr<G>>::from_coefficients_vec(b.coeffs[length..].to_vec())
         ];
 
         // slice SRS into chunks
@@ -109,14 +112,14 @@ impl<E: PairingEngine> SRS<E>
         let b = &b[0].scale(xn) + &b[1].scale(xp);
 
         // compute folded srs
-        let g: Vec<E::G1Affine> = (0..length).map
+        let g: Vec<G> = (0..length).map
         (
-            |i| {(g[0][i].mul(xn) + &{if i<g[1].len() {g[1][i].mul(xp)} else {E::G1Projective::zero()}}).into_affine()}
+            |i| {(g[0][i].mul(xn) + &{if i<g[1].len() {g[1][i].mul(xp)} else {G::Projective::zero()}}).into_affine()}
         ).collect();
 
-        match Self::recursion(&SRS::<E>{g, s:srs.s}, &a, &b, sponge)
+        match Self::recursion(&SRS::<G>{g, s:srs.s}, &a, &b, sponge)
         {
-            Ok(c) => {Ok({let mut result: Vec<(E::G1Affine, E::G1Affine)> = vec![(l, r)]; result.extend(c.0); (result, c.1)})}
+            Ok(c) => {Ok({let mut result: Vec<(G, G)> = vec![(l, r)]; result.extend(c.0); (result, c.1)})}
             Err(err) => {Err(err)}
         }
     }
@@ -128,38 +131,38 @@ impl<E: PairingEngine> SRS<E>
     //     oracle_params: parameters for the random oracle argument
     //     RETURN: commitment opening proof
     pub fn open
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>>
+        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>
     (
         &self,
-        plnms: &Vec<(DensePolynomial<E::Fr>, usize)>,
-        mask: E::Fr,
-        elm: E::Fr,
-        oracle_params: &ArithmeticSpongeParams::<E::Fq>
-    ) -> Result<OpeningProof<E>, ProofError>
+        plnms: &Vec<(DensePolynomial<Fr<G>>, usize)>,
+        mask: Fr<G>,
+        elm: Fr<G>,
+        oracle_params: &ArithmeticSpongeParams::<Fq<G>>
+    ) -> Result<OpeningProof<G>, ProofError>
     {
 
-        let mut p = DensePolynomial::<E::Fr>::zero();
+        let mut p = DensePolynomial::<Fr<G>>::zero();
         
         // randomise/scale the polynoms in accumulator shifted to the end of SRS
         let max = plnms.iter().map(|p| p.1).max().map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
         let dim = plnms.iter().map(|p| p.0.coeffs.len()).max().map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
         if dim > max {return Err(ProofError::PolyCommit)}
 
-        let mut scale = E::Fr::one();
+        let mut scale = Fr::<G>::one();
         for x in plnms.iter()
         {
             scale *= &mask;
             p += &(x.0.shiftr(max-x.1).scale(scale));
         }
 
-        let mut acc = E::Fr::one();
-        let b = DensePolynomial::<E::Fr>::from_coefficients_vec((0..p.coeffs.len()).map(|_| {let r = acc; acc *= &elm; r}).collect::<Vec<_>>());
+        let mut acc = Fr::<G>::one();
+        let b = DensePolynomial::<Fr<G>>::from_coefficients_vec((0..p.coeffs.len()).map(|_| {let r = acc; acc *= &elm; r}).collect::<Vec<_>>());
 
         let d = self.g.len();
         let mut sponge = EFqSponge::new(oracle_params.clone());
-        match Self::recursion (&SRS::<E>{g:self.g[d - max..dim + d - max].to_vec(), s:self.s}, &p, &b, &mut sponge)
+        match Self::recursion (&SRS::<G>{g:self.g[d - max..dim + d - max].to_vec(), s:self.s}, &p, &b, &mut sponge)
         {
-            Ok(proof) => Ok(OpeningProof::<E>{lr: proof.0, s: proof.1}),
+            Ok(proof) => Ok(OpeningProof::<G>{lr: proof.0, s: proof.1}),
             Err(err) => Err(err)
         }
     }
@@ -174,17 +177,17 @@ impl<E: PairingEngine> SRS<E>
     //     randomness source context
     //     RETURN: verification status
     pub fn verify
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>>
+        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>
     (
         &self,
         batch: &Vec
         <(
-            E::Fr,
-            E::Fr,
-            Vec<(E::G1Affine, E::Fr, usize)>,
-            OpeningProof<E>,
+            Fr<G>,
+            Fr<G>,
+            Vec<(G, Fr<G>, usize)>,
+            OpeningProof<G>,
         )>,
-        oracle_params: &ArithmeticSpongeParams::<E::Fq>,
+        oracle_params: &ArithmeticSpongeParams::<Fq<G>>,
         rng: &mut dyn RngCore
     ) -> bool
     {
@@ -194,7 +197,7 @@ impl<E: PairingEngine> SRS<E>
         for proof in batch.iter()
         {
             // sample randomiser to scale the proofs with
-            let rnd = E::Fr::rand(rng);
+            let rnd = Fr::<G>::rand(rng);
 
             // sample random oracles
             let mut fq_sponge = EFqSponge::new(oracle_params.clone());
@@ -209,28 +212,28 @@ impl<E: PairingEngine> SRS<E>
             ).collect::<Vec<_>>();
             xp.reverse();
             let mut xn = xp.clone();
-            algebra::fields::batch_inversion::<E::Fr>(&mut xn);
+            algebra::fields::batch_inversion::<Fr<G>>(&mut xn);
             
             let length = (2 as usize).pow((proof.3).lr.len() as u32);
 
             // precompute powers of x
-            let mut acc = E::Fr::one();
+            let mut acc = Fr::<G>::one();
             let b = (0..length).map(|_| {let r = acc; acc *= &proof.0; r}).collect::<Vec<_>>();
 
             // compute <x^, s> logarithmically, adjust later for the padding
             let mut bf = (0..xp.len()).map(|i| xp[i] * &b[(2 as usize).pow(i as u32)] + &xn[i])
-                .fold(E::Fr::one(), |x, y| x * &y);
+                .fold(Fr::<G>::one(), |x, y| x * &y);
 
-            let mut s: Vec<E::Fr> = vec![E::Fr::zero(); length];
-            s[0] = xp.iter().map(|s| s).fold(E::Fr::one(), |x, y| x * y).inverse().unwrap();
+            let mut s: Vec<Fr<G>> = vec![Fr::<G>::zero(); length];
+            s[0] = xp.iter().map(|s| s).fold(Fr::<G>::one(), |x, y| x * y).inverse().unwrap();
 
             let xp = xp.iter().map(|s| s.square()).collect::<Vec<_>>();
             let mut xn = xp.clone();
-            algebra::fields::batch_inversion::<E::Fr>(&mut xn);
+            algebra::fields::batch_inversion::<Fr<G>>(&mut xn);
 
             // prepare multiexp array for L^x^2*P*R^x^-2
             let max = proof.2.iter().map(|p| p.2).max().unwrap();
-            let mut scale = E::Fr::one();
+            let mut scale = Fr::<G>::one();
             for i in 0..proof.2.len()
             {
                 scale *= &proof.1;
@@ -258,7 +261,7 @@ impl<E: PairingEngine> SRS<E>
             }
 
             // adjust bf for the padding
-            bf -= &(max..s.len()).map(|i| s[i] * &b[i]).fold(E::Fr::zero(), |x, y| x + &y);
+            bf -= &(max..s.len()).map(|i| s[i] * &b[i]).fold(Fr::<G>::zero(), |x, y| x + &y);
 
             // prepare multiexp array for <G, s>
             let d = self.g.len();
@@ -268,7 +271,7 @@ impl<E: PairingEngine> SRS<E>
             scalars.extend((0..self.g[d - max..].len()).map(|i| ((proof.3).s * &rnd * &s[i]).into_repr()).collect::<Vec<_>>());
         }
         // verify the equation
-        VariableBaseMSM::multi_scalar_mul(&points, &scalars) == E::G1Projective::zero()
+        VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
     }
 }
 

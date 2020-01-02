@@ -7,23 +7,26 @@ This source file implements Marlin Protocol Index primitive.
 use sprs::CsMat;
 use rand_core::RngCore;
 use commitment::srs::SRS;
-use algebra::PairingEngine;
+use algebra::AffineCurve;
 use ff_fft::EvaluationDomain;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 
-pub struct Index<E: PairingEngine>
+type Fr<G> = <G as AffineCurve>::ScalarField;
+type Fq<G> = <G as AffineCurve>::BaseField;
+
+pub struct Index<G: AffineCurve>
 {
     // constraint system compilation
-    pub compiled: [Compiled<E>; 3],
+    pub compiled: [Compiled<G>; 3],
 
     // evaluation domains as multiplicative groups of roots of unity
-    pub h_group: EvaluationDomain<E::Fr>,
-    pub k_group: EvaluationDomain<E::Fr>,
-    pub b_group: EvaluationDomain<E::Fr>,
-    pub x_group: EvaluationDomain<E::Fr>,
+    pub h_group: EvaluationDomain<Fr<G>>,
+    pub k_group: EvaluationDomain<Fr<G>>,
+    pub b_group: EvaluationDomain<Fr<G>>,
+    pub x_group: EvaluationDomain<Fr<G>>,
 
     // number of public inputs
     pub public_inputs: usize,
@@ -32,24 +35,24 @@ pub struct Index<E: PairingEngine>
     pub max_degree: usize,
 
     // polynomial commitment keys
-    pub srs: SRS<E>,
+    pub srs: SRS<G>,
 
     // random oracle argument parameters
-    pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
-    pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
+    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<E: PairingEngine> Index<E>
+impl<G: AffineCurve> Index<G>
 {
     // this function compiles the circuit from constraints
     pub fn create
     (
-        a: CsMat<E::Fr>,
-        b: CsMat<E::Fr>,
-        c: CsMat<E::Fr>,
+        a: CsMat<Fr<G>>,
+        b: CsMat<Fr<G>>,
+        c: CsMat<Fr<G>>,
         public_inputs: usize,
-        fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
-        fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
+        fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         rng: &mut dyn RngCore
     ) -> Result<Self, ProofError>
     {
@@ -64,23 +67,23 @@ impl<E: PairingEngine> Index<E>
 
         // compute the evaluation domains
         let h_group_size = 
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(a.shape().0)
+            EvaluationDomain::<Fr<G>>::compute_size_of_domain(a.shape().0)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
         let x_group_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(public_inputs)
+            EvaluationDomain::<Fr<G>>::compute_size_of_domain(public_inputs)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
         let k_group_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain
+            EvaluationDomain::<Fr<G>>::compute_size_of_domain
             ([&a, &b, &c].iter().map(|x| x.nnz()).max()
             .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
 
         match
         (
-            EvaluationDomain::<E::Fr>::new(h_group_size),
-            EvaluationDomain::<E::Fr>::new(k_group_size),
-            EvaluationDomain::<E::Fr>::new(k_group_size * 6 - 6),
-            EvaluationDomain::<E::Fr>::new(x_group_size),
+            EvaluationDomain::<Fr<G>>::new(h_group_size),
+            EvaluationDomain::<Fr<G>>::new(k_group_size),
+            EvaluationDomain::<Fr<G>>::new(k_group_size * 6 - 6),
+            EvaluationDomain::<Fr<G>>::new(x_group_size),
         )
         {
             (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
@@ -90,20 +93,20 @@ impl<E: PairingEngine> Index<E>
                     .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
      
                 // compute public setup
-                let srs = SRS::<E>::create
+                let srs = SRS::<G>::create
                 (
                     max_degree,
                     rng
                 );
 
                 // compile the constraints
-                Ok(Index::<E>
+                Ok(Index::<G>
                 {
                     compiled:
                     [
-                        Compiled::<E>::compile(&srs, h_group, k_group, b_group, a)?,
-                        Compiled::<E>::compile(&srs, h_group, k_group, b_group, b)?,
-                        Compiled::<E>::compile(&srs, h_group, k_group, b_group, c)?,
+                        Compiled::<G>::compile(&srs, h_group, k_group, b_group, a)?,
+                        Compiled::<G>::compile(&srs, h_group, k_group, b_group, b)?,
+                        Compiled::<G>::compile(&srs, h_group, k_group, b_group, c)?,
                     ],
                     fr_sponge_params,
                     fq_sponge_params,
@@ -126,11 +129,11 @@ impl<E: PairingEngine> Index<E>
     pub fn verify
     (
         &self,
-        witness: &Vec<E::Fr>
+        witness: &Vec<Fr<G>>
     ) -> bool
     {
         if self.compiled[0].constraints.shape().1 != witness.len() {return false}
-        let mut gates = vec![CircuitGate::<E::Fr>::zero(); self.h_group.size()];
+        let mut gates = vec![CircuitGate::<Fr<G>>::zero(); self.h_group.size()];
         for i in 0..3
         {
             for val in self.compiled[i].constraints.iter()

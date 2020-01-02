@@ -8,11 +8,14 @@ use rand_core::RngCore;
 use circuits::index::Index;
 use oracle::{FqSponge, rndoracle::ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
-use algebra::{Field, PairingEngine};
+use algebra::{Field, AffineCurve};
 use ff_fft::Evaluations;
 use crate::marlin_sponge::{FrSponge};
 
-impl<E: PairingEngine> ProverProof<E>
+type Fr<G> = <G as AffineCurve>::ScalarField;
+type Fq<G> = <G as AffineCurve>::BaseField;
+
+impl<G: AffineCurve> ProverProof<G>
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
@@ -21,8 +24,8 @@ impl<E: PairingEngine> ProverProof<E>
     pub fn sumcheck_1_verify
     (
         &self,
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>,
+        index: &Index<G>,
+        oracles: &RandomOracles<Fr<G>>,
     ) -> bool
     {
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
@@ -36,10 +39,10 @@ impl<E: PairingEngine> ProverProof<E>
                         0 => {self.evals.za * &oracles.eta_a}
                         1 => {self.evals.zb * &oracles.eta_b}
                         2 => {self.evals.za * &self.evals.zb * &oracles.eta_c}
-                        _ => {E::Fr::zero()}
+                        _ => {Fr::<G>::zero()}
                     }
                 }
-            ).fold(E::Fr::zero(), |x, y| x + &y)
+            ).fold(Fr::<G>::zero(), |x, y| x + &y)
         ==
         (oracles.alpha - &oracles.beta[0]) *
         &(
@@ -49,13 +52,13 @@ impl<E: PairingEngine> ProverProof<E>
             &(self.evals.w * &index.x_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
             // interpolating/evaluating public input over small domain x_group
             // TODO: investigate which of the below is faster
-            &Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate().evaluate(oracles.beta[0])))
+            &Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate().evaluate(oracles.beta[0])))
             /*
             &index.x_group.evaluate_all_lagrange_coefficients(oracles.beta[0])
             .iter()
             .zip(self.public.iter())
             .map(|(l, x)| *l * x)
-            .fold(E::Fr::zero(), |x, y| x + &y)))
+            .fold(Fr<G>::zero(), |x, y| x + &y)))
             */
         )
     }
@@ -67,8 +70,8 @@ impl<E: PairingEngine> ProverProof<E>
     pub fn sumcheck_2_verify
     (
         &self,
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>,
+        index: &Index<G>,
+        oracles: &RandomOracles<Fr<G>>,
     ) -> bool
     {
         self.sigma3 * &index.k_group.size_as_field_element *
@@ -86,11 +89,11 @@ impl<E: PairingEngine> ProverProof<E>
     pub fn sumcheck_3_verify
     (
         &self,
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>
+        index: &Index<G>,
+        oracles: &RandomOracles<Fr<G>>
     ) -> bool
     {
-        let crb: Vec<E::Fr> = (0..3).map
+        let crb: Vec<Fr<G>> = (0..3).map
         (
             |i| {(oracles.beta[1] - &self.evals.row[i]) * &(oracles.beta[0] - &self.evals.col[i])}
         ).collect();
@@ -103,7 +106,7 @@ impl<E: PairingEngine> ProverProof<E>
                 for j in 0..3 {if i != j {x *= &crb[j]}}
                 x
             }
-        ).fold(E::Fr::zero(), |x, y| x + &y);
+        ).fold(Fr::<G>::zero(), |x, y| x + &y);
 
         index.k_group.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals.h3
         ==
@@ -119,12 +122,12 @@ impl<E: PairingEngine> ProverProof<E>
     //     rng: randomness source context
     //     RETURN: verification status
     pub fn verify
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
-         EFrSponge: FrSponge<E::Fr>,
+        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+         EFrSponge: FrSponge<Fr<G>>,
         >
     (
-        proofs: &Vec<ProverProof<E>>,
-        index: &Index<E>,
+        proofs: &Vec<ProverProof<G>>,
+        index: &Index<G>,
         rng: &mut dyn RngCore
     ) -> Result<bool, ProofError>
     {
@@ -200,25 +203,25 @@ impl<E: PairingEngine> ProverProof<E>
     // This function queries random oracle values from non-interactive
     // argument context by verifier
     pub fn oracles
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
-         EFrSponge: FrSponge<E::Fr>,
+        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+         EFrSponge: FrSponge<Fr<G>>,
         >
     (
         &self,
-        index: &Index<E>,
-    ) -> Result<RandomOracles<E::Fr>, ProofError>
+        index: &Index<G>,
+    ) -> Result<RandomOracles<Fr<G>>, ProofError>
     {
-        let mut oracles = RandomOracles::<E::Fr>::zero();
+        let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         let x_hat =
             // TODO: Cache this interpolated polynomial.
-            Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate();
+            Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate();
         // TODO: No degree bound needed
         let x_hat_comm = index.srs.commit(&x_hat, 0)?;
 
         // TODO: absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&E::Fr::one());
+        fq_sponge.absorb_fr(&Fr::<G>::one());
         // absorb the public input into the argument
         fq_sponge.absorb_g(&x_hat_comm);
         // absorb W, ZA, ZB polycommitments

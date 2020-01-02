@@ -4,13 +4,16 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, PairingEngine};
+use algebra::{Field, AffineCurve};
 use oracle::{FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations};
 use commitment::commitment::{Utils, OpeningProof};
 use circuits::index::Index;
 use crate::marlin_sponge::{FrSponge};
 
+type Fr<G> = <G as AffineCurve>::ScalarField;
+type Fq<G> = <G as AffineCurve>::BaseField;
+ 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fr> {
     pub w: Fr,
@@ -28,74 +31,74 @@ pub struct ProofEvaluations<Fr> {
 }
 
 #[derive(Clone)]
-pub struct ProverProof<E: PairingEngine>
+pub struct ProverProof<G: AffineCurve>
 {
     // polynomial commitments
-    pub w_comm: E::G1Affine,
-    pub za_comm: E::G1Affine,
-    pub zb_comm: E::G1Affine,
-    pub h1_comm: E::G1Affine,
-    pub g1_comm: E::G1Affine,
-    pub h2_comm: E::G1Affine,
-    pub g2_comm: E::G1Affine,
-    pub h3_comm: E::G1Affine,
-    pub g3_comm: E::G1Affine,
+    pub w_comm: G,
+    pub za_comm: G,
+    pub zb_comm: G,
+    pub h1_comm: G,
+    pub g1_comm: G,
+    pub h2_comm: G,
+    pub g2_comm: G,
+    pub h3_comm: G,
+    pub g3_comm: G,
 
     // batched commitment opening proofs
-    pub proof1: OpeningProof<E>,
-    pub proof2: OpeningProof<E>,
-    pub proof3: OpeningProof<E>,
+    pub proof1: OpeningProof<G>,
+    pub proof2: OpeningProof<G>,
+    pub proof3: OpeningProof<G>,
 
     // polynomial evaluations
-    pub evals : ProofEvaluations<E::Fr>,
+    pub evals : ProofEvaluations<Fr<G>>,
 
     // prover's scalars
-    pub sigma2: E::Fr,
-    pub sigma3: E::Fr,
+    pub sigma2: Fr<G>,
+    pub sigma3: Fr<G>,
 
     // public part of the witness
-    pub public: Vec<E::Fr>
+    pub public: Vec<Fr<G>>
 }
 
-impl<E: PairingEngine> ProverProof<E>
+impl<G: AffineCurve> ProverProof<G>
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
     //     index: Index
     //     RETURN: prover's zk-proof
     pub fn create
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
-         EFrSponge: FrSponge<E::Fr>,
+        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+         EFrSponge: FrSponge<Fr<G>>,
         >
     (
-        witness: &Vec::<E::Fr>,
-        index: &Index<E>
+        witness: &Vec::<Fr<G>>,
+        index: &Index<G>
     ) 
     -> Result<Self, ProofError>
     {
         // random oracles have to be retrieved from the non-interactive argument
         // context sequentually with adding argument-specific payload to the context
 
-        let mut oracles = RandomOracles::<E::Fr>::zero();
+        let mut oracles = RandomOracles::<Fr<G>>::zero();
 
         // prover computes z polynomial
-        let z = Evaluations::<E::Fr>::from_vec_and_domain(witness.clone(), index.h_group).interpolate();
+        let z = Evaluations::<Fr<G>>::from_vec_and_domain(witness.clone(), index.h_group).interpolate();
 
         // extract/save public part of the padded witness
         let mut witness = witness.clone();
-        witness.extend(vec![E::Fr::zero(); index.h_group.size() - witness.len()]);
+        witness.extend(vec![Fr::<G>::zero(); index.h_group.size() - witness.len()]);
         let ratio = index.h_group.size() / index.x_group.size();
-        let public: Vec<E::Fr> = (0..index.public_inputs).map(|i| {witness[i * ratio]}).collect();
+        let public: Vec<Fr<G>> = (0..index.public_inputs).map(|i| {witness[i * ratio]}).collect();
 
         // evaluate public input polynomial over h_group
         let public_evals = index.h_group.fft
         (
-            &Evaluations::<E::Fr>::from_vec_and_domain(public.clone(),
+            &Evaluations::<Fr<G>>::from_vec_and_domain(public.clone(),
             index.x_group
         ).interpolate());
 
         // prover computes w polynomial from the witness by subtracting the public polynomial evaluations
-        let (w, r) = Evaluations::<E::Fr>::from_vec_and_domain
+        let (w, r) = Evaluations::<Fr<G>>::from_vec_and_domain
         (
             witness.iter().enumerate().map
             (
@@ -106,7 +109,7 @@ impl<E: PairingEngine> ProverProof<E>
         if !r.is_zero() {return Err(ProofError::PolyDivision)}
 
         // prover computes za, zb polynomials
-        let mut zv = vec![vec![E::Fr::zero(); index.h_group.size()]; 2];
+        let mut zv = vec![vec![Fr::<G>::zero(); index.h_group.size()]; 2];
 
         for i in 0..2
         {
@@ -117,13 +120,13 @@ impl<E: PairingEngine> ProverProof<E>
         }
 
         let x_hat = 
-            Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.x_group).interpolate();
+            Evaluations::<Fr<G>>::from_vec_and_domain(public.clone(), index.x_group).interpolate();
          // TODO: Should have no degree bound when we add the correct degree bound method
         let x_hat_comm = index.srs.commit(&x_hat, 0)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
-        let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.h_group).interpolate();
-        let zb = Evaluations::<E::Fr>::from_vec_and_domain(zv[1].to_vec(), index.h_group).interpolate();
+        let za = Evaluations::<Fr<G>>::from_vec_and_domain(zv[0].to_vec(), index.h_group).interpolate();
+        let zb = Evaluations::<Fr<G>>::from_vec_and_domain(zv[1].to_vec(), index.h_group).interpolate();
 
         // substitute ZC with ZA*ZB
         let zv = [za.clone(), zb.clone(), &za * &zb];
@@ -137,7 +140,7 @@ impl<E: PairingEngine> ProverProof<E>
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         
         // absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&E::Fr::one());
+        fq_sponge.absorb_fr(&Fr::<G>::one());
         // absorb the public input into the argument
         fq_sponge.absorb_g(& x_hat_comm);
         // absorb W, ZA, ZB polycommitments
@@ -151,8 +154,8 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.eta_b = fq_sponge.challenge();
         oracles.eta_c = fq_sponge.challenge();
 
-        let mut apow = E::Fr::one();
-        let mut r: Vec<E::Fr> = (0..index.h_group.size()).map
+        let mut apow = Fr::<G>::one();
+        let mut r: Vec<Fr<G>> = (0..index.h_group.size()).map
         (
             |i|
             {
@@ -161,7 +164,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).collect();
         r.reverse();
-        let ra = DensePolynomial::<E::Fr>::from_coefficients_vec(r);
+        let ra = DensePolynomial::<Fr<G>>::from_coefficients_vec(r);
 
         // compute first sumcheck argument polynomials
         // --------------------------------------------------------------------
@@ -330,16 +333,16 @@ impl<E: PairingEngine> ProverProof<E>
     //     RETURN: prover's H1 & G1 polynomials
     pub fn sumcheck_1_compute
     (
-        index: &Index<E>,
-        ra: &DensePolynomial<E::Fr>,
-        zm: &[DensePolynomial<E::Fr>; 3],
-        z: &DensePolynomial<E::Fr>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
+        index: &Index<G>,
+        ra: &DensePolynomial<Fr<G>>,
+        zm: &[DensePolynomial<Fr<G>>; 3],
+        z: &DensePolynomial<Fr<G>>,
+        oracles: &RandomOracles<Fr<G>>
+    ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
         // precompute Lagrange polynomial denominators
-        let mut lagrng: Vec<E::Fr> = index.h_group.elements().map(|elm| {oracles.alpha - &elm}).collect();
-        algebra::fields::batch_inversion::<E::Fr>(&mut lagrng);
+        let mut lagrng: Vec<Fr<G>> = index.h_group.elements().map(|elm| {oracles.alpha - &elm}).collect();
+        algebra::fields::batch_inversion::<Fr<G>>(&mut lagrng);
         let vanish = index.h_group.evaluate_vanishing_polynomial(oracles.alpha);
 
         // compute and return H1 & G1 polynomials
@@ -347,7 +350,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                let mut ram = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
+                let mut ram = Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.h_group.size()], index.h_group);
                 for val in index.compiled[i].constraints.iter()
                 {
                     ram.evals[(val.1).1] += &(vanish * val.0 * &lagrng[(val.1).0]);
@@ -356,7 +359,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold
         (
-            DensePolynomial::<E::Fr>::zero(),
+            DensePolynomial::<Fr<G>>::zero(),
             |x, (i, y)|
             // scale with eta's and add up
             &x + &(&(ra * &zm[i]) - &(&y.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
@@ -368,10 +371,10 @@ impl<E: PairingEngine> ProverProof<E>
     //     RETURN: prover's H2 & G2 polynomials
     pub fn sumcheck_2_compute
     (
-        index: &Index<E>,
-        ra: &DensePolynomial<E::Fr>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
+        index: &Index<G>,
+        ra: &DensePolynomial<Fr<G>>,
+        oracles: &RandomOracles<Fr<G>>
+    ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
         // precompute Lagrange polynomial evaluations
         let lagrng = index.h_group.evaluate_all_lagrange_coefficients(oracles.beta[0]);
@@ -382,7 +385,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                let mut ramxbval = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.h_group.size()], index.h_group);
+                let mut ramxbval = Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.h_group.size()], index.h_group);
                 for val in index.compiled[i].constraints.iter()
                 {
                     // scale with eta's
@@ -392,7 +395,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold
         (
-            DensePolynomial::<E::Fr>::zero(),
+            DensePolynomial::<Fr<G>>::zero(),
             |x, y|
             &x + &(&(ra * &y.interpolate()))
         // compute quotient and remainder
@@ -403,9 +406,9 @@ impl<E: PairingEngine> ProverProof<E>
     //     RETURN: prover's H3 & G3 polynomials
     pub fn sumcheck_3_compute
     (
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
+        index: &Index<G>,
+        oracles: &RandomOracles<Fr<G>>
+    ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
         let vanish = index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) *
             &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]);
@@ -415,10 +418,10 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                Evaluations::<E::Fr>::from_vec_and_domain
+                Evaluations::<Fr<G>>::from_vec_and_domain
                 (
                     {
-                        let mut fractions: Vec<E::Fr> = (0..index.k_group.size()).map
+                        let mut fractions: Vec<Fr<G>> = (0..index.k_group.size()).map
                         (
                             |j|
                             {
@@ -426,7 +429,7 @@ impl<E: PairingEngine> ProverProof<E>
                                 &(oracles.beta[1] - &index.compiled[i].row_eval_k[j])
                             }
                         ).collect();
-                        algebra::fields::batch_inversion::<E::Fr>(&mut fractions);
+                        algebra::fields::batch_inversion::<Fr<G>>(&mut fractions);
                         fractions.iter().enumerate().map
                         (
                             |(j, elm)|
@@ -442,12 +445,12 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold
         (
-            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.k_group.size()], index.k_group),
+            Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.k_group.size()], index.k_group),
             |x, y| &x + &y
         ).interpolate();
 
         // precompute polynomials (row(X)-oracle1)*(col(X)-oracle2) in evaluation form over b_group
-        let crb: Vec<Vec<E::Fr>> =
+        let crb: Vec<Vec<Fr<G>>> =
             (0..3).map(|i| index.compiled[i].compute_row_2_col_1(oracles.beta[0], oracles.beta[1])).collect();
 
         // compute polynomial a
@@ -455,7 +458,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                Evaluations::<E::Fr>::from_vec_and_domain
+                Evaluations::<Fr<G>>::from_vec_and_domain
                 (
                     index.compiled[i].val_eval_b.evals.iter().enumerate().map
                     (
@@ -471,12 +474,12 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold
         (
-            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.b_group.size()], index.b_group),
+            Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.b_group.size()], index.b_group),
             |x, y| &x + &y
         ).interpolate();
 
         // compute polynomial b
-        let b = Evaluations::<E::Fr>::from_vec_and_domain
+        let b = Evaluations::<Fr<G>>::from_vec_and_domain
         (
             (0..index.b_group.size()).map
             (

@@ -7,33 +7,35 @@ This source file implements the compiled constraints primitive.
 use sprs::CsMat;
 use commitment::srs::SRS;
 use oracle::rndoracle::ProofError;
-use algebra::{Field, PairingEngine};
+use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
 pub use super::index::Index;
 
-pub struct Compiled<E: PairingEngine>
+type Fr<G> = <G as AffineCurve>::ScalarField;
+
+pub struct Compiled<G: AffineCurve>
 {
     // constraint system coefficients in dense form
-    pub constraints: CsMat<E::Fr>,
+    pub constraints: CsMat<Fr<G>>,
 
     // compiled polynomial commitments
-    pub col_comm: E::G1Affine,
-    pub row_comm: E::G1Affine,
-    pub val_comm: E::G1Affine,
+    pub col_comm: G,
+    pub row_comm: G,
+    pub val_comm: G,
 
     // compiled polynomials and evaluations
-    pub row     : DensePolynomial<E::Fr>,
-    pub col     : DensePolynomial<E::Fr>,
-    pub val     : DensePolynomial<E::Fr>,
-    pub row_eval_k: Evaluations<E::Fr>,
-    pub col_eval_k: Evaluations<E::Fr>,
-    pub val_eval_k: Evaluations<E::Fr>,
-    pub row_eval_b: Evaluations<E::Fr>,
-    pub col_eval_b: Evaluations<E::Fr>,
-    pub val_eval_b: Evaluations<E::Fr>,
+    pub row     : DensePolynomial<Fr<G>>,
+    pub col     : DensePolynomial<Fr<G>>,
+    pub val     : DensePolynomial<Fr<G>>,
+    pub row_eval_k: Evaluations<Fr<G>>,
+    pub col_eval_k: Evaluations<Fr<G>>,
+    pub val_eval_k: Evaluations<Fr<G>>,
+    pub row_eval_b: Evaluations<Fr<G>>,
+    pub col_eval_b: Evaluations<Fr<G>>,
+    pub val_eval_b: Evaluations<Fr<G>>,
 }
 
-impl<E: PairingEngine> Compiled<E>
+impl<G: AffineCurve> Compiled<G>
 {
     // this function compiles the constraints
     //  srs: universal reference string
@@ -43,18 +45,18 @@ impl<E: PairingEngine> Compiled<E>
     //  constraints: constraint matrix in dense form
     pub fn compile
     (
-        srs: &SRS<E>,
-        h_group: EvaluationDomain<E::Fr>,
-        k_group: EvaluationDomain<E::Fr>,
-        b_group: EvaluationDomain<E::Fr>,
-        constraints: CsMat<E::Fr>,
+        srs: &SRS<G>,
+        h_group: EvaluationDomain<Fr<G>>,
+        k_group: EvaluationDomain<Fr<G>>,
+        b_group: EvaluationDomain<Fr<G>>,
+        constraints: CsMat<Fr<G>>,
     ) -> Result<Self, ProofError>
     {
-        let mut col_eval_k = vec![E::Fr::zero(); k_group.size as usize];
-        let mut row_eval_k = vec![E::Fr::zero(); k_group.size as usize];
-        let mut val_eval_k = vec![E::Fr::zero(); k_group.size as usize];
+        let mut col_eval_k = vec![Fr::<G>::zero(); k_group.size as usize];
+        let mut row_eval_k = vec![Fr::<G>::zero(); k_group.size as usize];
+        let mut val_eval_k = vec![Fr::<G>::zero(); k_group.size as usize];
 
-        let h_elems: Vec<E::Fr> = h_group.elements().map(|elm| {elm}).collect();
+        let h_elems: Vec<Fr<G>> = h_group.elements().map(|elm| {elm}).collect();
 
         for (c, (val, (row, col))) in
         constraints.iter().zip(
@@ -69,15 +71,15 @@ impl<E: PairingEngine> Compiled<E>
                 &h_elems[if (c.1).0 == 0 {0} else {h_group.size() - (c.1).0}] *
                 &h_elems[if (c.1).1 == 0 {0} else {h_group.size() - (c.1).1}];
         }
-        algebra::fields::batch_inversion::<E::Fr>(&mut val_eval_k);
+        algebra::fields::batch_inversion::<Fr<G>>(&mut val_eval_k);
         for (c, val) in constraints.iter().zip(val_eval_k.iter_mut())
         {
             *val = *c.0 * val;
         }
 
-        let row_eval_k = Evaluations::<E::Fr>::from_vec_and_domain(row_eval_k, k_group);
-        let col_eval_k = Evaluations::<E::Fr>::from_vec_and_domain(col_eval_k, k_group);
-        let val_eval_k = Evaluations::<E::Fr>::from_vec_and_domain(val_eval_k, k_group);
+        let row_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(row_eval_k, k_group);
+        let col_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(col_eval_k, k_group);
+        let val_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(val_eval_k, k_group);
         
         // interpolate the evaluations
         let row = row_eval_k.clone().interpolate();
@@ -85,15 +87,15 @@ impl<E: PairingEngine> Compiled<E>
         let val = val_eval_k.clone().interpolate();
 
         // commit to the index polynomials
-        Ok(Compiled::<E>
+        Ok(Compiled::<G>
         {
             constraints,
             row_comm: srs.commit(&row, k_group.size())?,
             col_comm: srs.commit(&col, k_group.size())?,
             val_comm: srs.commit(&val, k_group.size())?,
-            row_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&row), b_group),
-            col_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&col), b_group),
-            val_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&val), b_group),
+            row_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&row), b_group),
+            col_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&col), b_group),
+            val_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&val), b_group),
             row_eval_k,
             col_eval_k,
             val_eval_k,
@@ -108,9 +110,9 @@ impl<E: PairingEngine> Compiled<E>
     pub fn compute_row_2_col_1
     (
         &self,
-        oracle1: E::Fr,
-        oracle2: E::Fr,
-    ) -> Vec<E::Fr>
+        oracle1: Fr<G>,
+        oracle2: Fr<G>,
+    ) -> Vec<Fr<G>>
     {
         self.row_eval_b.evals.iter().zip(self.col_eval_b.evals.iter()).map
         (
