@@ -35,7 +35,8 @@ pub struct Index<E: PairingEngine>
     pub urs: URS<E>,
 
     // random oracle argument parameters
-    pub oracle_params: ArithmeticSpongeParams<E::Fr>,
+    pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
+    pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
 }
 
 impl<E: PairingEngine> Index<E>
@@ -47,7 +48,8 @@ impl<E: PairingEngine> Index<E>
         b: CsMat<E::Fr>,
         c: CsMat<E::Fr>,
         public_inputs: usize,
-        oracle_params: ArithmeticSpongeParams<E::Fr>,
+        fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
+        fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
         rng: &mut dyn RngCore
     ) -> Result<Self, ProofError>
     {
@@ -113,7 +115,8 @@ impl<E: PairingEngine> Index<E>
                         Compiled::<E>::compile(&urs, h_group, k_group, b_group, b)?,
                         Compiled::<E>::compile(&urs, h_group, k_group, b_group, c)?,
                     ],
-                    oracle_params,
+                    fr_sponge_params,
+                    fq_sponge_params,
                     public_inputs,
                     max_degree,
                     h_group,
