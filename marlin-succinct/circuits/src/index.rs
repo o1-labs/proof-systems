@@ -13,7 +13,6 @@ use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
-use std::collections::HashMap;
 
 pub struct Index<E: PairingEngine>
 {
@@ -90,7 +89,7 @@ impl<E: PairingEngine> Index<E>
             URS::<E> {
                 gp,
                 // TODO: We just need (beta^{N - (h_group.size() - 1)}) and (beta^{N - (k_group.size() - 1)})
-                hn : HashMap::new(),
+                hn : self.urs.hn.clone(),
                 hx: self.urs.hx,
                 prf: self.urs.prf
             }
