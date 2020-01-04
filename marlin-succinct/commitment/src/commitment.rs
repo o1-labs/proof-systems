@@ -27,41 +27,44 @@ impl<E: PairingEngine> URS<E>
 {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to
-    //     max: maximal degree of the polynomial, if none , no degree bound
-    //     RETURN: tuple of: unbounded commitment, optional bounded commitment
+    //     RETURN: tuple of: unbounded commitment
     pub fn commit
     (
         &self,
         plnm: &DensePolynomial<E::Fr>,
-        max: Option<usize>,
-    ) -> Result<(E::G1Affine, E::G1Affine), ProofError>
+    ) -> Result<E::G1Affine, ProofError>
     {
         if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyCommit)}
-        let unshifted = VariableBaseMSM::multi_scalar_mul
+        Ok (
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &self.gp[0..plnm.len()],
+                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+            ).into_affine() )
+    }
+
+    // This function commits a polynomial against URS instance
+    //     plnm: polynomial to commit to
+    //     max: maximal degree of the polynomial, if none , no degree bound
+    //     RETURN: tuple of: unbounded commitment, optional bounded commitment
+    pub fn commit_with_degree_bound
+    (
+        &self,
+        plnm: &DensePolynomial<E::Fr>,
+        max: usize,
+    ) -> Result<(E::G1Affine, E::G1Affine), ProofError>
+    {
+        let unshifted = self.commit(plnm)?;
+
+        let d = self.gp.len();
+        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
+        let shifted = VariableBaseMSM::multi_scalar_mul
         (
-            &self.gp[0..plnm.len()],
-            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+            &self.gp[d - max..plnm.len() + d - max],
+            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
         ).into_affine();
 
-        match max
-        {
-            Some(max) =>
-            {
-                let d = self.gp.len();
-                if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
-                let shifted = VariableBaseMSM::multi_scalar_mul
-                (
-                    &self.gp[d - max..plnm.len() + d - max],
-                    &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
-                ).into_affine();
-
-                Ok((unshifted, shifted))
-            }
-            None =>
-            {
-                Ok((unshifted, E::G1Affine::zero()))
-            }
-        }
+        Ok((unshifted, shifted))
     }
 
     // This function opens the polynomial commitment batch
@@ -86,7 +89,7 @@ impl<E: PairingEngine> URS<E>
             scale *= &mask;
             acc += &(p.scale(scale));
         }
-        Ok(self.commit(&acc.divide(elm), None)?.0)
+        self.commit(&acc.divide(elm))
     }
 
     // This function verifies the batch polynomial commitment proofs of vectors of polynomials

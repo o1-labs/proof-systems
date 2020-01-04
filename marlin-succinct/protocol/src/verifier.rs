@@ -217,7 +217,7 @@ impl<E: PairingEngine> ProverProof<E>
         let x_hat =
             // TODO: Cache this interpolated polynomial.
             Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate();
-        fq_sponge.absorb_g(&index.urs.commit(&x_hat, None)?.0);
+        fq_sponge.absorb_g(&index.urs.commit(&x_hat)?);
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& self.w_comm);
         fq_sponge.absorb_g(& self.za_comm);
