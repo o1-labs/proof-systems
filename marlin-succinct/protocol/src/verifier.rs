@@ -149,12 +149,11 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.za_comm, proof.evals.za, index.h_group.size()),
-                    (proof.zb_comm, proof.evals.zb, index.h_group.size()),
-                    (proof.w_comm,  proof.evals.w,  index.h_group.size() - index.x_group.size()),
-                    (proof.h1_comm, proof.evals.h1, index.h_group.size()*2-2),
-                    // TODO: fixme
-                    (proof.g1_comm.0, proof.evals.g1, index.h_group.size()-1),
+                    (proof.za_comm,     proof.evals.za, None),
+                    (proof.zb_comm,     proof.evals.zb, None),
+                    (proof.w_comm,      proof.evals.w,  None),
+                    (proof.h1_comm,     proof.evals.h1, None),
+                    (proof.g1_comm.0,   proof.evals.g1, Some((proof.g1_comm.1, index.h_group.size()-1))),
                 ],
                 proof.proof1
             ));
@@ -164,9 +163,8 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.h2_comm, proof.evals.h2, index.h_group.size()-1),
-                    // TODO: fixme
-                    (proof.g2_comm.0, proof.evals.g2, index.h_group.size()-1),
+                    (proof.h2_comm,     proof.evals.h2, None),
+                    (proof.g2_comm.0,   proof.evals.g2, Some((proof.g2_comm.1, index.h_group.size()-1))),
                 ],
                 proof.proof2
             ));
@@ -176,18 +174,17 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.h3_comm, proof.evals.h3, index.k_group.size()*6-6),
-                    // TODO: fixme
-                    (proof.g3_comm.0, proof.evals.g3, index.k_group.size()-1),
-                    (index.compiled[0].row_comm, proof.evals.row[0], index.k_group.size()),
-                    (index.compiled[1].row_comm, proof.evals.row[1], index.k_group.size()),
-                    (index.compiled[2].row_comm, proof.evals.row[2], index.k_group.size()),
-                    (index.compiled[0].col_comm, proof.evals.col[0], index.k_group.size()),
-                    (index.compiled[1].col_comm, proof.evals.col[1], index.k_group.size()),
-                    (index.compiled[2].col_comm, proof.evals.col[2], index.k_group.size()),
-                    (index.compiled[0].val_comm, proof.evals.val[0], index.k_group.size()),
-                    (index.compiled[1].val_comm, proof.evals.val[1], index.k_group.size()),
-                    (index.compiled[2].val_comm, proof.evals.val[2], index.k_group.size()),
+                    (proof.h3_comm, proof.evals.h3, None),
+                    (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.k_group.size()-1))),
+                    (index.compiled[0].row_comm, proof.evals.row[0], None),
+                    (index.compiled[1].row_comm, proof.evals.row[1], None),
+                    (index.compiled[2].row_comm, proof.evals.row[2], None),
+                    (index.compiled[0].col_comm, proof.evals.col[0], None),
+                    (index.compiled[1].col_comm, proof.evals.col[1], None),
+                    (index.compiled[2].col_comm, proof.evals.col[2], None),
+                    (index.compiled[0].val_comm, proof.evals.val[0], None),
+                    (index.compiled[1].val_comm, proof.evals.val[1], None),
+                    (index.compiled[2].val_comm, proof.evals.val[2], None),
                 ],
                 proof.proof3
             ));
@@ -220,8 +217,7 @@ impl<E: PairingEngine> ProverProof<E>
         let x_hat =
             // TODO: Cache this interpolated polynomial.
             Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate();
-        let x_hat_comm = index.urs.commit(&x_hat)?;
-        fq_sponge.absorb_g(&x_hat_comm);
+        fq_sponge.absorb_g(&index.urs.commit(&x_hat, None)?.0);
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& self.w_comm);
         fq_sponge.absorb_g(& self.za_comm);

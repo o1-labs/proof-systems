@@ -88,9 +88,9 @@ impl<E: PairingEngine> Compiled<E>
         Ok(Compiled::<E>
         {
             constraints,
-            row_comm: urs.commit(&row)?,
-            col_comm: urs.commit(&col)?,
-            val_comm: urs.commit(&val)?,
+            row_comm: urs.commit(&row, None)?.0,
+            col_comm: urs.commit(&col, None)?.0,
+            val_comm: urs.commit(&val, None)?.0,
             row_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&val), b_group),
