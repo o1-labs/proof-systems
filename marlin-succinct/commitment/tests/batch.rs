@@ -64,7 +64,7 @@ fn test<E: PairingEngine>()
             let x = E::Fr::rand(rng);
 
             let mut start = Instant::now();
-            let comm = a.iter().map(|a| urs.commit(&a.clone(), None).unwrap().0).collect::<Vec<_>>();
+            let comm = a.iter().map(|a| urs.commit(&a.clone()).unwrap()).collect::<Vec<_>>();
             commit += start.elapsed();
 
             let mask = E::Fr::rand(rng);
