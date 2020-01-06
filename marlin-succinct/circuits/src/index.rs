@@ -14,7 +14,26 @@ use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 
-pub struct Index<E: PairingEngine>
+pub enum URSValue<'a, E : PairingEngine> {
+    Value(URS<E>),
+    Ref(&'a URS<E>)
+}
+
+impl<'a, E : PairingEngine> URSValue<'a, E> {
+    pub fn get_ref(&self) -> & URS<E> {
+        match self {
+            URSValue::Value(x) => &x,
+            URSValue::Ref(x) => x
+        }
+    }
+}
+
+pub enum URSSpec <'a, 'b, E:PairingEngine>{
+    Use(&'a URS<E>),
+    Generate(&'b mut dyn RngCore)
+}
+
+pub struct Index<'a, E: PairingEngine>
 {
     // constraint system compilation
     pub compiled: [Compiled<E>; 3],
@@ -32,7 +51,7 @@ pub struct Index<E: PairingEngine>
     pub max_degree: usize,
 
     // polynomial commitment keys
-    pub urs: URS<E>,
+    pub urs: URSValue<'a, E>,
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
@@ -69,7 +88,7 @@ pub struct VerifierIndex<E: PairingEngine>
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
 }
 
-impl<E: PairingEngine> Index<E>
+impl<'a, E: PairingEngine> Index<'a, E>
 {
     fn matrix_values(c : &Compiled<E>) -> MatrixValues<E::G1Affine> {
         MatrixValues {
@@ -85,13 +104,13 @@ impl<E: PairingEngine> Index<E>
         let h_to_x_ratio = self.h_group.size() / self.x_group.size();
 
         let urs = {
-            let gp = (0..self.x_group.size()).map(|i| self.urs.gp[i * h_to_x_ratio]).collect();
+            let gp = (0..self.x_group.size()).map(|i| self.urs.get_ref().gp[i * h_to_x_ratio]).collect();
             URS::<E> {
                 gp,
                 // TODO: We just need (beta^{N - (h_group.size() - 1)}) and (beta^{N - (k_group.size() - 1)})
-                hn : self.urs.hn.clone(),
-                hx: self.urs.hx,
-                prf: self.urs.prf
+                hn : self.urs.get_ref().hn.clone(),
+                hx: self.urs.get_ref().hx,
+                prf: self.urs.get_ref().prf
             }
         };
 
@@ -109,7 +128,7 @@ impl<E: PairingEngine> Index<E>
     }
 
     // this function compiles the circuit from constraints
-    pub fn create
+    pub fn create<'b>
     (
         a: CsMat<E::Fr>,
         b: CsMat<E::Fr>,
@@ -117,7 +136,7 @@ impl<E: PairingEngine> Index<E>
         public_inputs: usize,
         fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
         fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
-        rng: &mut dyn RngCore
+        urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
         if a.shape() != b.shape() ||
@@ -157,30 +176,52 @@ impl<E: PairingEngine> Index<E>
                     .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
      
                 // compute public setup
-                let urs = URS::<E>::create
-                (
-                    max_degree,
-                    vec!
-                    [
-                        h_group.size(),
-                        h_group.size() - x_group.size(),
-                        h_group.size()*2-2,
-                        h_group.size()-1,
-                        k_group.size()*6-6,
-                        k_group.size()-1,
-                        k_group.size()
-                    ],
-                    rng
-                );
+                let urs : URSValue<'a, E> = {
+                    match urs {
+                        URSSpec::Use(urs) => URSValue::Ref(urs),
+                        URSSpec::Generate(rng) =>
+                            URSValue::Value (
+                            URS::<E>::create
+                            (
+                                max_degree,
+                                vec!
+                                [
+                                    h_group.size(),
+                                    h_group.size() - x_group.size(),
+                                    h_group.size()*2-2,
+                                    h_group.size()-1,
+                                    k_group.size()*6-6,
+                                    k_group.size()-1,
+                                    k_group.size()
+                                ],
+                            rng ) )
+                    }
+                    /*
+                        URS::<E>::create
+                    (
+                        max_degree,
+                        vec!
+                        [
+                            h_group.size(),
+                            h_group.size() - x_group.size(),
+                            h_group.size()*2-2,
+                            h_group.size()-1,
+                            k_group.size()*6-6,
+                            k_group.size()-1,
+                            k_group.size()
+                        ],
+                        rng
+                    ); */
+                } ;
 
                 // compile the constraints
                 Ok(Index::<E>
                 {
                     compiled:
                     [
-                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, a)?,
-                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, b)?,
-                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, c)?,
+                        Compiled::<E>::compile(urs.get_ref(), h_group, k_group, b_group, a)?,
+                        Compiled::<E>::compile(urs.get_ref(), h_group, k_group, b_group, b)?,
+                        Compiled::<E>::compile(urs.get_ref(), h_group, k_group, b_group, c)?,
                     ],
                     fr_sponge_params,
                     fq_sponge_params,
@@ -190,7 +231,7 @@ impl<E: PairingEngine> Index<E>
                     k_group,
                     b_group,
                     x_group,
-                    urs,
+                    urs
                 })
             }
             (_,_,_,_) => Err(ProofError::EvaluationGroup)

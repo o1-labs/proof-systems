@@ -115,9 +115,11 @@ impl<E: PairingEngine> ProverProof<E>
             }
         }
 
+        let urs = index.urs.get_ref();
+
         let x_hat = 
             Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.x_group).interpolate();
-        let x_hat_comm = index.urs.exponentiate_sub_domain(&x_hat, ratio)?;
+        let x_hat_comm = urs.exponentiate_sub_domain(&x_hat, ratio)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.h_group).interpolate();
@@ -127,9 +129,9 @@ impl<E: PairingEngine> ProverProof<E>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = index.urs.commit(&w.clone())?;
-        let za_comm = index.urs.commit(&za.clone())?;
-        let zb_comm = index.urs.commit(&zb.clone())?;
+        let w_comm = urs.commit(&w.clone())?;
+        let za_comm = urs.commit(&za.clone())?;
+        let zb_comm = urs.commit(&zb.clone())?;
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -169,8 +171,8 @@ impl<E: PairingEngine> ProverProof<E>
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = index.urs.commit(&h1)?;
-        let g1_comm = index.urs.commit_with_degree_bound(&g1, index.h_group.size()-1)?;
+        let h1_comm = urs.commit(&h1)?;
+        let g1_comm = urs.commit_with_degree_bound(&g1, index.h_group.size()-1)?;
 
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&g1_comm.0);
@@ -185,8 +187,8 @@ impl<E: PairingEngine> ProverProof<E>
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
-        let h2_comm = index.urs.commit(&h2)?;
-        let g2_comm = index.urs.commit_with_degree_bound(&g2, index.h_group.size()-1)?;
+        let h2_comm = urs.commit(&h2)?;
+        let g2_comm = urs.commit_with_degree_bound(&g2, index.h_group.size()-1)?;
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
@@ -202,8 +204,8 @@ impl<E: PairingEngine> ProverProof<E>
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
-        let h3_comm = index.urs.commit(&h3)?;
-        let g3_comm = index.urs.commit_with_degree_bound(&g3, index.k_group.size()-1)?;
+        let h3_comm = urs.commit(&h3)?;
+        let g3_comm = urs.commit_with_degree_bound(&g3, index.k_group.size()-1)?;
 
         // absorb sigma3, g3, h3
         fq_sponge.absorb_fr(&sigma3);
@@ -271,7 +273,7 @@ impl<E: PairingEngine> ProverProof<E>
             g3_comm,
 
             // polynomial commitment batched opening proofs
-            proof1: index.urs.open
+            proof1: urs.open
             (
                 &vec!
                 [
@@ -284,7 +286,7 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 oracles.beta[0]
             )?,
-            proof2: index.urs.open
+            proof2: urs.open
             (
                 &vec!
                 [
@@ -294,7 +296,7 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 oracles.beta[1]
             )?,
-            proof3: index.urs.open
+            proof3: urs.open
             (
                 &vec!
                 [
