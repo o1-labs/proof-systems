@@ -27,6 +27,10 @@ impl<E: PairingEngine> URS<E>
     // empty default calback, use as <obj::URS<E>>::callback
     pub fn callback(_i: usize) {}
 
+    pub fn max_degree(&self) -> usize {
+        self.gp.len()
+    }
+
     // This function creates URS instance for circuits up to depth d
     //     depth: maximal depth of the supported circuits
     //     commitment degrees of the committed polynomials for supported circuits
