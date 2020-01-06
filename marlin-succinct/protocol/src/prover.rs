@@ -117,6 +117,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         let x_hat = 
             Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.x_group).interpolate();
+        let x_hat_comm = index.urs.exponentiate_sub_domain(&x_hat, ratio)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.h_group).interpolate();
@@ -136,7 +137,7 @@ impl<E: PairingEngine> ProverProof<E>
         // absorb previous proof context into the argument
         fq_sponge.absorb_fr(&E::Fr::one());
         // absorb the public input into the argument
-        fq_sponge.absorb_g(&index.urs.commit(&x_hat)?);
+        fq_sponge.absorb_g(& x_hat_comm);
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& w_comm);
         fq_sponge.absorb_g(& za_comm);

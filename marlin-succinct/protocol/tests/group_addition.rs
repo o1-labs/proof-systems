@@ -20,7 +20,7 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use circuits::index::Index;
+use circuits::index::{Index};
 use sprs::{CsMat, CsVecView};
 use oracle::poseidon::ArithmeticSpongeParams;
 use protocol::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
@@ -210,8 +210,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
+    let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
         Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
@@ -220,7 +221,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

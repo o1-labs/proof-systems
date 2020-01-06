@@ -5,7 +5,7 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 use rand_core::RngCore;
-use circuits::index::Index;
+use circuits::index::{VerifierIndex as Index};
 use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine};
@@ -176,15 +176,15 @@ impl<E: PairingEngine> ProverProof<E>
                 [
                     (proof.h3_comm, proof.evals.h3, None),
                     (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.k_group.size()-1))),
-                    (index.compiled[0].row_comm, proof.evals.row[0], None),
-                    (index.compiled[1].row_comm, proof.evals.row[1], None),
-                    (index.compiled[2].row_comm, proof.evals.row[2], None),
-                    (index.compiled[0].col_comm, proof.evals.col[0], None),
-                    (index.compiled[1].col_comm, proof.evals.col[1], None),
-                    (index.compiled[2].col_comm, proof.evals.col[2], None),
-                    (index.compiled[0].val_comm, proof.evals.val[0], None),
-                    (index.compiled[1].val_comm, proof.evals.val[1], None),
-                    (index.compiled[2].val_comm, proof.evals.val[2], None),
+                    (index.matrix_commitments[0].row, proof.evals.row[0], None),
+                    (index.matrix_commitments[1].row, proof.evals.row[1], None),
+                    (index.matrix_commitments[2].row, proof.evals.row[2], None),
+                    (index.matrix_commitments[0].col, proof.evals.col[0], None),
+                    (index.matrix_commitments[1].col, proof.evals.col[1], None),
+                    (index.matrix_commitments[2].col, proof.evals.col[2], None),
+                    (index.matrix_commitments[0].val, proof.evals.val[0], None),
+                    (index.matrix_commitments[1].val, proof.evals.val[1], None),
+                    (index.matrix_commitments[2].val, proof.evals.val[2], None),
                 ],
                 proof.proof3
             ));

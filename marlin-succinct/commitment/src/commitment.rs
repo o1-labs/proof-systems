@@ -67,9 +67,24 @@ impl<E: PairingEngine> URS<E>
         Ok((unshifted, shifted))
     }
 
+    pub fn exponentiate_sub_domain
+    (
+        &self,
+        plnm: &DensePolynomial<E::Fr>,
+        ratio : usize,
+    ) -> Result<E::G1Affine, ProofError>
+    {
+        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyExponentiate)}
+
+        Ok(VariableBaseMSM::multi_scalar_mul
+        (
+            &(0..plnm.len()).map(|i| self.gp[ratio * i]).collect::<Vec<_>>(),
+            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+        ).into_affine())
+    }
+
     // This function opens the polynomial commitment batch
-    //     polys_without_degree_bound: commited polynomials with no degree bound
-    //     polys_with_degree_bound: commited polynomials with degree bound
+    //     polys: commited polynomials with no degree bound
     //     mask: base field element masking value
     //     elm: base field element to open the commitment at
     //     RETURN: commitment opening proof
