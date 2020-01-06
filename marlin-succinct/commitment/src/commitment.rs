@@ -18,49 +18,53 @@ knowledge protocol:
 
 use oracle::rndoracle::ProofError;
 use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, PairingCurve, UniformRand, VariableBaseMSM};
+use std::collections::HashMap;
 use ff_fft::DensePolynomial;
 pub use super::urs::URS;
 use rand_core::RngCore;
 
 impl<E: PairingEngine> URS<E>
 {
-    // This function commits the polynomial against URS instance
-    //     plnm: polynomial to commit
-    //     max: maximal degree of the polynomial
-    //     RETURN: commitment group element
+    // This function commits a polynomial against URS instance
+    //     plnm: polynomial to commit to
+    //     RETURN: tuple of: unbounded commitment
     pub fn commit
     (
         &self,
         plnm: &DensePolynomial<E::Fr>,
-        max: usize,
     ) -> Result<E::G1Affine, ProofError>
     {
-        let d = self.gp.len();
-        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
-
-        Ok(VariableBaseMSM::multi_scalar_mul
-        (
-            &(0..plnm.len()).map(|i| self.gp[i + d - max]).collect::<Vec<_>>(),
-            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-        ).into_affine())
+        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyCommit)}
+        Ok (
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &self.gp[0..plnm.len()],
+                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+            ).into_affine() )
     }
 
-    // This function exponentiates a polynomial against URS instance
-    //     plnm: polynomial to exponentiate
-    //     RETURN: commitment group element
-    pub fn exponentiate
+    // This function commits a polynomial against URS instance
+    //     plnm: polynomial to commit to
+    //     max: maximal degree of the polynomial, if none , no degree bound
+    //     RETURN: tuple of: unbounded commitment, optional bounded commitment
+    pub fn commit_with_degree_bound
     (
         &self,
-        plnm: &DensePolynomial<E::Fr>
-    ) -> Result<E::G1Affine, ProofError>
+        plnm: &DensePolynomial<E::Fr>,
+        max: usize,
+    ) -> Result<(E::G1Affine, E::G1Affine), ProofError>
     {
-        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyExponentiate)}
+        let unshifted = self.commit(plnm)?;
 
-        Ok(VariableBaseMSM::multi_scalar_mul
+        let d = self.gp.len();
+        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
+        let shifted = VariableBaseMSM::multi_scalar_mul
         (
-            &(0..plnm.len()).map(|i| self.gp[i]).collect::<Vec<_>>(),
-            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-        ).into_affine())
+            &self.gp[d - max..plnm.len() + d - max],
+            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
+        ).into_affine();
+
+        Ok((unshifted, shifted))
     }
 
     pub fn exponentiate_sub_domain
@@ -79,61 +83,28 @@ impl<E: PairingEngine> URS<E>
         ).into_affine())
     }
 
-
-    // This function opens the polynomial commitment
+    // This function opens the polynomial commitment batch
+    //     polys: commited polynomials with no degree bound
+    //     mask: base field element masking value
     //     elm: base field element to open the commitment at
-    //     plnm: commited polynomial
     //     RETURN: commitment opening proof
     pub fn open
     (
         &self,
-        plnm: &DensePolynomial<E::Fr>,
-        elm: E::Fr
-    ) -> Result<E::G1Affine, ProofError>
-    {
-        // do polynomial division (F(x)-F(elm))/(x-elm)
-        self.exponentiate(&plnm.divide(elm))
-    }
-
-    // This function opens the polynomial commitment batch
-    //     plnms: batch of commited polynomials
-    //     mask: base field element masking value
-    //     elm: base field element to open the commitment at
-    //     RETURN: commitment opening proof
-    pub fn open_batch
-    (
-        &self,
-        plnms: &Vec<DensePolynomial<E::Fr>>,
+        polys: &Vec<DensePolynomial<E::Fr>>,
         mask: E::Fr,
         elm: E::Fr
     ) -> Result<E::G1Affine, ProofError>
     {
         let mut acc = DensePolynomial::<E::Fr>::zero();
-        let mut scale = mask;
+        let mut scale = E::Fr::one();
         
-        for x in plnms.iter()
+        for p in polys
         {
-            acc += &(x.scale(scale));
             scale *= &mask;
+            acc += &(p.scale(scale));
         }
-        self.exponentiate(&acc.divide(elm))
-    }
-
-    // This function updates the polynomial commitment opening batch with another opening proof
-    //     batch: polynomial commitment opening batch to update
-    //     proof: polynomial commitment opening proof to update with
-    //     mask: base field element masking value
-    //     index: update index
-    //     RETURN: updated commitment opening batch proof
-    pub fn update_batch
-    (
-        batch: E::G1Affine,
-        proof: E::G1Affine,
-        mask: E::Fr,
-        index: usize
-    ) -> E::G1Affine
-    {
-        (batch.into_projective() + &proof.mul(mask.pow(&[index as u64]))).into_affine()
+        self.commit(&acc.divide(elm))
     }
 
     // This function verifies the batch polynomial commitment proofs of vectors of polynomials
@@ -153,7 +124,7 @@ impl<E: PairingEngine> URS<E>
         <(
             E::Fr,
             E::Fr,
-            Vec<(E::G1Affine, E::Fr, usize)>,
+            Vec<(E::G1Affine, E::Fr, Option<(E::G1Affine, usize)>)>,
             E::G1Affine,
         )>>,
         rng: &mut dyn RngCore
@@ -161,6 +132,10 @@ impl<E: PairingEngine> URS<E>
     {
         let d = self.gp.len();
         let mut table = vec![];
+
+        // verify commitment opening proofs against unshifted commitments:
+        // e(prf, h^x) * e(g^eval * prf^(-chal), h^0)) = e(unshComm, h^0)
+
         let mut open_scalar = Vec::new();
         let mut open_point = Vec::new();
         let mut openy_scalar = Vec::new();
@@ -168,9 +143,7 @@ impl<E: PairingEngine> URS<E>
 
         for prf in batch.iter()
         {
-            let mut pcomm: Vec<Vec<(E::G1Affine, E::Fr)>> = vec![vec![]; prf[0].2.len()];
             let mut eval = E::Fr::zero();
-
             for x in prf.iter()
             {
                 let rnd = E::Fr::rand(rng);
@@ -181,10 +154,11 @@ impl<E: PairingEngine> URS<E>
                 let mut scale = x.1;
                 let mut v = E::Fr::zero();
                 
-                for (z, y) in x.2.iter().zip(pcomm.iter_mut())
+                for z in x.2.iter()
                 {
                     v += &(z.1 * &scale);
-                    y.push((z.0, rnd * &scale));
+                    openy_point.push(z.0);
+                    openy_scalar.push((-rnd * &scale).into_repr());
                     scale *= &x.1;
                 }
                 v *= &rnd;
@@ -192,23 +166,65 @@ impl<E: PairingEngine> URS<E>
             };
             openy_scalar.push(eval.into_repr());
             openy_point.push(self.gp[0]);
+        }
 
-            for (z, y) in prf[0].2.iter().zip(pcomm.iter_mut())
+        // verify shifted commitments against unshifted commitments:
+        // e(ushComm, h^0) = e(shComm, h^x^(max-d))
+
+        let mut shifted: HashMap<usize, Vec<(E::G1Affine, E::Fr)>> = HashMap::new();
+        for x1 in batch.iter()
+        {
+            for x2 in x1.iter()
             {
-                if !self.hn.contains_key(&(d-z.2)) {return false}
-                table.push
-                ((
-                    VariableBaseMSM::multi_scalar_mul
-                    (
-                        &y.iter().map(|p| p.0).collect::<Vec<_>>(),
-                        &y.iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
-                    ).into_affine().prepare(),
-                    (-self.hn[&(d-z.2)]).prepare()
-                ));
+                for x3 in x2.2.iter()
+                {
+                    match x3.2
+                    {
+                        Some((p, m)) =>
+                        {
+                            let rnd = E::Fr::rand(rng);
+                            openy_point.push(x3.0);
+                            openy_scalar.push(rnd.into_repr());
+                            if !shifted.contains_key(&m) {shifted.insert(m, Vec::new());}
+                            shifted.get_mut(&m).unwrap().push((p, rnd))
+                        }
+                        None => continue
+                    }        
+                }
             }
         }
-        table.push((VariableBaseMSM::multi_scalar_mul(&open_point, &open_scalar).into_affine().prepare(), self.hx.prepare()));
-        table.push((VariableBaseMSM::multi_scalar_mul(&openy_point, &openy_scalar).into_affine().prepare(), E::G2Affine::prime_subgroup_generator().prepare()));
+
+        for max in shifted.keys()
+        {
+            if !self.hn.contains_key(&(d-max)) {return false}
+            table.push
+            ((
+                VariableBaseMSM::multi_scalar_mul
+                (
+                    &shifted[max].iter().map(|p| p.0).collect::<Vec<_>>(),
+                    &shifted[max].iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
+                ).into_affine().prepare(),
+                (-self.hn[&(d-max)]).prepare()
+            ));
+        }
+        table.push
+        ((
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &open_point,
+                &open_scalar
+            ).into_affine().prepare(),
+            self.hx.prepare()
+        ));
+        table.push
+        ((
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &openy_point,
+                &openy_scalar
+            ).into_affine().prepare(),
+            E::G2Affine::prime_subgroup_generator().prepare()
+        ));
     
         let x: Vec<(&<E::G1Affine as PairingCurve>::Prepared, &<E::G2Affine as PairingCurve>::Prepared)> = table.iter().map(|x| (&x.0, &x.1)).collect();
         E::final_exponentiation(&E::miller_loop(&x)).unwrap() == E::Fqk::one()

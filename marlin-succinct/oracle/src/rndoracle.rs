@@ -14,6 +14,7 @@ pub enum ProofError
     WitnessCsInconsistent,
     PolyDivision,
     PolyCommit,
+    PolyCommitWithBound,
     PolyExponentiate,
     ProofCreation,
     ProofVerification,
