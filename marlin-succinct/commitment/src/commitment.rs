@@ -130,7 +130,6 @@ impl<E: PairingEngine> URS<E>
         rng: &mut dyn RngCore
     ) -> bool
     {
-        let d = self.gp.len();
         let mut table = vec![];
 
         // verify commitment opening proofs against unshifted commitments:
@@ -196,7 +195,7 @@ impl<E: PairingEngine> URS<E>
 
         for max in shifted.keys()
         {
-            if !self.hn.contains_key(&(d-max)) {return false}
+            if !self.hn.contains_key(&(self.max_degree-max)) {return false}
             table.push
             ((
                 VariableBaseMSM::multi_scalar_mul
@@ -204,7 +203,7 @@ impl<E: PairingEngine> URS<E>
                     &shifted[max].iter().map(|p| p.0).collect::<Vec<_>>(),
                     &shifted[max].iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
                 ).into_affine().prepare(),
-                (-self.hn[&(d-max)]).prepare()
+                (-self.hn[&(self.max_degree-max)]).prepare()
             ));
         }
         table.push

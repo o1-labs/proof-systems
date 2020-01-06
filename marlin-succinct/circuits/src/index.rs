@@ -162,7 +162,8 @@ impl<'a, E: PairingEngine> Index<'a, E>
                 // TODO: We just need (beta^{N - (h_group.size() - 1)}) and (beta^{N - (k_group.size() - 1)})
                 hn : self.urs.get_ref().hn.clone(),
                 hx: self.urs.get_ref().hx,
-                prf: self.urs.get_ref().prf
+                prf: self.urs.get_ref().prf,
+                max_degree: self.urs.get_ref().max_degree(),
             }
         };
 

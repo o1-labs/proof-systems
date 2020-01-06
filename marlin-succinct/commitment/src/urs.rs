@@ -16,6 +16,7 @@ macro_rules! pairing_check
 
 pub struct URS<E: PairingEngine>
 {
+    pub max_degree: usize,
     pub gp: Vec<E::G1Affine>, // g^(x^i) for 0 <= i < d
     pub hn: HashMap<usize, E::G2Affine>, // h^(x^-i) for 0 <= i < d
     pub hx: E::G2Affine,
@@ -89,7 +90,8 @@ impl<E: PairingEngine> URS<E>
             hn: hnh,
             gp: gp.into_iter().map(|e| e.into_affine()).collect(),
             prf: E::G1Affine::from(gx),
-            hx: E::G2Affine::from(hx)
+            hx: E::G2Affine::from(hx),
+            max_degree: depth
         }
     }
 
