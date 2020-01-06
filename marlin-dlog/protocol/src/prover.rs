@@ -38,19 +38,17 @@ pub struct ProverProof<G: AffineCurve>
     pub za_comm: G,
     pub zb_comm: G,
     pub h1_comm: G,
-    pub g1_comm: G,
+    pub g1_comm: (G, G),
     pub h2_comm: G,
-    pub g2_comm: G,
+    pub g2_comm: (G, G),
     pub h3_comm: G,
-    pub g3_comm: G,
+    pub g3_comm: (G, G),
 
     // batched commitment opening proofs
-    pub proof1: OpeningProof<G>,
-    pub proof2: OpeningProof<G>,
-    pub proof3: OpeningProof<G>,
+    pub proof: OpeningProof<G>,
 
     // polynomial evaluations
-    pub evals : ProofEvaluations<Fr<G>>,
+    pub evals: [ProofEvaluations<Fr<G>>; 3],
 
     // prover's scalars
     pub sigma2: Fr<G>,
@@ -122,7 +120,7 @@ impl<G: AffineCurve> ProverProof<G>
         let x_hat = 
             Evaluations::<Fr<G>>::from_vec_and_domain(public.clone(), index.x_group).interpolate();
          // TODO: Should have no degree bound when we add the correct degree bound method
-        let x_hat_comm = index.srs.commit(&x_hat, 0)?;
+        let x_hat_comm = index.srs.commit_no_degree_bound(&x_hat)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<Fr<G>>::from_vec_and_domain(zv[0].to_vec(), index.h_group).interpolate();
@@ -132,9 +130,9 @@ impl<G: AffineCurve> ProverProof<G>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = index.srs.commit(&w.clone(), index.h_group.size() - index.x_group.size())?;
-        let za_comm = index.srs.commit(&za.clone(), index.h_group.size())?;
-        let zb_comm = index.srs.commit(&zb.clone(), index.h_group.size())?;
+        let w_comm = index.srs.commit_no_degree_bound(&w.clone())?;
+        let za_comm = index.srs.commit_no_degree_bound(&za.clone())?;
+        let zb_comm = index.srs.commit_no_degree_bound(&zb.clone())?;
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -174,11 +172,11 @@ impl<G: AffineCurve> ProverProof<G>
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = index.srs.commit(&h1, index.h_group.size()*2-2)?;
-        let g1_comm = index.srs.commit(&g1, index.h_group.size()-1)?;
+        let h1_comm = index.srs.commit_no_degree_bound(&h1)?;
+        let g1_comm = index.srs.commit_with_degree_bound(&g1, index.h_group.size()-1)?;
 
         // absorb H1, G1 polycommitments
-        fq_sponge.absorb_g(&g1_comm);
+        fq_sponge.absorb_g(&g1_comm.0);
         fq_sponge.absorb_g(&h1_comm);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
@@ -189,12 +187,12 @@ impl<G: AffineCurve> ProverProof<G>
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
-        let h2_comm = index.srs.commit(&h2, index.h_group.size()-1)?;
-        let g2_comm = index.srs.commit(&g2, index.h_group.size()-1)?;
+        let h2_comm = index.srs.commit_no_degree_bound(&h2)?;
+        let g2_comm = index.srs.commit_with_degree_bound(&g2, index.h_group.size()-1)?;
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
-        fq_sponge.absorb_g(&g2_comm);
+        fq_sponge.absorb_g(&g2_comm.0);
         fq_sponge.absorb_g(&h2_comm);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
@@ -205,12 +203,12 @@ impl<G: AffineCurve> ProverProof<G>
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
-        let h3_comm = index.srs.commit(&h3, index.k_group.size()*6-6)?;
-        let g3_comm = index.srs.commit(&g3, index.k_group.size()-1)?;
+        let h3_comm = index.srs.commit_no_degree_bound(&h3)?;
+        let g3_comm = index.srs.commit_with_degree_bound(&g3, index.k_group.size()-1)?;
 
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&sigma3);
-        fq_sponge.absorb_g(&g3_comm);
+        fq_sponge.absorb_g(&g3_comm.0);
         fq_sponge.absorb_g(&h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
@@ -222,38 +220,47 @@ impl<G: AffineCurve> ProverProof<G>
             s
         };
 
-        let evals = ProofEvaluations {
-            // polynomial evaluations
-            w: w.evaluate(oracles.beta[0]),
-            za: za.evaluate(oracles.beta[0]),
-            zb: zb.evaluate(oracles.beta[0]),
-            h1: h1.evaluate(oracles.beta[0]),
-            g1: g1.evaluate(oracles.beta[0]),
-            h2: h2.evaluate(oracles.beta[1]),
-            g2: g2.evaluate(oracles.beta[1]),
-            h3: h3.evaluate(oracles.beta[2]),
-            g3: g3.evaluate(oracles.beta[2]),
-            row:
-            [
-                index.compiled[0].row.evaluate(oracles.beta[2]),
-                index.compiled[1].row.evaluate(oracles.beta[2]),
-                index.compiled[2].row.evaluate(oracles.beta[2]),
-            ],
-            col:
-            [
-                index.compiled[0].col.evaluate(oracles.beta[2]),
-                index.compiled[1].col.evaluate(oracles.beta[2]),
-                index.compiled[2].col.evaluate(oracles.beta[2]),
-            ],
-            val:
-            [
-                index.compiled[0].val.evaluate(oracles.beta[2]),
-                index.compiled[1].val.evaluate(oracles.beta[2]),
-                index.compiled[2].val.evaluate(oracles.beta[2]),
-            ],
+        let evals =
+        {
+            let evl = (0..3).map
+            (
+                |i| ProofEvaluations
+                {
+                    w  : w.evaluate(oracles.beta[i]),
+                    za : za.evaluate(oracles.beta[i]),
+                    zb : zb.evaluate(oracles.beta[i]),
+                    h1 : h1.evaluate(oracles.beta[i]),
+                    g1 : g1.evaluate(oracles.beta[i]),
+                    h2 : h2.evaluate(oracles.beta[i]),
+                    g2 : g2.evaluate(oracles.beta[i]),
+                    h3 : h3.evaluate(oracles.beta[i]),
+                    g3 : g3.evaluate(oracles.beta[i]),
+                    row:
+                    [
+                        index.compiled[0].row.evaluate(oracles.beta[i]),
+                        index.compiled[1].row.evaluate(oracles.beta[i]),
+                        index.compiled[2].row.evaluate(oracles.beta[i]),
+                    ],
+                    col:
+                    [
+                        index.compiled[0].col.evaluate(oracles.beta[i]),
+                        index.compiled[1].col.evaluate(oracles.beta[i]),
+                        index.compiled[2].col.evaluate(oracles.beta[i]),
+                    ],
+                    val:
+                    [
+                        index.compiled[0].val.evaluate(oracles.beta[i]),
+                        index.compiled[1].val.evaluate(oracles.beta[i]),
+                        index.compiled[2].val.evaluate(oracles.beta[i]),
+                    ],
+                }
+            ).collect::<Vec<_>>();
+            [evl[0].clone(), evl[1].clone(), evl[2].clone()]
         };
 
-        oracles.batch = fr_sponge.challenge();
+        fr_sponge.absorb_evaluations(&x_hat.evaluate(oracles.beta[0]), &evals[0]);
+        oracles.polys = fr_sponge.challenge();
+        oracles.evals = fr_sponge.challenge();
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -271,54 +278,40 @@ impl<G: AffineCurve> ProverProof<G>
             h3_comm,
             g3_comm,
 
-            evals,
-
             // polynomial commitment batched opening proofs
-            proof1: index.srs.open::<EFqSponge>
+            proof: index.srs.open::<EFqSponge>
             (
                 &vec!
                 [
-                    (za.clone(), index.h_group.size()),
-                    (zb.clone(), index.h_group.size()),
-                    (w.clone(), index.h_group.size() - index.x_group.size()),
-                    (h1.clone(), index.h_group.size()*2-2),
-                    (g1.clone(), index.h_group.size()-1),
+                    (za.clone(), None),
+                    (zb.clone(), None),
+                    (w.clone(),  None),
+                    (h1.clone(), None),
+                    (g1.clone(), Some(index.h_group.size()-1)),
+
+                    (h2.clone(), None),
+                    (g2.clone(), Some(index.h_group.size()-1)),
+
+                    (h3.clone(), None),
+                    (g3.clone(), Some(index.k_group.size()-1)),
+                    (index.compiled[0].row.clone(), None),
+                    (index.compiled[1].row.clone(), None),
+                    (index.compiled[2].row.clone(), None),
+                    (index.compiled[0].col.clone(), None),
+                    (index.compiled[1].col.clone(), None),
+                    (index.compiled[2].col.clone(), None),
+                    (index.compiled[0].val.clone(), None),
+                    (index.compiled[1].val.clone(), None),
+                    (index.compiled[2].val.clone(), None),
                 ],
-                oracles.batch,
-                oracles.beta[0],
+                &oracles.beta.to_vec(),
+                oracles.polys,
+                oracles.evals,
                 &index.fq_sponge_params.clone(),
             )?,
-            proof2: index.srs.open::<EFqSponge>
-            (
-                &vec!
-                [
-                    (h2.clone(), index.h_group.size()-1),
-                    (g2.clone(), index.h_group.size()-1)
-                ],
-                oracles.batch,
-                oracles.beta[1],
-                &index.fq_sponge_params.clone(),
-            )?,
-            proof3: index.srs.open::<EFqSponge>
-            (
-                &vec!
-                [
-                    (h3.clone(), index.k_group.size()*6-6),
-                    (g3.clone(), index.k_group.size()-1),
-                    (index.compiled[0].row.clone(), index.k_group.size()),
-                    (index.compiled[1].row.clone(), index.k_group.size()),
-                    (index.compiled[2].row.clone(), index.k_group.size()),
-                    (index.compiled[0].col.clone(), index.k_group.size()),
-                    (index.compiled[1].col.clone(), index.k_group.size()),
-                    (index.compiled[2].col.clone(), index.k_group.size()),
-                    (index.compiled[0].val.clone(), index.k_group.size()),
-                    (index.compiled[1].val.clone(), index.k_group.size()),
-                    (index.compiled[2].val.clone(), index.k_group.size()),
-                ],
-                oracles.batch,
-                oracles.beta[2],
-                &index.fq_sponge_params.clone(),
-            )?,
+
+            // polynomial evaluations
+            evals,
 
             // prover's scalars
             sigma2,
@@ -503,7 +496,8 @@ pub struct RandomOracles<F: Field>
     pub eta_a: F,
     pub eta_b: F,
     pub eta_c: F,
-    pub batch: F,
+    pub polys: F,
+    pub evals: F,
     pub beta: [F; 3],
 }
 
@@ -517,7 +511,8 @@ impl<F: Field> RandomOracles<F>
             eta_a: F::zero(),
             eta_b: F::zero(),
             eta_c: F::zero(),
-            batch: F::zero(),
+            polys: F::zero(),
+            evals: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
         }
     }

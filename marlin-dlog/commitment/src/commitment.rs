@@ -10,12 +10,12 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
+use oracle::FqSponge;
 use rand_core::RngCore;
 use oracle::rndoracle::{ArithmeticSpongeParams, ProofError};
-use oracle::FqSponge;
 use algebra::{UniformRand, Field, PrimeField, AffineCurve, ProjectiveCurve, VariableBaseMSM};
 use ff_fft::DensePolynomial;
-pub use super::srs::SRS;
+use super::srs::SRS;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -24,32 +24,55 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 pub struct OpeningProof<G: AffineCurve>
 {
     pub lr: Vec<(G, G)>,    // vector of rounds of L & R commitments
-    pub s: Fr<G>,                               // folded witness value revealed
+    pub s: Fr<G>,           // folded witness value revealed
 }
 
 impl<G: AffineCurve> SRS<G>
 {
-    // This function commits the polynomial against SRS instance
+    // This function commits the polynomial against SRS instance with degree bound
     //     plnm: polynomial to commit
     //     max: maximal degree of the polynomial
-    //     RETURN: commitment group element
-    pub fn commit
+    //     RETURN: commitment group elements: unshifted, shifted
+    pub fn commit_with_degree_bound
     (
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: usize,
-    ) -> Result<G, ProofError>
+    ) -> Result<(G, G), ProofError>
     {
         let d = self.g.len();
         if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommit)}
 
+        Ok
+        ((
+            self.commit_no_degree_bound(&plnm)?,
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &self.g[d - max..plnm.len() + d - max],
+                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+            ).into_affine()
+        ))
+    }
+
+    // This function commits the polynomial against SRS instance without degree bound
+    //     plnm: polynomial to commit
+    //     RETURN: commitment group element
+    pub fn commit_no_degree_bound
+    (
+        &self,
+        plnm: &DensePolynomial<Fr<G>>,
+    ) -> Result<G, ProofError>
+    {
+        if self.g.len() < plnm.coeffs.len() {return Err(ProofError::PolyCommit)}
+
         Ok(VariableBaseMSM::multi_scalar_mul
         (
-            &self.g[d - max..plnm.len() + d - max],
+            &self.g[0..plnm.coeffs.len()],
             &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
         ).into_affine())
     }
 
+    // This function runs rounds of commitment opening recursion
     fn recursion
         <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>
     (
@@ -66,15 +89,20 @@ impl<G: AffineCurve> SRS<G>
 
         // find the nearest 2^
         let mut length = 1;
-        while length < a.coeffs.len() {length <<= 1}
+        while length < srs.g.len() {length <<= 1}
         length >>= 1;
 
         // slice the polynomials into chunks
-        let a =
-        [
+        let a = if a.len() > length
+        {[
             DensePolynomial::<Fr<G>>::from_coefficients_vec(a.coeffs[0..length].to_vec()),
             DensePolynomial::<Fr<G>>::from_coefficients_vec(a.coeffs[length..].to_vec())
-        ];
+        ]}
+        else
+        {[
+            DensePolynomial::<Fr<G>>::from_coefficients_vec(a.coeffs.clone()),
+            DensePolynomial::<Fr<G>>::zero()
+        ]};
         let b =
         [
             DensePolynomial::<Fr<G>>::from_coefficients_vec(b.coeffs[0..length].to_vec()),
@@ -86,9 +114,10 @@ impl<G: AffineCurve> SRS<G>
 
         // compute L & R points
 
-        let mut points = g[1].clone();
+        let min = if g[1].len() < a[0].len() {g[1].len()} else {a[0].len()};
+        let mut points = g[1][0..min].to_vec();
         points.push(srs.s);
-        let mut scalars = (0..g[1].len()).map(|i| a[0][i].into_repr()).collect::<Vec<_>>();
+        let mut scalars = (0..min).map(|i| a[0][i].into_repr()).collect::<Vec<_>>();
         scalars.push(a[0].dot(&b[1]).into_repr());
 
         let l = VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine();
@@ -101,8 +130,8 @@ impl<G: AffineCurve> SRS<G>
         let r = VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine();
 
         // absorb L & R points into the argument
-        sponge.absorb_g(& l);
-        sponge.absorb_g(& r);
+        sponge.absorb_g(&l);
+        sponge.absorb_g(&r);
         // sample challenge oracle
         let xp = sponge.challenge();
         let xn = xp.inverse().unwrap();
@@ -125,42 +154,59 @@ impl<G: AffineCurve> SRS<G>
     }
 
     // This function opens polynomial commitments in batch
-    //     plnms: batch of polynomials to open commitments for with max degrees
-    //     mask: scaling factor for opening commitments in batch
-    //     elm: base field element to open the commitment at
+    //     plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    //     elm: evaluation point vector to open the commitments at
+    //     polyscale: polynomial scaling factor for opening commitments in batch
+    //     evalscale: eval scaling factor for opening commitments in batch
     //     oracle_params: parameters for the random oracle argument
     //     RETURN: commitment opening proof
     pub fn open
         <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>
     (
         &self,
-        plnms: &Vec<(DensePolynomial<Fr<G>>, usize)>,
-        mask: Fr<G>,
-        elm: Fr<G>,
-        oracle_params: &ArithmeticSpongeParams::<Fq<G>>
+        plnms: &Vec<(DensePolynomial<Fr<G>>, Option<usize>)>,   // vector of polynomial with optional degree bound
+        elm: &Vec<Fr<G>>,                                       // vector of evaluation points
+        polyscale: Fr<G>,                                       // scaling factor for polynoms
+        evalscale: Fr<G>,                                       // scaling factor for evaluation point powers
+        oracle_params: &ArithmeticSpongeParams::<Fq<G>>         // parameters for the random oracle argument
     ) -> Result<OpeningProof<G>, ProofError>
     {
-
+        let d = self.g.len();
         let mut p = DensePolynomial::<Fr<G>>::zero();
         
-        // randomise/scale the polynoms in accumulator shifted to the end of SRS
-        let max = plnms.iter().map(|p| p.1).max().map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
-        let dim = plnms.iter().map(|p| p.0.coeffs.len()).max().map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
-        if dim > max {return Err(ProofError::PolyCommit)}
-
+        // randomise/scale the polynoms in accumulator shifted, if bounded, to the end of SRS
         let mut scale = Fr::<G>::one();
         for x in plnms.iter()
         {
-            scale *= &mask;
-            p += &(x.0.shiftr(max-x.1).scale(scale));
+            match x.1
+            {
+                Some(m) =>
+                {
+                    scale *= &polyscale;
+                    // mixing in the shifted polynom since degree is bounded
+                    p += &(x.0.shiftr(d-m).scale(scale));
+                }
+                _ => {}
+            }
+            scale *= &polyscale;
+            // always mixing in the unshifted polynom
+            p += &(x.0.scale(scale));
         }
 
-        let mut acc = Fr::<G>::one();
-        let b = DensePolynomial::<Fr<G>>::from_coefficients_vec((0..p.coeffs.len()).map(|_| {let r = acc; acc *= &elm; r}).collect::<Vec<_>>());
+        // randomise/scale the eval powers
+        let mut scale = Fr::<G>::one();
+        let b = elm.iter().map
+        (
+            |elm|
+            {
+                let mut acc = Fr::<G>::one();
+                DensePolynomial::<Fr<G>>::from_coefficients_vec((0..d).map(|_| {let r = acc; acc *= &elm; r}).collect::<Vec<_>>())
+            }
+        ).fold(DensePolynomial::<Fr<G>>::zero(), |x, y| {scale *= &evalscale; &x + &y.scale(scale)});
+        
 
-        let d = self.g.len();
         let mut sponge = EFqSponge::new(oracle_params.clone());
-        match Self::recursion (&SRS::<G>{g:self.g[d - max..dim + d - max].to_vec(), s:self.s}, &p, &b, &mut sponge)
+        match Self::recursion (&self, &p, &b, &mut sponge)
         {
             Ok(proof) => Ok(OpeningProof::<G>{lr: proof.0, s: proof.1}),
             Err(err) => Err(err)
@@ -169,9 +215,10 @@ impl<G: AffineCurve> SRS<G>
 
     // This function verifies batch of batched polynomial commitment opening proofs
     //     batch: batch of batched polynomial commitment opening proofs
-    //          evaluation point
-    //          scaling factor for this batched openinig proof
-    //          batch/vector of polycommitments (opened in this batch), evaluations and max degrees
+    //          vector of evaluation points
+    //          polynomial scaling factor for this batched openinig proof
+    //          eval scaling factor for this batched openinig proof
+    //          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
     //          opening proof for this batched opening
     //     oracle_params: parameters for the random oracle argument
     //     randomness source context
@@ -182,15 +229,22 @@ impl<G: AffineCurve> SRS<G>
         &self,
         batch: &Vec
         <(
-            Fr<G>,
-            Fr<G>,
-            Vec<(G, Fr<G>, usize)>,
-            OpeningProof<G>,
+            Vec<Fr<G>>,             // vector of evaluation points
+            Fr<G>,                  // scaling factor for polynoms
+            Fr<G>,                  // scaling factor for evaluation point powers
+            Vec
+            <(
+                G,                  // unshifted polycommitment
+                Vec<Fr<G>>,         // vector of evaluations
+                Option<(G, usize)>  // shifted polycommitment and degree bound
+            )>,
+            OpeningProof<G>,        // batched opening proof
         )>,
         oracle_params: &ArithmeticSpongeParams::<Fq<G>>,
         rng: &mut dyn RngCore
     ) -> bool
     {
+        let d = self.g.len();
         let mut points = Vec::new();
         let mut scalars = Vec::new();
 
@@ -201,7 +255,7 @@ impl<G: AffineCurve> SRS<G>
 
             // sample random oracles
             let mut fq_sponge = EFqSponge::new(oracle_params.clone());
-            let mut xp = (proof.3).lr.iter().map
+            let mut xp = (proof.4).lr.iter().map
             (
                 |(l, r)|
                 {
@@ -214,35 +268,77 @@ impl<G: AffineCurve> SRS<G>
             let mut xn = xp.clone();
             algebra::fields::batch_inversion::<Fr<G>>(&mut xn);
             
-            let length = (2 as usize).pow((proof.3).lr.len() as u32);
+            let length = (2 as usize).pow((proof.4).lr.len() as u32);
 
-            // precompute powers of x
-            let mut acc = Fr::<G>::one();
-            let b = (0..length).map(|_| {let r = acc; acc *= &proof.0; r}).collect::<Vec<_>>();
+            // precompute randomised/scaled eval power linear combinations
+            let b = proof.0.iter().map
+            (
+                |elm|
+                {
+                    let mut acc = Fr::<G>::one();
+                    DensePolynomial::<Fr<G>>::from_coefficients_vec((0..length).map(|_| {let r = acc; acc *= &elm; r}).collect::<Vec<_>>())
+                }
+            ).collect::<Vec<DensePolynomial<Fr<G>>>>();
 
             // compute <x^, s> logarithmically, adjust later for the padding
-            let mut bf = (0..xp.len()).map(|i| xp[i] * &b[(2 as usize).pow(i as u32)] + &xn[i])
-                .fold(Fr::<G>::one(), |x, y| x * &y);
+            let mut scale = Fr::<G>::one();
+            let mut bf = b.iter().map
+            (
+                |bb| 
+                {
+                    (0..xp.len())
+                        .map(|i| xp[i] * &bb.coeffs[(2 as usize).pow(i as u32)] + &xn[i])
+                        .fold(Fr::<G>::one(), |x, y| x * &y)
+                }
+            ).fold(Fr::<G>::zero(), |x, y| {scale *= &proof.2; x + &(y * &scale)});
+
+            let mut scale = Fr::<G>::one();
+            let b = b.iter().fold(DensePolynomial::<Fr<G>>::zero(), |x, y| {scale *= &proof.2; &x + &y.scale(scale)}).coeffs;
 
             let mut s: Vec<Fr<G>> = vec![Fr::<G>::zero(); length];
-            s[0] = xp.iter().map(|s| s).fold(Fr::<G>::one(), |x, y| x * y).inverse().unwrap();
+            s[0] = xp.iter().fold(Fr::<G>::one(), |x, y| x * y).inverse().unwrap();
 
             let xp = xp.iter().map(|s| s.square()).collect::<Vec<_>>();
             let mut xn = xp.clone();
             algebra::fields::batch_inversion::<Fr<G>>(&mut xn);
 
             // prepare multiexp array for L^x^2*P*R^x^-2
-            let max = proof.2.iter().map(|p| p.2).max().unwrap();
-            let mut scale = Fr::<G>::one();
-            for i in 0..proof.2.len()
+            let mut scale1 = Fr::<G>::one();
+            for i in 0..proof.3.len()
             {
-                scale *= &proof.1;
-                points.push(-proof.2[i].0);
-                scalars.push((scale * &rnd).into_repr());
+                match proof.3[i].2
+                {
+                    Some(c) =>
+                    {
+                        scale1 *= &proof.1;
+                        // mixing in the shifted polynom since degree is bounded
+                        points.push(-c.0);
+                        scalars.push((scale1 * &rnd).into_repr());
+                        points.push(-self.s);
+                        let mut scale2 = Fr::<G>::one();
+                        scalars.push
+                        ((
+                            (0..proof.3[i].1.len())
+                                .map(|j| proof.3[i].1[j] * &proof.0[j].pow([(d-c.1) as u64]))
+                                .fold(Fr::<G>::zero(), |x, y| {scale2 *= &proof.2; x + &(scale2 * &y)})
+                            * &rnd * &scale1
+                        ).into_repr());
+                    }
+                    _ => {}
+                }
+                scale1 *= &proof.1;
+                // always mixing in the unshifted polynom
+                points.push(-proof.3[i].0);
+                scalars.push((scale1 * &rnd).into_repr());
                 points.push(-self.s);
-                scalars.push((proof.2[i].1 * &rnd * &scale * &proof.0.pow([(max - proof.2[i].2) as u64])).into_repr());
+                let mut scale2 = Fr::<G>::one();
+                scalars.push
+                ((
+                    proof.3[i].1.iter().fold(Fr::<G>::zero(), |x, y| {scale2 *= &proof.2; x + &(scale2 * y)})
+                    * &rnd * &scale1
+                ).into_repr());
             }
-            for (lr, (p, n)) in (proof.3).lr.iter().zip(xp.iter().rev().zip(xn.iter().rev()))
+            for (lr, (p, n)) in (proof.4).lr.iter().zip(xp.iter().rev().zip(xn.iter().rev()))
             {
                 points.push(-lr.0);
                 scalars.push((*p * &rnd).into_repr());
@@ -261,14 +357,17 @@ impl<G: AffineCurve> SRS<G>
             }
 
             // adjust bf for the padding
-            bf -= &(max..s.len()).map(|i| s[i] * &b[i]).fold(Fr::<G>::zero(), |x, y| x + &y);
+            bf -= &(d..s.len())
+                .map(|i| s[i] * &b[i])
+                .fold(Fr::<G>::zero(), |x, y| x + &y);
 
             // prepare multiexp array for <G, s>
-            let d = self.g.len();
             points.push(self.s);
-            scalars.push(((proof.3).s * &rnd * &bf).into_repr());
-            points.extend(self.g[d - max..].to_vec());
-            scalars.extend((0..self.g[d - max..].len()).map(|i| ((proof.3).s * &rnd * &s[i]).into_repr()).collect::<Vec<_>>());
+            scalars.push(((proof.4).s * &rnd * &bf).into_repr());
+            points.extend(self.g.clone());
+            scalars.extend((0..d)
+                .map(|i| ((proof.4).s * &rnd * &s[i]).into_repr())
+                .collect::<Vec<_>>());
         }
         // verify the equation
         VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()

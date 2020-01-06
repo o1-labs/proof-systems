@@ -90,9 +90,9 @@ impl<G: AffineCurve> Compiled<G>
         Ok(Compiled::<G>
         {
             constraints,
-            row_comm: srs.commit(&row, k_group.size())?,
-            col_comm: srs.commit(&col, k_group.size())?,
-            val_comm: srs.commit(&val, k_group.size())?,
+            row_comm: srs.commit_no_degree_bound(&row)?,
+            col_comm: srs.commit_no_degree_bound(&col)?,
+            val_comm: srs.commit_no_degree_bound(&val)?,
             row_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&val), b_group),
