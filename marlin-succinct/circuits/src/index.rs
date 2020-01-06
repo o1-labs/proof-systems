@@ -221,67 +221,6 @@ impl<'a, E: PairingEngine> Index<'a, E>
             domains,
             urs
         })
-
-        /*
-        match
-        (
-            EvaluationDomain::<E::Fr>::new(h_group_size),
-            EvaluationDomain::<E::Fr>::new(k_group_size),
-            EvaluationDomain::<E::Fr>::new(k_group_size * 6 - 6),
-            EvaluationDomain::<E::Fr>::new(x_group_size),
-        )
-        {
-            (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
-            {
-                // maximal degree of the committed polynomials
-                let max_degree = *[3*h_group.size()-1, b_group.size()].iter().max()
-                    .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
-     
-                // compute public setup
-                let urs : URSValue<'a, E> = {
-                    match urs {
-                        URSSpec::Use(urs) => URSValue::Ref(urs),
-                        URSSpec::Generate(rng) =>
-                            URSValue::Value (
-                            URS::<E>::create
-                            (
-                                max_degree,
-                                vec!
-                                [
-                                    h_group.size(),
-                                    h_group.size() - x_group.size(),
-                                    h_group.size()*2-2,
-                                    h_group.size()-1,
-                                    k_group.size()*6-6,
-                                    k_group.size()-1,
-                                    k_group.size()
-                                ],
-                            rng ) )
-                    }
-                } ;
-
-                // compile the constraints
-                Ok(Index::<E>
-                {
-                    compiled:
-                    [
-                        Compiled::<E>::compile(urs.get_ref(), h_group, k_group, b_group, a)?,
-                        Compiled::<E>::compile(urs.get_ref(), h_group, k_group, b_group, b)?,
-                        Compiled::<E>::compile(urs.get_ref(), h_group, k_group, b_group, c)?,
-                    ],
-                    fr_sponge_params,
-                    fq_sponge_params,
-                    public_inputs,
-                    max_degree,
-                    h_group,
-                    k_group,
-                    b_group,
-                    x_group,
-                    urs
-                })
-            }
-            (_,_,_,_) => Err(ProofError::EvaluationGroup)
-        } */
     }
 
     // This function verifies the consistency of the wire assignements (witness) against the constraints
