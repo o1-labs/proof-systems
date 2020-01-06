@@ -64,28 +64,31 @@ pub enum URSSpec <'a, 'b, E:PairingEngine>{
 }
 
 impl<'a, E: PairingEngine> URSValue<'a, E> {
+    pub fn generate<'b>(
+        ds: EvaluationDomains<E>,
+        rng : &'b mut dyn RngCore) -> URS<E> {
+        let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
+
+        URS::<E>::create
+        (
+            max_degree,
+            vec!
+            [
+                ds.h.size(),
+                ds.h.size() - ds.x.size(),
+                ds.h.size()*2-2,
+                ds.h.size()-1,
+                ds.k.size()*6-6,
+                ds.k.size()-1,
+                ds.k.size()
+            ],
+        rng )
+    }
+
     pub fn create<'b>(ds: EvaluationDomains<E>, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
         match spec {
             URSSpec::Use(x) => URSValue::Ref(x),
-            URSSpec::Generate(rng) => {
-                let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
-
-                URSValue::Value (
-                URS::<E>::create
-                (
-                    max_degree,
-                    vec!
-                    [
-                        ds.h.size(),
-                        ds.h.size() - ds.x.size(),
-                        ds.h.size()*2-2,
-                        ds.h.size()-1,
-                        ds.k.size()*6-6,
-                        ds.k.size()-1,
-                        ds.k.size()
-                    ],
-                rng ) )
-            }
+            URSSpec::Generate(rng) => URSValue::Value(Self::generate(ds, rng))
         }
     }
 }
