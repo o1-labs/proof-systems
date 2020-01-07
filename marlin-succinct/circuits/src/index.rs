@@ -163,7 +163,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
                 hn : self.urs.get_ref().hn.clone(),
                 hx: self.urs.get_ref().hx,
                 prf: self.urs.get_ref().prf,
-                max_degree: self.urs.get_ref().max_degree(),
+                depth: self.urs.get_ref().max_degree(),
             }
         };
 
