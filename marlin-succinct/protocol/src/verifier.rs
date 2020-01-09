@@ -26,7 +26,7 @@ impl<E: PairingEngine> ProverProof<E>
     ) -> bool
     {
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size])) *
+        (oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[0].pow([index.domains.h.size])) *
             &(0..3).map
             (
                 |i|
@@ -43,15 +43,15 @@ impl<E: PairingEngine> ProverProof<E>
         ==
         (oracles.alpha - &oracles.beta[0]) *
         &(
-            self.evals.h1 * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            self.evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
             &(oracles.beta[0] * &self.evals.g1) +
-            &(self.sigma2 * &index.h_group.size_as_field_element *
-            &(self.evals.w * &index.x_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            // interpolating/evaluating public input over small domain x_group
+            &(self.sigma2 * &index.domains.h.size_as_field_element *
+            &(self.evals.w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            // interpolating/evaluating public input over small domain domains.x
             // TODO: investigate which of the below is faster
-            &Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate().evaluate(oracles.beta[0])))
+            &Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate().evaluate(oracles.beta[0])))
             /*
-            &index.x_group.evaluate_all_lagrange_coefficients(oracles.beta[0])
+            &index.domains.x.evaluate_all_lagrange_coefficients(oracles.beta[0])
             .iter()
             .zip(self.public.iter())
             .map(|(l, x)| *l * x)
@@ -71,11 +71,11 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
-        self.sigma3 * &index.k_group.size_as_field_element *
-            &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[1].pow([index.h_group.size])))
+        self.sigma3 * &index.domains.k.size_as_field_element *
+            &((oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[1].pow([index.domains.h.size])))
         ==
         (oracles.alpha - &oracles.beta[1]) * &(self.evals.h2 *
-            &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]) +
+            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]) +
             &self.sigma2 + &(self.evals.g2 * &oracles.beta[1]))
     }
 
@@ -105,10 +105,10 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold(E::Fr::zero(), |x, y| x + &y);
 
-        index.k_group.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals.h3
+        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals.h3
         ==
-        index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) *
-            &(index.h_group.evaluate_vanishing_polynomial(oracles.beta[1])) *
+        index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
+            &(index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1])) *
             &acc - &((oracles.beta[2] * &self.evals.g3 + &self.sigma3) *
             &crb[0] * &crb[1] * &crb[2])
     }
@@ -153,7 +153,7 @@ impl<E: PairingEngine> ProverProof<E>
                     (proof.zb_comm,     proof.evals.zb, None),
                     (proof.w_comm,      proof.evals.w,  None),
                     (proof.h1_comm,     proof.evals.h1, None),
-                    (proof.g1_comm.0,   proof.evals.g1, Some((proof.g1_comm.1, index.h_group.size()-1))),
+                    (proof.g1_comm.0,   proof.evals.g1, Some((proof.g1_comm.1, index.domains.h.size()-1))),
                 ],
                 proof.proof1
             ));
@@ -164,7 +164,7 @@ impl<E: PairingEngine> ProverProof<E>
                 vec!
                 [
                     (proof.h2_comm,     proof.evals.h2, None),
-                    (proof.g2_comm.0,   proof.evals.g2, Some((proof.g2_comm.1, index.h_group.size()-1))),
+                    (proof.g2_comm.0,   proof.evals.g2, Some((proof.g2_comm.1, index.domains.h.size()-1))),
                 ],
                 proof.proof2
             ));
@@ -175,7 +175,7 @@ impl<E: PairingEngine> ProverProof<E>
                 vec!
                 [
                     (proof.h3_comm, proof.evals.h3, None),
-                    (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.k_group.size()-1))),
+                    (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.domains.k.size()-1))),
                     (index.matrix_commitments[0].row, proof.evals.row[0], None),
                     (index.matrix_commitments[1].row, proof.evals.row[1], None),
                     (index.matrix_commitments[2].row, proof.evals.row[2], None),
@@ -216,7 +216,7 @@ impl<E: PairingEngine> ProverProof<E>
         // absorb the public input into the argument
         let x_hat =
             // TODO: Cache this interpolated polynomial.
-            Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate();
+            Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate();
         fq_sponge.absorb_g(&index.urs.commit(&x_hat)?);
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& self.w_comm);

@@ -14,25 +14,98 @@ use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 
-pub struct Index<E: PairingEngine>
+pub enum URSValue<'a, E : PairingEngine> {
+    Value(URS<E>),
+    Ref(&'a URS<E>)
+}
+
+impl<'a, E : PairingEngine> URSValue<'a, E> {
+    pub fn get_ref(&self) -> & URS<E> {
+        match self {
+            URSValue::Value(x) => &x,
+            URSValue::Ref(x) => x
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct EvaluationDomains<E : PairingEngine> {
+    pub h: EvaluationDomain<E::Fr>,
+    pub k: EvaluationDomain<E::Fr>,
+    pub b: EvaluationDomain<E::Fr>,
+    pub x: EvaluationDomain<E::Fr>,
+}
+
+impl<E:PairingEngine> EvaluationDomains<E> {
+    fn create(
+        variables : usize,
+        public_inputs: usize,
+        nonzero_entries: usize) -> Option<Self> {
+
+        let h_group_size = 
+            EvaluationDomain::<E::Fr>::compute_size_of_domain(variables)?;
+        let x_group_size =
+            EvaluationDomain::<E::Fr>::compute_size_of_domain(public_inputs)?;
+        let k_group_size =
+            EvaluationDomain::<E::Fr>::compute_size_of_domain(nonzero_entries)?;
+
+        let h = EvaluationDomain::<E::Fr>::new(h_group_size)?;
+        let k = EvaluationDomain::<E::Fr>::new(k_group_size)?;
+        let b = EvaluationDomain::<E::Fr>::new(k_group_size * 6 - 6)?;
+        let x = EvaluationDomain::<E::Fr>::new(x_group_size)?;
+
+        Some (EvaluationDomains { h, k, b, x })
+    }
+}
+
+pub enum URSSpec <'a, 'b, E:PairingEngine>{
+    Use(&'a URS<E>),
+    Generate(&'b mut dyn RngCore)
+}
+
+impl<'a, E: PairingEngine> URSValue<'a, E> {
+    pub fn generate<'b>(
+        ds: EvaluationDomains<E>,
+        rng : &'b mut dyn RngCore) -> URS<E> {
+        let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
+
+        URS::<E>::create
+        (
+            max_degree,
+            vec!
+            [
+                ds.h.size(),
+                ds.h.size() - ds.x.size(),
+                ds.h.size()*2-2,
+                ds.h.size()-1,
+                ds.k.size()*6-6,
+                ds.k.size()-1,
+                ds.k.size()
+            ],
+        rng )
+    }
+
+    pub fn create<'b>(ds: EvaluationDomains<E>, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
+        match spec {
+            URSSpec::Use(x) => URSValue::Ref(x),
+            URSSpec::Generate(rng) => URSValue::Value(Self::generate(ds, rng))
+        }
+    }
+}
+
+pub struct Index<'a, E: PairingEngine>
 {
     // constraint system compilation
     pub compiled: [Compiled<E>; 3],
 
     // evaluation domains as multiplicative groups of roots of unity
-    pub h_group: EvaluationDomain<E::Fr>,
-    pub k_group: EvaluationDomain<E::Fr>,
-    pub b_group: EvaluationDomain<E::Fr>,
-    pub x_group: EvaluationDomain<E::Fr>,
+    pub domains : EvaluationDomains<E>,
 
     // number of public inputs
     pub public_inputs: usize,
 
-    // maximal degree of the committed polynomials
-    pub max_degree: usize,
-
     // polynomial commitment keys
-    pub urs: URS<E>,
+    pub urs: URSValue<'a, E>,
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
@@ -51,9 +124,7 @@ pub struct VerifierIndex<E: PairingEngine>
     pub matrix_commitments: [MatrixValues<E::G1Affine>; 3],
 
     // evaluation domains as multiplicative groups of roots of unity
-    pub h_group: EvaluationDomain<E::Fr>,
-    pub k_group: EvaluationDomain<E::Fr>,
-    pub x_group: EvaluationDomain<E::Fr>,
+    pub domains : EvaluationDomains<E>,
 
     // number of public inputs
     pub public_inputs: usize,
@@ -69,7 +140,7 @@ pub struct VerifierIndex<E: PairingEngine>
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
 }
 
-impl<E: PairingEngine> Index<E>
+impl<'a, E: PairingEngine> Index<'a, E>
 {
     fn matrix_values(c : &Compiled<E>) -> MatrixValues<E::G1Affine> {
         MatrixValues {
@@ -82,25 +153,24 @@ impl<E: PairingEngine> Index<E>
     pub fn verifier_index(&self) -> VerifierIndex<E> {
         let [ a, b, c ] = & self.compiled;
 
-        let h_to_x_ratio = self.h_group.size() / self.x_group.size();
+        let h_to_x_ratio = self.domains.h.size() / self.domains.x.size();
 
         let urs = {
-            let gp = (0..self.x_group.size()).map(|i| self.urs.gp[i * h_to_x_ratio]).collect();
+            let gp = (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i * h_to_x_ratio]).collect();
             URS::<E> {
                 gp,
                 // TODO: We just need (beta^{N - (h_group.size() - 1)}) and (beta^{N - (k_group.size() - 1)})
-                hn : self.urs.hn.clone(),
-                hx: self.urs.hx,
-                prf: self.urs.prf
+                hn : self.urs.get_ref().hn.clone(),
+                hx: self.urs.get_ref().hx,
+                prf: self.urs.get_ref().prf,
+                depth: self.urs.get_ref().max_degree(),
             }
         };
 
         VerifierIndex {
             matrix_commitments : [ Self::matrix_values(a), Self::matrix_values(b), Self::matrix_values(c) ],
-            x_group: self.x_group,
-            h_group: self.h_group,
-            k_group: self.k_group,
-            max_degree: self.max_degree,
+            domains: self.domains,
+            max_degree: self.urs.get_ref().max_degree(),
             public_inputs: self.public_inputs,
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
@@ -109,7 +179,7 @@ impl<E: PairingEngine> Index<E>
     }
 
     // this function compiles the circuit from constraints
-    pub fn create
+    pub fn create<'b>
     (
         a: CsMat<E::Fr>,
         b: CsMat<E::Fr>,
@@ -117,7 +187,7 @@ impl<E: PairingEngine> Index<E>
         public_inputs: usize,
         fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
         fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
-        rng: &mut dyn RngCore
+        urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
         if a.shape() != b.shape() ||
@@ -129,72 +199,32 @@ impl<E: PairingEngine> Index<E>
             return Err(ProofError::ConstraintInconsist)
         }
 
-        // compute the evaluation domains
-        let h_group_size = 
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(a.shape().0)
-            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
-        let x_group_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(public_inputs)
-            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
-        let k_group_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain
-            ([&a, &b, &c].iter().map(|x| x.nnz()).max()
-            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?)
+        let nonzero_entries : usize =
+            [&a, &b, &c].iter().map(|x| x.nnz()).max()
+            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
+
+        let domains = EvaluationDomains::create(
+            a.shape().0,
+            public_inputs,
+            nonzero_entries)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
 
-        match
-        (
-            EvaluationDomain::<E::Fr>::new(h_group_size),
-            EvaluationDomain::<E::Fr>::new(k_group_size),
-            EvaluationDomain::<E::Fr>::new(k_group_size * 6 - 6),
-            EvaluationDomain::<E::Fr>::new(x_group_size),
-        )
+        let urs = URSValue::create(domains, urs);
+
+        Ok(Index::<E>
         {
-            (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
-            {
-                // maximal degree of the committed polynomials
-                let max_degree = *[3*h_group.size()-1, b_group.size()].iter().max()
-                    .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
-     
-                // compute public setup
-                let urs = URS::<E>::create
-                (
-                    max_degree,
-                    vec!
-                    [
-                        h_group.size(),
-                        h_group.size() - x_group.size(),
-                        h_group.size()*2-2,
-                        h_group.size()-1,
-                        k_group.size()*6-6,
-                        k_group.size()-1,
-                        k_group.size()
-                    ],
-                    rng
-                );
-
-                // compile the constraints
-                Ok(Index::<E>
-                {
-                    compiled:
-                    [
-                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, a)?,
-                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, b)?,
-                        Compiled::<E>::compile(&urs, h_group, k_group, b_group, c)?,
-                    ],
-                    fr_sponge_params,
-                    fq_sponge_params,
-                    public_inputs,
-                    max_degree,
-                    h_group,
-                    k_group,
-                    b_group,
-                    x_group,
-                    urs,
-                })
-            }
-            (_,_,_,_) => Err(ProofError::EvaluationGroup)
-        }
+            compiled:
+            [
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, a)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, b)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, c)?,
+            ],
+            fr_sponge_params,
+            fq_sponge_params,
+            public_inputs,
+            domains,
+            urs
+        })
     }
 
     // This function verifies the consistency of the wire assignements (witness) against the constraints
@@ -207,7 +237,7 @@ impl<E: PairingEngine> Index<E>
     ) -> bool
     {
         if self.compiled[0].constraints.shape().1 != witness.len() {return false}
-        let mut gates = vec![CircuitGate::<E::Fr>::zero(); self.h_group.size()];
+        let mut gates = vec![CircuitGate::<E::Fr>::zero(); self.domains.h.size()];
         for i in 0..3
         {
             for val in self.compiled[i].constraints.iter()

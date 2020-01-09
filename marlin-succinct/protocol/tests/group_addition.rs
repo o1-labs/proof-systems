@@ -20,7 +20,7 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use circuits::index::{Index};
+use circuits::index::{Index, URSSpec};
 use sprs::{CsMat, CsVecView};
 use oracle::poseidon::ArithmeticSpongeParams;
 use protocol::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
@@ -75,7 +75,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         4,
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
-        rng
+        URSSpec::Generate(rng)
     ).unwrap();
 
     positive(&index, rng);

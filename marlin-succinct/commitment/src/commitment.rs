@@ -34,7 +34,7 @@ impl<E: PairingEngine> URS<E>
         plnm: &DensePolynomial<E::Fr>,
     ) -> Result<E::G1Affine, ProofError>
     {
-        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyCommit)}
+        if plnm.coeffs.len() > self.depth {return Err(ProofError::PolyCommit)}
         Ok (
             VariableBaseMSM::multi_scalar_mul
             (
@@ -56,11 +56,10 @@ impl<E: PairingEngine> URS<E>
     {
         let unshifted = self.commit(plnm)?;
 
-        let d = self.gp.len();
-        if d < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
+        if self.depth < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
         let shifted = VariableBaseMSM::multi_scalar_mul
         (
-            &self.gp[d - max..plnm.len() + d - max],
+            &self.gp[self.depth - max..plnm.len() + self.depth - max],
             &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
         ).into_affine();
 
@@ -74,7 +73,7 @@ impl<E: PairingEngine> URS<E>
         ratio : usize,
     ) -> Result<E::G1Affine, ProofError>
     {
-        if plnm.coeffs.len() > self.gp.len() {return Err(ProofError::PolyExponentiate)}
+        if plnm.coeffs.len() > self.depth {return Err(ProofError::PolyExponentiate)}
 
         Ok(VariableBaseMSM::multi_scalar_mul
         (
@@ -130,7 +129,6 @@ impl<E: PairingEngine> URS<E>
         rng: &mut dyn RngCore
     ) -> bool
     {
-        let d = self.gp.len();
         let mut table = vec![];
 
         // verify commitment opening proofs against unshifted commitments:
@@ -196,7 +194,7 @@ impl<E: PairingEngine> URS<E>
 
         for max in shifted.keys()
         {
-            if !self.hn.contains_key(&(d-max)) {return false}
+            if !self.hn.contains_key(&(self.depth-max)) {return false}
             table.push
             ((
                 VariableBaseMSM::multi_scalar_mul
@@ -204,7 +202,7 @@ impl<E: PairingEngine> URS<E>
                     &shifted[max].iter().map(|p| p.0).collect::<Vec<_>>(),
                     &shifted[max].iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
                 ).into_affine().prepare(),
-                (-self.hn[&(d-max)]).prepare()
+                (-self.hn[&(self.depth-max)]).prepare()
             ));
         }
         table.push
