@@ -10,7 +10,7 @@ It implements Poseidon Hash Function primitive
 use algebra::Field;
 
 pub const ROUNDS_FULL: usize = 8;
-pub const ROUNDS_PARTIAL: usize = 33;
+pub const ROUNDS_PARTIAL: usize = 55;
 const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
