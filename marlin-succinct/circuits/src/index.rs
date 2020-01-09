@@ -75,13 +75,8 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
             max_degree,
             vec!
             [
-                ds.h.size(),
-                ds.h.size() - ds.x.size(),
-                ds.h.size()*2-2,
                 ds.h.size()-1,
-                ds.k.size()*6-6,
                 ds.k.size()-1,
-                ds.k.size()
             ],
         rng )
     }
@@ -158,13 +153,8 @@ impl<'a, E: PairingEngine> Index<'a, E>
         let mut hn : HashMap<usize, E::G2Affine> = HashMap::new();
         for i in
             [
-                self.domains.h.size(),
-                self.domains.h.size() - self.domains.x.size(),
-                self.domains.h.size()*2-2,
                 self.domains.h.size()-1,
-                self.domains.k.size()*6-6,
                 self.domains.k.size()-1,
-                self.domains.k.size()
             ].iter() {
                 let i = max_degree - i;
                 hn.insert(i, self.urs.get_ref().hn.get(&i).unwrap().clone());
