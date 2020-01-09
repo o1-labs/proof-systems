@@ -212,12 +212,12 @@ impl<E: PairingEngine> ProverProof<E>
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // TODO: absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&E::Fr::one());
         // absorb the public input into the argument
         let x_hat =
             // TODO: Cache this interpolated polynomial.
             Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate();
-        fq_sponge.absorb_g(&index.urs.commit(&x_hat)?);
+        let x_hat_comm = index.urs.commit(&x_hat)?;
+        fq_sponge.absorb_g(& x_hat_comm);
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& self.w_comm);
         fq_sponge.absorb_g(& self.za_comm);
@@ -247,17 +247,24 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&self.h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
+        oracles.r_k = fq_sponge.challenge();
+
+        let digest_before_evaluations = fq_sponge.digest();
+        oracles.digest_before_evaluations = digest_before_evaluations;
 
         let mut fr_sponge = {
-            let digest_before_evaluations = fq_sponge.digest();
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
         };
 
-        fr_sponge.absorb_evaluations(&x_hat.evaluate(oracles.beta[0]),&self.evals);
+        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0]);
+        oracles.x_hat_beta1 = x_hat_beta1;
+
+        fr_sponge.absorb_evaluations(&x_hat_beta1,&self.evals);
 
         oracles.batch = fr_sponge.challenge();
+        oracles.r = fr_sponge.challenge();
 
         Ok(oracles)
     }
