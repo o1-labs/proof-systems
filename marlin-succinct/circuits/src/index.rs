@@ -5,6 +5,7 @@ This source file implements Marlin Protocol Index primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
+use std::collections::HashMap;
 use rand_core::RngCore;
 use commitment::urs::URS;
 use algebra::PairingEngine;
@@ -37,7 +38,7 @@ pub struct EvaluationDomains<E : PairingEngine> {
 }
 
 impl<E:PairingEngine> EvaluationDomains<E> {
-    fn create(
+    pub fn create(
         variables : usize,
         public_inputs: usize,
         nonzero_entries: usize) -> Option<Self> {
@@ -155,12 +156,27 @@ impl<'a, E: PairingEngine> Index<'a, E>
 
         let h_to_x_ratio = self.domains.h.size() / self.domains.x.size();
 
+        let max_degree =  self.urs.get_ref().max_degree();
+        let mut hn : HashMap<usize, E::G2Affine> = HashMap::new();
+        for i in
+            [
+                self.domains.h.size(),
+                self.domains.h.size() - self.domains.x.size(),
+                self.domains.h.size()*2-2,
+                self.domains.h.size()-1,
+                self.domains.k.size()*6-6,
+                self.domains.k.size()-1,
+                self.domains.k.size()
+            ].iter() {
+                let i = max_degree - i;
+                hn.insert(i, self.urs.get_ref().hn.get(&i).unwrap().clone());
+        }
+
         let urs = {
             let gp = (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i * h_to_x_ratio]).collect();
             URS::<E> {
                 gp,
-                // TODO: We just need (beta^{N - (h_group.size() - 1)}) and (beta^{N - (k_group.size() - 1)})
-                hn : self.urs.get_ref().hn.clone(),
+                hn,
                 hx: self.urs.get_ref().hx,
                 prf: self.urs.get_ref().prf,
                 depth: self.urs.get_ref().max_degree(),
@@ -170,7 +186,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
         VerifierIndex {
             matrix_commitments : [ Self::matrix_values(a), Self::matrix_values(b), Self::matrix_values(c) ],
             domains: self.domains,
-            max_degree: self.urs.get_ref().max_degree(),
+            max_degree,
             public_inputs: self.public_inputs,
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
