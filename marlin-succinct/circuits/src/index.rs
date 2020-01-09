@@ -154,8 +154,6 @@ impl<'a, E: PairingEngine> Index<'a, E>
     pub fn verifier_index(&self) -> VerifierIndex<E> {
         let [ a, b, c ] = & self.compiled;
 
-        let h_to_x_ratio = self.domains.h.size() / self.domains.x.size();
-
         let max_degree =  self.urs.get_ref().max_degree();
         let mut hn : HashMap<usize, E::G2Affine> = HashMap::new();
         for i in
@@ -173,7 +171,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
         }
 
         let urs = {
-            let gp = (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i * h_to_x_ratio]).collect();
+            let gp = (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i]).collect();
             URS::<E> {
                 gp,
                 hn,

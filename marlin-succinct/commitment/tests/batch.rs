@@ -60,7 +60,8 @@ fn test<E: PairingEngine>()
             ).collect::<Vec<_>>();
             println!("{}{:?}", "sizes: ".bright_cyan(), size);
 
-            let a = size.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+            let aa = size.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+            let a = aa.iter().map(|s| s).collect::<Vec<_>>();
             let x = E::Fr::rand(rng);
 
             let mut start = Instant::now();
@@ -69,7 +70,7 @@ fn test<E: PairingEngine>()
 
             let mask = E::Fr::rand(rng);
             start = Instant::now();
-            let proof = urs.open(&a, mask, x).unwrap();
+            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x).unwrap();
             open += start.elapsed();
 
             proofs.push

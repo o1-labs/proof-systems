@@ -119,7 +119,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         let x_hat = 
             Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.domains.x).interpolate();
-        let x_hat_comm = urs.exponentiate_sub_domain(&x_hat, ratio)?;
+        let x_hat_comm = urs.commit(&x_hat)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.domains.h).interpolate();
