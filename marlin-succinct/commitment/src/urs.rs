@@ -35,6 +35,8 @@ impl<E: PairingEngine> URS<E>
     }
 
     pub fn write<W : Write>(&self, mut writer : W) -> IoResult<()> {
+        u64::write(&(self.depth as u64), &mut writer)?;
+
         u64::write(&(self.gp.len() as u64), &mut writer)?;
         for x in &self.gp {
             E::G1Affine::write(x, &mut writer)?;
@@ -54,6 +56,8 @@ impl<E: PairingEngine> URS<E>
     }
 
     pub fn read<R : Read>(mut reader : R) -> IoResult<Self> {
+        let depth = u64::read(&mut reader)? as usize;
+
         let n = u64::read(&mut reader)?;
         let mut gp = vec![];
         for _ in 0..n {
@@ -71,7 +75,7 @@ impl<E: PairingEngine> URS<E>
         let hx = E::G2Affine::read(&mut reader)?;
         let prf = E::G1Affine::read(&mut reader)?;
 
-        Ok( URS { gp, hn, hx, prf } )
+        Ok( URS { depth, gp, hn, hx, prf } )
     }
 
     // This function creates URS instance for circuits up to depth d
