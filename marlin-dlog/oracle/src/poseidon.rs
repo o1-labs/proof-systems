@@ -10,7 +10,7 @@ It implements Poseidon Hash Function primitive
 use algebra::Field;
 
 pub const ROUNDS_FULL: usize = 8;
-pub const ROUNDS_PARTIAL: usize = 33;
+pub const ROUNDS_PARTIAL: usize = 25;
 const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
@@ -22,12 +22,14 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
-// x^5
+// x^17
 fn sbox<F: Field>(x: F) -> F {
     let mut res = x;
     res.square_in_place(); //x^2
     res.square_in_place(); //x^4
-    res.mul_assign(&x);
+    res.square_in_place(); //x^8
+    res.square_in_place(); //x^16
+    res.mul_assign(&x); // x^17
     res
 }
 
