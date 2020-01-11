@@ -1,3 +1,1 @@
-# SNARKs-for-recursive-composition
-
-This repository contains various protocol implementations for recursive zk-SNARKs composition.
+This repository contains various protocol Marlin zk-SNARK implementations for recursive SNARK composition.
