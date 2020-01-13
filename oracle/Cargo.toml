@@ -1,0 +1,12 @@
+[package]
+name = "oracle"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
+ff-fft = { git = "https://github.com/o1-labs/zexe/" }
+rand = "0.7.3"

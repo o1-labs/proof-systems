@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "dlog",
+    "pairing",
+    "oracle",
+]
+
+[profile.release]
+lto = true
+panic = 'abort'
+codegen-units = 1
