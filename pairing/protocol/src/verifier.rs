@@ -9,7 +9,7 @@ use circuits_pairing::index::{VerifierIndex as Index};
 use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine};
-use ff_fft::Evaluations;
+use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FqSponge, FrSponge};
 
 impl<E: PairingEngine> ProverProof<E>
@@ -47,16 +47,7 @@ impl<E: PairingEngine> ProverProof<E>
             &(oracles.beta[0] * &self.evals.g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
             &(self.evals.w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            // interpolating/evaluating public input over small domain domains.x
-            // TODO: investigate which of the below is faster
-            &Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate().evaluate(oracles.beta[0])))
-            /*
-            &index.domains.x.evaluate_all_lagrange_coefficients(oracles.beta[0])
-            .iter()
-            .zip(self.public.iter())
-            .map(|(l, x)| *l * x)
-            .fold(E::Fr::zero(), |x, y| x + &y)))
-            */
+            &oracles.x_hat_beta1))
         )
     }
 
@@ -132,7 +123,11 @@ impl<E: PairingEngine> ProverProof<E>
         for proof in proofs.iter()
         {
             let proof = proof.clone();
-            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
+            // TODO: Cache this interpolated polynomial.
+            let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+            let x_hat_comm = index.urs.commit(&x_hat)?;
+
+            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat)?;
 
             // first, verify the sumcheck argument values
             if 
@@ -149,11 +144,12 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
+                    (x_hat_comm,        oracles.x_hat_beta1, None),
+                    (proof.w_comm,      proof.evals.w,  None),
                     (proof.za_comm,     proof.evals.za, None),
                     (proof.zb_comm,     proof.evals.zb, None),
-                    (proof.w_comm,      proof.evals.w,  None),
-                    (proof.h1_comm,     proof.evals.h1, None),
                     (proof.g1_comm.0,   proof.evals.g1, Some((proof.g1_comm.1, index.domains.h.size()-1))),
+                    (proof.h1_comm,     proof.evals.h1, None),
                 ],
                 proof.proof1
             ));
@@ -163,8 +159,8 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.h2_comm,     proof.evals.h2, None),
                     (proof.g2_comm.0,   proof.evals.g2, Some((proof.g2_comm.1, index.domains.h.size()-1))),
+                    (proof.h2_comm,     proof.evals.h2, None),
                 ],
                 proof.proof2
             ));
@@ -174,8 +170,8 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.h3_comm, proof.evals.h3, None),
                     (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.domains.k.size()-1))),
+                    (proof.h3_comm, proof.evals.h3, None),
                     (index.matrix_commitments[0].row, proof.evals.row[0], None),
                     (index.matrix_commitments[1].row, proof.evals.row[1], None),
                     (index.matrix_commitments[2].row, proof.evals.row[2], None),
@@ -206,18 +202,16 @@ impl<E: PairingEngine> ProverProof<E>
     (
         &self,
         index: &Index<E>,
+        x_hat_comm: E::G1Affine,
+        x_hat: &DensePolynomial<E::Fr>
     ) -> Result<RandomOracles<E::Fr>, ProofError>
     {
         let mut oracles = RandomOracles::<E::Fr>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // TODO: absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&E::Fr::one());
         // absorb the public input into the argument
-        let x_hat =
-            // TODO: Cache this interpolated polynomial.
-            Evaluations::<E::Fr>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate();
-        fq_sponge.absorb_g(&index.urs.commit(&x_hat)?);
+        fq_sponge.absorb_g(&x_hat_comm);
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& self.w_comm);
         fq_sponge.absorb_g(& self.za_comm);
@@ -247,17 +241,24 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&self.h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
+        oracles.r_k = fq_sponge.challenge();
+
+        let digest_before_evaluations = fq_sponge.digest();
+        oracles.digest_before_evaluations = digest_before_evaluations;
 
         let mut fr_sponge = {
-            let digest_before_evaluations = fq_sponge.digest();
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
         };
 
-        fr_sponge.absorb_evaluations(&x_hat.evaluate(oracles.beta[0]),&self.evals);
+        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0]);
+        oracles.x_hat_beta1 = x_hat_beta1;
+
+        fr_sponge.absorb_evaluations(&x_hat_beta1,&self.evals);
 
         oracles.batch = fr_sponge.challenge();
+        oracles.r = fr_sponge.challenge();
 
         Ok(oracles)
     }

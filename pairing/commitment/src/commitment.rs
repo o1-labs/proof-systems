@@ -90,7 +90,7 @@ impl<E: PairingEngine> URS<E>
     pub fn open
     (
         &self,
-        polys: &Vec<DensePolynomial<E::Fr>>,
+        polys: Vec<&DensePolynomial<E::Fr>>,
         mask: E::Fr,
         elm: E::Fr
     ) -> Result<E::G1Affine, ProofError>
@@ -98,10 +98,10 @@ impl<E: PairingEngine> URS<E>
         let mut acc = DensePolynomial::<E::Fr>::zero();
         let mut scale = E::Fr::one();
         
-        for p in polys
+        for p in polys.iter().rev()
         {
-            scale *= &mask;
             acc += &(p.scale(scale));
+            scale *= &mask;
         }
         self.commit(&acc.divide(elm))
     }
@@ -149,10 +149,10 @@ impl<E: PairingEngine> URS<E>
                 open_point.push(x.3);
                 openy_scalar.push((-rnd * &x.0).into_repr());
                 openy_point.push(x.3);
-                let mut scale = x.1;
+                let mut scale = E::Fr::one();
                 let mut v = E::Fr::zero();
                 
-                for z in x.2.iter()
+                for z in x.2.iter().rev()
                 {
                     v += &(z.1 * &scale);
                     openy_point.push(z.0);

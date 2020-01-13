@@ -119,7 +119,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         let x_hat = 
             Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.domains.x).interpolate();
-        let x_hat_comm = urs.exponentiate_sub_domain(&x_hat, ratio)?;
+        let x_hat_comm = urs.commit(&x_hat)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.domains.h).interpolate();
@@ -136,8 +136,6 @@ impl<E: PairingEngine> ProverProof<E>
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&E::Fr::one());
         // absorb the public input into the argument
         fq_sponge.absorb_g(& x_hat_comm);
         // absorb W, ZA, ZB polycommitments
@@ -214,9 +212,12 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
+        oracles.r_k = fq_sponge.challenge();
+
+        let digest_before_evaluations =fq_sponge.digest();
+        oracles.digest_before_evaluations = digest_before_evaluations;
 
         let mut fr_sponge = {
-            let digest_before_evaluations = fq_sponge.digest();
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
@@ -252,9 +253,13 @@ impl<E: PairingEngine> ProverProof<E>
             ],
         };
 
-        fr_sponge.absorb_evaluations(&x_hat.evaluate(oracles.beta[0]),&evals);
+        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0]);
+        oracles.x_hat_beta1 = x_hat_beta1;
+
+        fr_sponge.absorb_evaluations(&x_hat_beta1, &evals);
 
         oracles.batch = fr_sponge.challenge();
+        oracles.r = fr_sponge.challenge();
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -275,42 +280,43 @@ impl<E: PairingEngine> ProverProof<E>
             // polynomial commitment batched opening proofs
             proof1: urs.open
             (
-                &vec!
+                vec!
                 [
-                    za.clone(),
-                    zb.clone(),
-                    w.clone(),
-                    h1.clone(),
-                    g1.clone(),
+                    &x_hat,
+                    &w,
+                    &za,
+                    &zb,
+                    &g1,
+                    &h1,
                 ],
                 oracles.batch,
                 oracles.beta[0]
             )?,
             proof2: urs.open
             (
-                &vec!
+                vec!
                 [
-                    h2.clone(),
-                    g2.clone()
+                    &g2,
+                    &h2,
                 ],
                 oracles.batch,
                 oracles.beta[1]
             )?,
             proof3: urs.open
             (
-                &vec!
+                vec!
                 [
-                    h3.clone(),
-                    g3.clone(),
-                    index.compiled[0].row.clone(),
-                    index.compiled[1].row.clone(),
-                    index.compiled[2].row.clone(),
-                    index.compiled[0].col.clone(),
-                    index.compiled[1].col.clone(),
-                    index.compiled[2].col.clone(),
-                    index.compiled[0].val.clone(),
-                    index.compiled[1].val.clone(),
-                    index.compiled[2].val.clone(),
+                    &g3,
+                    &h3,
+                    &index.compiled[0].row,
+                    &index.compiled[1].row,
+                    &index.compiled[2].row,
+                    &index.compiled[0].col,
+                    &index.compiled[1].col,
+                    &index.compiled[2].col,
+                    &index.compiled[0].val,
+                    &index.compiled[1].val,
+                    &index.compiled[2].val,
                 ],
                 oracles.batch,
                 oracles.beta[2]
@@ -502,8 +508,15 @@ pub struct RandomOracles<F: Field>
     pub eta_a: F,
     pub eta_b: F,
     pub eta_c: F,
-    pub batch: F,
     pub beta: [F; 3],
+    pub r_k : F,
+
+    pub x_hat_beta1: F,
+    pub digest_before_evaluations: F,
+
+    // Sampled using the other sponge
+    pub batch: F,
+    pub r: F,
 }
 
 impl<F: Field> RandomOracles<F>
@@ -518,6 +531,10 @@ impl<F: Field> RandomOracles<F>
             eta_c: F::zero(),
             batch: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
+            r: F::zero(),
+            x_hat_beta1: F::zero(),
+            digest_before_evaluations: F::zero(),
+            r_k: F::zero(),
         }
     }
 }

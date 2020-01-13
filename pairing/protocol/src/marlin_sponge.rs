@@ -5,8 +5,10 @@ use algebra::{
 };
 use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 
-const DIGEST_LENGTH: usize = 256;
-const CHALLENGE_LENGTH: usize = 128;
+const DIGEST_LENGTH_IN_LIMBS: usize = 4;
+const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
+
+const HIGH_ENTROPY_LIMBS: usize = 4;
 
 pub trait FqSponge<Fq: Field, G, Fr> {
     fn new(p: ArithmeticSpongeParams<Fq>) -> Self;
@@ -32,11 +34,57 @@ pub trait SpongePairingEngine: PairingEngine {
 pub struct DefaultFqSponge<P: SWModelParameters> {
     params: ArithmeticSpongeParams<P::BaseField>,
     sponge: ArithmeticSponge<P::BaseField>,
+    last_squeezed: Vec<u64>,
 }
 
 pub struct DefaultFrSponge<Fr: Field> {
     params: ArithmeticSpongeParams<Fr>,
     sponge: ArithmeticSponge<Fr>,
+    last_squeezed: Vec<u64>,
+}
+
+fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
+    let mut res: B = 0.into();
+    for &x in limbs_lsb.iter().rev() {
+        res.muln(64);
+        res.add_nocarry(&x.into());
+    }
+    res
+}
+
+impl<Fr: PrimeField> DefaultFrSponge<Fr> {
+    fn squeeze(&mut self, num_limbs: usize) -> Fr {
+        if self.last_squeezed.len() >= num_limbs {
+            let last_squeezed = self.last_squeezed.clone();
+            let (limbs, remaining) = last_squeezed.split_at(num_limbs);
+            self.last_squeezed = remaining.to_vec();
+            Fr::from_repr(pack::<Fr::BigInt>(&limbs))
+        } else {
+            let x = self.sponge.squeeze(&self.params).into_repr();
+            self.last_squeezed.extend(x.as_ref());
+            self.squeeze(num_limbs)
+        }
+    }
+}
+
+impl<P: SWModelParameters> DefaultFqSponge<P>
+where
+    P::BaseField: PrimeField,
+    <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
+{
+    fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
+        if self.last_squeezed.len() >= num_limbs {
+            let last_squeezed = self.last_squeezed.clone();
+            let (limbs, remaining) = last_squeezed.split_at(num_limbs);
+            self.last_squeezed = remaining.to_vec();
+            P::ScalarField::from_repr(pack(&limbs))
+        } else {
+            let x = self.sponge.squeeze(&self.params).into_repr();
+            self.last_squeezed
+                .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
+            self.squeeze(num_limbs)
+        }
+    }
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
@@ -44,20 +92,21 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
         DefaultFrSponge {
             params,
             sponge: ArithmeticSponge::new(),
+            last_squeezed: vec![],
         }
     }
 
     fn absorb(&mut self, x: &Fr) {
+        self.last_squeezed = vec![];
         self.sponge.absorb(&self.params, x);
     }
 
     fn challenge(&mut self) -> Fr {
-        let x = &self.sponge.squeeze(&self.params).into_repr().to_bits();
-
-        Fr::from_repr(Fr::BigInt::from_bits(&x[..CHALLENGE_LENGTH]))
+        self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
     }
 
     fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>) {
+        self.last_squeezed = vec![];
         // beta1 evaluations
         self.sponge.absorb(&self.params, x_hat_beta1);
         for x in &[e.w, e.g1, e.h1, e.za, e.zb] {
@@ -91,10 +140,12 @@ where
         DefaultFqSponge {
             params,
             sponge: ArithmeticSponge::new(),
+            last_squeezed: vec![],
         }
     }
 
     fn absorb_g(&mut self, g: &GroupAffine<P>) {
+        self.last_squeezed = vec![];
         if g.infinity {
             panic!("marlin sponge got zero curve point");
         } else {
@@ -104,6 +155,8 @@ where
     }
 
     fn absorb_fr(&mut self, x: &P::ScalarField) {
+        self.last_squeezed = vec![];
+        // Big endian
         let bits: Vec<bool> = x.into_repr().to_bits();
 
         if <P::ScalarField as PrimeField>::Params::MODULUS
@@ -114,8 +167,9 @@ where
                 &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits)),
             );
         } else {
-            let low_bits = &bits[..(bits.len() - 1)];
-            let high_bit = if bits[bits.len() - 1] {
+            let low_bits = &bits[1..];
+
+            let high_bit = if bits[0] {
                 P::BaseField::one()
             } else {
                 P::BaseField::zero()
@@ -131,17 +185,10 @@ where
     }
 
     fn digest(mut self) -> P::ScalarField {
-        let x = self.sponge.squeeze(&self.params).into_repr();
-        let x: &[bool] = &x.to_bits()[..DIGEST_LENGTH];
-        let x = <P::ScalarField as PrimeField>::BigInt::from_bits(x);
-        P::ScalarField::from_repr(x)
+        self.squeeze(DIGEST_LENGTH_IN_LIMBS)
     }
 
     fn challenge(&mut self) -> P::ScalarField {
-        let x = self.sponge.squeeze(&self.params).into_repr();
-
-        P::ScalarField::from_repr(<P::ScalarField as PrimeField>::BigInt::from_bits(
-            &x.to_bits()[..CHALLENGE_LENGTH],
-        ))
+        self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
     }
 }

@@ -4,9 +4,10 @@ This source file implements the Marlin universal reference string primitive
 
 *****************************************************************************************************************/
 
-use algebra::{VariableBaseMSM, FixedBaseMSM, AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, PairingCurve, UniformRand};
+use algebra::{ToBytes, FromBytes, VariableBaseMSM, FixedBaseMSM, AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, PairingCurve, UniformRand};
 use std::collections::HashMap;
 use rand_core::RngCore;
+use std::io::{Read, Write, Result as IoResult};
 
 // check pairing of a&b vs c
 macro_rules! pairing_check
@@ -14,6 +15,7 @@ macro_rules! pairing_check
     ($a:expr, $b:expr, $c:expr) => {if <E>::pairing($a, $b) != $c {return false;}};
 }
 
+#[derive(Clone)]
 pub struct URS<E: PairingEngine>
 {
     pub depth: usize,
@@ -30,6 +32,50 @@ impl<E: PairingEngine> URS<E>
 
     pub fn max_degree(&self) -> usize {
         self.gp.len()
+    }
+
+    pub fn write<W : Write>(&self, mut writer : W) -> IoResult<()> {
+        u64::write(&(self.depth as u64), &mut writer)?;
+
+        u64::write(&(self.gp.len() as u64), &mut writer)?;
+        for x in &self.gp {
+            E::G1Affine::write(x, &mut writer)?;
+        }
+
+        let m = self.hn.len();
+        u64::write(&(m as u64), &mut writer)?;
+        for (&key, value) in &self.hn {
+            u64::write(&(key as u64), &mut writer)?;
+            E::G2Affine::write(value, &mut writer)?;
+        }
+
+        E::G2Affine::write(&self.hx, &mut writer)?;
+        E::G1Affine::write(&self.prf, &mut writer)?;
+
+        Ok(())
+    }
+
+    pub fn read<R : Read>(mut reader : R) -> IoResult<Self> {
+        let depth = u64::read(&mut reader)? as usize;
+
+        let n = u64::read(&mut reader)?;
+        let mut gp = vec![];
+        for _ in 0..n {
+            gp.push(E::G1Affine::read(&mut reader)?);
+        }
+
+        let m = u64::read(&mut reader)?;
+        let mut hn = HashMap::new();
+        for _ in 0..m {
+            let key = u64::read(&mut reader)?;
+            let value = E::G2Affine::read(&mut reader)?;
+            let _ = hn.insert(key as usize, value);
+        }
+
+        let hx = E::G2Affine::read(&mut reader)?;
+        let prf = E::G1Affine::read(&mut reader)?;
+
+        Ok( URS { depth, gp, hn, hx, prf } )
     }
 
     // This function creates URS instance for circuits up to depth d
