@@ -10,6 +10,7 @@ use ff_fft::{DensePolynomial, Evaluations};
 use commitment_dlog::commitment::{Utils, OpeningProof};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
+use rayon::prelude::*;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -222,7 +223,7 @@ impl<G: AffineCurve> ProverProof<G>
 
         let evals =
         {
-            let evl = (0..3).map
+            let evl = (0..3 as usize).into_par_iter().map
             (
                 |i| ProofEvaluations
                 {

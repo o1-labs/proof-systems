@@ -34,7 +34,7 @@ use colored::Colorize;
 type Fr = <Affine as AffineCurve>::ScalarField;
 
 #[test]
-fn group_addition()
+fn group_addition_dlog()
 {
     let rng = &mut OsRng;
 

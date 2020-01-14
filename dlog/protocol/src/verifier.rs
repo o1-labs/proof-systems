@@ -11,6 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::Evaluations;
 use crate::marlin_sponge::{FrSponge};
+use rayon::prelude::*;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -131,51 +132,51 @@ impl<G: AffineCurve> ProverProof<G>
         rng: &mut dyn RngCore
     ) -> Result<bool, ProofError>
     {
-        let mut batch = Vec::with_capacity(proofs.len());
-        for proof in proofs.iter()
-        {
-            let proof = proof.clone();
-            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
-
-            // first, verify the sumcheck argument values
-            if 
-                !proof.sumcheck_1_verify (index, &oracles) ||
-                !proof.sumcheck_2_verify (index, &oracles) ||
-                !proof.sumcheck_3_verify (index, &oracles)
+        // first, verify the sumcheck argument values
+        let batch = proofs.par_iter().map
+        (
+            |proof|
             {
-                return Err(ProofError::ProofVerification)
-            }
+                let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
+                if 
+                    !proof.sumcheck_1_verify (index, &oracles) ||
+                    !proof.sumcheck_2_verify (index, &oracles) ||
+                    !proof.sumcheck_3_verify (index, &oracles)
+                {
+                    return Err(ProofError::ProofVerification)
+                }
 
-            batch.push
-            ((
-                oracles.beta.to_vec(),
-                oracles.polys,
-                oracles.evals,
-                vec!
-                [
-                    (proof.za_comm,     proof.evals.iter().map(|e| e.za).collect(), None),
-                    (proof.zb_comm,     proof.evals.iter().map(|e| e.zb).collect(), None),
-                    (proof.w_comm,      proof.evals.iter().map(|e| e.w ).collect(), None),
-                    (proof.h1_comm,     proof.evals.iter().map(|e| e.h1).collect(), None),
-                    (proof.g1_comm.0,   proof.evals.iter().map(|e| e.g1).collect(), Some((proof.g1_comm.1, index.h_group.size()-1))),
-                    (proof.h2_comm,     proof.evals.iter().map(|e| e.h2).collect(), None),
-                    (proof.g2_comm.0,   proof.evals.iter().map(|e| e.g2).collect(), Some((proof.g2_comm.1, index.h_group.size()-1))),
-                    (proof.h3_comm,     proof.evals.iter().map(|e| e.h3).collect(), None),
-                    (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.k_group.size()-1))),
-                    
-                    (index.compiled[0].row_comm, proof.evals.iter().map(|e| e.row[0]).collect(), None),
-                    (index.compiled[1].row_comm, proof.evals.iter().map(|e| e.row[1]).collect(), None),
-                    (index.compiled[2].row_comm, proof.evals.iter().map(|e| e.row[2]).collect(), None),
-                    (index.compiled[0].col_comm, proof.evals.iter().map(|e| e.col[0]).collect(), None),
-                    (index.compiled[1].col_comm, proof.evals.iter().map(|e| e.col[1]).collect(), None),
-                    (index.compiled[2].col_comm, proof.evals.iter().map(|e| e.col[2]).collect(), None),
-                    (index.compiled[0].val_comm, proof.evals.iter().map(|e| e.val[0]).collect(), None),
-                    (index.compiled[1].val_comm, proof.evals.iter().map(|e| e.val[1]).collect(), None),
-                    (index.compiled[2].val_comm, proof.evals.iter().map(|e| e.val[2]).collect(), None),
-                ],
-                proof.proof
-            ));
-        }
+                Ok((
+                    oracles.beta.to_vec(),
+                    oracles.polys,
+                    oracles.evals,
+                    vec!
+                    [
+                        (proof.za_comm,     proof.evals.iter().map(|e| e.za).collect(), None),
+                        (proof.zb_comm,     proof.evals.iter().map(|e| e.zb).collect(), None),
+                        (proof.w_comm,      proof.evals.iter().map(|e| e.w ).collect(), None),
+                        (proof.h1_comm,     proof.evals.iter().map(|e| e.h1).collect(), None),
+                        (proof.g1_comm.0,   proof.evals.iter().map(|e| e.g1).collect(), Some((proof.g1_comm.1, index.h_group.size()-1))),
+                        (proof.h2_comm,     proof.evals.iter().map(|e| e.h2).collect(), None),
+                        (proof.g2_comm.0,   proof.evals.iter().map(|e| e.g2).collect(), Some((proof.g2_comm.1, index.h_group.size()-1))),
+                        (proof.h3_comm,     proof.evals.iter().map(|e| e.h3).collect(), None),
+                        (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.k_group.size()-1))),
+                        
+                        (index.compiled[0].row_comm, proof.evals.iter().map(|e| e.row[0]).collect(), None),
+                        (index.compiled[1].row_comm, proof.evals.iter().map(|e| e.row[1]).collect(), None),
+                        (index.compiled[2].row_comm, proof.evals.iter().map(|e| e.row[2]).collect(), None),
+                        (index.compiled[0].col_comm, proof.evals.iter().map(|e| e.col[0]).collect(), None),
+                        (index.compiled[1].col_comm, proof.evals.iter().map(|e| e.col[1]).collect(), None),
+                        (index.compiled[2].col_comm, proof.evals.iter().map(|e| e.col[2]).collect(), None),
+                        (index.compiled[0].val_comm, proof.evals.iter().map(|e| e.val[0]).collect(), None),
+                        (index.compiled[1].val_comm, proof.evals.iter().map(|e| e.val[1]).collect(), None),
+                        (index.compiled[2].val_comm, proof.evals.iter().map(|e| e.val[2]).collect(), None),
+                    ],
+                    proof.proof.clone()
+                ))
+            }
+        ).collect::<Result<Vec<_>, _>>()?;
+
         // second, verify the commitment opening proofs
         match index.srs.verify::<EFqSponge>(&batch, &index.fq_sponge_params.clone(), rng)
         {

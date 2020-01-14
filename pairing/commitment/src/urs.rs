@@ -8,6 +8,7 @@ use algebra::{ToBytes, FromBytes, VariableBaseMSM, FixedBaseMSM, AffineCurve, Pr
 use std::collections::HashMap;
 use rand_core::RngCore;
 use std::io::{Read, Write, Result as IoResult};
+use rayon::prelude::*;
 
 // check pairing of a&b vs c
 macro_rules! pairing_check
@@ -151,12 +152,17 @@ impl<E: PairingEngine> URS<E>
     )
     {
         let mut x = E::Fr::rand(rng);
+
         let mut cur = E::Fr::one();
-        for i in 0..self.gp.len()
-        {
-            self.gp[i] = self.gp[i].mul(cur).into_affine();
-            cur *= &x;
-        }
+        let powers = (0..self.gp.len()).map
+        (
+            |_| {let ret = cur; cur *= &x; ret}
+
+        ).collect::<Vec<_>>();
+        self.gp.par_iter_mut().zip(powers).for_each
+        (
+            |(p, s)| {*p = p.mul(s.into_repr()).into_affine()}
+        );
 
         self.prf = E::G1Affine::prime_subgroup_generator().mul(x).into_affine();
         self.hx = self.hx.mul(x).into_affine();
