@@ -95,7 +95,13 @@ impl<G: AffineCurve> ProverProof<G>
     {
         let crb: Vec<Fr<G>> = (0..3).map
         (
-            |i| {(oracles.beta[1] - &self.evals[2].row[i]) * &(oracles.beta[0] - &self.evals[2].col[i])}
+            |i|
+            {
+                oracles.beta[1] * &oracles.beta[0] -
+                &(oracles.beta[0] * &self.evals[2].row[i]) -
+                &(oracles.beta[1] * &self.evals[2].col[i]) +
+                &self.evals[2].rc[i]
+            }
         ).collect();
 
         let acc = (0..3).map
@@ -172,7 +178,10 @@ impl<G: AffineCurve> ProverProof<G>
                     (index.compiled[0].val_comm, proof.evals.iter().map(|e| e.val[0]).collect(), None),
                     (index.compiled[1].val_comm, proof.evals.iter().map(|e| e.val[1]).collect(), None),
                     (index.compiled[2].val_comm, proof.evals.iter().map(|e| e.val[2]).collect(), None),
-                ],
+                    (index.compiled[0].rc_comm, proof.evals.iter().map(|e| e.rc[0]).collect(), None),
+                    (index.compiled[1].rc_comm, proof.evals.iter().map(|e| e.rc[1]).collect(), None),
+                    (index.compiled[2].rc_comm, proof.evals.iter().map(|e| e.rc[2]).collect(), None),
+        ],
                 proof.proof
             ));
         }

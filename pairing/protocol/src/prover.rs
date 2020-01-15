@@ -25,6 +25,7 @@ pub struct ProofEvaluations<Fr> {
     pub row: [Fr; 3],
     pub col: [Fr; 3],
     pub val: [Fr; 3],
+    pub rc: [Fr; 3],
 }
 
 #[derive(Clone)]
@@ -251,6 +252,12 @@ impl<E: PairingEngine> ProverProof<E>
                 index.compiled[1].val.evaluate(oracles.beta[2]),
                 index.compiled[2].val.evaluate(oracles.beta[2]),
             ],
+            rc:
+            [
+                index.compiled[0].rc.evaluate(oracles.beta[2]),
+                index.compiled[1].rc.evaluate(oracles.beta[2]),
+                index.compiled[2].rc.evaluate(oracles.beta[2]),
+            ],
         };
 
         let x_hat_beta1 = x_hat.evaluate(oracles.beta[0]);
@@ -317,6 +324,9 @@ impl<E: PairingEngine> ProverProof<E>
                     &index.compiled[0].val,
                     &index.compiled[1].val,
                     &index.compiled[2].val,
+                    &index.compiled[0].rc,
+                    &index.compiled[1].rc,
+                    &index.compiled[2].rc,
                 ],
                 oracles.batch,
                 oracles.beta[2]

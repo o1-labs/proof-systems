@@ -52,7 +52,7 @@ impl<E:PairingEngine> EvaluationDomains<E> {
 
         let h = EvaluationDomain::<E::Fr>::new(h_group_size)?;
         let k = EvaluationDomain::<E::Fr>::new(k_group_size)?;
-        let b = EvaluationDomain::<E::Fr>::new(k_group_size * 6 - 6)?;
+        let b = EvaluationDomain::<E::Fr>::new(k_group_size * 3 - 3)?;
         let x = EvaluationDomain::<E::Fr>::new(x_group_size)?;
 
         Some (EvaluationDomains { h, k, b, x })
@@ -112,6 +112,7 @@ pub struct MatrixValues<A> {
     pub row : A,
     pub col : A,
     pub val : A,
+    pub rc : A,
 }
 
 pub struct VerifierIndex<E: PairingEngine>
@@ -143,6 +144,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
             row: c.row_comm,
             col: c.col_comm,
             val: c.val_comm,
+            rc: c.rc_comm,
         }
     }
 

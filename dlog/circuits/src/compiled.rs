@@ -22,8 +22,10 @@ pub struct Compiled<G: AffineCurve>
     pub col_comm: G,
     pub row_comm: G,
     pub val_comm: G,
+    pub rc_comm: G,
 
     // compiled polynomials and evaluations
+    pub rc      : DensePolynomial<Fr<G>>,
     pub row     : DensePolynomial<Fr<G>>,
     pub col     : DensePolynomial<Fr<G>>,
     pub val     : DensePolynomial<Fr<G>>,
@@ -33,6 +35,7 @@ pub struct Compiled<G: AffineCurve>
     pub row_eval_b: Evaluations<Fr<G>>,
     pub col_eval_b: Evaluations<Fr<G>>,
     pub val_eval_b: Evaluations<Fr<G>>,
+    pub rc_eval_b : Evaluations<Fr<G>>,
 }
 
 impl<G: AffineCurve> Compiled<G>
@@ -85,23 +88,27 @@ impl<G: AffineCurve> Compiled<G>
         let row = row_eval_k.clone().interpolate();
         let col = col_eval_k.clone().interpolate();
         let val = val_eval_k.clone().interpolate();
+        let rc = (&row_eval_k * &col_eval_k).interpolate();
 
         // commit to the index polynomials
         Ok(Compiled::<G>
         {
             constraints,
+            rc_comm: srs.commit_no_degree_bound(&rc)?,
             row_comm: srs.commit_no_degree_bound(&row)?,
             col_comm: srs.commit_no_degree_bound(&col)?,
             val_comm: srs.commit_no_degree_bound(&val)?,
             row_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&val), b_group),
+            rc_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&rc), b_group),
             row_eval_k,
             col_eval_k,
             val_eval_k,
             row,
             col,
             val,
+            rc
         })
     }
 
@@ -114,11 +121,14 @@ impl<G: AffineCurve> Compiled<G>
         oracle2: Fr<G>,
     ) -> Vec<Fr<G>>
     {
-        self.row_eval_b.evals.iter().zip(self.col_eval_b.evals.iter()).map
+        self.row_eval_b.evals.iter().
+            zip(self.col_eval_b.evals.iter()).
+            zip(self.rc_eval_b.evals.iter()).
+            map
         (
-            |(row, col)|
+            |((row, col), rc)|
             {
-                (oracle2 - row) * &(oracle1 - col)
+                oracle2 * &oracle1 - &(oracle1 * &row) - &(oracle2 * &col) + &rc
             }
         ).collect()
     }
