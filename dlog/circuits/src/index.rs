@@ -8,44 +8,74 @@ use sprs::CsMat;
 use rand_core::RngCore;
 use commitment_dlog::srs::SRS;
 use algebra::AffineCurve;
-use ff_fft::EvaluationDomain;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
+use evaluation_domains::EvaluationDomains;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-pub struct Index<G: AffineCurve>
+pub enum SRSValue<'a, G : AffineCurve> {
+    Value(SRS<G>),
+    Ref(&'a SRS<G>)
+}
+
+impl<'a, G : AffineCurve> SRSValue<'a, G> {
+    pub fn get_ref(&self) -> & SRS<G> {
+        match self {
+            SRSValue::Value(x) => &x,
+            SRSValue::Ref(x) => x
+        }
+    }
+}
+
+pub enum SRSSpec <'a, 'b, G: AffineCurve>{
+    Use(&'a SRS<G>),
+    Generate(&'b mut dyn RngCore)
+}
+
+impl<'a, G: AffineCurve> SRSValue<'a, G> {
+    pub fn generate<'b>(
+        ds: EvaluationDomains<Fr<G>>,
+        rng : &'b mut dyn RngCore) -> SRS<G> {
+        let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
+
+        SRS::<G>::create(max_degree, rng)
+    }
+
+    pub fn create<'b>(ds: EvaluationDomains<Fr<G>>, spec : SRSSpec<'a, 'b, G>) -> SRSValue<'a, G>{
+        match spec {
+            SRSSpec::Use(x) => SRSValue::Ref(x),
+            SRSSpec::Generate(rng) => SRSValue::Value(Self::generate(ds, rng))
+        }
+    }
+}
+
+pub struct Index<'a, G: AffineCurve>
 {
     // constraint system compilation
     pub compiled: [Compiled<G>; 3],
 
     // evaluation domains as multiplicative groups of roots of unity
-    pub h_group: EvaluationDomain<Fr<G>>,
-    pub k_group: EvaluationDomain<Fr<G>>,
-    pub b_group: EvaluationDomain<Fr<G>>,
-    pub x_group: EvaluationDomain<Fr<G>>,
+    pub domains : EvaluationDomains<G::ScalarField>,
 
     // number of public inputs
     pub public_inputs: usize,
 
-    // maximal degree of the committed polynomials
-    pub max_degree: usize,
-
     // polynomial commitment keys
-    pub srs: SRS<G>,
+    pub srs: SRSValue<'a, G>,
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<G: AffineCurve> Index<G>
+impl<'a, G: AffineCurve> Index<'a, G>
 {
     // this function compiles the circuit from constraints
-    pub fn create
+    pub fn create<'b>
     (
         a: CsMat<Fr<G>>,
         b: CsMat<Fr<G>>,
@@ -53,7 +83,7 @@ impl<G: AffineCurve> Index<G>
         public_inputs: usize,
         fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-        rng: &mut dyn RngCore
+        srs : SRSSpec<'a, 'b, G>
     ) -> Result<Self, ProofError>
     {
         if a.shape() != b.shape() ||
@@ -65,62 +95,33 @@ impl<G: AffineCurve> Index<G>
             return Err(ProofError::ConstraintInconsist)
         }
 
-        // compute the evaluation domains
-        let h_group_size = 
-            EvaluationDomain::<Fr<G>>::compute_size_of_domain(a.shape().0)
-            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
-        let x_group_size =
-            EvaluationDomain::<Fr<G>>::compute_size_of_domain(public_inputs)
-            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
-        let k_group_size =
-            EvaluationDomain::<Fr<G>>::compute_size_of_domain
-            ([&a, &b, &c].iter().map(|x| x.nnz()).max()
-            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?)
+        let nonzero_entries : usize =
+            [&a, &b, &c].iter().map(|x| x.nnz()).max()
+            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
+
+        let domains = EvaluationDomains::create(
+            a.shape().0,
+            public_inputs,
+            nonzero_entries)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
 
-        match
-        (
-            EvaluationDomain::<Fr<G>>::new(h_group_size),
-            EvaluationDomain::<Fr<G>>::new(k_group_size),
-            EvaluationDomain::<Fr<G>>::new(k_group_size * 3 - 3),
-            EvaluationDomain::<Fr<G>>::new(x_group_size),
-        )
+        let srs = SRSValue::create(domains, srs);
+
+        // compile the constraints
+        Ok(Index::<G>
         {
-            (Some(h_group), Some(k_group), Some(b_group), Some(x_group)) =>
-            {
-                // maximal degree of the committed polynomials
-                let max_degree = *[3*h_group.size()-1, b_group.size()].iter().max()
-                    .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
-     
-                // compute public setup
-                let srs = SRS::<G>::create
-                (
-                    max_degree,
-                    rng
-                );
-
-                // compile the constraints
-                Ok(Index::<G>
-                {
-                    compiled:
-                    [
-                        Compiled::<G>::compile(&srs, h_group, k_group, b_group, a)?,
-                        Compiled::<G>::compile(&srs, h_group, k_group, b_group, b)?,
-                        Compiled::<G>::compile(&srs, h_group, k_group, b_group, c)?,
-                    ],
-                    fr_sponge_params,
-                    fq_sponge_params,
-                    public_inputs,
-                    max_degree,
-                    h_group,
-                    k_group,
-                    b_group,
-                    x_group,
-                    srs,
-                })
-            }
-            (_,_,_,_) => Err(ProofError::EvaluationGroup)
-        }
+            compiled:
+            [
+                Compiled::<G>::compile(srs.get_ref(), domains.h, domains.k, domains.b, a)?,
+                Compiled::<G>::compile(srs.get_ref(), domains.h, domains.k, domains.b, b)?,
+                Compiled::<G>::compile(srs.get_ref(), domains.h, domains.k, domains.b, c)?,
+            ],
+            fr_sponge_params,
+            fq_sponge_params,
+            public_inputs,
+            srs,
+            domains,
+        })
     }
 
     // This function verifies the consistency of the wire assignements (witness) against the constraints
@@ -133,7 +134,7 @@ impl<G: AffineCurve> Index<G>
     ) -> bool
     {
         if self.compiled[0].constraints.shape().1 != witness.len() {return false}
-        let mut gates = vec![CircuitGate::<Fr<G>>::zero(); self.h_group.size()];
+        let mut gates = vec![CircuitGate::<Fr<G>>::zero(); self.domains.h.size()];
         for i in 0..3
         {
             for val in self.compiled[i].constraints.iter()
