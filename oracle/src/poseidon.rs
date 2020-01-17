@@ -10,7 +10,7 @@ It implements Poseidon Hash Function primitive
 use algebra::Field;
 
 pub const ROUNDS_FULL: usize = 8;
-pub const ROUNDS_PARTIAL: usize = 55;
+pub const ROUNDS_PARTIAL: usize = 30;
 const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
@@ -22,25 +22,25 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
-// x^5
+// x^17
 fn sbox<F: Field>(x: F) -> F {
     let mut res = x;
     res.square_in_place(); //x^2
     res.square_in_place(); //x^4
-    res.mul_assign(&x);
+    res.square_in_place(); //x^8
+    res.square_in_place(); //x^16
+    res.mul_assign(&x); // x^17
     res
 }
 
-fn apply_matrix<F: Field>(mat: &Vec<Vec<F>>, v: &Vec<F>) -> Vec<F> {
-    mat.iter()
-        .map(|row| {
-            let mut res = F::zero();
-            for (i, r) in row.iter().enumerate() {
-                res += &v[i].mul(r);
-            }
-            res
-        })
-        .collect()
+/*
+Apply the matrix
+[[1, 0, 1],
+ [1, 1, 0],
+ [0, 1, 1]]
+ */
+fn apply_near_mds_matrix<F: Field>(v: &Vec<F>) -> Vec<F> {
+    vec![v[0] + &v[2], v[0] + &v[1], v[1] + &v[2]]
 }
 
 enum SpongeState {
@@ -51,7 +51,6 @@ enum SpongeState {
 #[derive(Clone)]
 pub struct ArithmeticSpongeParams<F: Field> {
     pub round_constants: Vec<Vec<F>>,
-    pub mds: Vec<Vec<F>>,
 }
 
 pub struct ArithmeticSponge<F: Field> {
@@ -69,7 +68,7 @@ impl<F: Field> ArithmeticSponge<F> {
             for i in 0..self.state.len() {
                 self.state[i] = sbox(self.state[i]);
             }
-            let new_state = apply_matrix(&params.mds, &self.state);
+            let new_state = apply_near_mds_matrix(&self.state);
             for i in 0..new_state.len() {
                 self.state[i] = new_state[i];
             }
@@ -83,7 +82,7 @@ impl<F: Field> ArithmeticSponge<F> {
                 self.state[i].add_assign(&x);
             }
             self.state[0] = sbox(self.state[0]);
-            let new_state = apply_matrix(&params.mds, &self.state);
+            let new_state = apply_near_mds_matrix(&self.state);
             for i in 0..new_state.len() {
                 self.state[i] = new_state[i];
             }
@@ -99,7 +98,7 @@ impl<F: Field> ArithmeticSponge<F> {
             for i in 0..self.state.len() {
                 self.state[i] = sbox(self.state[i]);
             }
-            let new_state = apply_matrix(&params.mds, &self.state);
+            let new_state = apply_near_mds_matrix(&self.state);
             for i in 0..new_state.len() {
                 self.state[i] = new_state[i];
             }
