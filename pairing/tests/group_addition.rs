@@ -22,8 +22,8 @@ of non-special pairs of points
 
 use circuits_pairing::index::{Index, URSSpec};
 use sprs::{CsMat, CsVecView};
-use oracle::poseidon::ArithmeticSpongeParams;
-use protocol_pairing::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon::ArithmeticSpongeParams, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
+use protocol_pairing::{prover::{ProverProof}, };
 use algebra::{curves::{bn_382::{Bn_382, g1::Bn_382G1Parameters}}, fields::{bn_382::fp::Fp, Field}};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
