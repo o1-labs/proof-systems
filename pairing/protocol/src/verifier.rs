@@ -10,7 +10,8 @@ use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations};
-use crate::marlin_sponge::{FqSponge, FrSponge};
+use oracle::marlin_sponge::{FqSponge};
+use crate::marlin_sponge::{FrSponge};
 
 impl<E: PairingEngine> ProverProof<E>
 {

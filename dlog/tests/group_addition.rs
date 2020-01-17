@@ -24,8 +24,8 @@ of non-special pairs of points
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
-use protocol_dlog::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
-use oracle::poseidon::ArithmeticSpongeParams;
+use protocol_dlog::{prover::{ProverProof}};
+use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
