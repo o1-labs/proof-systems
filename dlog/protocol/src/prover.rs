@@ -29,6 +29,7 @@ pub struct ProofEvaluations<Fr> {
     pub row: [Fr; 3],
     pub col: [Fr; 3],
     pub val: [Fr; 3],
+    pub rc: [Fr; 3],
 }
 
 #[derive(Clone)]
@@ -255,6 +256,12 @@ impl<G: AffineCurve> ProverProof<G>
                         index.compiled[1].val.evaluate(oracles.beta[i]),
                         index.compiled[2].val.evaluate(oracles.beta[i]),
                     ],
+                    rc:
+                    [
+                        index.compiled[0].rc.evaluate(oracles.beta[i]),
+                        index.compiled[1].rc.evaluate(oracles.beta[i]),
+                        index.compiled[2].rc.evaluate(oracles.beta[i]),
+                    ],
                 }
             ).collect::<Vec<_>>();
             [evl[0].clone(), evl[1].clone(), evl[2].clone()]
@@ -305,6 +312,9 @@ impl<G: AffineCurve> ProverProof<G>
                     (index.compiled[0].val.clone(), None),
                     (index.compiled[1].val.clone(), None),
                     (index.compiled[2].val.clone(), None),
+                    (index.compiled[0].rc.clone(), None),
+                    (index.compiled[1].rc.clone(), None),
+                    (index.compiled[2].rc.clone(), None),
                 ],
                 &oracles.beta.to_vec(),
                 oracles.polys,
