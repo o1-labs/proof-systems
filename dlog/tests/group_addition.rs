@@ -198,7 +198,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -248,8 +248,9 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.verify(&witness), false);
 
+    let rng = &mut OsRng;
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index)
+    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng)
     {
         Ok(_) => {panic!("Failure invalidating the witness")}
         _ => {}
