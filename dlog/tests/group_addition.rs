@@ -21,7 +21,7 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use circuits_dlog::index::Index;
+use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
 use protocol_dlog::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
@@ -72,7 +72,7 @@ fn group_addition()
         4,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
-        rng
+        SRSSpec::Generate(rng)
     ).unwrap();
 
     positive(&index, rng);

@@ -29,7 +29,7 @@ impl<G: AffineCurve> ProverProof<G>
     ) -> bool
     {
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (oracles.alpha.pow([index.h_group.size]) - &oracles.beta[0].pow([index.h_group.size])) *
+        (oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[0].pow([index.domains.h.size])) *
             &(0..3).map
             (
                 |i|
@@ -46,15 +46,15 @@ impl<G: AffineCurve> ProverProof<G>
         ==
         (oracles.alpha - &oracles.beta[0]) *
         &(
-            self.evals[0].h1 * &index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            self.evals[0].h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
             &(oracles.beta[0] * &self.evals[0].g1) +
-            &(self.sigma2 * &index.h_group.size_as_field_element *
-            &(self.evals[0].w * &index.x_group.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            // interpolating/evaluating public input over small domain x_group
+            &(self.sigma2 * &index.domains.h.size_as_field_element *
+            &(self.evals[0].w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            // interpolating/evaluating public input over small domain domains.x
             // TODO: investigate which of the below is faster
-            &Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate().evaluate(oracles.beta[0])))
+            &Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate().evaluate(oracles.beta[0])))
             /*
-            &index.x_group.evaluate_all_lagrange_coefficients(oracles.beta[0])
+            &index.domains.x.evaluate_all_lagrange_coefficients(oracles.beta[0])
             .iter()
             .zip(self.public.iter())
             .map(|(l, x)| *l * x)
@@ -74,11 +74,11 @@ impl<G: AffineCurve> ProverProof<G>
         oracles: &RandomOracles<Fr<G>>,
     ) -> bool
     {
-        self.sigma3 * &index.k_group.size_as_field_element *
-            &((oracles.alpha.pow([index.h_group.size]) - &oracles.beta[1].pow([index.h_group.size])))
+        self.sigma3 * &index.domains.k.size_as_field_element *
+            &((oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[1].pow([index.domains.h.size])))
         ==
         (oracles.alpha - &oracles.beta[1]) * &(self.evals[1].h2 *
-            &index.h_group.evaluate_vanishing_polynomial(oracles.beta[1]) +
+            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]) +
             &self.sigma2 + &(self.evals[1].g2 * &oracles.beta[1]))
     }
 
@@ -114,10 +114,10 @@ impl<G: AffineCurve> ProverProof<G>
             }
         ).fold(Fr::<G>::zero(), |x, y| x + &y);
 
-        index.k_group.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals[2].h3
+        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals[2].h3
         ==
-        index.h_group.evaluate_vanishing_polynomial(oracles.beta[0]) *
-            &(index.h_group.evaluate_vanishing_polynomial(oracles.beta[1])) *
+        index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
+            &(index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1])) *
             &acc - &((oracles.beta[2] * &self.evals[2].g3 + &self.sigma3) *
             &crb[0] * &crb[1] * &crb[2])
     }
@@ -163,11 +163,11 @@ impl<G: AffineCurve> ProverProof<G>
                     (proof.zb_comm,     proof.evals.iter().map(|e| e.zb).collect(), None),
                     (proof.w_comm,      proof.evals.iter().map(|e| e.w ).collect(), None),
                     (proof.h1_comm,     proof.evals.iter().map(|e| e.h1).collect(), None),
-                    (proof.g1_comm.0,   proof.evals.iter().map(|e| e.g1).collect(), Some((proof.g1_comm.1, index.h_group.size()-1))),
+                    (proof.g1_comm.0,   proof.evals.iter().map(|e| e.g1).collect(), Some((proof.g1_comm.1, index.domains.h.size()-1))),
                     (proof.h2_comm,     proof.evals.iter().map(|e| e.h2).collect(), None),
-                    (proof.g2_comm.0,   proof.evals.iter().map(|e| e.g2).collect(), Some((proof.g2_comm.1, index.h_group.size()-1))),
+                    (proof.g2_comm.0,   proof.evals.iter().map(|e| e.g2).collect(), Some((proof.g2_comm.1, index.domains.h.size()-1))),
                     (proof.h3_comm,     proof.evals.iter().map(|e| e.h3).collect(), None),
-                    (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.k_group.size()-1))),
+                    (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.domains.k.size()-1))),
                     
                     (index.compiled[0].row_comm, proof.evals.iter().map(|e| e.row[0]).collect(), None),
                     (index.compiled[1].row_comm, proof.evals.iter().map(|e| e.row[1]).collect(), None),
@@ -186,7 +186,7 @@ impl<G: AffineCurve> ProverProof<G>
             ));
         }
         // second, verify the commitment opening proofs
-        match index.srs.verify::<EFqSponge>(&batch, &index.fq_sponge_params.clone(), rng)
+        match index.srs.get_ref().verify::<EFqSponge>(&batch, &index.fq_sponge_params.clone(), rng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)
@@ -209,9 +209,9 @@ impl<G: AffineCurve> ProverProof<G>
 
         let x_hat =
             // TODO: Cache this interpolated polynomial.
-            Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.x_group).interpolate();
+            Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate();
         // TODO: No degree bound needed
-        let x_hat_comm = index.srs.commit_no_degree_bound(&x_hat)?;
+        let x_hat_comm = index.srs.get_ref().commit_no_degree_bound(&x_hat)?;
 
         // TODO: absorb previous proof context into the argument
         fq_sponge.absorb_fr(&Fr::<G>::one());
