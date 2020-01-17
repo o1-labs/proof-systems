@@ -83,7 +83,13 @@ impl<E: PairingEngine> ProverProof<E>
     {
         let crb: Vec<E::Fr> = (0..3).map
         (
-            |i| {(oracles.beta[1] - &self.evals.row[i]) * &(oracles.beta[0] - &self.evals.col[i])}
+            |i|
+            {
+                oracles.beta[1] * &oracles.beta[0] -
+                &(oracles.beta[0] * &self.evals.row[i]) -
+                &(oracles.beta[1] * &self.evals.col[i]) +
+                &self.evals.rc[i]
+            }
         ).collect();
 
         let acc = (0..3).map
@@ -181,7 +187,10 @@ impl<E: PairingEngine> ProverProof<E>
                     (index.matrix_commitments[0].val, proof.evals.val[0], None),
                     (index.matrix_commitments[1].val, proof.evals.val[1], None),
                     (index.matrix_commitments[2].val, proof.evals.val[2], None),
-                ],
+                    (index.matrix_commitments[0].rc, proof.evals.rc[0], None),
+                    (index.matrix_commitments[1].rc, proof.evals.rc[1], None),
+                    (index.matrix_commitments[2].rc, proof.evals.rc[2], None),
+        ],
                 proof.proof3
             ));
         }

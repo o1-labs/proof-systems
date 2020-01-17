@@ -82,7 +82,7 @@ impl<G: AffineCurve> Index<G>
         (
             EvaluationDomain::<Fr<G>>::new(h_group_size),
             EvaluationDomain::<Fr<G>>::new(k_group_size),
-            EvaluationDomain::<Fr<G>>::new(k_group_size * 6 - 6),
+            EvaluationDomain::<Fr<G>>::new(k_group_size * 3 - 3),
             EvaluationDomain::<Fr<G>>::new(x_group_size),
         )
         {
