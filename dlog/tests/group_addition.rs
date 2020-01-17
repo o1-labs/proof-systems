@@ -205,8 +205,9 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
+    let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
         Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
@@ -215,7 +216,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &verifier_index, rng)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
