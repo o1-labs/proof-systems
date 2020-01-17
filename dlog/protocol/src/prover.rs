@@ -138,8 +138,6 @@ impl<G: AffineCurve> ProverProof<G>
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         
-        // absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&Fr::<G>::one());
         // absorb the public input into the argument
         fq_sponge.absorb_g(& x_hat_comm);
         // absorb W, ZA, ZB polycommitments
@@ -178,6 +176,7 @@ impl<G: AffineCurve> ProverProof<G>
 
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&g1_comm.0);
+        fq_sponge.absorb_g(&g1_comm.1);
         fq_sponge.absorb_g(&h1_comm);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
@@ -194,6 +193,7 @@ impl<G: AffineCurve> ProverProof<G>
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
         fq_sponge.absorb_g(&g2_comm.0);
+        fq_sponge.absorb_g(&g2_comm.1);
         fq_sponge.absorb_g(&h2_comm);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
@@ -210,12 +210,15 @@ impl<G: AffineCurve> ProverProof<G>
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&sigma3);
         fq_sponge.absorb_g(&g3_comm.0);
+        fq_sponge.absorb_g(&g3_comm.1);
         fq_sponge.absorb_g(&h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
 
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.digest();
+            oracles.digest_before_evaluations = digest_before_evaluations;
+
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
@@ -265,7 +268,17 @@ impl<G: AffineCurve> ProverProof<G>
             [evl[0].clone(), evl[1].clone(), evl[2].clone()]
         };
 
-        fr_sponge.absorb_evaluations(&x_hat.evaluate(oracles.beta[0]), &evals[0]);
+        let x_hat_evals =
+            [ x_hat.evaluate(oracles.beta[0])
+            , x_hat.evaluate(oracles.beta[1])
+            , x_hat.evaluate(oracles.beta[2]) ];
+
+        oracles.x_hat = x_hat_evals;
+
+        for i in 0..3 {
+            fr_sponge.absorb_evaluations(&x_hat_evals[i], &evals[i]);
+        }
+
         oracles.polys = fr_sponge.challenge();
         oracles.evals = fr_sponge.challenge();
 
@@ -509,6 +522,9 @@ pub struct RandomOracles<F: Field>
     pub polys: F,
     pub evals: F,
     pub beta: [F; 3],
+
+    pub digest_before_evaluations: F,
+    pub x_hat: [F; 3],
 }
 
 impl<F: Field> RandomOracles<F>
@@ -524,6 +540,8 @@ impl<F: Field> RandomOracles<F>
             polys: F::zero(),
             evals: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
+            x_hat: [F::zero(), F::zero(), F::zero()],
+            digest_before_evaluations: F::zero(),
         }
     }
 }
