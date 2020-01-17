@@ -11,6 +11,7 @@ or sequential hashing into the group has to be utilized.
 use algebra::{ProjectiveCurve, PrimeField, AffineCurve, FixedBaseMSM, UniformRand};
 use rand_core::RngCore;
 
+#[derive(Debug, Clone)]
 pub struct SRS<G: AffineCurve>
 {
     pub g: Vec<G>,    // for committing polynomials
@@ -19,6 +20,10 @@ pub struct SRS<G: AffineCurve>
 
 impl<G: AffineCurve> SRS<G>
 {
+    pub fn max_degree(&self) -> usize {
+        self.g.len()
+    }
+
     // This function creates SRS instance for circuits up to depth d
     //     depth: maximal depth of the circuits
     //     rng: randomness source context

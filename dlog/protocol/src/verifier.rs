@@ -5,7 +5,7 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 use rand_core::RngCore;
-use circuits_dlog::index::Index;
+use circuits_dlog::index::{VerifierIndex as Index};
 use oracle::{FqSponge, rndoracle::ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
@@ -169,18 +169,18 @@ impl<G: AffineCurve> ProverProof<G>
                     (proof.h3_comm,     proof.evals.iter().map(|e| e.h3).collect(), None),
                     (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.domains.k.size()-1))),
                     
-                    (index.compiled[0].row_comm, proof.evals.iter().map(|e| e.row[0]).collect(), None),
-                    (index.compiled[1].row_comm, proof.evals.iter().map(|e| e.row[1]).collect(), None),
-                    (index.compiled[2].row_comm, proof.evals.iter().map(|e| e.row[2]).collect(), None),
-                    (index.compiled[0].col_comm, proof.evals.iter().map(|e| e.col[0]).collect(), None),
-                    (index.compiled[1].col_comm, proof.evals.iter().map(|e| e.col[1]).collect(), None),
-                    (index.compiled[2].col_comm, proof.evals.iter().map(|e| e.col[2]).collect(), None),
-                    (index.compiled[0].val_comm, proof.evals.iter().map(|e| e.val[0]).collect(), None),
-                    (index.compiled[1].val_comm, proof.evals.iter().map(|e| e.val[1]).collect(), None),
-                    (index.compiled[2].val_comm, proof.evals.iter().map(|e| e.val[2]).collect(), None),
-                    (index.compiled[0].rc_comm, proof.evals.iter().map(|e| e.rc[0]).collect(), None),
-                    (index.compiled[1].rc_comm, proof.evals.iter().map(|e| e.rc[1]).collect(), None),
-                    (index.compiled[2].rc_comm, proof.evals.iter().map(|e| e.rc[2]).collect(), None),
+                    (index.matrix_commitments[0].row, proof.evals.iter().map(|e| e.row[0]).collect(), None),
+                    (index.matrix_commitments[1].row, proof.evals.iter().map(|e| e.row[1]).collect(), None),
+                    (index.matrix_commitments[2].row, proof.evals.iter().map(|e| e.row[2]).collect(), None),
+                    (index.matrix_commitments[0].col, proof.evals.iter().map(|e| e.col[0]).collect(), None),
+                    (index.matrix_commitments[1].col, proof.evals.iter().map(|e| e.col[1]).collect(), None),
+                    (index.matrix_commitments[2].col, proof.evals.iter().map(|e| e.col[2]).collect(), None),
+                    (index.matrix_commitments[0].val, proof.evals.iter().map(|e| e.val[0]).collect(), None),
+                    (index.matrix_commitments[1].val, proof.evals.iter().map(|e| e.val[1]).collect(), None),
+                    (index.matrix_commitments[2].val, proof.evals.iter().map(|e| e.val[2]).collect(), None),
+                    (index.matrix_commitments[0].rc, proof.evals.iter().map(|e| e.rc[0]).collect(), None),
+                    (index.matrix_commitments[1].rc, proof.evals.iter().map(|e| e.rc[1]).collect(), None),
+                    (index.matrix_commitments[2].rc, proof.evals.iter().map(|e| e.rc[2]).collect(), None),
         ],
                 proof.proof
             ));
