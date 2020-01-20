@@ -262,21 +262,17 @@ impl<G: AffineCurve> SRS<G> {
             let rand_l = Fr::<G>::rand(rng);
             let rand_r = Fr::<G>::rand(rng);
 
-            let l = {
-                let a_lo_b_hi = inner_prod(a_lo, b_hi);
-                let a_lo: Vec<_> = a_lo.iter().map(|x| x.into_repr()).collect();
-                (VariableBaseMSM::multi_scalar_mul(&g_hi, &a_lo)
-                    + &(self.h.mul(rand_l) + &u.mul(a_lo_b_hi)))
-                    .into_affine()
-            };
+            let l = VariableBaseMSM::multi_scalar_mul(
+                &[&g[n..], &[self.h, u]].concat(),
+                &[&a[0..n], &[rand_l, inner_prod(a_lo, b_hi)]].concat()
+                    .iter().map(|x| x.into_repr()).collect::<Vec<_>>()
+            ).into_affine();
 
-            let r = {
-                let a_hi_b_lo = inner_prod(a_hi, b_lo);
-                let a_hi: Vec<_> = a_hi.iter().map(|x| x.into_repr()).collect();
-                (VariableBaseMSM::multi_scalar_mul(&g_lo, &a_hi)
-                    + &(self.h.mul(rand_r) + &u.mul(a_hi_b_lo)))
-                    .into_affine()
-            };
+            let r = VariableBaseMSM::multi_scalar_mul(
+                &[&g[0..n], &[self.h, u]].concat(),
+                &[&a[n..], &[rand_r, inner_prod(a_hi, b_lo)]].concat()
+                    .iter().map(|x| x.into_repr()).collect::<Vec<_>>()
+            ).into_affine();
 
             lr.push((l, r));
             blinders.push((rand_l, rand_r));
