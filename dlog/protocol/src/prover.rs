@@ -10,6 +10,7 @@ use ff_fft::{DensePolynomial, Evaluations};
 use commitment_dlog::commitment::{Utils, OpeningProof};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
+use rand_core::RngCore;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -71,7 +72,8 @@ impl<G: AffineCurve> ProverProof<G>
         >
     (
         witness: &Vec::<Fr<G>>,
-        index: &Index<G>
+        index: &Index<G>,
+        rng: &mut dyn RngCore,
     ) 
     -> Result<Self, ProofError>
     {
@@ -318,6 +320,7 @@ impl<G: AffineCurve> ProverProof<G>
                 oracles.polys,
                 oracles.evals,
                 &index.fq_sponge_params.clone(),
+                rng
             )?,
 
             // polynomial evaluations

@@ -81,7 +81,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 &x.clone(),
                 polymask,
                 evalmask,
-                &oracle::bn_382::fp::params()
+                &oracle::bn_382::fp::params(),
+                rng,
             ).unwrap();
             open += start.elapsed();
 
