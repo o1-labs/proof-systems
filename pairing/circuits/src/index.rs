@@ -9,11 +9,11 @@ use std::collections::HashMap;
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
 use algebra::PairingEngine;
-use ff_fft::EvaluationDomain;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
+use evaluation_domains::EvaluationDomains;
 
 pub enum URSValue<'a, E : PairingEngine> {
     Value(URS<E>),
@@ -29,36 +29,6 @@ impl<'a, E : PairingEngine> URSValue<'a, E> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct EvaluationDomains<E : PairingEngine> {
-    pub h: EvaluationDomain<E::Fr>,
-    pub k: EvaluationDomain<E::Fr>,
-    pub b: EvaluationDomain<E::Fr>,
-    pub x: EvaluationDomain<E::Fr>,
-}
-
-impl<E:PairingEngine> EvaluationDomains<E> {
-    pub fn create(
-        variables : usize,
-        public_inputs: usize,
-        nonzero_entries: usize) -> Option<Self> {
-
-        let h_group_size = 
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(variables)?;
-        let x_group_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(public_inputs)?;
-        let k_group_size =
-            EvaluationDomain::<E::Fr>::compute_size_of_domain(nonzero_entries)?;
-
-        let h = EvaluationDomain::<E::Fr>::new(h_group_size)?;
-        let k = EvaluationDomain::<E::Fr>::new(k_group_size)?;
-        let b = EvaluationDomain::<E::Fr>::new(k_group_size * 3 - 3)?;
-        let x = EvaluationDomain::<E::Fr>::new(x_group_size)?;
-
-        Some (EvaluationDomains { h, k, b, x })
-    }
-}
-
 pub enum URSSpec <'a, 'b, E:PairingEngine>{
     Use(&'a URS<E>),
     Generate(&'b mut dyn RngCore)
@@ -66,7 +36,7 @@ pub enum URSSpec <'a, 'b, E:PairingEngine>{
 
 impl<'a, E: PairingEngine> URSValue<'a, E> {
     pub fn generate<'b>(
-        ds: EvaluationDomains<E>,
+        ds: EvaluationDomains<E::Fr>,
         rng : &'b mut dyn RngCore) -> URS<E> {
         let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
 
@@ -81,7 +51,7 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
         rng )
     }
 
-    pub fn create<'b>(ds: EvaluationDomains<E>, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
+    pub fn create<'b>(ds: EvaluationDomains<E::Fr>, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
         match spec {
             URSSpec::Use(x) => URSValue::Ref(x),
             URSSpec::Generate(rng) => URSValue::Value(Self::generate(ds, rng))
@@ -95,7 +65,7 @@ pub struct Index<'a, E: PairingEngine>
     pub compiled: [Compiled<E>; 3],
 
     // evaluation domains as multiplicative groups of roots of unity
-    pub domains : EvaluationDomains<E>,
+    pub domains : EvaluationDomains<E::Fr>,
 
     // number of public inputs
     pub public_inputs: usize,
@@ -121,7 +91,7 @@ pub struct VerifierIndex<E: PairingEngine>
     pub matrix_commitments: [MatrixValues<E::G1Affine>; 3],
 
     // evaluation domains as multiplicative groups of roots of unity
-    pub domains : EvaluationDomains<E>,
+    pub domains : EvaluationDomains<E::Fr>,
 
     // number of public inputs
     pub public_inputs: usize,
