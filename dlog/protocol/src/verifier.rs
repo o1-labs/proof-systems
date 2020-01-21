@@ -213,8 +213,6 @@ impl<G: AffineCurve> ProverProof<G>
         // TODO: No degree bound needed
         let x_hat_comm = index.srs.get_ref().commit_no_degree_bound(&x_hat)?;
 
-        // TODO: absorb previous proof context into the argument
-        fq_sponge.absorb_fr(&Fr::<G>::one());
         // absorb the public input into the argument
         fq_sponge.absorb_g(&x_hat_comm);
         // absorb W, ZA, ZB polycommitments
@@ -228,30 +226,44 @@ impl<G: AffineCurve> ProverProof<G>
         oracles.eta_c = fq_sponge.challenge();
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&self.g1_comm.0);
+        fq_sponge.absorb_g(&self.g1_comm.1);
         fq_sponge.absorb_g(&self.h1_comm);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
         fq_sponge.absorb_g(&self.g2_comm.0);
+        fq_sponge.absorb_g(&self.g2_comm.1);
         fq_sponge.absorb_g(&self.h2_comm);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
         fq_sponge.absorb_g(&self.g3_comm.0);
+        fq_sponge.absorb_g(&self.g3_comm.1);
         fq_sponge.absorb_g(&self.h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
 
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.digest();
+            oracles.digest_before_evaluations = digest_before_evaluations;
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
             s
         };
 
-        fr_sponge.absorb_evaluations(&x_hat.evaluate(oracles.beta[0]), &self.evals[0]);
+        let x_hat_evals =
+            [ x_hat.evaluate(oracles.beta[0])
+            , x_hat.evaluate(oracles.beta[1])
+            , x_hat.evaluate(oracles.beta[2]) ];
+
+        oracles.x_hat = x_hat_evals;
+
+        for i in 0..3 {
+            fr_sponge.absorb_evaluations(&x_hat_evals[i], &self.evals[i]);
+        }
+
         oracles.polys = fr_sponge.challenge();
         oracles.evals = fr_sponge.challenge();
 
