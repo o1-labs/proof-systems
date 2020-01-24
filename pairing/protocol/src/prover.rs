@@ -9,7 +9,8 @@ use oracle::rndoracle::{ProofError};
 use ff_fft::{DensePolynomial, Evaluations};
 use commitment_pairing::commitment::Utils;
 use circuits_pairing::index::Index;
-use crate::marlin_sponge::{FqSponge, FrSponge};
+use oracle::marlin_sponge::{FqSponge};
+use crate::marlin_sponge::{FrSponge};
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fr> {
