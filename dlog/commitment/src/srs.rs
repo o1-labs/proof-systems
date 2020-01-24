@@ -19,13 +19,15 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Clone)]
-pub struct SRS<G: AffineCurve> {
-    pub g: Vec<G>, // for committing polynomials
-    pub h: G,      // blinding
+#[derive(Debug, Clone)]
+pub struct SRS<G: AffineCurve>
+{
+    pub g: Vec<G>,    // for committing polynomials
+    pub h: G,         // blinding
 }
 
-impl<G: AffineCurve> SRS<G> {
+impl<G: AffineCurve> SRS<G>
+{
     // This function creates SRS instance for circuits up to depth d
     //     depth: maximal depth of the circuits
     //     rng: randomness source context
