@@ -9,8 +9,9 @@ use circuits_dlog::index::{VerifierIndex as Index};
 use oracle::{FqSponge, rndoracle::ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
-use ff_fft::Evaluations;
+use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FrSponge};
+use commitment_dlog::commitment::{b_poly};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -138,10 +139,16 @@ impl<G: AffineCurve> ProverProof<G>
     ) -> Result<bool, ProofError>
     {
         let mut batch = Vec::with_capacity(proofs.len());
+
         for proof in proofs.iter()
         {
             let proof = proof.clone();
-            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
+
+            let x_hat = Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+
+            let x_hat_comm = index.srs.get_ref().commit_no_degree_bound(&x_hat)?;
+
+            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index, &x_hat, x_hat_comm)?;
 
             // first, verify the sumcheck argument values
             if 
@@ -152,23 +159,35 @@ impl<G: AffineCurve> ProverProof<G>
                 return Err(ProofError::ProofVerification)
             }
 
-            batch.push
-            ((
-                oracles.beta.to_vec(),
-                oracles.polys,
-                oracles.evals,
-                vec!
-                [
+            let mut polys : Vec<(G, Vec<Fr<G>>, Option<(G, usize)>)> = match proof.prev_challenges {
+                None => vec![],
+
+                // No need to check the correctness of poly explicitly. Its correctness is assured by the
+                // checking of the inner product argument.
+                Some ((chals, poly)) => {
+                    // TODO: Use batch inversion across proofs
+                    let chal_invs = {
+                        let mut cs = chals.clone();
+                        algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
+                        cs
+                    };
+
+                    let evals = oracles.beta.iter().map(|x| b_poly(&chals, &chal_invs, *x)).collect();
+
+                    vec![ ( poly, evals, None) ]
+                }
+            };
+
+            polys.extend(
+                vec![
+                    (x_hat_comm,        oracles.x_hat.iter().map(|x| *x).collect(), None),
+                    (proof.w_comm,      proof.evals.iter().map(|e| e.w ).collect(), None),
                     (proof.za_comm,     proof.evals.iter().map(|e| e.za).collect(), None),
                     (proof.zb_comm,     proof.evals.iter().map(|e| e.zb).collect(), None),
-                    (proof.w_comm,      proof.evals.iter().map(|e| e.w ).collect(), None),
                     (proof.h1_comm,     proof.evals.iter().map(|e| e.h1).collect(), None),
-                    (proof.g1_comm.0,   proof.evals.iter().map(|e| e.g1).collect(), Some((proof.g1_comm.1, index.domains.h.size()-1))),
                     (proof.h2_comm,     proof.evals.iter().map(|e| e.h2).collect(), None),
-                    (proof.g2_comm.0,   proof.evals.iter().map(|e| e.g2).collect(), Some((proof.g2_comm.1, index.domains.h.size()-1))),
                     (proof.h3_comm,     proof.evals.iter().map(|e| e.h3).collect(), None),
-                    (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.domains.k.size()-1))),
-                    
+
                     (index.matrix_commitments[0].row, proof.evals.iter().map(|e| e.row[0]).collect(), None),
                     (index.matrix_commitments[1].row, proof.evals.iter().map(|e| e.row[1]).collect(), None),
                     (index.matrix_commitments[2].row, proof.evals.iter().map(|e| e.row[2]).collect(), None),
@@ -181,7 +200,17 @@ impl<G: AffineCurve> ProverProof<G>
                     (index.matrix_commitments[0].rc, proof.evals.iter().map(|e| e.rc[0]).collect(), None),
                     (index.matrix_commitments[1].rc, proof.evals.iter().map(|e| e.rc[1]).collect(), None),
                     (index.matrix_commitments[2].rc, proof.evals.iter().map(|e| e.rc[2]).collect(), None),
-        ],
+                    (proof.g1_comm.0,   proof.evals.iter().map(|e| e.g1).collect(), Some((proof.g1_comm.1, index.domains.h.size()-1))),
+                    (proof.g2_comm.0,   proof.evals.iter().map(|e| e.g2).collect(), Some((proof.g2_comm.1, index.domains.h.size()-1))),
+                    (proof.g3_comm.0,   proof.evals.iter().map(|e| e.g3).collect(), Some((proof.g3_comm.1, index.domains.k.size()-1))),
+                ]);
+
+            batch.push
+            ((
+                oracles.beta.to_vec(),
+                oracles.polys,
+                oracles.evals,
+                polys,
                 proof.proof
             ));
         }
@@ -202,16 +231,12 @@ impl<G: AffineCurve> ProverProof<G>
     (
         &self,
         index: &Index<G>,
+        x_hat : &DensePolynomial<Fr<G>>,
+        x_hat_comm : G,
     ) -> Result<RandomOracles<Fr<G>>, ProofError>
     {
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
-
-        let x_hat =
-            // TODO: Cache this interpolated polynomial.
-            Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate();
-        // TODO: No degree bound needed
-        let x_hat_comm = index.srs.get_ref().commit_no_degree_bound(&x_hat)?;
 
         // absorb the public input into the argument
         fq_sponge.absorb_g(&x_hat_comm);
