@@ -24,8 +24,8 @@ of non-special pairs of points
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
-use protocol_dlog::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
-use oracle::poseidon::ArithmeticSpongeParams;
+use protocol_dlog::{prover::{ProverProof}};
+use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
@@ -198,7 +198,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -249,8 +249,9 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.verify(&witness), false);
 
+    let rng = &mut OsRng;
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index)
+    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng)
     {
         Ok(_) => {panic!("Failure invalidating the witness")}
         _ => {}

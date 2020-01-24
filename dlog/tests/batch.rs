@@ -7,7 +7,9 @@ verification of a batch of batched opening proofs of polynomial commitments
 
 use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve};
 use commitment_dlog::{srs::SRS, commitment::OpeningProof};
-use protocol_dlog::marlin_sponge::DefaultFqSponge;
+
+use oracle::marlin_sponge::{DefaultFqSponge};
+
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
 use colored::Colorize;
@@ -81,7 +83,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 &x.clone(),
                 polymask,
                 evalmask,
-                &oracle::bn_382::fp::params()
+                &oracle::bn_382::fp::params(),
+                rng,
             ).unwrap();
             open += start.elapsed();
 
