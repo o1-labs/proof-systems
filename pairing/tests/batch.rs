@@ -5,6 +5,7 @@ This source file tests batch verificaion of batched polynomial commitment openin
 *****************************************************************************************************************/
 
 use commitment_pairing::urs::URS;
+use commitment_pairing::commitment::Utils;
 use algebra::{PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -22,12 +23,14 @@ fn test<E: PairingEngine>()
 {
     let rng = &mut OsRng;
     let depth = 500;
+    let size = 8;
 
     // generate sample URS
     let urs = URS::<E>::create
     (
         depth,
         vec![depth-1, depth-2, depth-3],
+        size,
         rng
     );
 
@@ -41,7 +44,7 @@ fn test<E: PairingEngine>()
         <(
             E::Fr,
             E::Fr,
-            Vec<(E::G1Affine, E::Fr, Option<(E::G1Affine, usize)>)>,
+            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(E::G1Affine, usize)>)>,
             E::G1Affine,
         )>::new();
 
@@ -50,7 +53,7 @@ fn test<E: PairingEngine>()
         
         for _ in 0..7
         {
-            let size = (0..11).map
+            let length = (0..11).map
             (
                 |_|
                 {
@@ -58,26 +61,33 @@ fn test<E: PairingEngine>()
                     (len % (depth-2))+1
                 }
             ).collect::<Vec<_>>();
-            println!("{}{:?}", "sizes: ".bright_cyan(), size);
+            println!("{}{:?}", "sizes: ".bright_cyan(), length);
 
-            let aa = size.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+            let aa = length.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
             let a = aa.iter().map(|s| s).collect::<Vec<_>>();
             let x = E::Fr::rand(rng);
 
             let mut start = Instant::now();
-            let comm = a.iter().map(|a| urs.commit(&a.clone()).unwrap()).collect::<Vec<_>>();
+            let comm = a.iter().map(|a| urs.commit(&a.clone(), size).unwrap()).collect::<Vec<_>>();
             commit += start.elapsed();
 
             let mask = E::Fr::rand(rng);
             start = Instant::now();
-            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x).unwrap();
+            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x, size).unwrap();
             open += start.elapsed();
 
             proofs.push
             ((
                 x,
                 mask,
-                (0..a.len()).map(|i| (comm[i], a[i].evaluate(x), None)).collect::<Vec<_>>(),
+                (0..a.len()).map
+                (
+                    |i|
+                    (
+                        comm[i].iter().zip(a[i].eval(x, size).iter()).map(|(c, e)| (*c, *e)).collect(),
+                        None
+                    )
+                ).collect::<Vec<_>>(),
                 proof,
             ));
         }
@@ -88,7 +98,7 @@ fn test<E: PairingEngine>()
         let start = Instant::now();
         assert_eq!(urs.verify
         (
-            &vec![proofs],
+            &proofs,
             rng
         ), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());

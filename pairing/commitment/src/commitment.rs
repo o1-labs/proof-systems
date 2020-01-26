@@ -27,91 +27,108 @@ impl<E: PairingEngine> URS<E>
 {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to
-    //     RETURN: tuple of: unbounded commitment
+    //     size: maximal size of the polynomial chunks
+    //     RETURN: tuple of: unbounded commitment vector
     pub fn commit
     (
         &self,
         plnm: &DensePolynomial<E::Fr>,
-    ) -> Result<E::G1Affine, ProofError>
+        size: usize
+    ) -> Result<Vec<E::G1Affine>, ProofError>
     {
         if plnm.coeffs.len() > self.depth {return Err(ProofError::PolyCommit)}
-        Ok (
-            VariableBaseMSM::multi_scalar_mul
+        Ok
+        (
+            (0..plnm.len()/size + if plnm.len()%size != 0 {1} else {0}).map
             (
-                &self.gp[0..plnm.len()],
-                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-            ).into_affine() )
+                |i|
+                {
+                    VariableBaseMSM::multi_scalar_mul
+                    (
+                        &self.gp[0..if (i+1)*size < plnm.coeffs.len() {size} else {plnm.coeffs.len()-i*size}],
+                        &plnm.coeffs[i*size..if (i+1)*size < plnm.coeffs.len() {(i+1)*size} else {plnm.coeffs.len()}]
+                            .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                    ).into_affine()
+                }
+            ).collect()
+        )
     }
 
     // This function commits a polynomial against URS instance
-    //     plnm: polynomial to commit to
-    //     max: maximal degree of the polynomial, if none , no degree bound
-    //     RETURN: tuple of: unbounded commitment, optional bounded commitment
+    //     plnm: polynomial to commit to with max size of sections
+    //     max: maximal degree of the polynomial, if none, no degree bound
+    //     size: maximal size of the polynomial chunks
+    //     RETURN: tuple of: unbounded commitment vector, bounded commitment
     pub fn commit_with_degree_bound
     (
         &self,
         plnm: &DensePolynomial<E::Fr>,
         max: usize,
-    ) -> Result<(E::G1Affine, E::G1Affine), ProofError>
+        size: usize
+    ) -> Result<(Vec<E::G1Affine>, E::G1Affine), ProofError>
     {
-        let unshifted = self.commit(plnm)?;
-
         if self.depth < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
-        let shifted = VariableBaseMSM::multi_scalar_mul
-        (
-            &self.gp[self.depth - max..plnm.len() + self.depth - max],
-            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
-        ).into_affine();
-
-        Ok((unshifted, shifted))
+        Ok
+        ((
+            self.commit(plnm, size)?,
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &self.gp[self.depth - max..plnm.len() + self.depth - max],
+                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
+            ).into_affine()
+        ))
     }
 
-    pub fn exponentiate_sub_domain
-    (
-        &self,
-        plnm: &DensePolynomial<E::Fr>,
-        ratio : usize,
-    ) -> Result<E::G1Affine, ProofError>
-    {
-        if plnm.coeffs.len() > self.depth {return Err(ProofError::PolyExponentiate)}
-
-        Ok(VariableBaseMSM::multi_scalar_mul
-        (
-            &(0..plnm.len()).map(|i| self.gp[ratio * i]).collect::<Vec<_>>(),
-            &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-        ).into_affine())
-    }
-
-    // This function opens the polynomial commitment batch
+    // This function opens the polynomial commitment batch with optional max size of sections
     //     polys: commited polynomials with no degree bound
     //     mask: base field element masking value
     //     elm: base field element to open the commitment at
+    //     size: maximal size of the polynomial chunks
     //     RETURN: commitment opening proof
     pub fn open
     (
         &self,
         polys: Vec<&DensePolynomial<E::Fr>>,
         mask: E::Fr,
-        elm: E::Fr
+        elm: E::Fr,
+        size: usize
     ) -> Result<E::G1Affine, ProofError>
     {
         let mut acc = DensePolynomial::<E::Fr>::zero();
         let mut scale = E::Fr::one();
-        
-        for p in polys.iter().rev()
+
+        // iterating over polynomials in the batch        
+        for p in polys.iter()
         {
-            acc += &(p.scale(scale));
-            scale *= &mask;
+            let mut offset = 0;
+            // iterating over chunks of the polynomial
+            while offset < p.coeffs.len()
+            {
+                acc += &(DensePolynomial::<E::Fr>::from_coefficients_slice
+                    (&p.coeffs[offset..if offset+size > p.coeffs.len() {p.coeffs.len()} else {offset+size}])
+                    .scale(scale));
+                scale *= &mask;
+                offset += size;
+            }
         }
-        self.commit(&acc.divide(elm))
+
+        acc = acc.divide(elm);
+        if acc.coeffs.len() > self.depth {return Err(ProofError::PolyCommit)}
+        Ok
+        (
+            VariableBaseMSM::multi_scalar_mul
+            (
+                &self.gp[0..acc.coeffs.len()],
+                &acc.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+            ).into_affine()
+        )
     }
 
     // This function verifies the batch polynomial commitment proofs of vectors of polynomials
     //     base field element to open the commitment at
     //     base field element masking value
     //     polynomial commitment batch of
-    //         commitment value
-    //         polynomial evaluation
+    //         commitment value & polynomial evaluation vector
     //         max positive powers size of the polynomial
     //     polynomial commitment opening proof
     //     randomness source context
@@ -119,13 +136,13 @@ impl<E: PairingEngine> URS<E>
     pub fn verify
     (
         &self,
-        batch: &Vec<Vec
+        batch: &Vec
         <(
             E::Fr,
             E::Fr,
-            Vec<(E::G1Affine, E::Fr, Option<(E::G1Affine, usize)>)>,
+            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(E::G1Affine, usize)>)>,
             E::G1Affine,
-        )>>,
+        )>,
         rng: &mut dyn RngCore
     ) -> bool
     {
@@ -138,73 +155,95 @@ impl<E: PairingEngine> URS<E>
         let mut open_point = Vec::new();
         let mut openy_scalar = Vec::new();
         let mut openy_point = Vec::new();
+        let mut eval = E::Fr::zero();
 
-        for prf in batch.iter()
+        for x in batch.iter()
         {
-            let mut eval = E::Fr::zero();
-            for x in prf.iter()
+            let rnd = E::Fr::rand(rng);
+            open_scalar.push(rnd.into_repr());
+            open_point.push(x.3);
+            openy_scalar.push((-rnd * &x.0).into_repr());
+            openy_point.push(x.3);
+            let mut scale = E::Fr::one();
+            let mut v = E::Fr::zero();
+            
+            // iterating over polynomials in the batch
+            for poly in x.2.iter()
             {
-                let rnd = E::Fr::rand(rng);
-                open_scalar.push(rnd.into_repr());
-                open_point.push(x.3);
-                openy_scalar.push((-rnd * &x.0).into_repr());
-                openy_point.push(x.3);
-                let mut scale = E::Fr::one();
-                let mut v = E::Fr::zero();
-                
-                for z in x.2.iter().rev()
+                // iterating over chunks of the polynomial
+                for chunk in poly.0.iter()
                 {
-                    v += &(z.1 * &scale);
-                    openy_point.push(z.0);
+                    v += &(chunk.1 * &scale);
+                    openy_point.push(chunk.0);
                     openy_scalar.push((-rnd * &scale).into_repr());
                     scale *= &x.1;
                 }
-                v *= &rnd;
-                eval += &v;
-            };
-            openy_scalar.push(eval.into_repr());
-            openy_point.push(self.gp[0]);
+            }
+            v *= &rnd;
+            eval += &v;
         }
+        openy_scalar.push(eval.into_repr());
+        openy_point.push(self.gp[0]);
 
         // verify shifted commitments against unshifted commitments:
-        // e(ushComm, h^0) = e(shComm, h^x^(max-d))
+        // for all i e(ushComm_chunk, h^x^(size*i)) = e(shComm, h^x^(max-d))
 
-        let mut shifted: HashMap<usize, Vec<(E::G1Affine, E::Fr)>> = HashMap::new();
+        let mut shifted: HashMap<isize, HashMap<E::G1Affine, E::Fr>> = HashMap::new();
         for x1 in batch.iter()
         {
-            for x2 in x1.iter()
+            for x2 in x1.2.iter()
             {
-                for x3 in x2.2.iter()
+                match x2.1
                 {
-                    match x3.2
+                    Some((p, m)) =>
                     {
-                        Some((p, m)) =>
+                        let rnd = E::Fr::rand(rng);
+
+                        for (i, chunk) in x2.0.iter().enumerate()
                         {
-                            let rnd = E::Fr::rand(rng);
-                            openy_point.push(x3.0);
-                            openy_scalar.push(rnd.into_repr());
-                            if !shifted.contains_key(&m) {shifted.insert(m, Vec::new());}
-                            shifted.get_mut(&m).unwrap().push((p, rnd))
+                            if !shifted.contains_key(&(i as isize))
+                                {shifted.insert(i as isize, HashMap::new());}
+                            let map = shifted.get_mut(&(i as isize)).unwrap();
+                            if !map.contains_key(&chunk.0)
+                                {map.insert(chunk.0, rnd);}
+                            else 
+                                {*map.get_mut(&chunk.0).unwrap() += &rnd}
                         }
-                        None => continue
-                    }        
-                }
+                        
+                        if !shifted.contains_key(&(m as isize - self.depth as isize))
+                            {shifted.insert(m as isize - self.depth as isize, HashMap::new());}
+                        let map = shifted.get_mut(&(m as isize - self.depth as isize)).unwrap();
+                        if !map.contains_key(&p)
+                            {map.insert(p, -rnd);}
+                        else 
+                            {*map.get_mut(&p).unwrap() -= &rnd}
+                    }
+                    None => continue
+                }        
             }
         }
 
         for max in shifted.keys()
         {
-            if !self.hn.contains_key(&(self.depth-max)) {return false}
+            if *max < 0 && !self.hn.contains_key(&((-max) as usize)) {return false}
+            let mut scalars = Vec::new();
+            let mut points = Vec::new();
+            for (point, scalar) in shifted[max].iter()
+            {
+                points.push(*point);
+                scalars.push(scalar.into_repr());
+            }
             table.push
             ((
                 VariableBaseMSM::multi_scalar_mul
                 (
-                    &shifted[max].iter().map(|p| p.0).collect::<Vec<_>>(),
-                    &shifted[max].iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
+                    &points,
+                    &scalars,
                 ).into_affine().prepare(),
-                (-self.hn[&(self.depth-max)]).prepare()
+                (if *max < 0 {self.hn[&((-max) as usize)]} else {self.hp[*max as usize]}).prepare()
             ));
         }
+
         table.push
         ((
             VariableBaseMSM::multi_scalar_mul
@@ -214,6 +253,7 @@ impl<E: PairingEngine> URS<E>
             ).into_affine().prepare(),
             self.hx.prepare()
         ));
+
         table.push
         ((
             VariableBaseMSM::multi_scalar_mul
@@ -233,6 +273,7 @@ pub trait Utils<F: Field>
 {
     fn divide(&self, elm: F) -> Self;
     fn scale(&self, elm: F) -> Self;
+    fn eval(&self, elm: F, size: usize) -> Vec<F>;
 }
 
 impl<F: Field> Utils<F> for DensePolynomial<F>
@@ -265,5 +306,15 @@ impl<F: Field> Utils<F> for DensePolynomial<F>
         let mut result = self.clone();
         for coeff in &mut result.coeffs {*coeff *= &elm}
         result
+    }
+
+    // This function evaluates polynomial in chunks
+    fn eval(&self, elm: F, size: usize) -> Vec<F>
+    {
+        (0..self.coeffs.len()).step_by(size).map
+        (
+            |i| Self::from_coefficients_slice
+                (&self.coeffs[i..if i+size > self.coeffs.len() {self.coeffs.len()} else {i+size}]).evaluate(elm)
+        ).collect()
     }
 }

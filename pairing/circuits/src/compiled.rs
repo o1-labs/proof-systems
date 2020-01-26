@@ -17,10 +17,10 @@ pub struct Compiled<E: PairingEngine>
     pub constraints: CsMat<E::Fr>,
 
     // compiled polynomial commitments
-    pub col_comm: E::G1Affine,
-    pub row_comm: E::G1Affine,
-    pub val_comm: E::G1Affine,
-    pub rc_comm: E::G1Affine,
+    pub col_comm: Vec<E::G1Affine>,
+    pub row_comm: Vec<E::G1Affine>,
+    pub val_comm: Vec<E::G1Affine>,
+    pub rc_comm: Vec<E::G1Affine>,
 
     // compiled polynomials and evaluations
     pub rc      : DensePolynomial<E::Fr>,
@@ -44,6 +44,7 @@ impl<E: PairingEngine> Compiled<E>
     //  k_group: evaluation domain for degere k (constrtraint matrix number of non-zero elements)
     //  b_group: evaluation domain for degere b (h_group*6-6)
     //  constraints: constraint matrix in dense form
+    //  size: maximal size of the polynomial chunks
     pub fn compile
     (
         urs: &URS<E>,
@@ -51,6 +52,7 @@ impl<E: PairingEngine> Compiled<E>
         k_group: EvaluationDomain<E::Fr>,
         b_group: EvaluationDomain<E::Fr>,
         constraints: CsMat<E::Fr>,
+        size: usize,
     ) -> Result<Self, ProofError>
     {
         let mut col_eval_k = vec![E::Fr::zero(); k_group.size as usize];
@@ -92,10 +94,10 @@ impl<E: PairingEngine> Compiled<E>
         Ok(Compiled::<E>
         {
             constraints,
-            rc_comm: urs.commit(&rc)?,
-            row_comm: urs.commit(&row)?,
-            col_comm: urs.commit(&col)?,
-            val_comm: urs.commit(&val)?,
+            rc_comm: urs.commit(&rc, size)?,
+            row_comm: urs.commit(&row, size)?,
+            col_comm: urs.commit(&col, size)?,
+            val_comm: urs.commit(&val, size)?,
             row_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&val), b_group),

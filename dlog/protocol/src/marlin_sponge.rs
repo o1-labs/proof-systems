@@ -40,7 +40,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
     }
 
     fn absorb(&mut self, x: &Fr) {
-        self.sponge.absorb(&self.params, x);
+        self.sponge.absorb(&self.params, &[*x]);
     }
 
     fn challenge(&mut self) -> Fr {
@@ -51,23 +51,23 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
 
     fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>) {
         // beta1 evaluations
-        self.sponge.absorb(&self.params, x_hat_beta1);
+        self.sponge.absorb(&self.params, &[*x_hat_beta1]);
         for x in &[e.w, e.g1, e.h1, e.za, e.zb] {
-            self.sponge.absorb(&self.params, x);
+            self.sponge.absorb(&self.params, &[*x]);
         }
 
         // beta2 evaluations
         for x in &[e.g2, e.h2] {
-            self.sponge.absorb(&self.params, x);
+            self.sponge.absorb(&self.params, &[*x]);
         }
 
         // beta3 evaluations
         for x in &[e.g3, e.h3] {
-            self.sponge.absorb(&self.params, x);
+            self.sponge.absorb(&self.params, &[*x]);
         }
         for t in &[e.row, e.col, e.val] {
             for x in t {
-                self.sponge.absorb(&self.params, x);
+                self.sponge.absorb(&self.params, &[*x]);
             }
         }
     }
@@ -90,8 +90,8 @@ where
         if g.infinity {
             panic!("marlin sponge got zero curve point");
         } else {
-            self.sponge.absorb(&self.params, &g.x);
-            self.sponge.absorb(&self.params, &g.y);
+            self.sponge.absorb(&self.params, &[g.x]);
+            self.sponge.absorb(&self.params, &[g.y]);
         }
     }
 
@@ -103,7 +103,7 @@ where
         {
             self.sponge.absorb(
                 &self.params,
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits)),
+                &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits))],
             );
         } else {
             let low_bits = &bits[..(bits.len() - 1)];
@@ -114,11 +114,11 @@ where
             };
             self.sponge.absorb(
                 &self.params,
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
+                &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
                     &low_bits,
-                )),
+                ))],
             );
-            self.sponge.absorb(&self.params, &high_bit);
+            self.sponge.absorb(&self.params, &[high_bit]);
         }
     }
 

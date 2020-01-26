@@ -26,6 +26,7 @@ fn urs_test()
 fn test<E: PairingEngine>()
 {
     let depth = 30;
+    let size = 8;
     let iterations = 1;
     let mut rng = &mut OsRng;
 
@@ -36,6 +37,7 @@ fn test<E: PairingEngine>()
     (
         depth,
         vec![3,7],
+        size,
         &mut rng
     );
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
@@ -50,12 +52,12 @@ fn test<E: PairingEngine>()
 
         start = Instant::now();
         // update sample URS string for circuit depth of up to 'depth'
-        urs.update(&mut rng);
+        urs.update(size, &mut rng);
         println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
         println!("{}", "Verifying the update against its zk-proof".green());
         start = Instant::now();
-        assert_eq!(urs.check(hx, &mut rng), true);
+        assert_eq!(urs.check(hx, size, &mut rng), true);
         println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
     }
 }

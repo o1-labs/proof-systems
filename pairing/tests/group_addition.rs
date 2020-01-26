@@ -73,6 +73,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         b,
         c,
         4,
+        16,
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(rng)

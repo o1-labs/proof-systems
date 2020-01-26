@@ -5,7 +5,6 @@ This source file implements Marlin Protocol Index primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use std::collections::HashMap;
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
 use algebra::PairingEngine;
@@ -37,6 +36,7 @@ pub enum URSSpec <'a, 'b, E:PairingEngine>{
 impl<'a, E: PairingEngine> URSValue<'a, E> {
     pub fn generate<'b>(
         ds: EvaluationDomains<E::Fr>,
+        size: usize,
         rng : &'b mut dyn RngCore) -> URS<E> {
         let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
 
@@ -48,13 +48,15 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
                 ds.h.size()-1,
                 ds.k.size()-1,
             ],
-        rng )
+            size,
+            rng
+        )
     }
 
-    pub fn create<'b>(ds: EvaluationDomains<E::Fr>, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
+    pub fn create<'b>(ds: EvaluationDomains<E::Fr>, size: usize, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
         match spec {
             URSSpec::Use(x) => URSValue::Ref(x),
-            URSSpec::Generate(rng) => URSValue::Value(Self::generate(ds, rng))
+            URSSpec::Generate(rng) => URSValue::Value(Self::generate(ds, size, rng))
         }
     }
 }
@@ -70,6 +72,9 @@ pub struct Index<'a, E: PairingEngine>
     // number of public inputs
     pub public_inputs: usize,
 
+    // maximal size of polynomial section
+    pub max_poly_size: usize,
+
     // polynomial commitment keys
     pub urs: URSValue<'a, E>,
 
@@ -79,10 +84,10 @@ pub struct Index<'a, E: PairingEngine>
 }
 
 pub struct MatrixValues<A> {
-    pub row : A,
-    pub col : A,
-    pub val : A,
-    pub rc : A,
+    pub row : Vec<A>,
+    pub col : Vec<A>,
+    pub val : Vec<A>,
+    pub rc : Vec<A>,
 }
 
 pub struct VerifierIndex<E: PairingEngine>
@@ -99,6 +104,9 @@ pub struct VerifierIndex<E: PairingEngine>
     // maximal degree of the committed polynomials
     pub max_degree: usize,
 
+    // maximal size of polynomial section
+    pub max_poly_size: usize,
+
     // polynomial commitment keys, trimmed
     pub urs: URS<E>,
 
@@ -111,10 +119,10 @@ impl<'a, E: PairingEngine> Index<'a, E>
 {
     fn matrix_values(c : &Compiled<E>) -> MatrixValues<E::G1Affine> {
         MatrixValues {
-            row: c.row_comm,
-            col: c.col_comm,
-            val: c.val_comm,
-            rc: c.rc_comm,
+            row: c.row_comm.clone(),
+            col: c.col_comm.clone(),
+            val: c.val_comm.clone(),
+            rc: c.rc_comm.clone(),
         }
     }
 
@@ -122,21 +130,11 @@ impl<'a, E: PairingEngine> Index<'a, E>
         let [ a, b, c ] = & self.compiled;
 
         let max_degree =  self.urs.get_ref().max_degree();
-        let mut hn : HashMap<usize, E::G2Affine> = HashMap::new();
-        for i in
-            [
-                self.domains.h.size()-1,
-                self.domains.k.size()-1,
-            ].iter() {
-                let i = max_degree - i;
-                hn.insert(i, self.urs.get_ref().hn.get(&i).unwrap().clone());
-        }
-
         let urs = {
-            let gp = (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i]).collect();
             URS::<E> {
-                gp,
-                hn,
+                gp: (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i]).collect(),
+                hn: self.urs.get_ref().hn.clone(),
+                hp: self.urs.get_ref().hp.clone(),
                 hx: self.urs.get_ref().hx,
                 prf: self.urs.get_ref().prf,
                 depth: self.urs.get_ref().max_degree(),
@@ -150,6 +148,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
             public_inputs: self.public_inputs,
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
+            max_poly_size: self.max_poly_size,
             urs
         }
     }
@@ -161,6 +160,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
         b: CsMat<E::Fr>,
         c: CsMat<E::Fr>,
         public_inputs: usize,
+        max_poly_size: usize,
         fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
         fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
         urs : URSSpec<'a, 'b, E>
@@ -185,19 +185,20 @@ impl<'a, E: PairingEngine> Index<'a, E>
             nonzero_entries)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
 
-        let urs = URSValue::create(domains, urs);
+        let urs = URSValue::create(domains, max_poly_size, urs);
 
         Ok(Index::<E>
         {
             compiled:
             [
-                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, a)?,
-                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, b)?,
-                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, c)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, a, max_poly_size)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, b, max_poly_size)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, c, max_poly_size)?,
             ],
             fr_sponge_params,
             fq_sponge_params,
             public_inputs,
+            max_poly_size,
             domains,
             urs
         })

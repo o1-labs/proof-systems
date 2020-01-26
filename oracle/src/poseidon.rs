@@ -18,7 +18,7 @@ pub const SPONGE_RATE: usize = 2;
 pub trait Sponge<Input, Digest> {
     type Params;
     fn new() -> Self;
-    fn absorb(&mut self, params: &Self::Params, x: &Input);
+    fn absorb(&mut self, params: &Self::Params, x: &[Input]);
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
@@ -126,21 +126,24 @@ impl<F: Field> Sponge<F, F> for ArithmeticSponge<F> {
         }
     }
 
-    fn absorb(&mut self, params: &ArithmeticSpongeParams<F>, x: &F) {
-        match self.sponge_state {
-            SpongeState::Absorbed(n) => {
-                if n == self.rate {
-                    self.poseidon_block_cipher(params);
-                    self.sponge_state = SpongeState::Absorbed(1);
-                    self.state[0].add_assign(x);
-                } else {
-                    self.sponge_state = SpongeState::Absorbed(n + 1);
-                    self.state[n].add_assign(x);
+    fn absorb(&mut self, params: &ArithmeticSpongeParams<F>, x: &[F]) {
+        for x in x.iter()
+        {
+            match self.sponge_state {
+                SpongeState::Absorbed(n) => {
+                    if n == self.rate {
+                        self.poseidon_block_cipher(params);
+                        self.sponge_state = SpongeState::Absorbed(1);
+                        self.state[0].add_assign(x);
+                    } else {
+                        self.sponge_state = SpongeState::Absorbed(n + 1);
+                        self.state[n].add_assign(x);
+                    }
                 }
-            }
-            SpongeState::Squeezed(_n) => {
-                self.state[0].add_assign(x);
-                self.sponge_state = SpongeState::Absorbed(1);
+                SpongeState::Squeezed(_n) => {
+                    self.state[0].add_assign(x);
+                    self.sponge_state = SpongeState::Absorbed(1);
+                }
             }
         }
     }

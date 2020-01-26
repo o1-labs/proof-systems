@@ -12,7 +12,7 @@ const HIGH_ENTROPY_LIMBS: usize = 4;
 
 pub trait FqSponge<Fq: Field, G, Fr> {
     fn new(p: ArithmeticSpongeParams<Fq>) -> Self;
-    fn absorb_g(&mut self, g: &G);
+    fn absorb_g(&mut self, g: &[G]);
     fn absorb_fr(&mut self, x: &Fr);
     fn challenge(&mut self) -> Fr;
 
@@ -23,7 +23,7 @@ pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
     fn absorb(&mut self, x: &Fr);
     fn challenge(&mut self) -> Fr;
-    fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>);
+    fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Fr>);
 }
 
 pub trait SpongePairingEngine: PairingEngine {
@@ -98,32 +98,32 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
 
     fn absorb(&mut self, x: &Fr) {
         self.last_squeezed = vec![];
-        self.sponge.absorb(&self.params, x);
+        self.sponge.absorb(&self.params, &[*x]);
     }
 
     fn challenge(&mut self) -> Fr {
         self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
     }
 
-    fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>) {
+    fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Fr>) {
         self.last_squeezed = vec![];
         // beta1 evaluations
         self.sponge.absorb(&self.params, x_hat_beta1);
-        for x in &[e.w, e.g1, e.h1, e.za, e.zb] {
+        for x in &[&e.w, &e.g1, &e.h1, &e.za, &e.zb] {
             self.sponge.absorb(&self.params, x);
         }
 
         // beta2 evaluations
-        for x in &[e.g2, e.h2] {
+        for x in &[&e.g2, &e.h2] {
             self.sponge.absorb(&self.params, x);
         }
 
         // beta3 evaluations
-        for x in &[e.g3, e.h3] {
+        for x in &[&e.g3, &e.h3] {
             self.sponge.absorb(&self.params, x);
         }
-        for t in &[e.row, e.col, e.val] {
-            for x in t {
+        for t in &[&e.row, &e.col, &e.val] {
+            for x in *t {
                 self.sponge.absorb(&self.params, x);
             }
         }
@@ -144,13 +144,16 @@ where
         }
     }
 
-    fn absorb_g(&mut self, g: &GroupAffine<P>) {
+    fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
         self.last_squeezed = vec![];
-        if g.infinity {
-            panic!("marlin sponge got zero curve point");
-        } else {
-            self.sponge.absorb(&self.params, &g.x);
-            self.sponge.absorb(&self.params, &g.y);
+        for g in g.iter()
+        {
+            if g.infinity {
+                panic!("marlin sponge got zero curve point");
+            } else {
+                self.sponge.absorb(&self.params, &[g.x]);
+                self.sponge.absorb(&self.params, &[g.y]);
+            }
         }
     }
 
@@ -164,7 +167,7 @@ where
         {
             self.sponge.absorb(
                 &self.params,
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits)),
+                &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits))],
             );
         } else {
             let low_bits = &bits[1..];
@@ -176,11 +179,11 @@ where
             };
             self.sponge.absorb(
                 &self.params,
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
+                &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
                     &low_bits,
-                )),
+                ))],
             );
-            self.sponge.absorb(&self.params, &high_bit);
+            self.sponge.absorb(&self.params, &[high_bit]);
         }
     }
 

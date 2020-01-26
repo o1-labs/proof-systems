@@ -13,34 +13,34 @@ use crate::marlin_sponge::{FqSponge, FrSponge};
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fr> {
-    pub w: Fr,
-    pub za: Fr,
-    pub zb: Fr,
-    pub h1: Fr,
-    pub g1: Fr,
-    pub h2: Fr,
-    pub g2: Fr,
-    pub h3: Fr,
-    pub g3: Fr,
-    pub row: [Fr; 3],
-    pub col: [Fr; 3],
-    pub val: [Fr; 3],
-    pub rc: [Fr; 3],
+    pub w: Vec<Fr>,
+    pub za: Vec<Fr>,
+    pub zb: Vec<Fr>,
+    pub h1: Vec<Fr>,
+    pub g1: Vec<Fr>,
+    pub h2: Vec<Fr>,
+    pub g2: Vec<Fr>,
+    pub h3: Vec<Fr>,
+    pub g3: Vec<Fr>,
+    pub row: [Vec<Fr>; 3],
+    pub col: [Vec<Fr>; 3],
+    pub val: [Vec<Fr>; 3],
+    pub rc: [Vec<Fr>; 3],
 }
 
 #[derive(Clone)]
 pub struct ProverProof<E: PairingEngine>
 {
     // polynomial commitments
-    pub w_comm: E::G1Affine,
-    pub za_comm: E::G1Affine,
-    pub zb_comm: E::G1Affine,
-    pub h1_comm: E::G1Affine,
-    pub g1_comm: (E::G1Affine, E::G1Affine),
-    pub h2_comm: E::G1Affine,
-    pub g2_comm: (E::G1Affine, E::G1Affine),
-    pub h3_comm: E::G1Affine,
-    pub g3_comm: (E::G1Affine, E::G1Affine),
+    pub w_comm: Vec<E::G1Affine>,
+    pub za_comm: Vec<E::G1Affine>,
+    pub zb_comm: Vec<E::G1Affine>,
+    pub h1_comm: Vec<E::G1Affine>,
+    pub g1_comm: (Vec<E::G1Affine>, E::G1Affine),
+    pub h2_comm: Vec<E::G1Affine>,
+    pub g2_comm: (Vec<E::G1Affine>, E::G1Affine),
+    pub h3_comm: Vec<E::G1Affine>,
+    pub g3_comm: (Vec<E::G1Affine>, E::G1Affine),
 
     // batched commitment opening proofs
     pub proof1: E::G1Affine,
@@ -120,7 +120,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         let x_hat = 
             Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.domains.x).interpolate();
-        let x_hat_comm = urs.commit(&x_hat)?;
+        let x_hat_comm = urs.commit(&x_hat, index.max_poly_size)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.domains.h).interpolate();
@@ -130,9 +130,9 @@ impl<E: PairingEngine> ProverProof<E>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = urs.commit(&w.clone())?;
-        let za_comm = urs.commit(&za.clone())?;
-        let zb_comm = urs.commit(&zb.clone())?;
+        let w_comm = urs.commit(&w.clone(), index.max_poly_size)?;
+        let za_comm = urs.commit(&za.clone(), index.max_poly_size)?;
+        let zb_comm = urs.commit(&zb.clone(), index.max_poly_size)?;
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -170,12 +170,12 @@ impl<E: PairingEngine> ProverProof<E>
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = urs.commit(&h1)?;
-        let g1_comm = urs.commit_with_degree_bound(&g1, index.domains.h.size()-1)?;
+        let h1_comm = urs.commit(&h1, index.max_poly_size)?;
+        let g1_comm = urs.commit_with_degree_bound(&g1, index.domains.h.size()-1, index.max_poly_size)?;
 
         // absorb H1, G1 polycommitments
-        fq_sponge.absorb_g(&g1_comm.0);
-        fq_sponge.absorb_g(&g1_comm.1);
+        fq_sponge.absorb_g(&g1_comm.0); // TODO: do we need to absorb unshifted array ?
+        fq_sponge.absorb_g(&[g1_comm.1]);
         fq_sponge.absorb_g(&h1_comm);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
@@ -186,13 +186,13 @@ impl<E: PairingEngine> ProverProof<E>
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
-        let h2_comm = urs.commit(&h2)?;
-        let g2_comm = urs.commit_with_degree_bound(&g2, index.domains.h.size()-1)?;
+        let h2_comm = urs.commit(&h2, index.max_poly_size)?;
+        let g2_comm = urs.commit_with_degree_bound(&g2, index.domains.h.size()-1, index.max_poly_size)?;
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
-        fq_sponge.absorb_g(&g2_comm.0);
-        fq_sponge.absorb_g(&g2_comm.1);
+        fq_sponge.absorb_g(&g2_comm.0); // TODO: do we need to absorb unshifted array ?
+        fq_sponge.absorb_g(&[g2_comm.1]);
         fq_sponge.absorb_g(&h2_comm);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
@@ -203,13 +203,13 @@ impl<E: PairingEngine> ProverProof<E>
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
-        let h3_comm = urs.commit(&h3)?;
-        let g3_comm = urs.commit_with_degree_bound(&g3, index.domains.k.size()-1)?;
+        let h3_comm = urs.commit(&h3, index.max_poly_size)?;
+        let g3_comm = urs.commit_with_degree_bound(&g3, index.domains.k.size()-1, index.max_poly_size)?;
 
         // absorb sigma3, g3, h3
         fq_sponge.absorb_fr(&sigma3);
-        fq_sponge.absorb_g(&g3_comm.0);
-        fq_sponge.absorb_g(&g3_comm.1);
+        fq_sponge.absorb_g(&g3_comm.0); // TODO: do we need to absorb unshifted array ?
+        fq_sponge.absorb_g(&[g3_comm.1]);
         fq_sponge.absorb_g(&h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
@@ -225,43 +225,43 @@ impl<E: PairingEngine> ProverProof<E>
         };
 
         let evals = ProofEvaluations {
-            w  : w.evaluate(oracles.beta[0]),
-            za : za.evaluate(oracles.beta[0]),
-            zb : zb.evaluate(oracles.beta[0]),
-            h1 : h1.evaluate(oracles.beta[0]),
-            g1 : g1.evaluate(oracles.beta[0]),
-            h2 : h2.evaluate(oracles.beta[1]),
-            g2 : g2.evaluate(oracles.beta[1]),
-            h3 : h3.evaluate(oracles.beta[2]),
-            g3 : g3.evaluate(oracles.beta[2]),
+            w  : w.eval(oracles.beta[0], index.max_poly_size),
+            za : za.eval(oracles.beta[0], index.max_poly_size),
+            zb : zb.eval(oracles.beta[0], index.max_poly_size),
+            h1 : h1.eval(oracles.beta[0], index.max_poly_size),
+            g1 : g1.eval(oracles.beta[0], index.max_poly_size),
+            h2 : h2.eval(oracles.beta[1], index.max_poly_size),
+            g2 : g2.eval(oracles.beta[1], index.max_poly_size),
+            h3 : h3.eval(oracles.beta[2], index.max_poly_size),
+            g3 : g3.eval(oracles.beta[2], index.max_poly_size),
             row:
             [
-                index.compiled[0].row.evaluate(oracles.beta[2]),
-                index.compiled[1].row.evaluate(oracles.beta[2]),
-                index.compiled[2].row.evaluate(oracles.beta[2]),
+                index.compiled[0].row.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[1].row.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[2].row.eval(oracles.beta[2], index.max_poly_size),
             ],
             col:
             [
-                index.compiled[0].col.evaluate(oracles.beta[2]),
-                index.compiled[1].col.evaluate(oracles.beta[2]),
-                index.compiled[2].col.evaluate(oracles.beta[2]),
+                index.compiled[0].col.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[1].col.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[2].col.eval(oracles.beta[2], index.max_poly_size),
             ],
             val:
             [
-                index.compiled[0].val.evaluate(oracles.beta[2]),
-                index.compiled[1].val.evaluate(oracles.beta[2]),
-                index.compiled[2].val.evaluate(oracles.beta[2]),
+                index.compiled[0].val.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[1].val.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[2].val.eval(oracles.beta[2], index.max_poly_size),
             ],
             rc:
             [
-                index.compiled[0].rc.evaluate(oracles.beta[2]),
-                index.compiled[1].rc.evaluate(oracles.beta[2]),
-                index.compiled[2].rc.evaluate(oracles.beta[2]),
+                index.compiled[0].rc.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[1].rc.eval(oracles.beta[2], index.max_poly_size),
+                index.compiled[2].rc.eval(oracles.beta[2], index.max_poly_size),
             ],
         };
 
-        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0]);
-        oracles.x_hat_beta1 = x_hat_beta1;
+        let x_hat_beta1 = x_hat.eval(oracles.beta[0], index.max_poly_size);
+        oracles.x_hat_beta1 = x_hat_beta1.clone();
 
         fr_sponge.absorb_evaluations(&x_hat_beta1, &evals);
 
@@ -297,7 +297,8 @@ impl<E: PairingEngine> ProverProof<E>
                     &h1,
                 ],
                 oracles.batch,
-                oracles.beta[0]
+                oracles.beta[0],
+                index.max_poly_size
             )?,
             proof2: urs.open
             (
@@ -307,7 +308,8 @@ impl<E: PairingEngine> ProverProof<E>
                     &h2,
                 ],
                 oracles.batch,
-                oracles.beta[1]
+                oracles.beta[1],
+                index.max_poly_size
             )?,
             proof3: urs.open
             (
@@ -329,7 +331,8 @@ impl<E: PairingEngine> ProverProof<E>
                     &index.compiled[2].rc,
                 ],
                 oracles.batch,
-                oracles.beta[2]
+                oracles.beta[2],
+                index.max_poly_size
             )?,
 
             // polynomial evaluations
@@ -521,7 +524,7 @@ pub struct RandomOracles<F: Field>
     pub beta: [F; 3],
     pub r_k : F,
 
-    pub x_hat_beta1: F,
+    pub x_hat_beta1: Vec<F>,
     pub digest_before_evaluations: F,
 
     // Sampled using the other sponge
@@ -542,7 +545,7 @@ impl<F: Field> RandomOracles<F>
             batch: F::zero(),
             beta: [F::zero(), F::zero(), F::zero()],
             r: F::zero(),
-            x_hat_beta1: F::zero(),
+            x_hat_beta1: Vec::new(),
             digest_before_evaluations: F::zero(),
             r_k: F::zero(),
         }
