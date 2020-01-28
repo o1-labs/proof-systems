@@ -36,11 +36,11 @@ pub struct ProverProof<E: PairingEngine>
     pub za_comm: Vec<E::G1Affine>,
     pub zb_comm: Vec<E::G1Affine>,
     pub h1_comm: Vec<E::G1Affine>,
-    pub g1_comm: (Vec<E::G1Affine>, E::G1Affine),
+    pub g1_comm: (Vec<E::G1Affine>, Option<E::G1Affine>),
     pub h2_comm: Vec<E::G1Affine>,
-    pub g2_comm: (Vec<E::G1Affine>, E::G1Affine),
+    pub g2_comm: (Vec<E::G1Affine>, Option<E::G1Affine>),
     pub h3_comm: Vec<E::G1Affine>,
-    pub g3_comm: (Vec<E::G1Affine>, E::G1Affine),
+    pub g3_comm: (Vec<E::G1Affine>, Option<E::G1Affine>),
 
     // batched commitment opening proofs
     pub proof1: E::G1Affine,
@@ -120,7 +120,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         let x_hat = 
             Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.domains.x).interpolate();
-        let x_hat_comm = urs.commit(&x_hat, index.max_poly_size)?;
+        let x_hat_comm = urs.commit(&x_hat, None, index.max_poly_size)?.0;
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.domains.h).interpolate();
@@ -130,9 +130,9 @@ impl<E: PairingEngine> ProverProof<E>
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = urs.commit(&w.clone(), index.max_poly_size)?;
-        let za_comm = urs.commit(&za.clone(), index.max_poly_size)?;
-        let zb_comm = urs.commit(&zb.clone(), index.max_poly_size)?;
+        let w_comm = urs.commit(&w.clone(), None, index.max_poly_size)?.0;
+        let za_comm = urs.commit(&za.clone(), None, index.max_poly_size)?.0;
+        let zb_comm = urs.commit(&zb.clone(), None, index.max_poly_size)?.0;
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -170,12 +170,11 @@ impl<E: PairingEngine> ProverProof<E>
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = urs.commit(&h1, index.max_poly_size)?;
-        let g1_comm = urs.commit_with_degree_bound(&g1, index.domains.h.size()-1, index.max_poly_size)?;
+        let h1_comm = urs.commit(&h1, None, index.max_poly_size)?.0;
+        let g1_comm = urs.commit(&g1, Some(index.domains.h.size()-1), index.max_poly_size)?;
 
         // absorb H1, G1 polycommitments
-        fq_sponge.absorb_g(&g1_comm.0); // TODO: do we need to absorb unshifted array ?
-        fq_sponge.absorb_g(&[g1_comm.1]);
+        fq_sponge.absorb_g(&g1_comm.0);
         fq_sponge.absorb_g(&h1_comm);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
@@ -186,13 +185,12 @@ impl<E: PairingEngine> ProverProof<E>
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
-        let h2_comm = urs.commit(&h2, index.max_poly_size)?;
-        let g2_comm = urs.commit_with_degree_bound(&g2, index.domains.h.size()-1, index.max_poly_size)?;
+        let h2_comm = urs.commit(&h2, None, index.max_poly_size)?.0;
+        let g2_comm = urs.commit(&g2, Some(index.domains.h.size()-1), index.max_poly_size)?;
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
-        fq_sponge.absorb_g(&g2_comm.0); // TODO: do we need to absorb unshifted array ?
-        fq_sponge.absorb_g(&[g2_comm.1]);
+        fq_sponge.absorb_g(&g2_comm.0);
         fq_sponge.absorb_g(&h2_comm);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
@@ -203,13 +201,12 @@ impl<E: PairingEngine> ProverProof<E>
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
-        let h3_comm = urs.commit(&h3, index.max_poly_size)?;
-        let g3_comm = urs.commit_with_degree_bound(&g3, index.domains.k.size()-1, index.max_poly_size)?;
+        let h3_comm = urs.commit(&h3, None, index.max_poly_size)?.0;
+        let g3_comm = urs.commit(&g3, Some(index.domains.k.size()-1), index.max_poly_size)?;
 
         // absorb sigma3, g3, h3
         fq_sponge.absorb_fr(&sigma3);
-        fq_sponge.absorb_g(&g3_comm.0); // TODO: do we need to absorb unshifted array ?
-        fq_sponge.absorb_g(&[g3_comm.1]);
+        fq_sponge.absorb_g(&g3_comm.0);
         fq_sponge.absorb_g(&h3_comm);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();

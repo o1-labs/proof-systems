@@ -26,56 +26,51 @@ use rand_core::RngCore;
 impl<E: PairingEngine> URS<E>
 {
     // This function commits a polynomial against URS instance
-    //     plnm: polynomial to commit to
+    //     plnm: polynomial to commit to with max size of sections
+    //     max: maximal degree of the polynomial, if none, no degree bound
     //     size: maximal size of the polynomial chunks
-    //     RETURN: tuple of: unbounded commitment vector
+    //     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
     pub fn commit
     (
         &self,
         plnm: &DensePolynomial<E::Fr>,
+        max: Option<usize>,
         size: usize
-    ) -> Result<Vec<E::G1Affine>, ProofError>
+    ) -> Result<(Vec<E::G1Affine>, Option<E::G1Affine>), ProofError>
     {
-        if plnm.coeffs.len() > self.depth {return Err(ProofError::PolyCommit)}
         Ok
-        (
+        ((
+            // committing all the segments without shifting
             (0..plnm.len()/size + if plnm.len()%size != 0 {1} else {0}).map
             (
                 |i|
                 {
                     VariableBaseMSM::multi_scalar_mul
                     (
-                        &self.gp[0..if (i+1)*size < plnm.coeffs.len() {size} else {plnm.coeffs.len()-i*size}],
-                        &plnm.coeffs[i*size..if (i+1)*size < plnm.coeffs.len() {(i+1)*size} else {plnm.coeffs.len()}]
+                        &self.gp,
+                        &plnm.coeffs[i*size..if (i+1)*size > plnm.coeffs.len() {plnm.coeffs.len()} else {(i+1)*size}]
                             .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine()
                 }
-            ).collect()
-        )
-    }
-
-    // This function commits a polynomial against URS instance
-    //     plnm: polynomial to commit to with max size of sections
-    //     max: maximal degree of the polynomial, if none, no degree bound
-    //     size: maximal size of the polynomial chunks
-    //     RETURN: tuple of: unbounded commitment vector, bounded commitment
-    pub fn commit_with_degree_bound
-    (
-        &self,
-        plnm: &DensePolynomial<E::Fr>,
-        max: usize,
-        size: usize
-    ) -> Result<(Vec<E::G1Affine>, E::G1Affine), ProofError>
-    {
-        if self.depth < max || plnm.coeffs.len() > max {return Err(ProofError::PolyCommitWithBound)}
-        Ok
-        ((
-            self.commit(plnm, size)?,
-            VariableBaseMSM::multi_scalar_mul
-            (
-                &self.gp[self.depth - max..plnm.len() + self.depth - max],
-                &plnm.coeffs.iter().map(|s| s.into_repr()).collect::<Vec<_>>(),
-            ).into_affine()
+            ).collect(),
+            match max
+            {
+                None => None,
+                Some(max) =>
+                {
+                    if max % size == 0 {None}
+                    else
+                    {
+                        // committing only last segment shifter to the right edge of URS
+                        Some(VariableBaseMSM::multi_scalar_mul
+                        (
+                            &self.gp[self.depth - (max%size)..],
+                            &plnm.coeffs[max-(max%size)..if max < plnm.coeffs.len() {max} else {plnm.coeffs.len()}]
+                                .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                        ).into_affine())
+                    }
+                }
+            }
         ))
     }
 
@@ -131,6 +126,7 @@ impl<E: PairingEngine> URS<E>
     //         commitment value & polynomial evaluation vector
     //         max positive powers size of the polynomial
     //     polynomial commitment opening proof
+    //     maximal size of the polynomial chunks
     //     randomness source context
     //     RETURN: verification status
     pub fn verify
@@ -140,9 +136,10 @@ impl<E: PairingEngine> URS<E>
         <(
             E::Fr,
             E::Fr,
-            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(E::G1Affine, usize)>)>,
+            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(Option<E::G1Affine>, usize)>)>,
             E::G1Affine,
         )>,
+        size: usize,
         rng: &mut dyn RngCore
     ) -> bool
     {
@@ -185,62 +182,39 @@ impl<E: PairingEngine> URS<E>
         openy_scalar.push(eval.into_repr());
         openy_point.push(self.gp[0]);
 
-        // verify shifted commitments against unshifted commitments:
-        // for all i e(ushComm_chunk, h^x^(size*i)) = e(shComm, h^x^(max-d))
+        // verify shifted last chunk commitments against unshifted last chunk commitments:
+        // e(ushComm, h^0) = e(shComm, h^x^(max-d))
 
-        let mut shifted: HashMap<isize, HashMap<E::G1Affine, E::Fr>> = HashMap::new();
+        let mut shifted: HashMap<usize, Vec<(E::G1Affine, E::Fr)>> = HashMap::new();
         for x1 in batch.iter()
         {
             for x2 in x1.2.iter()
             {
-                match x2.1
+                if let Some((p, m)) = x2.1
                 {
-                    Some((p, m)) =>
+                    if let Some(p) = p
                     {
                         let rnd = E::Fr::rand(rng);
-
-                        for (i, chunk) in x2.0.iter().enumerate()
-                        {
-                            if !shifted.contains_key(&(i as isize))
-                                {shifted.insert(i as isize, HashMap::new());}
-                            let map = shifted.get_mut(&(i as isize)).unwrap();
-                            if !map.contains_key(&chunk.0)
-                                {map.insert(chunk.0, rnd);}
-                            else 
-                                {*map.get_mut(&chunk.0).unwrap() += &rnd}
-                        }
-                        
-                        if !shifted.contains_key(&(m as isize - self.depth as isize))
-                            {shifted.insert(m as isize - self.depth as isize, HashMap::new());}
-                        let map = shifted.get_mut(&(m as isize - self.depth as isize)).unwrap();
-                        if !map.contains_key(&p)
-                            {map.insert(p, -rnd);}
-                        else 
-                            {*map.get_mut(&p).unwrap() -= &rnd}
+                        openy_point.push(x2.0[(x2.0).len()-1].0);
+                        openy_scalar.push(rnd.into_repr());
+                        if !shifted.contains_key(&(m%size)) {shifted.insert(m%size, Vec::new());}
+                        shifted.get_mut(&(m%size)).unwrap().push((p, rnd))
                     }
-                    None => continue
                 }        
             }
         }
 
         for max in shifted.keys()
         {
-            if *max < 0 && !self.hn.contains_key(&((-max) as usize)) {return false}
-            let mut scalars = Vec::new();
-            let mut points = Vec::new();
-            for (point, scalar) in shifted[max].iter()
-            {
-                points.push(*point);
-                scalars.push(scalar.into_repr());
-            }
+            if !self.hn.contains_key(&(self.depth-max)) {return false}
             table.push
             ((
                 VariableBaseMSM::multi_scalar_mul
                 (
-                    &points,
-                    &scalars,
+                    &shifted[max].iter().map(|p| p.0).collect::<Vec<_>>(),
+                    &shifted[max].iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
                 ).into_affine().prepare(),
-                (if *max < 0 {self.hn[&((-max) as usize)]} else {self.hp[*max as usize]}).prepare()
+                (-self.hn[&(self.depth-max)]).prepare()
             ));
         }
 

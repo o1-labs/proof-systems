@@ -17,7 +17,7 @@ use rand::Rng;
 type Fr = <Affine as AffineCurve>::ScalarField;
 
 #[test]
-fn batch_commitment_test()
+fn batch_commitment_dlog()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let rng = &mut OsRng;

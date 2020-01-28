@@ -14,7 +14,7 @@ use colored::Colorize;
 use rand::Rng;
 
 #[test]
-fn batch_commitment_test()
+fn batch_commitment_pairing()
 {
     test::<Bls12_381>();
 }
@@ -22,15 +22,14 @@ fn batch_commitment_test()
 fn test<E: PairingEngine>()
 {
     let rng = &mut OsRng;
-    let depth = 500;
+    let polysize = 500;
     let size = 8;
 
     // generate sample URS
     let urs = URS::<E>::create
     (
-        depth,
-        vec![depth-1, depth-2, depth-3],
         size,
+        (0..size).map(|i| i).collect(),
         rng
     );
 
@@ -44,7 +43,7 @@ fn test<E: PairingEngine>()
         <(
             E::Fr,
             E::Fr,
-            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(E::G1Affine, usize)>)>,
+            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(Option<E::G1Affine>, usize)>)>,
             E::G1Affine,
         )>::new();
 
@@ -58,7 +57,7 @@ fn test<E: PairingEngine>()
                 |_|
                 {
                     let len: usize = random.gen();
-                    (len % (depth-2))+1
+                    (len % polysize)+1
                 }
             ).collect::<Vec<_>>();
             println!("{}{:?}", "sizes: ".bright_cyan(), length);
@@ -68,7 +67,11 @@ fn test<E: PairingEngine>()
             let x = E::Fr::rand(rng);
 
             let mut start = Instant::now();
-            let comm = a.iter().map(|a| urs.commit(&a.clone(), size).unwrap()).collect::<Vec<_>>();
+            let comm = a.iter().enumerate().map
+            (
+                |(i, a)|
+                urs.commit(&a.clone(), if i%2==0 {None} else {Some(a.coeffs.len())}, size).unwrap()
+            ).collect::<Vec<_>>();
             commit += start.elapsed();
 
             let mask = E::Fr::rand(rng);
@@ -84,8 +87,8 @@ fn test<E: PairingEngine>()
                 (
                     |i|
                     (
-                        comm[i].iter().zip(a[i].eval(x, size).iter()).map(|(c, e)| (*c, *e)).collect(),
-                        None
+                        comm[i].0.iter().zip(a[i].eval(x, size).iter()).map(|(c, e)| (*c, *e)).collect(),
+                        if i%2==0 {None} else {Some((comm[i].1, a[i].coeffs.len()))}
                     )
                 ).collect::<Vec<_>>(),
                 proof,
@@ -99,6 +102,7 @@ fn test<E: PairingEngine>()
         assert_eq!(urs.verify
         (
             &proofs,
+            size,
             rng
         ), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());

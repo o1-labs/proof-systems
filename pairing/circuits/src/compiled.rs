@@ -94,10 +94,10 @@ impl<E: PairingEngine> Compiled<E>
         Ok(Compiled::<E>
         {
             constraints,
-            rc_comm: urs.commit(&rc, size)?,
-            row_comm: urs.commit(&row, size)?,
-            col_comm: urs.commit(&col, size)?,
-            val_comm: urs.commit(&val, size)?,
+            rc_comm: urs.commit(&rc, None, size)?.0,
+            row_comm: urs.commit(&row, None, size)?.0,
+            col_comm: urs.commit(&col, None, size)?.0,
+            val_comm: urs.commit(&val, None, size)?.0,
             row_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&val), b_group),

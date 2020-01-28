@@ -38,17 +38,15 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
         ds: EvaluationDomains<E::Fr>,
         size: usize,
         rng : &'b mut dyn RngCore) -> URS<E> {
-        let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
 
         URS::<E>::create
         (
-            max_degree,
+            size,
             vec!
             [
-                ds.h.size()-1,
-                ds.k.size()-1,
+                ds.h.size()-1 % size,
+                ds.k.size()-1 % size,
             ],
-            size,
             rng
         )
     }
@@ -134,7 +132,6 @@ impl<'a, E: PairingEngine> Index<'a, E>
             URS::<E> {
                 gp: (0..self.domains.x.size()).map(|i| self.urs.get_ref().gp[i]).collect(),
                 hn: self.urs.get_ref().hn.clone(),
-                hp: self.urs.get_ref().hp.clone(),
                 hx: self.urs.get_ref().hx,
                 prf: self.urs.get_ref().prf,
                 depth: self.urs.get_ref().max_degree(),
