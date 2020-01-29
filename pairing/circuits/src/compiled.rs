@@ -5,7 +5,7 @@ This source file implements the compiled constraints primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use commitment_pairing::urs::URS;
+use commitment_pairing::{urs::URS, commitment::PolyComm};
 use oracle::rndoracle::ProofError;
 use algebra::{Field, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
@@ -17,10 +17,10 @@ pub struct Compiled<E: PairingEngine>
     pub constraints: CsMat<E::Fr>,
 
     // compiled polynomial commitments
-    pub col_comm: Vec<E::G1Affine>,
-    pub row_comm: Vec<E::G1Affine>,
-    pub val_comm: Vec<E::G1Affine>,
-    pub rc_comm: Vec<E::G1Affine>,
+    pub col_comm: PolyComm<E::G1Affine>,
+    pub row_comm: PolyComm<E::G1Affine>,
+    pub val_comm: PolyComm<E::G1Affine>,
+    pub rc_comm: PolyComm<E::G1Affine>,
 
     // compiled polynomials and evaluations
     pub rc      : DensePolynomial<E::Fr>,
@@ -94,10 +94,10 @@ impl<E: PairingEngine> Compiled<E>
         Ok(Compiled::<E>
         {
             constraints,
-            rc_comm: urs.commit(&rc, None, size)?.0,
-            row_comm: urs.commit(&row, None, size)?.0,
-            col_comm: urs.commit(&col, None, size)?.0,
-            val_comm: urs.commit(&val, None, size)?.0,
+            rc_comm: urs.commit(&rc, None),
+            row_comm: urs.commit(&row, None),
+            col_comm: urs.commit(&col, None),
+            val_comm: urs.commit(&val, None),
             row_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<E::Fr>::from_vec_and_domain(b_group.fft(&val), b_group),

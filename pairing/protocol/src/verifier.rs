@@ -11,7 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FqSponge, FrSponge};
-use commitment_pairing::commitment::Utils;
+use commitment_pairing::commitment::{Utils, PolyComm};
 
 pub struct ProofEvals<Fr> {
     pub w: Fr,
@@ -154,7 +154,7 @@ impl<E: PairingEngine> ProverProof<E>
         {
             // TODO: Cache this interpolated polynomial.
             let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
-            let x_hat_comm = index.urs.commit(&x_hat, None, index.max_poly_size)?.0;
+            let x_hat_comm = index.urs.commit(&x_hat, None);
 
             let oracles = proof.oracles::<EFqSponge, EFrSponge>(index, &x_hat_comm, &x_hat)?;
             let beta =
@@ -217,12 +217,12 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (x_hat_comm.iter().zip(oracles.x_hat_beta1.iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (proof.w_comm.iter().zip(proof.evals.w.iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (proof.za_comm.iter().zip(proof.evals.za.iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (proof.zb_comm.iter().zip(proof.evals.zb.iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (proof.g1_comm.0.iter().zip(proof.evals.g1.iter()).map(|(c, e)| (*c, *e)).collect(), Some((proof.g1_comm.1, index.domains.h.size()-1))),
-                    (proof.h1_comm.iter().zip(proof.evals.h1.iter()).map(|(c, e)| (*c, *e)).collect(), None),
+                    (x_hat_comm, oracles.x_hat_beta1, None),
+                    (proof.w_comm.clone(), proof.evals.w.clone(), None),
+                    (proof.za_comm.clone(), proof.evals.za.clone(), None),
+                    (proof.zb_comm.clone(), proof.evals.zb.clone(), None),
+                    (proof.g1_comm.clone(), proof.evals.g1.clone(), Some(index.domains.h.size()-1)),
+                    (proof.h1_comm.clone(), proof.evals.h1.clone(), None),
                 ],
                 proof.proof1
             ));
@@ -232,8 +232,8 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.g2_comm.0.iter().zip(proof.evals.g2.iter()).map(|(c, e)| (*c, *e)).collect(), Some((proof.g2_comm.1, index.domains.h.size()-1))),
-                    (proof.h2_comm.iter().zip(proof.evals.h2.iter()).map(|(c, e)| (*c, *e)).collect(), None),
+                    (proof.g2_comm.clone(), proof.evals.g2.clone(), Some(index.domains.h.size()-1)),
+                    (proof.h2_comm.clone(), proof.evals.h2.clone(), None),
                 ],
                 proof.proof2
             ));
@@ -243,26 +243,26 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.g3_comm.0.iter().zip(proof.evals.g3.iter()).map(|(c, e)| (*c, *e)).collect(), Some((proof.g3_comm.1, index.domains.k.size()-1))),
-                    (proof.h3_comm.iter().zip(proof.evals.h3.iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[0].row.iter().zip(proof.evals.row[0].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[1].row.iter().zip(proof.evals.row[1].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[2].row.iter().zip(proof.evals.row[2].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[0].col.iter().zip(proof.evals.col[0].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[1].col.iter().zip(proof.evals.col[1].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[2].col.iter().zip(proof.evals.col[2].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[0].val.iter().zip(proof.evals.val[0].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[1].val.iter().zip(proof.evals.val[1].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[2].val.iter().zip(proof.evals.val[2].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[0].rc.iter().zip(proof.evals.rc[0].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[1].rc.iter().zip(proof.evals.rc[1].iter()).map(|(c, e)| (*c, *e)).collect(), None),
-                    (index.matrix_commitments[2].rc.iter().zip(proof.evals.rc[2].iter()).map(|(c, e)| (*c, *e)).collect(), None),
+                    (proof.g3_comm.clone(), proof.evals.g3.clone(), Some(index.domains.k.size()-1)),
+                    (proof.h3_comm.clone(), proof.evals.h3.clone(), None),
+                    (index.matrix_commitments[0].row.clone(), proof.evals.row[0].clone(), None),
+                    (index.matrix_commitments[1].row.clone(), proof.evals.row[1].clone(), None),
+                    (index.matrix_commitments[2].row.clone(), proof.evals.row[2].clone(), None),
+                    (index.matrix_commitments[0].col.clone(), proof.evals.col[0].clone(), None),
+                    (index.matrix_commitments[1].col.clone(), proof.evals.col[1].clone(), None),
+                    (index.matrix_commitments[2].col.clone(), proof.evals.col[2].clone(), None),
+                    (index.matrix_commitments[0].val.clone(), proof.evals.val[0].clone(), None),
+                    (index.matrix_commitments[1].val.clone(), proof.evals.val[1].clone(), None),
+                    (index.matrix_commitments[2].val.clone(), proof.evals.val[2].clone(), None),
+                    (index.matrix_commitments[0].rc.clone(), proof.evals.rc[0].clone(), None),
+                    (index.matrix_commitments[1].rc.clone(), proof.evals.rc[1].clone(), None),
+                    (index.matrix_commitments[2].rc.clone(), proof.evals.rc[2].clone(), None),
                 ],
                 proof.proof3
             ));
         }
         // second, verify the commitment opening proofs
-        match index.urs.verify(&batch, index.max_poly_size, rng)
+        match index.urs.verify(&batch, rng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)
@@ -278,7 +278,7 @@ impl<E: PairingEngine> ProverProof<E>
     (
         &self,
         index: &Index<E>,
-        x_hat_comm: &Vec<E::G1Affine>,
+        x_hat_comm: &PolyComm<E::G1Affine>,
         x_hat: &DensePolynomial<E::Fr>
     ) -> Result<RandomOracles<E::Fr>, ProofError>
     {
@@ -287,31 +287,31 @@ impl<E: PairingEngine> ProverProof<E>
 
         // TODO: absorb previous proof context into the argument
         // absorb the public input into the argument
-        fq_sponge.absorb_g(&x_hat_comm);
+        fq_sponge.absorb_g(&x_hat_comm.unshifted);
         // absorb W, ZA, ZB polycommitments
-        fq_sponge.absorb_g(& self.w_comm);
-        fq_sponge.absorb_g(& self.za_comm);
-        fq_sponge.absorb_g(& self.zb_comm);
+        fq_sponge.absorb_g(&self.w_comm.unshifted);
+        fq_sponge.absorb_g(&self.za_comm.unshifted);
+        fq_sponge.absorb_g(&self.zb_comm.unshifted);
         // sample alpha, eta[0..3] oracles
         oracles.alpha = fq_sponge.challenge();
         oracles.eta_a = fq_sponge.challenge();
         oracles.eta_b = fq_sponge.challenge();
         oracles.eta_c = fq_sponge.challenge();
         // absorb H1, G1 polycommitments
-        fq_sponge.absorb_g(&self.g1_comm.0);
-        fq_sponge.absorb_g(&self.h1_comm);
+        fq_sponge.absorb_g(&self.g1_comm.unshifted);
+        fq_sponge.absorb_g(&self.h1_comm.unshifted);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
-        fq_sponge.absorb_g(&self.g2_comm.0);
-        fq_sponge.absorb_g(&self.h2_comm);
+        fq_sponge.absorb_g(&self.g2_comm.unshifted);
+        fq_sponge.absorb_g(&self.h2_comm.unshifted);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
-        fq_sponge.absorb_g(&self.g3_comm.0);
-        fq_sponge.absorb_g(&self.h3_comm);
+        fq_sponge.absorb_g(&self.g3_comm.unshifted);
+        fq_sponge.absorb_g(&self.h3_comm.unshifted);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
         oracles.r_k = fq_sponge.challenge();

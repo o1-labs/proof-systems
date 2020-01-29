@@ -5,7 +5,7 @@ This source file tests batch verificaion of batched polynomial commitment openin
 *****************************************************************************************************************/
 
 use commitment_pairing::urs::URS;
-use commitment_pairing::commitment::Utils;
+use commitment_pairing::commitment::{Utils, PolyComm};
 use algebra::{PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -43,7 +43,7 @@ fn test<E: PairingEngine>()
         <(
             E::Fr,
             E::Fr,
-            Vec<(Vec<(E::G1Affine, E::Fr)>, Option<(Option<E::G1Affine>, usize)>)>,
+            Vec<(PolyComm<E::G1Affine>, Vec<E::Fr>, Option<usize>)>,
             E::G1Affine,
         )>::new();
 
@@ -70,13 +70,13 @@ fn test<E: PairingEngine>()
             let comm = a.iter().enumerate().map
             (
                 |(i, a)|
-                urs.commit(&a.clone(), if i%2==0 {None} else {Some(a.coeffs.len())}, size).unwrap()
+                urs.commit(&a.clone(), if i%2==0 {None} else {Some(a.coeffs.len())})
             ).collect::<Vec<_>>();
             commit += start.elapsed();
 
             let mask = E::Fr::rand(rng);
             start = Instant::now();
-            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x, size).unwrap();
+            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x);
             open += start.elapsed();
 
             proofs.push
@@ -87,8 +87,7 @@ fn test<E: PairingEngine>()
                 (
                     |i|
                     (
-                        comm[i].0.iter().zip(a[i].eval(x, size).iter()).map(|(c, e)| (*c, *e)).collect(),
-                        if i%2==0 {None} else {Some((comm[i].1, a[i].coeffs.len()))}
+                        comm[i].clone(), a[i].eval(x, size), if i%2==0 {None} else {Some(a[i].coeffs.len())}
                     )
                 ).collect::<Vec<_>>(),
                 proof,
@@ -102,7 +101,6 @@ fn test<E: PairingEngine>()
         assert_eq!(urs.verify
         (
             &proofs,
-            size,
             rng
         ), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());

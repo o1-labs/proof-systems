@@ -6,8 +6,8 @@ This source file implements Marlin Protocol Index primitive.
 
 use sprs::CsMat;
 use rand_core::RngCore;
-use commitment_pairing::urs::URS;
-use algebra::PairingEngine;
+use commitment_pairing::{urs::URS, commitment::PolyComm};
+use algebra::{PairingEngine, AffineCurve};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
@@ -81,11 +81,11 @@ pub struct Index<'a, E: PairingEngine>
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
 }
 
-pub struct MatrixValues<A> {
-    pub row : Vec<A>,
-    pub col : Vec<A>,
-    pub val : Vec<A>,
-    pub rc : Vec<A>,
+pub struct MatrixValues<C: AffineCurve> {
+    pub row : PolyComm<C>,
+    pub col : PolyComm<C>,
+    pub val : PolyComm<C>,
+    pub rc : PolyComm<C>,
 }
 
 pub struct VerifierIndex<E: PairingEngine>
