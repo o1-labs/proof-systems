@@ -133,7 +133,7 @@ impl<E: PairingEngine> URS<E>
         <(
             E::Fr,
             E::Fr,
-            Vec<(PolyComm<E::G1Affine>, Vec<E::Fr>, Option<usize>)>,
+            Vec<(&PolyComm<E::G1Affine>, &Vec<E::Fr>, Option<usize>)>,
             E::G1Affine,
         )>,
         rng: &mut dyn RngCore

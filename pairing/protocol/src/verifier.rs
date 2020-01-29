@@ -6,7 +6,6 @@ This source file implements zk-proof batch verifier functionality.
 
 use rand_core::RngCore;
 use circuits_pairing::index::{VerifierIndex as Index};
-use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations};
@@ -147,16 +146,29 @@ impl<E: PairingEngine> ProverProof<E>
         proofs: &Vec<ProverProof<E>>,
         index: &Index<E>,
         rng: &mut dyn RngCore
-    ) -> Result<bool, ProofError>
+    ) -> bool
     {
         let mut batch = Vec::new();
-        for proof in proofs.iter()
-        {
-            // TODO: Cache this interpolated polynomial.
-            let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
-            let x_hat_comm = index.urs.commit(&x_hat, None);
+        
+        // TODO: Cache this interpolated polynomial.
+        let x = proofs.iter().map
+        (
+            |proof|
+            {
+                let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+                (x_hat.clone(), index.urs.commit(&x_hat, None))   
+            }
+        ).collect::<Vec<_>>();
+        let oracles = proofs.iter().zip(x.iter()).map
+        (
+            |(proof, x)|
+            {
+                proof.oracles::<EFqSponge, EFrSponge>(index, &x.1, &x.0)
+            }
+        ).collect::<Vec<_>>();
 
-            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index, &x_hat_comm, &x_hat)?;
+        for (proof, (oracles, x)) in proofs.iter().zip(oracles.iter().zip(x.iter()))
+        {
             let beta =
             [
                 oracles.beta[0].pow([index.max_poly_size as u64]),
@@ -208,7 +220,7 @@ impl<E: PairingEngine> ProverProof<E>
                 !proof.sumcheck_2_verify (index, &oracles, &evals) ||
                 !proof.sumcheck_3_verify (index, &oracles, &evals)
             {
-                return Err(ProofError::ProofVerification)
+                return false
             }
 
             batch.push
@@ -217,12 +229,12 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (x_hat_comm, oracles.x_hat_beta1, None),
-                    (proof.w_comm.clone(), proof.evals.w.clone(), None),
-                    (proof.za_comm.clone(), proof.evals.za.clone(), None),
-                    (proof.zb_comm.clone(), proof.evals.zb.clone(), None),
-                    (proof.g1_comm.clone(), proof.evals.g1.clone(), Some(index.domains.h.size()-1)),
-                    (proof.h1_comm.clone(), proof.evals.h1.clone(), None),
+                    (&x.1, &oracles.x_hat_beta1, None),
+                    (&proof.w_comm, &proof.evals.w, None),
+                    (&proof.za_comm, &proof.evals.za, None),
+                    (&proof.zb_comm, &proof.evals.zb, None),
+                    (&proof.g1_comm, &proof.evals.g1, Some(index.domains.h.size()-1)),
+                    (&proof.h1_comm, &proof.evals.h1, None),
                 ],
                 proof.proof1
             ));
@@ -232,8 +244,8 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.g2_comm.clone(), proof.evals.g2.clone(), Some(index.domains.h.size()-1)),
-                    (proof.h2_comm.clone(), proof.evals.h2.clone(), None),
+                    (&proof.g2_comm, &proof.evals.g2, Some(index.domains.h.size()-1)),
+                    (&proof.h2_comm, &proof.evals.h2, None),
                 ],
                 proof.proof2
             ));
@@ -243,30 +255,26 @@ impl<E: PairingEngine> ProverProof<E>
                 oracles.batch,
                 vec!
                 [
-                    (proof.g3_comm.clone(), proof.evals.g3.clone(), Some(index.domains.k.size()-1)),
-                    (proof.h3_comm.clone(), proof.evals.h3.clone(), None),
-                    (index.matrix_commitments[0].row.clone(), proof.evals.row[0].clone(), None),
-                    (index.matrix_commitments[1].row.clone(), proof.evals.row[1].clone(), None),
-                    (index.matrix_commitments[2].row.clone(), proof.evals.row[2].clone(), None),
-                    (index.matrix_commitments[0].col.clone(), proof.evals.col[0].clone(), None),
-                    (index.matrix_commitments[1].col.clone(), proof.evals.col[1].clone(), None),
-                    (index.matrix_commitments[2].col.clone(), proof.evals.col[2].clone(), None),
-                    (index.matrix_commitments[0].val.clone(), proof.evals.val[0].clone(), None),
-                    (index.matrix_commitments[1].val.clone(), proof.evals.val[1].clone(), None),
-                    (index.matrix_commitments[2].val.clone(), proof.evals.val[2].clone(), None),
-                    (index.matrix_commitments[0].rc.clone(), proof.evals.rc[0].clone(), None),
-                    (index.matrix_commitments[1].rc.clone(), proof.evals.rc[1].clone(), None),
-                    (index.matrix_commitments[2].rc.clone(), proof.evals.rc[2].clone(), None),
+                    (&proof.g3_comm, &proof.evals.g3, Some(index.domains.k.size()-1)),
+                    (&proof.h3_comm, &proof.evals.h3, None),
+                    (&index.matrix_commitments[0].row, &proof.evals.row[0], None),
+                    (&index.matrix_commitments[1].row, &proof.evals.row[1], None),
+                    (&index.matrix_commitments[2].row, &proof.evals.row[2], None),
+                    (&index.matrix_commitments[0].col, &proof.evals.col[0], None),
+                    (&index.matrix_commitments[1].col, &proof.evals.col[1], None),
+                    (&index.matrix_commitments[2].col, &proof.evals.col[2], None),
+                    (&index.matrix_commitments[0].val, &proof.evals.val[0], None),
+                    (&index.matrix_commitments[1].val, &proof.evals.val[1], None),
+                    (&index.matrix_commitments[2].val, &proof.evals.val[2], None),
+                    (&index.matrix_commitments[0].rc, &proof.evals.rc[0], None),
+                    (&index.matrix_commitments[1].rc, &proof.evals.rc[1], None),
+                    (&index.matrix_commitments[2].rc, &proof.evals.rc[2], None),
                 ],
                 proof.proof3
             ));
         }
         // second, verify the commitment opening proofs
-        match index.urs.verify(&batch, rng)
-        {
-            false => Err(ProofError::OpenProof),
-            true => Ok(true)
-        }
+        index.urs.verify(&batch, rng)
     }
 
     // This function queries random oracle values from non-interactive
@@ -280,7 +288,7 @@ impl<E: PairingEngine> ProverProof<E>
         index: &Index<E>,
         x_hat_comm: &PolyComm<E::G1Affine>,
         x_hat: &DensePolynomial<E::Fr>
-    ) -> Result<RandomOracles<E::Fr>, ProofError>
+    ) -> RandomOracles<E::Fr>
     {
         let mut oracles = RandomOracles::<E::Fr>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -333,6 +341,6 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.batch = fr_sponge.challenge();
         oracles.r = fr_sponge.challenge();
 
-        Ok(oracles)
+        oracles
     }
 }

@@ -43,56 +43,54 @@ fn test<E: PairingEngine>()
         <(
             E::Fr,
             E::Fr,
-            Vec<(PolyComm<E::G1Affine>, Vec<E::Fr>, Option<usize>)>,
+            Vec<(&PolyComm<E::G1Affine>, &Vec<E::Fr>, Option<usize>)>,
             E::G1Affine,
         )>::new();
 
         let mut commit = Duration::new(0, 0);
         let mut open = Duration::new(0, 0);
         
-        for _ in 0..7
-        {
-            let length = (0..11).map
+        let length = (0..11).map
+        (
+            |_|
+            {
+                let len: usize = random.gen();
+                (len % polysize)+1
+            }
+        ).collect::<Vec<_>>();
+        println!("{}{:?}", "sizes: ".bright_cyan(), length);
+
+        let aa = length.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+        let a = aa.iter().map(|s| s).collect::<Vec<_>>();
+        let x = E::Fr::rand(rng);
+        let evals = a.iter().map(|a| a.eval(x, size)).collect::<Vec<_>>();
+
+        let mut start = Instant::now();
+        let comm = a.iter().enumerate().map
+        (
+            |(i, a)|
+            urs.commit(&a.clone(), if i%2==0 {None} else {Some(a.coeffs.len())})
+        ).collect::<Vec<_>>();
+        commit += start.elapsed();
+
+        let mask = E::Fr::rand(rng);
+        start = Instant::now();
+        let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x);
+        open += start.elapsed();
+
+        proofs.push
+        ((
+            x,
+            mask,
+            (0..a.len()).map
             (
-                |_|
-                {
-                    let len: usize = random.gen();
-                    (len % polysize)+1
-                }
-            ).collect::<Vec<_>>();
-            println!("{}{:?}", "sizes: ".bright_cyan(), length);
-
-            let aa = length.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
-            let a = aa.iter().map(|s| s).collect::<Vec<_>>();
-            let x = E::Fr::rand(rng);
-
-            let mut start = Instant::now();
-            let comm = a.iter().enumerate().map
-            (
-                |(i, a)|
-                urs.commit(&a.clone(), if i%2==0 {None} else {Some(a.coeffs.len())})
-            ).collect::<Vec<_>>();
-            commit += start.elapsed();
-
-            let mask = E::Fr::rand(rng);
-            start = Instant::now();
-            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x);
-            open += start.elapsed();
-
-            proofs.push
-            ((
-                x,
-                mask,
-                (0..a.len()).map
+                |i|
                 (
-                    |i|
-                    (
-                        comm[i].clone(), a[i].eval(x, size), if i%2==0 {None} else {Some(a[i].coeffs.len())}
-                    )
-                ).collect::<Vec<_>>(),
-                proof,
-            ));
-        }
+                    &comm[i], &evals[i], if i%2==0 {None} else {Some(a[i].coeffs.len())}
+                )
+            ).collect::<Vec<_>>(),
+            proof,
+        ));
 
         println!("{}{:?}", "commitment time: ".yellow(), commit);
         println!("{}{:?}", "open time: ".magenta(), open);
