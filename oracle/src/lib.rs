@@ -11,6 +11,9 @@ pub trait FqSponge<Fq: Field, G, Fr> {
     fn absorb_fr(&mut self, x: &Fr);
     fn challenge(&mut self) -> Fr;
 
+    // TODO: Delete
+    fn state(&self)  -> Vec<Fq>;
+
     fn digest(self) -> Fr;
 }
 

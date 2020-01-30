@@ -11,6 +11,7 @@ pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
 const HIGH_ENTROPY_LIMBS: usize = 4;
 
+#[derive(Clone)]
 pub struct DefaultFqSponge<P: SWModelParameters> {
     pub params: ArithmeticSpongeParams<P::BaseField>,
     pub sponge: ArithmeticSponge<P::BaseField>,
@@ -81,6 +82,10 @@ where
         }
     }
 
+    fn state(&self) -> Vec<P::BaseField> {
+        self.sponge.state.clone()
+    }
+
     fn absorb_g(&mut self, g: &GroupAffine<P>) {
         self.last_squeezed = vec![];
         if g.infinity {
@@ -93,8 +98,22 @@ where
 
     fn absorb_fr(&mut self, x: &P::ScalarField) {
         self.last_squeezed = vec![];
+        let total_length = P::ScalarField::size_in_bits();
+
         // Big endian
-        let bits: Vec<bool> = x.into_repr().to_bits();
+        let mut bits: Vec<bool> = x.into_repr().to_bits();
+        println!("total_length, bits.len(), diff: {}, {}, {}", total_length, bits.len(), total_length - bits.len());
+        // Little endian
+        bits.reverse();
+        let mut bits : Vec<_> = (0..total_length).map(|i| {
+            if i < bits.len() {
+                bits[i]
+            } else {
+                false
+            }
+        }).collect();
+        // Big endian
+        bits.reverse();
 
         if <P::ScalarField as PrimeField>::Params::MODULUS
             < <P::BaseField as PrimeField>::Params::MODULUS.into()
@@ -104,19 +123,21 @@ where
                 &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits)),
             );
         } else {
-            let low_bits = &bits[1..];
+            println!("hi hi");
+            let low_bits =
+                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
+                    &bits[1..],
+                ));
+            println!("low_bits {}", low_bits);
 
             let high_bit = if bits[0] {
                 P::BaseField::one()
             } else {
                 P::BaseField::zero()
             };
-            self.sponge.absorb(
-                &self.params,
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
-                    &low_bits,
-                )),
-            );
+            println!("high_bit {}", high_bit);
+
+            self.sponge.absorb(&self.params, low_bits);
             self.sponge.absorb(&self.params, &high_bit);
         }
     }

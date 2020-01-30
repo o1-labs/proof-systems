@@ -23,7 +23,7 @@ use std::io::{Read, Result as IoResult, Write};
 pub struct SRS<G: AffineCurve>
 {
     pub g: Vec<G>,    // for committing polynomials
-    pub s: G,         // for committing scalars, inner product
+    pub h: G,         // for committing scalars, inner product
 }
 
 impl<G: AffineCurve> SRS<G>
@@ -56,10 +56,6 @@ impl<G: AffineCurve> SRS<G>
             g: v[0..depth].iter().map(|e| e.into_affine()).collect(),
             h: v[depth].into_affine(),
         }
-    }
-
-    pub fn max_degree(&self) -> usize {
-        self.g.len()
     }
 
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {

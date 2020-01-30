@@ -48,7 +48,7 @@ fn group_addition()
     let mut a = CsMat::<Fr>::zero((5, 8));
     let mut b = CsMat::<Fr>::zero((5, 8));
     let mut c = CsMat::<Fr>::zero((5, 8));
-    
+
     a = a
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2], &[neg1, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
@@ -198,7 +198,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, None, rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -251,7 +251,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let rng = &mut OsRng;
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng)
+    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, None, rng)
     {
         Ok(_) => {panic!("Failure invalidating the witness")}
         _ => {}

@@ -47,7 +47,14 @@ impl<'a, G: AffineCurve> SRSValue<'a, G> {
 
     pub fn create<'b>(ds: EvaluationDomains<Fr<G>>, spec : SRSSpec<'a, 'b, G>) -> SRSValue<'a, G>{
         match spec {
-            SRSSpec::Use(x) => SRSValue::Ref(x),
+            SRSSpec::Use(x) =>  {
+                // TODO: Reuse the memory of x
+                let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
+                SRSValue::Value(SRS {
+                    g: x.g[..max_degree].to_vec(),
+                    h: x.h
+                })
+            },
             SRSSpec::Generate(rng) => SRSValue::Value(Self::generate(ds, rng))
         }
     }
