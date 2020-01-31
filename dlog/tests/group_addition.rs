@@ -34,7 +34,7 @@ use colored::Colorize;
 type Fr = <Affine as AffineCurve>::ScalarField;
 
 #[test]
-fn group_addition()
+fn group_addition_dlog()
 {
     let rng = &mut OsRng;
 
@@ -70,6 +70,7 @@ fn group_addition()
         b,
         c,
         4,
+        8,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
         SRSSpec::Generate(rng)
@@ -209,7 +210,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify one proof serially
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
-        Ok(_) => {}
+        true => {}
         _ => {panic!("Failure verifying the prover's proof")}
     }
 
@@ -218,8 +219,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     start = Instant::now();
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &verifier_index, rng)
     {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+        false => {panic!("Failure verifying the prover's proofs in batch")},
+        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 }
 

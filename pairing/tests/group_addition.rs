@@ -22,8 +22,8 @@ of non-special pairs of points
 
 use circuits_pairing::index::{Index, URSSpec};
 use sprs::{CsMat, CsVecView};
-use oracle::{poseidon::ArithmeticSpongeParams, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
-use protocol_pairing::{prover::{ProverProof}, };
+use oracle::poseidon::ArithmeticSpongeParams;
+use protocol_pairing::{prover::{ProverProof}, marlin_sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{curves::{bn_382::{Bn_382, g1::Bn_382G1Parameters}}, fields::{bn_382::fp::Fp, Field}};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
@@ -73,6 +73,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         b,
         c,
         4,
+        160,
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(rng)
@@ -214,8 +215,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify one proof serially
     match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
-        Ok(_) => {}
-        _ => {panic!("Failure verifying the prover's proof")}
+        true => {}
+        false => {panic!("Failure verifying the prover's proof")}
     }
 
     // verify the proofs in batch
@@ -223,8 +224,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     start = Instant::now();
     match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
     {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+        false => {panic!("Failure verifying the prover's proofs in batch")},
+        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 }
 

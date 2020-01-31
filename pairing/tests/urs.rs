@@ -25,7 +25,7 @@ fn urs_test()
 
 fn test<E: PairingEngine>()
 {
-    let depth = 30;
+    let size = 16;
     let iterations = 1;
     let mut rng = &mut OsRng;
 
@@ -34,7 +34,7 @@ fn test<E: PairingEngine>()
     let mut start = Instant::now();
     let mut urs = URS::<E>::create
     (
-        depth,
+        size,
         vec![3,7],
         &mut rng
     );

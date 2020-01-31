@@ -9,7 +9,7 @@ pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
     fn absorb(&mut self, x: &Fr);
     fn challenge(&mut self) -> Fr;
-    fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>);
+    fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Fr>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
@@ -23,32 +23,32 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
 
     fn absorb(&mut self, x: &Fr) {
         self.last_squeezed = vec![];
-        self.sponge.absorb(&self.params, x);
+        self.sponge.absorb(&self.params, &[*x]);
     }
 
     fn challenge(&mut self) -> Fr {
         self.squeeze(oracle::marlin_sponge::CHALLENGE_LENGTH_IN_LIMBS)
     }
 
-    fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>) {
+    fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Fr>) {
         self.last_squeezed = vec![];
         // beta1 evaluations
         self.sponge.absorb(&self.params, x_hat_beta1);
-        for x in &[e.w, e.g1, e.h1, e.za, e.zb] {
+        for x in &[&e.w, &e.g1, &e.h1, &e.za, &e.zb] {
             self.sponge.absorb(&self.params, x);
         }
 
         // beta2 evaluations
-        for x in &[e.g2, e.h2] {
+        for x in &[&e.g2, &e.h2] {
             self.sponge.absorb(&self.params, x);
         }
 
         // beta3 evaluations
-        for x in &[e.g3, e.h3] {
+        for x in &[&e.g3, &e.h3] {
             self.sponge.absorb(&self.params, x);
         }
-        for t in &[e.row, e.col, e.val, e.rc] {
-            for x in t {
+        for t in &[&e.row, &e.col, &e.val, &e.rc] {
+            for x in *t {
                 self.sponge.absorb(&self.params, x);
             }
         }

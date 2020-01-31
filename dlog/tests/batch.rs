@@ -6,7 +6,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 *****************************************************************************************************************/
 
 use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve};
-use commitment_dlog::{srs::SRS, commitment::OpeningProof};
+use commitment_dlog::{srs::SRS, commitment::{Utils, OpeningProof, PolyComm}};
 
 use oracle::marlin_sponge::{DefaultFqSponge};
 
@@ -25,8 +25,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let rng = &mut OsRng;
     let mut random = rand::thread_rng();
 
-    let depth = 2000;
-    let srs = SRS::<Affine>::create(depth, rng);
+    let size = 80;
+    let polysize = 500;
+    let srs = SRS::<Affine>::create(size, rng);
 
     for i in 0..1
     {
@@ -37,66 +38,75 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             Vec<Fr>,
             Fr,
             Fr,
-            Vec<(Affine, Vec<Fr>, Option<(Affine, usize)>)>,
-            OpeningProof<Affine>,
+            Vec<(&PolyComm<Affine>, Vec<&Vec<Fr>>, Option<usize>)>,
+            &OpeningProof<Affine>,
         )>::new();
 
         let mut commit = Duration::new(0, 0);
         let mut open = Duration::new(0, 0);
         
-        for _ in 0..5
-        {
-            let size = (0..7).map
+        let length = (0..11).map
+        (
+            |_|
+            {
+                let len: usize = random.gen();
+                (len % polysize)+1
+            }
+        ).collect::<Vec<_>>();
+        println!("{}{:?}", "sizes: ".bright_cyan(), length);
+
+        let a = length.iter().map(|s| DensePolynomial::<Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+
+        let mut start = Instant::now();
+        let comm = (0..a.len()).map
+        (
+            |i|
+            {
+                if i%2==0 {srs.commit(&a[i].clone(), Some(a[i].coeffs.len()))}
+                else {(srs.commit(&a[i].clone(), None))}
+            }
+        ).collect::<Vec<_>>();
+        commit += start.elapsed();
+
+        let x = (0..7).map(|_| Fr::rand(rng)).collect::<Vec<Fr>>();
+        let polymask = Fr::rand(rng);
+        let evalmask = Fr::rand(rng);
+
+        let evals = a.iter().map
+        (
+            |a| x.iter().map(|xx| a.eval(*xx, size)).collect::<Vec<_>>()
+        ).collect::<Vec<_>>();
+
+        start = Instant::now();
+        let proof = srs.open::<DefaultFqSponge<Bn_382GParameters>>
+        (
+            (0..a.len()).map
             (
-                |_|
-                {
-                    let len: usize = random.gen();
-                    (len % (depth-2))+1
-                }
-            ).collect::<Vec<_>>();
-            println!("{}{:?}", "sizes: ".bright_cyan(), size);
+                |i| (&a[i], if i%2==0 {Some(a[i].coeffs.len())} else {None})
+            ).collect(),
+            &x.clone(),
+            polymask,
+            evalmask,
+            &oracle::bn_382::fp::params(),
+            rng,
+        );
+        open += start.elapsed();
 
-            let a = size.iter().map(|s| DensePolynomial::<Fr>::rand(s-1,rng)).collect::<Vec<_>>();
-
-            let mut start = Instant::now();
-            let comm = (0..a.len()).map
+        proofs.push
+        ((
+            x.clone(),
+            polymask,
+            evalmask,
+            (0..a.len()).map
             (
                 |i|
-                {
-                    if i%2==0 {srs.commit_with_degree_bound(&a[i].clone(), a[i].coeffs.len()).unwrap()}
-                    else {(srs.commit_no_degree_bound(&a[i].clone()).unwrap(), Affine::zero())}
-                }
-            ).collect::<Vec<_>>();
-            commit += start.elapsed();
-
-            let x = (0..7).map(|_| Fr::rand(rng)).collect::<Vec<Fr>>();
-            let polymask = Fr::rand(rng);
-            let evalmask = Fr::rand(rng);
-
-            start = Instant::now();
-            let proof = srs.open::<DefaultFqSponge<Bn_382GParameters>>
-            (
-                &(0..a.len()).map
                 (
-                    |i| (a[i].clone(), if i%2==0 {Some(a[i].coeffs.len())} else {None})
-                ).collect(),
-                &x.clone(),
-                polymask,
-                evalmask,
-                &oracle::bn_382::fp::params(),
-                rng,
-            ).unwrap();
-            open += start.elapsed();
-
-            proofs.push
-            ((
-                x.clone(),
-                polymask,
-                evalmask,
-                (0..a.len()).map(|i| (comm[i].0, x.iter().map(|x| a[i].evaluate(*x)).collect(), if i%2==0 {Some((comm[i].1, a[i].coeffs.len()))} else {None})).collect(),
-                proof,
-            ));
-        }
+                    &comm[i],
+                    evals[i].iter().map(|evl| evl).collect::<Vec<_>>(),
+                    if i%2==0 {Some(a[i].coeffs.len())} else {None})
+                ).collect::<Vec<_>>(),
+            &proof,
+        ));
 
         println!("{}{:?}", "commitment time: ".yellow(), commit);
         println!("{}{:?}", "open time: ".magenta(), open);

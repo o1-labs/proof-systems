@@ -6,7 +6,7 @@ This source file implements Marlin Protocol Index primitive.
 
 use sprs::CsMat;
 use rand_core::RngCore;
-use commitment_dlog::srs::SRS;
+use commitment_dlog::{srs::SRS, commitment::PolyComm};
 use algebra::AffineCurve;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -38,17 +38,16 @@ pub enum SRSSpec <'a, 'b, G: AffineCurve>{
 
 impl<'a, G: AffineCurve> SRSValue<'a, G> {
     pub fn generate<'b>(
-        ds: EvaluationDomains<Fr<G>>,
+        size: usize,
         rng : &'b mut dyn RngCore) -> SRS<G> {
-        let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
 
-        SRS::<G>::create(max_degree, rng)
+        SRS::<G>::create(size, rng)
     }
 
-    pub fn create<'b>(ds: EvaluationDomains<Fr<G>>, spec : SRSSpec<'a, 'b, G>) -> SRSValue<'a, G>{
+    pub fn create<'b>(size: usize, spec : SRSSpec<'a, 'b, G>) -> SRSValue<'a, G>{
         match spec {
             SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate(rng) => SRSValue::Value(Self::generate(ds, rng))
+            SRSSpec::Generate(rng) => SRSValue::Value(Self::generate(size, rng))
         }
     }
 }
@@ -64,6 +63,9 @@ pub struct Index<'a, G: AffineCurve>
     // number of public inputs
     pub public_inputs: usize,
 
+    // maximal size of polynomial section
+    pub max_poly_size: usize,
+
     // polynomial commitment keys
     pub srs: SRSValue<'a, G>,
 
@@ -72,11 +74,11 @@ pub struct Index<'a, G: AffineCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-pub struct MatrixValues<A> {
-    pub row : A,
-    pub col : A,
-    pub val : A,
-    pub rc : A,
+pub struct MatrixValues<C: AffineCurve> {
+    pub row : PolyComm<C>,
+    pub col : PolyComm<C>,
+    pub val : PolyComm<C>,
+    pub rc : PolyComm<C>,
 }
 
 pub struct VerifierIndex<'a, G: AffineCurve>
@@ -93,6 +95,9 @@ pub struct VerifierIndex<'a, G: AffineCurve>
     // maximal degree of the committed polynomials
     pub max_degree: usize,
 
+    // maximal size of polynomial section
+    pub max_poly_size: usize,
+
     // polynomial commitment keys
     pub srs: SRSValue<'a, G>,
 
@@ -105,10 +110,10 @@ impl<'a, G: AffineCurve> Index<'a, G>
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {
-            row: c.row_comm,
-            col: c.col_comm,
-            val: c.val_comm,
-            rc: c.rc_comm,
+            row: c.row_comm.clone(),
+            col: c.col_comm.clone(),
+            val: c.val_comm.clone(),
+            rc: c.rc_comm.clone(),
         }
     }
 
@@ -129,6 +134,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
             public_inputs: self.public_inputs,
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
+            max_poly_size: self.max_poly_size,
             srs
         }
     }
@@ -140,6 +146,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
         b: CsMat<Fr<G>>,
         c: CsMat<Fr<G>>,
         public_inputs: usize,
+        max_poly_size: usize,
         fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         srs : SRSSpec<'a, 'b, G>
@@ -164,7 +171,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
             nonzero_entries)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
 
-        let srs = SRSValue::create(domains, srs);
+        let srs = SRSValue::create(max_poly_size, srs);
 
         // compile the constraints
         Ok(Index::<G>
@@ -179,6 +186,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
             fq_sponge_params,
             public_inputs,
             srs,
+            max_poly_size,
             domains,
         })
     }
