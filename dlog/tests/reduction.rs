@@ -35,7 +35,7 @@ type Fr = <Affine as AffineCurve>::ScalarField;
 const DIMENSION: usize = 100000;
 
 #[test]
-fn reduction_graph()
+fn reduction_graph_dlog()
 {
     // field unity element
     let one = Fr::one();
@@ -53,12 +53,12 @@ fn reduction_graph()
         a.insert(i, i, Fr::one());
         b.insert(i, i, Fr::one());
         c.insert(i, i, Fr::one());
-    }
-    for i in 0..DIMENSION/3
-    {
-        a.insert(i, i+1, Fr::one());
-        b.insert(i, i+1, Fr::one());
-        c.insert(i, i+1, Fr::one());
+        if i%3 == 0
+        {
+            a.insert(i, i+1, Fr::one());
+            b.insert(i, i+1, Fr::one());
+            c.insert(i, i+1, Fr::one());
+        }
     }
     // This makes the circuit size approximately that, what we are emulating
     
@@ -99,7 +99,7 @@ fn reduction_graph()
     witness[DIMENSION + 7] = s;
 
     let mut data: Vec<(usize, Duration, Duration)> = Vec::new();
-    for size in (1000..1000).step_by(100)
+    for size in (100000..100000).step_by(100)
     {
         let (p, v) = test(a.clone(), b.clone(), c.clone(), witness.clone(), size);
         data.push((size, p, v));

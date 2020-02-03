@@ -44,8 +44,8 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
             size,
             vec!
             [
-                ds.h.size()-1 % size,
-                ds.k.size()-1 % size,
+                (ds.h.size()-1) % size,
+                (ds.k.size()-1) % size,
             ],
             rng
         )
