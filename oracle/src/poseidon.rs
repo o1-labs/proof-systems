@@ -58,7 +58,7 @@ pub struct ArithmeticSpongeParams<F: Field> {
 pub struct ArithmeticSponge<F: Field> {
     sponge_state: SpongeState,
     rate: usize,
-    pub state: Vec<F>,
+    state: Vec<F>,
 }
 
 impl<F: Field> ArithmeticSponge<F> {
