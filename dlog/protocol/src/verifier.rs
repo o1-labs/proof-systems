@@ -216,7 +216,7 @@ impl<G: AffineCurve> ProverProof<G>
             ));
         }
         // second, verify the commitment opening proofs
-        match index.srs.get_ref().verify::<EFqSponge>(batch, &index.fq_sponge_params.clone(), rng)
+        match index.srs.get_ref().verify::<EFqSponge>(batch, rng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)
@@ -237,35 +237,23 @@ impl<G: AffineCurve> ProverProof<G>
     ) -> Result<(EFqSponge, RandomOracles<Fr<G>>), ProofError>
     {
         let mut oracles = RandomOracles::<Fr<G>>::zero();
-        println!("proof.oracles {}", line!());
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // absorb the public input into the argument
         fq_sponge.absorb_g(&x_hat_comm);
-        println!("proof.oracles {}", line!());
         // absorb W, ZA, ZB polycommitments
         fq_sponge.absorb_g(& self.w_comm);
-        println!("proof.oracles {}", line!());
         fq_sponge.absorb_g(& self.za_comm);
-        println!("proof.oracles {}", line!());
         fq_sponge.absorb_g(& self.zb_comm);
-        println!("proof.oracles {}", line!());
         // sample alpha, eta[0..3] oracles
         oracles.alpha = fq_sponge.challenge();
-        println!("proof.oracles {}", line!());
         oracles.eta_a = fq_sponge.challenge();
-        println!("proof.oracles {}", line!());
         oracles.eta_b = fq_sponge.challenge();
-        println!("proof.oracles {}", line!());
         oracles.eta_c = fq_sponge.challenge();
-        println!("proof.oracles {}", line!());
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&self.g1_comm.0);
-        println!("proof.oracles {}", line!());
         fq_sponge.absorb_g(&self.g1_comm.1);
-        println!("proof.oracles {}", line!());
         fq_sponge.absorb_g(&self.h1_comm);
-        println!("proof.oracles {}", line!());
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
         // absorb sigma2 scalar

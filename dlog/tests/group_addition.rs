@@ -23,13 +23,15 @@ of non-special pairs of points
 
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
-use algebra::{curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
+use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
 use protocol_dlog::{prover::{ProverProof}};
+use commitment_dlog::{srs::SRS, commitment::{ceil_log2, product, b_poly_coefficients}};
 use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
+use ff_fft::{DensePolynomial};
 
 type Fr = <Affine as AffineCurve>::ScalarField;
 
@@ -64,6 +66,8 @@ fn group_addition()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
+    let srs = SRS::create(40, rng);
+
     let index = Index::<Affine>::create
     (
         a,
@@ -72,7 +76,7 @@ fn group_addition()
         4,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
-        SRSSpec::Generate(rng)
+        SRSSpec::Use(&srs)
     ).unwrap();
 
     positive(&index, rng);
@@ -183,7 +187,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
-        
+
         let mut witness = vec![Fr::zero(); 8];
         witness[0] = Fr::one();
         witness[1] = x1;
@@ -197,8 +201,20 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.verify(&witness), true);
 
+        let prev = {
+            let k = ceil_log2(index.srs.get_ref().g.len());
+            let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
+            let comm = {
+                let chal_squareds = chals.iter().map(|x| x.square()).collect();
+                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                index.srs.get_ref().commit_no_degree_bound(&b)
+            }.unwrap();
+            ( chals, comm )
+        };
+
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, None, rng).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, Some(prev), rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();

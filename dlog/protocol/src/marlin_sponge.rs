@@ -30,27 +30,36 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
         self.squeeze(oracle::marlin_sponge::CHALLENGE_LENGTH_IN_LIMBS)
     }
 
-    fn absorb_evaluations(&mut self, x_hat_beta1: &Fr, e: &ProofEvaluations<Fr>) {
+    fn absorb_evaluations(&mut self, x_hat: &Fr, e: &ProofEvaluations<Fr>) {
         self.last_squeezed = vec![];
-        // beta1 evaluations
-        self.sponge.absorb(&self.params, x_hat_beta1);
-        for x in &[e.w, e.g1, e.h1, e.za, e.zb] {
-            self.sponge.absorb(&self.params, x);
-        }
 
-        // beta2 evaluations
-        for x in &[e.g2, e.h2] {
-            self.sponge.absorb(&self.params, x);
-        }
+        let points = vec![
+            *x_hat,
+            e.w,
+            e.za,
+            e.zb,
+            e.h1,
+            e.h2,
+            e.h3,
+            e.row[0],
+            e.row[1],
+            e.row[2],
+            e.col[0],
+            e.col[1],
+            e.col[2],
+            e.val[0],
+            e.val[1],
+            e.val[2],
+            e.rc[0],
+            e.rc[1],
+            e.rc[2],
+            e.g1,
+            e.g2,
+            e.g3,
+        ];
 
-        // beta3 evaluations
-        for x in &[e.g3, e.h3] {
-            self.sponge.absorb(&self.params, x);
-        }
-        for t in &[e.row, e.col, e.val, e.rc] {
-            for x in t {
-                self.sponge.absorb(&self.params, x);
-            }
+        for p in points {
+            self.sponge.absorb(&self.params, &p);
         }
     }
 }
