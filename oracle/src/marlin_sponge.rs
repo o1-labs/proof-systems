@@ -82,10 +82,6 @@ where
         }
     }
 
-    fn state(&self) -> Vec<P::BaseField> {
-        self.sponge.state.clone()
-    }
-
     fn absorb_g(&mut self, g: &GroupAffine<P>) {
         self.last_squeezed = vec![];
         if g.infinity {
