@@ -102,7 +102,6 @@ where
 
         // Big endian
         let mut bits: Vec<bool> = x.into_repr().to_bits();
-        println!("total_length, bits.len(), diff: {}, {}, {}", total_length, bits.len(), total_length - bits.len());
         // Little endian
         bits.reverse();
         let mut bits : Vec<_> = (0..total_length).map(|i| {
@@ -123,19 +122,16 @@ where
                 &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits)),
             );
         } else {
-            println!("hi hi");
             let low_bits =
                 &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
                     &bits[1..],
                 ));
-            println!("low_bits {}", low_bits);
 
             let high_bit = if bits[0] {
                 P::BaseField::one()
             } else {
                 P::BaseField::zero()
             };
-            println!("high_bit {}", high_bit);
 
             self.sponge.absorb(&self.params, low_bits);
             self.sponge.absorb(&self.params, &high_bit);
