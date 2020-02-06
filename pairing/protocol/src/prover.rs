@@ -107,9 +107,9 @@ impl<E: PairingEngine> ProverProof<E>
         if !r.is_zero() {return Err(ProofError::PolyDivision)}
 
         // prover computes za, zb polynomials
-        let mut zv = vec![vec![E::Fr::zero(); index.domains.h.size()]; 3];
+        let mut zv = vec![vec![E::Fr::zero(); index.domains.h.size()]; 2];
 
-        for i in 0..3
+        for i in 0..2
         {
             for constraint in index.compiled[i].constraints.iter()
             {
