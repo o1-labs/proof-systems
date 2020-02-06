@@ -143,8 +143,7 @@ fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
         .collect()
 }
 
-// TODO: Un-pub
-pub fn squeeze_square_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_square_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
     sponge: &mut EFqSponge,
 ) -> Fr {
     // TODO: Make this a parameter
