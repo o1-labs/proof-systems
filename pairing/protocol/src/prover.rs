@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, PrimeField, PairingEngine};
+use algebra::{Field, PairingEngine};
 use oracle::rndoracle::{ProofError};
 use ff_fft::{DensePolynomial, Evaluations};
 use commitment_pairing::commitment::Utils;
@@ -114,38 +114,6 @@ impl<E: PairingEngine> ProverProof<E>
             for constraint in index.compiled[i].constraints.iter()
             {
                 zv[i][(constraint.1).0] += &(*constraint.0 * &witness[(constraint.1).1]);
-            }
-        }
-
-fn witness_position_to_index(public_inputs: usize, h_to_x_ratio: usize, w: usize) -> usize {
-    if w % h_to_x_ratio == 0 {
-        w / h_to_x_ratio
-    } else {
-        let m = h_to_x_ratio - 1;
-
-        // w - 1 = h_to_x_ratio * (aux_index / m) + (aux_index % m)
-        let aux_index_mod_m = (w - 1) % h_to_x_ratio;
-        let aux_index_over_m = ((w - 1) - aux_index_mod_m) / h_to_x_ratio;
-        let aux_index = aux_index_mod_m + m * aux_index_over_m;
-        aux_index + public_inputs
-    }
-}
-
-        for (i, ((&a, &b), &c)) in (zv[0].iter().zip(zv[1].iter())).zip(zv[2].iter()).enumerate() {
-            if a * &b != c {
-                println!("abc");
-
-                let h_to_x_ratio = index.domains.h.size() / index.domains.x.size();
-
-                for j in 0..3 {
-                    let row = index.compiled[j].constraints.outer_view(i).unwrap();
-                    let row : Vec<(usize, <E::Fr as PrimeField>::BigInt)> = row.iter().map(|(x,y)| {
-                        (witness_position_to_index(42, h_to_x_ratio, x), y.into_repr())
-                    }).collect();
-                    println!("M {:?}", row);
-                }
-
-                panic!("bad constraint: ({}) {}, {}, {}", i, a, b, c);
             }
         }
 
