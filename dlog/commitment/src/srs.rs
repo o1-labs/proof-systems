@@ -23,7 +23,7 @@ use std::io::{Read, Result as IoResult, Write};
 pub struct SRS<G: AffineCurve>
 {
     pub g: Vec<G>,    // for committing polynomials
-    pub h: G,         // for committing scalars, inner product
+    pub h: G,         // blinding
 }
 
 impl<G: AffineCurve> SRS<G>
