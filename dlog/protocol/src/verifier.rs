@@ -177,38 +177,38 @@ impl<G: AffineCurve> ProverProof<G>
                 (
                     |i| ProofEvals
                     {
-                        w  : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].w.clone()).evaluate(beta[i]),
-                        za : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].za.clone()).evaluate(beta[i]),
-                        zb : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].zb.clone()).evaluate(beta[i]),
-                        h1 : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].h1.clone()).evaluate(beta[i]),
-                        g1 : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].g1.clone()).evaluate(beta[i]),
-                        h2 : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].h2.clone()).evaluate(beta[i]),
-                        g2 : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].g2.clone()).evaluate(beta[i]),
-                        h3 : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].h3.clone()).evaluate(beta[i]),
-                        g3 : DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].g3.clone()).evaluate(beta[i]),
+                        w  : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].w, beta[i]),
+                        za : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].za, beta[i]),
+                        zb : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].zb, beta[i]),
+                        h1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h1, beta[i]),
+                        g1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g1, beta[i]),
+                        h2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h2, beta[i]),
+                        g2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g2, beta[i]),
+                        h3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h3, beta[i]),
+                        g3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g3, beta[i]),
                         row:
                         [
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].row[0].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].row[1].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].row[2].clone()).evaluate(beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[0], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[1], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[2], beta[i]),
                         ],
                         col:
                         [
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].col[0].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].col[1].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].col[2].clone()).evaluate(beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[0], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[1], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[2], beta[i]),
                         ],
                         val:
                         [
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].val[0].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].val[1].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].val[2].clone()).evaluate(beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[0], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[1], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[2], beta[i]),
                         ],
                         rc:
                         [
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].rc[0].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].rc[1].clone()).evaluate(beta[i]),
-                            DensePolynomial::<Fr<G>>::from_coefficients_vec(proof.evals[i].rc[2].clone()).evaluate(beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[0], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[1], beta[i]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[2], beta[i]),
                         ],
                     }
                 ).collect::<Vec<_>>();

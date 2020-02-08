@@ -99,7 +99,7 @@ fn reduction_graph_dlog()
     witness[DIMENSION + 7] = s;
 
     let mut data: Vec<(usize, Duration, Duration)> = Vec::new();
-    for size in (100000..100000).step_by(100)
+    for size in (10000..20000).step_by(10000)
     {
         let (p, v) = test(a.clone(), b.clone(), c.clone(), witness.clone(), size);
         data.push((size, p, v));

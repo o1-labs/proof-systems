@@ -549,7 +549,7 @@ impl<G: AffineCurve> SRS<G> {
                     // iterating over the polynomial segments
                     for (comm_ch, eval) in comm.unshifted.iter().zip(evals.iter()) {
 
-                        let term = eval_polynomial(eval, *r);
+                        let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
                         res += &(xi_i * &term);
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
@@ -568,7 +568,7 @@ impl<G: AffineCurve> SRS<G> {
 
                             scalars.push(rand_base_i_c_i * &xi_i);
                             points.push(comm_ch);
-                            res += &(xi_i * &eval_polynomial(&shifted_evals, *r));
+                            res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
                             xi_i *= xi;
                         }
                     }
@@ -599,23 +599,24 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
     res
 }
 
-fn eval_polynomial<F: Field>(coeffs: &[F], x: F) -> F {
-    let mut res = F::zero();
-    for c in coeffs.iter().rev() {
-        res *= &x;
-        res += c;
-    }
-    res
-}
-
 pub trait Utils<F: Field> {
+    fn eval_polynomial(coeffs: &[F], x: F) -> F;
     fn scale(&self, elm: F) -> Self;
     fn shiftr(&self, size: usize) -> Self;
     fn eval(&self, elm: F, size: usize) -> Vec<F>;
 }
 
 impl<F: Field> Utils<F> for DensePolynomial<F> {
-    // This function "scales" (multiplies) polynomaial with a scalar
+
+    fn eval_polynomial(coeffs: &[F], x: F) -> F {
+        let mut res = F::zero();
+        for c in coeffs.iter().rev() {
+            res *= &x;
+            res += c;
+        }
+        res
+    }
+        // This function "scales" (multiplies) polynomaial with a scalar
     // It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
