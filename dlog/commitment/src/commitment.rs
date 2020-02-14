@@ -409,14 +409,15 @@ impl<G: AffineCurve> SRS<G> {
             for (p_i, degree_bound) in plnms.iter().rev() {
                 match degree_bound {
                     Some(m) => {
+                        assert!(nonzero_length >= *m);
                         // mixing in the shifted polynom since degree is bounded
-                        p += &(p_i.shiftr(nonzero_length - m).scale(scale));
+                        let term = p_i.shiftr(nonzero_length - m);
+                        p += &term.scale(scale);
 
                         scale *= &polyscale;
                     }
                     _ => {}
                 }
-
 
                 // always mixing in the unshifted polynom
                 p += &(p_i.scale(scale));
@@ -445,6 +446,7 @@ impl<G: AffineCurve> SRS<G> {
         };
 
         let mut a = p.coeffs;
+        assert!(padded_length >= a.len());
         a.extend(vec![Fr::<G>::zero(); padded_length - a.len()]);
 
         let mut b = b_init.clone();

@@ -159,24 +159,20 @@ impl<G: AffineCurve> ProverProof<G>
                 return Err(ProofError::ProofVerification)
             }
 
-            let mut polys : Vec<(G, Vec<Fr<G>>, Option<(G, usize)>)> = match proof.prev_challenges {
-                None => vec![],
-
+            let mut polys : Vec<(G, Vec<Fr<G>>, Option<(G, usize)>)> = proof.prev_challenges.iter().map(|(chals, poly)| {
                 // No need to check the correctness of poly explicitly. Its correctness is assured by the
                 // checking of the inner product argument.
-                Some ((chals, poly)) => {
-                    // TODO: Use batch inversion across proofs
-                    let chal_invs = {
-                        let mut cs = chals.clone();
-                        algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
-                        cs
-                    };
+                // TODO: Use batch inversion across proofs
+                let chal_invs = {
+                    let mut cs = chals.clone();
+                    algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
+                    cs
+                };
 
-                    let evals = oracles.beta.iter().map(|x| b_poly(&chals, &chal_invs, *x)).collect();
+                let evals = oracles.beta.iter().map(|x| b_poly(&chals, &chal_invs, *x)).collect();
 
-                    vec![ ( poly, evals, None) ]
-                }
-            };
+                (*poly, evals, None)
+            }).collect();
 
             polys.extend(
                 vec![

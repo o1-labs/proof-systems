@@ -59,8 +59,8 @@ pub struct ProverProof<G: AffineCurve>
     // public part of the witness
     pub public: Vec<Fr<G>>,
 
-    // The challenges underlying the optional polynomial folded into the proof
-    pub prev_challenges: Option<(Vec<Fr<G>>, G)>,
+    // The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec<(Vec<Fr<G>>, G)>,
 }
 
 impl<G: AffineCurve> ProverProof<G>
@@ -76,7 +76,7 @@ impl<G: AffineCurve> ProverProof<G>
     (
         witness: &Vec::<Fr<G>>,
         index: &Index<G>,
-        prev_challenges: Option< (Vec<Fr<G>>, G) >,
+        prev_challenges: Vec< (Vec<Fr<G>>, G) >,
         rng: &mut dyn RngCore,
     ) 
     -> Result<Self, ProofError>
@@ -293,15 +293,12 @@ impl<G: AffineCurve> ProverProof<G>
         // construct the proof
         // --------------------------------------------------------------------
 
-        let mut polys : Vec<(DensePolynomial<Fr<G>>, Option<usize>)> = match &prev_challenges {
-            None => vec![],
-            Some ((chals, _comm)) => {
-                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-                let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
-                vec![ (b, None) ]
-            }
-        };
+        let mut polys : Vec<(DensePolynomial<Fr<G>>, Option<usize>)> = prev_challenges.iter().map(|(chals, _comm)| {
+            let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+            let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
+            let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+            (b, None)
+        }).collect();
 
         polys.extend(
             vec!
