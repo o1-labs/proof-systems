@@ -427,6 +427,8 @@ impl<G: AffineCurve> SRS<G> {
             p
         };
 
+        let rounds = ceil_log2(self.g.len());
+
         // TODO: Add blindings to the commitments. Opening will require knowing the blinding factor
         // for each commitment in the batch.
         let blinding_factor = Fr::<G>::zero();
