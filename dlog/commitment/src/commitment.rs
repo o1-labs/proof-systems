@@ -143,40 +143,43 @@ impl<G: AffineCurve> SRS<G> {
         max: Option<usize>,
     ) -> PolyComm<G>
     {
-        PolyComm::<G>
-        {
-            // committing all the segments without shifting
-            unshifted: (0..plnm.len()/self.g.len() + if plnm.len()%self.g.len() != 0 {1} else {0}).map
-            (
-                |i|
-                {
-                    VariableBaseMSM::multi_scalar_mul
-                    (
-                        &self.g,
-                        &plnm.coeffs[i*self.g.len()..if (i+1)*self.g.len() > plnm.coeffs.len() {plnm.coeffs.len()} else {(i+1)*self.g.len()}]
-                            .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-                    ).into_affine()
-                }
-            ).collect(),
-            shifted: match max
+        let n = self.g.len();
+        let p = plnm.coeffs.len();
+
+        // committing all the segments without shifting
+        let unshifted = (0..p/n + if p%n != 0 {1} else {0}).map
+        (
+            |i|
             {
-                None => None,
-                Some(max) =>
+                VariableBaseMSM::multi_scalar_mul
+                (
+                    &self.g,
+                    &plnm.coeffs[i*n..p]
+                        .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                ).into_affine()
+            }
+        ).collect();
+
+        // committing only last segment shifted to the right edge of SRS
+        let shifted = match max
+        {
+            None => None,
+            Some(max) =>
+            {
+                if max % n == 0 {None}
+                else
                 {
-                    if max % self.g.len() == 0 {None}
-                    else
-                    {
-                        // committing only last segment shifted to the right edge of SRS
-                        Some(VariableBaseMSM::multi_scalar_mul
-                        (
-                            &self.g[self.g.len() - (max%self.g.len())..],
-                            &plnm.coeffs[max-(max%self.g.len())..if max < plnm.coeffs.len() {max} else {plnm.coeffs.len()}]
-                                .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-                        ).into_affine())
-                    }
+                    Some(VariableBaseMSM::multi_scalar_mul
+                    (
+                        &self.g[n - (max%n)..],
+                        &plnm.coeffs[max-(max%n)..p]
+                            .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                    ).into_affine())
                 }
             }
-        }
+        };
+
+        PolyComm::<G>{unshifted, shifted}
     }
 
     // This function opens polynomial commitments in batch

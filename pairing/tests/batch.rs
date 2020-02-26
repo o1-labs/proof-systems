@@ -5,7 +5,6 @@ This source file tests batch verificaion of batched polynomial commitment openin
 *****************************************************************************************************************/
 
 use commitment_pairing::urs::URS;
-use commitment_pairing::commitment::{Utils, PolyComm};
 use algebra::{PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -14,7 +13,7 @@ use colored::Colorize;
 use rand::Rng;
 
 #[test]
-fn batch_commitment_pairing()
+fn batch_commitment_test()
 {
     test::<Bls12_381>();
 }
@@ -22,14 +21,13 @@ fn batch_commitment_pairing()
 fn test<E: PairingEngine>()
 {
     let rng = &mut OsRng;
-    let polysize = 500;
-    let size = 8;
+    let depth = 500;
 
     // generate sample URS
     let urs = URS::<E>::create
     (
-        size,
-        (0..size).map(|i| i).collect(),
+        depth,
+        vec![depth-1, depth-2, depth-3],
         rng
     );
 
@@ -43,54 +41,46 @@ fn test<E: PairingEngine>()
         <(
             E::Fr,
             E::Fr,
-            Vec<(&PolyComm<E::G1Affine>, &Vec<E::Fr>, Option<usize>)>,
+            Vec<(E::G1Affine, E::Fr, Option<(E::G1Affine, usize)>)>,
             E::G1Affine,
         )>::new();
 
         let mut commit = Duration::new(0, 0);
         let mut open = Duration::new(0, 0);
         
-        let length = (0..11).map
-        (
-            |_|
-            {
-                let len: usize = random.gen();
-                (len % polysize)+1
-            }
-        ).collect::<Vec<_>>();
-        println!("{}{:?}", "sizes: ".bright_cyan(), length);
-
-        let aa = length.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
-        let a = aa.iter().map(|s| s).collect::<Vec<_>>();
-        let x = E::Fr::rand(rng);
-        let evals = a.iter().map(|a| a.eval(x, size)).collect::<Vec<_>>();
-
-        let mut start = Instant::now();
-        let comm = a.iter().enumerate().map
-        (
-            |(i, a)|
-            urs.commit(&a.clone(), if i%2==0 {None} else {Some(a.coeffs.len())})
-        ).collect::<Vec<_>>();
-        commit += start.elapsed();
-
-        let mask = E::Fr::rand(rng);
-        start = Instant::now();
-        let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x);
-        open += start.elapsed();
-
-        proofs.push
-        ((
-            x,
-            mask,
-            (0..a.len()).map
+        for _ in 0..7
+        {
+            let size = (0..11).map
             (
-                |i|
-                (
-                    &comm[i], &evals[i], if i%2==0 {None} else {Some(a[i].coeffs.len())}
-                )
-            ).collect::<Vec<_>>(),
-            proof,
-        ));
+                |_|
+                {
+                    let len: usize = random.gen();
+                    (len % (depth-2))+1
+                }
+            ).collect::<Vec<_>>();
+            println!("{}{:?}", "sizes: ".bright_cyan(), size);
+
+            let aa = size.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+            let a = aa.iter().map(|s| s).collect::<Vec<_>>();
+            let x = E::Fr::rand(rng);
+
+            let mut start = Instant::now();
+            let comm = a.iter().map(|a| urs.commit(&a.clone()).unwrap()).collect::<Vec<_>>();
+            commit += start.elapsed();
+
+            let mask = E::Fr::rand(rng);
+            start = Instant::now();
+            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x).unwrap();
+            open += start.elapsed();
+
+            proofs.push
+            ((
+                x,
+                mask,
+                (0..a.len()).map(|i| (comm[i], a[i].evaluate(x), None)).collect::<Vec<_>>(),
+                proof,
+            ));
+        }
 
         println!("{}{:?}", "commitment time: ".yellow(), commit);
         println!("{}{:?}", "open time: ".magenta(), open);
@@ -98,7 +88,7 @@ fn test<E: PairingEngine>()
         let start = Instant::now();
         assert_eq!(urs.verify
         (
-            &proofs,
+            &vec![proofs],
             rng
         ), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());
