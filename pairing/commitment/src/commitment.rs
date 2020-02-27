@@ -119,13 +119,13 @@ impl<E: PairingEngine> URS<E>
     pub fn verify
     (
         &self,
-        batch: &Vec<Vec
+        batch: &Vec
         <(
             E::Fr,
             E::Fr,
             Vec<(E::G1Affine, E::Fr, Option<(E::G1Affine, usize)>)>,
             E::G1Affine,
-        )>>,
+        )>,
         rng: &mut dyn RngCore
     ) -> bool
     {
@@ -138,33 +138,30 @@ impl<E: PairingEngine> URS<E>
         let mut open_point = Vec::new();
         let mut openy_scalar = Vec::new();
         let mut openy_point = Vec::new();
+        let mut eval = E::Fr::zero();
 
-        for prf in batch.iter()
+        for x in batch.iter()
         {
-            let mut eval = E::Fr::zero();
-            for x in prf.iter()
+            let rnd = E::Fr::rand(rng);
+            open_scalar.push(rnd.into_repr());
+            open_point.push(x.3);
+            openy_scalar.push((-rnd * &x.0).into_repr());
+            openy_point.push(x.3);
+            let mut scale = E::Fr::one();
+            let mut v = E::Fr::zero();
+            
+            for z in x.2.iter().rev()
             {
-                let rnd = E::Fr::rand(rng);
-                open_scalar.push(rnd.into_repr());
-                open_point.push(x.3);
-                openy_scalar.push((-rnd * &x.0).into_repr());
-                openy_point.push(x.3);
-                let mut scale = E::Fr::one();
-                let mut v = E::Fr::zero();
-                
-                for z in x.2.iter().rev()
-                {
-                    v += &(z.1 * &scale);
-                    openy_point.push(z.0);
-                    openy_scalar.push((-rnd * &scale).into_repr());
-                    scale *= &x.1;
-                }
-                v *= &rnd;
-                eval += &v;
-            };
-            openy_scalar.push(eval.into_repr());
-            openy_point.push(self.gp[0]);
+                v += &(z.1 * &scale);
+                openy_point.push(z.0);
+                openy_scalar.push((-rnd * &scale).into_repr());
+                scale *= &x.1;
+            }
+            v *= &rnd;
+            eval += &v;
         }
+        openy_scalar.push(eval.into_repr());
+        openy_point.push(self.gp[0]);
 
         // verify shifted commitments against unshifted commitments:
         // e(ushComm, h^0) = e(shComm, h^x^(max-d))
@@ -172,23 +169,20 @@ impl<E: PairingEngine> URS<E>
         let mut shifted: HashMap<usize, Vec<(E::G1Affine, E::Fr)>> = HashMap::new();
         for x1 in batch.iter()
         {
-            for x2 in x1.iter()
+            for x2 in x1.2.iter()
             {
-                for x3 in x2.2.iter()
+                match x2.2
                 {
-                    match x3.2
+                    Some((p, m)) =>
                     {
-                        Some((p, m)) =>
-                        {
-                            let rnd = E::Fr::rand(rng);
-                            openy_point.push(x3.0);
-                            openy_scalar.push(rnd.into_repr());
-                            if !shifted.contains_key(&m) {shifted.insert(m, Vec::new());}
-                            shifted.get_mut(&m).unwrap().push((p, rnd))
-                        }
-                        None => continue
-                    }        
-                }
+                        let rnd = E::Fr::rand(rng);
+                        openy_point.push(x2.0);
+                        openy_scalar.push(rnd.into_repr());
+                        if !shifted.contains_key(&m) {shifted.insert(m, Vec::new());}
+                        shifted.get_mut(&m).unwrap().push((p, rnd))
+                    }
+                    None => continue
+                }        
             }
         }
 

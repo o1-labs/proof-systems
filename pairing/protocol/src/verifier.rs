@@ -126,7 +126,7 @@ impl<E: PairingEngine> ProverProof<E>
         rng: &mut dyn RngCore
     ) -> Result<bool, ProofError>
     {
-        let mut batch = vec![Vec::new(), Vec::new(), Vec::new()];
+        let mut batch = Vec::new();
         for proof in proofs.iter()
         {
             let proof = proof.clone();
@@ -145,7 +145,7 @@ impl<E: PairingEngine> ProverProof<E>
                 return Err(ProofError::ProofVerification)
             }
 
-            batch[0].push
+            batch.push
             ((
                 oracles.beta[0],
                 oracles.batch,
@@ -160,7 +160,7 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 proof.proof1
             ));
-            batch[1].push
+            batch.push
             ((
                 oracles.beta[1],
                 oracles.batch,
@@ -171,7 +171,7 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 proof.proof2
             ));
-            batch[2].push
+            batch.push
             ((
                 oracles.beta[2],
                 oracles.batch,

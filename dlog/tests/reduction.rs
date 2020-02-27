@@ -32,7 +32,7 @@ use colored::Colorize;
 pub use core::time::Duration;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
-const DIMENSION: usize = 100000;
+const DIMENSION: usize = 1000;
 
 #[test]
 fn reduction_graph_dlog()
@@ -99,7 +99,7 @@ fn reduction_graph_dlog()
     witness[DIMENSION + 7] = s;
 
     let mut data: Vec<(usize, Duration, Duration)> = Vec::new();
-    for size in (10000..20000).step_by(10000)
+    for size in (100..200).step_by(100)
     {
         let (p, v) = test(a.clone(), b.clone(), c.clone(), witness.clone(), size);
         data.push((size, p, v));
