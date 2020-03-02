@@ -97,7 +97,7 @@ impl<E: PairingEngine> URS<E>
     {
         let mut acc = DensePolynomial::<E::Fr>::zero();
         let mut scale = E::Fr::one();
-        
+
         for p in polys.iter().rev()
         {
             acc += &(p.scale(scale));

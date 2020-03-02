@@ -43,6 +43,7 @@ fn apply_near_mds_matrix<F: Field>(v: &Vec<F>) -> Vec<F> {
     vec![v[0] + &v[2], v[0] + &v[1], v[1] + &v[2]]
 }
 
+#[derive(Clone)]
 enum SpongeState {
     Absorbed(usize),
     Squeezed(usize),
@@ -53,6 +54,7 @@ pub struct ArithmeticSpongeParams<F: Field> {
     pub round_constants: Vec<Vec<F>>,
 }
 
+#[derive(Clone)]
 pub struct ArithmeticSponge<F: Field> {
     sponge_state: SpongeState,
     rate: usize,

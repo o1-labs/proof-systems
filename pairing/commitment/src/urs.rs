@@ -31,7 +31,7 @@ impl<E: PairingEngine> URS<E>
     pub fn callback(_i: usize) {}
 
     pub fn max_degree(&self) -> usize {
-        self.gp.len()
+        self.depth
     }
 
     pub fn write<W : Write>(&self, mut writer : W) -> IoResult<()> {

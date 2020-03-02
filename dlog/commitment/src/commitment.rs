@@ -16,12 +16,12 @@ use algebra::{
     UniformRand, VariableBaseMSM,
 };
 use ff_fft::DensePolynomial;
-use itertools::Itertools;
-use oracle::rndoracle::{ArithmeticSpongeParams, ProofError};
+use oracle::rndoracle::{ProofError};
 use oracle::FqSponge;
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
+use itertools::Itertools;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -33,6 +33,58 @@ pub struct OpeningProof<G: AffineCurve> {
     pub z1: G::ScalarField,
     pub z2: G::ScalarField,
     pub sg: G,
+}
+
+pub struct Challenges<F> {
+    pub chal : Vec<F>,
+    pub chal_inv : Vec<F>,
+    pub chal_squared : Vec<F>,
+    pub chal_squared_inv : Vec<F>,
+}
+
+impl<G:AffineCurve> OpeningProof<G> {
+    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<Fr<G>> {
+        self.lr
+        .iter()
+        .map(|(l, r)| {
+            sponge.absorb_g(l);
+            sponge.absorb_g(r);
+            sponge.challenge()
+        })
+        .collect()
+    }
+
+    pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Challenges<Fr<G>> {
+        let chal_squared: Vec<_> = self
+            .lr
+            .iter()
+            .map(|(l, r)| {
+                sponge.absorb_g(l);
+                sponge.absorb_g(r);
+                squeeze_square_challenge(sponge)
+            })
+            .collect();
+
+        let chal_squared_inv = {
+            let mut cs = chal_squared.clone();
+            algebra::fields::batch_inversion(&mut cs);
+            cs
+        };
+
+        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.sqrt().unwrap()).collect();
+        let chal_inv = {
+            let mut cs = chal.clone();
+            algebra::fields::batch_inversion(&mut cs);
+            cs
+        };
+
+        Challenges {
+            chal,
+            chal_inv,
+            chal_squared,
+            chal_squared_inv
+        }
+    }
 }
 
 pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
@@ -70,7 +122,7 @@ pub fn b_poly_coefficients<F: Field>(s0: F, chal_squareds: &Vec<F>) -> Vec<F> {
     s
 }
 
-fn ceil_log2(d: usize) -> usize {
+pub fn ceil_log2(d: usize) -> usize {
     let mut pow2 = 1;
     let mut ceil_log2 = 0;
     while d > pow2 {
@@ -279,22 +331,25 @@ impl<G: AffineCurve> SRS<G> {
         plnm: &DensePolynomial<Fr<G>>,
         max: usize,
     ) -> Result<(G, G), ProofError> {
+        // TODO: Pass in a batch degree bound to be used for d
         let d = self.g.len();
         if d < max || plnm.coeffs.len() > max {
             return Err(ProofError::PolyCommit);
         }
-
-        Ok((
-            self.commit_no_degree_bound(&plnm)?,
+        let commitment = self.commit_no_degree_bound(&plnm)?;
+        let shifted_commitment =
             VariableBaseMSM::multi_scalar_mul(
-                &self.g[d - max..plnm.len() + d - max],
+                &self.g[d - max..d - max + plnm.len()],
                 &plnm
                     .coeffs
                     .iter()
                     .map(|s| s.into_repr())
                     .collect::<Vec<_>>(),
             )
-            .into_affine(),
+            .into_affine();
+        Ok((
+            commitment,
+            shifted_commitment
         ))
     }
 
@@ -317,6 +372,8 @@ impl<G: AffineCurve> SRS<G> {
         .into_affine())
     }
 
+    // TODO: Figure out a sound way of padding with 0 group elements
+
     // This function opens polynomial commitments in batch
     //     plnms: batch of polynomials to open commitments for with, optionally, max degrees
     //     elm: evaluation point vector to open the commitments at
@@ -324,28 +381,39 @@ impl<G: AffineCurve> SRS<G> {
     //     evalscale: eval scaling factor for opening commitments in batch
     //     oracle_params: parameters for the random oracle argument
     //     RETURN: commitment opening proof
-    pub fn open<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         plnms: &Vec<(DensePolynomial<Fr<G>>, Option<usize>)>, // vector of polynomial with optional degree bound
         elm: &Vec<Fr<G>>,                                     // vector of evaluation points
         polyscale: Fr<G>,                                     // scaling factor for polynoms
         evalscale: Fr<G>, // scaling factor for evaluation point powers
-        oracle_params: &ArithmeticSpongeParams<Fq<G>>, // parameters for the random oracle argument
+        mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> Result<OpeningProof<G>, ProofError> {
         let u: G = G::prime_subgroup_generator(); // TODO: Should make this a random group element after the group map is implemented.
 
+        let rounds = ceil_log2(self.g.len());
+        let padded_length = 1 << rounds;
+
+        // TODO: Trim this to the degree of the largest polynomial
+        let nonzero_length = self.g.len();
+
+        let padding = padded_length - self.g.len();
+        let mut g = self.g.clone();
+        g.extend(vec![G::zero(); padding]);
+
         // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
-        // let mut p_comm = G::Projective::zero();
         let p = {
             let mut p = DensePolynomial::<Fr<G>>::zero();
             let mut scale = Fr::<G>::one();
             for (p_i, degree_bound) in plnms.iter().rev() {
                 match degree_bound {
                     Some(m) => {
+                        assert!(nonzero_length >= *m);
                         // mixing in the shifted polynom since degree is bounded
-                        p += &(p_i.shiftr(self.g.len() - m).scale(scale));
-                        // p_comm += &(shifted_comm_i.mul(scale));
+                        let term = p_i.shiftr(nonzero_length - m);
+                        p += &term.scale(scale);
+
                         scale *= &polyscale;
                     }
                     _ => {}
@@ -365,8 +433,6 @@ impl<G: AffineCurve> SRS<G> {
         // for each commitment in the batch.
         let blinding_factor = Fr::<G>::zero();
 
-        let padded_length = 1 << rounds;
-
         // b_j = sum_i r^i elm_i^j
         let b_init = {
             // randomise/scale the eval powers
@@ -381,16 +447,11 @@ impl<G: AffineCurve> SRS<G> {
             res
         };
 
-        let padding = padded_length - self.g.len();
-        let mut g = self.g.clone();
-        g.extend(vec![G::zero(); padding]);
-
         let mut a = p.coeffs;
+        assert!(padded_length >= a.len());
         a.extend(vec![Fr::<G>::zero(); padded_length - a.len()]);
 
         let mut b = b_init.clone();
-
-        let mut sponge = EFqSponge::new(oracle_params.clone());
 
         let mut lr = vec![];
 
@@ -511,7 +572,8 @@ impl<G: AffineCurve> SRS<G> {
     //     RETURN: verification status
     pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
-        batch: &Vec<(
+        mut batch: Vec<(
+            EFqSponge,
             Vec<Fr<G>>, // vector of evaluation points
             Fr<G>,      // scaling factor for polynoms
             Fr<G>,      // scaling factor for evaluation point powers
@@ -522,7 +584,6 @@ impl<G: AffineCurve> SRS<G> {
             )>,
             OpeningProof<G>, // batched opening proof
         )>,
-        oracle_params: &ArithmeticSpongeParams<Fq<G>>,
         rng: &mut dyn RngCore,
     ) -> bool {
         // Verifier checks for all i,
@@ -545,11 +606,14 @@ impl<G: AffineCurve> SRS<G> {
         // We also check that the sg component of the proof is equal to the polynomial commitment
         // to the "s" array
 
-        let max_rounds = ceil_log2(self.g.len());
+        let nonzero_length = self.g.len();
+
+        let max_rounds = ceil_log2(nonzero_length);
 
         let padded_length = 1 << max_rounds;
 
-        let padding = padded_length - self.g.len();
+        // TODO: This will need adjusting
+        let padding = padded_length - nonzero_length;
         let mut points = self.g.clone();
         points.extend(vec![G::zero(); padding]);
 
@@ -563,33 +627,11 @@ impl<G: AffineCurve> SRS<G> {
         let mut rand_base_i = Fr::<G>::one();
         let mut sg_rand_base_i = Fr::<G>::one();
 
-        for (evaluation_points, xi, r, polys, opening) in batch.iter() {
-            let u: G = G::prime_subgroup_generator(); // TODO: Should make this a random group element after the group map is implemented.
+        for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
+            let u: G = G::prime_subgroup_generator(); 
+            // TODO: Should make this a random group element after the group map is implemented.
 
-            let sponge = &mut EFqSponge::new(oracle_params.clone());
-
-            let chal_squareds: Vec<_> = opening
-                .lr
-                .iter()
-                .map(|(l, r)| {
-                    sponge.absorb_g(l);
-                    sponge.absorb_g(r);
-                    squeeze_square_challenge(sponge)
-                })
-                .collect();
-
-            let chal_squared_invs = {
-                let mut cs = chal_squareds.clone();
-                algebra::fields::batch_inversion(&mut cs);
-                cs
-            };
-
-            let chals: Vec<Fr<G>> = chal_squareds.iter().map(|x| x.sqrt().unwrap()).collect();
-            let chal_invs = {
-                let mut cs = chals.clone();
-                algebra::fields::batch_inversion(&mut cs);
-                cs
-            };
+            let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
 
             sponge.absorb_g(&opening.delta);
             let c = sponge.challenge();
@@ -600,16 +642,16 @@ impl<G: AffineCurve> SRS<G> {
             let b0 = {
                 let mut scale = Fr::<G>::one();
                 let mut res = Fr::<G>::zero();
-                for &e in evaluation_points {
-                    res += &(scale * &b_poly(&chals, &chal_invs, e));
+                for &e in evaluation_points.iter() {
+                    res += &(scale * &b_poly(&chal, &chal_inv, e));
                     scale *= r;
                 }
                 res
             };
 
             let s = b_poly_coefficients(
-                chal_invs.iter().fold(Fr::<G>::one(), |x, y| x * &y),
-                &chal_squareds,
+                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * &y),
+                &chal_squared,
             );
 
             let neg_rand_base_i = -rand_base_i;
@@ -653,7 +695,7 @@ impl<G: AffineCurve> SRS<G> {
             for ((l, r), (u, u_inv)) in opening
                 .lr
                 .iter()
-                .zip(chal_squareds.iter().zip(chal_squared_invs.iter()))
+                .zip(chal_squared.iter().zip(chal_squared_inv.iter()))
             {
                 points.push(*l);
                 scalars.push(rand_base_i_c_i * u);
@@ -677,7 +719,7 @@ impl<G: AffineCurve> SRS<G> {
                             let shifted_evals: Vec<_> = evaluation_points
                                 .iter()
                                 .zip(evals)
-                                .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - m) as u64]) * f_elm)
+                                .map(|(elm, f_elm)| elm.pow(&[( nonzero_length - m) as u64]) * f_elm)
                                 .collect();
 
                             scalars.push(rand_base_i_c_i * &xi_i);
@@ -713,8 +755,7 @@ impl<G: AffineCurve> SRS<G> {
         }
         // verify the equation
         let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
-        assert!(VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero());
-        true
+        VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
     }
 }
 

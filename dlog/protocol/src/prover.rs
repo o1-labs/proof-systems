@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve};
 use oracle::{FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations};
-use commitment_dlog::commitment::{Utils, OpeningProof};
+use commitment_dlog::commitment::{Utils, OpeningProof, b_poly_coefficients, product};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
 use rand_core::RngCore;
@@ -57,7 +57,10 @@ pub struct ProverProof<G: AffineCurve>
     pub sigma3: Fr<G>,
 
     // public part of the witness
-    pub public: Vec<Fr<G>>
+    pub public: Vec<Fr<G>>,
+
+    // The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec<(Vec<Fr<G>>, G)>,
 }
 
 impl<G: AffineCurve> ProverProof<G>
@@ -67,12 +70,13 @@ impl<G: AffineCurve> ProverProof<G>
     //     index: Index
     //     RETURN: prover's zk-proof
     pub fn create
-        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
         witness: &Vec::<Fr<G>>,
         index: &Index<G>,
+        prev_challenges: Vec< (Vec<Fr<G>>, G) >,
         rng: &mut dyn RngCore,
     ) 
     -> Result<Self, ProofError>
@@ -217,6 +221,8 @@ impl<G: AffineCurve> ProverProof<G>
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
 
+        let fq_sponge_before_evaluations = fq_sponge.clone();
+
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.digest();
             oracles.digest_before_evaluations = digest_before_evaluations;
@@ -287,6 +293,50 @@ impl<G: AffineCurve> ProverProof<G>
         // construct the proof
         // --------------------------------------------------------------------
 
+        let mut polys : Vec<(DensePolynomial<Fr<G>>, Option<usize>)> = prev_challenges.iter().map(|(chals, _comm)| {
+            let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+            let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
+            let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+            (b, None)
+        }).collect();
+
+        polys.extend(
+            vec!
+            [
+                (x_hat.clone(), None),
+                (w.clone(),  None),
+                (za.clone(), None),
+                (zb.clone(), None),
+                (h1.clone(), None),
+                (h2.clone(), None),
+                (h3.clone(), None),
+                (index.compiled[0].row.clone(), None),
+                (index.compiled[1].row.clone(), None),
+                (index.compiled[2].row.clone(), None),
+                (index.compiled[0].col.clone(), None),
+                (index.compiled[1].col.clone(), None),
+                (index.compiled[2].col.clone(), None),
+                (index.compiled[0].val.clone(), None),
+                (index.compiled[1].val.clone(), None),
+                (index.compiled[2].val.clone(), None),
+                (index.compiled[0].rc.clone(), None),
+                (index.compiled[1].rc.clone(), None),
+                (index.compiled[2].rc.clone(), None),
+                (g1.clone(), Some(index.domains.h.size()-1)),
+                (g2.clone(), Some(index.domains.h.size()-1)),
+                (g3.clone(), Some(index.domains.k.size()-1)),
+            ]);
+
+        let proof = index.srs.get_ref().open::<EFqSponge>
+            (
+                &polys,
+                &oracles.beta.to_vec(),
+                oracles.polys,
+                oracles.evals,
+                fq_sponge_before_evaluations,
+                rng
+            )?;
+
         Ok(ProverProof
         {
             // polynomial commitments
@@ -301,40 +351,7 @@ impl<G: AffineCurve> ProverProof<G>
             g3_comm,
 
             // polynomial commitment batched opening proofs
-            proof: index.srs.get_ref().open::<EFqSponge>
-            (
-                &vec!
-                [
-                    (za.clone(), None),
-                    (zb.clone(), None),
-                    (w.clone(),  None),
-                    (h1.clone(), None),
-                    (g1.clone(), Some(index.domains.h.size()-1)),
-
-                    (h2.clone(), None),
-                    (g2.clone(), Some(index.domains.h.size()-1)),
-
-                    (h3.clone(), None),
-                    (g3.clone(), Some(index.domains.k.size()-1)),
-                    (index.compiled[0].row.clone(), None),
-                    (index.compiled[1].row.clone(), None),
-                    (index.compiled[2].row.clone(), None),
-                    (index.compiled[0].col.clone(), None),
-                    (index.compiled[1].col.clone(), None),
-                    (index.compiled[2].col.clone(), None),
-                    (index.compiled[0].val.clone(), None),
-                    (index.compiled[1].val.clone(), None),
-                    (index.compiled[2].val.clone(), None),
-                    (index.compiled[0].rc.clone(), None),
-                    (index.compiled[1].rc.clone(), None),
-                    (index.compiled[2].rc.clone(), None),
-                ],
-                &oracles.beta.to_vec(),
-                oracles.polys,
-                oracles.evals,
-                &index.fq_sponge_params.clone(),
-                rng
-            )?,
+            proof, 
 
             // polynomial evaluations
             evals,
@@ -344,7 +361,8 @@ impl<G: AffineCurve> ProverProof<G>
             sigma3,
 
             // public part of the witness
-            public
+            public,
+            prev_challenges,
         })
     }
 
