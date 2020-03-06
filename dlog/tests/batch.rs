@@ -8,6 +8,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve};
 use commitment_dlog::{srs::SRS, commitment::{Utils, OpeningProof, PolyComm}};
 
+use oracle::FqSponge;
 use oracle::marlin_sponge::{DefaultFqSponge};
 
 use std::time::{Instant, Duration};
@@ -35,6 +36,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let mut proofs = Vec::
         <(
+            DefaultFqSponge<Bn_382GParameters>,
             Vec<Fr>,
             Fr,
             Fr,
@@ -78,22 +80,25 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         ).collect::<Vec<_>>();
 
         start = Instant::now();
+        let sponge = DefaultFqSponge::<Bn_382GParameters>::new(oracle::bn_382::fp::params());
+
         let proof = srs.open::<DefaultFqSponge<Bn_382GParameters>>
         (
             (0..a.len()).map
             (
                 |i| (&a[i], if i%2==0 {Some(a[i].coeffs.len())} else {None})
-            ).collect(),
+            ).collect::<Vec<_>>(),
             &x.clone(),
             polymask,
             evalmask,
-            &oracle::bn_382::fp::params(),
+            sponge.clone(),
             rng,
         );
         open += start.elapsed();
 
         proofs.push
         ((
+            sponge.clone(),
             x.clone(),
             polymask,
             evalmask,
@@ -114,8 +119,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let start = Instant::now();
         assert_eq!(srs.verify::<DefaultFqSponge<Bn_382GParameters>>
             (
-                &proofs,
-                &oracle::bn_382::fp::params(),
+                &mut proofs,
                 rng
             ), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());

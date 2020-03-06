@@ -28,6 +28,10 @@ pub struct SRS<G: AffineCurve>
 
 impl<G: AffineCurve> SRS<G>
 {
+    pub fn max_degree(&self) -> usize {
+        self.g.len()
+    }
+
     // This function creates SRS instance for circuits up to depth d
     //     depth: maximal depth of the circuits
     //     rng: randomness source context
@@ -52,10 +56,6 @@ impl<G: AffineCurve> SRS<G>
             g: v[0..depth].iter().map(|e| e.into_affine()).collect(),
             h: v[depth].into_affine(),
         }
-    }
-
-    pub fn max_degree(&self) -> usize {
-        self.g.len()
     }
 
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {

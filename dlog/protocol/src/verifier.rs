@@ -6,13 +6,12 @@ This source file implements zk-proof batch verifier functionality.
 
 use rand_core::RngCore;
 use circuits_dlog::index::{VerifierIndex as Index};
-use oracle::FqSponge;
+use oracle::{FqSponge, rndoracle::ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
-use ff_fft::Evaluations;
+use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::Utils;
-use ff_fft::DensePolynomial;
+use commitment_dlog::commitment::{Utils, b_poly, PolyComm};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -150,19 +149,26 @@ impl<G: AffineCurve> ProverProof<G>
     //     rng: randomness source context
     //     RETURN: verification status
     pub fn verify
-        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
         proofs: &Vec<ProverProof<G>>,
         index: &Index<G>,
         rng: &mut dyn RngCore
-    ) -> bool
+    ) -> Result<bool, ProofError>
     {
         let mut batch = Vec::with_capacity(proofs.len());
+
         for proof in proofs.iter()
         {
-            let oracles = proof.oracles::<EFqSponge, EFrSponge>(index);
+            let x_hat =
+            // TODO: Cache this interpolated polynomial.
+            Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+            // TODO: No degree bound needed
+            let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
+
+            let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat)?;
 
             let beta =
             [
@@ -221,25 +227,22 @@ impl<G: AffineCurve> ProverProof<G>
                 !proof.sumcheck_2_verify (index, &oracles, &evals) ||
                 !proof.sumcheck_3_verify (index, &oracles, &evals)
             {
-                return false
+                return Err(ProofError::ProofVerification)
             }
 
             batch.push
             ((
+                fq_sponge,
                 oracles.beta.to_vec(),
                 oracles.polys,
                 oracles.evals,
-                vec!
-                [
+                vec![
+                    (&proof.w_comm,      proof.evals.iter().map(|e| &e.w ).collect::<Vec<_>>(), None),
                     (&proof.za_comm,     proof.evals.iter().map(|e| &e.za).collect::<Vec<_>>(), None),
                     (&proof.zb_comm,     proof.evals.iter().map(|e| &e.zb).collect::<Vec<_>>(), None),
-                    (&proof.w_comm,      proof.evals.iter().map(|e| &e.w ).collect::<Vec<_>>(), None),
                     (&proof.h1_comm,     proof.evals.iter().map(|e| &e.h1).collect::<Vec<_>>(), None),
-                    (&proof.g1_comm,     proof.evals.iter().map(|e| &e.g1).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
                     (&proof.h2_comm,     proof.evals.iter().map(|e| &e.h2).collect::<Vec<_>>(), None),
-                    (&proof.g2_comm,     proof.evals.iter().map(|e| &e.g2).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
                     (&proof.h3_comm,     proof.evals.iter().map(|e| &e.h3).collect::<Vec<_>>(), None),
-                    (&proof.g3_comm,     proof.evals.iter().map(|e| &e.g3).collect::<Vec<_>>(), Some(index.domains.k.size()-1)),
                     
                     (&index.matrix_commitments[0].row, proof.evals.iter().map(|e| &e.row[0]).collect::<Vec<_>>(), None),
                     (&index.matrix_commitments[1].row, proof.evals.iter().map(|e| &e.row[1]).collect::<Vec<_>>(), None),
@@ -253,33 +256,37 @@ impl<G: AffineCurve> ProverProof<G>
                     (&index.matrix_commitments[0].rc, proof.evals.iter().map(|e| &e.rc[0]).collect::<Vec<_>>(), None),
                     (&index.matrix_commitments[1].rc, proof.evals.iter().map(|e| &e.rc[1]).collect::<Vec<_>>(), None),
                     (&index.matrix_commitments[2].rc, proof.evals.iter().map(|e| &e.rc[2]).collect::<Vec<_>>(), None),
+
+                    (&proof.g1_comm,     proof.evals.iter().map(|e| &e.g1).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
+                    (&proof.g2_comm,     proof.evals.iter().map(|e| &e.g2).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
+                    (&proof.g3_comm,     proof.evals.iter().map(|e| &e.g3).collect::<Vec<_>>(), Some(index.domains.k.size()-1)),
                 ],
                 &proof.proof
             ));
         }
         // second, verify the commitment opening proofs
-        index.srs.get_ref().verify::<EFqSponge>(&batch, &index.fq_sponge_params.clone(), rng)
+        match index.srs.get_ref().verify::<EFqSponge>(&mut batch, rng)
+        {
+            false => Err(ProofError::OpenProof),
+            true => Ok(true)
+        }
     }
 
     // This function queries random oracle values from non-interactive
     // argument context by verifier
     pub fn oracles
-        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
         &self,
         index: &Index<G>,
-    ) -> RandomOracles<Fr<G>>
+        x_hat_comm: PolyComm<G>,
+        x_hat: &DensePolynomial<Fr<G>>
+    ) -> Result<(EFqSponge, RandomOracles<Fr<G>>), ProofError>
     {
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
-
-        let x_hat =
-            // TODO: Cache this interpolated polynomial.
-            Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate();
-        // TODO: No degree bound needed
-        let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
 
         // absorb the public input into the argument
         fq_sponge.absorb_g(&x_hat_comm.unshifted);
@@ -311,7 +318,7 @@ impl<G: AffineCurve> ProverProof<G>
         oracles.beta[2] = fq_sponge.challenge();
 
         let mut fr_sponge = {
-            let digest_before_evaluations = fq_sponge.digest();
+            let digest_before_evaluations = fq_sponge.clone().digest();
             oracles.digest_before_evaluations = digest_before_evaluations;
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
             s.absorb(&digest_before_evaluations);
@@ -328,10 +335,10 @@ impl<G: AffineCurve> ProverProof<G>
         for i in 0..3 {
             fr_sponge.absorb_evaluations(&x_hat_evals[i], &self.evals[i]);
         }
-
+    
         oracles.polys = fr_sponge.challenge();
         oracles.evals = fr_sponge.challenge();
 
-        oracles
+        Ok((fq_sponge, oracles))
     }
 }

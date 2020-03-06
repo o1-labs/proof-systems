@@ -40,7 +40,6 @@ impl<'a, G: AffineCurve> SRSValue<'a, G> {
     pub fn generate<'b>(
         size: usize,
         rng : &'b mut dyn RngCore) -> SRS<G> {
-
         SRS::<G>::create(size, rng)
     }
 
@@ -185,8 +184,8 @@ impl<'a, G: AffineCurve> Index<'a, G>
             fr_sponge_params,
             fq_sponge_params,
             public_inputs,
+            max_poly_size, 
             srs,
-            max_poly_size,
             domains,
         })
     }

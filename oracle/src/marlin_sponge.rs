@@ -11,6 +11,7 @@ pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
 const HIGH_ENTROPY_LIMBS: usize = 4;
 
+#[derive(Clone)]
 pub struct DefaultFqSponge<P: SWModelParameters> {
     pub params: ArithmeticSpongeParams<P::BaseField>,
     pub sponge: ArithmeticSponge<P::BaseField>,

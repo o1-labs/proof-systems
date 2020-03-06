@@ -57,7 +57,10 @@ pub struct ProverProof<G: AffineCurve>
     pub sigma3: Fr<G>,
 
     // public part of the witness
-    pub public: Vec<Fr<G>>
+    pub public: Vec<Fr<G>>,
+
+    // The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
 impl<G: AffineCurve> ProverProof<G>
@@ -67,12 +70,13 @@ impl<G: AffineCurve> ProverProof<G>
     //     index: Index
     //     RETURN: prover's zk-proof
     pub fn create
-        <EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
         witness: &Vec::<Fr<G>>,
         index: &Index<G>,
+        prev_challenges: Vec< (Vec<Fr<G>>, PolyComm<G>) >,
         rng: &mut dyn RngCore,
     ) 
     -> Result<Self, ProofError>
@@ -214,6 +218,8 @@ impl<G: AffineCurve> ProverProof<G>
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
 
+        let fq_sponge_before_evaluations = fq_sponge.clone();
+
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.digest();
             oracles.digest_before_evaluations = digest_before_evaluations;
@@ -302,17 +308,12 @@ impl<G: AffineCurve> ProverProof<G>
             (
                 vec!
                 [
+                    (&w,  None),
                     (&za, None),
                     (&zb, None),
-                    (&w,  None),
                     (&h1, None),
-                    (&g1, Some(index.domains.h.size()-1)),
-
                     (&h2, None),
-                    (&g2, Some(index.domains.h.size()-1)),
-
                     (&h3, None),
-                    (&g3, Some(index.domains.k.size()-1)),
                     (&index.compiled[0].row, None),
                     (&index.compiled[1].row, None),
                     (&index.compiled[2].row, None),
@@ -325,13 +326,16 @@ impl<G: AffineCurve> ProverProof<G>
                     (&index.compiled[0].rc, None),
                     (&index.compiled[1].rc, None),
                     (&index.compiled[2].rc, None),
+                    (&g1, Some(index.domains.h.size()-1)),
+                    (&g2, Some(index.domains.h.size()-1)),
+                    (&g3, Some(index.domains.k.size()-1)),
                 ],
                 &oracles.beta.to_vec(),
                 oracles.polys,
                 oracles.evals,
-                &index.fq_sponge_params.clone(),
+                fq_sponge_before_evaluations,
                 rng
-            ),
+            ), 
 
             // polynomial evaluations
             evals,
@@ -341,7 +345,8 @@ impl<G: AffineCurve> ProverProof<G>
             sigma3,
 
             // public part of the witness
-            public
+            public,
+            prev_challenges,
         })
     }
 

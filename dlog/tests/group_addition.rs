@@ -23,15 +23,18 @@ of non-special pairs of points
 
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
-use algebra::{curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
+use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
 use protocol_dlog::{prover::{ProverProof}};
+use commitment_dlog::{srs::SRS, commitment::{ceil_log2, product, b_poly_coefficients}};
 use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
+use ff_fft::{DensePolynomial};
 
 type Fr = <Affine as AffineCurve>::ScalarField;
+const MAX_SIZE: usize = 8;
 
 #[test]
 fn group_addition_dlog()
@@ -48,7 +51,7 @@ fn group_addition_dlog()
     let mut a = CsMat::<Fr>::zero((5, 8));
     let mut b = CsMat::<Fr>::zero((5, 8));
     let mut c = CsMat::<Fr>::zero((5, 8));
-    
+
     a = a
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2], &[neg1, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
@@ -64,16 +67,18 @@ fn group_addition_dlog()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
+    let srs = SRS::create(MAX_SIZE, rng);
+
     let index = Index::<Affine>::create
     (
         a,
         b,
         c,
         4,
-        8,
+        MAX_SIZE,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
-        SRSSpec::Generate(rng)
+        SRSSpec::Use(&srs)
     ).unwrap();
 
     positive(&index, rng);
@@ -184,7 +189,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
-        
+
         let mut witness = vec![Fr::zero(); 8];
         witness[0] = Fr::one();
         witness[1] = x1;
@@ -198,8 +203,20 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.verify(&witness), true);
 
+        let prev = {
+            let k = ceil_log2(index.srs.get_ref().g.len());
+            let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
+            let comm = {
+                let chal_squareds = chals.iter().map(|x| x.square()).collect();
+                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                index.srs.get_ref().commit(&b, None)
+            };
+            ( chals, comm )
+        };
+
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, vec![prev], rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -210,7 +227,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify one proof serially
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
-        true => {}
+        Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
     }
 
@@ -219,8 +236,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     start = Instant::now();
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &verifier_index, rng)
     {
-        false => {panic!("Failure verifying the prover's proofs in batch")},
-        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
+        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 }
 
@@ -252,7 +269,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let rng = &mut OsRng;
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, rng)
+    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, vec![], rng)
     {
         Ok(_) => {panic!("Failure invalidating the witness")}
         _ => {}

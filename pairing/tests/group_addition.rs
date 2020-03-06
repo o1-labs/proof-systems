@@ -31,7 +31,7 @@ use std::time::Instant;
 use colored::Colorize;
 
 #[test]
-fn group_addition_pairing()
+fn group_addition()
 {
     test();
 }

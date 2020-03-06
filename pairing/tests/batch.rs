@@ -88,7 +88,7 @@ fn test<E: PairingEngine>()
         let start = Instant::now();
         assert_eq!(urs.verify
         (
-            &proofs,
+            &vec![proofs],
             rng
         ), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());
