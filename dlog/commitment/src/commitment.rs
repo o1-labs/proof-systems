@@ -402,7 +402,6 @@ impl<G: AffineCurve> SRS<G> {
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
-        let nonzero_length = self.g.len();
 
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();

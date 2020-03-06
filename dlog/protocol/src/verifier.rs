@@ -6,7 +6,7 @@ This source file implements zk-proof batch verifier functionality.
 
 use rand_core::RngCore;
 use circuits_dlog::index::{VerifierIndex as Index};
-use oracle::{FqSponge, rndoracle::ProofError};
+use oracle::FqSponge;
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
@@ -156,7 +156,7 @@ impl<G: AffineCurve> ProverProof<G>
         proofs: &Vec<ProverProof<G>>,
         index: &Index<G>,
         rng: &mut dyn RngCore
-    ) -> Result<bool, ProofError>
+    ) -> bool
     {
         let mut batch = Vec::with_capacity(proofs.len());
 
@@ -168,7 +168,7 @@ impl<G: AffineCurve> ProverProof<G>
             // TODO: No degree bound needed
             let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
 
-            let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat)?;
+            let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat);
 
             let beta =
             [
@@ -227,7 +227,7 @@ impl<G: AffineCurve> ProverProof<G>
                 !proof.sumcheck_2_verify (index, &oracles, &evals) ||
                 !proof.sumcheck_3_verify (index, &oracles, &evals)
             {
-                return Err(ProofError::ProofVerification)
+                return false
             }
 
             batch.push
@@ -265,11 +265,7 @@ impl<G: AffineCurve> ProverProof<G>
             ));
         }
         // second, verify the commitment opening proofs
-        match index.srs.get_ref().verify::<EFqSponge>(&mut batch, rng)
-        {
-            false => Err(ProofError::OpenProof),
-            true => Ok(true)
-        }
+        index.srs.get_ref().verify::<EFqSponge>(&mut batch, rng)
     }
 
     // This function queries random oracle values from non-interactive
@@ -283,7 +279,7 @@ impl<G: AffineCurve> ProverProof<G>
         index: &Index<G>,
         x_hat_comm: PolyComm<G>,
         x_hat: &DensePolynomial<Fr<G>>
-    ) -> Result<(EFqSponge, RandomOracles<Fr<G>>), ProofError>
+    ) -> (EFqSponge, RandomOracles<Fr<G>>)
     {
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -339,6 +335,6 @@ impl<G: AffineCurve> ProverProof<G>
         oracles.polys = fr_sponge.challenge();
         oracles.evals = fr_sponge.challenge();
 
-        Ok((fq_sponge, oracles))
+        (fq_sponge, oracles)
     }
 }

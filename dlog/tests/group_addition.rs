@@ -227,8 +227,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify one proof serially
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
-        Ok(_) => {}
-        _ => {panic!("Failure verifying the prover's proof")}
+        false => {panic!("Failure verifying the prover's proof")},
+        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 
     // verify the proofs in batch
@@ -236,8 +236,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     start = Instant::now();
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &verifier_index, rng)
     {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+        false => {panic!("Failure verifying the prover's proofs in batch")},
+        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 }
 
