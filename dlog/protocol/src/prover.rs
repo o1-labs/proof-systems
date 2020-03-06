@@ -308,6 +308,7 @@ impl<G: AffineCurve> ProverProof<G>
             (
                 vec!
                 [
+                    (&x_hat, None),
                     (&w,  None),
                     (&za, None),
                     (&zb, None),

@@ -11,7 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::{Utils, PolyComm};
+use commitment_dlog::commitment::{Utils, b_poly, PolyComm};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -158,114 +158,126 @@ impl<G: AffineCurve> ProverProof<G>
         rng: &mut dyn RngCore
     ) -> bool
     {
-        let mut batch = Vec::with_capacity(proofs.len());
-
-        for proof in proofs.iter()
-        {
-            let x_hat =
-            // TODO: Cache this interpolated polynomial.
-            Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
-            // TODO: No degree bound needed
-            let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
-
-            let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat);
-
-            let beta =
-            [
-                oracles.beta[0].pow([index.max_poly_size as u64]),
-                oracles.beta[1].pow([index.max_poly_size as u64]),
-                oracles.beta[2].pow([index.max_poly_size as u64])
-            ];
-
-            let evals =
+        let params = proofs.iter().map
+        (
+            |proof|
             {
-                let evl = (0..3).map
-                (
-                    |i| ProofEvals
-                    {
-                        w  : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].w, beta[i]),
-                        za : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].za, beta[i]),
-                        zb : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].zb, beta[i]),
-                        h1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h1, beta[i]),
-                        g1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g1, beta[i]),
-                        h2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h2, beta[i]),
-                        g2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g2, beta[i]),
-                        h3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h3, beta[i]),
-                        g3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g3, beta[i]),
-                        row:
-                        [
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[0], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[1], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[2], beta[i]),
-                        ],
-                        col:
-                        [
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[0], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[1], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[2], beta[i]),
-                        ],
-                        val:
-                        [
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[0], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[1], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[2], beta[i]),
-                        ],
-                        rc:
-                        [
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[0], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[1], beta[i]),
-                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[2], beta[i]),
-                        ],
-                    }
-                ).collect::<Vec<_>>();
-                [evl[0].clone(), evl[1].clone(), evl[2].clone()]
-            };
-
-            // first, verify the sumcheck argument values
-            if 
-                !proof.sumcheck_1_verify (index, &oracles, &evals) ||
-                !proof.sumcheck_2_verify (index, &oracles, &evals) ||
-                !proof.sumcheck_3_verify (index, &oracles, &evals)
-            {
-                return false
+                let x_hat =
+                // TODO: Cache this interpolated polynomial.
+                Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+                // TODO: No degree bound needed
+                let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
+                let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm.clone(), &x_hat);
+                let x_hat_evals = (0..3).map(|i| x_hat.eval(oracles.beta[i], index.max_poly_size)).collect::<Vec<_>>();
+                (x_hat_comm, x_hat_evals, fq_sponge, oracles)
             }
+        ).collect::<Vec<_>>();
+        
+        match proofs.iter().zip(params.iter()).map
+        (
+            |(proof, (x_hat_comm, x_hat_evals, fq_sponge, oracles))|
+            {
 
-            batch.push
-            ((
-                fq_sponge,
-                oracles.beta.to_vec(),
-                oracles.polys,
-                oracles.evals,
-                vec![
-                    (&proof.w_comm,      proof.evals.iter().map(|e| &e.w ).collect::<Vec<_>>(), None),
-                    (&proof.za_comm,     proof.evals.iter().map(|e| &e.za).collect::<Vec<_>>(), None),
-                    (&proof.zb_comm,     proof.evals.iter().map(|e| &e.zb).collect::<Vec<_>>(), None),
-                    (&proof.h1_comm,     proof.evals.iter().map(|e| &e.h1).collect::<Vec<_>>(), None),
-                    (&proof.h2_comm,     proof.evals.iter().map(|e| &e.h2).collect::<Vec<_>>(), None),
-                    (&proof.h3_comm,     proof.evals.iter().map(|e| &e.h3).collect::<Vec<_>>(), None),
-                    
-                    (&index.matrix_commitments[0].row, proof.evals.iter().map(|e| &e.row[0]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[1].row, proof.evals.iter().map(|e| &e.row[1]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[2].row, proof.evals.iter().map(|e| &e.row[2]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[0].col, proof.evals.iter().map(|e| &e.col[0]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[1].col, proof.evals.iter().map(|e| &e.col[1]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[2].col, proof.evals.iter().map(|e| &e.col[2]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[0].val, proof.evals.iter().map(|e| &e.val[0]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[1].val, proof.evals.iter().map(|e| &e.val[1]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[2].val, proof.evals.iter().map(|e| &e.val[2]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[0].rc, proof.evals.iter().map(|e| &e.rc[0]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[1].rc, proof.evals.iter().map(|e| &e.rc[1]).collect::<Vec<_>>(), None),
-                    (&index.matrix_commitments[2].rc, proof.evals.iter().map(|e| &e.rc[2]).collect::<Vec<_>>(), None),
+                let beta =
+                [
+                    oracles.beta[0].pow([index.max_poly_size as u64]),
+                    oracles.beta[1].pow([index.max_poly_size as u64]),
+                    oracles.beta[2].pow([index.max_poly_size as u64])
+                ];
 
-                    (&proof.g1_comm,     proof.evals.iter().map(|e| &e.g1).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
-                    (&proof.g2_comm,     proof.evals.iter().map(|e| &e.g2).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
-                    (&proof.g3_comm,     proof.evals.iter().map(|e| &e.g3).collect::<Vec<_>>(), Some(index.domains.k.size()-1)),
-                ],
-                &proof.proof
-            ));
-        }
+                let evals =
+                {
+                    let evl = (0..3).map
+                    (
+                        |i| ProofEvals
+                        {
+                            w  : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].w, beta[i]),
+                            za : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].za, beta[i]),
+                            zb : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].zb, beta[i]),
+                            h1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h1, beta[i]),
+                            g1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g1, beta[i]),
+                            h2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h2, beta[i]),
+                            g2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g2, beta[i]),
+                            h3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h3, beta[i]),
+                            g3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g3, beta[i]),
+                            row:
+                            [
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[0], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[1], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[2], beta[i]),
+                            ],
+                            col:
+                            [
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[0], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[1], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[2], beta[i]),
+                            ],
+                            val:
+                            [
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[0], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[1], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[2], beta[i]),
+                            ],
+                            rc:
+                            [
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[0], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[1], beta[i]),
+                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[2], beta[i]),
+                            ],
+                        }
+                    ).collect::<Vec<_>>();
+                    [evl[0].clone(), evl[1].clone(), evl[2].clone()]
+                };
+
+                // first, verify the sumcheck argument values
+                if 
+                    !proof.sumcheck_1_verify (index, &oracles, &evals) ||
+                    !proof.sumcheck_2_verify (index, &oracles, &evals) ||
+                    !proof.sumcheck_3_verify (index, &oracles, &evals)
+                {
+                    return Err(0)
+                }
+
+                Ok((
+                    fq_sponge.clone(),
+                    oracles.beta.to_vec(),
+                    oracles.polys,
+                    oracles.evals,
+                    vec![
+                        (x_hat_comm,         x_hat_evals.iter().map(|e| e).collect::<Vec<_>>(), None),
+                        (&proof.w_comm,      proof.evals.iter().map(|e| &e.w).collect::<Vec<_>>(), None),
+                        (&proof.za_comm,     proof.evals.iter().map(|e| &e.za).collect::<Vec<_>>(), None),
+                        (&proof.zb_comm,     proof.evals.iter().map(|e| &e.zb).collect::<Vec<_>>(), None),
+                        (&proof.h1_comm,     proof.evals.iter().map(|e| &e.h1).collect::<Vec<_>>(), None),
+                        (&proof.h2_comm,     proof.evals.iter().map(|e| &e.h2).collect::<Vec<_>>(), None),
+                        (&proof.h3_comm,     proof.evals.iter().map(|e| &e.h3).collect::<Vec<_>>(), None),
+                        
+                        (&index.matrix_commitments[0].row, proof.evals.iter().map(|e| &e.row[0]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[1].row, proof.evals.iter().map(|e| &e.row[1]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[2].row, proof.evals.iter().map(|e| &e.row[2]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[0].col, proof.evals.iter().map(|e| &e.col[0]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[1].col, proof.evals.iter().map(|e| &e.col[1]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[2].col, proof.evals.iter().map(|e| &e.col[2]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[0].val, proof.evals.iter().map(|e| &e.val[0]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[1].val, proof.evals.iter().map(|e| &e.val[1]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[2].val, proof.evals.iter().map(|e| &e.val[2]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[0].rc, proof.evals.iter().map(|e| &e.rc[0]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[1].rc, proof.evals.iter().map(|e| &e.rc[1]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[2].rc, proof.evals.iter().map(|e| &e.rc[2]).collect::<Vec<_>>(), None),
+
+                        (&proof.g1_comm,     proof.evals.iter().map(|e| &e.g1).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
+                        (&proof.g2_comm,     proof.evals.iter().map(|e| &e.g2).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
+                        (&proof.g3_comm,     proof.evals.iter().map(|e| &e.g3).collect::<Vec<_>>(), Some(index.domains.k.size()-1)),
+                    ],
+                    &proof.proof
+                ))
+            }
+        ).collect::<Result<Vec<_>, _>>()
         // second, verify the commitment opening proofs
-        index.srs.get_ref().verify::<EFqSponge>(&mut batch, rng)
+        {
+            Ok(mut batch) =>  index.srs.get_ref().verify::<EFqSponge>(&mut batch, rng),
+            Err(_) => false
+        }
     }
 
     // This function queries random oracle values from non-interactive
