@@ -11,7 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::{Utils, b_poly, PolyComm};
+use commitment_dlog::commitment::{Utils, PolyComm, b_poly, b_poly_coefficients, product};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -169,13 +169,45 @@ impl<G: AffineCurve> ProverProof<G>
                 let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm.clone(), &x_hat);
                 let x_hat_evals = (0..3).map(|i| x_hat.eval(oracles.beta[i], index.max_poly_size)).collect::<Vec<_>>();
-                (x_hat_comm, x_hat_evals, fq_sponge, oracles)
+
+                let polys = proof.prev_challenges.iter().map(|(chals, poly)| {
+                    // No need to check the correctness of poly explicitly. Its correctness is assured by the
+                    // checking of the inner product argument.
+                    // TODO: Use batch inversion across proofs
+                    let chal_invs = {
+                        let mut cs = chals.clone();
+                        algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
+                        cs
+                    };
+                    let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+                    let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
+                    let b = b_poly_coefficients(s0, &chal_squareds);
+
+                    let evals = oracles.beta.iter().map
+                    (
+                        |x|
+                        {
+                            let full = b_poly(&chals, &chal_invs, *x);
+                            if index.max_poly_size == b.len() {return vec![full]}
+                            let mut beta = Fr::<G>::one();
+                            let diff = (index.max_poly_size..b.len()).map
+                            (
+                                |i| {let ret = beta * &b[i]; beta *= &x; ret}
+                            ).fold(Fr::<G>::zero(), |x, y| x + &y);
+                            vec![full - &(diff * &x.pow([index.max_poly_size as u64])), diff]
+                        }
+                    ).collect::<Vec<_>>();
+    
+                    (poly.clone(), evals)
+                }).collect::<Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>>();
+    
+                (x_hat_comm, x_hat_evals, fq_sponge, oracles, polys)
             }
         ).collect::<Vec<_>>();
         
         match proofs.iter().zip(params.iter()).map
         (
-            |(proof, (x_hat_comm, x_hat_evals, fq_sponge, oracles))|
+            |(proof, (x_hat_comm, x_hat_evals, fq_sponge, oracles, polys))|
             {
 
                 let beta =
@@ -238,12 +270,18 @@ impl<G: AffineCurve> ProverProof<G>
                     return Err(0)
                 }
 
-                Ok((
-                    fq_sponge.clone(),
-                    oracles.beta.to_vec(),
-                    oracles.polys,
-                    oracles.evals,
-                    vec![
+                let mut polynoms = polys.iter().map
+                (
+                    |(comm, evals)|
+                    {
+                        (comm, evals.iter().map(|x| x).collect(), None)
+                    }
+                ).collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
+
+                polynoms.extend
+                (
+                    vec!
+                    [
                         (x_hat_comm,         x_hat_evals.iter().map(|e| e).collect::<Vec<_>>(), None),
                         (&proof.w_comm,      proof.evals.iter().map(|e| &e.w).collect::<Vec<_>>(), None),
                         (&proof.za_comm,     proof.evals.iter().map(|e| &e.za).collect::<Vec<_>>(), None),
@@ -268,7 +306,15 @@ impl<G: AffineCurve> ProverProof<G>
                         (&proof.g1_comm,     proof.evals.iter().map(|e| &e.g1).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
                         (&proof.g2_comm,     proof.evals.iter().map(|e| &e.g2).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
                         (&proof.g3_comm,     proof.evals.iter().map(|e| &e.g3).collect::<Vec<_>>(), Some(index.domains.k.size()-1)),
-                    ],
+                    ]
+                );
+
+                Ok((
+                    fq_sponge.clone(),
+                    oracles.beta.to_vec(),
+                    oracles.polys,
+                    oracles.evals,
+                    polynoms,
                     &proof.proof
                 ))
             }

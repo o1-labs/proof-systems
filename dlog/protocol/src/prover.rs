@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve};
 use oracle::{FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations};
-use commitment_dlog::commitment::{Utils, OpeningProof, PolyComm};
+use commitment_dlog::commitment::{Utils, PolyComm, OpeningProof, b_poly_coefficients, product};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
 use rand_core::RngCore;
@@ -289,8 +289,42 @@ impl<G: AffineCurve> ProverProof<G>
 
         // construct the proof
         // --------------------------------------------------------------------
+        let polys = prev_challenges.iter().map(|(chals, _comm)| {
+            let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+            let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
+            let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+            b
+        }).collect::<Vec<_>>();
+        let mut polynoms = polys.iter().map(|p| (p, None)).collect::<Vec<_>>();
 
-        Ok(ProverProof
+        polynoms.extend(
+            vec!
+            [
+                (&x_hat, None),
+                (&w,  None),
+                (&za, None),
+                (&zb, None),
+                (&h1, None),
+                (&h2, None),
+                (&h3, None),
+                (&index.compiled[0].row, None),
+                (&index.compiled[1].row, None),
+                (&index.compiled[2].row, None),
+                (&index.compiled[0].col, None),
+                (&index.compiled[1].col, None),
+                (&index.compiled[2].col, None),
+                (&index.compiled[0].val, None),
+                (&index.compiled[1].val, None),
+                (&index.compiled[2].val, None),
+                (&index.compiled[0].rc, None),
+                (&index.compiled[1].rc, None),
+                (&index.compiled[2].rc, None),
+                (&g1, Some(index.domains.h.size()-1)),
+                (&g2, Some(index.domains.h.size()-1)),
+                (&g3, Some(index.domains.k.size()-1)),
+            ]);
+
+            Ok(ProverProof
         {
             // polynomial commitments
             w_comm,
@@ -306,31 +340,7 @@ impl<G: AffineCurve> ProverProof<G>
             // polynomial commitment batched opening proofs
             proof: index.srs.get_ref().open::<EFqSponge>
             (
-                vec!
-                [
-                    (&x_hat, None),
-                    (&w,  None),
-                    (&za, None),
-                    (&zb, None),
-                    (&h1, None),
-                    (&h2, None),
-                    (&h3, None),
-                    (&index.compiled[0].row, None),
-                    (&index.compiled[1].row, None),
-                    (&index.compiled[2].row, None),
-                    (&index.compiled[0].col, None),
-                    (&index.compiled[1].col, None),
-                    (&index.compiled[2].col, None),
-                    (&index.compiled[0].val, None),
-                    (&index.compiled[1].val, None),
-                    (&index.compiled[2].val, None),
-                    (&index.compiled[0].rc, None),
-                    (&index.compiled[1].rc, None),
-                    (&index.compiled[2].rc, None),
-                    (&g1, Some(index.domains.h.size()-1)),
-                    (&g2, Some(index.domains.h.size()-1)),
-                    (&g3, Some(index.domains.k.size()-1)),
-                ],
+                polynoms,
                 &oracles.beta.to_vec(),
                 oracles.polys,
                 oracles.evals,

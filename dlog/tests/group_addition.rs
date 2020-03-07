@@ -228,7 +228,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
         false => {panic!("Failure verifying the prover's proof")},
-        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+        true => {}
     }
 
     // verify the proofs in batch

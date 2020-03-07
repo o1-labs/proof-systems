@@ -91,9 +91,6 @@ pub struct VerifierIndex<'a, G: AffineCurve>
     // number of public inputs
     pub public_inputs: usize,
 
-    // maximal degree of the committed polynomials
-    pub max_degree: usize,
-
     // maximal size of polynomial section
     pub max_poly_size: usize,
 
@@ -119,8 +116,6 @@ impl<'a, G: AffineCurve> Index<'a, G>
     pub fn verifier_index(&self) -> VerifierIndex<'a, G> {
         let [ a, b, c ] = & self.compiled;
 
-        let max_degree =  self.srs.get_ref().max_degree();
-
         let srs = match &self.srs {
             SRSValue::Value(s) => SRSValue::Value(s.clone()),
             SRSValue::Ref(x) => SRSValue::Ref(x)
@@ -129,7 +124,6 @@ impl<'a, G: AffineCurve> Index<'a, G>
         VerifierIndex {
             matrix_commitments : [ Self::matrix_values(a), Self::matrix_values(b), Self::matrix_values(c) ],
             domains: self.domains,
-            max_degree,
             public_inputs: self.public_inputs,
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
