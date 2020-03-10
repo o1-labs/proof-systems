@@ -45,6 +45,7 @@ impl<G: AffineCurve> ProverProof<G>
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>,
         evals: &[ProofEvals<Fr<G>>],
+        x_hat: &DensePolynomial<Fr<G>>
     ) -> bool
     {
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
@@ -69,16 +70,7 @@ impl<G: AffineCurve> ProverProof<G>
             &(oracles.beta[0] * &evals[0].g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
             &(evals[0].w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            // interpolating/evaluating public input over small domain domains.x
-            // TODO: investigate which of the below is faster
-            &Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate().evaluate(oracles.beta[0])))
-            /*
-            &index.domains.x.evaluate_all_lagrange_coefficients(oracles.beta[0])
-            .iter()
-            .zip(self.public.iter())
-            .map(|(l, x)| *l * x)
-            .fold(Fr<G>::zero(), |x, y| x + &y)))
-            */
+            &x_hat.evaluate(oracles.beta[0])))
         )
     }
 
@@ -168,7 +160,13 @@ impl<G: AffineCurve> ProverProof<G>
                 // TODO: No degree bound needed
                 let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm.clone(), &x_hat);
-                let x_hat_evals = (0..3).map(|i| x_hat.eval(oracles.beta[i], index.max_poly_size)).collect::<Vec<_>>();
+
+                let beta =
+                [
+                    oracles.beta[0].pow([index.max_poly_size as u64]),
+                    oracles.beta[1].pow([index.max_poly_size as u64]),
+                    oracles.beta[2].pow([index.max_poly_size as u64])
+                ];
 
                 let polys = proof.prev_challenges.iter().map(|(chals, poly)| {
                     // No need to check the correctness of poly explicitly. Its correctness is assured by the
@@ -183,39 +181,33 @@ impl<G: AffineCurve> ProverProof<G>
                     let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
                     let b = b_poly_coefficients(s0, &chal_squareds);
 
-                    let evals = oracles.beta.iter().map
+                    let evals = (0..3).map
                     (
-                        |x|
+                        |i|
                         {
-                            let full = b_poly(&chals, &chal_invs, *x);
+                            let full = b_poly(&chals, &chal_invs, oracles.beta[i]);
                             if index.max_poly_size == b.len() {return vec![full]}
-                            let mut beta = Fr::<G>::one();
+                            let mut betaacc = Fr::<G>::one();
                             let diff = (index.max_poly_size..b.len()).map
                             (
-                                |i| {let ret = beta * &b[i]; beta *= &x; ret}
+                                |j| {let ret = betaacc * &b[j]; betaacc *= &oracles.beta[i]; ret}
                             ).fold(Fr::<G>::zero(), |x, y| x + &y);
-                            vec![full - &(diff * &x.pow([index.max_poly_size as u64])), diff]
+                            vec![full - &(diff * &beta[i]), diff]
                         }
                     ).collect::<Vec<_>>();
     
                     (poly.clone(), evals)
                 }).collect::<Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>>();
     
-                (x_hat_comm, x_hat_evals, fq_sponge, oracles, polys)
+                (beta, x_hat, x_hat_comm, fq_sponge, oracles, polys)
             }
         ).collect::<Vec<_>>();
         
         match proofs.iter().zip(params.iter()).map
         (
-            |(proof, (x_hat_comm, x_hat_evals, fq_sponge, oracles, polys))|
+            |(proof, (beta, x_hat, x_hat_comm, fq_sponge, oracles, polys))|
             {
 
-                let beta =
-                [
-                    oracles.beta[0].pow([index.max_poly_size as u64]),
-                    oracles.beta[1].pow([index.max_poly_size as u64]),
-                    oracles.beta[2].pow([index.max_poly_size as u64])
-                ];
 
                 let evals =
                 {
@@ -263,7 +255,7 @@ impl<G: AffineCurve> ProverProof<G>
 
                 // first, verify the sumcheck argument values
                 if 
-                    !proof.sumcheck_1_verify (index, &oracles, &evals) ||
+                    !proof.sumcheck_1_verify (index, &oracles, &evals, &x_hat) ||
                     !proof.sumcheck_2_verify (index, &oracles, &evals) ||
                     !proof.sumcheck_3_verify (index, &oracles, &evals)
                 {
@@ -282,7 +274,7 @@ impl<G: AffineCurve> ProverProof<G>
                 (
                     vec!
                     [
-                        (x_hat_comm,         x_hat_evals.iter().map(|e| e).collect::<Vec<_>>(), None),
+                        (x_hat_comm,         oracles.x_hat.iter().map(|e| e).collect::<Vec<_>>(), None),
                         (&proof.w_comm,      proof.evals.iter().map(|e| &e.w).collect::<Vec<_>>(), None),
                         (&proof.za_comm,     proof.evals.iter().map(|e| &e.za).collect::<Vec<_>>(), None),
                         (&proof.zb_comm,     proof.evals.iter().map(|e| &e.zb).collect::<Vec<_>>(), None),
