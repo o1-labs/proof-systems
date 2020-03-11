@@ -45,7 +45,7 @@ impl<G: AffineCurve> ProverProof<G>
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>,
         evals: &[ProofEvals<Fr<G>>],
-        x_hat: &DensePolynomial<Fr<G>>
+        x_hat_value: Fr<G>
     ) -> bool
     {
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
@@ -70,7 +70,7 @@ impl<G: AffineCurve> ProverProof<G>
             &(oracles.beta[0] * &evals[0].g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
             &(evals[0].w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            &x_hat.evaluate(oracles.beta[0])))
+            &x_hat_value))
         )
     }
 
@@ -199,16 +199,14 @@ impl<G: AffineCurve> ProverProof<G>
                     (poly.clone(), evals)
                 }).collect::<Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>>();
     
-                (beta, x_hat, x_hat_comm, fq_sponge, oracles, polys)
+                (beta, x_hat_comm, fq_sponge, oracles, polys)
             }
         ).collect::<Vec<_>>();
         
         match proofs.iter().zip(params.iter()).map
         (
-            |(proof, (beta, x_hat, x_hat_comm, fq_sponge, oracles, polys))|
+            |(proof, (beta, x_hat_comm, fq_sponge, oracles, polys))|
             {
-
-
                 let evals =
                 {
                     let evl = (0..3).map
@@ -254,8 +252,9 @@ impl<G: AffineCurve> ProverProof<G>
                 };
 
                 // first, verify the sumcheck argument values
+                let x_hat_value = DensePolynomial::<Fr<G>>::eval_polynomial(&oracles.x_hat[0], beta[0]);
                 if 
-                    !proof.sumcheck_1_verify (index, &oracles, &evals, &x_hat) ||
+                    !proof.sumcheck_1_verify (index, &oracles, &evals, x_hat_value) ||
                     !proof.sumcheck_2_verify (index, &oracles, &evals) ||
                     !proof.sumcheck_3_verify (index, &oracles, &evals)
                 {
