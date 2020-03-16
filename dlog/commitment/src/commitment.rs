@@ -396,7 +396,7 @@ impl<G: AffineCurve> SRS<G> {
         mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> Result<OpeningProof<G>, ProofError> {
-        let t = sponge.challenge();
+        let t = sponge.challenge_fq();
         let u: G = group_map(t);
 
         let rounds = ceil_log2(self.g.len());
@@ -635,7 +635,7 @@ impl<G: AffineCurve> SRS<G> {
         let mut sg_rand_base_i = Fr::<G>::one();
 
         for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
-            let t = sponge.challenge();
+            let t = sponge.challenge_fq();
             let u: G = group_map(t);
 
             let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
