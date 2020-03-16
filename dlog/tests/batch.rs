@@ -5,7 +5,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 
 *****************************************************************************************************************/
 
-use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve};
+use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve, ProjectiveCurve};
 use commitment_dlog::{srs::SRS, commitment::{Utils, OpeningProof, PolyComm}};
 
 use oracle::FqSponge;
@@ -20,6 +20,20 @@ use rand::Rng;
 type Fr = <Affine as AffineCurve>::ScalarField;
 
 #[test]
+fn shamir_equivalence()
+{
+    let rng = &mut OsRng;
+
+    let g1 : Affine = (Affine::prime_subgroup_generator().into_projective() * &Fr::rand(rng)).into_affine();
+    let g2 : Affine = (Affine::prime_subgroup_generator().into_projective() * &Fr::rand(rng)).into_affine();
+
+    let x1 = Fr::rand(rng);
+    let x2 = Fr::rand(rng);
+
+    assert_eq!(commitment_dlog::commitment::shamir_sum(x1, g1, x2, g2), commitment_dlog::commitment::window_shamir(x1, g1, x2, g2))
+}
+
+#[test]
 fn batch_commitment_test()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
@@ -30,7 +44,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let polysize = 500;
     let srs = SRS::<Affine>::create(size, rng);
 
-    for i in 0..1
+    for i in 0..2
     {
         println!("{}{:?}", "test # ".bright_cyan(), i);
 
