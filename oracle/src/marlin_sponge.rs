@@ -53,12 +53,12 @@ where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    pub fn squeeze_limbs(&mut self, num_limbs: usize) -> vec<u64> {
+    pub fn squeeze_limbs(&mut self, num_limbs: usize) -> Vec<u64> {
         if self.last_squeezed.len() >= num_limbs {
             let last_squeezed = self.last_squeezed.clone();
             let (limbs, remaining) = last_squeezed.split_at(num_limbs);
             self.last_squeezed = remaining.to_vec();
-            limbs
+            limbs.to_vec()
         } else {
             let x = self.sponge.squeeze(&self.params).into_repr();
             self.last_squeezed
