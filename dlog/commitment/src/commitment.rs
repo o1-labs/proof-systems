@@ -10,10 +10,10 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
-use super::srs::SRS;
+use super::srs::{SRS, groupmap::BWParameters};
 use algebra::{
     AffineCurve, BitIterator, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
-    UniformRand, VariableBaseMSM,
+    UniformRand, VariableBaseMSM, SWModelParameters
 };
 use ff_fft::DensePolynomial;
 use oracle::rndoracle::{ProofError};
@@ -163,6 +163,12 @@ fn squeeze_sqrt_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge
     sponge: &mut EFqSponge,
 ) -> Fr {
     squeeze_square_challenge(sponge).sqrt().unwrap()
+}
+
+fn group_map<Fq: Field, G: AffineCurve, GP: SWModelParameters>(t : Fq) -> G {
+    let params = BWParameters::<GP>::setup();
+    let (x, y) = BWParameters::<GP>::to_group(&params, t);
+    G::new(x, y, false)
 }
 
 pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
@@ -390,7 +396,8 @@ impl<G: AffineCurve> SRS<G> {
         mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> Result<OpeningProof<G>, ProofError> {
-        let u: G = G::prime_subgroup_generator(); // TODO: Should make this a random group element after the group map is implemented.
+        let t = sponge.challenge();
+        let u: G = group_map(t);
 
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
@@ -628,8 +635,8 @@ impl<G: AffineCurve> SRS<G> {
         let mut sg_rand_base_i = Fr::<G>::one();
 
         for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
-            let u: G = G::prime_subgroup_generator(); 
-            // TODO: Should make this a random group element after the group map is implemented.
+            let t = sponge.challenge();
+            let u: G = group_map(t);
 
             let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
 
