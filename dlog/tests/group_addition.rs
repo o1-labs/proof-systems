@@ -25,13 +25,14 @@ use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
 use protocol_dlog::{prover::{ProverProof}};
-use commitment_dlog::{srs::SRS, commitment::{ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
 use ff_fft::{DensePolynomial};
+use groupmap::GroupMap;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
 const MAX_SIZE: usize = 8;
@@ -67,7 +68,7 @@ fn group_addition_dlog()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
-    let srs = SRS::create(MAX_SIZE, rng);
+    let srs = SRS::create(MAX_SIZE);
 
     let index = Index::<Affine>::create
     (
@@ -181,6 +182,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     ));
 
     println!("{}", "Prover 1000 zk-proofs computation".green());
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
     let mut start = Instant::now();
 
     let tests = 0..1000;
@@ -216,7 +218,9 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         };
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, vec![prev], rng).unwrap());
+        batch.push(
+            ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(
+                &group_map, &witness, &index, vec![prev], rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -225,7 +229,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&vec![batch[0].clone()], &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &vec![batch[0].clone()], &verifier_index, rng)
     {
         false => {panic!("Failure verifying the prover's proof")},
         true => {}
@@ -234,7 +238,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, &verifier_index, rng)
     {
         false => {panic!("Failure verifying the prover's proofs in batch")},
         true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
@@ -267,9 +271,11 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.verify(&witness), false);
 
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
+
     let rng = &mut OsRng;
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, vec![], rng)
+    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &witness, &index, vec![], rng)
     {
         Ok(_) => {panic!("Failure invalidating the witness")}
         _ => {}

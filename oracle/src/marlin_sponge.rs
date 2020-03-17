@@ -53,18 +53,22 @@ where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
+    pub fn squeeze_limbs(&mut self, num_limbs: usize) -> Vec<u64> {
         if self.last_squeezed.len() >= num_limbs {
             let last_squeezed = self.last_squeezed.clone();
             let (limbs, remaining) = last_squeezed.split_at(num_limbs);
             self.last_squeezed = remaining.to_vec();
-            P::ScalarField::from_repr(pack(&limbs))
+            limbs.to_vec()
         } else {
             let x = self.sponge.squeeze(&self.params).into_repr();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
-            self.squeeze(num_limbs)
+            self.squeeze_limbs(num_limbs)
         }
+    }
+
+    pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
+        P::ScalarField::from_repr(pack(& self.squeeze_limbs(num_limbs)))
     }
 }
 
@@ -143,5 +147,10 @@ where
 
     fn challenge(&mut self) -> P::ScalarField {
         self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
+    }
+
+    fn challenge_fq(&mut self) -> P::BaseField {
+        P::BaseField::from_repr(pack(& 
+            self.squeeze_limbs(CHALLENGE_LENGTH_IN_LIMBS)))
     }
 }

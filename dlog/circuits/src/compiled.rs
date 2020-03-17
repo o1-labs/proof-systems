@@ -5,7 +5,7 @@ This source file implements the compiled constraints primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use commitment_dlog::{srs::SRS, commitment::PolyComm};
+use commitment_dlog::{srs::SRS, commitment::{PolyComm, CommitmentCurve}};
 use oracle::rndoracle::ProofError;
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
@@ -13,7 +13,7 @@ pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 
-pub struct Compiled<G: AffineCurve>
+pub struct Compiled<G: CommitmentCurve>
 {
     // constraint system coefficients in dense form
     pub constraints: CsMat<Fr<G>>,
@@ -38,7 +38,7 @@ pub struct Compiled<G: AffineCurve>
     pub rc_eval_b : Evaluations<Fr<G>>,
 }
 
-impl<G: AffineCurve> Compiled<G>
+impl<G: CommitmentCurve> Compiled<G>
 {
     // this function compiles the constraints
     //  srs: universal reference string

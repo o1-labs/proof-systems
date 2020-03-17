@@ -10,10 +10,12 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
-use super::srs::SRS;
+use crate::srs::{SRS};
+use groupmap::{GroupMap, BWParameters};
 use algebra::{
+    curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
     AffineCurve, BitIterator, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
-    UniformRand, VariableBaseMSM,
+    UniformRand, VariableBaseMSM, SWModelParameters
 };
 use ff_fft::DensePolynomial;
 use oracle::FqSponge;
@@ -327,13 +329,35 @@ pub fn shamir_sum<G: AffineCurve>(
     res
 }
 
-impl<G: AffineCurve> SRS<G> {
+pub trait CommitmentCurve : AffineCurve {
+    type Params : SWModelParameters;
+    type Map : GroupMap<Self::BaseField>;
+
+    fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
+}
+
+impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField : PrimeField {
+    type Params = P;
+    type Map = BWParameters<P>;
+
+    fn of_coordinates(x : P::BaseField, y : P::BaseField) -> SWJAffine<P> {
+        SWJAffine::<P>::new(x, y, false)
+    }
+}
+
+fn to_group<G : CommitmentCurve>(
+    m: &G::Map,
+    t: <G as AffineCurve>::BaseField) -> G {
+    let (x, y) = m.to_group(t);
+    G::of_coordinates(x, y)
+}
+
+impl<G: CommitmentCurve> SRS<G> {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound
     //     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
-    pub fn commit
-    (
+    pub fn commit(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
@@ -389,6 +413,7 @@ impl<G: AffineCurve> SRS<G> {
     //     RETURN: commitment opening proof
     pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
+        group_map: &G::Map,
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>)>, // vector of polynomial with optional degree bound
         elm: &Vec<Fr<G>>,                                     // vector of evaluation points
         polyscale: Fr<G>,                                     // scaling factor for polynoms
@@ -396,7 +421,8 @@ impl<G: AffineCurve> SRS<G> {
         mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> OpeningProof<G> {
-        let u: G = G::prime_subgroup_generator(); // TODO: Should make this a random group element after the group map is implemented.
+        let t = sponge.challenge_fq();
+        let u: G = to_group(group_map, t);
 
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
@@ -582,6 +608,7 @@ impl<G: AffineCurve> SRS<G> {
     //     RETURN: verification status
     pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
+        group_map: &G::Map,
         batch: &mut Vec<(
             EFqSponge,
             Vec<Fr<G>>, // vector of evaluation points
@@ -638,8 +665,8 @@ impl<G: AffineCurve> SRS<G> {
         let mut sg_rand_base_i = Fr::<G>::one();
 
         for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
-            let u: G = G::prime_subgroup_generator(); 
-            // TODO: Should make this a random group element after the group map is implemented.
+            let t = sponge.challenge_fq();
+            let u: G = to_group(group_map, t);
 
             let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
 

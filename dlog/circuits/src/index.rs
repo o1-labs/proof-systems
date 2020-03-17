@@ -5,24 +5,24 @@ This source file implements Marlin Protocol Index primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use rand_core::RngCore;
-use commitment_dlog::{srs::SRS, commitment::PolyComm};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, PolyComm}};
 use algebra::AffineCurve;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 use evaluation_domains::EvaluationDomains;
+use algebra::PrimeField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-pub enum SRSValue<'a, G : AffineCurve> {
+pub enum SRSValue<'a, G : CommitmentCurve> {
     Value(SRS<G>),
     Ref(&'a SRS<G>)
 }
 
-impl<'a, G : AffineCurve> SRSValue<'a, G> {
+impl<'a, G : CommitmentCurve> SRSValue<'a, G> {
     pub fn get_ref(&self) -> & SRS<G> {
         match self {
             SRSValue::Value(x) => &x,
@@ -31,27 +31,25 @@ impl<'a, G : AffineCurve> SRSValue<'a, G> {
     }
 }
 
-pub enum SRSSpec <'a, 'b, G: AffineCurve>{
+pub enum SRSSpec <'a, G: CommitmentCurve>{
     Use(&'a SRS<G>),
-    Generate(&'b mut dyn RngCore)
+    Generate
 }
 
-impl<'a, G: AffineCurve> SRSValue<'a, G> {
-    pub fn generate<'b>(
-        size: usize,
-        rng : &'b mut dyn RngCore) -> SRS<G> {
-        SRS::<G>::create(size, rng)
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
+    pub fn generate(size: usize) -> SRS<G> {
+        SRS::<G>::create(size)
     }
 
-    pub fn create<'b>(size: usize, spec : SRSSpec<'a, 'b, G>) -> SRSValue<'a, G>{
+    pub fn create<'b>(size: usize, spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
         match spec {
             SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate(rng) => SRSValue::Value(Self::generate(size, rng))
+            SRSSpec::Generate => SRSValue::Value(Self::generate(size))
         }
     }
 }
 
-pub struct Index<'a, G: AffineCurve>
+pub struct Index<'a, G: CommitmentCurve>
 {
     // constraint system compilation
     pub compiled: [Compiled<G>; 3],
@@ -80,7 +78,7 @@ pub struct MatrixValues<C: AffineCurve> {
     pub rc : PolyComm<C>,
 }
 
-pub struct VerifierIndex<'a, G: AffineCurve>
+pub struct VerifierIndex<'a, G: CommitmentCurve>
 {
     // constraint system compilation
     pub matrix_commitments: [MatrixValues<G>; 3],
@@ -102,7 +100,7 @@ pub struct VerifierIndex<'a, G: AffineCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: AffineCurve> Index<'a, G>
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {
@@ -133,7 +131,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
     }
 
     // this function compiles the circuit from constraints
-    pub fn create<'b>
+    pub fn create
     (
         a: CsMat<Fr<G>>,
         b: CsMat<Fr<G>>,
@@ -142,7 +140,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
         max_poly_size: usize,
         fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-        srs : SRSSpec<'a, 'b, G>
+        srs : SRSSpec<'a, G>
     ) -> Result<Self, ProofError>
     {
         if a.shape() != b.shape() ||

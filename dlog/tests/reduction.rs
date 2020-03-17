@@ -21,12 +21,13 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
+use groupmap::GroupMap;
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
 use protocol_dlog::{prover::{ProverProof}};
 use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
-use commitment_dlog::{commitment::{ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use rand_core::OsRng;
 use ff_fft::{DensePolynomial};
 use std::time::Instant;
@@ -121,6 +122,7 @@ fn test
 where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
     let rng = &mut OsRng;
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
     let index = Index::<Affine>::create
     (
         a,
@@ -130,7 +132,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         srs_size,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
-        SRSSpec::Generate(rng)
+        SRSSpec::Generate
     ).unwrap();
 
     let mut batch = Vec::new();
@@ -148,12 +150,12 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
       ( chals, comm )
     };
 
-    batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&witness, &index, vec![prev], rng).unwrap());
+    batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &witness, &index, vec![prev], rng).unwrap());
     let prover_time = start.elapsed();
 
     let verifier_index = index.verifier_index();
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, &verifier_index, rng)
     {
         false => {panic!("Failure verifying the prover's proofs in batch")},
         true => {}

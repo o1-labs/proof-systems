@@ -11,7 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::{Utils, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, b_poly, b_poly_coefficients, product};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -33,7 +33,7 @@ pub struct ProofEvals<Fr> {
     pub rc: [Fr; 3],
 }
 
-impl<G: AffineCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G>
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
@@ -145,6 +145,7 @@ impl<G: AffineCurve> ProverProof<G>
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
+        group_map: &G::Map,
         proofs: &Vec<ProverProof<G>>,
         index: &Index<G>,
         rng: &mut dyn RngCore
@@ -308,7 +309,7 @@ impl<G: AffineCurve> ProverProof<G>
         ).collect::<Result<Vec<_>, _>>()
         // second, verify the commitment opening proofs
         {
-            Ok(mut batch) =>  index.srs.get_ref().verify::<EFqSponge>(&mut batch, rng),
+            Ok(mut batch) =>  index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
             Err(_) => false
         }
     }

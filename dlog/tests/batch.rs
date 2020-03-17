@@ -6,7 +6,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 *****************************************************************************************************************/
 
 use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve, ProjectiveCurve};
-use commitment_dlog::{srs::SRS, commitment::{Utils, OpeningProof, PolyComm}};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, Utils, OpeningProof, PolyComm}};
 
 use oracle::FqSponge;
 use oracle::marlin_sponge::{DefaultFqSponge};
@@ -16,6 +16,7 @@ use ff_fft::DensePolynomial;
 use colored::Colorize;
 use rand_core::OsRng;
 use rand::Rng;
+use groupmap::GroupMap;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
 
@@ -42,7 +43,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let size = 80;
     let polysize = 500;
-    let srs = SRS::<Affine>::create(size, rng);
+    let srs = SRS::<Affine>::create(size);
+
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     for i in 0..2
     {
@@ -98,6 +101,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let proof = srs.open::<DefaultFqSponge<Bn_382GParameters>>
         (
+            &group_map,
             (0..a.len()).map
             (
                 |i| (&a[i], if i%2==0 {Some(a[i].coeffs.len())} else {None})
@@ -133,6 +137,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let start = Instant::now();
         assert_eq!(srs.verify::<DefaultFqSponge<Bn_382GParameters>>
             (
+                &group_map,
                 &mut proofs,
                 rng
             ), true);
