@@ -7,6 +7,7 @@ This source file implements Marlin Protocol Index primitive.
 use sprs::CsMat;
 use rand_core::RngCore;
 use commitment_dlog::srs::SRS;
+use commitment_dlog::commitment::CommitmentCurve;
 use algebra::AffineCurve;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -60,7 +61,7 @@ impl<'a, G: AffineCurve> SRSValue<'a, G> {
     }
 }
 
-pub struct Index<'a, G: AffineCurve>
+pub struct Index<'a, G: CommitmentCurve>
 {
     // constraint system compilation
     pub compiled: [Compiled<G>; 3],
@@ -108,7 +109,7 @@ pub struct VerifierIndex<'a, G: AffineCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: AffineCurve> Index<'a, G>
+impl<'a, G: CommitmentCurve> Index<'a, G>
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {

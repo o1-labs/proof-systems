@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve};
 use oracle::{FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations};
-use commitment_dlog::commitment::{Utils, OpeningProof, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentCurve, Utils, OpeningProof, b_poly_coefficients, product};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
 use rand_core::RngCore;
@@ -63,7 +63,7 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, G)>,
 }
 
-impl<G: AffineCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G>
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -74,6 +74,7 @@ impl<G: AffineCurve> ProverProof<G>
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
+        group_map: &G::Map,
         witness: &Vec::<Fr<G>>,
         index: &Index<G>,
         prev_challenges: Vec< (Vec<Fr<G>>, G) >,
@@ -329,6 +330,7 @@ impl<G: AffineCurve> ProverProof<G>
 
         let proof = index.srs.get_ref().open::<EFqSponge>
             (
+                group_map,
                 &polys,
                 &oracles.beta.to_vec(),
                 oracles.polys,

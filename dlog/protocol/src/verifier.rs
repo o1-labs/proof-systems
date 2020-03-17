@@ -11,12 +11,12 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::{b_poly};
+use commitment_dlog::commitment::{b_poly, CommitmentCurve};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-impl<G: AffineCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G>
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
@@ -133,6 +133,7 @@ impl<G: AffineCurve> ProverProof<G>
          EFrSponge: FrSponge<Fr<G>>,
         >
     (
+        group_map: &G::Map,
         proofs: &Vec<ProverProof<G>>,
         index: &Index<G>,
         rng: &mut dyn RngCore
@@ -212,7 +213,7 @@ impl<G: AffineCurve> ProverProof<G>
             ));
         }
         // second, verify the commitment opening proofs
-        match index.srs.get_ref().verify::<EFqSponge>(batch, rng)
+        match index.srs.get_ref().verify::<EFqSponge>(group_map, batch, rng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)
