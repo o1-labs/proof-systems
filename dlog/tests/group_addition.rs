@@ -67,7 +67,7 @@ fn group_addition()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
-    let srs = SRS::create(40, rng);
+    let srs = SRS::create(40);
 
     let index = Index::<Affine>::create
     (

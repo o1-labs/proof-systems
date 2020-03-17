@@ -330,7 +330,7 @@ pub trait CommitmentCurve : AffineCurve {
     fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
 }
 
-impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P>  {
+impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField : PrimeField {
     type Params = P;
     type Map = BWParameters<P>;
 

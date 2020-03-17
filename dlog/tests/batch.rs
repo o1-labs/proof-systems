@@ -42,7 +42,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let mut random = rand::thread_rng();
 
     let depth = 2000;
-    let srs = SRS::<Affine>::create(depth, rng);
+    let srs = SRS::<Affine>::create(depth);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
