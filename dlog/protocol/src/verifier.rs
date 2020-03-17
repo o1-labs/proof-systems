@@ -44,7 +44,7 @@ impl<G: AffineCurve> ProverProof<G>
         &self,
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>,
-        evals: &[ProofEvals<Fr<G>>],
+        evals: &ProofEvals<Fr<G>>,
         x_hat_value: Fr<G>
     ) -> bool
     {
@@ -56,9 +56,9 @@ impl<G: AffineCurve> ProverProof<G>
                 {
                     match i
                     {
-                        0 => {evals[0].za * &oracles.eta_a}
-                        1 => {evals[0].zb * &oracles.eta_b}
-                        2 => {evals[0].za * &evals[0].zb * &oracles.eta_c}
+                        0 => {evals.za * &oracles.eta_a}
+                        1 => {evals.zb * &oracles.eta_b}
+                        2 => {evals.za * &evals.zb * &oracles.eta_c}
                         _ => {Fr::<G>::zero()}
                     }
                 }
@@ -66,10 +66,10 @@ impl<G: AffineCurve> ProverProof<G>
         ==
         (oracles.alpha - &oracles.beta[0]) *
         &(
-            evals[0].h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            &(oracles.beta[0] * &evals[0].g1) +
+            evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            &(oracles.beta[0] * &evals.g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
-            &(evals[0].w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            &(evals.w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
             &x_hat_value))
         )
     }
@@ -83,15 +83,15 @@ impl<G: AffineCurve> ProverProof<G>
         &self,
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>,
-        evals: &[ProofEvals<Fr<G>>],
+        evals: &ProofEvals<Fr<G>>,
     ) -> bool
     {
         self.sigma3 * &index.domains.k.size_as_field_element *
             &((oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[1].pow([index.domains.h.size])))
         ==
-        (oracles.alpha - &oracles.beta[1]) * &(evals[1].h2 *
+        (oracles.alpha - &oracles.beta[1]) * &(evals.h2 *
             &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]) +
-            &self.sigma2 + &(evals[1].g2 * &oracles.beta[1]))
+            &self.sigma2 + &(evals.g2 * &oracles.beta[1]))
     }
 
     // This function verifies the prover's third sumcheck argument values
@@ -103,7 +103,7 @@ impl<G: AffineCurve> ProverProof<G>
         &self,
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>,
-        evals: &[ProofEvals<Fr<G>>],
+        evals: &ProofEvals<Fr<G>>,
     ) -> bool
     {
         let crb: Vec<Fr<G>> = (0..3).map
@@ -111,9 +111,9 @@ impl<G: AffineCurve> ProverProof<G>
             |i|
             {
                 oracles.beta[1] * &oracles.beta[0] -
-                &(oracles.beta[0] * &evals[2].row[i]) -
-                &(oracles.beta[1] * &evals[2].col[i]) +
-                &evals[2].rc[i]
+                &(oracles.beta[0] * &evals.row[i]) -
+                &(oracles.beta[1] * &evals.col[i]) +
+                &evals.rc[i]
             }
         ).collect();
 
@@ -121,17 +121,17 @@ impl<G: AffineCurve> ProverProof<G>
         (
             |i|
             {
-                let mut x = evals[2].val[i] * &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i];
+                let mut x = evals.val[i] * &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i];
                 for j in 0..3 {if i != j {x *= &crb[j]}}
                 x
             }
         ).fold(Fr::<G>::zero(), |x, y| x + &y);
 
-        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &evals[2].h3
+        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &evals.h3
         ==
         index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
             &(index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1])) *
-            &acc - &((oracles.beta[2] * &evals[2].g3 + &self.sigma3) *
+            &acc - &((oracles.beta[2] * &evals.g3 + &self.sigma3) *
             &crb[0] * &crb[1] * &crb[2])
     }
 
@@ -209,46 +209,42 @@ impl<G: AffineCurve> ProverProof<G>
             {
                 let evals =
                 {
-                    let evl = (0..3).map
-                    (
-                        |i| ProofEvals
-                        {
-                            w  : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].w, beta[i]),
-                            za : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].za, beta[i]),
-                            zb : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].zb, beta[i]),
-                            h1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h1, beta[i]),
-                            g1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g1, beta[i]),
-                            h2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h2, beta[i]),
-                            g2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g2, beta[i]),
-                            h3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].h3, beta[i]),
-                            g3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].g3, beta[i]),
-                            row:
-                            [
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[0], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[1], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].row[2], beta[i]),
-                            ],
-                            col:
-                            [
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[0], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[1], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].col[2], beta[i]),
-                            ],
-                            val:
-                            [
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[0], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[1], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].val[2], beta[i]),
-                            ],
-                            rc:
-                            [
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[0], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[1], beta[i]),
-                                DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[i].rc[2], beta[i]),
-                            ],
-                        }
-                    ).collect::<Vec<_>>();
-                    [evl[0].clone(), evl[1].clone(), evl[2].clone()]
+                    ProofEvals
+                    {
+                        w  : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].w, beta[0]),
+                        za : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].za, beta[0]),
+                        zb : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].zb, beta[0]),
+                        h1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].h1, beta[0]),
+                        g1 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].g1, beta[0]),
+                        h2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[1].h2, beta[1]),
+                        g2 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[1].g2, beta[1]),
+                        h3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].h3, beta[2]),
+                        g3 : DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].g3, beta[2]),
+                        row:
+                        [
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].row[0], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].row[1], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].row[2], beta[2]),
+                        ],
+                        col:
+                        [
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].col[0], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].col[1], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].col[2], beta[2]),
+                        ],
+                        val:
+                        [
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].val[0], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].val[1], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].val[2], beta[2]),
+                        ],
+                        rc:
+                        [
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].rc[0], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].rc[1], beta[2]),
+                            DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[2].rc[2], beta[2]),
+                        ],
+                    }
                 };
 
                 // first, verify the sumcheck argument values
