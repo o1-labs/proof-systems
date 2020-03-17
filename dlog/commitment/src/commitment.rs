@@ -447,14 +447,12 @@ impl<G: CommitmentCurve> SRS<G> {
                         (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
                     // always mixing in the unshifted segments
                     p += &segment.scale(scale);
-                    // p_comm += &(comm_i.mul(scale));
                     scale *= &polyscale;
                     offset += self.g.len();
                     if offset > p_i.coeffs.len() {
                         if let Some(m) = degree_bound {
                             // mixing in the shifted segment since degree is bounded
                             p += &(segment.shiftr(self.g.len() - m%self.g.len()).scale(scale));
-                            // p_comm += &(shifted_comm_i.mul(scale));
                             scale *= &polyscale;
                         }
                     }
