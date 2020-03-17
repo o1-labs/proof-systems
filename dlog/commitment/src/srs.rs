@@ -18,43 +18,38 @@ use blake2::{Blake2b, Digest};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
+use crate::commitment::CommitmentCurve;
+use groupmap::GroupMap;
 
 #[derive(Debug, Clone)]
-pub struct SRS<G: AffineCurve>
+pub struct SRS<G: CommitmentCurve>
 {
     pub g: Vec<G>,    // for committing polynomials
     pub h: G,         // blinding
 }
 
-impl<G: AffineCurve> SRS<G>
-{
+impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
 
     // This function creates SRS instance for circuits up to depth d
     //     depth: maximal depth of the circuits
-    //     rng: randomness source context
-    pub fn create(depth: usize, rng: &mut dyn RngCore) -> Self {
-        let size_in_bits = G::ScalarField::size_in_bits();
-        let window_size = FixedBaseMSM::get_mul_window_size(depth + 1);
-        let mut v = FixedBaseMSM::multi_scalar_mul::<G::Projective>(
-            size_in_bits,
-            window_size,
-            &FixedBaseMSM::get_window_table(
-                size_in_bits,
-                window_size,
-                G::Projective::prime_subgroup_generator(),
-            ),
-            &(0..depth + 1)
-                .map(|_| G::ScalarField::rand(rng))
-                .collect::<Vec<G::ScalarField>>(),
-        );
-        ProjectiveCurve::batch_normalization(&mut v);
+    pub fn create(depth: usize) -> Self {
+        let m = G::Map::setup();
+
+        let v : Vec<_> = (0..depth + 1).map(|i| {
+            let mut h = Blake2b::new();
+            h.input(&(i as u32).to_be_bytes());
+            let random_bytes = &h.result()[..32];
+            let t = G::BaseField::from_random_bytes(&random_bytes).unwrap();
+            let (x, y) = m.to_group(t);
+            G::of_coordinates(x, y)
+        }).collect();
 
         SRS {
-            g: v[0..depth].iter().map(|e| e.into_affine()).collect(),
-            h: v[depth].into_affine(),
+            g: v[0..depth].iter().map(|e| *e).collect(),
+            h: v[depth],
         }
     }
 
@@ -114,25 +109,4 @@ where
     }
 
     res
-}
-
-impl<P: SWModelParameters> SRS<SWAffine<P>> {
-    pub fn create_sw(depth: usize) -> SRS<SWAffine<P>>
-    where
-        P::BaseField: PrimeField,
-    {
-        /*
-        let ts = (0..(depth + 1)).into_par_iter().map(|i|  {
-            let mut h = Blake2b::new();
-
-            h.input(& (i as u32).to_be_bytes());
-            let random_bytes = &h.result()[..32];
-            P::BaseField::from_random_bytes(& random_bytes).unwrap()
-        }); */
-
-        SRS {
-            g: (0..depth).into_par_iter().map(random_point).collect(),
-            h: random_point(depth),
-        }
-    }
 }

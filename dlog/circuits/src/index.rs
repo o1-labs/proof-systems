@@ -7,22 +7,24 @@ This source file implements Marlin Protocol Index primitive.
 use sprs::CsMat;
 use rand_core::RngCore;
 use commitment_dlog::srs::SRS;
+use commitment_dlog::commitment::CommitmentCurve;
 use algebra::AffineCurve;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 use evaluation_domains::EvaluationDomains;
+use algebra::PrimeField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-pub enum SRSValue<'a, G : AffineCurve> {
+pub enum SRSValue<'a, G : CommitmentCurve> {
     Value(SRS<G>),
     Ref(&'a SRS<G>)
 }
 
-impl<'a, G : AffineCurve> SRSValue<'a, G> {
+impl<'a, G : CommitmentCurve> SRSValue<'a, G> {
     pub fn get_ref(&self) -> & SRS<G> {
         match self {
             SRSValue::Value(x) => &x,
@@ -31,18 +33,18 @@ impl<'a, G : AffineCurve> SRSValue<'a, G> {
     }
 }
 
-pub enum SRSSpec <'a, 'b, G: AffineCurve>{
+pub enum SRSSpec <'a, 'b, G: CommitmentCurve>{
     Use(&'a SRS<G>),
     Generate(&'b mut dyn RngCore)
 }
 
-impl<'a, G: AffineCurve> SRSValue<'a, G> {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
     pub fn generate<'b>(
         ds: EvaluationDomains<Fr<G>>,
         rng : &'b mut dyn RngCore) -> SRS<G> {
         let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
 
-        SRS::<G>::create(max_degree, rng)
+        SRS::<G>::create(max_degree)
     }
 
     pub fn create<'b>(ds: EvaluationDomains<Fr<G>>, spec : SRSSpec<'a, 'b, G>) -> SRSValue<'a, G>{
@@ -60,7 +62,7 @@ impl<'a, G: AffineCurve> SRSValue<'a, G> {
     }
 }
 
-pub struct Index<'a, G: AffineCurve>
+pub struct Index<'a, G: CommitmentCurve>
 {
     // constraint system compilation
     pub compiled: [Compiled<G>; 3],
@@ -86,7 +88,7 @@ pub struct MatrixValues<A> {
     pub rc : A,
 }
 
-pub struct VerifierIndex<'a, G: AffineCurve>
+pub struct VerifierIndex<'a, G: CommitmentCurve>
 {
     // constraint system compilation
     pub matrix_commitments: [MatrixValues<G>; 3],
@@ -108,7 +110,7 @@ pub struct VerifierIndex<'a, G: AffineCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: AffineCurve> Index<'a, G>
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {
