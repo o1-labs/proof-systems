@@ -10,8 +10,10 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
-use super::srs::{SRS, groupmap::BWParameters};
+use crate::srs::{SRS};
+use groupmap::{GroupMap, BWParameters};
 use algebra::{
+    curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
     AffineCurve, BitIterator, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
     UniformRand, VariableBaseMSM, SWModelParameters
 };
@@ -163,12 +165,6 @@ fn squeeze_sqrt_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge
     sponge: &mut EFqSponge,
 ) -> Fr {
     squeeze_square_challenge(sponge).sqrt().unwrap()
-}
-
-fn group_map<Fq: Field, G: AffineCurve, GP: SWModelParameters>(t : Fq) -> G {
-    let params = BWParameters::<GP>::setup();
-    let (x, y) = BWParameters::<GP>::to_group(&params, t);
-    G::new(x, y, false)
 }
 
 pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
@@ -327,7 +323,30 @@ pub fn shamir_sum<G: AffineCurve>(
     res
 }
 
-impl<G: AffineCurve> SRS<G> {
+pub trait CommitmentCurve : AffineCurve {
+    type Params : SWModelParameters;
+    type Map : GroupMap<Self::BaseField>;
+
+    fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
+}
+
+impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P>  {
+    type Params = P;
+    type Map = BWParameters<P>;
+
+    fn of_coordinates(x : P::BaseField, y : P::BaseField) -> SWJAffine<P> {
+        SWJAffine::<P>::new(x, y, false)
+    }
+}
+
+fn to_group<G : CommitmentCurve>(
+    m: &G::Map,
+    t: <G as AffineCurve>::BaseField) -> G {
+    let (x, y) = m.to_group(t);
+    G::of_coordinates(x, y)
+}
+
+impl<G: CommitmentCurve> SRS<G> {
     // This function commits the polynomial against SRS instance with degree bound
     //     plnm: polynomial to commit
     //     max: maximal degree of the polynomial
@@ -389,6 +408,7 @@ impl<G: AffineCurve> SRS<G> {
     //     RETURN: commitment opening proof
     pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
+        group_map: &G::Map,
         plnms: &Vec<(DensePolynomial<Fr<G>>, Option<usize>)>, // vector of polynomial with optional degree bound
         elm: &Vec<Fr<G>>,                                     // vector of evaluation points
         polyscale: Fr<G>,                                     // scaling factor for polynoms
@@ -397,7 +417,7 @@ impl<G: AffineCurve> SRS<G> {
         rng: &mut dyn RngCore,
     ) -> Result<OpeningProof<G>, ProofError> {
         let t = sponge.challenge_fq();
-        let u: G = group_map(t);
+        let u: G = to_group(group_map, t);
 
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
@@ -579,6 +599,7 @@ impl<G: AffineCurve> SRS<G> {
     //     RETURN: verification status
     pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
+        group_map: &G::Map,
         mut batch: Vec<(
             EFqSponge,
             Vec<Fr<G>>, // vector of evaluation points
@@ -636,7 +657,7 @@ impl<G: AffineCurve> SRS<G> {
 
         for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             let t = sponge.challenge_fq();
-            let u: G = group_map(t);
+            let u: G = to_group(group_map, t);
 
             let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
 
