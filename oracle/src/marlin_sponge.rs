@@ -86,13 +86,16 @@ where
         }
     }
 
-    fn absorb_g(&mut self, g: &GroupAffine<P>) {
+    fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
         self.last_squeezed = vec![];
-        if g.infinity {
-            panic!("marlin sponge got zero curve point");
-        } else {
-            self.sponge.absorb(&self.params, &g.x);
-            self.sponge.absorb(&self.params, &g.y);
+        for g in g.iter()
+        {
+            if g.infinity {
+                panic!("marlin sponge got zero curve point");
+            } else {
+                self.sponge.absorb(&self.params, &[g.x]);
+                self.sponge.absorb(&self.params, &[g.y]);
+            }
         }
     }
 
@@ -119,7 +122,7 @@ where
         {
             self.sponge.absorb(
                 &self.params,
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits)),
+                &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits))],
             );
         } else {
             let low_bits =
@@ -133,8 +136,8 @@ where
                 P::BaseField::zero()
             };
 
-            self.sponge.absorb(&self.params, low_bits);
-            self.sponge.absorb(&self.params, &high_bit);
+            self.sponge.absorb(&self.params, &[*low_bits]);
+            self.sponge.absorb(&self.params, &[high_bit]);
         }
     }
 

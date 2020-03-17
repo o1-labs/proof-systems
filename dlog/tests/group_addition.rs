@@ -35,9 +35,10 @@ use ff_fft::{DensePolynomial};
 use groupmap::GroupMap;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
+const MAX_SIZE: usize = 8;
 
 #[test]
-fn group_addition()
+fn group_addition_dlog()
 {
     let rng = &mut OsRng;
 
@@ -67,7 +68,7 @@ fn group_addition()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
-    let srs = SRS::create(40);
+    let srs = SRS::create(MAX_SIZE);
 
     let index = Index::<Affine>::create
     (
@@ -75,6 +76,7 @@ fn group_addition()
         b,
         c,
         4,
+        MAX_SIZE,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
@@ -210,8 +212,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
                 let chal_squareds = chals.iter().map(|x| x.square()).collect();
                 let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
-                index.srs.get_ref().commit_no_degree_bound(&b)
-            }.unwrap();
+                index.srs.get_ref().commit(&b, None)
+            };
             ( chals, comm )
         };
 
@@ -229,8 +231,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify one proof serially
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &vec![batch[0].clone()], &verifier_index, rng)
     {
-        Ok(_) => {}
-        _ => {panic!("Failure verifying the prover's proof")}
+        false => {panic!("Failure verifying the prover's proof")},
+        true => {}
     }
 
     // verify the proofs in batch
@@ -238,8 +240,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     start = Instant::now();
     match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, &verifier_index, rng)
     {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+        false => {panic!("Failure verifying the prover's proofs in batch")},
+        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
     }
 }
 

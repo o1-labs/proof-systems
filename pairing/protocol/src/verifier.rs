@@ -126,7 +126,7 @@ impl<E: PairingEngine> ProverProof<E>
         rng: &mut dyn RngCore
     ) -> Result<bool, ProofError>
     {
-        let mut batch = vec![Vec::new(), Vec::new(), Vec::new()];
+        let mut batch = Vec::new();
         for proof in proofs.iter()
         {
             let proof = proof.clone();
@@ -145,7 +145,7 @@ impl<E: PairingEngine> ProverProof<E>
                 return Err(ProofError::ProofVerification)
             }
 
-            batch[0].push
+            batch.push
             ((
                 oracles.beta[0],
                 oracles.batch,
@@ -160,7 +160,7 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 proof.proof1
             ));
-            batch[1].push
+            batch.push
             ((
                 oracles.beta[1],
                 oracles.batch,
@@ -171,7 +171,7 @@ impl<E: PairingEngine> ProverProof<E>
                 ],
                 proof.proof2
             ));
-            batch[2].push
+            batch.push
             ((
                 oracles.beta[2],
                 oracles.batch,
@@ -220,35 +220,25 @@ impl<E: PairingEngine> ProverProof<E>
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // TODO: absorb previous proof context into the argument
-        // absorb the public input into the argument
-        fq_sponge.absorb_g(&x_hat_comm);
-        // absorb W, ZA, ZB polycommitments
-        fq_sponge.absorb_g(& self.w_comm);
-        fq_sponge.absorb_g(& self.za_comm);
-        fq_sponge.absorb_g(& self.zb_comm);
+        // absorb the public input and W, ZA, ZB polycommitments into the argument
+        fq_sponge.absorb_g(&[x_hat_comm, self.w_comm, self.za_comm, self.zb_comm]);
         // sample alpha, eta[0..3] oracles
         oracles.alpha = fq_sponge.challenge();
         oracles.eta_a = fq_sponge.challenge();
         oracles.eta_b = fq_sponge.challenge();
         oracles.eta_c = fq_sponge.challenge();
         // absorb H1, G1 polycommitments
-        fq_sponge.absorb_g(&self.g1_comm.0);
-        fq_sponge.absorb_g(&self.g1_comm.1);
-        fq_sponge.absorb_g(&self.h1_comm);
+        fq_sponge.absorb_g(&[self.g1_comm.0, self.g1_comm.1, self.h1_comm]);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
-        fq_sponge.absorb_g(&self.g2_comm.0);
-        fq_sponge.absorb_g(&self.g2_comm.1);
-        fq_sponge.absorb_g(&self.h2_comm);
+        fq_sponge.absorb_g(&[self.g2_comm.0, self.g2_comm.1, self.h2_comm]);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
-        fq_sponge.absorb_g(&self.g3_comm.0);
-        fq_sponge.absorb_g(&self.g3_comm.1);
-        fq_sponge.absorb_g(&self.h3_comm);
+        fq_sponge.absorb_g(&[self.g3_comm.0, self.g3_comm.1, self.h3_comm]);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
         oracles.r_k = fq_sponge.challenge();
