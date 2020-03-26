@@ -48,6 +48,30 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
         }
     }
 
+    pub fn batch_create(depth: usize, x_trits: Vec<usize>) -> Self {
+        let m = G::Map::setup();
+
+        let ts : Vec<_> = (0..depth + 1).map(|i| {
+            let mut h = Blake2b::new();
+            h.input(&(i as u32).to_be_bytes());
+            let random_bytes = &h.result()[..32];
+            G::BaseField::from_random_bytes(&random_bytes).unwrap()
+        }).collect();
+
+        let potential_xs = m.batch_to_group_x(ts);
+        let v : Vec<_>;
+        for (i, &j) in x_trits.iter().enumerate() {
+            let x = potential_xs[i][j];
+            let y = groupmap::get_y::<G::Params>(x).unwrap();
+            v.push(G::of_coordinates(x, y));
+        };
+
+        SRS {
+            g: v[0..depth].iter().map(|e| *e).collect(),
+            h: v[depth],
+        }
+    }
+
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         u64::write(&(self.g.len() as u64), &mut writer)?;
         for x in &self.g {
@@ -67,4 +91,3 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
         Ok(SRS { g, h })
     }
 }
-
