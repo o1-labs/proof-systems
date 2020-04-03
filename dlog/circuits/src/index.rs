@@ -167,6 +167,7 @@ impl<'a, G: AffineCurve> Index<'a, G>
 
         let domains = EvaluationDomains::create(
             a.shape().0,
+            a.shape().1,
             public_inputs,
             nonzero_entries)
             .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
