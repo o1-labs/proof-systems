@@ -138,12 +138,8 @@ impl<E: PairingEngine> ProverProof<E>
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // absorb the public input into the argument
-        fq_sponge.absorb_g(& x_hat_comm);
-        // absorb W, ZA, ZB polycommitments
-        fq_sponge.absorb_g(& w_comm);
-        fq_sponge.absorb_g(& za_comm);
-        fq_sponge.absorb_g(& zb_comm);
+        // absorb the public input iand W, ZA, ZB polycommitments nto the argument
+        fq_sponge.absorb_g(& [x_hat_comm, w_comm, za_comm, zb_comm]);
 
         // sample alpha, eta oracles
         oracles.alpha = fq_sponge.challenge();
@@ -175,9 +171,7 @@ impl<E: PairingEngine> ProverProof<E>
         let g1_comm = urs.commit_with_degree_bound(&g1, index.domains.h.size()-1)?;
 
         // absorb H1, G1 polycommitments
-        fq_sponge.absorb_g(&g1_comm.0);
-        fq_sponge.absorb_g(&g1_comm.1);
-        fq_sponge.absorb_g(&h1_comm);
+        fq_sponge.absorb_g(&[g1_comm.0, g1_comm.1, h1_comm]);
         // sample beta[0] oracle
         oracles.beta[0] = fq_sponge.challenge();
 
@@ -192,9 +186,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
-        fq_sponge.absorb_g(&g2_comm.0);
-        fq_sponge.absorb_g(&g2_comm.1);
-        fq_sponge.absorb_g(&h2_comm);
+        fq_sponge.absorb_g(&[g2_comm.0, g2_comm.1, h2_comm]);
         // sample beta[1] oracle
         oracles.beta[1] = fq_sponge.challenge();
 
@@ -209,9 +201,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         // absorb sigma3, g3, h3
         fq_sponge.absorb_fr(&sigma3);
-        fq_sponge.absorb_g(&g3_comm.0);
-        fq_sponge.absorb_g(&g3_comm.1);
-        fq_sponge.absorb_g(&h3_comm);
+        fq_sponge.absorb_g(&[g3_comm.0, g3_comm.1, h3_comm]);
         // sample beta[2] & batch oracles
         oracles.beta[2] = fq_sponge.challenge();
         oracles.r_k = fq_sponge.challenge();

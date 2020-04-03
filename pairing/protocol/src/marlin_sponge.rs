@@ -28,7 +28,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
 
     fn absorb(&mut self, x: &Fr) {
         self.last_squeezed = vec![];
-        self.sponge.absorb(&self.params, x);
+        self.sponge.absorb(&self.params, &[*x]);
     }
 
     fn challenge(&mut self) -> Fr {
@@ -38,7 +38,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
     fn absorb_evaluations(&mut self, x_hat: &Fr, e: &ProofEvaluations<Fr>) {
         self.last_squeezed = vec![];
 
-        let points = vec![
+        let points = [
             *x_hat,
             e.w,
             e.za,
@@ -63,8 +63,8 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
             e.g3,
         ];
 
-        for p in points {
-            self.sponge.absorb(&self.params, &p);
+        for p in &points {
+            self.sponge.absorb(&self.params, &[*p]);
         }
     }
 }

@@ -5,7 +5,7 @@ This source file implements the compiled constraints primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use commitment_dlog::srs::SRS;
+use commitment_dlog::{srs::SRS, commitment::{PolyComm, CommitmentCurve}};
 use oracle::rndoracle::ProofError;
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
@@ -13,16 +13,16 @@ pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 
-pub struct Compiled<G: AffineCurve>
+pub struct Compiled<G: CommitmentCurve>
 {
     // constraint system coefficients in dense form
     pub constraints: CsMat<Fr<G>>,
 
     // compiled polynomial commitments
-    pub col_comm: G,
-    pub row_comm: G,
-    pub val_comm: G,
-    pub rc_comm: G,
+    pub col_comm: PolyComm<G>,
+    pub row_comm: PolyComm<G>,
+    pub val_comm: PolyComm<G>,
+    pub rc_comm: PolyComm<G>,
 
     // compiled polynomials and evaluations
     pub rc      : DensePolynomial<Fr<G>>,
@@ -38,7 +38,7 @@ pub struct Compiled<G: AffineCurve>
     pub rc_eval_b : Evaluations<Fr<G>>,
 }
 
-impl<G: AffineCurve> Compiled<G>
+impl<G: CommitmentCurve> Compiled<G>
 {
     // this function compiles the constraints
     //  srs: universal reference string
@@ -94,10 +94,10 @@ impl<G: AffineCurve> Compiled<G>
         Ok(Compiled::<G>
         {
             constraints,
-            rc_comm: srs.commit_no_degree_bound(&rc)?,
-            row_comm: srs.commit_no_degree_bound(&row)?,
-            col_comm: srs.commit_no_degree_bound(&col)?,
-            val_comm: srs.commit_no_degree_bound(&val)?,
+            rc_comm: srs.commit(&rc, None),
+            row_comm: srs.commit(&row, None),
+            col_comm: srs.commit(&col, None),
+            val_comm: srs.commit(&val, None),
             row_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&val), b_group),

@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
+groupmap = { git = "https://github.com/o1-labs/zexe/" }
 ff-fft = { git = "https://github.com/o1-labs/zexe/" }
 commitment_dlog = { path = "commitment" }
 circuits_dlog = { path = "circuits" }
