@@ -3,12 +3,12 @@ use algebra::{
     Field, PairingEngine, PrimeField,
 };
 
-use oracle::{marlin_sponge::{DefaultFrSponge, FqSponge}, poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}};
+use oracle::{marlin_sponge::{DefaultFrSponge, FqSponge, ScalarChallenge}, poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}};
 
 pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
     fn absorb(&mut self, x: &Fr);
-    fn challenge(&mut self) -> Fr;
+    fn challenge(&mut self) -> ScalarChallenge<Fr>;
     fn absorb_evaluations(&mut self, x_hat: &Fr, e: &ProofEvaluations<Fr>);
 }
 
@@ -31,8 +31,8 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
         self.sponge.absorb(&self.params, &[*x]);
     }
 
-    fn challenge(&mut self) -> Fr {
-        self.squeeze(oracle::marlin_sponge::CHALLENGE_LENGTH_IN_LIMBS)
+    fn challenge(&mut self) -> ScalarChallenge<Fr> {
+        ScalarChallenge(self.squeeze(oracle::marlin_sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn absorb_evaluations(&mut self, x_hat: &Fr, e: &ProofEvaluations<Fr>) {

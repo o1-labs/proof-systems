@@ -6,7 +6,7 @@ This source file implements zk-proof batch verifier functionality.
 
 use rand_core::RngCore;
 use circuits_dlog::index::{VerifierIndex as Index};
-use oracle::FqSponge;
+use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
@@ -48,8 +48,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         x_hat_value: Fr<G>
     ) -> bool
     {
+        let beta0 = oracles.beta[0].to_field();
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[0].pow([index.domains.h.size])) *
+        (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size])) *
             &(0..3).map
             (
                 |i|
@@ -64,12 +65,12 @@ impl<G: CommitmentCurve> ProverProof<G>
                 }
             ).fold(Fr::<G>::zero(), |x, y| x + &y)
         ==
-        (oracles.alpha - &oracles.beta[0]) *
+        (oracles.alpha - &beta0) *
         &(
-            evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            &(oracles.beta[0] * &evals.g1) +
+            evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(beta0) +
+            &(beta0 * &evals.g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
-            &(evals.w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            &(evals.w * &index.domains.x.evaluate_vanishing_polynomial(beta0) +
             &x_hat_value))
         )
     }
@@ -86,12 +87,13 @@ impl<G: CommitmentCurve> ProverProof<G>
         evals: &ProofEvals<Fr<G>>,
     ) -> bool
     {
+        let beta1 = oracles.beta[1].to_field();
         self.sigma3 * &index.domains.k.size_as_field_element *
-            &((oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[1].pow([index.domains.h.size])))
+            &((oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size])))
         ==
-        (oracles.alpha - &oracles.beta[1]) * &(evals.h2 *
-            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]) +
-            &self.sigma2 + &(evals.g2 * &oracles.beta[1]))
+        (oracles.alpha - &beta1) * &(evals.h2 *
+            &index.domains.h.evaluate_vanishing_polynomial(beta1) +
+            &self.sigma2 + &(evals.g2 * &beta1))
     }
 
     // This function verifies the prover's third sumcheck argument values
@@ -106,13 +108,17 @@ impl<G: CommitmentCurve> ProverProof<G>
         evals: &ProofEvals<Fr<G>>,
     ) -> bool
     {
+        let beta0 = oracles.beta[0].to_field();
+        let beta1 = oracles.beta[1].to_field();
+        let beta2 = oracles.beta[2].to_field();
+
         let crb: Vec<Fr<G>> = (0..3).map
         (
             |i|
             {
-                oracles.beta[1] * &oracles.beta[0] -
-                &(oracles.beta[0] * &evals.row[i]) -
-                &(oracles.beta[1] * &evals.col[i]) +
+                beta1 * &beta0 -
+                &(beta0 * &evals.row[i]) -
+                &(beta1 * &evals.col[i]) +
                 &evals.rc[i]
             }
         ).collect();
@@ -127,11 +133,11 @@ impl<G: CommitmentCurve> ProverProof<G>
             }
         ).fold(Fr::<G>::zero(), |x, y| x + &y);
 
-        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &evals.h3
+        index.domains.k.evaluate_vanishing_polynomial(beta2) * &evals.h3
         ==
-        index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
-            &(index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1])) *
-            &acc - &((oracles.beta[2] * &evals.g3 + &self.sigma3) *
+        index.domains.h.evaluate_vanishing_polynomial(beta0) *
+            &(index.domains.h.evaluate_vanishing_polynomial(beta1)) *
+            &acc - &((beta2 * &evals.g3 + &self.sigma3) *
             &crb[0] * &crb[1] * &crb[2])
     }
 
@@ -164,9 +170,9 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 let beta =
                 [
-                    oracles.beta[0].pow([index.max_poly_size as u64]),
-                    oracles.beta[1].pow([index.max_poly_size as u64]),
-                    oracles.beta[2].pow([index.max_poly_size as u64])
+                    oracles.beta[0].to_field().pow([index.max_poly_size as u64]),
+                    oracles.beta[1].to_field().pow([index.max_poly_size as u64]),
+                    oracles.beta[2].to_field().pow([index.max_poly_size as u64])
                 ];
 
                 let polys = proof.prev_challenges.iter().map(|(chals, poly)| {
@@ -186,12 +192,12 @@ impl<G: CommitmentCurve> ProverProof<G>
                     (
                         |i|
                         {
-                            let full = b_poly(&chals, &chal_invs, oracles.beta[i]);
+                            let full = b_poly(&chals, &chal_invs, oracles.beta[i].to_field());
                             if index.max_poly_size == b.len() {return vec![full]}
                             let mut betaacc = Fr::<G>::one();
                             let diff = (index.max_poly_size..b.len()).map
                             (
-                                |j| {let ret = betaacc * &b[j]; betaacc *= &oracles.beta[i]; ret}
+                                |j| {let ret = betaacc * &b[j]; betaacc *= &oracles.beta[i].to_field(); ret}
                             ).fold(Fr::<G>::zero(), |x, y| x + &y);
                             vec![full - &(diff * &beta[i]), diff]
                         }
@@ -299,9 +305,9 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 Ok((
                     fq_sponge.clone(),
-                    oracles.beta.to_vec(),
-                    oracles.polys,
-                    oracles.evals,
+                    oracles.beta.iter().map(|x| x.to_field()).collect(),
+                    oracles.polys.to_field(),
+                    oracles.evals.to_field(),
                     polynoms,
                     &proof.proof
                 ))
@@ -345,19 +351,19 @@ impl<G: CommitmentCurve> ProverProof<G>
         fq_sponge.absorb_g(&self.g1_comm.unshifted);
         fq_sponge.absorb_g(&self.h1_comm.unshifted);
         // sample beta[0] oracle
-        oracles.beta[0] = fq_sponge.challenge();
+        oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
         fq_sponge.absorb_g(&self.g2_comm.unshifted);
         fq_sponge.absorb_g(&self.h2_comm.unshifted);
         // sample beta[1] oracle
-        oracles.beta[1] = fq_sponge.challenge();
+        oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
         fq_sponge.absorb_g(&self.g3_comm.unshifted);
         fq_sponge.absorb_g(&self.h3_comm.unshifted);
         // sample beta[2] & batch oracles
-        oracles.beta[2] = fq_sponge.challenge();
+        oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());
 
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.clone().digest();
@@ -368,9 +374,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         };
 
         let x_hat_evals =
-            [ x_hat.eval(oracles.beta[0], index.max_poly_size)
-            , x_hat.eval(oracles.beta[1], index.max_poly_size)
-            , x_hat.eval(oracles.beta[2], index.max_poly_size) ];
+            [ x_hat.eval(oracles.beta[0].to_field(), index.max_poly_size)
+            , x_hat.eval(oracles.beta[1].to_field(), index.max_poly_size)
+            , x_hat.eval(oracles.beta[2].to_field(), index.max_poly_size) ];
 
         oracles.x_hat = x_hat_evals.clone();
 

@@ -11,6 +11,20 @@ pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
 const HIGH_ENTROPY_LIMBS: usize = 4;
 
+// A challenge which is used as a scalar on a group element in the verifier
+#[derive(Clone, Copy, Debug)]
+pub struct ScalarChallenge<F>(pub F);
+
+impl<F : Field> ScalarChallenge<F> {
+    pub fn to_field(&self) -> F {
+        let ScalarChallenge(x) = self;
+        let length_in_bits : u64 = (64 * CHALLENGE_LENGTH_IN_LIMBS) as u64;
+        let two : F = (2 as u64).into();
+        let t = two.pow(&[length_in_bits - 1]);
+        t + x
+    }
+}
+
 #[derive(Clone)]
 pub struct DefaultFqSponge<P: SWModelParameters> {
     pub params: ArithmeticSpongeParams<P::BaseField>,

@@ -18,7 +18,7 @@ use algebra::{
     UniformRand, VariableBaseMSM, SWModelParameters
 };
 use ff_fft::DensePolynomial;
-use oracle::FqSponge;
+use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
@@ -51,13 +51,13 @@ pub struct Challenges<F> {
 }
 
 impl<G:AffineCurve> OpeningProof<G> {
-    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<Fr<G>> {
+    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
         .map(|(l, r)| {
             sponge.absorb_g(&[*l]);
             sponge.absorb_g(&[*r]);
-            sponge.challenge()
+            squeeze_prechallenge(sponge)
         })
         .collect()
     }
@@ -151,12 +151,18 @@ fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
         .collect()
 }
 
+fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+    sponge: &mut EFqSponge,
+) -> ScalarChallenge<Fr> {
+    ScalarChallenge(sponge.challenge())
+}
+
 fn squeeze_square_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
     sponge: &mut EFqSponge,
 ) -> Fr {
     // TODO: Make this a parameter
     let nonresidue: Fr = (7 as u64).into();
-    let mut pre = sponge.challenge();
+    let mut pre = squeeze_prechallenge(sponge).to_field();
     match pre.legendre() {
         LegendreSymbol::Zero => (),
         LegendreSymbol::QuadraticResidue => (),
@@ -580,7 +586,7 @@ impl<G: CommitmentCurve> SRS<G> {
             .into_affine();
 
         sponge.absorb_g(&[delta]);
-        let c = sponge.challenge();
+        let c = ScalarChallenge(sponge.challenge()).to_field();
 
         let z1 = a0 * &c + &d;
         let z2 = c * &r_prime + &r_delta;
@@ -669,7 +675,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
 
             sponge.absorb_g(&[opening.delta]);
-            let c = sponge.challenge();
+            let c = ScalarChallenge(sponge.challenge()).to_field();
 
             // < s, sum_i r^i pows(evaluation_point[i]) >
             // ==
