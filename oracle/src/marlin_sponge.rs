@@ -15,13 +15,53 @@ const HIGH_ENTROPY_LIMBS: usize = 4;
 #[derive(Clone, Copy, Debug)]
 pub struct ScalarChallenge<F>(pub F);
 
-impl<F : Field> ScalarChallenge<F> {
-    pub fn to_field(&self) -> F {
-        let ScalarChallenge(x) = self;
+pub fn endo_coefficient<F: PrimeField>() -> F {
+    let p_minus_1_over_3 = ((F::zero() - &F::one()) / &(3 as u64).into()).into_repr();
+
+    let t = F::multiplicative_generator();
+
+    t.pow(p_minus_1_over_3.as_ref())
+}
+
+fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
+    let limb = i / 64;
+    let j = i % 64;
+    (limbs_lsb[limb as usize] >> j) & 1
+}
+
+impl<F : PrimeField> ScalarChallenge<F> {
+    pub fn to_field(&self, endo_coeff: &F) -> F {
         let length_in_bits : u64 = (64 * CHALLENGE_LENGTH_IN_LIMBS) as u64;
-        let two : F = (2 as u64).into();
-        let t = two.pow(&[length_in_bits - 1]);
-        t + x
+        let ScalarChallenge(x) = self;
+        let rep = x.into_repr();
+        let r = rep.as_ref();
+
+        let mut a : F = (2 as u64).into();
+        let mut b : F = (2 as u64).into();
+
+        let one = F::one();
+        let neg_one = -one;
+
+        for i in (length_in_bits/2 - 1)..0 {
+            a.double_in_place();
+            b.double_in_place();
+
+            let r_2i = get_bit(r, 2*i);
+            let s =
+                if r_2i == 0 {
+                    &neg_one
+                } else {
+                    &one
+                };
+
+            if get_bit(r, 2*i + 1) == 0 {
+                b += s;
+            } else {
+                a += s;
+            }
+        }
+
+        a * endo_coeff + &b
     }
 }
 

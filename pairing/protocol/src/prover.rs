@@ -215,43 +215,46 @@ impl<E: PairingEngine> ProverProof<E>
             s
         };
 
+        let endo = &index.endo_r;
+        let beta : Vec<_> = oracles.beta.iter().map(|x| x.to_field(endo)).collect();
+
         let evals = ProofEvaluations {
-            w  : w.evaluate(oracles.beta[0].to_field()),
-            za : za.evaluate(oracles.beta[0].to_field()),
-            zb : zb.evaluate(oracles.beta[0].to_field()),
-            h1 : h1.evaluate(oracles.beta[0].to_field()),
-            g1 : g1.evaluate(oracles.beta[0].to_field()),
-            h2 : h2.evaluate(oracles.beta[1].to_field()),
-            g2 : g2.evaluate(oracles.beta[1].to_field()),
-            h3 : h3.evaluate(oracles.beta[2].to_field()),
-            g3 : g3.evaluate(oracles.beta[2].to_field()),
+            w  : w.evaluate(beta[0]),
+            za : za.evaluate(beta[0]),
+            zb : zb.evaluate(beta[0]),
+            h1 : h1.evaluate(beta[0]),
+            g1 : g1.evaluate(beta[0]),
+            h2 : h2.evaluate(beta[1]),
+            g2 : g2.evaluate(beta[1]),
+            h3 : h3.evaluate(beta[2]),
+            g3 : g3.evaluate(beta[2]),
             row:
             [
-                index.compiled[0].row.evaluate(oracles.beta[2].to_field()),
-                index.compiled[1].row.evaluate(oracles.beta[2].to_field()),
-                index.compiled[2].row.evaluate(oracles.beta[2].to_field()),
+                index.compiled[0].row.evaluate(beta[2]),
+                index.compiled[1].row.evaluate(beta[2]),
+                index.compiled[2].row.evaluate(beta[2]),
             ],
             col:
             [
-                index.compiled[0].col.evaluate(oracles.beta[2].to_field()),
-                index.compiled[1].col.evaluate(oracles.beta[2].to_field()),
-                index.compiled[2].col.evaluate(oracles.beta[2].to_field()),
+                index.compiled[0].col.evaluate(beta[2]),
+                index.compiled[1].col.evaluate(beta[2]),
+                index.compiled[2].col.evaluate(beta[2]),
             ],
             val:
             [
-                index.compiled[0].val.evaluate(oracles.beta[2].to_field()),
-                index.compiled[1].val.evaluate(oracles.beta[2].to_field()),
-                index.compiled[2].val.evaluate(oracles.beta[2].to_field()),
+                index.compiled[0].val.evaluate(beta[2]),
+                index.compiled[1].val.evaluate(beta[2]),
+                index.compiled[2].val.evaluate(beta[2]),
             ],
             rc:
             [
-                index.compiled[0].rc.evaluate(oracles.beta[2].to_field()),
-                index.compiled[1].rc.evaluate(oracles.beta[2].to_field()),
-                index.compiled[2].rc.evaluate(oracles.beta[2].to_field()),
+                index.compiled[0].rc.evaluate(beta[2]),
+                index.compiled[1].rc.evaluate(beta[2]),
+                index.compiled[2].rc.evaluate(beta[2]),
             ],
         };
 
-        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0].to_field());
+        let x_hat_beta1 = x_hat.evaluate(beta[0]);
         oracles.x_hat_beta1 = x_hat_beta1;
 
         fr_sponge.absorb_evaluations(&x_hat_beta1, &evals);
@@ -262,7 +265,7 @@ impl<E: PairingEngine> ProverProof<E>
         // construct the proof
         // --------------------------------------------------------------------
 
-        let batch_chal = oracles.batch.to_field();
+        let batch_chal = oracles.batch.to_field(endo);
 
         Ok(ProverProof
         {
@@ -290,7 +293,7 @@ impl<E: PairingEngine> ProverProof<E>
                     &h1,
                 ],
                 batch_chal,
-                oracles.beta[0].to_field()
+                beta[0]
             )?,
             proof2: urs.open
             (
@@ -300,7 +303,7 @@ impl<E: PairingEngine> ProverProof<E>
                     &h2,
                 ],
                 batch_chal,
-                oracles.beta[1].to_field()
+                beta[1]
             )?,
             proof3: urs.open
             (
@@ -322,7 +325,7 @@ impl<E: PairingEngine> ProverProof<E>
                     &index.compiled[2].rc,
                 ],
                 batch_chal,
-                oracles.beta[2].to_field()
+                beta[2]
             )?,
 
             // polynomial evaluations
@@ -385,7 +388,7 @@ impl<E: PairingEngine> ProverProof<E>
     ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
     {
         // precompute Lagrange polynomial evaluations
-        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0].to_field());
+        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0].to_field(&index.endo_r));
 
         // compute and return H2 & G2 polynomials
         // use the precomputed normalized Lagrange evaluations for interpolation evaluations
@@ -418,8 +421,11 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>
     ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
     {
-        let vanish = index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0].to_field()) *
-            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1].to_field());
+        let beta0 = oracles.beta[0].to_field(&index.endo_r);
+        let beta1 = oracles.beta[1].to_field(&index.endo_r);
+
+        let vanish = index.domains.h.evaluate_vanishing_polynomial(beta0) *
+            &index.domains.h.evaluate_vanishing_polynomial(beta1);
 
         // compute polynomial f3
         let f3 = (0..3).map
@@ -433,8 +439,8 @@ impl<E: PairingEngine> ProverProof<E>
                         (
                             |j|
                             {
-                                (oracles.beta[0].to_field() - &index.compiled[i].col_eval_k[j]) *
-                                &(oracles.beta[1].to_field() - &index.compiled[i].row_eval_k[j])
+                                (beta0 - &index.compiled[i].col_eval_k[j]) *
+                                &(beta1 - &index.compiled[i].row_eval_k[j])
                             }
                         ).collect();
                         algebra::fields::batch_inversion::<E::Fr>(&mut fractions);
@@ -459,7 +465,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         // precompute polynomials (row(X)-oracle1)*(col(X)-oracle2) in evaluation form over domains.b
         let crb: Vec<Vec<E::Fr>> =
-            (0..3).map(|i| index.compiled[i].compute_row_2_col_1(oracles.beta[0].to_field(), oracles.beta[1].to_field())).collect();
+            (0..3).map(|i| index.compiled[i].compute_row_2_col_1(beta0, beta1)).collect();
 
         // compute polynomial a
         let a = (0..3).map

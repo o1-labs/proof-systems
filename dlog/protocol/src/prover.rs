@@ -230,44 +230,47 @@ impl<G: CommitmentCurve> ProverProof<G>
             s
         };
 
+        let endo = &index.srs.get_ref().endo_r;
+        let beta : Vec<_> = oracles.beta.iter().map(|x| x.to_field(endo)).collect();
+
         let evals =
         {
             let evl = (0..3).map
             (
                 |i| ProofEvaluations
                 {
-                    w  : w.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    za : za.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    zb : zb.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    h1 : h1.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    g1 : g1.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    h2 : h2.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    g2 : g2.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    h3 : h3.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                    g3 : g3.eval(oracles.beta[i].to_field(), index.max_poly_size),
+                    w  : w.eval(beta[i], index.max_poly_size),
+                    za : za.eval(beta[i], index.max_poly_size),
+                    zb : zb.eval(beta[i], index.max_poly_size),
+                    h1 : h1.eval(beta[i], index.max_poly_size),
+                    g1 : g1.eval(beta[i], index.max_poly_size),
+                    h2 : h2.eval(beta[i], index.max_poly_size),
+                    g2 : g2.eval(beta[i], index.max_poly_size),
+                    h3 : h3.eval(beta[i], index.max_poly_size),
+                    g3 : g3.eval(beta[i], index.max_poly_size),
                     row:
                     [
-                        index.compiled[0].row.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[1].row.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[2].row.eval(oracles.beta[i].to_field(), index.max_poly_size),
+                        index.compiled[0].row.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].row.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].row.eval(beta[i], index.max_poly_size),
                     ],
                     col:
                     [
-                        index.compiled[0].col.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[1].col.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[2].col.eval(oracles.beta[i].to_field(), index.max_poly_size),
+                        index.compiled[0].col.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].col.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].col.eval(beta[i], index.max_poly_size),
                     ],
                     val:
                     [
-                        index.compiled[0].val.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[1].val.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[2].val.eval(oracles.beta[i].to_field(), index.max_poly_size),
+                        index.compiled[0].val.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].val.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].val.eval(beta[i], index.max_poly_size),
                     ],
                     rc:
                     [
-                        index.compiled[0].rc.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[1].rc.eval(oracles.beta[i].to_field(), index.max_poly_size),
-                        index.compiled[2].rc.eval(oracles.beta[i].to_field(), index.max_poly_size),
+                        index.compiled[0].rc.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].rc.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].rc.eval(beta[i], index.max_poly_size),
                     ],
                 }
             ).collect::<Vec<_>>();
@@ -275,9 +278,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         };
 
         let x_hat_evals =
-            [ x_hat.eval(oracles.beta[0].to_field(), index.max_poly_size)
-            , x_hat.eval(oracles.beta[1].to_field(), index.max_poly_size)
-            , x_hat.eval(oracles.beta[2].to_field(), index.max_poly_size) ];
+            [ x_hat.eval(beta[0], index.max_poly_size)
+            , x_hat.eval(beta[1], index.max_poly_size)
+            , x_hat.eval(beta[2], index.max_poly_size) ];
 
         oracles.x_hat = x_hat_evals.clone();
 
@@ -343,9 +346,9 @@ impl<G: CommitmentCurve> ProverProof<G>
             (
                 group_map,
                 polynoms,
-                &oracles.beta.iter().map(|x| x.to_field()).collect(),
-                oracles.polys.to_field(),
-                oracles.evals.to_field(),
+                &beta,
+                oracles.polys.to_field(endo),
+                oracles.evals.to_field(endo),
                 fq_sponge_before_evaluations,
                 rng
             ), 
@@ -411,7 +414,7 @@ impl<G: CommitmentCurve> ProverProof<G>
     ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
         // precompute Lagrange polynomial evaluations
-        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0].to_field());
+        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0].to_field(&index.srs.get_ref().endo_r));
 
         // compute and return H2 & G2 polynomials
         // use the precomputed normalized Lagrange evaluations for interpolation evaluations
@@ -444,8 +447,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         oracles: &RandomOracles<Fr<G>>
     ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
-        let beta0 = oracles.beta[0].to_field();
-        let beta1 = oracles.beta[1].to_field();
+        let endo = &index.srs.get_ref().endo_r;
+        let beta0 = oracles.beta[0].to_field(endo);
+        let beta1 = oracles.beta[1].to_field(endo);
 
         let vanish = index.domains.h.evaluate_vanishing_polynomial(beta0) *
             &index.domains.h.evaluate_vanishing_polynomial(beta1);

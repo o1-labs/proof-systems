@@ -48,7 +48,8 @@ impl<G: CommitmentCurve> ProverProof<G>
         x_hat_value: Fr<G>
     ) -> bool
     {
-        let beta0 = oracles.beta[0].to_field();
+        let endo = &index.srs.get_ref().endo_r;
+        let beta0 = oracles.beta[0].to_field(endo);
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
         (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size])) *
             &(0..3).map
@@ -87,7 +88,8 @@ impl<G: CommitmentCurve> ProverProof<G>
         evals: &ProofEvals<Fr<G>>,
     ) -> bool
     {
-        let beta1 = oracles.beta[1].to_field();
+        let endo = &index.srs.get_ref().endo_r;
+        let beta1 = oracles.beta[1].to_field(endo);
         self.sigma3 * &index.domains.k.size_as_field_element *
             &((oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size])))
         ==
@@ -108,9 +110,10 @@ impl<G: CommitmentCurve> ProverProof<G>
         evals: &ProofEvals<Fr<G>>,
     ) -> bool
     {
-        let beta0 = oracles.beta[0].to_field();
-        let beta1 = oracles.beta[1].to_field();
-        let beta2 = oracles.beta[2].to_field();
+        let endo = &index.srs.get_ref().endo_r;
+        let beta0 = oracles.beta[0].to_field(endo);
+        let beta1 = oracles.beta[1].to_field(endo);
+        let beta2 = oracles.beta[2].to_field(endo);
 
         let crb: Vec<Fr<G>> = (0..3).map
         (
@@ -157,6 +160,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         rng: &mut dyn RngCore
     ) -> bool
     {
+        let endo = &index.srs.get_ref().endo_r;
         let params = proofs.iter().map
         (
             |proof|
@@ -170,9 +174,9 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 let beta =
                 [
-                    oracles.beta[0].to_field().pow([index.max_poly_size as u64]),
-                    oracles.beta[1].to_field().pow([index.max_poly_size as u64]),
-                    oracles.beta[2].to_field().pow([index.max_poly_size as u64])
+                    oracles.beta[0].to_field(endo).pow([index.max_poly_size as u64]),
+                    oracles.beta[1].to_field(endo).pow([index.max_poly_size as u64]),
+                    oracles.beta[2].to_field(endo).pow([index.max_poly_size as u64])
                 ];
 
                 let polys = proof.prev_challenges.iter().map(|(chals, poly)| {
@@ -192,12 +196,12 @@ impl<G: CommitmentCurve> ProverProof<G>
                     (
                         |i|
                         {
-                            let full = b_poly(&chals, &chal_invs, oracles.beta[i].to_field());
+                            let full = b_poly(&chals, &chal_invs, oracles.beta[i].to_field(endo));
                             if index.max_poly_size == b.len() {return vec![full]}
                             let mut betaacc = Fr::<G>::one();
                             let diff = (index.max_poly_size..b.len()).map
                             (
-                                |j| {let ret = betaacc * &b[j]; betaacc *= &oracles.beta[i].to_field(); ret}
+                                |j| {let ret = betaacc * &b[j]; betaacc *= &oracles.beta[i].to_field(endo); ret}
                             ).fold(Fr::<G>::zero(), |x, y| x + &y);
                             vec![full - &(diff * &beta[i]), diff]
                         }
@@ -305,9 +309,9 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 Ok((
                     fq_sponge.clone(),
-                    oracles.beta.iter().map(|x| x.to_field()).collect(),
-                    oracles.polys.to_field(),
-                    oracles.evals.to_field(),
+                    oracles.beta.iter().map(|x| x.to_field(endo)).collect(),
+                    oracles.polys.to_field(endo),
+                    oracles.evals.to_field(endo),
                     polynoms,
                     &proof.proof
                 ))
@@ -373,10 +377,12 @@ impl<G: CommitmentCurve> ProverProof<G>
             s
         };
 
+        let endo = &index.srs.get_ref().endo_r;
+
         let x_hat_evals =
-            [ x_hat.eval(oracles.beta[0].to_field(), index.max_poly_size)
-            , x_hat.eval(oracles.beta[1].to_field(), index.max_poly_size)
-            , x_hat.eval(oracles.beta[2].to_field(), index.max_poly_size) ];
+            [ x_hat.eval(oracles.beta[0].to_field(endo), index.max_poly_size)
+            , x_hat.eval(oracles.beta[1].to_field(endo), index.max_poly_size)
+            , x_hat.eval(oracles.beta[2].to_field(endo), index.max_poly_size) ];
 
         oracles.x_hat = x_hat_evals.clone();
 

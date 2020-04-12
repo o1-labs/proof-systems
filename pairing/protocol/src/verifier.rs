@@ -26,7 +26,7 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
-        let beta0 = oracles.beta[0].to_field();
+        let beta0 = oracles.beta[0].to_field(&index.endo_r);
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
         (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size])) *
             &(0..3).map
@@ -64,7 +64,7 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
-        let beta1 = oracles.beta[1].to_field();
+        let beta1 = oracles.beta[1].to_field(&index.endo_r);
         self.sigma3 * &index.domains.k.size_as_field_element *
             &((oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size])))
         ==
@@ -84,9 +84,9 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>
     ) -> bool
     {
-        let beta0 = oracles.beta[0].to_field();
-        let beta1 = oracles.beta[1].to_field();
-        let beta2 = oracles.beta[2].to_field();
+        let beta0 = oracles.beta[0].to_field(&index.endo_r);
+        let beta1 = oracles.beta[1].to_field(&index.endo_r);
+        let beta2 = oracles.beta[2].to_field(&index.endo_r);
 
         let crb: Vec<E::Fr> = (0..3).map
         (
@@ -151,11 +151,11 @@ impl<E: PairingEngine> ProverProof<E>
                 return Err(ProofError::ProofVerification)
             }
 
-            let batch_chal = oracles.batch.to_field();
+            let batch_chal = oracles.batch.to_field(&index.endo_r);
 
             batch.push
             ((
-                oracles.beta[0].to_field(),
+                oracles.beta[0].to_field(&index.endo_r),
                 batch_chal,
                 vec!
                 [
@@ -170,7 +170,7 @@ impl<E: PairingEngine> ProverProof<E>
             ));
             batch.push
             ((
-                oracles.beta[1].to_field(),
+                oracles.beta[1].to_field(&index.endo_r),
                 batch_chal,
                 vec!
                 [
@@ -181,7 +181,7 @@ impl<E: PairingEngine> ProverProof<E>
             ));
             batch.push
             ((
-                oracles.beta[2].to_field(),
+                oracles.beta[2].to_field(&index.endo_r),
                 batch_chal,
                 vec!
                 [
@@ -260,7 +260,7 @@ impl<E: PairingEngine> ProverProof<E>
             s
         };
 
-        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0].to_field());
+        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0].to_field(&index.endo_r));
         oracles.x_hat_beta1 = x_hat_beta1;
 
         fr_sponge.absorb_evaluations(&x_hat_beta1,&self.evals);
