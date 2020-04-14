@@ -30,6 +30,13 @@ impl<F : PrimeField> EvaluationDomains<F> {
         let b = EvaluationDomain::<F>::new(k_group_size * 3 - 3)?;
         let x = EvaluationDomain::<F>::new(x_group_size)?;
 
+        println!("vars, cons, nons: {}, {}, {}", variables, constraints, nonzero_entries);
+        println!("h, k, b, x: {}, {}, {}, {}",
+                 h.size(),
+                 k.size(),
+                 b.size(),
+                 x.size());
+
         Some (EvaluationDomains { h, k, b, x })
     }
 }

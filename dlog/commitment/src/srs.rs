@@ -18,12 +18,34 @@ use blake2::{Blake2b, Digest};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
+use crate::commitment::CommitmentCurve;
 
 #[derive(Debug, Clone)]
 pub struct SRS<G: AffineCurve>
 {
     pub g: Vec<G>,    // for committing polynomials
     pub h: G,         // blinding
+
+    // Coefficients for the curve endomorphism
+    pub endo_r: G::ScalarField,
+    pub endo_q: G::BaseField,
+}
+
+pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
+where G::BaseField : PrimeField {
+    let endo_q : G::BaseField = oracle::marlin_sponge::endo_coefficient();
+    let endo_r = {
+        let potential_endo_r : G::ScalarField = oracle::marlin_sponge::endo_coefficient();
+        let t = G::prime_subgroup_generator();
+        let (x, y) = t.to_coordinates().unwrap();
+        let phi_t = G::of_coordinates(x * &endo_q, y);
+        if t.mul(potential_endo_r) == phi_t.into_projective() {
+            potential_endo_r
+        } else {
+            potential_endo_r * &potential_endo_r
+        }
+    };
+    (endo_q, endo_r)
 }
 
 impl<G: AffineCurve> SRS<G>
@@ -31,7 +53,10 @@ impl<G: AffineCurve> SRS<G>
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
+}
 
+impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField
+{
     // This function creates SRS instance for circuits up to depth d
     //     depth: maximal depth of the circuits
     //     rng: randomness source context
@@ -52,9 +77,11 @@ impl<G: AffineCurve> SRS<G>
         );
         ProjectiveCurve::batch_normalization(&mut v);
 
+        let (endo_q, endo_r) = endos::<G>();
+
         SRS {
             g: v[0..depth].iter().map(|e| e.into_affine()).collect(),
-            h: v[depth].into_affine(),
+            h: v[depth].into_affine(), endo_r, endo_q
         }
     }
 
@@ -74,7 +101,8 @@ impl<G: AffineCurve> SRS<G>
             g.push(G::read(&mut reader)?);
         }
         let h = G::read(&mut reader)?;
-        Ok(SRS { g, h })
+        let (endo_q, endo_r) = endos::<G>();
+        Ok(SRS { g, h, endo_r, endo_q })
     }
 }
 
@@ -130,9 +158,11 @@ impl<P: SWModelParameters> SRS<SWAffine<P>> {
             P::BaseField::from_random_bytes(& random_bytes).unwrap()
         }); */
 
+        let (endo_q, endo_r) = endos::<SWAffine<P>>();
+
         SRS {
             g: (0..depth).into_par_iter().map(random_point).collect(),
-            h: random_point(depth),
+            h: random_point(depth), endo_r, endo_q
         }
     }
 }

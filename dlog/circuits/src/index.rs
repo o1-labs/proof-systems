@@ -6,8 +6,8 @@ This source file implements Marlin Protocol Index primitive.
 
 use sprs::CsMat;
 use rand_core::RngCore;
-use commitment_dlog::srs::SRS;
-use algebra::AffineCurve;
+use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use algebra::{PrimeField, AffineCurve};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
@@ -36,7 +36,7 @@ pub enum SRSSpec <'a, 'b, G: AffineCurve>{
     Generate(&'b mut dyn RngCore)
 }
 
-impl<'a, G: AffineCurve> SRSValue<'a, G> {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
     pub fn generate<'b>(
         ds: EvaluationDomains<Fr<G>>,
         rng : &'b mut dyn RngCore) -> SRS<G> {
@@ -52,7 +52,7 @@ impl<'a, G: AffineCurve> SRSValue<'a, G> {
                 let max_degree = *[3*ds.h.size()-1, ds.b.size()].iter().max().unwrap();
                 SRSValue::Value(SRS {
                     g: x.g[..max_degree].to_vec(),
-                    h: x.h
+                    h: x.h, endo_r: x.endo_r, endo_q: x.endo_q
                 })
             },
             SRSSpec::Generate(rng) => SRSValue::Value(Self::generate(ds, rng))
@@ -108,7 +108,7 @@ pub struct VerifierIndex<'a, G: AffineCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: AffineCurve> Index<'a, G>
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField : PrimeField
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {

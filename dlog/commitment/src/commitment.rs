@@ -12,12 +12,13 @@ The folowing functionality is implemented
 
 use super::srs::SRS;
 use algebra::{
+    curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
     AffineCurve, BitIterator, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
-    UniformRand, VariableBaseMSM,
+    UniformRand, VariableBaseMSM, SWModelParameters
 };
 use ff_fft::DensePolynomial;
 use oracle::rndoracle::{ProofError};
-use oracle::FqSponge;
+use oracle::{marlin_sponge::ScalarChallenge, FqSponge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
@@ -43,25 +44,25 @@ pub struct Challenges<F> {
 }
 
 impl<G:AffineCurve> OpeningProof<G> {
-    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<Fr<G>> {
+    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
         .map(|(l, r)| {
             sponge.absorb_g(l);
             sponge.absorb_g(r);
-            sponge.challenge()
+            squeeze_prechallenge(sponge)
         })
         .collect()
     }
 
-    pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Challenges<Fr<G>> {
+    pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, endo: &Fr<G>, sponge : &mut EFqSponge) -> Challenges<Fr<G>> {
         let chal_squared: Vec<_> = self
             .lr
             .iter()
             .map(|(l, r)| {
                 sponge.absorb_g(l);
                 sponge.absorb_g(r);
-                squeeze_square_challenge(sponge)
+                squeeze_square_challenge(endo, sponge)
             })
             .collect();
 
@@ -143,12 +144,19 @@ fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
         .collect()
 }
 
-fn squeeze_square_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+    sponge: &mut EFqSponge,
+) -> ScalarChallenge<Fr> {
+    ScalarChallenge(sponge.challenge())
+}
+
+fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+    endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
     // TODO: Make this a parameter
     let nonresidue: Fr = (7 as u64).into();
-    let mut pre = sponge.challenge();
+    let mut pre = squeeze_prechallenge(sponge).to_field(endo_r);
     match pre.legendre() {
         LegendreSymbol::Zero => (),
         LegendreSymbol::QuadraticResidue => (),
@@ -159,10 +167,11 @@ fn squeeze_square_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSpon
     pre
 }
 
-fn squeeze_sqrt_challenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+    endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
-    squeeze_square_challenge(sponge).sqrt().unwrap()
+    squeeze_square_challenge(endo_r, sponge).sqrt().unwrap()
 }
 
 pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
@@ -319,6 +328,29 @@ pub fn shamir_sum<G: AffineCurve>(
     }
 
     res
+}
+
+pub trait CommitmentCurve : AffineCurve {
+    type Params : SWModelParameters;
+
+    fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
+    fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
+}
+
+impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField : PrimeField {
+    type Params = P;
+
+    fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>{
+        if self.infinity {
+            None
+        } else {
+            Some((self.x, self.y))
+        }
+    }
+
+    fn of_coordinates(x : P::BaseField, y : P::BaseField) -> SWJAffine<P> {
+        SWJAffine::<P>::new(x, y, false)
+    }
 }
 
 impl<G: AffineCurve> SRS<G> {
@@ -487,7 +519,7 @@ impl<G: AffineCurve> SRS<G> {
             sponge.absorb_g(&l);
             sponge.absorb_g(&r);
 
-            let u = squeeze_sqrt_challenge(&mut sponge);
+            let u = squeeze_sqrt_challenge(&self.endo_r, &mut sponge);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -546,7 +578,7 @@ impl<G: AffineCurve> SRS<G> {
             .into_affine();
 
         sponge.absorb_g(&delta);
-        let c = sponge.challenge();
+        let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
 
         let z1 = a0 * &c + &d;
         let z2 = c * &r_prime + &r_delta;
@@ -631,10 +663,10 @@ impl<G: AffineCurve> SRS<G> {
             let u: G = G::prime_subgroup_generator(); 
             // TODO: Should make this a random group element after the group map is implemented.
 
-            let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>( sponge);
+            let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>(&self.endo_r, sponge);
 
             sponge.absorb_g(&opening.delta);
-            let c = sponge.challenge();
+            let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
 
             // < s, sum_i r^i pows(evaluation_point[i]) >
             // ==

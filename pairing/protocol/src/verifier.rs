@@ -10,7 +10,7 @@ use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine};
 use ff_fft::{DensePolynomial, Evaluations};
-use oracle::marlin_sponge::{FqSponge};
+use oracle::marlin_sponge::{FqSponge, ScalarChallenge};
 use crate::marlin_sponge::{FrSponge};
 
 impl<E: PairingEngine> ProverProof<E>
@@ -26,8 +26,9 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
+        let beta0 = oracles.beta[0].to_field(&index.endo_r);
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[0].pow([index.domains.h.size])) *
+        (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size])) *
             &(0..3).map
             (
                 |i|
@@ -42,12 +43,12 @@ impl<E: PairingEngine> ProverProof<E>
                 }
             ).fold(E::Fr::zero(), |x, y| x + &y)
         ==
-        (oracles.alpha - &oracles.beta[0]) *
+        (oracles.alpha - &beta0) *
         &(
-            self.evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            &(oracles.beta[0] * &self.evals.g1) +
+            self.evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(beta0) +
+            &(beta0 * &self.evals.g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
-            &(self.evals.w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            &(self.evals.w * &index.domains.x.evaluate_vanishing_polynomial(beta0) +
             &oracles.x_hat_beta1))
         )
     }
@@ -63,12 +64,13 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>,
     ) -> bool
     {
+        let beta1 = oracles.beta[1].to_field(&index.endo_r);
         self.sigma3 * &index.domains.k.size_as_field_element *
-            &((oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[1].pow([index.domains.h.size])))
+            &((oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size])))
         ==
-        (oracles.alpha - &oracles.beta[1]) * &(self.evals.h2 *
-            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]) +
-            &self.sigma2 + &(self.evals.g2 * &oracles.beta[1]))
+        (oracles.alpha - &beta1) * &(self.evals.h2 *
+            &index.domains.h.evaluate_vanishing_polynomial(beta1) +
+            &self.sigma2 + &(self.evals.g2 * &beta1))
     }
 
     // This function verifies the prover's third sumcheck argument values
@@ -82,13 +84,17 @@ impl<E: PairingEngine> ProverProof<E>
         oracles: &RandomOracles<E::Fr>
     ) -> bool
     {
+        let beta0 = oracles.beta[0].to_field(&index.endo_r);
+        let beta1 = oracles.beta[1].to_field(&index.endo_r);
+        let beta2 = oracles.beta[2].to_field(&index.endo_r);
+
         let crb: Vec<E::Fr> = (0..3).map
         (
             |i|
             {
-                oracles.beta[1] * &oracles.beta[0] -
-                &(oracles.beta[0] * &self.evals.row[i]) -
-                &(oracles.beta[1] * &self.evals.col[i]) +
+                beta1 * &beta0 -
+                &(beta0 * &self.evals.row[i]) -
+                &(beta1 * &self.evals.col[i]) +
                 &self.evals.rc[i]
             }
         ).collect();
@@ -103,11 +109,11 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold(E::Fr::zero(), |x, y| x + &y);
 
-        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals.h3
+        index.domains.k.evaluate_vanishing_polynomial(beta2) * &self.evals.h3
         ==
-        index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
-            &(index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1])) *
-            &acc - &((oracles.beta[2] * &self.evals.g3 + &self.sigma3) *
+        index.domains.h.evaluate_vanishing_polynomial(beta0) *
+            &(index.domains.h.evaluate_vanishing_polynomial(beta1)) *
+            &acc - &((beta2 * &self.evals.g3 + &self.sigma3) *
             &crb[0] * &crb[1] * &crb[2])
     }
 
@@ -145,10 +151,12 @@ impl<E: PairingEngine> ProverProof<E>
                 return Err(ProofError::ProofVerification)
             }
 
+            let batch_chal = oracles.batch.to_field(&index.endo_r);
+
             batch[0].push
             ((
-                oracles.beta[0],
-                oracles.batch,
+                oracles.beta[0].to_field(&index.endo_r),
+                batch_chal,
                 vec!
                 [
                     (x_hat_comm,        oracles.x_hat_beta1, None),
@@ -162,8 +170,8 @@ impl<E: PairingEngine> ProverProof<E>
             ));
             batch[1].push
             ((
-                oracles.beta[1],
-                oracles.batch,
+                oracles.beta[1].to_field(&index.endo_r),
+                batch_chal,
                 vec!
                 [
                     (proof.g2_comm.0,   proof.evals.g2, Some((proof.g2_comm.1, index.domains.h.size()-1))),
@@ -173,8 +181,8 @@ impl<E: PairingEngine> ProverProof<E>
             ));
             batch[2].push
             ((
-                oracles.beta[2],
-                oracles.batch,
+                oracles.beta[2].to_field(&index.endo_r),
+                batch_chal,
                 vec!
                 [
                     (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.domains.k.size()-1))),
@@ -236,22 +244,22 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&self.g1_comm.1);
         fq_sponge.absorb_g(&self.h1_comm);
         // sample beta[0] oracle
-        oracles.beta[0] = fq_sponge.challenge();
+        oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
         fq_sponge.absorb_g(&self.g2_comm.0);
         fq_sponge.absorb_g(&self.g2_comm.1);
         fq_sponge.absorb_g(&self.h2_comm);
         // sample beta[1] oracle
-        oracles.beta[1] = fq_sponge.challenge();
+        oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
         fq_sponge.absorb_g(&self.g3_comm.0);
         fq_sponge.absorb_g(&self.g3_comm.1);
         fq_sponge.absorb_g(&self.h3_comm);
         // sample beta[2] & batch oracles
-        oracles.beta[2] = fq_sponge.challenge();
-        oracles.r_k = fq_sponge.challenge();
+        oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());
+        oracles.r_k = ScalarChallenge(fq_sponge.challenge());
 
         let digest_before_evaluations = fq_sponge.digest();
         oracles.digest_before_evaluations = digest_before_evaluations;
@@ -262,7 +270,7 @@ impl<E: PairingEngine> ProverProof<E>
             s
         };
 
-        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0]);
+        let x_hat_beta1 = x_hat.evaluate(oracles.beta[0].to_field(&index.endo_r));
         oracles.x_hat_beta1 = x_hat_beta1;
 
         fr_sponge.absorb_evaluations(&x_hat_beta1,&self.evals);

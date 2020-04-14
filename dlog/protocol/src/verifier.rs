@@ -6,7 +6,7 @@ This source file implements zk-proof batch verifier functionality.
 
 use rand_core::RngCore;
 use circuits_dlog::index::{VerifierIndex as Index};
-use oracle::{FqSponge, rndoracle::ProofError};
+use oracle::{FqSponge, marlin_sponge::ScalarChallenge, rndoracle::ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve};
 use ff_fft::{DensePolynomial, Evaluations};
@@ -29,8 +29,10 @@ impl<G: AffineCurve> ProverProof<G>
         oracles: &RandomOracles<Fr<G>>,
     ) -> bool
     {
+        let endo = &index.srs.get_ref().endo_r;
+        let beta0 = oracles.beta[0].to_field(endo);
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[0].pow([index.domains.h.size])) *
+        (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size])) *
             &(0..3).map
             (
                 |i|
@@ -45,17 +47,17 @@ impl<G: AffineCurve> ProverProof<G>
                 }
             ).fold(Fr::<G>::zero(), |x, y| x + &y)
         ==
-        (oracles.alpha - &oracles.beta[0]) *
+        (oracles.alpha - &beta0) *
         &(
-            self.evals[0].h1 * &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) +
-            &(oracles.beta[0] * &self.evals[0].g1) +
+            self.evals[0].h1 * &index.domains.h.evaluate_vanishing_polynomial(beta0) +
+            &(beta0 * &self.evals[0].g1) +
             &(self.sigma2 * &index.domains.h.size_as_field_element *
-            &(self.evals[0].w * &index.domains.x.evaluate_vanishing_polynomial(oracles.beta[0]) +
+            &(self.evals[0].w * &index.domains.x.evaluate_vanishing_polynomial(beta0) +
             // interpolating/evaluating public input over small domain domains.x
             // TODO: investigate which of the below is faster
-            &Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate().evaluate(oracles.beta[0])))
+            &Evaluations::<Fr<G>>::from_vec_and_domain(self.public.clone(), index.domains.x).interpolate().evaluate(beta0)))
             /*
-            &index.domains.x.evaluate_all_lagrange_coefficients(oracles.beta[0])
+            &index.domains.x.evaluate_all_lagrange_coefficients(beta0)
             .iter()
             .zip(self.public.iter())
             .map(|(l, x)| *l * x)
@@ -75,12 +77,14 @@ impl<G: AffineCurve> ProverProof<G>
         oracles: &RandomOracles<Fr<G>>,
     ) -> bool
     {
+        let endo = &index.srs.get_ref().endo_r;
+        let beta1 = oracles.beta[1].to_field(endo);
         self.sigma3 * &index.domains.k.size_as_field_element *
-            &((oracles.alpha.pow([index.domains.h.size]) - &oracles.beta[1].pow([index.domains.h.size])))
+            &((oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size])))
         ==
-        (oracles.alpha - &oracles.beta[1]) * &(self.evals[1].h2 *
-            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]) +
-            &self.sigma2 + &(self.evals[1].g2 * &oracles.beta[1]))
+        (oracles.alpha - &beta1) * &(self.evals[1].h2 *
+            &index.domains.h.evaluate_vanishing_polynomial(beta1) +
+            &self.sigma2 + &(self.evals[1].g2 * &beta1))
     }
 
     // This function verifies the prover's third sumcheck argument values
@@ -94,13 +98,18 @@ impl<G: AffineCurve> ProverProof<G>
         oracles: &RandomOracles<Fr<G>>
     ) -> bool
     {
+        let endo = &index.srs.get_ref().endo_r;
+        let beta0 = oracles.beta[0].to_field(endo);
+        let beta1 = oracles.beta[1].to_field(endo);
+        let beta2 = oracles.beta[2].to_field(endo);
+
         let crb: Vec<Fr<G>> = (0..3).map
         (
             |i|
             {
-                oracles.beta[1] * &oracles.beta[0] -
-                &(oracles.beta[0] * &self.evals[2].row[i]) -
-                &(oracles.beta[1] * &self.evals[2].col[i]) +
+                beta1 * &beta0 -
+                &(beta0 * &self.evals[2].row[i]) -
+                &(beta1 * &self.evals[2].col[i]) +
                 &self.evals[2].rc[i]
             }
         ).collect();
@@ -115,11 +124,11 @@ impl<G: AffineCurve> ProverProof<G>
             }
         ).fold(Fr::<G>::zero(), |x, y| x + &y);
 
-        index.domains.k.evaluate_vanishing_polynomial(oracles.beta[2]) * &self.evals[2].h3
+        index.domains.k.evaluate_vanishing_polynomial(beta2) * &self.evals[2].h3
         ==
-        index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
-            &(index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1])) *
-            &acc - &((oracles.beta[2] * &self.evals[2].g3 + &self.sigma3) *
+        index.domains.h.evaluate_vanishing_polynomial(beta0) *
+            &(index.domains.h.evaluate_vanishing_polynomial(beta1)) *
+            &acc - &((beta2 * &self.evals[2].g3 + &self.sigma3) *
             &crb[0] * &crb[1] * &crb[2])
     }
 
@@ -139,7 +148,7 @@ impl<G: AffineCurve> ProverProof<G>
     ) -> Result<bool, ProofError>
     {
         let mut batch = Vec::with_capacity(proofs.len());
-
+        let endo = &index.srs.get_ref().endo_r;
         for proof in proofs.iter()
         {
             let proof = proof.clone();
@@ -169,7 +178,7 @@ impl<G: AffineCurve> ProverProof<G>
                     cs
                 };
 
-                let evals = oracles.beta.iter().map(|x| b_poly(&chals, &chal_invs, *x)).collect();
+                let evals = oracles.beta.iter().map(|x| b_poly(&chals, &chal_invs, x.to_field(endo))).collect();
 
                 (*poly, evals, None)
             }).collect();
@@ -204,9 +213,9 @@ impl<G: AffineCurve> ProverProof<G>
             batch.push
             ((
                 fq_sponge,
-                oracles.beta.to_vec(),
-                oracles.polys,
-                oracles.evals,
+                oracles.beta.iter().map(|x| x.to_field(endo)).collect(),
+                oracles.polys.to_field(endo),
+                oracles.evals.to_field(endo),
                 polys,
                 proof.proof
             ));
@@ -251,21 +260,21 @@ impl<G: AffineCurve> ProverProof<G>
         fq_sponge.absorb_g(&self.g1_comm.1);
         fq_sponge.absorb_g(&self.h1_comm);
         // sample beta[0] oracle
-        oracles.beta[0] = fq_sponge.challenge();
+        oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
         fq_sponge.absorb_g(&self.g2_comm.0);
         fq_sponge.absorb_g(&self.g2_comm.1);
         fq_sponge.absorb_g(&self.h2_comm);
         // sample beta[1] oracle
-        oracles.beta[1] = fq_sponge.challenge();
+        oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
         fq_sponge.absorb_g(&self.g3_comm.0);
         fq_sponge.absorb_g(&self.g3_comm.1);
         fq_sponge.absorb_g(&self.h3_comm);
         // sample beta[2] & batch oracles
-        oracles.beta[2] = fq_sponge.challenge();
+        oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());
 
         let mut fr_sponge = {
             let digest_before_evaluations = fq_sponge.clone().digest();
@@ -275,10 +284,12 @@ impl<G: AffineCurve> ProverProof<G>
             s
         };
 
+        let endo = &index.srs.get_ref().endo_r;
+
         let x_hat_evals =
-            [ x_hat.evaluate(oracles.beta[0])
-            , x_hat.evaluate(oracles.beta[1])
-            , x_hat.evaluate(oracles.beta[2]) ];
+            [ x_hat.evaluate(oracles.beta[0].to_field(endo))
+            , x_hat.evaluate(oracles.beta[1].to_field(endo))
+            , x_hat.evaluate(oracles.beta[2].to_field(endo)) ];
 
         oracles.x_hat = x_hat_evals;
 
