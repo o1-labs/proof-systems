@@ -134,6 +134,22 @@ pub struct VerifierIndex<E: PairingEngine>
     pub endo_q: E::Fq,
 }
 
+pub fn endos<E:PairingEngine>() -> (E::Fq, E::Fr) where E::G1Affine : CoordinatesCurve {
+    let endo_q : E::Fq = oracle::marlin_sponge::endo_coefficient();
+    let endo_r = {
+        let potential_endo_r : E::Fr = oracle::marlin_sponge::endo_coefficient();
+        let t = E::G1Affine::prime_subgroup_generator();
+        let (x, y) = t.to_coordinates().unwrap();
+        let phi_t = E::G1Affine::of_coordinates(x * &endo_q, y);
+        if t.mul(potential_endo_r) == phi_t.into() {
+            potential_endo_r
+        } else {
+            potential_endo_r * &potential_endo_r
+        }
+    };
+    (endo_q, endo_r)
+}
+
 impl<'a, E: PairingEngine> Index<'a, E>
 where E::G1Affine: CoordinatesCurve
 {
@@ -170,18 +186,7 @@ where E::G1Affine: CoordinatesCurve
 
         let urs = URSValue::create(domains, urs);
 
-        let endo_q : E::Fq = oracle::marlin_sponge::endo_coefficient();
-        let endo_r = {
-            let potential_endo_r : E::Fr = oracle::marlin_sponge::endo_coefficient();
-            let t = E::G1Affine::prime_subgroup_generator();
-            let (x, y) = t.to_coordinates().unwrap();
-            let phi_t = E::G1Affine::of_coordinates(x * &endo_q, y);
-            if t.mul(potential_endo_r) == phi_t.into() {
-                potential_endo_r
-            } else {
-                potential_endo_r * &potential_endo_r
-            }
-        };
+        let (endo_q, endo_r) = endos::<E>();
 
         Ok(Index::<E>
         {
