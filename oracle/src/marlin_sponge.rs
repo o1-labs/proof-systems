@@ -42,7 +42,7 @@ impl<F : PrimeField> ScalarChallenge<F> {
         let one = F::one();
         let neg_one = -one;
 
-        for i in (length_in_bits/2 - 1)..0 {
+        for i in (0..(length_in_bits/2)).rev() {
             a.double_in_place();
             b.double_in_place();
 
