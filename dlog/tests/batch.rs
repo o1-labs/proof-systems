@@ -21,20 +21,6 @@ use groupmap::GroupMap;
 type Fr = <Affine as AffineCurve>::ScalarField;
 
 #[test]
-fn shamir_equivalence()
-{
-    let rng = &mut OsRng;
-
-    let g1 : Affine = (Affine::prime_subgroup_generator().into_projective() * &Fr::rand(rng)).into_affine();
-    let g2 : Affine = (Affine::prime_subgroup_generator().into_projective() * &Fr::rand(rng)).into_affine();
-
-    let x1 = Fr::rand(rng);
-    let x2 = Fr::rand(rng);
-
-    assert_eq!(commitment_dlog::commitment::shamir_sum(x1, g1, x2, g2), commitment_dlog::commitment::window_shamir(x1, g1, x2, g2))
-}
-
-#[test]
 fn batch_commitment_test()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
