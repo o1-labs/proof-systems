@@ -14,7 +14,7 @@ use crate::srs::{SRS};
 use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
-    AffineCurve, BitIterator, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
+    AffineCurve, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
     UniformRand, VariableBaseMSM, SWModelParameters
 };
 use ff_fft::DensePolynomial;
@@ -398,8 +398,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            // TODO: Make this more efficient
-            g = crate::combine::window_combine(&g_lo, &g_hi, u_inv, u);
+            g = G::combine(&g_lo, &g_hi, u_inv, u);
         }
 
         assert!(g.len() == 1);
