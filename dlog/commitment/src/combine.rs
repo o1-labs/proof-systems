@@ -119,24 +119,7 @@ fn batch_add_assign<P:SWModelParameters>(
     }
 }
 
-fn batch_double_in_place<P:SWModelParameters>(p: &mut [SWJAffine<P>]) {
-    let mut denominators = p.iter().map(|p| p.y.double()).collect::<Vec<_>>();
-    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
-
-    let n = p.len();
-
-    // TODO: Use less memory
-    for i in 0..n {
-        let d = denominators[i];
-        let sq = p[i].x.square();
-        let s = (sq.double() + &sq + &P::COEFF_A) * &d;
-        let x = s.square() - &p[i].x.double();
-        let y = -p[i].y - &(s * &(x - &p[i].x));
-        p[i].x = x;
-        p[i].y = y;
-    }
-}
-
+#[cfg(test)]
 fn affine_combine_base<P: SWModelParameters>(g1: &[SWJAffine<P>], g2: &[SWJAffine<P>], x1: P::ScalarField, x2: P::ScalarField) -> Vec<SWJAffine<P>> {
     let n = g1.len();
 
@@ -266,7 +249,8 @@ fn affine_window_combine_base<P: SWModelParameters>(g1: &[SWJAffine<P>], g2: &[S
     p
 }
 
-pub fn affine_combine<P: SWModelParameters>(g1: &Vec<SWJAffine<P>>, g2: &Vec<SWJAffine<P>>, x1: P::ScalarField, x2: P::ScalarField) -> Vec<SWJAffine<P>> {
+#[cfg(test)]
+fn affine_combine<P: SWModelParameters>(g1: &Vec<SWJAffine<P>>, g2: &Vec<SWJAffine<P>>, x1: P::ScalarField, x2: P::ScalarField) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE : usize = 10_000;
     let b : Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
     let v : Vec<_> = b.into_par_iter().map(|(v1, v2)| affine_combine_base(v1, v2, x1, x2)).collect();
@@ -280,7 +264,8 @@ pub fn affine_window_combine<P: SWModelParameters>(g1: &Vec<SWJAffine<P>>, g2: &
     v.concat()
 }
 
-pub fn combine<G:AffineCurve>(g_lo: &Vec<G>, g_hi: &Vec<G>, x_lo: G::ScalarField, x_hi: G::ScalarField) -> Vec<G> {
+#[cfg(test)]
+fn combine<G:AffineCurve>(g_lo: &Vec<G>, g_hi: &Vec<G>, x_lo: G::ScalarField, x_hi: G::ScalarField) -> Vec<G> {
     let mut g_proj: Vec<G::Projective> = {
         let pairs: Vec<_> = g_lo.iter().zip(g_hi).collect();
         pairs
@@ -304,7 +289,8 @@ pub fn window_combine<G:AffineCurve>(g_lo: &Vec<G>, g_hi: &Vec<G>, x_lo: G::Scal
     g_proj.par_iter().map(|g| g.into_affine()).collect()
 }
 
-pub fn shamir_sum<G: AffineCurve>(
+#[cfg(test)]
+fn shamir_sum<G: AffineCurve>(
     x1: G::ScalarField,
     g1: G,
     x2: G::ScalarField,
@@ -417,7 +403,7 @@ pub fn affine_shamir_window_table<P:SWModelParameters>(
     res
 }
 
-pub fn window_shamir<G: AffineCurve>(
+fn window_shamir<G: AffineCurve>(
     x1: G::ScalarField,
     g1: G,
     x2: G::ScalarField,
@@ -590,7 +576,7 @@ fn test_batch_double_in_place() {
 
 #[test]
 fn test_batch_add_assign() {
-    use algebra::{UniformRand, fields::bn_382::{Fq, Fp}, curves::bn_382::g::{Bn_382GParameters as P, Affine as GAffine}};
+    use algebra::{UniformRand, fields::bn_382::{Fq, Fp}, curves::bn_382::g::{Affine as GAffine}};
     let n = 10;
 
     let mut denominators = vec![Fp::zero(); n];
@@ -610,7 +596,7 @@ fn test_batch_add_assign() {
 
 #[test]
 fn test_shamir_window_table() {
-    use algebra::{UniformRand, fields::bn_382::{Fq, Fp}, curves::bn_382::g::{Bn_382GParameters as P, Affine as GAffine}};
+    use algebra::{UniformRand, fields::bn_382::{Fq, Fp}, curves::bn_382::g::{Affine as GAffine}};
     let n = 10;
 
     let mut denominators = vec![Fp::zero(); n];
@@ -630,7 +616,6 @@ fn test_shamir_window_table() {
         }
     }
 }
-
 
 #[test]
 fn bench_combine() {
@@ -679,39 +664,8 @@ fn bench_combine() {
     };
 }
 
-#[bench]
-fn bench_window_shamir(b: &mut ::test::Bencher) {
-    use algebra::{UniformRand, fields::bn_382::Fq, curves::bn_382::g::{Affine as GAffine}};
-
-    let x1 : Fq = UniformRand::rand(&mut rand::thread_rng());
-    let x2 = x1.inverse().unwrap();
-
-    let g1 = GAffine::prime_subgroup_generator();
-    let g2 = GAffine::prime_subgroup_generator();
-
-    b.iter(|| {
-        window_shamir(x1, g1, x2, g2)
-    });
-}
-
-#[bench]
-fn bench_shamir(b: &mut ::test::Bencher) {
-    use algebra::{UniformRand, fields::bn_382::Fq, curves::bn_382::g::{Affine as GAffine}};
-
-    let x1 : Fq = UniformRand::rand(&mut rand::thread_rng());
-    let x2 = x1.inverse().unwrap();
-
-    let g1 = GAffine::prime_subgroup_generator();
-    let g2 = GAffine::prime_subgroup_generator();
-
-    b.iter(|| {
-        shamir_sum(x1, g1, x2, g2)
-    });
-}
-
 #[test]
-fn shamir_equivalence()
-{
+fn shamir_equivalence() {
     use rand_core::OsRng;
     use algebra::{UniformRand, fields::bn_382::{Fq as Fr}, curves::bn_382::g::Affine};
     let rng = &mut OsRng;
@@ -724,4 +678,3 @@ fn shamir_equivalence()
 
     assert_eq!(shamir_sum(x1, g1, x2, g2), window_shamir(x1, g1, x2, g2))
 }
-

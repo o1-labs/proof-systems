@@ -5,7 +5,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 
 *****************************************************************************************************************/
 
-use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve, ProjectiveCurve};
+use algebra::{curves::bn_382::g::{Affine, Bn_382GParameters}, fields::bn_382::fp::Fp, UniformRand, AffineCurve};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, Utils, OpeningProof, PolyComm}};
 
 use oracle::FqSponge;
