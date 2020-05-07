@@ -21,6 +21,27 @@ pub struct SRS<G: CommitmentCurve>
 {
     pub g: Vec<G>,    // for committing polynomials
     pub h: G,         // blinding
+
+    // Coefficients for the curve endomorphism
+    pub endo_r: G::ScalarField,
+    pub endo_q: G::BaseField,
+}
+
+fn endos<G: CommitmentCurve>() -> (G::ScalarField, G::BaseField)
+where G::BaseField : PrimeField {
+    let endo_q : G::BaseField = oracle::marlin_sponge::endo_coefficient();
+    let endo_r = {
+        let potential_endo_r : G::ScalarField = oracle::marlin_sponge::endo_coefficient();
+        let t = G::prime_subgroup_generator();
+        let (x, y) = t.to_coordinates().unwrap();
+        let phi_t = G::of_coordinates(x * &endo_q, y);
+        if t.mul(potential_endo_r) == phi_t.into_projective() {
+            potential_endo_r
+        } else {
+            potential_endo_r * &potential_endo_r
+        }
+    };
+    (endo_r, endo_q)
 }
 
 impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
@@ -42,9 +63,12 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
             G::of_coordinates(x, y)
         }).collect();
 
+        let (endo_r, endo_q) = endos::<G>();
+
         SRS {
             g: v[0..depth].iter().map(|e| *e).collect(),
             h: v[depth],
+            endo_r, endo_q
         }
     }
 
@@ -64,7 +88,8 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
             g.push(G::read(&mut reader)?);
         }
         let h = G::read(&mut reader)?;
-        Ok(SRS { g, h })
+        let (endo_r, endo_q) = endos::<G>();
+        Ok(SRS { g, h, endo_r, endo_q })
     }
 }
 

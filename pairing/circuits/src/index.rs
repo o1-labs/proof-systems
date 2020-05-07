@@ -8,12 +8,31 @@ use sprs::CsMat;
 use std::collections::HashMap;
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
-use algebra::PairingEngine;
+use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 use evaluation_domains::EvaluationDomains;
+
+pub trait CoordinatesCurve: AffineCurve {
+    fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
+    fn of_coordinates(x:Self::BaseField, y:Self::BaseField) -> Self;
+}
+
+impl<P: algebra::SWModelParameters> CoordinatesCurve for SWJAffine<P> {
+    fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>{
+        if self.infinity {
+            None
+        } else {
+            Some((self.x, self.y))
+        }
+    }
+
+    fn of_coordinates(x:Self::BaseField, y:Self::BaseField) -> Self {
+        SWJAffine::<P>::new(x, y, false)
+    }
+}
 
 pub enum URSValue<'a, E : PairingEngine> {
     Value(URS<E>),
@@ -76,6 +95,10 @@ pub struct Index<'a, E: PairingEngine>
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
+
+    // Coefficients for the curve endomorphism
+    pub endo_r: E::Fr,
+    pub endo_q: E::Fq,
 }
 
 pub struct MatrixValues<A> {
@@ -105,6 +128,84 @@ pub struct VerifierIndex<E: PairingEngine>
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
+
+    // Coefficients for the curve endomorphism
+    pub endo_r: E::Fr,
+    pub endo_q: E::Fq,
+}
+
+pub fn endos<E:PairingEngine>() -> (E::Fq, E::Fr) where E::G1Affine : CoordinatesCurve {
+    let endo_q : E::Fq = oracle::marlin_sponge::endo_coefficient();
+    let endo_r = {
+        let potential_endo_r : E::Fr = oracle::marlin_sponge::endo_coefficient();
+        let t = E::G1Affine::prime_subgroup_generator();
+        let (x, y) = t.to_coordinates().unwrap();
+        let phi_t = E::G1Affine::of_coordinates(x * &endo_q, y);
+        if t.mul(potential_endo_r) == phi_t.into() {
+            potential_endo_r
+        } else {
+            potential_endo_r * &potential_endo_r
+        }
+    };
+    (endo_q, endo_r)
+}
+
+impl<'a, E: PairingEngine> Index<'a, E>
+where E::G1Affine: CoordinatesCurve
+{
+    // this function compiles the circuit from constraints
+    pub fn create<'b>
+    (
+        a: CsMat<E::Fr>,
+        b: CsMat<E::Fr>,
+        c: CsMat<E::Fr>,
+        public_inputs: usize,
+        fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
+        fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
+        urs : URSSpec<'a, 'b, E>
+    ) -> Result<Self, ProofError>
+    {
+        if a.shape() != b.shape() ||
+            a.shape() != c.shape() ||
+            a.shape().0 != a.shape().1 ||
+            public_inputs == a.shape().0 ||
+            public_inputs == 0
+        {
+            return Err(ProofError::ConstraintInconsist)
+        }
+
+        let nonzero_entries : usize =
+            [&a, &b, &c].iter().map(|x| x.nnz()).max()
+            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
+
+        let domains = EvaluationDomains::create(
+            a.shape().0,
+            public_inputs,
+            nonzero_entries)
+            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
+
+        let urs = URSValue::create(domains, urs);
+
+        let (endo_q, endo_r) = endos::<E>();
+
+        Ok(Index::<E>
+        {
+            compiled:
+            [
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, a)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, b)?,
+                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, c)?,
+            ],
+            fr_sponge_params,
+            fq_sponge_params,
+            public_inputs,
+            domains,
+            urs,
+            endo_q,
+            endo_r
+        })
+    }
+
 }
 
 impl<'a, E: PairingEngine> Index<'a, E>
@@ -150,57 +251,10 @@ impl<'a, E: PairingEngine> Index<'a, E>
             public_inputs: self.public_inputs,
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
-            urs
+            urs,
+            endo_q: self.endo_q,
+            endo_r: self.endo_r,
         }
-    }
-
-    // this function compiles the circuit from constraints
-    pub fn create<'b>
-    (
-        a: CsMat<E::Fr>,
-        b: CsMat<E::Fr>,
-        c: CsMat<E::Fr>,
-        public_inputs: usize,
-        fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
-        fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
-        urs : URSSpec<'a, 'b, E>
-    ) -> Result<Self, ProofError>
-    {
-        if a.shape() != b.shape() ||
-            a.shape() != c.shape() ||
-            a.shape().0 != a.shape().1 ||
-            public_inputs == a.shape().0 ||
-            public_inputs == 0
-        {
-            return Err(ProofError::ConstraintInconsist)
-        }
-
-        let nonzero_entries : usize =
-            [&a, &b, &c].iter().map(|x| x.nnz()).max()
-            .map_or(Err(ProofError::RuntimeEnv), |s| Ok(s))?;
-
-        let domains = EvaluationDomains::create(
-            a.shape().0,
-            public_inputs,
-            nonzero_entries)
-            .map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
-
-        let urs = URSValue::create(domains, urs);
-
-        Ok(Index::<E>
-        {
-            compiled:
-            [
-                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, a)?,
-                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, b)?,
-                Compiled::<E>::compile(urs.get_ref(), domains.h, domains.k, domains.b, c)?,
-            ],
-            fr_sponge_params,
-            fq_sponge_params,
-            public_inputs,
-            domains,
-            urs
-        })
     }
 
     // This function verifies the consistency of the wire assignements (witness) against the constraints

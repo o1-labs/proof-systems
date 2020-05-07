@@ -5,7 +5,7 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve};
-use oracle::{FqSponge, rndoracle::{ProofError}};
+use oracle::{marlin_sponge::ScalarChallenge, FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations};
 use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof, b_poly_coefficients, product};
 use circuits_dlog::index::Index;
@@ -185,7 +185,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         fq_sponge.absorb_g(&g1_comm.unshifted);
         fq_sponge.absorb_g(&h1_comm.unshifted);
         // sample beta[0] oracle
-        oracles.beta[0] = fq_sponge.challenge();
+        oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
 
         // compute second sumcheck argument polynomials
         // --------------------------------------------------------------------
@@ -201,7 +201,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         fq_sponge.absorb_g(&g2_comm.unshifted);
         fq_sponge.absorb_g(&h2_comm.unshifted);
         // sample beta[1] oracle
-        oracles.beta[1] = fq_sponge.challenge();
+        oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
 
         // compute third sumcheck argument polynomials
         // --------------------------------------------------------------------
@@ -217,7 +217,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         fq_sponge.absorb_g(&g3_comm.unshifted);
         fq_sponge.absorb_g(&h3_comm.unshifted);
         // sample beta[2] & batch oracles
-        oracles.beta[2] = fq_sponge.challenge();
+        oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
 
@@ -230,44 +230,47 @@ impl<G: CommitmentCurve> ProverProof<G>
             s
         };
 
+        let endo = &index.srs.get_ref().endo_r;
+        let beta : Vec<_> = oracles.beta.iter().map(|x| x.to_field(endo)).collect();
+
         let evals =
         {
             let evl = (0..3).map
             (
                 |i| ProofEvaluations
                 {
-                    w  : w.eval(oracles.beta[i], index.max_poly_size),
-                    za : za.eval(oracles.beta[i], index.max_poly_size),
-                    zb : zb.eval(oracles.beta[i], index.max_poly_size),
-                    h1 : h1.eval(oracles.beta[i], index.max_poly_size),
-                    g1 : g1.eval(oracles.beta[i], index.max_poly_size),
-                    h2 : h2.eval(oracles.beta[i], index.max_poly_size),
-                    g2 : g2.eval(oracles.beta[i], index.max_poly_size),
-                    h3 : h3.eval(oracles.beta[i], index.max_poly_size),
-                    g3 : g3.eval(oracles.beta[i], index.max_poly_size),
+                    w  : w.eval(beta[i], index.max_poly_size),
+                    za : za.eval(beta[i], index.max_poly_size),
+                    zb : zb.eval(beta[i], index.max_poly_size),
+                    h1 : h1.eval(beta[i], index.max_poly_size),
+                    g1 : g1.eval(beta[i], index.max_poly_size),
+                    h2 : h2.eval(beta[i], index.max_poly_size),
+                    g2 : g2.eval(beta[i], index.max_poly_size),
+                    h3 : h3.eval(beta[i], index.max_poly_size),
+                    g3 : g3.eval(beta[i], index.max_poly_size),
                     row:
                     [
-                        index.compiled[0].row.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[1].row.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[2].row.eval(oracles.beta[i], index.max_poly_size),
+                        index.compiled[0].row.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].row.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].row.eval(beta[i], index.max_poly_size),
                     ],
                     col:
                     [
-                        index.compiled[0].col.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[1].col.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[2].col.eval(oracles.beta[i], index.max_poly_size),
+                        index.compiled[0].col.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].col.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].col.eval(beta[i], index.max_poly_size),
                     ],
                     val:
                     [
-                        index.compiled[0].val.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[1].val.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[2].val.eval(oracles.beta[i], index.max_poly_size),
+                        index.compiled[0].val.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].val.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].val.eval(beta[i], index.max_poly_size),
                     ],
                     rc:
                     [
-                        index.compiled[0].rc.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[1].rc.eval(oracles.beta[i], index.max_poly_size),
-                        index.compiled[2].rc.eval(oracles.beta[i], index.max_poly_size),
+                        index.compiled[0].rc.eval(beta[i], index.max_poly_size),
+                        index.compiled[1].rc.eval(beta[i], index.max_poly_size),
+                        index.compiled[2].rc.eval(beta[i], index.max_poly_size),
                     ],
                 }
             ).collect::<Vec<_>>();
@@ -275,9 +278,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         };
 
         let x_hat_evals =
-            [ x_hat.eval(oracles.beta[0], index.max_poly_size)
-            , x_hat.eval(oracles.beta[1], index.max_poly_size)
-            , x_hat.eval(oracles.beta[2], index.max_poly_size) ];
+            [ x_hat.eval(beta[0], index.max_poly_size)
+            , x_hat.eval(beta[1], index.max_poly_size)
+            , x_hat.eval(beta[2], index.max_poly_size) ];
 
         oracles.x_hat = x_hat_evals.clone();
 
@@ -343,9 +346,9 @@ impl<G: CommitmentCurve> ProverProof<G>
             (
                 group_map,
                 polynoms,
-                &oracles.beta.to_vec(),
-                oracles.polys,
-                oracles.evals,
+                &beta,
+                oracles.polys.to_field(endo),
+                oracles.evals.to_field(endo),
                 fq_sponge_before_evaluations,
                 rng
             ), 
@@ -411,7 +414,7 @@ impl<G: CommitmentCurve> ProverProof<G>
     ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
         // precompute Lagrange polynomial evaluations
-        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0]);
+        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0].to_field(&index.srs.get_ref().endo_r));
 
         // compute and return H2 & G2 polynomials
         // use the precomputed normalized Lagrange evaluations for interpolation evaluations
@@ -444,8 +447,12 @@ impl<G: CommitmentCurve> ProverProof<G>
         oracles: &RandomOracles<Fr<G>>
     ) -> Result<(DensePolynomial<Fr<G>>, DensePolynomial<Fr<G>>), ProofError>
     {
-        let vanish = index.domains.h.evaluate_vanishing_polynomial(oracles.beta[0]) *
-            &index.domains.h.evaluate_vanishing_polynomial(oracles.beta[1]);
+        let endo = &index.srs.get_ref().endo_r;
+        let beta0 = oracles.beta[0].to_field(endo);
+        let beta1 = oracles.beta[1].to_field(endo);
+
+        let vanish = index.domains.h.evaluate_vanishing_polynomial(beta0) *
+            &index.domains.h.evaluate_vanishing_polynomial(beta1);
 
         // compute polynomial f3
         let f3 = (0..3).map
@@ -459,8 +466,8 @@ impl<G: CommitmentCurve> ProverProof<G>
                         (
                             |j|
                             {
-                                (oracles.beta[0] - &index.compiled[i].col_eval_k[j]) *
-                                &(oracles.beta[1] - &index.compiled[i].row_eval_k[j])
+                                (beta0 - &index.compiled[i].col_eval_k[j]) *
+                                &(beta1 - &index.compiled[i].row_eval_k[j])
                             }
                         ).collect();
                         algebra::fields::batch_inversion::<Fr<G>>(&mut fractions);
@@ -485,7 +492,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // precompute polynomials (row(X)-oracle1)*(col(X)-oracle2) in evaluation form over domains.b
         let crb: Vec<Vec<Fr<G>>> =
-            (0..3).map(|i| index.compiled[i].compute_row_2_col_1(oracles.beta[0], oracles.beta[1])).collect();
+            (0..3).map(|i| index.compiled[i].compute_row_2_col_1(beta0, beta1)).collect();
 
         // compute polynomial a
         let a = (0..3).map
@@ -537,9 +544,9 @@ pub struct RandomOracles<F: Field>
     pub eta_a: F,
     pub eta_b: F,
     pub eta_c: F,
-    pub polys: F,
-    pub evals: F,
-    pub beta: [F; 3],
+    pub polys: ScalarChallenge<F>,
+    pub evals: ScalarChallenge<F>,
+    pub beta: [ScalarChallenge<F>; 3],
 
     pub digest_before_evaluations: F,
     pub x_hat: [Vec<F>; 3],
@@ -549,15 +556,16 @@ impl<F: Field> RandomOracles<F>
 {
     pub fn zero () -> Self
     {
+        let c = ScalarChallenge(F::zero());
         Self
         {
             alpha: F::zero(),
             eta_a: F::zero(),
             eta_b: F::zero(),
             eta_c: F::zero(),
-            polys: F::zero(),
-            evals: F::zero(),
-            beta: [F::zero(), F::zero(), F::zero()],
+            polys: c,
+            evals: c,
+            beta: [c, c, c],
             x_hat: [Vec::new(), Vec::new(), Vec::new()],
             digest_before_evaluations: F::zero(),
         }
