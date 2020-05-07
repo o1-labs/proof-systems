@@ -71,7 +71,7 @@ pub struct Index<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-pub struct MatrixValues<C: AffineCurve> {
+pub struct MatrixValues<C> {
     pub row : PolyComm<C>,
     pub col : PolyComm<C>,
     pub val : PolyComm<C>,

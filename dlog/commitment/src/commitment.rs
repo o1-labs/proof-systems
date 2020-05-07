@@ -28,7 +28,7 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
-pub struct PolyComm<C: AffineCurve>
+pub struct PolyComm<C>
 {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
