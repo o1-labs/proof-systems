@@ -14,7 +14,7 @@ use crate::srs::{SRS};
 use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
-    AffineCurve, BitIterator, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
+    AffineCurve, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
     UniformRand, VariableBaseMSM, SWModelParameters
 };
 use ff_fft::DensePolynomial;
@@ -22,7 +22,6 @@ use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
-use itertools::Itertools;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -181,168 +180,16 @@ fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + SquareRootField, EFqSpo
     squeeze_square_challenge(endo_r, sponge).sqrt().unwrap()
 }
 
-pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
-    let g00_00 = G::prime_subgroup_generator().into_projective();
-    let g01_00 = g1.into_projective();
-    let g10_00 = {
-        let mut g = g01_00;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g11_00 = {
-        let mut g = g10_00;
-        g.add_assign_mixed(&g1);
-        g
-    };
-
-    let g00_01 = g2.into_projective();
-    let g01_01 = {
-        let mut g = g00_01;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g10_01 = {
-        let mut g = g01_01;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g11_01 = {
-        let mut g = g10_01;
-        g.add_assign_mixed(&g1);
-        g
-    };
-
-    let g00_10 = {
-        let mut g = g00_01;
-        g.add_assign_mixed(&g2);
-        g
-    };
-    let g01_10 = {
-        let mut g = g00_10;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g10_10 = {
-        let mut g = g01_10;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g11_10 = {
-        let mut g = g10_10;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g00_11 = {
-        let mut g = g00_10;
-        g.add_assign_mixed(&g2);
-        g
-    };
-    let g01_11 = {
-        let mut g = g00_11;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g10_11 = {
-        let mut g = g01_11;
-        g.add_assign_mixed(&g1);
-        g
-    };
-    let g11_11 = {
-        let mut g = g10_11;
-        g.add_assign_mixed(&g1);
-        g
-    };
-
-    let mut v = vec![
-        g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10,
-        g11_10, g00_11, g01_11, g10_11, g11_11,
-    ];
-    G::Projective::batch_normalization(v.as_mut_slice());
-    let v: Vec<_> = v.iter().map(|x| x.into_affine()).collect();
-    [
-        v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
-        v[14], v[15],
-    ]
-}
-
-pub fn window_shamir<G: AffineCurve>(
-    x1: G::ScalarField,
-    g1: G,
-    x2: G::ScalarField,
-    g2: G,
-) -> G::Projective {
-    let [_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
-        shamir_window_table(g1, g2);
-
-    let windows1 = BitIterator::new(x1.into_repr()).tuples();
-    let windows2 = BitIterator::new(x2.into_repr()).tuples();
-
-    let mut res = G::Projective::zero();
-
-    for ((hi_1, lo_1), (hi_2, lo_2)) in windows1.zip(windows2) {
-        res.double_in_place();
-        res.double_in_place();
-        match ((hi_1, lo_1), (hi_2, lo_2)) {
-            ((false, false), (false, false)) => (),
-            ((false, true), (false, false)) => res.add_assign_mixed(&g01_00),
-            ((true, false), (false, false)) => res.add_assign_mixed(&g10_00),
-            ((true, true), (false, false)) => res.add_assign_mixed(&g11_00),
-
-            ((false, false), (false, true)) => res.add_assign_mixed(&g00_01),
-            ((false, true), (false, true)) => res.add_assign_mixed(&g01_01),
-            ((true, false), (false, true)) => res.add_assign_mixed(&g10_01),
-            ((true, true), (false, true)) => res.add_assign_mixed(&g11_01),
-
-            ((false, false), (true, false)) => res.add_assign_mixed(&g00_10),
-            ((false, true), (true, false)) => res.add_assign_mixed(&g01_10),
-            ((true, false), (true, false)) => res.add_assign_mixed(&g10_10),
-            ((true, true), (true, false)) => res.add_assign_mixed(&g11_10),
-
-            ((false, false), (true, true)) => res.add_assign_mixed(&g00_11),
-            ((false, true), (true, true)) => res.add_assign_mixed(&g01_11),
-            ((true, false), (true, true)) => res.add_assign_mixed(&g10_11),
-            ((true, true), (true, true)) => res.add_assign_mixed(&g11_11),
-        }
-    }
-
-    res
-}
-
-pub fn shamir_sum<G: AffineCurve>(
-    x1: G::ScalarField,
-    g1: G,
-    x2: G::ScalarField,
-    g2: G,
-) -> G::Projective {
-    let mut g1g2: G::Projective = g1.into_projective();
-    g1g2.add_assign_mixed(&g2);
-    let g1g2 = g1g2.into_affine();
-
-    let bits1 = BitIterator::new(x1.into_repr());
-    let bits2 = BitIterator::new(x2.into_repr());
-
-    let mut res = G::Projective::zero();
-
-    for (b1, b2) in bits1.zip(bits2) {
-        res.double_in_place();
-
-        match (b1, b2) {
-            (true, true) => res.add_assign_mixed(&g1g2),
-            (false, true) => res.add_assign_mixed(&g2),
-            (true, false) => res.add_assign_mixed(&g1),
-            (false, false) => (),
-        }
-    }
-
-    res
-}
-
 pub trait CommitmentCurve : AffineCurve {
     type Params : SWModelParameters;
     type Map : GroupMap<Self::BaseField>;
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
     fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
+
+    fn combine(g1: &Vec<Self>, g2: &Vec<Self>, x1:Self::ScalarField, x2:Self::ScalarField) -> Vec<Self> {
+        crate::combine::window_combine(g1, g2, x1, x2)
+    }
 }
 
 impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField : PrimeField {
@@ -359,6 +206,10 @@ impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField 
 
     fn of_coordinates(x : P::BaseField, y : P::BaseField) -> SWJAffine<P> {
         SWJAffine::<P>::new(x, y, false)
+    }
+
+    fn combine(g1: &Vec<Self>, g2: &Vec<Self>, x1:Self::ScalarField, x2:Self::ScalarField) -> Vec<Self> {
+        crate::combine::affine_window_combine(g1, g2, x1, x2)
     }
 }
 
@@ -564,18 +415,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            // TODO: Make this more efficient
-            g = {
-                let mut g_proj: Vec<G::Projective> = {
-                    let pairs: Vec<_> = g_lo.iter().zip(g_hi).collect();
-                    pairs
-                        .into_par_iter()
-                        .map(|(lo, hi)| window_shamir::<G>(u_inv, *lo, u, hi))
-                        .collect()
-                };
-                G::Projective::batch_normalization(g_proj.as_mut_slice());
-                g_proj.par_iter().map(|g| g.into_affine()).collect()
-            };
+            g = G::combine(&g_lo, &g_hi, u_inv, u);
         }
 
         assert!(g.len() == 1);
