@@ -18,6 +18,8 @@ use blake2::{Blake2b, Digest};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::io::{Read, Result as IoResult, Write};
+use crate::commitment::CommitmentCurve;
+use groupmap::GroupMap;
 
 #[derive(Debug, Clone)]
 pub struct SRS<G: AffineCurve>
@@ -58,6 +60,42 @@ impl<G: AffineCurve> SRS<G>
         }
     }
 
+    pub fn batch_create(depth: usize, x_trits: Vec<usize>) -> Self {
+        let m = G::Map::setup();
+
+        let ts : Vec<_> = (0..depth + 1).map(|i| {
+            let mut h = Blake2b::new();
+            h.input(&(i as u32).to_be_bytes());
+            let random_bytes = &h.result()[..32];
+            G::BaseField::from_random_bytes(&random_bytes).unwrap()
+        }).collect();
+
+        let potential_xs = m.batch_to_group_x(ts);
+        let v : Vec<_>;
+        for (i, &j) in x_trits.iter().enumerate() {
+            let x = potential_xs[i][j];
+
+            // x(x^2 + a) + b
+            // x^3 + ax + b
+            let mut y2 = x;
+            y2.square_in_place();
+            y2 += &P::COEFF_A;
+            y2 *= &x;
+            y2 += &P::COEFF_B;
+
+            let y = y2.sqrt().unwrap();
+            let greatest = true;
+            let negy = -y;
+            let y = if (y < negy) ^ greatest { y } else { negy };
+            v.push(G::of_coordinates(x, y));
+        };
+
+        SRS {
+            g: v[0..depth].iter().map(|e| *e).collect(),
+            h: v[depth],
+        }
+    }
+
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
         u64::write(&(self.g.len() as u64), &mut writer)?;
         for x in &self.g {
@@ -77,6 +115,7 @@ impl<G: AffineCurve> SRS<G>
         Ok(SRS { g, h })
     }
 }
+
 
 fn random_point<P: SWModelParameters>(i: usize) -> SWAffine<P>
 where
