@@ -27,7 +27,7 @@ pub struct SRS<G: CommitmentCurve>
     pub endo_q: G::BaseField,
 }
 
-fn endos<G: CommitmentCurve>() -> (G::ScalarField, G::BaseField)
+pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
 where G::BaseField : PrimeField {
     let endo_q : G::BaseField = oracle::marlin_sponge::endo_coefficient();
     let endo_r = {
@@ -41,7 +41,7 @@ where G::BaseField : PrimeField {
             potential_endo_r * &potential_endo_r
         }
     };
-    (endo_r, endo_q)
+    (endo_q, endo_r)
 }
 
 impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
@@ -63,7 +63,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
             G::of_coordinates(x, y)
         }).collect();
 
-        let (endo_r, endo_q) = endos::<G>();
+        let (endo_q, endo_r) = endos::<G>();
 
         SRS {
             g: v[0..depth].iter().map(|e| *e).collect(),
@@ -88,7 +88,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
             g.push(G::read(&mut reader)?);
         }
         let h = G::read(&mut reader)?;
-        let (endo_r, endo_q) = endos::<G>();
+        let (endo_q, endo_r) = endos::<G>();
         Ok(SRS { g, h, endo_r, endo_q })
     }
 }
