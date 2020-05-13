@@ -8,10 +8,10 @@ algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] 
 groupmap = { git = "https://github.com/o1-labs/zexe/" }
 ff-fft = { git = "https://github.com/o1-labs/zexe/" }
 commitment_dlog = { path = "commitment" }
-marlin_circuits_dlog = { path = "marlin/circuits" }
-marlin_protocol_dlog = { path = "marlin/protocol" }
-plonk_circuits_dlog = { path = "plonk/circuits" }
-plonk_protocol_dlog = { path = "plonk/protocol" }
+marlin_circuits = { path = "../circuits/marlin" }
+marlin_protocol_dlog = { path = "marlin" }
+plonk_circuits = { path = "../circuits/plonk" }
+plonk_protocol_dlog = { path = "plonk" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.2"

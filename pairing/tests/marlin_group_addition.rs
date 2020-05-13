@@ -20,10 +20,9 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use marlin_circuits_pairing::index::{Index, URSSpec};
 use sprs::{CsMat, CsVecView};
 use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use marlin_protocol_pairing::{prover::{ProverProof}, };
+use marlin_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
 use algebra::{curves::{bn_382::{Bn_382, g1::Bn_382G1Parameters}}, fields::{bn_382::fp::Fp, Field}};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};

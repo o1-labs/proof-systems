@@ -1,0 +1,19 @@
+[package]
+name = "marlin_protocol_dlog"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
+ff-fft = { git = "https://github.com/o1-labs/zexe/" }
+commitment_dlog = { path = "../commitment" }
+marlin_circuits = { path = "../../circuits/marlin" }
+oracle = { path = "../../oracle" }
+rand_core = { version = "0.5" }
+colored = "1.9.2"
+rand = "0.7.3"
+sprs = "0.7.1"
+rayon = "1.3.0"

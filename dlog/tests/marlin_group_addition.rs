@@ -21,7 +21,7 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use marlin_circuits_dlog::index::{SRSSpec, Index};
+use marlin_protocol_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
 use marlin_protocol_dlog::{prover::{ProverProof}};
