@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements the Marlin structured reference string primitive
+This source file implements the structured reference string primitive
 
 NOTE: the current implementation profides faster SRS generation only for
 testing efficiency purpose. In production, the use of E::G1Projective::rand()
@@ -29,9 +29,9 @@ pub struct SRS<G: CommitmentCurve>
 
 fn endos<G: CommitmentCurve>() -> (G::ScalarField, G::BaseField)
 where G::BaseField : PrimeField {
-    let endo_q : G::BaseField = oracle::marlin_sponge::endo_coefficient();
+    let endo_q : G::BaseField = oracle::sponge::endo_coefficient();
     let endo_r = {
-        let potential_endo_r : G::ScalarField = oracle::marlin_sponge::endo_coefficient();
+        let potential_endo_r : G::ScalarField = oracle::sponge::endo_coefficient();
         let t = G::prime_subgroup_generator();
         let (x, y) = t.to_coordinates().unwrap();
         let phi_t = G::of_coordinates(x * &endo_q, y);

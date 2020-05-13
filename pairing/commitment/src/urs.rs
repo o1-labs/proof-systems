@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements the Marlin universal reference string primitive
+This source file implements the universal reference string primitive
 
 *****************************************************************************************************************/
 

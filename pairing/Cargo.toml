@@ -7,8 +7,10 @@ edition = "2018"
 algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
 ff-fft = { git = "https://github.com/o1-labs/zexe/" }
 commitment_pairing = { path = "commitment" }
-circuits_pairing = { path = "circuits" }
-protocol_pairing = { path = "protocol" }
+marlin_circuits_pairing = { path = "marlin/circuits" }
+marlin_protocol_pairing = { path = "marlin/protocol" }
+plonk_circuits_pairing = { path = "plonk/circuits" }
+plonk_protocol_pairing = { path = "plonk/protocol" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.2"

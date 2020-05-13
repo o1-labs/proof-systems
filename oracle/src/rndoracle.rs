@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements the random oracle argument API for Marlin.
+This source file implements the random oracle argument API.
 
 *****************************************************************************************************************/
 
