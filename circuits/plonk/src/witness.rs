@@ -5,6 +5,7 @@ This source file implements Plonk computation witness primitive.
 *****************************************************************************************************************/
 
 use algebra::Field;
+use std::ops::IndexMut;
 use std::ops::Index;
 
 #[derive(Clone)]
@@ -31,5 +32,15 @@ where F: Field
     {
         if index < self.secret.len() {&self.secret[index]}
         else {&self.public[index-self.secret.len()]}
+    }
+}
+
+impl<F: Field> IndexMut<usize> for Witness<F>
+where F: Field
+{
+    fn index_mut(&mut self, index: usize) -> &mut F
+    {
+        if index < self.secret.len() {&mut self.secret[index]}
+        else {&mut self.public[index-self.secret.len()]}
     }
 }

@@ -10,7 +10,7 @@ use oracle::rndoracle::{ProofError};
 //use commitment_pairing::commitment::Utils;
 pub use super::index::Index;
 use oracle::sponge::{FqSponge/*, ScalarChallenge*/};
-use crate::plonk_sponge::{FrSponge};
+use crate::plonk_sponge::FrSponge;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fr> {

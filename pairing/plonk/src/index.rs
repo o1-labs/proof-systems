@@ -10,7 +10,7 @@ use algebra::{Field, AffineCurve, PairingEngine, curves::models::short_weierstra
 use ff_fft::{Evaluations, EvaluationDomain};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
-use plonk_circuits::{gate::CircuitGate, witness::Witness, domains::EvaluationDomains};
+use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 
 pub trait CoordinatesCurve: AffineCurve {
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
@@ -52,43 +52,29 @@ pub enum URSSpec <'a, 'b, E:PairingEngine>{
 
 impl<'a, E: PairingEngine> URSValue<'a, E> {
     pub fn generate<'b>(
-        ds: EvaluationDomains<E::Fr>,
+        degree: usize,
         rng : &'b mut dyn RngCore) -> URS<E> {
-        let max_degree = 3*ds.h.size()-1;
 
         URS::<E>::create
         (
-            max_degree,
-            vec!
-            [
-                ds.h.size()-1,
-            ],
+            
+            degree,
+            vec![],
         rng )
     }
 
-    pub fn create<'b>(ds: EvaluationDomains<E::Fr>, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
+    pub fn create<'b>(degree: usize, spec : URSSpec<'a, 'b, E>) -> URSValue<'a, E>{
         match spec {
             URSSpec::Use(x) => URSValue::Ref(x),
-            URSSpec::Generate(rng) => URSValue::Value(Self::generate(ds, rng))
+            URSSpec::Generate(rng) => URSValue::Value(Self::generate(degree, rng))
         }
     }
 }
 
 pub struct Index<'a, E: PairingEngine>
 {
-    // evaluation domains as multiplicative groups of roots of unity
-    pub domains : EvaluationDomains<E::Fr>,
-
-    pub gates:  Vec<CircuitGate>,          // circuit gates
-
-    pub sigma:  [Evaluations<E::Fr>; 3],   // permutation polynomial array
-    pub sid:    Evaluations<E::Fr>,        // SID polynomial
-
-    pub ql:     Evaluations<E::Fr>,        // left input wire polynomial
-    pub qr:     Evaluations<E::Fr>,        // right input wire polynomial
-    pub qo:     Evaluations<E::Fr>,        // output wire polynomial
-    pub qm:     Evaluations<E::Fr>,        // multiplication polynomial
-    pub qc:     Evaluations<E::Fr>,        // constant wire polynomial
+    // constraints as Lagrange-based polynoms
+    pub cs: ConstraintSystem<E::Fr>,
 
     // polynomial commitment keys
     pub urs: URSValue<'a, E>,
@@ -140,12 +126,25 @@ where E::G1Affine: CoordinatesCurve
     // this function compiles the circuit from constraints
     pub fn create<'b>
     (
-        _fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
-        _fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
-        _urs : URSSpec<'a, 'b, E>
+        gates: &[CircuitGate<E::Fr>],
+        fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
+        fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
+        urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
-        Err(ProofError::ProofCreation)
+        let cs = ConstraintSystem::<E::Fr>::create(gates).map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
+        let urs = URSValue::create(cs.domain.size(), urs);
+        let (endo_q, endo_r) = endos::<E>();
+
+        Ok(Index
+        {
+            cs,
+            urs,
+            fr_sponge_params,
+            fq_sponge_params,
+            endo_q,
+            endo_r
+        })
     }
 }
 
@@ -153,29 +152,5 @@ impl<'a, E: PairingEngine> Index<'a, E>
 {
     pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError> {
         Err(ProofError::ProofCreation)
-    }
-
-    // This function verifies the consistency of the wire assignements (witness) against the constraints
-    //     witness: wire assignement witness
-    //     RETURN: verification status
-    pub fn verify
-    (
-        &self,
-        witness: &Witness<E::Fr>
-    ) -> bool
-    {
-        for i in 0..self.sid.evals.len()-2
-        {
-            if
-            !(
-                self.ql.evals[i] * &witness[self.gates[i].l] +
-                &(self.qr.evals[i] * &witness[self.gates[i].r]) +
-                &(self.qo.evals[i] * &witness[self.gates[i].o]) +
-                &(self.qm.evals[i] * &witness[self.gates[i].l] * &witness[self.gates[i].r]) +
-                &self.qc.evals[i]
-            ).is_zero()
-            {return false}
-        }
-        true
     }
 }
