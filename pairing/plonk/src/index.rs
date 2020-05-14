@@ -6,8 +6,8 @@ This source file implements Plonk Protocol Index primitive.
 
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
-use algebra::{Field, AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
-use ff_fft::{Evaluations, EvaluationDomain};
+use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
+use ff_fft::EvaluationDomain;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};

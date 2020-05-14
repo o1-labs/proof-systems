@@ -13,29 +13,32 @@ of non-special pairs of points
 
     and gates
 
-    -[1, 0, 7]
-    *[7, 6, 8]
-    -[4, 3, 8]
-    *[6, 6, 9]
-    +[0, 1, 10]
+    -[1,  0, 7]
+    *[7,  6, 8]
+    -[4,  3, 8]
+    *[6,  6, 9]
+    +[0,  1, 10]
     +[2, 10, 11]
-    -[0, 2, 12]
+    -[0,  2, 12]
     *[12, 6, 13]
-    +[3, 5, 13]
+    +[3,  5, 13]
+    // these two make the sum public
+    c[2,  0,  0]
+    c[5,  0,  0]
 
     the Index constraints are
 
-    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1]
-    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1]
-    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
-    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0]
-    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0]
+    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1,  1,  1]
+    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1,  0,  0]
+    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  0]
+    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0,  0,  0]
+    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0,-X3,-Y3]
 
     The test verifies both positive and negative outcomes for satisfying and not satisfying witnesses
 
 **********************************************************************************************************/
 
-use plonk_circuits::{gate::CircuitGate, witness::Witness};
+use plonk_circuits::gate::CircuitGate;
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_protocol_pairing::index::{Index, URSSpec};
 use algebra::{curves::bn_382::Bn_382, fields::{bn_382::fp::Fp, Field}};
@@ -71,10 +74,12 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         CircuitGate::<Fp>::create(2, 10, 11, pone, pone, none, zero, zero),
         CircuitGate::<Fp>::create(0,  2, 12, pone, none, none, zero, zero),
         CircuitGate::<Fp>::create(12, 6, 13, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create( 3, 5, 13, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(3,  5, 13, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(2,  0,  0, pone, zero, zero, zero, zero),
+        CircuitGate::<Fp>::create(5,  0,  0, pone, zero, zero, zero, zero),
     ];
 
-    let index = Index::<Bn_382>::create
+    let mut index = Index::<Bn_382>::create
     (
         &gates,
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
@@ -82,11 +87,11 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         URSSpec::Generate(rng)
     ).unwrap();
 
-    positive(&index, rng);
-    negative(&index);
+    positive(&mut index, rng);
+    negative(&mut index);
 }
 
-fn positive(index: &Index<Bn_382>, _rng: &mut dyn RngCore)
+fn positive(index: &mut Index<Bn_382>, _rng: &mut dyn RngCore)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     // We have the Index. Choose examples of satisfying witness for Jubjub
@@ -193,21 +198,28 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
         
-        let mut witness = Witness::<Fp>::create(14, 0);
-        witness[0] = x1;
-        witness[1] = x2;
-        witness[2] = x3;
-        witness[3] = y1;
-        witness[4] = y2;
-        witness[5] = y3;
-        witness[6] = s;
-        witness[7] = x2 - &x1;
-        witness[8] = y2 - &y1;
-        witness[9] = s * &s;
-        witness[10] = x2 + &x1;
-        witness[11] = x3 + &witness[10];
-        witness[12] = x1 - &x3;
-        witness[13] = y3 + &y1;
+        let witness = vec!
+        [
+            x1,
+            x2,
+            x3,
+            y1,
+            y2,
+            y3,
+            s,
+            x2 - &x1,
+            y2 - &y1,
+            s * &s,
+            x2 + &x1,
+            x3 + &x2 + &x1,
+            x1 - &x3,
+            y3 + &y1,
+        ];
+
+        // enforce public input
+        index.cs.gates[9].qc = -x3;
+        index.cs.gates[10].qc = -y3;
+        index.cs.public();
 
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&witness), true);
@@ -218,7 +230,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 }
 
-fn negative(index: &Index<Bn_382>)
+fn negative(index: &mut Index<Bn_382>)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     // build non-satisfying witness
@@ -233,21 +245,28 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     
     let s = (y2 - &y1) / &(x2 - &x1);
     
-    let mut witness = Witness::<Fp>::create(14, 0);
-    witness[0] = x1;
-    witness[1] = x2;
-    witness[2] = x3;
-    witness[3] = y1;
-    witness[4] = y2;
-    witness[5] = y3;
-    witness[6] = s;
-    witness[7] = x2 - &x1;
-    witness[8] = y2 - &y1;
-    witness[9] = s * &s;
-    witness[10] = x2 + &x1;
-    witness[11] = x3 + &witness[10];
-    witness[12] = x1 - &x3;
-    witness[13] = y3 + &y1;
+    let witness = vec!
+    [
+        x1,
+        x2,
+        x3,
+        y1,
+        y2,
+        y3,
+        s,
+        x2 - &x1,
+        y2 - &y1,
+        s * &s,
+        x2 + &x1,
+        x3 + &x2 + &x1,
+        x1 - &x3,
+        y3 + &y1,
+    ];
+
+    // enforce public input
+    index.cs.gates[9].qc = -x3;
+    index.cs.gates[10].qc = -y3;
+    index.cs.public();
 
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);

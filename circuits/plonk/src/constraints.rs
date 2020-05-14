@@ -6,7 +6,7 @@ This source file implements Plonk computation wire index primitive.
 
 use algebra::PrimeField;
 use ff_fft::{Evaluations, EvaluationDomain};
-pub use super::{gate::CircuitGate, witness::Witness};
+pub use super::gate::CircuitGate;
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: PrimeField>
@@ -41,13 +41,20 @@ impl<F: PrimeField> ConstraintSystem<F>
             qc: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qc).collect(), domain),
         })
     }
+    
+    // This function recomputes constraints for public inputs
+    pub fn public(&mut self)
+    {
+        self.qc = Evaluations::<F>::from_vec_and_domain(self.gates.iter().map(|gate| gate.qc).collect(), self.domain);
+    }
+    
     // This function verifies the consistency of the wire assignements (witness) against the constraints
     //     witness: wire assignement witness
     //     RETURN: verification status
     pub fn verify
     (
         &self,
-        witness: &Witness<F>
+        witness: &Vec<F>
     ) -> bool
     {
         for i in 0..self.ql.evals.len()

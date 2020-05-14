@@ -6,7 +6,7 @@ This source file implements Plonk Protocol Index primitive.
 
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, PolyComm}};
 use ff_fft::EvaluationDomain;
-use algebra::{Field, AffineCurve};
+use algebra::AffineCurve;
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
