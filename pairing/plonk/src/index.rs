@@ -7,7 +7,7 @@ This source file implements Plonk Protocol Index primitive.
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
 use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
-use ff_fft::EvaluationDomain;
+use ff_fft::{Evaluations, EvaluationDomain};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
@@ -143,14 +143,17 @@ where E::G1Affine: CoordinatesCurve
             fr_sponge_params,
             fq_sponge_params,
             endo_q,
-            endo_r
+            endo_r,
         })
     }
-}
 
-impl<'a, E: PairingEngine> Index<'a, E>
-{
     pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError> {
         Err(ProofError::ProofCreation)
+    }
+
+    // This function recomputes index enforcing public inputs
+    pub fn public(&mut self)
+    {
+        self.cs.public();
     }
 }
