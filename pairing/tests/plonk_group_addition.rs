@@ -1,5 +1,5 @@
 use ff_fft::Evaluations;
-use plonk_circuits::gate::CircuitGate;
+use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_protocol_pairing::index::{Index, URSSpec};
 use algebra::{curves::bn_382::Bn_382, fields::{bn_382::fp::Fp, Field}};
@@ -77,7 +77,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let mut index = Index::<Bn_382>::create
     (
-        &gates,
+        ConstraintSystem::<Fp>::create(&gates).unwrap(),
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(rng)
@@ -262,7 +262,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // enforce public input
     index.cs.gates[9].qc = -x3;
     index.cs.gates[10].qc = -y3;
-    index.public();
+    index.public().unwrap();
 
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);
@@ -336,30 +336,24 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let gates =
     [
-        CircuitGate::<Fp>::create(1,  0,  7, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(7,  6,  8, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(4,  3,  8, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(6,  6,  9, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(0,  1, 10, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(2, 10, 11, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(0,  2, 12, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(12, 6, 13, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(3,  5, 13, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(2,  0,  0, pone, zero, zero, zero, zero),
-        CircuitGate::<Fp>::create(5,  0,  0, pone, zero, zero, zero, zero),
+        CircuitGate::<Fp>::create(0, 11, 22, pone, none, none, zero, zero),
+        CircuitGate::<Fp>::create(1, 12, 23, zero, zero, none, pone, zero),
+        CircuitGate::<Fp>::create(2, 13, 24, pone, none, none, zero, zero),
+        CircuitGate::<Fp>::create(3, 14, 25, zero, zero, none, pone, zero),
+        CircuitGate::<Fp>::create(4, 15, 26, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(5, 16, 27, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(6, 17, 28, pone, none, none, zero, zero),
+        CircuitGate::<Fp>::create(7, 18, 29, zero, zero, none, pone, zero),
+        CircuitGate::<Fp>::create(8, 19, 30, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(9, 20, 31, pone, zero, zero, zero, zero),
+        CircuitGate::<Fp>::create(10,21, 32, pone, zero, zero, zero, zero),
     ];
 
-    let mut index = Index::<Bn_382>::create
-    (
-        &gates,
-        oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
-        oracle::bn_382::fq::params(),
-        URSSpec::Generate(rng)
-    ).unwrap();
+    let mut cs = ConstraintSystem::<Fp>::create(&gates).unwrap();
 
-    let r = index.cs.r; let r = &r;
-    let o = index.cs.o; let o = &o;
-    let x = index.cs.sid.evals.clone();
+    let r = cs.r; let r = &r;
+    let o = cs.o; let o = &o;
+    let x = cs.sid.evals.clone();
 
     /*
         sigma0: [r:4, o:0, l:2, r:1, r:0, l:9, l:4, r:3, r:2, r:6, r:8]
@@ -367,24 +361,32 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7, o:9,o:10]
     */
 
-    index.cs.sigma =
+    cs.sigma =
     [
         Evaluations::<Fp>::from_vec_and_domain
         (
             vec![x[4]*r, x[0]*o, x[2], x[1]*r, x[0]*r, x[9], x[4], x[3]*r, x[2]*r, x[6]*r, x[8]*r],
-            index.cs.domain
+            cs.domain
         ),
         Evaluations::<Fp>::from_vec_and_domain
         (
             vec![x[6], x[7], x[8], x[3], x[0], x[4]*o, x[5], x[6]*o, x[10], x[9]*r, x[10]*r],
-            index.cs.domain
+            cs.domain
         ),
         Evaluations::<Fp>::from_vec_and_domain
         (
             vec![x[1], x[2]*o, x[1]*o, x[5]*o, x[5]*r, x[3]*o, x[7]*r, x[8]*o, x[7]*o, x[9]*o, x[10]*o],
-            index.cs.domain
+            cs.domain
         ),
     ];
+
+    let mut index = Index::<Bn_382>::create
+    (
+        cs,
+        oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
+        oracle::bn_382::fq::params(),
+        URSSpec::Generate(rng)
+    ).unwrap();
 
     positive2(&mut index, rng);
     negative2(&mut index);
@@ -492,27 +494,46 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     for test in 0..1000
     {
-        // [x1, x2, x3, y1, y2, y3, s, x2-x1, y2-y1, s2, x1+x2, x1+x2+x3, x1-x3, y1+y3]
-        
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
         
         let witness = vec!
         [
-            x1,
             x2,
-            x3,
-            y1,
+            x2-&x1,
             y2,
-            y3,
             s,
-            x2 - &x1,
-            y2 - &y1,
-            s * &s,
-            x2 + &x1,
-            x3 + &x2 + &x1,
+            x1,
+            x3,
+            x1,
+            s,
+            y1,
+            x3,
+            y3,
+
+            x1,
+            s,
+            y1,
+            s,
+            x2,
+            x1 + &x2,
+            x3,
             x1 - &x3,
-            y3 + &y1,
+            y3,
+            Fp::zero(),
+            Fp::zero(),
+
+            x2 - &x1,
+            (x2 - &x1) * &s,
+            y2 - &y1,
+            s * & &s,
+            x1 + &x2,
+            x1 + &x2 + &x3,
+            x1 - &x3,
+            (x1 - &x3) * &s,
+            y1 + &y3,
+            Fp::zero(),
+            Fp::zero(),
         ];
 
         // enforce public input
@@ -540,32 +561,51 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let x3 = <Fp as std::str::FromStr>::from_str("3116498715141724683149051461624569979663973751357290170267796754661152457577855966867446609811524433931603777277670").unwrap();
     let y3 = <Fp as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
 
-    // [x1, x2, x3, y1, y2, y3, s, x2-x1, y2-y1, s2, x1+x2, x1+x2+x3, x1-x3, y1+y3]
-    
     let s = (y2 - &y1) / &(x2 - &x1);
     
     let witness = vec!
     [
-        x1,
         x2,
-        x3,
-        y1,
+        x2-&x1,
         y2,
-        y3,
         s,
-        x2 - &x1,
-        y2 - &y1,
-        s * &s,
-        x2 + &x1,
-        x3 + &x2 + &x1,
+        x1,
+        x3,
+        x1,
+        s,
+        y1,
+        -y1,
+        -y3,
+
+        x1,
+        s,
+        y1,
+        s,
+        x2,
+        x1 + &x2,
+        x3,
         x1 - &x3,
-        y3 + &y1,
+        y3,
+        Fp::zero(),
+        Fp::zero(),
+
+        x2 - &x1,
+        (x2 - &x1) * &s,
+        y2 - &y1,
+        s * & &s,
+        x1 + &x2,
+        x1 + &x2 + &x3,
+        x1 - &x3,
+        (x1 - &x3) * &s,
+        y1 + &y3,
+        Fp::zero(),
+        Fp::zero(),
     ];
 
     // enforce public input
     index.cs.gates[9].qc = -x3;
     index.cs.gates[10].qc = -y3;
-    index.public();
+    index.public().unwrap();
 
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);

@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements Plonk index primitive.
+This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
@@ -25,8 +25,8 @@ pub struct ConstraintSystem<F: PrimeField>
     pub qm:     Evaluations<F>,        // multiplication polynomial
     pub qc:     Evaluations<F>,        // constant wire polynomial
 
-    pub r:   F,                        // coordinate shift for right wires
-    pub o:   F,                        // coordinate shift for output wires
+    pub r:      F,                     // coordinate shift for right wires
+    pub o:      F,                     // coordinate shift for output wires
 }
 
 impl<F: PrimeField> ConstraintSystem<F> 

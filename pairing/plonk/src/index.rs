@@ -5,12 +5,12 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use rand_core::RngCore;
+use ff_fft:: EvaluationDomain;
 use commitment_pairing::urs::URS;
 use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
-use ff_fft::{Evaluations, EvaluationDomain};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
-use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_circuits::constraints::ConstraintSystem;
 
 pub trait CoordinatesCurve: AffineCurve {
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
@@ -79,6 +79,15 @@ pub struct Index<'a, E: PairingEngine>
     // polynomial commitment keys
     pub urs: URSValue<'a, E>,
 
+    // index polynomial commitments
+    pub sigma:  [E::G1Affine; 3],   // permutation commitment array
+    pub sid:    E::G1Affine,        // SID commitment
+    pub ql:     E::G1Affine,        // left input wire commitment
+    pub qr:     E::G1Affine,        // right input wire commitment
+    pub qo:     E::G1Affine,        // output wire commitment
+    pub qm:     E::G1Affine,        // multiplication commitment
+    pub qc:     E::G1Affine,        // constant wire commitment
+
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
@@ -126,24 +135,35 @@ where E::G1Affine: CoordinatesCurve
     // this function compiles the circuit from constraints
     pub fn create<'b>
     (
-        gates: &[CircuitGate<E::Fr>],
+        cs: ConstraintSystem<E::Fr>,
         fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
         fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
         urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
-        let cs = ConstraintSystem::<E::Fr>::create(gates).map_or(Err(ProofError::EvaluationGroup), |s| Ok(s))?;
-        let urs = URSValue::create(cs.domain.size(), urs);
+        let urs = URSValue::create(3*cs.domain.size()+2, urs);
         let (endo_q, endo_r) = endos::<E>();
 
         Ok(Index
         {
-            cs,
-            urs,
+            sigma:
+            [
+                urs.get_ref().commit(&cs.sigma[0].clone().interpolate())?,
+                urs.get_ref().commit(&cs.sigma[1].clone().interpolate())?,
+                urs.get_ref().commit(&cs.sigma[2].clone().interpolate())?
+            ],
+            sid: urs.get_ref().commit(&cs.sid.clone().interpolate())?,
+            ql: urs.get_ref().commit(&cs.ql.clone().interpolate())?,
+            qr: urs.get_ref().commit(&cs.qr.clone().interpolate())?,
+            qo: urs.get_ref().commit(&cs.qo.clone().interpolate())?,
+            qm: urs.get_ref().commit(&cs.qm.clone().interpolate())?,
+            qc: urs.get_ref().commit(&cs.qc.clone().interpolate())?,
             fr_sponge_params,
             fq_sponge_params,
             endo_q,
             endo_r,
+            urs,
+            cs,
         })
     }
 
@@ -152,8 +172,10 @@ where E::G1Affine: CoordinatesCurve
     }
 
     // This function recomputes index enforcing public inputs
-    pub fn public(&mut self)
+    pub fn public(&mut self) -> Result<bool, ProofError>
     {
         self.cs.public();
+        self.qc = self.urs.get_ref().commit(&self.cs.qc.clone().interpolate())?;
+        Ok(true)
     }
 }
