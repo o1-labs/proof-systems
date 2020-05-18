@@ -160,7 +160,7 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&[tlow_comm, tmid_comm, thgh_comm]);
         oracles.zeta = fq_sponge.challenge();
         let zeta2 = oracles.zeta.pow(&[index.cs.domain.size]);
-        let zeta3 = oracles.zeta.pow(&[index.cs.domain.size*2]);
+        let zeta3 = zeta2.pow(&[index.cs.domain.size]);
 
         // compute linearisation polynomial
 
