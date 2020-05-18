@@ -5,9 +5,9 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use rand_core::RngCore;
-use ff_fft:: EvaluationDomain;
 use commitment_pairing::urs::URS;
-use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
+use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
+use algebra::{Field, AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_circuits::constraints::ConstraintSystem;
@@ -141,7 +141,7 @@ where E::G1Affine: CoordinatesCurve
         urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
-        let urs = URSValue::create(3*cs.domain.size()+2, urs);
+        let urs = URSValue::create(3*(cs.domain.size()+cs.public), urs);
         let (endo_q, endo_r) = endos::<E>();
 
         Ok(Index
@@ -152,7 +152,7 @@ where E::G1Affine: CoordinatesCurve
                 urs.get_ref().commit(&cs.sigma[1].clone().interpolate())?,
                 urs.get_ref().commit(&cs.sigma[2].clone().interpolate())?
             ],
-            sid: urs.get_ref().commit(&cs.sid.clone().interpolate())?,
+            sid: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
             ql: urs.get_ref().commit(&cs.ql.clone().interpolate())?,
             qr: urs.get_ref().commit(&cs.qr.clone().interpolate())?,
             qo: urs.get_ref().commit(&cs.qo.clone().interpolate())?,
@@ -169,13 +169,5 @@ where E::G1Affine: CoordinatesCurve
 
     pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError> {
         Err(ProofError::ProofCreation)
-    }
-
-    // This function recomputes index enforcing public inputs
-    pub fn public(&mut self) -> Result<bool, ProofError>
-    {
-        self.cs.public();
-        self.qc = self.urs.get_ref().commit(&self.cs.qc.clone().interpolate())?;
-        Ok(true)
     }
 }

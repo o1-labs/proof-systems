@@ -12,8 +12,8 @@ use rand_core::OsRng;
 #[derive(Clone)]
 pub struct ConstraintSystem<F: PrimeField>
 {
-    // evaluation domains as multiplicative groups of roots of unity
-    pub domain: EvaluationDomain<F>,
+    pub public: usize,                 // number of public inputs
+    pub domain: EvaluationDomain<F>,   // evaluation domain
     pub gates:  Vec<CircuitGate<F>>,   // circuit gates
 
     pub sigma:  [Evaluations<F>; 3],   // permutation polynomial array
@@ -33,10 +33,24 @@ impl<F: PrimeField> ConstraintSystem<F>
 {
     pub fn create
     (
-        gates: &[CircuitGate<F>],
+        g: &[CircuitGate<F>],
+        public: usize,
     ) -> Option<Self>
     {
-        let domain = EvaluationDomain::<F>::new(EvaluationDomain::<F>::compute_size_of_domain(gates.len()+2)?)?;
+        // prepare the constraints for public imput
+        let mut gates = (0..public).map
+        (
+            |i|
+            {
+                let mut gate = CircuitGate::<F>::zero();
+                gate.ql = F::one();
+                gate.l = i;
+                gate
+            }
+        ).collect::<Vec<_>>();
+        gates.extend(g.to_vec());
+
+        let domain = EvaluationDomain::<F>::new(EvaluationDomain::<F>::compute_size_of_domain(gates.len())?)?;
         let sid = Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {elm}).collect(), domain);
         let tmp = Evaluations::<F>::from_vec_and_domain(Vec::new(), domain);
         let r = domain.sample_element_outside_domain(&mut OsRng);
@@ -44,6 +58,7 @@ impl<F: PrimeField> ConstraintSystem<F>
         Some(ConstraintSystem
         {
             domain,
+            public,
             gates: gates.to_vec(),
             sigma: [tmp.clone(), tmp.clone(), tmp],
             sid,
@@ -57,21 +72,19 @@ impl<F: PrimeField> ConstraintSystem<F>
         })
     }
     
-    // This function recomputes constraints enforcing public inputs
-    pub fn public(&mut self)
-    {
-        self.qc = Evaluations::<F>::from_vec_and_domain(self.gates.iter().map(|gate| gate.qc).collect(), self.domain);
-    }
-    
     // This function verifies the consistency of the wire assignements (witness) against the constraints
     //     witness: wire assignement witness
     //     RETURN: verification status
     pub fn verify
     (
-        &self,
+        &mut self,
         witness: &Vec<F>
     ) -> bool
     {
+        // enforce public input
+        (0..self.public).for_each(|i| self.qc.evals[i] = -witness[i]);
+
+        // verify witness against constraints
         for i in 0..self.ql.evals.len()
         {
             if

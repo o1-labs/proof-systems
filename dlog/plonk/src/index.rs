@@ -97,10 +97,4 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
     {
         Err(ProofError::ProofCreation)
     }
-
-    // This function recomputes index enforcing public inputs
-    pub fn public(&mut self)
-    {
-        self.cs.public();
-    }
 }

@@ -32,17 +32,14 @@ of non-special pairs of points without wire permutations
     -[0,  2, 12]
     *[12, 6, 13]
     +[3,  5, 13]
-    // these two gates make the sum public
-    c[2,  0,  0]
-    c[5,  0,  0]
 
     the Index constraints are
 
-    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1,  1,  1]
-    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1,  0,  0]
-    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  0]
-    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0,  0,  0]
-    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0,-X3,-Y3]
+    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1]
+    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1]
+    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0]
+    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0]
 
     The test verifies both positive and negative outcomes for satisfying and not satisfying witnesses
 
@@ -71,13 +68,11 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         CircuitGate::<Fp>::create(0,  2, 12, pone, none, none, zero, zero),
         CircuitGate::<Fp>::create(12, 6, 13, zero, zero, none, pone, zero),
         CircuitGate::<Fp>::create(3,  5, 13, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(2,  0,  0, pone, zero, zero, zero, zero),
-        CircuitGate::<Fp>::create(5,  0,  0, pone, zero, zero, zero, zero),
     ];
 
     let mut index = Index::<Bn_382>::create
     (
-        ConstraintSystem::<Fp>::create(&gates).unwrap(),
+        ConstraintSystem::<Fp>::create(&gates, 6).unwrap(),
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(rng)
@@ -212,11 +207,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             y3 + &y1,
         ];
 
-        // enforce public input
-        index.cs.gates[9].qc = -x3;
-        index.cs.gates[10].qc = -y3;
-        index.cs.public();
-
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&witness), true);
 
@@ -259,11 +249,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         y3 + &y1,
     ];
 
-    // enforce public input
-    index.cs.gates[9].qc = -x3;
-    index.cs.gates[10].qc = -y3;
-    index.public().unwrap();
-
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);
 }
@@ -288,35 +273,32 @@ of non-special pairs of points without wire permutations
     -[l:6,  r:6,   o:6]
     *[l:7,  r:7,   o:7]
     +[l:8,  r:8,   o:8]
-    // these two gates make the sum public
-    c[l:9,  r:9,   o:9]
-    c[l:10, r:10, o:10]
 
     the Index constraints are
 
-    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1,  1,  1]
-    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1,  0,  0]
-    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1,  0,  0]
-    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0,  0,  0]
-    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0,-X3,-Y3]
+    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1]
+    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1]
+    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
+    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0]
+    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0]
 
     the copy permutation is
     
     [
-        l:0, l:1, l:2, l:3, l:4, l:5, l:6, l:7, l:8, l:9,l:10
-        r:0, r:1, r:2, r:3, r:4, r:5, r:6, r:7, r:8, r:9,r:10
-        o:0, o:1, o:2, o:3, o:4, o:5, o:6, o:7, o:8, o:9,o:10
+        l:0, l:1, l:2, l:3, l:4, l:5, l:6, l:7, l:8
+        r:0, r:1, r:2, r:3, r:4, r:5, r:6, r:7, r:8
+        o:0, o:1, o:2, o:3, o:4, o:5, o:6, o:7, o:8
     ]
     ->
     [
-        r:4, o:0, l:2, r:1, r:0, l:9, l:4, r:3, r:2, r:6, r:8
-        l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6,l:10, r:9,r:10
-        l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7, o:9,o:10
+        r:4, o:0, l:2, r:1, r:0, r:6, l:4, r:3, r:2
+        l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6, r:8
+        l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7
     ]
 
-    sigma0: [r:4, o:0, l:2, r:1, r:0, l:9, l:4, r:3, r:2, r:6, r:8]
-    sigma1: [l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6,l:10, r:9,r:10]
-    sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7, o:9,o:10]
+    sigma0: [r:4, o:0, l:2, r:1, r:0, r:6, l:4, r:3, r:2]
+    sigma1: [l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6, r:8]
+    sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7]
 
     The test verifies both positive and negative outcomes for satisfying and not satisfying witnesses
 
@@ -336,46 +318,44 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let gates =
     [
-        CircuitGate::<Fp>::create(0, 11, 22, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(1, 12, 23, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(2, 13, 24, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(3, 14, 25, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(4, 15, 26, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(5, 16, 27, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(6, 17, 28, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(7, 18, 29, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(8, 19, 30, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(9, 20, 31, pone, zero, zero, zero, zero),
-        CircuitGate::<Fp>::create(10,21, 32, pone, zero, zero, zero, zero),
+        CircuitGate::<Fp>::create(0,  9, 18, pone, none, none, zero, zero),
+        CircuitGate::<Fp>::create(1, 10, 19, zero, zero, none, pone, zero),
+        CircuitGate::<Fp>::create(2, 11, 20, pone, none, none, zero, zero),
+        CircuitGate::<Fp>::create(3, 12, 21, zero, zero, none, pone, zero),
+        CircuitGate::<Fp>::create(4, 13, 22, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(5, 14, 23, pone, pone, none, zero, zero),
+        CircuitGate::<Fp>::create(6, 15, 24, pone, none, none, zero, zero),
+        CircuitGate::<Fp>::create(7, 16, 25, zero, zero, none, pone, zero),
+        CircuitGate::<Fp>::create(8, 17, 26, pone, pone, none, zero, zero),
     ];
 
-    let mut cs = ConstraintSystem::<Fp>::create(&gates).unwrap();
+    let mut cs = ConstraintSystem::<Fp>::create(&gates, 6).unwrap();
 
     let r = cs.r; let r = &r;
     let o = cs.o; let o = &o;
     let x = cs.sid.evals.clone();
 
     /*
-        sigma0: [r:4, o:0, l:2, r:1, r:0, l:9, l:4, r:3, r:2, r:6, r:8]
-        sigma1: [l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6,l:10, r:9,r:10]
-        sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7, o:9,o:10]
+        sigma0: [r:4, o:0, l:2, r:1, r:0, r:6, l:4, r:3, r:2]
+        sigma1: [l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6, r:8]
+        sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7]
     */
 
     cs.sigma =
     [
         Evaluations::<Fp>::from_vec_and_domain
         (
-            vec![x[4]*r, x[0]*o, x[2], x[1]*r, x[0]*r, x[9], x[4], x[3]*r, x[2]*r, x[6]*r, x[8]*r],
+            vec![x[4]*r, x[0]*o, x[2], x[1]*r, x[0]*r, x[6]*r, x[4], x[3]*r],
             cs.domain
         ),
         Evaluations::<Fp>::from_vec_and_domain
         (
-            vec![x[6], x[7], x[8], x[3], x[0], x[4]*o, x[5], x[6]*o, x[10], x[9]*r, x[10]*r],
+            vec![x[6], x[7], x[8], x[3], x[0], x[4]*o, x[5], x[6]*o, x[8]*r],
             cs.domain
         ),
         Evaluations::<Fp>::from_vec_and_domain
         (
-            vec![x[1], x[2]*o, x[1]*o, x[5]*o, x[5]*r, x[3]*o, x[7]*r, x[8]*o, x[7]*o, x[9]*o, x[10]*o],
+            vec![x[1], x[2]*o, x[1]*o, x[5]*o, x[5]*r, x[3]*o, x[7]*r, x[8]*o, x[7]*o],
             cs.domain
         ),
     ];
@@ -508,8 +488,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             x1,
             s,
             y1,
-            x3,
-            y3,
 
             x1,
             s,
@@ -520,8 +498,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             x3,
             x1 - &x3,
             y3,
-            Fp::zero(),
-            Fp::zero(),
 
             x2 - &x1,
             (x2 - &x1) * &s,
@@ -532,14 +508,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             x1 - &x3,
             (x1 - &x3) * &s,
             y1 + &y3,
-            Fp::zero(),
-            Fp::zero(),
         ];
-
-        // enforce public input
-        index.cs.gates[9].qc = -x3;
-        index.cs.gates[10].qc = -y3;
-        index.cs.public();
 
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&witness), true);
@@ -601,11 +570,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         Fp::zero(),
         Fp::zero(),
     ];
-
-    // enforce public input
-    index.cs.gates[9].qc = -x3;
-    index.cs.gates[10].qc = -y3;
-    index.public().unwrap();
 
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);
