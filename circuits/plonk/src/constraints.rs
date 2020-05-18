@@ -16,9 +16,9 @@ pub struct ConstraintSystem<F: PrimeField>
     pub domain: EvaluationDomain<F>,   // evaluation domain
     pub gates:  Vec<CircuitGate<F>>,   // circuit gates
 
+    // index polynomials over the Lagrange base
     pub sigma:  [Evaluations<F>; 3],   // permutation polynomial array
     pub sid:    Evaluations<F>,        // SID polynomial
-
     pub ql:     Evaluations<F>,        // left input wire polynomial
     pub qr:     Evaluations<F>,        // right input wire polynomial
     pub qo:     Evaluations<F>,        // output wire polynomial
@@ -52,23 +52,28 @@ impl<F: PrimeField> ConstraintSystem<F>
 
         let domain = EvaluationDomain::<F>::new(EvaluationDomain::<F>::compute_size_of_domain(gates.len())?)?;
         let sid = Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {elm}).collect(), domain);
-        let tmp = Evaluations::<F>::from_vec_and_domain(Vec::new(), domain);
         let r = domain.sample_element_outside_domain(&mut OsRng);
+        let o = r.square();
 
         Some(ConstraintSystem
         {
             domain,
             public,
             gates: gates.to_vec(),
-            sigma: [tmp.clone(), tmp.clone(), tmp],
+            sigma: // default identity permutation
+            [
+                sid.clone(),
+                Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {r * &elm}).collect(), domain),
+                Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {o * &elm}).collect(), domain),
+            ],
             sid,
             ql: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.ql).collect(), domain),
             qr: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qr).collect(), domain),
             qo: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qo).collect(), domain),
             qm: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qm).collect(), domain),
             qc: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qc).collect(), domain),
-            o: r.square(),
             r,
+            o,
         })
     }
     

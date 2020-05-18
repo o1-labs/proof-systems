@@ -6,7 +6,7 @@ This source file implements Plonk Protocol Index primitive.
 
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
+use ff_fft::{DensePolynomial, EvaluationDomain};
 use algebra::{Field, AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -79,14 +79,23 @@ pub struct Index<'a, E: PairingEngine>
     // polynomial commitment keys
     pub urs: URSValue<'a, E>,
 
+    // index polynomials over the monomial base
+    pub sigma:  [DensePolynomial<E::Fr>; 3],   // permutation polynomial array
+    pub sid:    DensePolynomial<E::Fr>,        // SID polynomial
+    pub ql:     DensePolynomial<E::Fr>,        // left input wire polynomial
+    pub qr:     DensePolynomial<E::Fr>,        // right input wire polynomial
+    pub qo:     DensePolynomial<E::Fr>,        // output wire polynomial
+    pub qm:     DensePolynomial<E::Fr>,        // multiplication polynomial
+    pub qc:     DensePolynomial<E::Fr>,        // constant wire polynomial
+
     // index polynomial commitments
-    pub sigma:  [E::G1Affine; 3],   // permutation commitment array
-    pub sid:    E::G1Affine,        // SID commitment
-    pub ql:     E::G1Affine,        // left input wire commitment
-    pub qr:     E::G1Affine,        // right input wire commitment
-    pub qo:     E::G1Affine,        // output wire commitment
-    pub qm:     E::G1Affine,        // multiplication commitment
-    pub qc:     E::G1Affine,        // constant wire commitment
+    pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
+    pub sid_comm:    E::G1Affine,        // SID commitment
+    pub ql_comm:     E::G1Affine,        // left input wire commitment
+    pub qr_comm:     E::G1Affine,        // right input wire commitment
+    pub qo_comm:     E::G1Affine,        // output wire commitment
+    pub qm_comm:     E::G1Affine,        // multiplication commitment
+    pub qc_comm:     E::G1Affine,        // constant wire commitment
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
@@ -141,23 +150,43 @@ where E::G1Affine: CoordinatesCurve
         urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
-        let urs = URSValue::create(3*(cs.domain.size()+cs.public), urs);
+        let urs = URSValue::create(3*cs.domain.size(), urs);
         let (endo_q, endo_r) = endos::<E>();
 
+        let sigma =
+        [
+            cs.sigma[0].clone().interpolate(),
+            cs.sigma[1].clone().interpolate(),
+            cs.sigma[2].clone().interpolate(),
+        ];
+        let sid = DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]);
+        let ql = cs.ql.clone().interpolate();
+        let qr = cs.qr.clone().interpolate();
+        let qo = cs.qo.clone().interpolate();
+        let qm = cs.qm.clone().interpolate();
+        let qc = cs.qc.clone().interpolate();
+    
         Ok(Index
         {
-            sigma:
+            sigma,
+            sid,
+            ql,
+            qr,
+            qo,
+            qm,
+            qc,
+            sigma_comm:
             [
                 urs.get_ref().commit(&cs.sigma[0].clone().interpolate())?,
                 urs.get_ref().commit(&cs.sigma[1].clone().interpolate())?,
                 urs.get_ref().commit(&cs.sigma[2].clone().interpolate())?
             ],
-            sid: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
-            ql: urs.get_ref().commit(&cs.ql.clone().interpolate())?,
-            qr: urs.get_ref().commit(&cs.qr.clone().interpolate())?,
-            qo: urs.get_ref().commit(&cs.qo.clone().interpolate())?,
-            qm: urs.get_ref().commit(&cs.qm.clone().interpolate())?,
-            qc: urs.get_ref().commit(&cs.qc.clone().interpolate())?,
+            sid_comm: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
+            ql_comm: urs.get_ref().commit(&cs.ql.clone().interpolate())?,
+            qr_comm: urs.get_ref().commit(&cs.qr.clone().interpolate())?,
+            qo_comm: urs.get_ref().commit(&cs.qo.clone().interpolate())?,
+            qm_comm: urs.get_ref().commit(&cs.qm.clone().interpolate())?,
+            qc_comm: urs.get_ref().commit(&cs.qc.clone().interpolate())?,
             fr_sponge_params,
             fq_sponge_params,
             endo_q,
@@ -166,7 +195,7 @@ where E::G1Affine: CoordinatesCurve
             cs,
         })
     }
-
+    
     pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError> {
         Err(ProofError::ProofCreation)
     }

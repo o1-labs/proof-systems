@@ -39,7 +39,13 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
         self.last_squeezed = vec![];
 
         let points = [
-            e._x,
+            e.a,
+            e.b,
+            e.c,
+            e.sigma1,
+            e.sigma2,
+            e.r,
+            e.z,
         ];
 
         for p in &points {
