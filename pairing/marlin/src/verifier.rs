@@ -240,12 +240,12 @@ impl<E: PairingEngine> ProverProof<E>
         // sample beta[0] oracle
         oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma2 scalar
-        fq_sponge.absorb_fr(&self.sigma2);
+        fq_sponge.absorb_fr(&[self.sigma2]);
         fq_sponge.absorb_g(&[self.g2_comm.0, self.g2_comm.1, self.h2_comm]);
         // sample beta[1] oracle
         oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma3 scalar
-        fq_sponge.absorb_fr(&self.sigma3);
+        fq_sponge.absorb_fr(&[self.sigma3]);
         fq_sponge.absorb_g(&[self.g3_comm.0, self.g3_comm.1, self.h3_comm]);
         // sample beta[2] & batch oracles
         oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());

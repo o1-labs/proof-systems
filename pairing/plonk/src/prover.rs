@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use rand_core::RngCore;
 use algebra::{Field, PairingEngine, UniformRand};
 use oracle::rndoracle::{ProofError};
-use ff_fft::{DensePolynomial, SparsePolynomial, Evaluations};
+use ff_fft::{DensePolynomial, Evaluations};
 use commitment_pairing::commitment::Utils;
 pub use super::index::Index;
 use oracle::sponge::FqSponge;
@@ -56,26 +56,30 @@ impl<E: PairingEngine> ProverProof<E>
         let mut oracles = RandomOracles::<E::Fr>::zero();
         let mut evals = ProofEvaluations::<E::Fr>::zero();
 
-        let mut a = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate();
-        let mut b = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| index.cs.r*&witness[gate.r]).collect(), index.cs.domain).interpolate();
-        let mut c = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| index.cs.o*&witness[gate.o]).collect(), index.cs.domain).interpolate();
+        // the transcript of the random oracle non-interactive argument
+        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // query the blinders
         let bl = (0..9).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
 
-        a += &SparsePolynomial::from_coefficients_slice(&[(0, bl[1]), (1, bl[0])]).mul(&index.cs.domain.vanishing_polynomial()).into();
-        b += &SparsePolynomial::from_coefficients_slice(&[(0, bl[3]), (1, bl[2])]).mul(&index.cs.domain.vanishing_polynomial()).into();
-        c += &SparsePolynomial::from_coefficients_slice(&[(0, bl[5]), (1, bl[4])]).mul(&index.cs.domain.vanishing_polynomial()).into();
+        // compute public input polynomial
+        let public = witness[0..index.cs.public].to_vec();
+        let p = Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
+
+        let a = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate()
+            + &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
+        let b = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| index.cs.r*&witness[gate.r]).collect(), index.cs.domain).interpolate()
+            + &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
+        let c = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| index.cs.o*&witness[gate.o]).collect(), index.cs.domain).interpolate()
+            + &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to the a, b, c wire values
         let a_comm = index.urs.get_ref().commit(&a)?;
         let b_comm = index.urs.get_ref().commit(&b)?;
         let c_comm = index.urs.get_ref().commit(&c)?;
 
-        // the transcript of the random oracle non-interactive argument
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
-
-        // absorb the public a, b, c polycommitments into the argument
+        // absorb the public input, a, b, c polycommitments into the argument
+        fq_sponge.absorb_fr(&public);
         fq_sponge.absorb_g(&[a_comm, b_comm, c_comm]);
 
         // sample beta, gamma oracles
@@ -104,7 +108,7 @@ impl<E: PairingEngine> ProverProof<E>
         coeffs.insert(0, E::Fr::one());
         
         let z = &Evaluations::<E::Fr>::from_vec_and_domain(coeffs, index.cs.domain).interpolate() +
-            &SparsePolynomial::from_coefficients_slice(&[(0, bl[8]), (1, bl[7]), (2, bl[6])]).mul(&index.cs.domain.vanishing_polynomial()).into();
+            &DensePolynomial::from_coefficients_slice(&[bl[8], bl[7], bl[6]]).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
@@ -113,10 +117,6 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&[z_comm]);
         oracles.alpha = fq_sponge.challenge();
         let alpsq = oracles.alpha.square();
-
-        // compute public input polynomial
-        let public = witness[0..index.cs.public].to_vec();
-        let p = Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
 
         // compute quotient polynomial
 
@@ -140,7 +140,7 @@ impl<E: PairingEngine> ProverProof<E>
                 map(|(z, w)| *z * &w).collect::<Vec<_>>())).scale(oracles.alpha);
         let t4 =
             &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * 
-            &DensePolynomial::from_coefficients_vec(vec![alpsq; n]);
+            &index.l1.scale(alpsq);
 
         let (t, r) = (&(&(&t1 + &t2) - &t3) + &t4).divide_by_vanishing_poly(index.cs.domain).
             map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
@@ -192,7 +192,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(evals.b + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
                 &(oracles.beta * &evals.z * &oracles.alpha)
             );
-        let r4 = z.scale(alpsq);
+        let r4 = z.scale(alpsq * &index.l1.evaluate(evals.z));
         let r = &(&(&r1 + &r2) - &r3) + &r4;
         evals.r = r.evaluate(oracles.zeta);
 

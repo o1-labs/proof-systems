@@ -153,46 +153,52 @@ where
         }
     }
 
-    fn absorb_fr(&mut self, x: &P::ScalarField) {
+    fn absorb_fr(&mut self, x: &[P::ScalarField]) {
         self.last_squeezed = vec![];
         let total_length = P::ScalarField::size_in_bits();
 
-        // Big endian
-        let mut bits: Vec<bool> = x.into_repr().to_bits();
-        // Little endian
-        bits.reverse();
-        let mut bits : Vec<_> = (0..total_length).map(|i| {
-            if i < bits.len() {
-                bits[i]
-            } else {
-                false
+        x.iter().for_each
+        (
+            |x|
+            {
+                // Big endian
+                let mut bits: Vec<bool> = x.into_repr().to_bits();
+                // Little endian
+                bits.reverse();
+                let mut bits : Vec<_> = (0..total_length).map(|i| {
+                    if i < bits.len() {
+                        bits[i]
+                    } else {
+                        false
+                    }
+                }).collect();
+                // Big endian
+                bits.reverse();
+
+                if <P::ScalarField as PrimeField>::Params::MODULUS
+                    < <P::BaseField as PrimeField>::Params::MODULUS.into()
+                {
+                    self.sponge.absorb(
+                        &self.params,
+                        &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits))],
+                    );
+                } else {
+                    let low_bits =
+                        &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
+                            &bits[1..],
+                        ));
+
+                    let high_bit = if bits[0] {
+                        P::BaseField::one()
+                    } else {
+                        P::BaseField::zero()
+                    };
+
+                    self.sponge.absorb(&self.params, &[*low_bits]);
+                    self.sponge.absorb(&self.params, &[high_bit]);
+                }
             }
-        }).collect();
-        // Big endian
-        bits.reverse();
-
-        if <P::ScalarField as PrimeField>::Params::MODULUS
-            < <P::BaseField as PrimeField>::Params::MODULUS.into()
-        {
-            self.sponge.absorb(
-                &self.params,
-                &[P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(&bits))],
-            );
-        } else {
-            let low_bits =
-                &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
-                    &bits[1..],
-                ));
-
-            let high_bit = if bits[0] {
-                P::BaseField::one()
-            } else {
-                P::BaseField::zero()
-            };
-
-            self.sponge.absorb(&self.params, &[*low_bits]);
-            self.sponge.absorb(&self.params, &[high_bit]);
-        }
+        );
     }
 
     fn digest(mut self) -> P::ScalarField {

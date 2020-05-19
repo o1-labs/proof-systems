@@ -6,7 +6,7 @@ This source file implements Plonk Protocol Index primitive.
 
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
-use ff_fft::{DensePolynomial, EvaluationDomain};
+use ff_fft::{DensePolynomial, EvaluationDomain, Evaluations};
 use algebra::{Field, AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -87,6 +87,7 @@ pub struct Index<'a, E: PairingEngine>
     pub qo:     DensePolynomial<E::Fr>,        // output wire polynomial
     pub qm:     DensePolynomial<E::Fr>,        // multiplication polynomial
     pub qc:     DensePolynomial<E::Fr>,        // constant wire polynomial
+    pub l1:     DensePolynomial<E::Fr>,        // 1-st Lagrange base polynomial
 
     // index polynomial commitments
     pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
@@ -108,7 +109,21 @@ pub struct Index<'a, E: PairingEngine>
 
 pub struct VerifierIndex<E: PairingEngine>
 {
-    pub h_group: EvaluationDomain<E::Fr>,
+    pub domain: EvaluationDomain<E::Fr>, // evaluation domain
+
+    pub l1:     DensePolynomial<E::Fr>,  // 1-st Lagrange base polynomial
+
+    // index polynomial commitments
+    pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
+    pub sid_comm:    E::G1Affine,        // SID commitment
+    pub ql_comm:     E::G1Affine,        // left input wire commitment
+    pub qr_comm:     E::G1Affine,        // right input wire commitment
+    pub qo_comm:     E::G1Affine,        // output wire commitment
+    pub qm_comm:     E::G1Affine,        // multiplication commitment
+    pub qc_comm:     E::G1Affine,        // constant wire commitment
+
+    pub r: E::Fr,   // coordinate shift for right wires
+    pub o: E::Fr,   // coordinate shift for output wires
 
     // polynomial commitment keys, trimmed
     pub urs: URS<E>,
@@ -175,6 +190,7 @@ where E::G1Affine: CoordinatesCurve
             qo,
             qm,
             qc,
+            l1: Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(), E::Fr::one()], cs.domain).interpolate(),
             sigma_comm:
             [
                 urs.get_ref().commit(&cs.sigma[0].clone().interpolate())?,
@@ -197,6 +213,27 @@ where E::G1Affine: CoordinatesCurve
     }
     
     pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError> {
-        Err(ProofError::ProofCreation)
+        Ok
+        (
+            VerifierIndex
+            {
+                domain: self.cs.domain,
+                l1: self.l1.clone(),
+                sigma_comm: self.sigma_comm,
+                sid_comm: self.sid_comm,
+                ql_comm: self.ql_comm,
+                qr_comm: self.qr_comm,
+                qo_comm: self.qo_comm,
+                qm_comm: self.qm_comm,
+                qc_comm: self.qc_comm,
+                fr_sponge_params: self.fr_sponge_params.clone(),
+                fq_sponge_params: self.fq_sponge_params.clone(),
+                endo_q: self.endo_q,
+                endo_r: self.endo_r,
+                urs: self.urs.get_ref().clone(),
+                r: self.cs.r,
+                o: self.cs.o,
+            }
+        )
     }
 }

@@ -357,13 +357,13 @@ impl<G: CommitmentCurve> ProverProof<G>
         // sample beta[0] oracle
         oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma2 scalar
-        fq_sponge.absorb_fr(&self.sigma2);
+        fq_sponge.absorb_fr(&[self.sigma2]);
         fq_sponge.absorb_g(&self.g2_comm.unshifted);
         fq_sponge.absorb_g(&self.h2_comm.unshifted);
         // sample beta[1] oracle
         oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma3 scalar
-        fq_sponge.absorb_fr(&self.sigma3);
+        fq_sponge.absorb_fr(&[self.sigma3]);
         fq_sponge.absorb_g(&self.g3_comm.unshifted);
         fq_sponge.absorb_g(&self.h3_comm.unshifted);
         // sample beta[2] & batch oracles

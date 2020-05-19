@@ -185,7 +185,7 @@ impl<E: PairingEngine> ProverProof<E>
         let g2_comm = urs.commit_with_degree_bound(&g2, index.domains.h.size()-1)?;
 
         // absorb sigma2, g2, h2
-        fq_sponge.absorb_fr(&sigma2);
+        fq_sponge.absorb_fr(&[sigma2]);
         fq_sponge.absorb_g(&[g2_comm.0, g2_comm.1, h2_comm]);
         // sample beta[1] oracle
         oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
@@ -200,7 +200,7 @@ impl<E: PairingEngine> ProverProof<E>
         let g3_comm = urs.commit_with_degree_bound(&g3, index.domains.k.size()-1)?;
 
         // absorb sigma3, g3, h3
-        fq_sponge.absorb_fr(&sigma3);
+        fq_sponge.absorb_fr(&[sigma3]);
         fq_sponge.absorb_g(&[g3_comm.0, g3_comm.1, h3_comm]);
         // sample beta[2] & batch oracles
         oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());

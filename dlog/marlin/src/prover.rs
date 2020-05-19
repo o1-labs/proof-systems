@@ -197,7 +197,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         let g2_comm = index.srs.get_ref().commit(&g2, Some(index.domains.h.size()-1));
 
         // absorb sigma2, g2, h2
-        fq_sponge.absorb_fr(&sigma2);
+        fq_sponge.absorb_fr(&[sigma2]);
         fq_sponge.absorb_g(&g2_comm.unshifted);
         fq_sponge.absorb_g(&h2_comm.unshifted);
         // sample beta[1] oracle
@@ -213,7 +213,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         let g3_comm = index.srs.get_ref().commit(&g3, Some(index.domains.k.size()-1));
 
         // absorb sigma3 scalar
-        fq_sponge.absorb_fr(&sigma3);
+        fq_sponge.absorb_fr(&[sigma3]);
         fq_sponge.absorb_g(&g3_comm.unshifted);
         fq_sponge.absorb_g(&h3_comm.unshifted);
         // sample beta[2] & batch oracles
