@@ -23,7 +23,7 @@ of non-special pairs of points
 
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
-use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
+use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
 use protocol_dlog::{prover::{ProverProof}};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};

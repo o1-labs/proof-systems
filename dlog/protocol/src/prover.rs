@@ -4,9 +4,9 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve};
+use algebra::{Field, AffineCurve, FftField, Zero, One};
 use oracle::{marlin_sponge::ScalarChallenge, FqSponge, rndoracle::{ProofError}};
-use ff_fft::{DensePolynomial, Evaluations};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as Domain, EvaluationDomain, GeneralEvaluationDomain};
 use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof, b_poly_coefficients, product};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
@@ -63,6 +63,12 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
+fn evals_from_coeffs<F: FftField>(
+    v : Vec<F>,
+    d : Domain<F>) -> Evaluations<F, GeneralEvaluationDomain<F>> {
+    Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
+}
+
 impl<G: CommitmentCurve> ProverProof<G>
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
@@ -88,7 +94,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
         // prover computes z polynomial
-        let z = Evaluations::<Fr<G>>::from_vec_and_domain(witness.clone(), index.domains.h).interpolate();
+        let z = evals_from_coeffs(witness.clone(), index.domains.h).interpolate();
 
         // extract/save public part of the padded witness
         let mut witness = witness.clone();
@@ -99,12 +105,12 @@ impl<G: CommitmentCurve> ProverProof<G>
         // evaluate public input polynomial over domains.h
         let public_evals = index.domains.h.fft
         (
-            &Evaluations::<Fr<G>>::from_vec_and_domain(public.clone(),
+            &evals_from_coeffs(public.clone(),
             index.domains.x
         ).interpolate());
 
         // prover computes w polynomial from the witness by subtracting the public polynomial evaluations
-        let (w, r) = Evaluations::<Fr<G>>::from_vec_and_domain
+        let (w, r) = evals_from_coeffs
         (
             witness.iter().enumerate().map
             (
@@ -126,13 +132,13 @@ impl<G: CommitmentCurve> ProverProof<G>
         }
 
         let x_hat = 
-            Evaluations::<Fr<G>>::from_vec_and_domain(public.clone(), index.domains.x).interpolate();
+            evals_from_coeffs(public.clone(), index.domains.x).interpolate();
          // TODO: Should have no degree bound when we add the correct degree bound method
         let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
 
         // prover interpolates the vectors and computes the evaluation polynomial
-        let za = Evaluations::<Fr<G>>::from_vec_and_domain(zv[0].to_vec(), index.domains.h).interpolate();
-        let zb = Evaluations::<Fr<G>>::from_vec_and_domain(zv[1].to_vec(), index.domains.h).interpolate();
+        let za = evals_from_coeffs(zv[0].to_vec(), index.domains.h).interpolate();
+        let zb = evals_from_coeffs(zv[1].to_vec(), index.domains.h).interpolate();
 
         // substitute ZC with ZA*ZB
         let zv = [za.clone(), zb.clone(), &za * &zb];
@@ -387,7 +393,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         (
             |i|
             {
-                let mut ram = Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.domains.h.size()], index.domains.h);
+                let mut ram = evals_from_coeffs(vec![Fr::<G>::zero(); index.domains.h.size()], index.domains.h);
                 for val in index.compiled[i].constraints.iter()
                 {
                     ram.evals[(val.1).1] += &(vanish * val.0 * &lagrng[(val.1).0]);
@@ -422,7 +428,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         (
             |i|
             {
-                let mut ramxbval = Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.domains.h.size()], index.domains.h);
+                let mut ramxbval = evals_from_coeffs(vec![Fr::<G>::zero(); index.domains.h.size()], index.domains.h);
                 for val in index.compiled[i].constraints.iter()
                 {
                     // scale with eta's
@@ -459,7 +465,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         (
             |i|
             {
-                Evaluations::<Fr<G>>::from_vec_and_domain
+                evals_from_coeffs
                 (
                     {
                         let mut fractions: Vec<Fr<G>> = (0..index.domains.k.size()).map
@@ -486,7 +492,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             }
         ).fold
         (
-            Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.domains.k.size()], index.domains.k),
+            evals_from_coeffs(vec![Fr::<G>::zero(); index.domains.k.size()], index.domains.k),
             |x, y| &x + &y
         ).interpolate();
 
@@ -499,7 +505,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         (
             |i|
             {
-                Evaluations::<Fr<G>>::from_vec_and_domain
+                evals_from_coeffs
                 (
                     index.compiled[i].val_eval_b.evals.iter().enumerate().map
                     (
@@ -515,12 +521,12 @@ impl<G: CommitmentCurve> ProverProof<G>
             }
         ).fold
         (
-            Evaluations::<Fr<G>>::from_vec_and_domain(vec![Fr::<G>::zero(); index.domains.b.size()], index.domains.b),
+            evals_from_coeffs(vec![Fr::<G>::zero(); index.domains.b.size()], index.domains.b),
             |x, y| &x + &y
         ).interpolate();
 
         // compute polynomial b
-        let b = Evaluations::<Fr<G>>::from_vec_and_domain
+        let b = evals_from_coeffs
         (
             (0..index.domains.b.size()).map
             (

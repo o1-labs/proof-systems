@@ -4,9 +4,9 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, PairingEngine};
+use algebra::{Field, FftField, PairingEngine, Zero, One};
 use oracle::rndoracle::{ProofError};
-use ff_fft::{DensePolynomial, Evaluations};
+use ff_fft::{DensePolynomial, Radix2EvaluationDomain as Domain, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use commitment_pairing::commitment::Utils;
 use circuits_pairing::index::Index;
 use oracle::marlin_sponge::{FqSponge, ScalarChallenge};
@@ -59,6 +59,12 @@ pub struct ProverProof<E: PairingEngine>
     pub public: Vec<E::Fr>
 }
 
+fn evals_from_coeffs<F: FftField>(
+    v : Vec<F>,
+    d : Domain<F>) -> Evaluations<F, GeneralEvaluationDomain<F>> {
+    Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
+}
+
 impl<E: PairingEngine> ProverProof<E>
 {
     // This function constructs prover's zk-proof from the witness & the Index against URS instance
@@ -80,7 +86,7 @@ impl<E: PairingEngine> ProverProof<E>
         let mut oracles = RandomOracles::<E::Fr>::zero();
 
         // prover computes z polynomial
-        let z = Evaluations::<E::Fr>::from_vec_and_domain(witness.clone(), index.domains.h).interpolate();
+        let z = evals_from_coeffs(witness.clone(), index.domains.h).interpolate();
 
         // extract/save public part of the padded witness
         let mut witness = witness.clone();
@@ -91,12 +97,12 @@ impl<E: PairingEngine> ProverProof<E>
         // evaluate public input polynomial over domains.h
         let public_evals = index.domains.h.fft
         (
-            &Evaluations::<E::Fr>::from_vec_and_domain(public.clone(),
+            &evals_from_coeffs(public.clone(),
             index.domains.x
         ).interpolate());
 
         // prover computes w polynomial from the witness by subtracting the public polynomial evaluations
-        let (w, r) = Evaluations::<E::Fr>::from_vec_and_domain
+        let (w, r) = evals_from_coeffs
         (
             witness.iter().enumerate().map
             (
@@ -120,12 +126,12 @@ impl<E: PairingEngine> ProverProof<E>
         let urs = index.urs.get_ref();
 
         let x_hat = 
-            Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.domains.x).interpolate();
+            evals_from_coeffs(public.clone(), index.domains.x).interpolate();
         let x_hat_comm = urs.commit(&x_hat)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
-        let za = Evaluations::<E::Fr>::from_vec_and_domain(zv[0].to_vec(), index.domains.h).interpolate();
-        let zb = Evaluations::<E::Fr>::from_vec_and_domain(zv[1].to_vec(), index.domains.h).interpolate();
+        let za = evals_from_coeffs(zv[0].to_vec(), index.domains.h).interpolate();
+        let zb = evals_from_coeffs(zv[1].to_vec(), index.domains.h).interpolate();
 
         // substitute ZC with ZA*ZB
         let zv = [za.clone(), zb.clone(), &za * &zb];
@@ -361,7 +367,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                let mut ram = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.domains.h.size()], index.domains.h);
+                let mut ram = evals_from_coeffs(vec![E::Fr::zero(); index.domains.h.size()], index.domains.h);
                 for val in index.compiled[i].constraints.iter()
                 {
                     ram.evals[(val.1).1] += &(vanish * val.0 * &lagrng[(val.1).0]);
@@ -396,7 +402,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                let mut ramxbval = Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.domains.h.size()], index.domains.h);
+                let mut ramxbval = evals_from_coeffs(vec![E::Fr::zero(); index.domains.h.size()], index.domains.h);
                 for val in index.compiled[i].constraints.iter()
                 {
                     ramxbval.evals[(val.1).0] += &(*val.0 * &lagrng[(val.1).1]);
@@ -432,7 +438,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                Evaluations::<E::Fr>::from_vec_and_domain
+                evals_from_coeffs
                 (
                     {
                         let mut fractions: Vec<E::Fr> = (0..index.domains.k.size()).map
@@ -459,7 +465,7 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold
         (
-            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.domains.k.size()], index.domains.k),
+            evals_from_coeffs(vec![E::Fr::zero(); index.domains.k.size()], index.domains.k),
             |x, y| &x + &y
         ).interpolate();
 
@@ -472,7 +478,7 @@ impl<E: PairingEngine> ProverProof<E>
         (
             |i|
             {
-                Evaluations::<E::Fr>::from_vec_and_domain
+                evals_from_coeffs
                 (
                     index.compiled[i].val_eval_b.evals.iter().enumerate().map
                     (
@@ -488,12 +494,12 @@ impl<E: PairingEngine> ProverProof<E>
             }
         ).fold
         (
-            Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(); index.domains.b.size()], index.domains.b),
+            evals_from_coeffs(vec![E::Fr::zero(); index.domains.b.size()], index.domains.b),
             |x, y| &x + &y
         ).interpolate();
 
         // compute polynomial b
-        let b = Evaluations::<E::Fr>::from_vec_and_domain
+        let b = evals_from_coeffs
         (
             (0..index.domains.b.size()).map
             (

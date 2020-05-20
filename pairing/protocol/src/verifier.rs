@@ -8,8 +8,8 @@ use rand_core::RngCore;
 use circuits_pairing::index::{VerifierIndex as Index};
 use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
-use algebra::{Field, PairingEngine};
-use ff_fft::{DensePolynomial, Evaluations};
+use algebra::{Field, PairingEngine, Zero};
+use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use oracle::marlin_sponge::{FqSponge, ScalarChallenge};
 use crate::marlin_sponge::{FrSponge};
 
@@ -137,7 +137,9 @@ impl<E: PairingEngine> ProverProof<E>
         {
             let proof = proof.clone();
             // TODO: Cache this interpolated polynomial.
-            let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+            let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(
+                proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)
+            ).interpolate();
             let x_hat_comm = index.urs.commit(&x_hat)?;
 
             let oracles = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat)?;

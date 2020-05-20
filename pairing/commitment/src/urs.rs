@@ -4,7 +4,7 @@ This source file implements the Marlin universal reference string primitive
 
 *****************************************************************************************************************/
 
-use algebra::{ToBytes, FromBytes, VariableBaseMSM, FixedBaseMSM, AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, PairingCurve, UniformRand};
+use algebra::{ToBytes, FromBytes, VariableBaseMSM, FixedBaseMSM, AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, One, UniformRand};
 use std::collections::HashMap;
 use rand_core::RngCore;
 use std::io::{Read, Write, Result as IoResult};
@@ -109,9 +109,9 @@ impl<E: PairingEngine> URS<E>
         ProjectiveCurve::batch_normalization(&mut gp);
 
         let mut gx = E::G1Projective::prime_subgroup_generator();
-        gx.mul_assign(x);
+        gx *= x;
         let mut hx = E::G2Projective::prime_subgroup_generator();
-        hx.mul_assign(x);
+        hx *= x;
 
         let window_size = FixedBaseMSM::get_mul_window_size(degrees.len()+1);
         x = x.inverse().unwrap();
@@ -193,20 +193,20 @@ impl<E: PairingEngine> URS<E>
         }
 
         let rand = (1..self.gp.len()).map(|_| E::Fr::rand(rng).into_repr()).collect::<Vec<_>>();
-        E::final_exponentiation(&E::miller_loop(&
+        E::final_exponentiation(&E::miller_loop(
         [
-            (&VariableBaseMSM::multi_scalar_mul
+            (VariableBaseMSM::multi_scalar_mul
                 (
                     &(1..self.gp.len()).map(|i| self.gp[i]).collect::<Vec<_>>(),
                     &rand
-                ).into_affine().prepare(), &E::G2Affine::prime_subgroup_generator().prepare()
+                ).into_affine().into(), E::G2Affine::prime_subgroup_generator().into()
             ),
-            (&VariableBaseMSM::multi_scalar_mul
+            (VariableBaseMSM::multi_scalar_mul
                 (
                     &(1..self.gp.len()).map(|i| self.gp[i-1]).collect::<Vec<_>>(),
                     &rand
-                ).into_affine().prepare(), &(-self.hx).prepare()
+                ).into_affine().into(), (-self.hx).into()
             ),
-        ])).unwrap() == E::Fqk::one()
+        ].iter())).unwrap() == E::Fqk::one()
     }
 }

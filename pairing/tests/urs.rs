@@ -9,7 +9,7 @@ This source file, for now, implements URS unit test suite driver. The following 
 
 *****************************************************************************************************************/
 
-use algebra::{PairingEngine, curves::bls12_381::Bls12_381};
+use algebra::{PairingEngine, bn_382::Bn_382};
 use commitment_pairing::urs::URS;
 use colored::Colorize;
 use std::time::{Instant};
@@ -20,7 +20,7 @@ use rand_core::OsRng;
 #[test]
 fn urs_test()
 {
-    test::<Bls12_381>();
+    test::<Bn_382>();
 }
 
 fn test<E: PairingEngine>()

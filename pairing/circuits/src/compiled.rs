@@ -7,8 +7,8 @@ This source file implements the compiled constraints primitive.
 use sprs::CsMat;
 use commitment_pairing::urs::URS;
 use oracle::rndoracle::ProofError;
-use algebra::{Field, PairingEngine};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
+use algebra::{Field, PairingEngine, Zero};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as Domain, EvaluationDomain, GeneralEvaluationDomain};
 pub use super::index::Index;
 
 pub struct Compiled<E: PairingEngine>
@@ -47,9 +47,9 @@ impl<E: PairingEngine> Compiled<E>
     pub fn compile
     (
         urs: &URS<E>,
-        h_group: EvaluationDomain<E::Fr>,
-        k_group: EvaluationDomain<E::Fr>,
-        b_group: EvaluationDomain<E::Fr>,
+        h_group: Domain<E::Fr>,
+        k_group: Domain<E::Fr>,
+        b_group: Domain<E::Fr>,
         constraints: CsMat<E::Fr>,
     ) -> Result<Self, ProofError>
     {
@@ -77,6 +77,9 @@ impl<E: PairingEngine> Compiled<E>
         {
             *val = *c.0 * val;
         }
+
+        let k_group = GeneralEvaluationDomain::Radix2(k_group);
+        let b_group = GeneralEvaluationDomain::Radix2(b_group);
 
         let row_eval_k = Evaluations::<E::Fr>::from_vec_and_domain(row_eval_k, k_group);
         let col_eval_k = Evaluations::<E::Fr>::from_vec_and_domain(col_eval_k, k_group);

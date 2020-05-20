@@ -24,12 +24,12 @@ of non-special pairs of points
 use groupmap::GroupMap;
 use circuits_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
-use algebra::{UniformRand, curves::{bn_382::g::{Affine, Bn_382GParameters}}, AffineCurve, Field};
+use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
 use protocol_dlog::{prover::{ProverProof}};
 use oracle::{marlin_sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
 use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use rand_core::OsRng;
-use ff_fft::{DensePolynomial};
+use ff_fft::{DensePolynomial, EvaluationDomain};
 use std::time::Instant;
 use colored::Colorize;
 pub use core::time::Duration;
