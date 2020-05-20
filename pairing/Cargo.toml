@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
-ff-fft = { git = "https://github.com/o1-labs/zexe/" }
+algebra = { git = "https://github.com/o1-labs/zexe/", rev = "8b67d7", features = [ "parallel" ] }
+ff-fft = { git = "https://github.com/o1-labs/zexe/", rev = "8b67d7" }
 commitment_pairing = { path = "commitment" }
 circuits_pairing = { path = "circuits" }
 protocol_pairing = { path = "protocol" }
