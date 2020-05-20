@@ -7,6 +7,6 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel" ] }
+algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel", "bn_382", "asm" ] }
 ff-fft = { git = "https://github.com/o1-labs/zexe/" }
 rand = "0.7.3"
