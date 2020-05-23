@@ -37,7 +37,7 @@ impl<F: PrimeField> ConstraintSystem<F>
         public: usize,
     ) -> Option<Self>
     {
-        // prepare the constraints for public imput
+        // prepare the constraints for public input
         let mut gates = (0..public).map
         (
             |i|
@@ -59,7 +59,6 @@ impl<F: PrimeField> ConstraintSystem<F>
         {
             domain,
             public,
-            gates: gates.to_vec(),
             sigma: // default identity permutation
             [
                 sid.clone(),
@@ -72,12 +71,14 @@ impl<F: PrimeField> ConstraintSystem<F>
             qo: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qo).collect(), domain),
             qm: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qm).collect(), domain),
             qc: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qc).collect(), domain),
+            gates,
             r,
             o,
         })
     }
     
-    // This function verifies the consistency of the wire assignements (witness) against the constraints
+    // This function verifies the consistency of the wire assignements (witness)
+    // against the constraints enforcing the public unput
     //     witness: wire assignement witness
     //     RETURN: verification status
     pub fn verify
@@ -90,14 +91,14 @@ impl<F: PrimeField> ConstraintSystem<F>
         (0..self.public).for_each(|i| self.qc.evals[i] = -witness[i]);
 
         // verify witness against constraints
-        for i in 0..self.ql.evals.len()
+        for (i, gate) in self.gates.iter().enumerate()
         {
             if
             !(
-                self.ql.evals[i] * &witness[self.gates[i].l] +
-                &(self.qr.evals[i] * &witness[self.gates[i].r]) +
-                &(self.qo.evals[i] * &witness[self.gates[i].o]) +
-                &(self.qm.evals[i] * &witness[self.gates[i].l] * &witness[self.gates[i].r]) +
+                self.ql.evals[i] * &witness[gate.l] +
+                &(self.qr.evals[i] * &witness[gate.r]) +
+                &(self.qo.evals[i] * &witness[gate.o]) +
+                &(self.qm.evals[i] * &witness[gate.l] * &witness[gate.r]) +
                 &self.qc.evals[i]
             ).is_zero()
             {return false}

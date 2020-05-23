@@ -87,7 +87,7 @@ pub struct Index<'a, E: PairingEngine>
     pub qo:     DensePolynomial<E::Fr>,        // output wire polynomial
     pub qm:     DensePolynomial<E::Fr>,        // multiplication polynomial
     pub qc:     DensePolynomial<E::Fr>,        // constant wire polynomial
-    pub l1:     DensePolynomial<E::Fr>,        // 1-st Lagrange base polynomial
+    pub l0:     DensePolynomial<E::Fr>,        // 1-st Lagrange base polynomial
 
     // index polynomial commitments
     pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
@@ -111,7 +111,7 @@ pub struct VerifierIndex<E: PairingEngine>
 {
     pub domain: EvaluationDomain<E::Fr>, // evaluation domain
 
-    pub l1:     DensePolynomial<E::Fr>,  // 1-st Lagrange base polynomial
+    pub l0:     DensePolynomial<E::Fr>,  // 1-st Lagrange base polynomial
 
     // index polynomial commitments
     pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
@@ -165,24 +165,27 @@ where E::G1Affine: CoordinatesCurve
         urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
-        let urs = URSValue::create(3*cs.domain.size(), urs);
+        let urs = URSValue::create(cs.domain.size()+3, urs);
         let (endo_q, endo_r) = endos::<E>();
 
-        let sigma =
-        [
-            cs.sigma[0].clone().interpolate(),
-            cs.sigma[1].clone().interpolate(),
-            cs.sigma[2].clone().interpolate(),
-        ];
+        let sigma = [cs.sigma[0].interpolate_by_ref(), cs.sigma[1].interpolate_by_ref(), cs.sigma[2].interpolate_by_ref()];
         let sid = DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]);
-        let ql = cs.ql.clone().interpolate();
-        let qr = cs.qr.clone().interpolate();
-        let qo = cs.qo.clone().interpolate();
-        let qm = cs.qm.clone().interpolate();
-        let qc = cs.qc.clone().interpolate();
+        let ql = cs.ql.interpolate_by_ref();
+        let qr = cs.qr.interpolate_by_ref();
+        let qo = cs.qo.interpolate_by_ref();
+        let qm = cs.qm.interpolate_by_ref();
+        let qc = cs.qc.interpolate_by_ref();
     
         Ok(Index
         {
+            sigma_comm: [urs.get_ref().commit(&sigma[0])?, urs.get_ref().commit(&sigma[1])?, urs.get_ref().commit(&sigma[2])?],
+            sid_comm: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
+            ql_comm: urs.get_ref().commit(&ql)?,
+            qr_comm: urs.get_ref().commit(&qr)?,
+            qo_comm: urs.get_ref().commit(&qo)?,
+            qm_comm: urs.get_ref().commit(&qm)?,
+            qc_comm: urs.get_ref().commit(&qc)?,
+
             sigma,
             sid,
             ql,
@@ -190,19 +193,8 @@ where E::G1Affine: CoordinatesCurve
             qo,
             qm,
             qc,
-            l1: Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::zero(), E::Fr::one()], cs.domain).interpolate(),
-            sigma_comm:
-            [
-                urs.get_ref().commit(&cs.sigma[0].clone().interpolate())?,
-                urs.get_ref().commit(&cs.sigma[1].clone().interpolate())?,
-                urs.get_ref().commit(&cs.sigma[2].clone().interpolate())?
-            ],
-            sid_comm: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
-            ql_comm: urs.get_ref().commit(&cs.ql.clone().interpolate())?,
-            qr_comm: urs.get_ref().commit(&cs.qr.clone().interpolate())?,
-            qo_comm: urs.get_ref().commit(&cs.qo.clone().interpolate())?,
-            qm_comm: urs.get_ref().commit(&cs.qm.clone().interpolate())?,
-            qc_comm: urs.get_ref().commit(&cs.qc.clone().interpolate())?,
+            
+            l0: Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::one()], cs.domain).interpolate(),
             fr_sponge_params,
             fq_sponge_params,
             endo_q,
@@ -211,29 +203,42 @@ where E::G1Affine: CoordinatesCurve
             cs,
         })
     }
+
+
+    // This function verifies the consistency of the wire assignements (witness)
+    // against the constraints and recomputes index enforcing public inputs
+    pub fn verify
+    (
+        &mut self,
+        witness: &Vec<E::Fr>
+    ) -> Result<bool, ProofError>
+    {
+        if self.cs.verify(witness) == false {return Err(ProofError::WitnessCsInconsistent)}
+        self.qc = self.cs.qc.interpolate_by_ref();
+        self.qc_comm = self.urs.get_ref().commit(&self.qc)?;
+        Ok(true)
+    }
     
-    pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError> {
-        Ok
-        (
-            VerifierIndex
-            {
-                domain: self.cs.domain,
-                l1: self.l1.clone(),
-                sigma_comm: self.sigma_comm,
-                sid_comm: self.sid_comm,
-                ql_comm: self.ql_comm,
-                qr_comm: self.qr_comm,
-                qo_comm: self.qo_comm,
-                qm_comm: self.qm_comm,
-                qc_comm: self.qc_comm,
-                fr_sponge_params: self.fr_sponge_params.clone(),
-                fq_sponge_params: self.fq_sponge_params.clone(),
-                endo_q: self.endo_q,
-                endo_r: self.endo_r,
-                urs: self.urs.get_ref().clone(),
-                r: self.cs.r,
-                o: self.cs.o,
-            }
-        )
+    pub fn verifier_index(&self) -> VerifierIndex<E>
+    {
+        VerifierIndex
+        {
+            domain: self.cs.domain,
+            l0: self.l0.clone(),
+            sigma_comm: self.sigma_comm,
+            sid_comm: self.sid_comm,
+            ql_comm: self.ql_comm,
+            qr_comm: self.qr_comm,
+            qo_comm: self.qo_comm,
+            qm_comm: self.qm_comm,
+            qc_comm: self.qc_comm,
+            fr_sponge_params: self.fr_sponge_params.clone(),
+            fq_sponge_params: self.fq_sponge_params.clone(),
+            endo_q: self.endo_q,
+            endo_r: self.endo_r,
+            urs: self.urs.get_ref().clone(),
+            r: self.cs.r,
+            o: self.cs.o,
+        }
     }
 }

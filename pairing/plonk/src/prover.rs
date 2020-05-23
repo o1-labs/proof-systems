@@ -60,18 +60,18 @@ impl<E: PairingEngine> ProverProof<E>
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // query the blinders
-        let bl = (0..9).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
+        //let bl = (0..9).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
         let p = Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
 
-        let a = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate()
-            + &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
-        let b = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| index.cs.r*&witness[gate.r]).collect(), index.cs.domain).interpolate()
-            + &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
-        let c = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| index.cs.o*&witness[gate.o]).collect(), index.cs.domain).interpolate()
-            + &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
+        let a = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate();
+            //+ &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
+        let b = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r]).collect(), index.cs.domain).interpolate();
+            //+ &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
+        let c = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o]).collect(), index.cs.domain).interpolate();
+            //+ &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to the a, b, c wire values
         let a_comm = index.urs.get_ref().commit(&a)?;
@@ -88,27 +88,32 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute permutation polynomial
 
-        let mut denominators = (1..n).map
+        let mut denominators = (0..index.cs.gates.len()).map
         (
             |j|
                 (witness[index.cs.gates[j].l] + &(index.cs.sigma[0][j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[index.cs.gates[j].r] + &(index.cs.sigma[1][j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[index.cs.gates[j].o] + &(index.cs.sigma[2][j] * &oracles.beta) + &oracles.gamma)
         ).collect::<Vec<_>>();
+        
         algebra::fields::batch_inversion::<E::Fr>(&mut denominators);
 
-        let mut coeffs = (1..n).map
+        let mut coeffs = (0..index.cs.gates.len()).map
         (
             |j|
                 (witness[index.cs.gates[j].l] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[index.cs.gates[j].r] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
-                (witness[index.cs.gates[j].o] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma)
+                (witness[index.cs.gates[j].o] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma) *&
+                denominators[j]
         ).collect::<Vec<_>>();
-        (1..coeffs.len()).for_each(|i| {let x = coeffs[i-1]; coeffs[i] *= &(x * &denominators[i])});
+
+        (1..coeffs.len()).for_each(|i| {let x = coeffs[i-1]; coeffs[i] *= &x});
+        if coeffs.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
         coeffs.insert(0, E::Fr::one());
+        coeffs.append(&mut vec![E::Fr::one(); n - coeffs.len()]);
         
-        let z = &Evaluations::<E::Fr>::from_vec_and_domain(coeffs, index.cs.domain).interpolate() +
-            &DensePolynomial::from_coefficients_slice(&[bl[8], bl[7], bl[6]]).mul_by_vanishing_poly(index.cs.domain);
+        let z = /*&*/Evaluations::<E::Fr>::from_vec_and_domain(coeffs, index.cs.domain).interpolate();// +
+            //&DensePolynomial::from_coefficients_slice(&[bl[8], bl[7], bl[6]]).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
@@ -121,26 +126,25 @@ impl<E: PairingEngine> ProverProof<E>
         // compute quotient polynomial
 
         let t1 =
-            &(&(&(&(&(&a*&(&b*&index.qm)) +
+            &(&(&(&(&a*&(&b*&index.qm)) +
             &(&a*&index.ql)) +
             &(&b*&index.qr)) +
             &(&c*&index.qo)) +
-            &p) +
             &index.qc;
         let t2 =
-            (&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma,oracles. beta])) *
+            &(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])) *
             &(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r]))) *
             &(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o]))) *
             &z).scale(oracles.alpha);
         let t3 =
-            (&(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[0]) *
-            &(&(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[1])) *
-            &(&(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[2])) *
-            &DensePolynomial::from_coefficients_vec(z.coeffs.iter().skip(1).zip(index.cs.sid.evals.iter()).
+            &(&(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[0].scale(oracles.beta)) *
+            &(&(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[1].scale(oracles.beta))) *
+            &(&(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[2].scale(oracles.beta))) *
+            &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.evals.iter()).
                 map(|(z, w)| *z * &w).collect::<Vec<_>>())).scale(oracles.alpha);
         let t4 =
             &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * 
-            &index.l1.scale(alpsq);
+            &index.l0.scale(alpsq);
 
         let (t, r) = (&(&(&t1 + &t2) - &t3) + &t4).divide_by_vanishing_poly(index.cs.domain).
             map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
@@ -159,8 +163,8 @@ impl<E: PairingEngine> ProverProof<E>
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&[tlow_comm, tmid_comm, thgh_comm]);
         oracles.zeta = fq_sponge.challenge();
-        let zeta2 = oracles.zeta.pow(&[index.cs.domain.size]);
-        let zeta3 = zeta2.pow(&[index.cs.domain.size]);
+        let zeta2 = oracles.zeta.pow(&[n as u64]);
+        let zeta3 = zeta2.square();
 
         // compute linearisation polynomial
 
@@ -171,6 +175,7 @@ impl<E: PairingEngine> ProverProof<E>
         evals.sigma2 = index.sigma[1].evaluate(oracles.zeta);
         evals.z = z.evaluate(oracles.zeta * &index.cs.domain.group_gen);
 
+        let bz = oracles.beta * &oracles.zeta;
         let r1 =
             &(&(&(&index.qm.scale(evals.a*&evals.b) +
             &index.ql.scale(evals.a)) +
@@ -180,9 +185,9 @@ impl<E: PairingEngine> ProverProof<E>
         let r2 =
             z.scale
             (
-                (evals.a + &(oracles.beta * &evals.z) + &oracles.gamma) *
-                &(evals.b + &(oracles.beta * &index.cs.r * &evals.z) + &oracles.gamma) *
-                &(evals.c + &(oracles.beta * &index.cs.o * &evals.z) + &oracles.gamma) *
+                (evals.a + &bz + &oracles.gamma) *
+                &(evals.b + &(bz * &index.cs.r) + &oracles.gamma) *
+                &(evals.c + &(bz * &index.cs.o) + &oracles.gamma) *
                 &oracles.alpha
             );
         let r3 =
@@ -192,7 +197,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(evals.b + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
                 &(oracles.beta * &evals.z * &oracles.alpha)
             );
-        let r4 = z.scale(alpsq * &index.l1.evaluate(evals.z));
+        let r4 = z.scale(alpsq * &index.l0.evaluate(oracles.zeta));
         let r = &(&(&r1 + &r2) - &r3) + &r4;
         evals.r = r.evaluate(oracles.zeta);
 
@@ -231,14 +236,14 @@ impl<E: PairingEngine> ProverProof<E>
 }
 
 #[derive(Clone)]
-pub struct ProofEvaluations<Fr> {
-    pub a: Fr,
-    pub b: Fr,
-    pub c: Fr,
-    pub sigma1: Fr,
-    pub sigma2: Fr,
-    pub r: Fr,
-    pub z: Fr,
+pub struct ProofEvaluations<F> {
+    pub a: F,
+    pub b: F,
+    pub c: F,
+    pub sigma1: F,
+    pub sigma2: F,
+    pub r: F,
+    pub z: F,
 }
 
 impl<F: Field> ProofEvaluations<F>

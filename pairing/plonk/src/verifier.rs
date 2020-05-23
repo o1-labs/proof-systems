@@ -11,7 +11,6 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PrimeField, PairingEngine, ProjectiveCurve, VariableBaseMSM};
 use oracle::sponge::FqSponge;
 use crate::plonk_sponge::FrSponge;
-use ff_fft::Evaluations;
 
 impl<E: PairingEngine> ProverProof<E>
 {
@@ -33,42 +32,42 @@ impl<E: PairingEngine> ProverProof<E>
         let mut batch = Vec::new();
         for proof in proofs.iter()
         {
-            let proof = proof.clone();
             let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
             let zeta2 = oracles.zeta.pow(&[index.domain.size]);
-            let zeta3 = zeta2.pow(&[index.domain.size]);
+            let alpsq = oracles.alpha.square();
+            let bz = oracles.beta * &oracles.zeta;
+            let ab = (proof.evals.a + &(oracles.beta * &proof.evals.sigma1) + &oracles.gamma) *
+                &(proof.evals.b + &(oracles.beta * &proof.evals.sigma2) + &oracles.gamma) *
+                &oracles.alpha * &proof.evals.z;
 
             let t_comm = VariableBaseMSM::multi_scalar_mul
             (
                 &[proof.tlow_comm, proof.tmid_comm, proof.thgh_comm],
-                &[E::Fr::one().into_repr(), zeta2.into_repr(), zeta3.into_repr()]
+                &[E::Fr::one().into_repr(), zeta2.into_repr(), zeta2.square().into_repr()]
             ).into_affine();
 
-            let ab = (proof.evals.a + &(oracles.beta * &proof.evals.sigma1) + &oracles.gamma) *
-                &(proof.evals.b + &(oracles.beta * &proof.evals.sigma2) + &oracles.gamma) * &oracles.alpha;
-
             let t =
-                (proof.evals.r +
-                &Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domain).interpolate().evaluate(oracles.zeta) -
-                &(ab * &(proof.evals.c + &oracles.gamma) * &proof.evals.z) -
-                &index.l1.evaluate(oracles.zeta)) / &(zeta2 - &E::Fr::one());
+                (proof.evals.r/* +
+                &Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domain).interpolate().evaluate(oracles.zeta)*/ -
+                &(ab * &(proof.evals.c + &oracles.gamma)) -
+                &(index.l0.evaluate(oracles.zeta) * &alpsq)) / &(zeta2 - &E::Fr::one());
 
             let r_comm = VariableBaseMSM::multi_scalar_mul
             (
-                &[index.qm_comm, index.ql_comm, index.qr_comm, index.qo_comm, index.qc_comm, proof.z_comm, index.sigma_comm[2]],
+                &[index.qm_comm, index.ql_comm, index.qr_comm, index.qo_comm, index.qc_comm, proof.z_comm, -index.sigma_comm[2]],
                 &[
                     (proof.evals.a * &proof.evals.b).into_repr(), proof.evals.a.into_repr(),
                     proof.evals.b.into_repr(), proof.evals.c.into_repr(), E::Fr::one().into_repr(),
                     (
-                        ((proof.evals.a + &(oracles.beta * &oracles.zeta) + &oracles.gamma) *
-                        &(proof.evals.b + &(oracles.beta * &index.r * &oracles.zeta) + &oracles.gamma) *
-                        &(proof.evals.c + &(oracles.beta * &index.o * &oracles.zeta) + &oracles.gamma) * &proof.evals.z) * &oracles.alpha +
-                        &(index.l1.evaluate(oracles.zeta) * &oracles.alpha.square())
+                        (proof.evals.a + &bz + &oracles.gamma) *
+                        &(proof.evals.b + &(bz * &index.r) + &oracles.gamma) *
+                        &(proof.evals.c + &(bz * &index.o) + &oracles.gamma) * &oracles.alpha +
+                        &(index.l0.evaluate(oracles.zeta) * &alpsq)
                     ).into_repr(),
-                    (ab * &oracles.beta * &proof.evals.z).into_repr(),
+                    (ab * &oracles.beta).into_repr(),
                 ]
             ).into_affine();
-    
+
             batch.push
             ((
                 oracles.zeta,

@@ -1,8 +1,8 @@
 use ff_fft::Evaluations;
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::poseidon::ArithmeticSpongeParams;
-use plonk_protocol_pairing::index::{Index, URSSpec};
-use algebra::{curves::bn_382::Bn_382, fields::{bn_382::fp::Fp, Field}};
+use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use algebra::{curves::{bn_382::{Bn_382, g1::Bn_382G1Parameters}}, fields::{bn_382::fp::Fp, Field}};
+use plonk_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
 use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
@@ -82,12 +82,13 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     negative1(&mut index);
 }
 
-fn positive1(index: &mut Index<Bn_382>, _rng: &mut dyn RngCore)
+fn positive1(index: &mut Index<Bn_382>, rng: &mut dyn RngCore)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
+    let mut batch = Vec::new();
     let points = sample_points();
     println!("{}", "Prover 1000 zk-proofs computation".green());
-    let start = Instant::now();
+    let mut start = Instant::now();
 
     for test in 0..1000
     {
@@ -115,12 +116,32 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         ];
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&witness), true);
+        assert_eq!(index.verify(&witness).unwrap(), true);
+
+        // add the proof to the batch
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index, rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
+
+    let verifier_index = index.verifier_index();
+    // verify one proof serially
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
+    {
+        Ok(_) => {}
+        _ => {panic!("Failure verifying the prover's proof")}
+    }
+
+    // verify the proofs in batch
+    println!("{}", "Verifier zk-proofs verification".green());
+    start = Instant::now();
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
+    {
+        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
+        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+    }
 }
 
 fn negative1(index: &mut Index<Bn_382>)
@@ -236,7 +257,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         CircuitGate::<Fp>::create(8, 17, 26, pone, pone, none, zero, zero),
     ];
 
-    let mut cs = ConstraintSystem::<Fp>::create(&gates, 6).unwrap();
+    let mut cs = ConstraintSystem::<Fp>::create(&gates, 0).unwrap();
 
     let r = cs.r; let r = &r;
     let o = cs.o; let o = &o;
@@ -248,24 +269,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7]
     */
 
-    cs.sigma =
-    [
-        Evaluations::<Fp>::from_vec_and_domain
-        (
-            vec![x[4]*r, x[0]*o, x[2], x[1]*r, x[0]*r, x[6]*r, x[4], x[3]*r],
-            cs.domain
-        ),
-        Evaluations::<Fp>::from_vec_and_domain
-        (
-            vec![x[6], x[7], x[8], x[3], x[0], x[4]*o, x[5], x[6]*o, x[8]*r],
-            cs.domain
-        ),
-        Evaluations::<Fp>::from_vec_and_domain
-        (
-            vec![x[1], x[2]*o, x[1]*o, x[5]*o, x[5]*r, x[3]*o, x[7]*r, x[8]*o, x[7]*o],
-            cs.domain
-        ),
-    ];
+    cs.sigma[0].evals.splice(0..9, [x[4]*r, x[0]*o, x[2]  , x[1]*r, x[0]*r, x[6]*r, x[4]  , x[3]*r, x[2]*r].iter().cloned());
+    cs.sigma[1].evals.splice(0..9, [x[6]  , x[7]  , x[8]  , x[3]  , x[0]  , x[4]*o, x[5]  , x[6]*o, x[8]*r].iter().cloned());
+    cs.sigma[2].evals.splice(0..9, [x[1]  , x[2]*o, x[1]*o, x[5]*o, x[5]*r, x[3]*o, x[7]*r, x[8]*o, x[7]*o].iter().cloned());
 
     let mut index = Index::<Bn_382>::create
     (
@@ -279,12 +285,13 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     negative2(&mut index);
 }
 
-fn positive2(index: &mut Index<Bn_382>, _rng: &mut dyn RngCore)
+fn positive2(index: &mut Index<Bn_382>, rng: &mut dyn RngCore)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
+    let mut batch = Vec::new();
     let points = sample_points();
     println!("{}", "Prover 1000 zk-proofs computation".green());
-    let start = Instant::now();
+    let mut start = Instant::now();
 
     for test in 0..1000
     {
@@ -325,12 +332,32 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         ];
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&witness), true);
+        assert_eq!(index.verify(&witness).unwrap(), true);
+
+        // add the proof to the batch
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index, rng).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
+
+    let verifier_index = index.verifier_index();
+    // verify one proof serially
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
+    {
+        Ok(_) => {}
+        _ => {panic!("Failure verifying the prover's proof")}
+    }
+
+    // verify the proofs in batch
+    println!("{}", "Verifier zk-proofs verification".green());
+    start = Instant::now();
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
+    {
+        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
+        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+    }
 }
 
 fn negative2(index: &mut Index<Bn_382>)
