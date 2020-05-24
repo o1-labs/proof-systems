@@ -60,18 +60,18 @@ impl<E: PairingEngine> ProverProof<E>
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // query the blinders
-        //let bl = (0..9).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
+        let bl = (0..6).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
         let p = Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
 
-        let a = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate();
-            //+ &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
-        let b = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r]).collect(), index.cs.domain).interpolate();
-            //+ &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
-        let c = Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o]).collect(), index.cs.domain).interpolate();
-            //+ &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
+        let a = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate()
+            + &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
+        let b = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r]).collect(), index.cs.domain).interpolate()
+            + &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
+        let c = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o]).collect(), index.cs.domain).interpolate()
+            + &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to the a, b, c wire values
         let a_comm = index.urs.get_ref().commit(&a)?;
@@ -112,8 +112,7 @@ impl<E: PairingEngine> ProverProof<E>
         coeffs.insert(0, E::Fr::one());
         coeffs.append(&mut vec![E::Fr::one(); n - coeffs.len()]);
         
-        let z = /*&*/Evaluations::<E::Fr>::from_vec_and_domain(coeffs, index.cs.domain).interpolate();// +
-            //&DensePolynomial::from_coefficients_slice(&[bl[8], bl[7], bl[6]]).mul_by_vanishing_poly(index.cs.domain);
+        let z = Evaluations::<E::Fr>::from_vec_and_domain(coeffs, index.cs.domain).interpolate();
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
@@ -132,28 +131,38 @@ impl<E: PairingEngine> ProverProof<E>
             &(&c*&index.qo)) +
             &index.qc;
         let t2 =
-            &(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])) *
+            &(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])) *
             &(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r]))) *
-            &(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o]))) *
-            &z).scale(oracles.alpha);
+            &(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o]))) * &z;
         let t3 =
-            &(&(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[0].scale(oracles.beta)) *
+            &(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[0].scale(oracles.beta)) *
             &(&(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[1].scale(oracles.beta))) *
             &(&(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[2].scale(oracles.beta))) *
             &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.evals.iter()).
-                map(|(z, w)| *z * &w).collect::<Vec<_>>())).scale(oracles.alpha);
+                map(|(z, w)| *z * &w).collect::<Vec<_>>());
         let t4 =
-            &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * 
-            &index.l0.scale(alpsq);
+            &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * &index.l0;
 
-        let (t, r) = (&(&(&t1 + &t2) - &t3) + &t4).divide_by_vanishing_poly(index.cs.domain).
+        let (t, r) = (&(&t1 + &(&t2 - &t3).scale(oracles.alpha)) + &t4.scale(alpsq)).divide_by_vanishing_poly(index.cs.domain).
             map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if r.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // split t to fit to the commitment
-        let tlow = DensePolynomial::from_coefficients_slice(&t.coeffs[0..n]);
-        let tmid = DensePolynomial::from_coefficients_slice(&t.coeffs[n..n*2]);
-        let thgh = DensePolynomial::from_coefficients_slice(&t.coeffs[n*2..]);
+        let tlow: DensePolynomial<E::Fr>;
+        let mut tmid = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
+        let mut thgh = DensePolynomial::from_coefficients_slice(&[E::Fr::zero()]);
+        if t.coeffs.len() <= n {tlow = t}
+        else if t.coeffs.len() <= 2*n
+        {
+            tlow = DensePolynomial::from_coefficients_slice(&t.coeffs[0..n]);
+            tmid = DensePolynomial::from_coefficients_slice(&t.coeffs[n..t.coeffs.len()]);
+        }
+        else
+        {
+            tlow = DensePolynomial::from_coefficients_slice(&t.coeffs[0..n]);
+            tmid = DensePolynomial::from_coefficients_slice(&t.coeffs[n..2*n]);
+            thgh = DensePolynomial::from_coefficients_slice(&t.coeffs[2*n..]);
+        }
 
         // commit to tlow, tmid, thgh
         let tlow_comm = index.urs.get_ref().commit(&tlow)?;

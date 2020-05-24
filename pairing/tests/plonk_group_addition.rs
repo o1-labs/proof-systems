@@ -72,7 +72,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let mut index = Index::<Bn_382>::create
     (
-        ConstraintSystem::<Fp>::create(&gates, 6).unwrap(),
+        ConstraintSystem::<Fp>::create(&gates, 0).unwrap(),
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(rng)
