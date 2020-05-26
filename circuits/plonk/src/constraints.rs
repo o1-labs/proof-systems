@@ -45,7 +45,12 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
             while r.legendre().is_qnr() == false {r = domain.sample_element_outside_domain(&mut OsRng)}
             r
         };
-        let o = r.square();
+        let o =
+        {
+            let mut o = domain.sample_element_outside_domain(&mut OsRng);
+            while o.legendre().is_qnr() == false || r==o{o = domain.sample_element_outside_domain(&mut OsRng)}
+            o
+        };
 
         let n = domain.size();
         gates.resize(n, CircuitGate::<F>::zero());
