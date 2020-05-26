@@ -4,7 +4,7 @@ This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
-use algebra::PrimeField;
+use algebra::{PrimeField, SquareRootField};
 use ff_fft::{Evaluations, EvaluationDomain};
 pub use super::gate::CircuitGate;
 use rand_core::OsRng;
@@ -29,19 +29,26 @@ pub struct ConstraintSystem<F: PrimeField>
     pub o:      F,                     // coordinate shift for output wires
 }
 
-impl<F: PrimeField> ConstraintSystem<F> 
+impl<F: PrimeField+SquareRootField> ConstraintSystem<F> 
 {
     pub fn create
     (
-        gates: Vec<CircuitGate<F>>,
+        mut gates: Vec<CircuitGate<F>>,
         public: usize,
     ) -> Option<Self>
     {
         let domain = EvaluationDomain::<F>::new(EvaluationDomain::<F>::compute_size_of_domain(gates.len())?)?;
         let sid = Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {elm}).collect(), domain);
-        let r = domain.sample_element_outside_domain(&mut OsRng);
+        let r =
+        {
+            let mut r = domain.sample_element_outside_domain(&mut OsRng);
+            while r.legendre().is_qnr() == false {r = domain.sample_element_outside_domain(&mut OsRng)}
+            r
+        };
         let o = r.square();
+
         let n = domain.size();
+        gates.resize(n, CircuitGate::<F>::zero());
 
         let s =
         [
@@ -89,6 +96,7 @@ impl<F: PrimeField> ConstraintSystem<F>
     ) -> bool
     {
         // verify witness against constraints
+        if witness.len() != 3*self.domain.size() {return false}
         for gate in self.gates.iter().skip(self.public)
         {
             if
