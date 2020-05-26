@@ -99,11 +99,7 @@ impl<F: PrimeField> ConstraintSystem<F>
                 &(gate.qm * &witness[gate.l.0] * &witness[gate.r.0]) +
                 &gate.qc
             ).is_zero()
-            {return false}
-        }
-        for gate in self.gates.iter().skip(self.public)
-        {
-            if
+            ||
             !(
                 gate.ql * &witness[gate.l.1] +
                 &(gate.qr * &witness[gate.r.1]) +
