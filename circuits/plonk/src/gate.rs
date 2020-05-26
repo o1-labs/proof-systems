@@ -9,9 +9,9 @@ use algebra::Field;
 #[derive(Clone)]
 pub struct CircuitGate<F: Field>
 {
-    pub l: usize,   // left input wire index
-    pub r: usize,   // right input wire index
-    pub o: usize,   // output wire index
+    pub l: (usize, usize),   // left input wire index and its permutation
+    pub r: (usize, usize),   // right input wire index and its permutation
+    pub o: (usize, usize),   // output wire index and its permutation
 
     pub ql: F, // left input
     pub qr: F, // right input
@@ -27,9 +27,9 @@ impl<F: Field> CircuitGate<F>
     {
         CircuitGate
         {
-            l: 0,
-            r: 0,
-            o: 0,
+            l: (0, 0),
+            r: (0, 0),
+            o: (0, 0),
             ql: F::zero(),
             qr: F::zero(),
             qo: F::zero(),
@@ -40,9 +40,9 @@ impl<F: Field> CircuitGate<F>
 
     pub fn create
     (
-        l: usize,
-        r: usize,
-        o: usize,
+        l: (usize, usize),
+        r: (usize, usize),
+        o: (usize, usize),
         ql: F,
         qr: F,
         qo: F,

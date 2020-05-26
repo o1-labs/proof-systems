@@ -33,38 +33,39 @@ impl<F: PrimeField> ConstraintSystem<F>
 {
     pub fn create
     (
-        g: &[CircuitGate<F>],
+        gates: Vec<CircuitGate<F>>,
         public: usize,
     ) -> Option<Self>
     {
-        // prepare the constraints for public input
-        let mut gates = (0..public).map
-        (
-            |i|
-            {
-                let mut gate = CircuitGate::<F>::zero();
-                gate.ql = F::one();
-                gate.l = i;
-                gate
-            }
-        ).collect::<Vec<_>>();
-        gates.extend(g.to_vec());
-
         let domain = EvaluationDomain::<F>::new(EvaluationDomain::<F>::compute_size_of_domain(gates.len())?)?;
         let sid = Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {elm}).collect(), domain);
         let r = domain.sample_element_outside_domain(&mut OsRng);
         let o = r.square();
+        let n = domain.size();
+
+        let s =
+        [
+            sid.clone(),
+            Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {r * &elm}).collect(), domain),
+            Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {o * &elm}).collect(), domain),
+        ];
+        let mut sigma = s.clone();
+
+        gates.iter().for_each
+        (
+            |gate|
+            {
+                sigma[0].evals[gate.l.0] = s[gate.l.1 / n].evals[gate.l.1 % n];
+                sigma[1].evals[gate.r.0-n] = s[gate.r.1 / n].evals[gate.r.1 % n];
+                sigma[2].evals[gate.o.0-2*n] = s[gate.o.1 / n].evals[gate.o.1 % n];
+            }
+        );
 
         Some(ConstraintSystem
         {
             domain,
             public,
-            sigma: // default identity permutation
-            [
-                sid.clone(),
-                Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {r * &elm}).collect(), domain),
-                Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {o * &elm}).collect(), domain),
-            ],
+            sigma,
             sid,
             ql: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.ql).collect(), domain),
             qr: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qr).collect(), domain),
@@ -87,19 +88,28 @@ impl<F: PrimeField> ConstraintSystem<F>
         witness: &Vec<F>
     ) -> bool
     {
-        // enforce public input
-        (0..self.public).for_each(|i| self.qc.evals[i] = -witness[i]);
-
         // verify witness against constraints
-        for (i, gate) in self.gates.iter().enumerate()
+        for gate in self.gates.iter().skip(self.public)
         {
             if
             !(
-                self.ql.evals[i] * &witness[gate.l] +
-                &(self.qr.evals[i] * &witness[gate.r]) +
-                &(self.qo.evals[i] * &witness[gate.o]) +
-                &(self.qm.evals[i] * &witness[gate.l] * &witness[gate.r]) +
-                &self.qc.evals[i]
+                gate.ql * &witness[gate.l.0] +
+                &(gate.qr * &witness[gate.r.0]) +
+                &(gate.qo * &witness[gate.o.0]) +
+                &(gate.qm * &witness[gate.l.0] * &witness[gate.r.0]) +
+                &gate.qc
+            ).is_zero()
+            {return false}
+        }
+        for gate in self.gates.iter().skip(self.public)
+        {
+            if
+            !(
+                gate.ql * &witness[gate.l.1] +
+                &(gate.qr * &witness[gate.r.1]) +
+                &(gate.qo * &witness[gate.o.1]) +
+                &(gate.qm * &witness[gate.l.1] * &witness[gate.r.1]) +
+                &gate.qc
             ).is_zero()
             {return false}
         }

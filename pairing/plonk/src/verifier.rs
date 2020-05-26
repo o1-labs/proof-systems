@@ -5,12 +5,13 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 use rand_core::RngCore;
-use crate::index::{VerifierIndex as Index};
 use oracle::rndoracle::{ProofError};
+use crate::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PrimeField, PairingEngine, ProjectiveCurve, VariableBaseMSM};
-use oracle::sponge::FqSponge;
 use crate::plonk_sponge::FrSponge;
+use oracle::sponge::FqSponge;
+use ff_fft::Evaluations;
 
 impl<E: PairingEngine> ProverProof<E>
 {
@@ -47,8 +48,8 @@ impl<E: PairingEngine> ProverProof<E>
             ).into_affine();
 
             let t =
-                (proof.evals.r/* +
-                &Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domain).interpolate().evaluate(oracles.zeta)*/ -
+                (proof.evals.r -
+                &Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domain).interpolate().evaluate(oracles.zeta) -
                 &(ab * &(proof.evals.c + &oracles.gamma)) -
                 &(index.l0.evaluate(oracles.zeta) * &alpsq)) / &(zeta2 - &E::Fr::one());
 

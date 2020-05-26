@@ -53,6 +53,8 @@ impl<E: PairingEngine> ProverProof<E>
     ) -> Result<Self, ProofError>
     {
         let n = index.cs.domain.size();
+        if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
+
         let mut oracles = RandomOracles::<E::Fr>::zero();
         let mut evals = ProofEvaluations::<E::Fr>::zero();
 
@@ -64,13 +66,13 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
+        let p = -Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
 
-        let a = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l]).collect(), index.cs.domain).interpolate()
+        let a = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain).interpolate()
             + &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
-        let b = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r]).collect(), index.cs.domain).interpolate()
+        let b = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain).interpolate()
             + &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
-        let c = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o]).collect(), index.cs.domain).interpolate()
+        let c = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain).interpolate()
             + &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to the a, b, c wire values
@@ -88,22 +90,22 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute permutation polynomial
 
-        let mut denominators = (0..index.cs.gates.len()).map
+        let mut denominators = (0..n).map
         (
             |j|
-                (witness[index.cs.gates[j].l] + &(index.cs.sigma[0][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[index.cs.gates[j].r] + &(index.cs.sigma[1][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[index.cs.gates[j].o] + &(index.cs.sigma[2][j] * &oracles.beta) + &oracles.gamma)
+                (witness[j] + &(index.cs.sigma[0][j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+n] + &(index.cs.sigma[1][j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+2*n] + &(index.cs.sigma[2][j] * &oracles.beta) + &oracles.gamma)
         ).collect::<Vec<_>>();
         
         algebra::fields::batch_inversion::<E::Fr>(&mut denominators);
 
-        let mut coeffs = (0..index.cs.gates.len()).map
+        let mut coeffs = (0..n).map
         (
             |j|
-                (witness[index.cs.gates[j].l] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[index.cs.gates[j].r] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
-                (witness[index.cs.gates[j].o] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma) *&
+                (witness[j] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
+                (witness[j+2*n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma) *&
                 denominators[j]
         ).collect::<Vec<_>>();
 
@@ -125,11 +127,11 @@ impl<E: PairingEngine> ProverProof<E>
         // compute quotient polynomial
 
         let t1 =
-            &(&(&(&(&a*&(&b*&index.qm)) +
+            &(&(&(&(&(&a*&(&b*&index.qm)) +
             &(&a*&index.ql)) +
             &(&b*&index.qr)) +
             &(&c*&index.qo)) +
-            &index.qc;
+            &index.qc) + &p;
         let t2 =
             &(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])) *
             &(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r]))) *

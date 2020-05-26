@@ -1,4 +1,3 @@
-use ff_fft::Evaluations;
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{curves::{bn_382::{Bn_382, g1::Bn_382G1Parameters}}, fields::{bn_382::fp::Fp, Field}};
@@ -11,80 +10,82 @@ use colored::Colorize;
 /*********************************************************************************************************
 
 This source file tests constraints for the Weierstrass curve y^2 = x^3 + 7 group addition
-of non-special pairs of points without wire permutations
+of non-special pairs of points with wire permutations
 
     (x2 - x1) * s = y2 - y1
     s * s = x1 + x2 + x3
     (x1 - x3) * s = y3 + y1
 
-    For the wires
-
-    [x1, x2, x3, y1, y2, y3, s, x2-x1, y2-y1, s2, x1+x2, x1+x2+x3, x1-x3, y1+y3]
-
-    and gates
-
-    -[1,  0, 7]
-    *[7,  6, 8]
-    -[4,  3, 8]
-    *[6,  6, 9]
-    +[0,  1, 10]
-    +[2, 10, 11]
-    -[0,  2, 12]
-    *[12, 6, 13]
-    +[3,  5, 13]
-
-    the Index constraints are
-
-    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1]
-    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1]
-    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
-    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0]
-    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0]
-
-    The test verifies both positive and negative outcomes for satisfying and not satisfying witnesses
-
 **********************************************************************************************************/
 
 #[test]
-fn pairing_plonk_group_addition_no_permutation()
+fn pairing_plonk_group_addition()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
+    const N: usize = 16;
     let rng = &mut OsRng;
 
-    let zero = Fp::zero();
-    let pone = Fp::one();
-    let none = -Fp::one();
+    let z = Fp::zero();
+    let p = Fp::one();
+    let n = -Fp::one();
+
+    /* permutation sets:
+
+        L0, R6, L10, L12
+        L1, L6, R10
+        L2, R12, L11
+        L3, R8, L14
+        L4, L8
+        L5, R14
+        O6, L7
+        O7, O8
+        R7, L9, R9, L13
+        O9, 011
+        O10, R11
+        O12, R13
+        013, 014
+    */
 
     // circuit gates
 
+    let mut i = 0;
     let gates =
-    [
-        CircuitGate::<Fp>::create(1,  0,  7, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(7,  6,  8, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(4,  3,  8, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(6,  6,  9, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(0,  1, 10, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(2, 10, 11, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(0,  2, 12, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(12, 6, 13, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(3,  5, 13, pone, pone, none, zero, zero),
+    vec![
+        CircuitGate::<Fp>::create((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
+        CircuitGate::<Fp>::create(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
+        CircuitGate::<Fp>::create(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
+        CircuitGate::<Fp>::create(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
+        CircuitGate::<Fp>::create(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
+
+        CircuitGate::<Fp>::create(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
+        CircuitGate::<Fp>::create(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7), p, n, n, z, z), // 6  -
+        CircuitGate::<Fp>::create(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8), z, z, n, p, z), // 7  *
+        CircuitGate::<Fp>::create(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7), p, n, n, z, z), // 8  -
+        CircuitGate::<Fp>::create(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11), z, z, n, p, z), // 9  *
+        CircuitGate::<Fp>::create(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11), p, p, n, z, z), // 10 +
+        CircuitGate::<Fp>::create(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9), p, p, n, z, z), // 11 +
+        CircuitGate::<Fp>::create(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13), p, n, n, z, z), // 12 -
+        CircuitGate::<Fp>::create(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14), z, z, n, p, z), // 13 *
+        CircuitGate::<Fp>::create(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13), p, p, n, z, z), // 14 +
+        CircuitGate::<Fp>::create(({i+=1; i},     15),  (i+N,   N+15), (i+2*N, 2*N+15), z, z, z, z, z), // 15
     ];
 
     let mut index = Index::<Bn_382>::create
     (
-        ConstraintSystem::<Fp>::create(&gates, 0).unwrap(),
+        ConstraintSystem::<Fp>::create(gates, 6).unwrap(),
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(rng)
     ).unwrap();
-
-    positive1(&mut index, rng);
-    negative1(&mut index);
+    
+    positive(&mut index, rng);
+    negative(&mut index);
 }
 
-fn positive1(index: &mut Index<Bn_382>, rng: &mut dyn RngCore)
+fn positive(index: &mut Index<Bn_382>, rng: &mut dyn RngCore)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
+    let z = Fp::zero();
     let mut batch = Vec::new();
     let points = sample_points();
     println!("{}", "Prover 1000 zk-proofs computation".green());
@@ -92,8 +93,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     for test in 0..1000
     {
-        // [x1, x2, x3, y1, y2, y3, s, x2-x1, y2-y1, s2, x1+x2, x1+x2+x3, x1-x3, y1+y3]
-        
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
         
@@ -105,201 +104,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             y1,
             y2,
             y3,
-            s,
-            x2 - &x1,
-            y2 - &y1,
-            s * &s,
-            x2 + &x1,
-            x3 + &x2 + &x1,
-            x1 - &x3,
-            y3 + &y1,
-        ];
-
-        // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.verify(&witness).unwrap(), true);
-
-        // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index, rng).unwrap());
-
-        print!("{:?}\r", test);
-        io::stdout().flush().unwrap();
-    }
-    println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-
-    let verifier_index = index.verifier_index();
-    // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
-    {
-        Ok(_) => {}
-        _ => {panic!("Failure verifying the prover's proof")}
-    }
-
-    // verify the proofs in batch
-    println!("{}", "Verifier zk-proofs verification".green());
-    start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
-    {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
-    }
-}
-
-fn negative1(index: &mut Index<Bn_382>)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
-{
-    // build non-satisfying witness
-    let x1 = <Fp as std::str::FromStr>::from_str("7502226838017077786426654731704772400845471875650491266565363420906771040750427824367287841412217114884691397809929").unwrap();
-    let y1 = <Fp as std::str::FromStr>::from_str("3558210182254086348603204259628694223851158529696790509955564950434596266578621349330875065217679787287369448875015").unwrap();
-    let x2 = <Fp as std::str::FromStr>::from_str("1321172652000590462919749014481227416957437277585347677751917393570871798430478578222556789479124360282597488862528").unwrap();
-    let y2 = <Fp as std::str::FromStr>::from_str("1817964682602513729710432198132831699408829439216417056703680523866007606577303266376792163132424248003554474817101").unwrap();
-    let x3 = <Fp as std::str::FromStr>::from_str("3116498715141724683149051461624569979663973751357290170267796754661152457577855966867446609811524433931603777277670").unwrap();
-    let y3 = <Fp as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
-
-    // [x1, x2, x3, y1, y2, y3, s, x2-x1, y2-y1, s2, x1+x2, x1+x2+x3, x1-x3, y1+y3]
-    
-    let s = (y2 - &y1) / &(x2 - &x1);
-    
-    let witness = vec!
-    [
-        x1,
-        x2,
-        x3,
-        y1,
-        y2,
-        y3,
-        s,
-        x2 - &x1,
-        y2 - &y1,
-        s * &s,
-        x2 + &x1,
-        x3 + &x2 + &x1,
-        x1 - &x3,
-        y3 + &y1,
-    ];
-
-    // verify the circuit negative satisfiability by the computed witness
-    assert_eq!(index.cs.verify(&witness), false);
-}
-
-/*********************************************************************************************************
-
-This source file tests constraints for the Weierstrass curve y^2 = x^3 + 7 group addition
-of non-special pairs of points without wire permutations
-
-    (x2 - x1) * s = y2 - y1
-    s * s = x1 + x2 + x3
-    (x1 - x3) * s = y3 + y1
-
-    For the gates
-
-    -[l:0,  r:0,   o:0]
-    *[l:1,  r:1,   o:1]
-    -[l:2,  r:2,   o:2]
-    *[l:3,  r:3,   o:3]
-    +[l:4,  r:4,   o:4]
-    +[l:5,  r:5,   o:5]
-    -[l:6,  r:6,   o:6]
-    *[l:7,  r:7,   o:7]
-    +[l:8,  r:8,   o:8]
-
-    the Index constraints are
-
-    ql = [ 1,  0,  1,  0,  1,  1,  1,  0,  1]
-    qr = [-1,  0, -1,  0,  1,  1, -1,  0,  1]
-    qo = [-1, -1, -1, -1, -1, -1, -1, -1, -1]
-    qm = [ 0,  1,  0,  1,  0,  0,  0,  1,  0]
-    qc = [ 0,  0,  0,  0,  0,  0,  0,  0,  0]
-
-    the copy permutation is
-    
-    [
-        l:0, l:1, l:2, l:3, l:4, l:5, l:6, l:7, l:8
-        r:0, r:1, r:2, r:3, r:4, r:5, r:6, r:7, r:8
-        o:0, o:1, o:2, o:3, o:4, o:5, o:6, o:7, o:8
-    ]
-    ->
-    [
-        r:4, o:0, l:2, r:1, r:0, r:6, l:4, r:3, r:2
-        l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6, r:8
-        l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7
-    ]
-
-    sigma0: [r:4, o:0, l:2, r:1, r:0, r:6, l:4, r:3, r:2]
-    sigma1: [l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6, r:8]
-    sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7]
-
-    The test verifies both positive and negative outcomes for satisfying and not satisfying witnesses
-
-**********************************************************************************************************/
-
-#[test]
-fn pairing_plonk_group_addition_with_permutation()
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
-{
-    let rng = &mut OsRng;
-
-    let zero = Fp::zero();
-    let pone = Fp::one();
-    let none = -Fp::one();
-
-    // circuit gates
-
-    let gates =
-    [
-        CircuitGate::<Fp>::create(0,  9, 18, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(1, 10, 19, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(2, 11, 20, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(3, 12, 21, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(4, 13, 22, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(5, 14, 23, pone, pone, none, zero, zero),
-        CircuitGate::<Fp>::create(6, 15, 24, pone, none, none, zero, zero),
-        CircuitGate::<Fp>::create(7, 16, 25, zero, zero, none, pone, zero),
-        CircuitGate::<Fp>::create(8, 17, 26, pone, pone, none, zero, zero),
-    ];
-
-    let mut cs = ConstraintSystem::<Fp>::create(&gates, 0).unwrap();
-
-    let r = cs.r; let r = &r;
-    let o = cs.o; let o = &o;
-    let x = cs.sid.evals.clone();
-
-    /*
-        sigma0: [r:4, o:0, l:2, r:1, r:0, r:6, l:4, r:3, r:2]
-        sigma1: [l:6, l:7, l:8, l:3, l:0, o:4, l:5, o:6, r:8]
-        sigma2: [l:1, o:2, o:1, o:5, r:5, o:3, r:7, o:8, o:7]
-    */
-
-    cs.sigma[0].evals.splice(0..9, [x[4]*r, x[0]*o, x[2]  , x[1]*r, x[0]*r, x[6]*r, x[4]  , x[3]*r, x[2]*r].iter().cloned());
-    cs.sigma[1].evals.splice(0..9, [x[6]  , x[7]  , x[8]  , x[3]  , x[0]  , x[4]*o, x[5]  , x[6]*o, x[8]*r].iter().cloned());
-    cs.sigma[2].evals.splice(0..9, [x[1]  , x[2]*o, x[1]*o, x[5]*o, x[5]*r, x[3]*o, x[7]*r, x[8]*o, x[7]*o].iter().cloned());
-
-    let mut index = Index::<Bn_382>::create
-    (
-        cs,
-        oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
-        oracle::bn_382::fq::params(),
-        URSSpec::Generate(rng)
-    ).unwrap();
-
-    positive2(&mut index, rng);
-    negative2(&mut index);
-}
-
-fn positive2(index: &mut Index<Bn_382>, rng: &mut dyn RngCore)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
-{
-    let mut batch = Vec::new();
-    let points = sample_points();
-    println!("{}", "Prover 1000 zk-proofs computation".green());
-    let mut start = Instant::now();
-
-    for test in 0..1000
-    {
-        let (x1, y1, x2, y2, x3, y3) = points[test % 10];
-        let s = (y2 - &y1) / &(x2 - &x1);
-        
-        let witness = vec!
-        [
             x2,
             x2-&x1,
             y2,
@@ -309,30 +113,45 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             x1,
             s,
             y1,
+            z,
 
+            z,
+            z,
+            z,
+            z,
+            z,
+            z,
             x1,
             s,
             y1,
             s,
             x2,
-            x1 + &x2,
+            x1+&x2,
             x3,
-            x1 - &x3,
+            x1-&x3,
             y3,
+            z,
 
+            z, 
+            z,
+            z,
+            z,
+            z,
+            z,
             x2 - &x1,
             (x2 - &x1) * &s,
             y2 - &y1,
-            s * & &s,
+            s.square(),
             x1 + &x2,
             x1 + &x2 + &x3,
             x1 - &x3,
             (x1 - &x3) * &s,
             y1 + &y3,
+            z,
         ];
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.verify(&witness).unwrap(), true);
+        assert_eq!(index.cs.verify(&witness), true);
 
         // add the proof to the batch
         batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index, rng).unwrap());
@@ -360,10 +179,12 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     }
 }
 
-fn negative2(index: &mut Index<Bn_382>)
+fn negative(index: &mut Index<Bn_382>)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
-    // build non-satisfying witness
+    let z = Fp::zero();
+
+    // non-satisfying witness
     let x1 = <Fp as std::str::FromStr>::from_str("7502226838017077786426654731704772400845471875650491266565363420906771040750427824367287841412217114884691397809929").unwrap();
     let y1 = <Fp as std::str::FromStr>::from_str("3558210182254086348603204259628694223851158529696790509955564950434596266578621349330875065217679787287369448875015").unwrap();
     let x2 = <Fp as std::str::FromStr>::from_str("1321172652000590462919749014481227416957437277585347677751917393570871798430478578222556789479124360282597488862528").unwrap();
@@ -375,6 +196,12 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     
     let witness = vec!
     [
+        x1,
+        x2,
+        x3,
+        y1,
+        y2,
+        y3,
         x2,
         x2-&x1,
         y2,
@@ -384,32 +211,41 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         x1,
         s,
         y1,
-        -y1,
-        -y3,
+        z,
 
+        z,
+        z,
+        z,
+        z,
+        z,
+        z,
         x1,
         s,
         y1,
         s,
         x2,
-        x1 + &x2,
+        x1+&x2,
         x3,
-        x1 - &x3,
+        x1-&x3,
         y3,
-        Fp::zero(),
-        Fp::zero(),
+        z,
 
+        z, 
+        z,
+        z,
+        z,
+        z,
+        z,
         x2 - &x1,
         (x2 - &x1) * &s,
         y2 - &y1,
-        s * & &s,
+        s.square(),
         x1 + &x2,
         x1 + &x2 + &x3,
         x1 - &x3,
         (x1 - &x3) * &s,
         y1 + &y3,
-        Fp::zero(),
-        Fp::zero(),
+        z,
     ];
 
     // verify the circuit negative satisfiability by the computed witness

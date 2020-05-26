@@ -204,21 +204,6 @@ where E::G1Affine: CoordinatesCurve
         })
     }
 
-
-    // This function verifies the consistency of the wire assignements (witness)
-    // against the constraints and recomputes index enforcing public inputs
-    pub fn verify
-    (
-        &mut self,
-        witness: &Vec<E::Fr>
-    ) -> Result<bool, ProofError>
-    {
-        if self.cs.verify(witness) == false {return Err(ProofError::WitnessCsInconsistent)}
-        self.qc = self.cs.qc.interpolate_by_ref();
-        self.qc_comm = self.urs.get_ref().commit(&self.qc)?;
-        Ok(true)
-    }
-    
     pub fn verifier_index(&self) -> VerifierIndex<E>
     {
         VerifierIndex
