@@ -5,7 +5,7 @@ This source file tests batch verificaion of batched polynomial commitment openin
 *****************************************************************************************************************/
 
 use commitment_pairing::urs::URS;
-use algebra::{PairingEngine, curves::bls12_381::Bls12_381, UniformRand};
+use algebra::{PairingEngine, bn_382::Bn_382, UniformRand};
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
 use rand_core::OsRng;
@@ -15,7 +15,7 @@ use rand::Rng;
 #[test]
 fn batch_commitment_test()
 {
-    test::<Bls12_381>();
+    test::<Bn_382>();
 }
 
 fn test<E: PairingEngine>()
