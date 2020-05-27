@@ -48,7 +48,7 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
         let o =
         {
             let mut o = domain.sample_element_outside_domain(&mut OsRng);
-            while o.legendre().is_qnr() == false || r==o{o = domain.sample_element_outside_domain(&mut OsRng)}
+            while o.legendre().is_qnr() == false || r==o {o = domain.sample_element_outside_domain(&mut OsRng)}
             o
         };
 

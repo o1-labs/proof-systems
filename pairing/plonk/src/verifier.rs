@@ -4,7 +4,7 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-use rand_core::RngCore;
+use rand_core::OsRng;
 use oracle::rndoracle::{ProofError};
 use crate::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles};
@@ -26,8 +26,7 @@ impl<E: PairingEngine> ProverProof<E>
         >
     (
         proofs: &Vec<ProverProof<E>>,
-        index: &Index<E>,
-        rng: &mut dyn RngCore
+        index: &Index<E>
     ) -> Result<bool, ProofError>
     {
         let mut batch = Vec::new();
@@ -93,7 +92,7 @@ impl<E: PairingEngine> ProverProof<E>
                 proof.proof2
             ));
         }
-        match index.urs.verify(&batch, rng)
+        match index.urs.verify(&batch, &mut OsRng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)

@@ -2,10 +2,10 @@ use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{curves::{bn_382::{Bn_382, g1::Bn_382G1Parameters}}, fields::{bn_382::fp::Fp, Field}};
 use plonk_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
-use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
+use rand_core::OsRng;
 
 /*********************************************************************************************************
 
@@ -23,7 +23,6 @@ fn pairing_plonk_group_addition()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     const N: usize = 16;
-    let rng = &mut OsRng;
 
     let z = Fp::zero();
     let p = Fp::one();
@@ -56,7 +55,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         CircuitGate::<Fp>::create(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
         CircuitGate::<Fp>::create(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
         CircuitGate::<Fp>::create(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
-
         CircuitGate::<Fp>::create(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
         CircuitGate::<Fp>::create(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7), p, n, n, z, z), // 6  -
         CircuitGate::<Fp>::create(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8), z, z, n, p, z), // 7  *
@@ -75,14 +73,14 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         ConstraintSystem::<Fp>::create(gates, 6).unwrap(),
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
-        URSSpec::Generate(rng)
+        URSSpec::Generate(&mut OsRng)
     ).unwrap();
     
-    positive(&mut index, rng);
+    positive(&mut index);
     negative(&mut index);
 }
 
-fn positive(index: &mut Index<Bn_382>, rng: &mut dyn RngCore)
+fn positive(index: &mut Index<Bn_382>)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let z = Fp::zero();
@@ -154,7 +152,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.cs.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index, rng).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -163,7 +161,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index)
     {
         Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
@@ -172,7 +170,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

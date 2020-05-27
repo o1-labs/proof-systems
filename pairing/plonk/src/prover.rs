@@ -4,8 +4,8 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use rand_core::RngCore;
-use algebra::{Field, PairingEngine, UniformRand};
+use rand_core::OsRng;
+use algebra::{Field, PairingEngine};
 use oracle::rndoracle::{ProofError};
 use ff_fft::{DensePolynomial, Evaluations};
 use commitment_pairing::commitment::Utils;
@@ -48,8 +48,7 @@ impl<E: PairingEngine> ProverProof<E>
         >
     (
         witness: &Vec::<E::Fr>,
-        index: &Index<E>,
-        rng: &mut dyn RngCore
+        index: &Index<E>
     ) -> Result<Self, ProofError>
     {
         let n = index.cs.domain.size();
@@ -61,19 +60,16 @@ impl<E: PairingEngine> ProverProof<E>
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // query the blinders
-        let bl = (0..6).map(|_| E::Fr::rand(rng)).collect::<Vec<_>>();
-
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
         let p = -Evaluations::<E::Fr>::from_vec_and_domain(public.clone(), index.cs.domain).interpolate();
 
         let a = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain).interpolate()
-            + &DensePolynomial::from_coefficients_slice(&[bl[1], bl[0]]).mul_by_vanishing_poly(index.cs.domain);
+            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
         let b = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain).interpolate()
-            + &DensePolynomial::from_coefficients_slice(&[bl[3], bl[2]]).mul_by_vanishing_poly(index.cs.domain);
+            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
         let c = &Evaluations::<E::Fr>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain).interpolate()
-            + &DensePolynomial::from_coefficients_slice(&[bl[5], bl[4]]).mul_by_vanishing_poly(index.cs.domain);
+            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to the a, b, c wire values
         let a_comm = index.urs.get_ref().commit(&a)?;
@@ -90,7 +86,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute permutation polynomial
 
-        let mut denominators = (0..n).map
+        let mut z = (0..n).map
         (
             |j|
                 (witness[j] + &(index.cs.sigma[0][j] * &oracles.beta) + &oracles.gamma) *&
@@ -98,23 +94,21 @@ impl<E: PairingEngine> ProverProof<E>
                 (witness[j+2*n] + &(index.cs.sigma[2][j] * &oracles.beta) + &oracles.gamma)
         ).collect::<Vec<_>>();
         
-        algebra::fields::batch_inversion::<E::Fr>(&mut denominators);
+        algebra::fields::batch_inversion::<E::Fr>(&mut z);
 
-        let mut coeffs = (0..n).map
+        (0..n).for_each
         (
-            |j|
-                (witness[j] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
+            |j| z[j] *=
+                &((witness[j] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[j+n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
-                (witness[j+2*n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma) *&
-                denominators[j]
-        ).collect::<Vec<_>>();
+                (witness[j+2*n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma))
+        );
 
-        (1..coeffs.len()).for_each(|i| {let x = coeffs[i-1]; coeffs[i] *= &x});
-        if coeffs.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
-        coeffs.insert(0, E::Fr::one());
-        coeffs.append(&mut vec![E::Fr::one(); n - coeffs.len()]);
+        (1..n).for_each(|i| {let x = z[i-1]; z[i] *= &x});
+        if z.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
+        z.insert(0, E::Fr::one());
         
-        let z = Evaluations::<E::Fr>::from_vec_and_domain(coeffs, index.cs.domain).interpolate();
+        let z = Evaluations::<E::Fr>::from_vec_and_domain(z, index.cs.domain).interpolate();
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
