@@ -89,9 +89,9 @@ impl<E: PairingEngine> ProverProof<E>
         let mut z = (0..n).map
         (
             |j|
-                (witness[j] + &(index.cs.sigma[0][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+n] + &(index.cs.sigma[1][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+2*n] + &(index.cs.sigma[2][j] * &oracles.beta) + &oracles.gamma)
+                (witness[j] + &(index.cs.sigmal[0][j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+n] + &(index.cs.sigmal[1][j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+2*n] + &(index.cs.sigmal[2][j] * &oracles.beta) + &oracles.gamma)
         ).collect::<Vec<_>>();
         
         algebra::fields::batch_inversion::<E::Fr>(&mut z);
@@ -121,23 +121,23 @@ impl<E: PairingEngine> ProverProof<E>
         // compute quotient polynomial
 
         let t1 =
-            &(&(&(&(&(&a*&(&b*&index.qm)) +
-            &(&a*&index.ql)) +
-            &(&b*&index.qr)) +
-            &(&c*&index.qo)) +
-            &index.qc) + &p;
+            &(&(&(&(&(&a*&(&b*&index.cs.qm)) +
+            &(&a*&index.cs.ql)) +
+            &(&b*&index.cs.qr)) +
+            &(&c*&index.cs.qo)) +
+            &index.cs.qc) + &p;
         let t2 =
             &(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])) *
             &(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r]))) *
             &(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o]))) * &z;
         let t3 =
-            &(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[0].scale(oracles.beta)) *
-            &(&(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[1].scale(oracles.beta))) *
-            &(&(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.sigma[2].scale(oracles.beta))) *
-            &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.evals.iter()).
+            &(&(&(&(&a + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)) *
+            &(&(&b + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta))) *
+            &(&(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta))) *
+            &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
                 map(|(z, w)| *z * &w).collect::<Vec<_>>());
         let t4 =
-            &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * &index.l0;
+            &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * &index.cs.l0;
 
         let (t, r) = (&(&t1 + &(&t2 - &t3).scale(oracles.alpha)) + &t4.scale(alpsq)).divide_by_vanishing_poly(index.cs.domain).
             map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
@@ -176,17 +176,17 @@ impl<E: PairingEngine> ProverProof<E>
         evals.a = a.evaluate(oracles.zeta);
         evals.b = b.evaluate(oracles.zeta);
         evals.c = c.evaluate(oracles.zeta);
-        evals.sigma1 = index.sigma[0].evaluate(oracles.zeta);
-        evals.sigma2 = index.sigma[1].evaluate(oracles.zeta);
+        evals.sigma1 = index.cs.sigmam[0].evaluate(oracles.zeta);
+        evals.sigma2 = index.cs.sigmam[1].evaluate(oracles.zeta);
         evals.z = z.evaluate(oracles.zeta * &index.cs.domain.group_gen);
 
         let bz = oracles.beta * &oracles.zeta;
         let r1 =
-            &(&(&(&index.qm.scale(evals.a*&evals.b) +
-            &index.ql.scale(evals.a)) +
-            &index.qr.scale(evals.b)) +
-            &index.qo.scale(evals.c)) +
-            &index.qc;
+            &(&(&(&index.cs.qm.scale(evals.a*&evals.b) +
+            &index.cs.ql.scale(evals.a)) +
+            &index.cs.qr.scale(evals.b)) +
+            &index.cs.qo.scale(evals.c)) +
+            &index.cs.qc;
         let r2 =
             z.scale
             (
@@ -196,13 +196,13 @@ impl<E: PairingEngine> ProverProof<E>
                 &oracles.alpha
             );
         let r3 =
-            index.sigma[2].scale
+            index.cs.sigmam[2].scale
             (
                 (evals.a + &(oracles.beta * &evals.sigma1) + &oracles.gamma) *
                 &(evals.b + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
                 &(oracles.beta * &evals.z * &oracles.alpha)
             );
-        let r4 = z.scale(alpsq * &index.l0.evaluate(oracles.zeta));
+        let r4 = z.scale(alpsq * &index.cs.l0.evaluate(oracles.zeta));
         let r = &(&(&r1 + &r2) - &r3) + &r4;
         evals.r = r.evaluate(oracles.zeta);
 
@@ -227,8 +227,8 @@ impl<E: PairingEngine> ProverProof<E>
                     &a,
                     &b,
                     &c,
-                    &index.sigma[0],
-                    &index.sigma[1],
+                    &index.cs.sigmam[0],
+                    &index.cs.sigmam[1],
                 ],
                 oracles.v,
                 oracles.zeta

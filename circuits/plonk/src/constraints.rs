@@ -5,7 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use algebra::{PrimeField, SquareRootField};
-use ff_fft::{Evaluations, EvaluationDomain};
+use ff_fft::{Evaluations, EvaluationDomain, DensePolynomial};
 pub use super::gate::CircuitGate;
 use rand_core::OsRng;
 
@@ -16,17 +16,19 @@ pub struct ConstraintSystem<F: PrimeField>
     pub domain: EvaluationDomain<F>,   // evaluation domain
     pub gates:  Vec<CircuitGate<F>>,   // circuit gates
 
-    // index polynomials over the Lagrange base
-    pub sigma:  [Evaluations<F>; 3],   // permutation polynomial array
-    pub sid:    Evaluations<F>,        // SID polynomial
-    pub ql:     Evaluations<F>,        // left input wire polynomial
-    pub qr:     Evaluations<F>,        // right input wire polynomial
-    pub qo:     Evaluations<F>,        // output wire polynomial
-    pub qm:     Evaluations<F>,        // multiplication polynomial
-    pub qc:     Evaluations<F>,        // constant wire polynomial
+    // index polynomials over the monomial base
+    pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
+    pub ql:     DensePolynomial<F>,         // left input wire polynomial
+    pub qr:     DensePolynomial<F>,         // right input wire polynomial
+    pub qo:     DensePolynomial<F>,         // output wire polynomial
+    pub qm:     DensePolynomial<F>,         // multiplication polynomial
+    pub qc:     DensePolynomial<F>,         // constant wire polynomial
+    pub l0:     DensePolynomial<F>,         // 1-st Lagrange base polynomial
 
-    pub r:      F,                     // coordinate shift for right wires
-    pub o:      F,                     // coordinate shift for output wires
+    pub sigmal: [Vec<F>; 3],                // permutation polynomial array in Lagrange base
+    pub sid:    Vec<F>,                     // SID polynomial in Lagrange base
+    pub r:      F,                          // coordinate shift for right wires
+    pub o:      F,                          // coordinate shift for output wires
 }
 
 impl<F: PrimeField+SquareRootField> ConstraintSystem<F> 
@@ -38,7 +40,7 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
     ) -> Option<Self>
     {
         let domain = EvaluationDomain::<F>::new(EvaluationDomain::<F>::compute_size_of_domain(gates.len())?)?;
-        let sid = Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {elm}).collect(), domain);
+        let sid = domain.elements().map(|elm| {elm}).collect::<Vec<_>>();
         let r =
         {
             let mut r = domain.sample_element_outside_domain(&mut OsRng);
@@ -58,18 +60,18 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
         let s =
         [
             sid.clone(),
-            Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {r * &elm}).collect(), domain),
-            Evaluations::<F>::from_vec_and_domain(domain.elements().map(|elm| {o * &elm}).collect(), domain),
+            domain.elements().map(|elm| {r * &elm}).collect(),
+            domain.elements().map(|elm| {o * &elm}).collect(),
         ];
-        let mut sigma = s.clone();
+        let mut sigmal = s.clone();
 
         gates.iter().for_each
         (
             |gate|
             {
-                sigma[0].evals[gate.l.0] = s[gate.l.1 / n].evals[gate.l.1 % n];
-                sigma[1].evals[gate.r.0-n] = s[gate.r.1 / n].evals[gate.r.1 % n];
-                sigma[2].evals[gate.o.0-2*n] = s[gate.o.1 / n].evals[gate.o.1 % n];
+                sigmal[0][gate.l.0] = s[gate.l.1 / n][gate.l.1 % n];
+                sigmal[1][gate.r.0-n] = s[gate.r.1 / n][gate.r.1 % n];
+                sigmal[2][gate.o.0-2*n] = s[gate.o.1 / n][gate.o.1 % n];
             }
         );
 
@@ -77,21 +79,28 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
         {
             domain,
             public,
-            sigma,
             sid,
-            ql: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.ql).collect(), domain),
-            qr: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qr).collect(), domain),
-            qo: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qo).collect(), domain),
-            qm: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qm).collect(), domain),
-            qc: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qc).collect(), domain),
+            sigmam:
+            [
+                Evaluations::<F>::from_vec_and_domain(sigmal[0].clone(), domain).interpolate(),
+                Evaluations::<F>::from_vec_and_domain(sigmal[1].clone(), domain).interpolate(),
+                Evaluations::<F>::from_vec_and_domain(sigmal[2].clone(), domain).interpolate(),
+            ],
+            sigmal,
+            ql: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.ql).collect(), domain).interpolate(),
+            qr: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qr).collect(), domain).interpolate(),
+            qo: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qo).collect(), domain).interpolate(),
+            qm: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qm).collect(), domain).interpolate(),
+            qc: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qc).collect(), domain).interpolate(),
+            l0: Evaluations::<F>::from_vec_and_domain(vec![F::one()], domain).interpolate(),
             gates,
             r,
             o,
         })
     }
     
-    // This function verifies the consistency of the wire assignements (witness)
-    // against the constraints enforcing the public unput
+    // This function verifies the consistency of the wire
+    // assignements (witness) against the constraints
     //     witness: wire assignement witness
     //     RETURN: verification status
     pub fn verify

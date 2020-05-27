@@ -6,7 +6,7 @@ This source file implements Plonk Protocol Index primitive.
 
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
-use ff_fft::{DensePolynomial, EvaluationDomain, Evaluations};
+use ff_fft::{DensePolynomial, EvaluationDomain};
 use algebra::{Field, AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -78,16 +78,6 @@ pub struct Index<'a, E: PairingEngine>
 
     // polynomial commitment keys
     pub urs: URSValue<'a, E>,
-
-    // index polynomials over the monomial base
-    pub sigma:  [DensePolynomial<E::Fr>; 3],   // permutation polynomial array
-    pub sid:    DensePolynomial<E::Fr>,        // SID polynomial
-    pub ql:     DensePolynomial<E::Fr>,        // left input wire polynomial
-    pub qr:     DensePolynomial<E::Fr>,        // right input wire polynomial
-    pub qo:     DensePolynomial<E::Fr>,        // output wire polynomial
-    pub qm:     DensePolynomial<E::Fr>,        // multiplication polynomial
-    pub qc:     DensePolynomial<E::Fr>,        // constant wire polynomial
-    pub l0:     DensePolynomial<E::Fr>,        // 1-st Lagrange base polynomial
 
     // index polynomial commitments
     pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
@@ -168,33 +158,16 @@ where E::G1Affine: CoordinatesCurve
         let urs = URSValue::create(cs.domain.size()+3, urs);
         let (endo_q, endo_r) = endos::<E>();
 
-        let sigma = [cs.sigma[0].interpolate_by_ref(), cs.sigma[1].interpolate_by_ref(), cs.sigma[2].interpolate_by_ref()];
-        let sid = DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]);
-        let ql = cs.ql.interpolate_by_ref();
-        let qr = cs.qr.interpolate_by_ref();
-        let qo = cs.qo.interpolate_by_ref();
-        let qm = cs.qm.interpolate_by_ref();
-        let qc = cs.qc.interpolate_by_ref();
-    
         Ok(Index
         {
-            sigma_comm: [urs.get_ref().commit(&sigma[0])?, urs.get_ref().commit(&sigma[1])?, urs.get_ref().commit(&sigma[2])?],
+            sigma_comm: [urs.get_ref().commit(&cs.sigmam[0])?, urs.get_ref().commit(&cs.sigmam[1])?, urs.get_ref().commit(&cs.sigmam[2])?],
             sid_comm: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
-            ql_comm: urs.get_ref().commit(&ql)?,
-            qr_comm: urs.get_ref().commit(&qr)?,
-            qo_comm: urs.get_ref().commit(&qo)?,
-            qm_comm: urs.get_ref().commit(&qm)?,
-            qc_comm: urs.get_ref().commit(&qc)?,
+            ql_comm: urs.get_ref().commit(&cs.ql)?,
+            qr_comm: urs.get_ref().commit(&cs.qr)?,
+            qo_comm: urs.get_ref().commit(&cs.qo)?,
+            qm_comm: urs.get_ref().commit(&cs.qm)?,
+            qc_comm: urs.get_ref().commit(&cs.qc)?,
 
-            sigma,
-            sid,
-            ql,
-            qr,
-            qo,
-            qm,
-            qc,
-            
-            l0: Evaluations::<E::Fr>::from_vec_and_domain(vec![E::Fr::one()], cs.domain).interpolate(),
             fr_sponge_params,
             fq_sponge_params,
             endo_q,
@@ -209,7 +182,7 @@ where E::G1Affine: CoordinatesCurve
         VerifierIndex
         {
             domain: self.cs.domain,
-            l0: self.l0.clone(),
+            l0: self.cs.l0.clone(),
             sigma_comm: self.sigma_comm,
             sid_comm: self.sid_comm,
             ql_comm: self.ql_comm,

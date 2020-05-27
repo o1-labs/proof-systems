@@ -48,8 +48,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // circuit gates
 
     let mut i = 0;
-    let gates =
-    vec![
+    let gates = vec!
+    [
         CircuitGate::<Fp>::create((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
         CircuitGate::<Fp>::create(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
         CircuitGate::<Fp>::create(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
