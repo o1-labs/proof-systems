@@ -26,14 +26,14 @@ use std::iter::Iterator;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PolyComm<C: AffineCurve>
 {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -519,7 +519,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut rand_base_i = Fr::<G>::one();
         let mut sg_rand_base_i = Fr::<G>::one();
 
-        for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
+        for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
@@ -615,8 +615,8 @@ impl<G: CommitmentCurve> SRS<G> {
 
                     // iterating over the polynomial segments
                     for (comm_ch, eval) in comm.unshifted.iter().zip(evals.iter()) {
-
                         let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
+
                         res += &(xi_i * &term);
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
@@ -636,6 +636,7 @@ impl<G: CommitmentCurve> SRS<G> {
                             scalars.push(rand_base_i_c_i * &xi_i);
                             points.push(comm_ch);
                             res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
+
                             xi_i *= xi;
                         }
                     }

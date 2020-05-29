@@ -121,6 +121,11 @@ where
         }
     }
 
+    pub fn squeeze_field(&mut self) -> P::BaseField {
+        self.last_squeezed = vec![];
+        self.sponge.squeeze(&self.params)
+    }
+
     pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
         P::ScalarField::from_repr(pack(& self.squeeze_limbs(num_limbs)))
     }
@@ -204,7 +209,6 @@ where
     }
 
     fn challenge_fq(&mut self) -> P::BaseField {
-        P::BaseField::from_repr(pack(& 
-            self.squeeze_limbs(CHALLENGE_LENGTH_IN_LIMBS)))
+        self.squeeze_field()
     }
 }

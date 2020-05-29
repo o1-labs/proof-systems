@@ -15,7 +15,7 @@ use rand_core::RngCore;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
  
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProofEvaluations<Fr> {
     pub w: Vec<Fr>,
     pub za: Vec<Fr>,
@@ -32,7 +32,7 @@ pub struct ProofEvaluations<Fr> {
     pub rc: [Vec<Fr>; 3],
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProverProof<G: AffineCurve>
 {
     // polynomial commitments
@@ -183,6 +183,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&g1_comm.unshifted);
+        fq_sponge.absorb_g(&[g1_comm.shifted.unwrap()]);
         fq_sponge.absorb_g(&h1_comm.unshifted);
         // sample beta[0] oracle
         oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
@@ -199,6 +200,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&sigma2);
         fq_sponge.absorb_g(&g2_comm.unshifted);
+        fq_sponge.absorb_g(&[g2_comm.shifted.unwrap()]);
         fq_sponge.absorb_g(&h2_comm.unshifted);
         // sample beta[1] oracle
         oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
@@ -215,6 +217,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&sigma3);
         fq_sponge.absorb_g(&g3_comm.unshifted);
+        fq_sponge.absorb_g(&[g3_comm.shifted.unwrap()]);
         fq_sponge.absorb_g(&h3_comm.unshifted);
         // sample beta[2] & batch oracles
         oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());
@@ -327,8 +330,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 (&g2, Some(index.domains.h.size()-1)),
                 (&g3, Some(index.domains.k.size()-1)),
             ]);
-
-            Ok(ProverProof
+        Ok(ProverProof
         {
             // polynomial commitments
             w_comm,
@@ -366,7 +368,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         })
     }
 
-    // This function computes polynomials for the first sumchek protocol
+    // This function computes polynomials for the first sumcheck protocol
     //     RETURN: prover's H1 & G1 polynomials
     pub fn sumcheck_1_compute
     (
@@ -404,7 +406,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         ).divide_by_vanishing_poly(index.domains.h).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
 
-    // This function computes polynomials for the second sumchek protocol
+    // This function computes polynomials for the second sumcheck protocol
     //     RETURN: prover's H2 & G2 polynomials
     pub fn sumcheck_2_compute
     (
@@ -439,7 +441,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         ).divide_by_vanishing_poly(index.domains.h).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
 
-    // This function computes polynomials for the third sumchek protocol
+    // This function computes polynomials for the third sumcheck protocol
     //     RETURN: prover's H3 & G3 polynomials
     pub fn sumcheck_3_compute
     (
@@ -538,6 +540,7 @@ impl<G: CommitmentCurve> ProverProof<G>
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field>
 {
     pub alpha: F,
