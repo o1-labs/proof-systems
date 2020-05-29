@@ -18,7 +18,7 @@ impl<F : FftField> EvaluationDomains<F> {
 
         let h_group_size = {
             let m = if constraints > variables { constraints } else { variables };
-            EvaluationDomain::<F>::compute_size_of_domain(m)?
+            Domain::<F>::compute_size_of_domain(m)?
         };
         let x_group_size =
             Domain::<F>::compute_size_of_domain(public_inputs)?;
