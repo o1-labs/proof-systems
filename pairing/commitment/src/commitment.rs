@@ -17,7 +17,7 @@ knowledge protocol:
 *****************************************************************************************************************/
 
 use oracle::rndoracle::ProofError;
-use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, PairingCurve, UniformRand, VariableBaseMSM};
+use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, UniformRand, VariableBaseMSM, One, Zero};
 use std::collections::HashMap;
 use ff_fft::DensePolynomial;
 pub use super::urs::URS;
@@ -129,7 +129,7 @@ impl<E: PairingEngine> URS<E>
         rng: &mut dyn RngCore
     ) -> bool
     {
-        let mut table = vec![];
+        let mut table : Vec<(E::G1Prepared, E::G2Prepared)> = vec![];
 
         // verify commitment opening proofs against unshifted commitments:
         // e(prf, h^x) * e(g^eval * prf^(-chal), h^0)) = e(unshComm, h^0)
@@ -195,8 +195,8 @@ impl<E: PairingEngine> URS<E>
                 (
                     &shifted[max].iter().map(|p| p.0).collect::<Vec<_>>(),
                     &shifted[max].iter().map(|s| s.1.into_repr()).collect::<Vec<_>>(),
-                ).into_affine().prepare(),
-                (-self.hn[&(self.depth-max)]).prepare()
+                ).into_affine().into(),
+                (-self.hn[&(self.depth-max)]).into()
             ));
         }
         table.push
@@ -205,8 +205,8 @@ impl<E: PairingEngine> URS<E>
             (
                 &open_point,
                 &open_scalar
-            ).into_affine().prepare(),
-            self.hx.prepare()
+            ).into_affine().into(),
+            self.hx.into()
         ));
         table.push
         ((
@@ -214,12 +214,11 @@ impl<E: PairingEngine> URS<E>
             (
                 &openy_point,
                 &openy_scalar
-            ).into_affine().prepare(),
-            E::G2Affine::prime_subgroup_generator().prepare()
+            ).into_affine().into(),
+            E::G2Affine::prime_subgroup_generator().into()
         ));
     
-        let x: Vec<(&<E::G1Affine as PairingCurve>::Prepared, &<E::G2Affine as PairingCurve>::Prepared)> = table.iter().map(|x| (&x.0, &x.1)).collect();
-        E::final_exponentiation(&E::miller_loop(&x)).unwrap() == E::Fqk::one()
+        E::final_exponentiation(&E::miller_loop(table.iter())).unwrap() == E::Fqk::one()
     }
 }
 

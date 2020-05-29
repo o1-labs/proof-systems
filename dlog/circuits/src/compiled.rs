@@ -7,8 +7,8 @@ This source file implements the compiled constraints primitive.
 use sprs::CsMat;
 use commitment_dlog::{srs::SRS, commitment::{PolyComm, CommitmentCurve}};
 use oracle::rndoracle::ProofError;
-use algebra::{Field, AffineCurve};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain};
+use algebra::{Field, AffineCurve, Zero,};
+use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as Domain, GeneralEvaluationDomain};
 pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -49,9 +49,9 @@ impl<G: CommitmentCurve> Compiled<G>
     pub fn compile
     (
         srs: &SRS<G>,
-        h_group: EvaluationDomain<Fr<G>>,
-        k_group: EvaluationDomain<Fr<G>>,
-        b_group: EvaluationDomain<Fr<G>>,
+        h_group: Domain<Fr<G>>,
+        k_group: Domain<Fr<G>>,
+        b_group: Domain<Fr<G>>,
         constraints: CsMat<Fr<G>>,
     ) -> Result<Self, ProofError>
     {
@@ -79,6 +79,9 @@ impl<G: CommitmentCurve> Compiled<G>
         {
             *val = *c.0 * val;
         }
+
+        let k_group = GeneralEvaluationDomain::Radix2(k_group);
+        let b_group = GeneralEvaluationDomain::Radix2(b_group);
 
         let row_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(row_eval_k, k_group);
         let col_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(col_eval_k, k_group);

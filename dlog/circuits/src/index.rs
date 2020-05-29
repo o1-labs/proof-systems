@@ -13,6 +13,7 @@ pub use super::compiled::Compiled;
 pub use super::gate::CircuitGate;
 use evaluation_domains::EvaluationDomains;
 use algebra::PrimeField;
+use ff_fft::EvaluationDomain;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;

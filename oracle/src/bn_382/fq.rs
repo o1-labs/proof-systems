@@ -1,5 +1,5 @@
 use crate::poseidon::ArithmeticSpongeParams;
-use algebra::fields::bn_382::fq::Fq;
+use algebra::bn_382::Fq;
 
 use std::str::FromStr;
 

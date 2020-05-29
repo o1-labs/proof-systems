@@ -8,8 +8,8 @@ use rand_core::RngCore;
 use circuits_dlog::index::{VerifierIndex as Index};
 use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
 pub use super::prover::{ProverProof, RandomOracles};
-use algebra::{Field, AffineCurve};
-use ff_fft::{DensePolynomial, Evaluations};
+use algebra::{Field, AffineCurve, Zero, One};
+use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use crate::marlin_sponge::{FrSponge};
 use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, b_poly, b_poly_coefficients, product};
 
@@ -167,7 +167,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             {
                 let x_hat =
                 // TODO: Cache this interpolated polynomial.
-                Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), index.domains.x).interpolate();
+                Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)).interpolate();
                 // TODO: No degree bound needed
                 let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
 

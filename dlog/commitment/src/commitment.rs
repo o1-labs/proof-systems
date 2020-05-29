@@ -15,7 +15,7 @@ use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
     AffineCurve, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
-    UniformRand, VariableBaseMSM, SWModelParameters
+    UniformRand, VariableBaseMSM, SWModelParameters, One, Zero
 };
 use ff_fft::DensePolynomial;
 use oracle::{FqSponge, marlin_sponge::ScalarChallenge};

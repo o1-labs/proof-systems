@@ -7,6 +7,6 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel" ] }
+algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "asm" ] }
 ff-fft = { path = "../../zexe/ff-fft" }
 rand = "0.7.3"

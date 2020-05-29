@@ -1,6 +1,6 @@
 use algebra::{
     curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, BitIterator,
-    Field, PrimeField, ProjectiveCurve, SWModelParameters,
+    Field, PrimeField, ProjectiveCurve, SWModelParameters, One, Zero,
 };
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -15,7 +15,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
         .chunks_exact_mut(2)
         .map(|p| {
             if p[0].x == p[1].x {
-                if p[1].y == P::BaseField::zero() {
+                if p[1].y.is_zero() {
                     P::BaseField::one()
                 } else {
                     p[1].y.double()
@@ -35,7 +35,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
         } else if p[i].is_zero() == true {
             p[j] = p[i + 1];
         } else if p[i + 1].x == p[i].x
-            && (p[i + 1].y != p[i].y || p[i + 1].y == P::BaseField::zero())
+            && (p[i + 1].y != p[i].y || p[i + 1].y.is_zero())
         {
             p[j] = SWJAffine::<P>::zero();
         } else if p[i + 1].x == p[i].x && p[i + 1].y == p[i].y {
@@ -74,7 +74,7 @@ fn batch_add_assign<P: SWModelParameters>(
         let p0 = v0[i];
         let p1 = v1[i];
         let d = if p0.x == p1.x {
-            if p1.y == P::BaseField::zero() {
+            if p1.y.is_zero() {
                 P::BaseField::one()
             } else {
                 p1.y.double()
@@ -561,8 +561,8 @@ pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
 #[test]
 fn test_batch_double_in_place() {
     use algebra::{
-        curves::bn_382::g::{Affine as GAffine, Bn_382GParameters as P},
-        fields::bn_382::{Fp, Fq},
+        bn_382::g::{Affine as GAffine, Bn_382GParameters as P},
+        bn_382::{Fp, Fq},
         UniformRand,
     };
 
@@ -611,8 +611,8 @@ fn test_batch_double_in_place() {
 #[test]
 fn test_batch_add_assign() {
     use algebra::{
-        curves::bn_382::g::Affine as GAffine,
-        fields::bn_382::{Fp, Fq},
+        bn_382::g::Affine as GAffine,
+        bn_382::{Fp, Fq},
         UniformRand,
     };
     let n = 10;
@@ -649,8 +649,8 @@ fn test_batch_add_assign() {
 #[test]
 fn test_shamir_window_table() {
     use algebra::{
-        curves::bn_382::g::Affine as GAffine,
-        fields::bn_382::{Fp, Fq},
+        bn_382::g::Affine as GAffine,
+        bn_382::{Fp, Fq},
         UniformRand,
     };
     let n = 10;
@@ -689,7 +689,7 @@ fn test_shamir_window_table() {
 
 #[test]
 fn bench_combine() {
-    use algebra::{curves::bn_382::g::Affine as GAffine, fields::bn_382::Fq, UniformRand};
+    use algebra::{bn_382::g::Affine as GAffine, bn_382::Fq, UniformRand};
     use std::time::Instant;
 
     const N: usize = 200_000;
@@ -740,14 +740,17 @@ fn bench_combine() {
 
 #[test]
 fn shamir_equivalence() {
-    use algebra::{curves::bn_382::g::Affine, fields::bn_382::Fq as Fr, UniformRand};
+    use algebra::{bn_382::g::{Affine, Projective}, bn_382::Fq as Fr, UniformRand};
     use rand_core::OsRng;
     let rng = &mut OsRng;
 
-    let g1: Affine =
-        (Affine::prime_subgroup_generator().into_projective() * &Fr::rand(rng)).into_affine();
-    let g2: Affine =
-        (Affine::prime_subgroup_generator().into_projective() * &Fr::rand(rng)).into_affine();
+    let mut g1: Projective = Affine::prime_subgroup_generator().into_projective();
+    g1 *= Fr::rand(rng);
+    let g1 = g1.into_affine();
+
+    let mut g2: Projective = Affine::prime_subgroup_generator().into_projective();
+    g2 *= Fr::rand(rng);
+    let g2 = g2.into_affine();
 
     let x1 = Fr::rand(rng);
     let x2 = Fr::rand(rng);

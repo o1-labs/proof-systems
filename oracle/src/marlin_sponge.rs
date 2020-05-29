@@ -1,6 +1,7 @@
 use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use algebra::{
     curves::{short_weierstrass_jacobian::GroupAffine, SWModelParameters},
+    One, Zero,
     BigInteger, Field, FpParameters, PrimeField,
 };
 

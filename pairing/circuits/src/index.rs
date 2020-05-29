@@ -8,6 +8,7 @@ use sprs::CsMat;
 use std::collections::HashMap;
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
+use ff_fft::EvaluationDomain;
 use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}};
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -141,7 +142,7 @@ pub fn endos<E:PairingEngine>() -> (E::Fq, E::Fr) where E::G1Affine : Coordinate
         let t = E::G1Affine::prime_subgroup_generator();
         let (x, y) = t.to_coordinates().unwrap();
         let phi_t = E::G1Affine::of_coordinates(x * &endo_q, y);
-        if t.mul(potential_endo_r) == phi_t.into() {
+        if t.mul(potential_endo_r) == phi_t.into_projective() {
             potential_endo_r
         } else {
             potential_endo_r * &potential_endo_r
