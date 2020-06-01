@@ -11,7 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, Utils, PolyComm, b_poly, b_poly_coefficients, product};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -33,7 +33,7 @@ pub struct ProofEvals<Fr> {
     pub rc: [Fr; 3],
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index

@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve, FftField, Zero, One};
 use oracle::{marlin_sponge::ScalarChallenge, FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as Domain, EvaluationDomain, GeneralEvaluationDomain};
-use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof, b_poly_coefficients, product};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, Utils, PolyComm, OpeningProof, b_poly_coefficients, product};
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
 use rand_core::RngCore;
@@ -69,7 +69,7 @@ fn evals_from_coeffs<F: FftField>(
     Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -485,7 +485,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                             {
                                 vanish * &index.compiled[i].val_eval_k[j] *
                                 // scale with eta's
-                                &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * &elm
+                                &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * elm
                             }
                         ).collect()
                     },
