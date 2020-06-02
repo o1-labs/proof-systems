@@ -101,8 +101,6 @@ pub struct VerifierIndex<E: PairingEngine>
 {
     pub domain: EvaluationDomain<E::Fr>, // evaluation domain
 
-    pub l0:     DensePolynomial<E::Fr>,  // 1-st Lagrange base polynomial
-
     // index polynomial commitments
     pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
     pub sid_comm:    E::G1Affine,        // SID commitment
@@ -182,7 +180,6 @@ where E::G1Affine: CoordinatesCurve
         VerifierIndex
         {
             domain: self.cs.domain,
-            l0: self.cs.l0.clone(),
             sigma_comm: self.sigma_comm,
             sid_comm: self.sid_comm,
             ql_comm: self.ql_comm,

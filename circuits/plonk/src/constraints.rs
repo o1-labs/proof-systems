@@ -12,9 +12,9 @@ use rand_core::OsRng;
 #[derive(Clone)]
 pub struct ConstraintSystem<F: PrimeField>
 {
-    pub public: usize,                 // number of public inputs
-    pub domain: EvaluationDomain<F>,   // evaluation domain
-    pub gates:  Vec<CircuitGate<F>>,   // circuit gates
+    pub public: usize,                      // number of public inputs
+    pub domain: EvaluationDomain<F>,        // evaluation domain
+    pub gates:  Vec<CircuitGate<F>>,        // circuit gates
 
     // index polynomials over the monomial base
     pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
@@ -23,15 +23,14 @@ pub struct ConstraintSystem<F: PrimeField>
     pub qo:     DensePolynomial<F>,         // output wire polynomial
     pub qm:     DensePolynomial<F>,         // multiplication polynomial
     pub qc:     DensePolynomial<F>,         // constant wire polynomial
-    pub l0:     DensePolynomial<F>,         // 1-st Lagrange base polynomial
 
-    pub sigmal: [Vec<F>; 3],                // permutation polynomial array in Lagrange base
-    pub sid:    Vec<F>,                     // SID polynomial in Lagrange base
+    pub sigmal: [Vec<F>; 3],                // permutation polynomial array over Lagrange base
+    pub sid:    Vec<F>,                     // SID polynomial over Lagrange base
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
 }
 
-impl<F: PrimeField+SquareRootField> ConstraintSystem<F> 
+impl<F: PrimeField + SquareRootField> ConstraintSystem<F> 
 {
     pub fn create
     (
@@ -92,7 +91,6 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
             qo: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qo).collect(), domain).interpolate(),
             qm: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qm).collect(), domain).interpolate(),
             qc: Evaluations::<F>::from_vec_and_domain(gates.iter().map(|gate| gate.qc).collect(), domain).interpolate(),
-            l0: Evaluations::<F>::from_vec_and_domain(vec![F::one()], domain).interpolate(),
             gates,
             r,
             o,
@@ -105,7 +103,7 @@ impl<F: PrimeField+SquareRootField> ConstraintSystem<F>
     //     RETURN: verification status
     pub fn verify
     (
-        &mut self,
+        &self,
         witness: &Vec<F>
     ) -> bool
     {

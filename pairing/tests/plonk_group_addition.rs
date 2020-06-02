@@ -68,7 +68,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         CircuitGate::<Fp>::create(({i+=1; i},     15),  (i+N,   N+15), (i+2*N, 2*N+15), z, z, z, z, z), // 15
     ];
 
-    let mut index = Index::<Bn_382>::create
+    let index = Index::<Bn_382>::create
     (
         ConstraintSystem::<Fp>::create(gates, 6).unwrap(),
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
@@ -76,11 +76,11 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         URSSpec::Generate(&mut OsRng)
     ).unwrap();
     
-    positive(&mut index);
-    negative(&mut index);
+    positive(&index);
+    negative(&index);
 }
 
-fn positive(index: &mut Index<Bn_382>)
+fn positive(index: &Index<Bn_382>)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let z = Fp::zero();
@@ -177,7 +177,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     }
 }
 
-fn negative(index: &mut Index<Bn_382>)
+fn negative(index: &Index<Bn_382>)
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let z = Fp::zero();

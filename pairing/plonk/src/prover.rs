@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use rand_core::OsRng;
 use algebra::{Field, PairingEngine};
 use oracle::rndoracle::{ProofError};
-use ff_fft::{DensePolynomial, Evaluations};
+use ff_fft::{DensePolynomial, Evaluations, DenseOrSparsePolynomial};
 use commitment_pairing::commitment::Utils;
 pub use super::index::Index;
 use oracle::sponge::FqSponge;
@@ -86,28 +86,30 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute permutation polynomial
 
-        let mut z = (0..n).map
+        let mut z = vec![E::Fr::one(); n+1];
+        z.iter_mut().skip(1).enumerate().for_each
         (
-            |j|
+            |(j, x)| *x =
                 (witness[j] + &(index.cs.sigmal[0][j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[j+n] + &(index.cs.sigmal[1][j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[j+2*n] + &(index.cs.sigmal[2][j] * &oracles.beta) + &oracles.gamma)
-        ).collect::<Vec<_>>();
+        );
         
-        algebra::fields::batch_inversion::<E::Fr>(&mut z);
+        algebra::fields::batch_inversion::<E::Fr>(&mut z[1..=n]);
 
         (0..n).for_each
         (
-            |j| z[j] *=
-                &((witness[j] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
-                (witness[j+2*n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma))
+            |j|
+            {
+                let x = z[j];
+                z[j+1] *=
+                    &(x * &(witness[j] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
+                    (witness[j+n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
+                    (witness[j+2*n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma))
+            }
         );
 
-        (1..n).for_each(|i| {let x = z[i-1]; z[i] *= &x});
         if z.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
-        z.insert(0, E::Fr::one());
-        
         let z = Evaluations::<E::Fr>::from_vec_and_domain(z, index.cs.domain).interpolate();
 
         // commit to z
@@ -136,12 +138,16 @@ impl<E: PairingEngine> ProverProof<E>
             &(&(&c + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta))) *
             &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
                 map(|(z, w)| *z * &w).collect::<Vec<_>>());
-        let t4 =
-            &(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])) * &index.cs.l0;
-
-        let (t, r) = (&(&t1 + &(&t2 - &t3).scale(oracles.alpha)) + &t4.scale(alpsq)).divide_by_vanishing_poly(index.cs.domain).
+        let (t4, r) =
+            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])).into(),
+            &DensePolynomial::from_coefficients_slice(&[-E::Fr::one(), E::Fr::one()]).into()).
             map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if r.is_zero() == false {return Err(ProofError::PolyDivision)}
+
+        let (mut t, r) = (&t1 + &(&t2 - &t3).scale(oracles.alpha)).
+            divide_by_vanishing_poly(index.cs.domain).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if r.is_zero() == false {return Err(ProofError::PolyDivision)}
+        t += &t4.scale(alpsq);
 
         // split t to fit to the commitment
         let tlow: DensePolynomial<E::Fr>;
@@ -171,7 +177,7 @@ impl<E: PairingEngine> ProverProof<E>
         let zeta2 = oracles.zeta.pow(&[n as u64]);
         let zeta3 = zeta2.square();
 
-        // compute linearisation polynomial
+        // compute linearization polynomial
 
         evals.a = a.evaluate(oracles.zeta);
         evals.b = b.evaluate(oracles.zeta);
@@ -202,7 +208,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(evals.b + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
                 &(oracles.beta * &evals.z * &oracles.alpha)
             );
-        let r4 = z.scale(alpsq * &index.cs.l0.evaluate(oracles.zeta));
+        let r4 = z.scale(alpsq * &(zeta2 - &E::Fr::one()) / &(oracles.zeta - &E::Fr::one()));
         let r = &(&(&r1 + &r2) - &r3) + &r4;
         evals.r = r.evaluate(oracles.zeta);
 

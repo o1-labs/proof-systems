@@ -5,20 +5,18 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 use rand_core::OsRng;
-use oracle::rndoracle::{ProofError};
+use oracle::rndoracle::ProofError;
 use crate::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PrimeField, PairingEngine, ProjectiveCurve, VariableBaseMSM};
 use crate::plonk_sponge::FrSponge;
 use oracle::sponge::FqSponge;
-use ff_fft::Evaluations;
 
 impl<E: PairingEngine> ProverProof<E>
 {
     // This function verifies the batch of zk-proofs
     //     proofs: vector of Plonk proofs
     //     index: Index
-    //     rng: randomness source context
     //     RETURN: verification status
     pub fn verify
         <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
@@ -40,18 +38,26 @@ impl<E: PairingEngine> ProverProof<E>
                 &(proof.evals.b + &(oracles.beta * &proof.evals.sigma2) + &oracles.gamma) *
                 &oracles.alpha * &proof.evals.z;
 
+            // compute quotient polynomial commitment
             let t_comm = VariableBaseMSM::multi_scalar_mul
             (
                 &[proof.tlow_comm, proof.tmid_comm, proof.thgh_comm],
                 &[E::Fr::one().into_repr(), zeta2.into_repr(), zeta2.square().into_repr()]
             ).into_affine();
 
-            let t =
-                (proof.evals.r -
-                &Evaluations::<E::Fr>::from_vec_and_domain(proof.public.clone(), index.domain).interpolate().evaluate(oracles.zeta) -
-                &(ab * &(proof.evals.c + &oracles.gamma)) -
-                &(index.l0.evaluate(oracles.zeta) * &alpsq)) / &(zeta2 - &E::Fr::one());
+            // evaluate lagrange polynoms
+            let mut lagrange = (0..proof.public.len()).zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
+            algebra::fields::batch_inversion::<E::Fr>(&mut lagrange);
+            lagrange.iter_mut().for_each(|l| *l *= &(zeta2 - &E::Fr::one()));
 
+            // compute quotient polynomial evaluation
+            let t =
+                (proof.evals.r - &(ab * &(proof.evals.c + &oracles.gamma)) -
+                &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).
+                    map(|((l, p), w)| *l * p * &w).fold(E::Fr::zero(), |x, y| x + &y) * &index.domain.size_inv) -
+                &(lagrange[0] * &alpsq)) / &(zeta2 - &E::Fr::one());
+
+            // compute linearization polynomial commitment
             let r_comm = VariableBaseMSM::multi_scalar_mul
             (
                 &[index.qm_comm, index.ql_comm, index.qr_comm, index.qo_comm, index.qc_comm, proof.z_comm, -index.sigma_comm[2]],
@@ -62,7 +68,7 @@ impl<E: PairingEngine> ProverProof<E>
                         (proof.evals.a + &bz + &oracles.gamma) *
                         &(proof.evals.b + &(bz * &index.r) + &oracles.gamma) *
                         &(proof.evals.c + &(bz * &index.o) + &oracles.gamma) * &oracles.alpha +
-                        &(index.l0.evaluate(oracles.zeta) * &alpsq)
+                        &(lagrange[0] * &alpsq)
                     ).into_repr(),
                     (ab * &oracles.beta).into_repr(),
                 ]

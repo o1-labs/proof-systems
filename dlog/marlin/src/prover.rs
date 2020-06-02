@@ -328,7 +328,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 (&g3, Some(index.domains.k.size()-1)),
             ]);
 
-            Ok(ProverProof
+        Ok(ProverProof
         {
             // polynomial commitments
             w_comm,

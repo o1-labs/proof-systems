@@ -9,7 +9,7 @@ pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
     fn absorb(&mut self, x: &Fr);
     fn challenge(&mut self) -> ScalarChallenge<Fr>;
-    fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Fr>);
+    fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Vec<Fr>>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
@@ -30,12 +30,26 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
         ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
-    fn absorb_evaluations(&mut self, x_hat: &[Fr], e: &ProofEvaluations<Fr>) {
+    fn absorb_evaluations(&mut self, x_hat: &[Fr], e: &ProofEvaluations<Vec<Fr>>) {
         self.last_squeezed = vec![];
         self.sponge.absorb(&self.params, x_hat);
 
         let points = [
-            &e._x,
+            &e.l,
+            &e.t,
+            &e.o,
+            &e.z,
+            &e.t,
+
+            &e.ql,
+            &e.qr,
+            &e.qo,
+            &e.qm,
+            &e.qc,
+
+            &e.sigma[0],
+            &e.sigma[1],
+            &e.sigma[2],
         ];
 
         for p in &points {
