@@ -35,8 +35,8 @@ impl<E: PairingEngine> ProverProof<E>
             let zeta2 = oracles.zeta.pow(&[index.domain.size]);
             let alpsq = oracles.alpha.square();
             let bz = oracles.beta * &oracles.zeta;
-            let ab = (proof.evals.a + &(oracles.beta * &proof.evals.sigma1) + &oracles.gamma) *
-                &(proof.evals.b + &(oracles.beta * &proof.evals.sigma2) + &oracles.gamma) *
+            let ab = (proof.evals.l + &(oracles.beta * &proof.evals.sigma1) + &oracles.gamma) *
+                &(proof.evals.r + &(oracles.beta * &proof.evals.sigma2) + &oracles.gamma) *
                 &oracles.alpha * &proof.evals.z;
 
             // compute quotient polynomial commitment
@@ -53,7 +53,7 @@ impl<E: PairingEngine> ProverProof<E>
 
             // compute quotient polynomial evaluation
             let t =
-                (proof.evals.r - &(ab * &(proof.evals.c + &oracles.gamma)) -
+                (proof.evals.f - &(ab * &(proof.evals.o + &oracles.gamma)) -
                 &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).
                     map(|((l, p), w)| *l * p * &w).fold(E::Fr::zero(), |x, y| x + &y) * &index.domain.size_inv) -
                 &(lagrange[0] * &alpsq)) / &(zeta2 - &E::Fr::one());
@@ -63,12 +63,12 @@ impl<E: PairingEngine> ProverProof<E>
             (
                 &[index.qm_comm, index.ql_comm, index.qr_comm, index.qo_comm, index.qc_comm, proof.z_comm, -index.sigma_comm[2]],
                 &[
-                    (proof.evals.a * &proof.evals.b).into_repr(), proof.evals.a.into_repr(),
-                    proof.evals.b.into_repr(), proof.evals.c.into_repr(), E::Fr::one().into_repr(),
+                    (proof.evals.l * &proof.evals.r).into_repr(), proof.evals.l.into_repr(),
+                    proof.evals.r.into_repr(), proof.evals.o.into_repr(), E::Fr::one().into_repr(),
                     (
-                        (proof.evals.a + &bz + &oracles.gamma) *
-                        &(proof.evals.b + &(bz * &index.r) + &oracles.gamma) *
-                        &(proof.evals.c + &(bz * &index.o) + &oracles.gamma) * &oracles.alpha +
+                        (proof.evals.l + &bz + &oracles.gamma) *
+                        &(proof.evals.r + &(bz * &index.r) + &oracles.gamma) *
+                        &(proof.evals.o + &(bz * &index.o) + &oracles.gamma) * &oracles.alpha +
                         &(lagrange[0] * &alpsq)
                     ).into_repr(),
                     (ab * &oracles.beta).into_repr(),
@@ -83,10 +83,10 @@ impl<E: PairingEngine> ProverProof<E>
                 vec!
                 [
                     (t_comm,                t, None),
-                    (r_comm,                proof.evals.r, None),
-                    (proof.a_comm,          proof.evals.a, None),
-                    (proof.b_comm,          proof.evals.b, None),
-                    (proof.c_comm,          proof.evals.c, None),
+                    (r_comm,                proof.evals.f, None),
+                    (proof.l_comm,          proof.evals.l, None),
+                    (proof.r_comm,          proof.evals.r, None),
+                    (proof.o_comm,          proof.evals.o, None),
                     (index.sigma_comm[0],   proof.evals.sigma1, None),
                     (index.sigma_comm[1],   proof.evals.sigma2, None),
                 ],
@@ -123,9 +123,9 @@ impl<E: PairingEngine> ProverProof<E>
         let mut oracles = RandomOracles::<E::Fr>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // absorb the public input, a, b, c polycommitments into the argument
+        // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_fr(&self.public);
-        fq_sponge.absorb_g(&[self.a_comm, self.b_comm, self.c_comm]);
+        fq_sponge.absorb_g(&[self.l_comm, self.r_comm, self.o_comm]);
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();

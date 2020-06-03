@@ -32,13 +32,14 @@ pub struct ConstraintSystem<F: FftField>
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
-    fn evals_from_coeffs
-    (
-        v : Vec<F>,
-        d : Domain<F>
-    ) -> Evaluations<F, GeneralEvaluationDomain<F>>
+    pub fn evals(v : Vec<F>, d : Domain<F>) -> Evaluations<F, GeneralEvaluationDomain<F>>
     {
         Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
+    }
+
+    pub fn evals_from_coeffs(&self, v : Vec<F>) -> Evaluations<F, GeneralEvaluationDomain<F>>
+    {
+        Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(self.domain))
     }
 
     pub fn create
@@ -90,16 +91,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             sid,
             sigmam:
             [
-                Self::evals_from_coeffs(sigmal[0].clone(), domain).interpolate(),
-                Self::evals_from_coeffs(sigmal[1].clone(), domain).interpolate(),
-                Self::evals_from_coeffs(sigmal[2].clone(), domain).interpolate(),
+                Self::evals(sigmal[0].clone(), domain).interpolate(),
+                Self::evals(sigmal[1].clone(), domain).interpolate(),
+                Self::evals(sigmal[2].clone(), domain).interpolate(),
             ],
             sigmal,
-            ql: Self::evals_from_coeffs(gates.iter().map(|gate| gate.ql).collect(), domain).interpolate(),
-            qr: Self::evals_from_coeffs(gates.iter().map(|gate| gate.qr).collect(), domain).interpolate(),
-            qo: Self::evals_from_coeffs(gates.iter().map(|gate| gate.qo).collect(), domain).interpolate(),
-            qm: Self::evals_from_coeffs(gates.iter().map(|gate| gate.qm).collect(), domain).interpolate(),
-            qc: Self::evals_from_coeffs(gates.iter().map(|gate| gate.qc).collect(), domain).interpolate(),
+            ql: Self::evals(gates.iter().map(|gate| gate.ql).collect(), domain).interpolate(),
+            qr: Self::evals(gates.iter().map(|gate| gate.qr).collect(), domain).interpolate(),
+            qo: Self::evals(gates.iter().map(|gate| gate.qo).collect(), domain).interpolate(),
+            qm: Self::evals(gates.iter().map(|gate| gate.qm).collect(), domain).interpolate(),
+            qc: Self::evals(gates.iter().map(|gate| gate.qc).collect(), domain).interpolate(),
             gates,
             r,
             o,

@@ -4,9 +4,9 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, FftField, Zero, One};
+use algebra::{Field, AffineCurve, Zero, One};
 use oracle::{FqSponge, rndoracle::{ProofError}};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as Domain, EvaluationDomain, GeneralEvaluationDomain};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain};
 use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
@@ -57,15 +57,6 @@ pub struct ProverProof<G: AffineCurve>
     pub public: Vec<Fr<G>>,
 }
 
-fn evals_from_coeffs<F: FftField>
-(
-    v : Vec<F>,
-    d : Domain<F>
-) -> Evaluations<F, GeneralEvaluationDomain<F>>
-{
-    Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
-}
-
 impl<G: CommitmentCurve> ProverProof<G>
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
@@ -93,13 +84,13 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -evals_from_coeffs(public.clone(), index.cs.domain).interpolate();
+        let p = -index.cs.evals_from_coeffs(public.clone()).interpolate();
 
-        let l = &evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain).interpolate()
+        let l = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect()).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
-        let r = &evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain).interpolate()
+        let r = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect()).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
-        let o = &evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain).interpolate()
+        let o = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect()).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to the l, r, o wire values
@@ -143,7 +134,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         );
 
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        let z = evals_from_coeffs(z, index.cs.domain).interpolate();
+        let z = index.cs.evals_from_coeffs(z).interpolate();
 
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None);
