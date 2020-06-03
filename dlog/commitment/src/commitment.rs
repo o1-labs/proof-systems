@@ -18,7 +18,7 @@ use algebra::{
     UniformRand, VariableBaseMSM, SWModelParameters, One, Zero
 };
 use ff_fft::DensePolynomial;
-use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
+use oracle::{FqSponge, sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;

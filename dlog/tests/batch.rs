@@ -9,7 +9,7 @@ use algebra::{bn_382::{g::{Affine, Bn_382GParameters}, Fp}, UniformRand, AffineC
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, Utils, OpeningProof, PolyComm}};
 
 use oracle::FqSponge;
-use oracle::marlin_sponge::{DefaultFqSponge};
+use oracle::sponge::{DefaultFqSponge};
 
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -68,7 +68,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             |i|
             {
                 if i%2==0 {srs.commit(&a[i].clone(), Some(a[i].coeffs.len()))}
-                else {(srs.commit(&a[i].clone(), None))}
+                else {srs.commit(&a[i].clone(), None)}
             }
         ).collect::<Vec<_>>();
         commit += start.elapsed();
