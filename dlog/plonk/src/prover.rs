@@ -32,14 +32,9 @@ pub struct ProofEvaluations<Fs> {
     pub o: Fs,
     pub z: Fs,
     pub t: Fs,
-
-    pub ql: Fs,
-    pub qr: Fs,
-    pub qo: Fs,
-    pub qm: Fs,
-    pub qc: Fs,
-
-    pub sigma: [Fs; 3],
+    pub f: Fs,
+    pub sigma1: Fs,
+    pub sigma2: Fs,
 }
 
 #[derive(Clone)]
@@ -184,8 +179,10 @@ impl<G: CommitmentCurve> ProverProof<G>
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
         oracles.zeta = fq_sponge.challenge();
+        let zeta1 = oracles.zeta.pow(&[index.max_poly_size as u64]);
+        let zeta2 = oracles.zeta.pow(&[n as u64]);
 
-        // compute linearisation polynomial
+        // evaluate the polynomials
 
         let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.group_gen];
         let evals = (0..2).map
@@ -198,21 +195,56 @@ impl<G: CommitmentCurve> ProverProof<G>
                 z : z.eval(evlp[i], index.max_poly_size),
                 t : t.eval(evlp[i], index.max_poly_size),
 
-                ql: index.cs.ql.eval(evlp[i], index.max_poly_size),
-                qr: index.cs.qr.eval(evlp[i], index.max_poly_size),
-                qo: index.cs.qo.eval(evlp[i], index.max_poly_size),
-                qm: index.cs.qm.eval(evlp[i], index.max_poly_size),
-                qc: index.cs.qc.eval(evlp[i], index.max_poly_size),
+                sigma1: index.cs.sigmam[0].eval(evlp[i], index.max_poly_size),
+                sigma2: index.cs.sigmam[1].eval(evlp[i], index.max_poly_size),
 
-                sigma:
-                [
-                    index.cs.sigmam[0].eval(evlp[i], index.max_poly_size),
-                    index.cs.sigmam[1].eval(evlp[i], index.max_poly_size),
-                    index.cs.sigmam[2].eval(evlp[i], index.max_poly_size),
-                ]
+                f: Vec::new(),
             }
         ).collect::<Vec<_>>();
-        let evals = [evals[0].clone(), evals[1].clone()];
+        let mut evals = [evals[0].clone(), evals[1].clone()];
+
+        let e = ProofEvaluations::<Fr<G>>
+        {
+            l: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].l, zeta1),
+            r: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].r, zeta1),
+            o: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].o, zeta1),
+            z: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[1].z, evlp[1].pow(&[index.max_poly_size as u64])),
+            t: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].t, zeta1),
+
+            sigma1: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].sigma1, zeta1),
+            sigma2: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].sigma2, zeta1),
+
+            f: Fr::<G>::zero(),
+        };
+
+        // compute linearisation polynomial
+
+        let bz = oracles.beta * &oracles.zeta;
+        let f1 =
+            &(&(&(&index.cs.qm.scale(e.l*&e.r) +
+            &index.cs.ql.scale(e.l)) +
+            &index.cs.qr.scale(e.r)) +
+            &index.cs.qo.scale(e.o)) +
+            &index.cs.qc;
+        let f2 =
+            z.scale
+            (
+                (e.l + &bz + &oracles.gamma) *
+                &(e.r + &(bz * &index.cs.r) + &oracles.gamma) *
+                &(e.o + &(bz * &index.cs.o) + &oracles.gamma) *
+                &oracles.alpha
+            );
+        let f3 =
+            index.cs.sigmam[2].scale
+            (
+                (e.l + &(oracles.beta * &e.sigma1) + &oracles.gamma) *
+                &(e.r + &(oracles.beta * &e.sigma2) + &oracles.gamma) *
+                &(oracles.beta * &e.z * &oracles.alpha)
+            );
+        let f4 = z.scale(alpsq * &(zeta2 - &Fr::<G>::one()) / &(oracles.zeta - &Fr::<G>::one()));
+        let f = &(&(&f1 + &f2) - &f3) + &f4;
+        evals[0].f = f.eval(evlp[0], index.max_poly_size);
+        evals[1].f = f.eval(evlp[1], index.max_poly_size);
 
         // query opening scaler challenges
         oracles.v = fq_sponge.challenge();
@@ -236,16 +268,9 @@ impl<G: CommitmentCurve> ProverProof<G>
                     (&o, None),
                     (&z, None),
                     (&t, Some(3*n+3)),
-
-                    (&index.cs.ql, None),
-                    (&index.cs.qr, None),
-                    (&index.cs.qo, None),
-                    (&index.cs.qm, None),
-                    (&index.cs.qc, None),
-
+                    (&f, None),
                     (&index.cs.sigmam[0], None),
                     (&index.cs.sigmam[1], None),
-                    (&index.cs.sigmam[2], None),
                 ],
                 &evlp.to_vec(),
                 oracles.v,

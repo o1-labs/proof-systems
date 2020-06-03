@@ -172,19 +172,21 @@ impl<E: PairingEngine> ProverProof<E>
         let thgh_comm = index.urs.get_ref().commit(&thgh)?;
 
         // absorb the polycommitments into the argument and sample zeta
+        
         fq_sponge.absorb_g(&[tlow_comm, tmid_comm, thgh_comm]);
         oracles.zeta = fq_sponge.challenge();
         let zeta2 = oracles.zeta.pow(&[n as u64]);
         let zeta3 = zeta2.square();
 
-        // compute linearization polynomial
-
+        // evaluate the polynomials
         evals.a = a.evaluate(oracles.zeta);
         evals.b = b.evaluate(oracles.zeta);
         evals.c = c.evaluate(oracles.zeta);
         evals.sigma1 = index.cs.sigmam[0].evaluate(oracles.zeta);
         evals.sigma2 = index.cs.sigmam[1].evaluate(oracles.zeta);
         evals.z = z.evaluate(oracles.zeta * &index.cs.domain.group_gen);
+
+        // compute linearization polynomial
 
         let bz = oracles.beta * &oracles.zeta;
         let r1 =

@@ -74,6 +74,7 @@ impl<E: PairingEngine> ProverProof<E>
                 ]
             ).into_affine();
 
+            // prepare for the opening proof verification
             batch.push
             ((
                 oracles.zeta,
@@ -98,6 +99,8 @@ impl<E: PairingEngine> ProverProof<E>
                 proof.proof2
             ));
         }
+
+        // verify the opening proofs
         match index.urs.verify(&batch, &mut OsRng)
         {
             false => Err(ProofError::OpenProof),
