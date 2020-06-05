@@ -145,11 +145,11 @@ impl<E: PairingEngine> ProverProof<E>
             ]);
         let (t4, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])).into(),
-            &DensePolynomial::from_coefficients_slice(&[-E::Fr::one(), E::Fr::one()]).into()).
-            map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+                &DensePolynomial::from_coefficients_slice(&[-E::Fr::one(), E::Fr::one()]).into()).
+                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let (mut t, res) = (&t1 + &(&t2 - &t3).scale(oracles.alpha)).
+        let (mut t, res) = (&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)).
             divide_by_vanishing_poly(index.cs.domain).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
         t += &t4.scale(alpsq);
