@@ -8,6 +8,7 @@ use rand_core::OsRng;
 use algebra::{Field, PairingEngine, Zero, One};
 use oracle::rndoracle::{ProofError};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain};
+use plonk_circuits::constraints::ConstraintSystem;
 use commitment_pairing::commitment::Utils;
 pub use super::index::Index;
 use oracle::sponge::FqSponge;
@@ -127,16 +128,21 @@ impl<E: PairingEngine> ProverProof<E>
             &(&r*&index.cs.qr)) +
             &(&o*&index.cs.qo)) +
             &index.cs.qc) + &p;
-        let t2 =
-            &(&(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])) *
-            &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r]))) *
-            &(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o]))) * &z;
-        let t3 =
-            &(&(&(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)) *
-            &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta))) *
-            &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta))) *
-            &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
-                map(|(z, w)| *z * &w).collect::<Vec<_>>());
+        let t2 = ConstraintSystem::<E::Fr>::multiply
+            (&[
+                &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
+                &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r])),
+                &(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o])),
+                &z
+            ]);
+        let t3 = ConstraintSystem::<E::Fr>::multiply
+            (&[
+                &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
+                &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),
+                &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta)),
+                &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
+                    map(|(z, w)| *z * &w).collect::<Vec<_>>())
+            ]);
         let (t4, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])).into(),
             &DensePolynomial::from_coefficients_slice(&[-E::Fr::one(), E::Fr::one()]).into()).

@@ -141,4 +141,30 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         }
         true
     }
+
+    // utility function for efficient multiplication of several polys
+    pub fn multiply(polys: &[&DensePolynomial<F>]) -> DensePolynomial<F>
+    {
+        for p in polys {if p.is_zero() {return DensePolynomial::<F>::zero()}}
+
+        let domain = GeneralEvaluationDomain::new(polys.iter().map(|p| p.len()).fold(0, |x, y| x + &y)).
+            expect("field is not smooth enough to construct domain");
+        let evals = polys.iter().map
+        (
+            |p|
+            {
+                let mut e = p.evaluate_over_domain_by_ref(domain);
+                e.evals.resize(domain.size(), F::zero());
+                e
+            }
+        ).collect::<Vec<_>>();
+
+        let evals = Evaluations::<F>::from_vec_and_domain
+        (
+            (0..domain.size()).map(|i| evals.iter().map(|e| e.evals[i]).fold(F::one(), |x, y| x * &y)).collect::<Vec<_>>(),
+            domain
+        );
+
+        evals.interpolate()
+    }
 }
