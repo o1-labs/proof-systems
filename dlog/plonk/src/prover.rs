@@ -231,7 +231,8 @@ impl<G: CommitmentCurve> ProverProof<G>
                 (e.l + &bz + &oracles.gamma) *
                 &(e.r + &(bz * &index.cs.r) + &oracles.gamma) *
                 &(e.o + &(bz * &index.cs.o) + &oracles.gamma) *
-                &oracles.alpha
+                &oracles.alpha +
+                &(alpsq * &(zeta2 - &Fr::<G>::one()) / &(oracles.zeta - &Fr::<G>::one()))
             );
         let f3 =
             index.cs.sigmam[2].scale
@@ -240,8 +241,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 &(e.r + &(oracles.beta * &e.sigma2) + &oracles.gamma) *
                 &(oracles.beta * &e.z * &oracles.alpha)
             );
-        let f4 = z.scale(alpsq * &(zeta2 - &Fr::<G>::one()) / &(oracles.zeta - &Fr::<G>::one()));
-        let f = &(&(&f1 + &f2) - &f3) + &f4;
+        let f = &(&f1 + &f2) - &f3;
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
 

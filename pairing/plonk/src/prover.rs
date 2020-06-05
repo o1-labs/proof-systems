@@ -200,7 +200,8 @@ impl<E: PairingEngine> ProverProof<E>
                 (evals.l + &bz + &oracles.gamma) *
                 &(evals.r + &(bz * &index.cs.r) + &oracles.gamma) *
                 &(evals.o + &(bz * &index.cs.o) + &oracles.gamma) *
-                &oracles.alpha
+                &oracles.alpha +
+                &(alpsq * &(zeta2 - &E::Fr::one()) / &(oracles.zeta - &E::Fr::one()))
             );
         let f3 =
             index.cs.sigmam[2].scale
@@ -209,8 +210,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(evals.r + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
                 &(oracles.beta * &evals.z * &oracles.alpha)
             );
-        let f4 = z.scale(alpsq * &(zeta2 - &E::Fr::one()) / &(oracles.zeta - &E::Fr::one()));
-        let f = &(&(&f1 + &f2) - &f3) + &f4;
+        let f = &(&f1 + &f2) - &f3;
         evals.f = f.evaluate(oracles.zeta);
 
         // query opening scaler challenge
