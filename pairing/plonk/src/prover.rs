@@ -123,8 +123,7 @@ impl<E: PairingEngine> ProverProof<E>
         // compute quotient polynomial
 
         let t1 =
-            &(&(&(&(&(&l*&(&r*&index.cs.qm)) +
-            &(&l*&index.cs.ql)) +
+            &(&(&(&(&l*&(&(&r*&index.cs.qm) + &index.cs.ql)) +
             &(&r*&index.cs.qr)) +
             &(&o*&index.cs.qo)) +
             &index.cs.qc) + &p;

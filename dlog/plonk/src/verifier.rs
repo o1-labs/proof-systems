@@ -22,7 +22,6 @@ impl<G: CommitmentCurve> ProverProof<G>
     // This function verifies the batch of zk-proofs
     //     proofs: vector of Plonk proofs
     //     index: Index
-    //     rng: randomness source context
     //     RETURN: verification status
     pub fn verify
         <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
@@ -104,8 +103,8 @@ impl<G: CommitmentCurve> ProverProof<G>
                 // check quotient polynomial evaluation consistency
                 if
                     (evals.f - &(ab * &(evals.o + &oracles.gamma)) -
-                    &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).
-                        map(|((l, p), w)| *l * p * &w).fold(Fr::<G>::zero(), |x, y| x + &y) * &index.domain.size_inv) -
+                    &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).map
+                        (|((l, p), w)| *l * p * &w).fold(Fr::<G>::zero(), |x, y| x + &y) * &index.domain.size_inv) -
                     &(lagrange[0] * &alpsq))
                 !=
                     evals.t * &(zeta2 - &Fr::<G>::one()) {return Err(ProofError::ProofVerification)}
@@ -129,7 +128,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                         (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
                         (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
-                        ],
+                    ],
                     &proof.proof
                 ))
             }
