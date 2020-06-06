@@ -65,6 +65,7 @@ impl<E: PairingEngine> ProverProof<E>
         let public = witness[0..index.cs.public].to_vec();
         let p = -index.cs.evals_from_coeffs(public.clone()).interpolate();
 
+        // compute witness polynomials
         let l = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect()).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
         let r = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect()).interpolate()

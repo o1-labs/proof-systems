@@ -87,6 +87,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         let public = witness[0..index.cs.public].to_vec();
         let p = -index.cs.evals_from_coeffs(public.clone()).interpolate();
 
+        // compute witness polynomials
         let l = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect()).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
         let r = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect()).interpolate()
@@ -135,7 +136,8 @@ impl<G: CommitmentCurve> ProverProof<G>
         );
 
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        let z = index.cs.evals_from_coeffs(z).interpolate();
+        let z = &index.cs.evals_from_coeffs(z).interpolate() +
+            &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
 
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None);
@@ -179,7 +181,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         t += &t4.scale(alpsq);
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, Some(3*n+3));
+        let t_comm = index.srs.get_ref().commit(&t, Some(3*n+6));
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
@@ -272,7 +274,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                     (&r, None),
                     (&o, None),
                     (&z, None),
-                    (&t, Some(3*n+3)),
+                    (&t, Some(3*n+6)),
                     (&f, None),
                     (&index.cs.sigmam[0], None),
                     (&index.cs.sigmam[1], None),

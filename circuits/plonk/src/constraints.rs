@@ -49,7 +49,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> Option<Self>
     {
         let domain = Domain::<F>::new(Domain::<F>::compute_size_of_domain(gates.len())?)?;
-        let sid = domain.elements().map(|elm| {elm}).collect::<Vec<_>>();
+        let mut sid = domain.elements().map(|elm| {elm}).collect::<Vec<_>>();
         let r =
         {
             let mut r = domain.sample_element_outside_domain(&mut OsRng);
@@ -83,6 +83,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 sigmal[2][gate.o.0-2*n] = s[gate.o.1 / n][gate.o.1 % n];
             }
         );
+
+        let mut s = sid[0..3].to_vec();
+        sid.append(&mut s);
 
         Some(ConstraintSystem
         {

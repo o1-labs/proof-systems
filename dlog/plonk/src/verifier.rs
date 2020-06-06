@@ -122,7 +122,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(3*index.domain.size()+3)),
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(3*index.domain.size()+6)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
 
