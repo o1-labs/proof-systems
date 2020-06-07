@@ -124,18 +124,31 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute quotient polynomial
 
+        let tm =
+        [
+            l.coeffs.len()+index.cs.ql.coeffs.len(),
+            r.coeffs.len()+index.cs.qr.coeffs.len(),
+            o.coeffs.len()+index.cs.qo.coeffs.len()
+        ];
+        let domain = EvaluationDomain::new(*tm.iter().max().map_or(Err(ProofError::DomainCreation), |s| Ok(s))?);
         let t1 =
-            &(&(&(&(&l*&(&(&r*&index.cs.qm) + &index.cs.ql)) +
-            &(&r*&index.cs.qr)) +
-            &(&o*&index.cs.qo)) +
+            &(&(&ConstraintSystem::<E::Fr>::multiply(&[&l, &r, &index.cs.qm], None).interpolate() +
+            &(
+                &(&ConstraintSystem::<E::Fr>::multiply(&[&l, &index.cs.ql], domain) +
+                &ConstraintSystem::<E::Fr>::multiply(&[&r, &index.cs.qr], domain)) +
+                &ConstraintSystem::<E::Fr>::multiply(&[&o, &index.cs.qo], domain)
+            ).interpolate()) +
             &index.cs.qc) + &p;
+
+        let domain = EvaluationDomain::new(l.len()+r.len()+o.len()+z.len());
         let t2 = ConstraintSystem::<E::Fr>::multiply
             (&[
                 &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
                 &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r])),
                 &(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o])),
                 &z
-            ]);
+            ], domain);
+
         let t3 = ConstraintSystem::<E::Fr>::multiply
             (&[
                 &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
@@ -143,7 +156,8 @@ impl<E: PairingEngine> ProverProof<E>
                 &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta)),
                 &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
                     map(|(z, w)| *z * &w).collect::<Vec<_>>())
-            ]);
+            ], domain);
+
         let (t4, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-E::Fr::one(), E::Fr::one()]).into()).

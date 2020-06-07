@@ -11,6 +11,7 @@ pub use super::poseidon::{ArithmeticSpongeParams, ArithmeticSponge, Sponge};
 pub enum ProofError
 {
     WitnessCsInconsistent,
+    DomainCreation,
     PolyDivision,
     PolyCommit,
     PolyCommitWithBound,
