@@ -146,13 +146,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // utility function for efficient multiplication of several polys
-    pub fn multiply(polys: &[&DensePolynomial<F>], domain: Option<GeneralEvaluationDomain<F>>) -> Evaluations<F>
+    pub fn multiply(polys: &[&DensePolynomial<F>], domain: Option<Domain<F>>) -> Evaluations<F>
     {
-        let domain = match domain
+        let domain = GeneralEvaluationDomain::Radix2(match domain
         {
             Some(_) => domain,
-            None => GeneralEvaluationDomain::new(polys.iter().map(|p| p.len()).fold(0, |x, y| x + &y))
-        }.expect("field is not smooth enough to construct domain");
+            None => Domain::new(polys.iter().map(|p| p.len()).fold(0, |x, y| x + &y))
+        }.expect("field is not smooth enough to construct domain"));
 
         let evals = polys.iter().map
         (

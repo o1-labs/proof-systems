@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use oracle::{FqSponge, rndoracle::{ProofError}};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Radix2EvaluationDomain as Domain, EvaluationDomain};
 use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof};
 use plonk_circuits::constraints::ConstraintSystem;
 use crate::plonk_sponge::{FrSponge};
@@ -75,7 +75,7 @@ impl<G: CommitmentCurve> ProverProof<G>
     ) 
     -> Result<Self, ProofError>
     {
-        let n = index.cs.domain.size();
+        let n = index.cs.domain.size as usize;
         if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
@@ -155,7 +155,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             r.coeffs.len()+index.cs.qr.coeffs.len(),
             o.coeffs.len()+index.cs.qo.coeffs.len()
         ];
-        let domain = EvaluationDomain::new(*tm.iter().max().map_or(Err(ProofError::DomainCreation), |s| Ok(s))?);
+        let domain = Domain::new(*tm.iter().max().map_or(Err(ProofError::DomainCreation), |s| Ok(s))?);
         let t1 =
             &(&(&ConstraintSystem::<Fr<G>>::multiply(&[&l, &r, &index.cs.qm], None).interpolate() +
             &(
@@ -165,7 +165,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             ).interpolate()) +
             &index.cs.qc) + &p;
 
-        let domain = EvaluationDomain::new(l.len()+r.len()+o.len()+z.len());
+        let domain = Domain::new(l.len()+r.len()+o.len()+z.len());
         let t2 = ConstraintSystem::<Fr<G>>::multiply
             (&[
                 &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
@@ -238,7 +238,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             f: Fr::<G>::zero(),
         };
 
-        // compute linearisation polynomial
+        // compute linearization polynomial
 
         let bz = oracles.beta * &oracles.zeta;
         let f1 =

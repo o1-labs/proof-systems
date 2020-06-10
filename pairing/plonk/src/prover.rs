@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use rand_core::OsRng;
 use algebra::{Field, PairingEngine, Zero, One};
 use oracle::rndoracle::{ProofError};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Radix2EvaluationDomain as Domain, EvaluationDomain};
 use plonk_circuits::constraints::ConstraintSystem;
 use commitment_pairing::commitment::Utils;
 pub use super::index::Index;
@@ -130,7 +130,7 @@ impl<E: PairingEngine> ProverProof<E>
             r.coeffs.len()+index.cs.qr.coeffs.len(),
             o.coeffs.len()+index.cs.qo.coeffs.len()
         ];
-        let domain = EvaluationDomain::new(*tm.iter().max().map_or(Err(ProofError::DomainCreation), |s| Ok(s))?);
+        let domain = Domain::new(*tm.iter().max().map_or(Err(ProofError::DomainCreation), |s| Ok(s))?);
         let t1 =
             &(&(&ConstraintSystem::<E::Fr>::multiply(&[&l, &r, &index.cs.qm], None).interpolate() +
             &(
@@ -140,7 +140,7 @@ impl<E: PairingEngine> ProverProof<E>
             ).interpolate()) +
             &index.cs.qc) + &p;
 
-        let domain = EvaluationDomain::new(l.len()+r.len()+o.len()+z.len());
+        let domain = Domain::new(l.len()+r.len()+o.len()+z.len());
         let t2 = ConstraintSystem::<E::Fr>::multiply
             (&[
                 &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
