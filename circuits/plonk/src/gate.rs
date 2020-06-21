@@ -6,18 +6,25 @@ This source file implements Plonk computation wire index primitive.
 
 use algebra::Field;
 
+pub const SPONGE_WIDTH: usize = oracle::poseidon::SPONGE_CAPACITY + oracle::poseidon::SPONGE_RATE;
+
 #[derive(Clone)]
 pub struct CircuitGate<F: Field>
 {
-    pub l: (usize, usize),   // left input wire index and its permutation
-    pub r: (usize, usize),   // right input wire index and its permutation
-    pub o: (usize, usize),   // output wire index and its permutation
+    pub l: (usize, usize), // left input wire index and its permutation
+    pub r: (usize, usize), // right input wire index and its permutation
+    pub o: (usize, usize), // output wire index and its permutation
 
-    pub ql: F, // left input
-    pub qr: F, // right input
-    pub qo: F, // output
-    pub qm: F, // multiplication
-    pub qc: F, // constant
+    // generic gate selectors
+    pub ql: F, // left input selector
+    pub qr: F, // right input selector
+    pub qo: F, // output selector
+    pub qm: F, // multiplication selector
+    pub qc: F, // constant selector
+
+    // poseidon gate selectors
+    pub rc: [F; SPONGE_WIDTH], // round constant selectors
+    pub ip: F, // indicator selector
 }
 
 impl<F: Field> CircuitGate<F>
@@ -35,6 +42,8 @@ impl<F: Field> CircuitGate<F>
             qo: F::zero(),
             qm: F::zero(),
             qc: F::zero(),
+            rc: [F::zero(); 3],
+            ip: F::zero(),
         }
     }
 
@@ -48,6 +57,8 @@ impl<F: Field> CircuitGate<F>
         qo: F,
         qm: F,
         qc: F,
+        rc: [F; 3],
+        ip: F,
     ) -> Self
     {
         CircuitGate
@@ -60,6 +71,8 @@ impl<F: Field> CircuitGate<F>
             qo,
             qm,
             qc,
+            rc,
+            ip,
         }
     }
 }

@@ -153,7 +153,7 @@ where E::G1Affine: CoordinatesCurve
         urs : URSSpec<'a, 'b, E>
     ) -> Result<Self, ProofError>
     {
-        let urs = URSValue::create(cs.domain.size()+3, urs);
+        let urs = URSValue::create(cs.domain.d1.size()+3, urs);
         let (endo_q, endo_r) = endos::<E>();
 
         Ok(Index
@@ -179,7 +179,7 @@ where E::G1Affine: CoordinatesCurve
     {
         VerifierIndex
         {
-            domain: self.cs.domain,
+            domain: self.cs.domain.d1,
             sigma_comm: self.sigma_comm,
             sid_comm: self.sid_comm,
             ql_comm: self.ql_comm,

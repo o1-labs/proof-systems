@@ -6,9 +6,9 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use oracle::{FqSponge, rndoracle::{ProofError}};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Radix2EvaluationDomain as Domain, EvaluationDomain};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial};
 use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof};
-use plonk_circuits::constraints::ConstraintSystem;
+use plonk_circuits::{domains::EvaluationDomains, gate::SPONGE_WIDTH};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
@@ -75,7 +75,7 @@ impl<G: CommitmentCurve> ProverProof<G>
     ) 
     -> Result<Self, ProofError>
     {
-        let n = index.cs.domain.size as usize;
+        let n = index.cs.domain.d1.size as usize;
         if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
@@ -85,15 +85,15 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -index.cs.evals_from_coeffs(public.clone()).interpolate();
+        let p = -EvaluationDomains::evals_from_coeffs(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect()).interpolate()
-            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
-        let r = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect()).interpolate()
-            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
-        let o = &index.cs.evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect()).interpolate()
-            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
+        let l = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
+        let r = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
+        let o = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+            + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to the l, r, o wire values
         let l_comm = index.srs.get_ref().commit(&l, None);
@@ -136,8 +136,8 @@ impl<G: CommitmentCurve> ProverProof<G>
         );
 
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        let z = &index.cs.evals_from_coeffs(z).interpolate() +
-            &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain);
+        let z = &EvaluationDomains::evals_from_coeffs(z, index.cs.domain.d1).interpolate() +
+            &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None);
@@ -145,44 +145,40 @@ impl<G: CommitmentCurve> ProverProof<G>
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
-        let alpsq = oracles.alpha.square();
+        let mut alpha = oracles.alpha;
+        let alpha = (0..SPONGE_WIDTH).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
         // compute quotient polynomial
 
-        let tm =
-        [
-            l.coeffs.len()+index.cs.ql.coeffs.len(),
-            r.coeffs.len()+index.cs.qr.coeffs.len(),
-            o.coeffs.len()+index.cs.qo.coeffs.len()
-        ];
-        let domain = Domain::new(*tm.iter().max().map_or(Err(ProofError::DomainCreation), |s| Ok(s))?);
+        // generic constraints contribution
         let t1 =
-            &(&(&ConstraintSystem::<Fr<G>>::multiply(&[&l, &r, &index.cs.qm], None).interpolate() +
+            &(&(&EvaluationDomains::<Fr<G>>::multiply(&[&l, &r, &index.cs.qm], index.cs.domain.d3).interpolate() +
             &(
-                &(&ConstraintSystem::<Fr<G>>::multiply(&[&l, &index.cs.ql], domain) +
-                &ConstraintSystem::<Fr<G>>::multiply(&[&r, &index.cs.qr], domain)) +
-                &ConstraintSystem::<Fr<G>>::multiply(&[&o, &index.cs.qo], domain)
+                &(&EvaluationDomains::<Fr<G>>::multiply(&[&l, &index.cs.ql], index.cs.domain.d2) +
+                &EvaluationDomains::<Fr<G>>::multiply(&[&r, &index.cs.qr], index.cs.domain.d2)) +
+                &EvaluationDomains::<Fr<G>>::multiply(&[&o, &index.cs.qo], index.cs.domain.d2)
             ).interpolate()) +
             &index.cs.qc) + &p;
 
-        let domain = Domain::new(l.len()+r.len()+o.len()+z.len());
-        let t2 = ConstraintSystem::<Fr<G>>::multiply
+        // permutation check contribution
+        let t2 = EvaluationDomains::<Fr<G>>::multiply
             (&[
                 &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
                 &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r])),
                 &(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o])),
                 &z
-            ], domain);
+            ], index.cs.domain.d4);
 
-        let t3 = ConstraintSystem::<Fr<G>>::multiply
+        let t3 = EvaluationDomains::<Fr<G>>::multiply
             (&[
                 &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
                 &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),
                 &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta)),
                 &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
                     map(|(z, w)| *z * &w).collect::<Vec<_>>())
-            ], domain);
+            ], index.cs.domain.d4);
 
+        // premutation boundary condition check contribution
         let (t4, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
@@ -190,9 +186,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         let (mut t, res) = (&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)).
-            divide_by_vanishing_poly(index.cs.domain).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+            divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-        t += &t4.scale(alpsq);
+        t += &t4.scale(alpha[0]);
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(3*n+6));
@@ -205,7 +201,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // evaluate the polynomials
 
-        let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.group_gen];
+        let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.d1.group_gen];
         let evals = (0..2).map
         (
             |i| ProofEvaluations::<Vec<Fr<G>>>
@@ -254,7 +250,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 &(e.r + &(bz * &index.cs.r) + &oracles.gamma) *
                 &(e.o + &(bz * &index.cs.o) + &oracles.gamma) *
                 &oracles.alpha +
-                &(alpsq * &(zeta2 - &Fr::<G>::one()) / &(oracles.zeta - &Fr::<G>::one()))
+                &(alpha[0] * &(zeta2 - &Fr::<G>::one()) / &(oracles.zeta - &Fr::<G>::one()))
             );
         let f3 =
             index.cs.sigmam[2].scale

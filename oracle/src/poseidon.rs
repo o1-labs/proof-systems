@@ -14,6 +14,7 @@ pub const ROUNDS_PARTIAL: usize = 30;
 const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
+pub const SPONGE_BOX: usize = 17;
 
 pub trait Sponge<Input, Digest> {
     type Params;
@@ -24,13 +25,7 @@ pub trait Sponge<Input, Digest> {
 
 // x^17
 fn sbox<F: Field>(x: F) -> F {
-    let mut res = x;
-    res.square_in_place(); //x^2
-    res.square_in_place(); //x^4
-    res.square_in_place(); //x^8
-    res.square_in_place(); //x^16
-    res.mul_assign(&x); // x^17
-    res
+    x.pow([SPONGE_BOX as u64])
 }
 
 /*

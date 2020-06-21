@@ -107,7 +107,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         VerifierIndex
         {
-            domain: self.cs.domain,
+            domain: self.cs.domain.d1,
             sigma_comm: self.sigma_comm.clone(),
             sid_comm: self.sid_comm.clone(),
             ql_comm: self.ql_comm.clone(),
