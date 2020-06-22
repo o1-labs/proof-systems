@@ -148,8 +148,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
                 &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),
                 &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta)),
-                &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
-                    map(|(z, w)| *z * &w).collect::<Vec<_>>())
+                &index.cs.shift(&z)
             ], index.cs.domain.d4);
 
         // premutation boundary condition check contribution

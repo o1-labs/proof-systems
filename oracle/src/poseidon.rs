@@ -24,8 +24,14 @@ pub trait Sponge<Input, Digest> {
 }
 
 // x^17
-fn sbox<F: Field>(x: F) -> F {
-    x.pow([SPONGE_BOX as u64])
+pub fn sbox<F: Field>(x: F) -> F {
+    let mut res = x;
+    res.square_in_place(); //x^2
+    res.square_in_place(); //x^4
+    res.square_in_place(); //x^8
+    res.square_in_place(); //x^16
+    res.mul_assign(&x); // x^17
+    res
 }
 
 /*

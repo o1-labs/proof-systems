@@ -51,7 +51,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                     l: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].l, zeta1),
                     r: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].r, zeta1),
                     o: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].o, zeta1),
-                    z: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[1].z, zetaw.pow(&[index.max_poly_size as u64])),
+                    z: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].z, zeta1),
                     t: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].t, zeta1),
                     f: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].f, zeta1),
                     sigma1: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].sigma1, zeta1),
@@ -65,7 +65,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 let ab = (evals.l + &(oracles.beta * &evals.sigma1) + &oracles.gamma) *
                     &(evals.r + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
-                    &oracles.alpha * &evals.z;
+                    &oracles.alpha * &DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[1].z, zetaw.pow(&[index.max_poly_size as u64]));
 
                 // compute linearization polynomial commitment
                 *f_comm = PolyComm::<G>
@@ -73,19 +73,9 @@ impl<G: CommitmentCurve> ProverProof<G>
                     shifted: None,
                     unshifted:
                     {
-                        let p = [&index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &proof.z_comm, &index.sigma_comm[2]];
+                        let p = [&index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &index.sigma_comm[2]];
                         let n = p.iter().map(|c| c.unshifted.len()).max().unwrap();
-                        let s =
-                            [
-                                evals.l * &evals.r, evals.l, evals.r, evals.o, Fr::<G>::one(),
-                                (
-                                    (evals.l + &bz + &oracles.gamma) *
-                                    &(evals.r + &(bz * &index.r) + &oracles.gamma) *
-                                    &(evals.o + &(bz * &index.o) + &oracles.gamma) * &oracles.alpha +
-                                    &(lagrange[0] * &alpsq)
-                                ),
-                                -ab * &oracles.beta,
-                            ];
+                        let s = [evals.l * &evals.r, evals.l, evals.r, evals.o, Fr::<G>::one(), -ab * &oracles.beta];
                         (0..n).map
                         (
                             |i|
@@ -104,8 +94,13 @@ impl<G: CommitmentCurve> ProverProof<G>
                 if
                     (evals.f - &(ab * &(evals.o + &oracles.gamma)) -
                     &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).map
-                        (|((l, p), w)| *l * p * &w).fold(Fr::<G>::zero(), |x, y| x + &y) * &index.domain.size_inv) -
-                    &(lagrange[0] * &alpsq))
+                        (|((l, p), w)| *l * p * &w).fold(Fr::<G>::zero(), |x, y| x + &y) * &index.domain.size_inv) +
+                    &((evals.z - &Fr::<G>::one()) * &(lagrange[0] * &alpsq)))
+                    +
+                    &((evals.l + &bz + &oracles.gamma) *
+                    &(evals.r + &(bz * &index.r) + &oracles.gamma) *
+                    &(evals.o + &(bz * &index.o) + &oracles.gamma) *
+                    &oracles.alpha * &evals.z)
                 !=
                     evals.t * &(zeta2 - &Fr::<G>::one()) {return Err(ProofError::ProofVerification)}
 

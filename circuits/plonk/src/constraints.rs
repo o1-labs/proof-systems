@@ -29,6 +29,7 @@ pub struct ConstraintSystem<F: FftField>
     pub qc:     DensePolynomial<F>,         // constant wire polynomial
 
     // poseidon selector polynomials
+    pub ps:     DensePolynomial<F>,         // poseidon selector polynomial
     pub rc:     [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
     
     // index polynomials over Lagrange base
@@ -114,6 +115,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             qm: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.qm).collect(), domain.d1).interpolate(),
             qc: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.qc).collect(), domain.d1).interpolate(),
             
+            ps: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.ps).collect(), domain.d1).interpolate(),
             rc: array_init(|i| EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.rc[i]).collect(), domain.d1).interpolate()),
             p2: EvaluationDomains::evals_from_coeffs(pm.coeffs, domain.d2).evals,
             pbox,
@@ -167,7 +169,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             |poly|
             {
                 let mut evals = poly.evaluate_over_domain_by_ref(self.domain.dp);
-                evals.evals.iter_mut().for_each(|e| *e = e.pow([oracle::poseidon::SPONGE_BOX as u64]));
+                evals.evals.iter_mut().for_each(|e| *e = oracle::poseidon::sbox(*e));
                 evals
             }
         ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.dp), |x, y| &x + &y);
@@ -183,9 +185,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 evals.evals.iter_mut().zip(self.p2.iter()).for_each(|(e, p)| *e *= p);
                 evals
             }
-        ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.dp), |x, y| &x + &y);
+        ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d2), |x, y| &x + &y);
 
         ret += &evals.interpolate();
         ret
+    }
+
+    // utility function for eshifting poly along domain coordinate
+    pub fn shift(&self, poly: &DensePolynomial<F>) -> DensePolynomial<F>
+    {
+        DensePolynomial::from_coefficients_vec(poly.coeffs.iter().zip(self.sid.iter()).
+            map(|(p, w)| *p * w).collect::<Vec<_>>())
     }
 }

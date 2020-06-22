@@ -146,7 +146,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
         let mut alpha = oracles.alpha;
-        let alpha = (0..SPONGE_WIDTH).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = (0..SPONGE_WIDTH+1).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
         // compute quotient polynomial
 
@@ -174,8 +174,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
                 &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),
                 &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta)),
-                &DensePolynomial::from_coefficients_vec(z.coeffs.iter().zip(index.cs.sid.iter()).
-                    map(|(z, w)| *z * &w).collect::<Vec<_>>())
+                &index.cs.shift(&z)
             ], index.cs.domain.d4);
 
         // premutation boundary condition check contribution
@@ -185,7 +184,13 @@ impl<G: CommitmentCurve> ProverProof<G>
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let (mut t, res) = (&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)).
+        // poseidon constraints contribution
+        let p1 = &(&index.cs.posmul(&[&l, &o]) + &index.cs.rc[0]) - &index.cs.shift(&l);
+        let p2 = &(&index.cs.posmul(&[&l, &r]) + &index.cs.rc[1]) - &index.cs.shift(&r);
+        let p3 = &(&index.cs.posmul(&[&r, &o]) + &index.cs.rc[2]) - &index.cs.shift(&o);
+        let p = &(&(&p1.scale(alpha[1]) + &p2.scale(alpha[2])) + &p3.scale(alpha[3])) * &index.cs.ps;
+
+        let (mut t, res) = (&(&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &p).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
         t += &t4.scale(alpha[0]);
@@ -196,8 +201,6 @@ impl<G: CommitmentCurve> ProverProof<G>
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
         oracles.zeta = fq_sponge.challenge();
-        let zeta1 = oracles.zeta.pow(&[index.max_poly_size as u64]);
-        let zeta2 = oracles.zeta.pow(&[n as u64]);
 
         // evaluate the polynomials
 
@@ -220,46 +223,44 @@ impl<G: CommitmentCurve> ProverProof<G>
         ).collect::<Vec<_>>();
         let mut evals = [evals[0].clone(), evals[1].clone()];
 
-        let e = ProofEvaluations::<Fr<G>>
-        {
-            l: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].l, zeta1),
-            r: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].r, zeta1),
-            o: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].o, zeta1),
-            z: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[1].z, evlp[1].pow(&[index.max_poly_size as u64])),
-            t: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].t, zeta1),
-
-            sigma1: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].sigma1, zeta1),
-            sigma2: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[0].sigma2, zeta1),
-
-            f: Fr::<G>::zero(),
-        };
+        let evlp1 =
+        [
+            oracles.zeta.pow(&[index.max_poly_size as u64]),
+            (oracles.zeta * &index.cs.domain.d1.group_gen).pow(&[index.max_poly_size as u64])
+        ];
+        let e = (0..2).map
+        (
+            |i| ProofEvaluations::<Fr<G>>
+            {
+                l: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].l, evlp1[i]),
+                r: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].r, evlp1[i]),
+                o: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].o, evlp1[i]),
+                z: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].z, evlp1[i]),
+                t: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].t, evlp1[i]),
+    
+                sigma1: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].sigma1, evlp1[i]),
+                sigma2: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].sigma2, evlp1[i]),
+    
+                f: Fr::<G>::zero(),
+            }
+        ).collect::<Vec<_>>();
 
         // compute linearization polynomial
 
-        let bz = oracles.beta * &oracles.zeta;
-        let f1 =
-            &(&(&(&index.cs.qm.scale(e.l*&e.r) +
-            &index.cs.ql.scale(e.l)) +
-            &index.cs.qr.scale(e.r)) +
-            &index.cs.qo.scale(e.o)) +
-            &index.cs.qc;
-        let f2 =
-            z.scale
+        let f =
+            &(&(&(&(&index.cs.qm.scale(e[0].l*&e[0].r) +
+            &index.cs.ql.scale(e[0].l)) +
+            &index.cs.qr.scale(e[0].r)) +
+            &index.cs.qo.scale(e[0].o)) +
+            &index.cs.qc)
+            -
+            &index.cs.sigmam[2].scale
             (
-                (e.l + &bz + &oracles.gamma) *
-                &(e.r + &(bz * &index.cs.r) + &oracles.gamma) *
-                &(e.o + &(bz * &index.cs.o) + &oracles.gamma) *
-                &oracles.alpha +
-                &(alpha[0] * &(zeta2 - &Fr::<G>::one()) / &(oracles.zeta - &Fr::<G>::one()))
+                (e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
+                &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
+                &(oracles.beta * &e[1].z * &oracles.alpha)
             );
-        let f3 =
-            index.cs.sigmam[2].scale
-            (
-                (e.l + &(oracles.beta * &e.sigma1) + &oracles.gamma) *
-                &(e.r + &(oracles.beta * &e.sigma2) + &oracles.gamma) *
-                &(oracles.beta * &e.z * &oracles.alpha)
-            );
-        let f = &(&f1 + &f2) - &f3;
+            
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
 
