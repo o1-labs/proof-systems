@@ -24,7 +24,7 @@ pub struct CircuitGate<F: Field>
 
     // poseidon gate selectors
     pub ps: F, // poseidon selector: 1 if poseidon gate, 0 otherwise
-    pub ip: F, // partial/full round indicator selector
+    pub fp: F, // partial/full round indicator selector
     pub rc: [F; SPONGE_WIDTH], // round constants
 }
 
@@ -45,7 +45,7 @@ impl<F: Field> CircuitGate<F>
             qc: F::zero(),
             ps: F::zero(),
             rc: [F::zero(); 3],
-            ip: F::zero(),
+            fp: F::zero(),
         }
     }
 
@@ -61,7 +61,7 @@ impl<F: Field> CircuitGate<F>
         qc: F,
         ps: F,
         rc: [F; 3],
-        ip: F,
+        fp: F,
     ) -> Self
     {
         CircuitGate
@@ -76,7 +76,7 @@ impl<F: Field> CircuitGate<F>
             qc,
             ps,
             rc,
-            ip,
+            fp,
         }
     }
 }

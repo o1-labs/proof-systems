@@ -261,8 +261,8 @@ impl<G: CommitmentCurve> ProverProof<G>
             ))
             +
             &(&(&index.cs.psdn_lnrz(&[e[0].l, e[0].o], 0, e[1].l).scale(alpha[1]) +
-            &index.cs.psdn_lnrz(&[e[0].l, e[0].r], 1, e[1].r).scale(alpha[1])) +
-            &index.cs.psdn_lnrz(&[e[0].r, e[0].o], 2, e[1].o).scale(alpha[1]));
+            &index.cs.psdn_lnrz(&[e[0].l, e[0].r], 1, e[1].r).scale(alpha[2])) +
+            &index.cs.psdn_lnrz(&[e[0].r, e[0].o], 2, e[1].o).scale(alpha[3]));
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);

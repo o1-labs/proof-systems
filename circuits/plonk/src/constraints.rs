@@ -30,18 +30,19 @@ pub struct ConstraintSystem<F: FftField>
     pub qc:     DensePolynomial<F>,         // constant wire polynomial
 
     // poseidon selector polynomials
-    pub rc:     [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
-    pub wm:     DensePolynomial<F>,         // full/partial round indicator polynomial
-    pub pm:     DensePolynomial<F>,         // f(wx) constraint selector polynomial
+    pub rcm:    [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
+    pub fpm:    DensePolynomial<F>,         // full/partial round indicator polynomial
+    pub pfm:    DensePolynomial<F>,         // partial/full round indicator polynomial
+    pub psm:    DensePolynomial<F>,         // poseidon constraint selector polynomial
     
     // permutation polynomials over Lagrange base
     pub sigmal: [Vec<F>; 3],                // permutation polynomial array
     pub sid:    Vec<F>,                     // SID polynomial
 
     // poseidon selector polynomials over Lagrange bases
-    pub wp:     Vec<F>,                     // poseidon indicator evaluations w over domain.dp
-    pub w2:     Vec<F>,                     // poseidon indicator 1-w evaluations over domain.d2
-    pub ps:     Vec<F>,                     // poseidon selector for f(wx) over domain.d2
+    pub fpl:    Vec<F>,                     // full/partial round indicator evaluations w over domain.dp
+    pub pfl:    Vec<F>,                     // partial/full round indicator 1-w evaluations over domain.d2
+    pub psl:    Vec<F>,                     // poseidon selector over domain.d2
 
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
@@ -98,10 +99,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         sid.append(&mut s);
 
         // compute poseidon constraint polynomials
-        let wm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ip * & gate.ps).collect(), domain.d1).interpolate();
-        let mut w2 = wm.clone();
-        if w2.is_zero() == false {w2 = &DensePolynomial::from_coefficients_slice(&[F::one()]) - &w2}
-        let pm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ps).collect(), domain.d1).interpolate();
+        let fpm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.fp * &gate.ps).collect(), domain.d1).interpolate();
+        let pfm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| (F::one()-&gate.fp)*&gate.ps).collect(), domain.d1).interpolate();
+        let psm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ps).collect(), domain.d1).interpolate();
 
         Some(ConstraintSystem
         {
@@ -116,12 +116,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             qm: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qm).collect(), domain.d1).interpolate(),
             qc: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qc).collect(), domain.d1).interpolate(),
             
-            rc: array_init(|i| DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.rc[i]).collect(), domain.d1).interpolate()),
-            ps: pm.evaluate_over_domain_by_ref(domain.d2).evals,
-            wp: wm.evaluate_over_domain_by_ref(domain.dp).evals,
-            w2: w2.evaluate_over_domain_by_ref(domain.d2).evals,
-            wm,
-            pm,
+            rcm: array_init(|i| DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.rc[i]).collect(), domain.d1).interpolate()),
+            psl: psm.evaluate_over_domain_by_ref(domain.d2).evals,
+            fpl: fpm.evaluate_over_domain_by_ref(domain.dp).evals,
+            pfl: pfm.evaluate_over_domain_by_ref(domain.d2).evals,
+            psm,
+            fpm,
+            pfm,
             
             gates,
             r,
@@ -176,7 +177,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 evals
             }
         ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.dp), |x, y| &x + &y);
-        evals.evals.iter_mut().zip(self.wp.iter()).for_each(|(e, p)| *e *= p);
+        evals.evals.iter_mut().zip(self.fpl.iter()).for_each(|(e, p)| *e *= p);
 
         let mut ret = evals.interpolate();
 
@@ -185,7 +186,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             |poly|
             {
                 let mut evals = poly.evaluate_over_domain_by_ref(self.domain.d2);
-                evals.evals.iter_mut().zip(self.w2.iter()).for_each(|(e, p)| *e *= p);
+                evals.evals.iter_mut().zip(self.pfl.iter()).for_each(|(e, p)| *e *= p);
                 evals
             }
         ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d2), |x, y| &x + &y);
@@ -193,11 +194,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         evals -=
         &{
             let mut evals = self.shift(f).evaluate_over_domain_by_ref(self.domain.d2);
-            evals.evals.iter_mut().zip(self.ps.iter()).for_each(|(e, p)| *e *= p);
+            evals.evals.iter_mut().zip(self.psl.iter()).for_each(|(e, p)| *e *= p);
             evals
         };
 
-        ret += &(&evals.interpolate() + &self.rc[i]);
+        ret += &(&evals.interpolate() + &self.rcm[i]);
         ret
     }
 
@@ -206,14 +207,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     {
         &(&(&evals.iter().map
         (
-            |eval| {self.wm.scale(oracle::poseidon::sbox(*eval))}
+            |eval| {self.fpm.scale(oracle::poseidon::sbox(*eval))}
         ).fold(DensePolynomial::<F>::zero(), |x, y| &x + &y)
         +
         &evals.iter().map
         (
-            |eval| {(&DensePolynomial::from_coefficients_slice(&[F::one()]) - &self.wm).scale(*eval)}
+            |eval| {self.pfm.scale(*eval)}
         ).fold(DensePolynomial::<F>::zero(), |x, y| &x + &y))
-        + &self.pm.scale(f)) + &self.rc[i]
+        + &self.psm.scale(f)) + &self.rcm[i]
     }
 
     // utility function for eshifting poly along domain coordinate
