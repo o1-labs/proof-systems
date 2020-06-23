@@ -217,7 +217,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         + &self.psm.scale(f)) + &self.rcm[i]
     }
 
-    // utility function for eshifting poly along domain coordinate
+    // utility function for shifting poly along domain coordinate
     pub fn shift(&self, poly: &DensePolynomial<F>) -> DensePolynomial<F>
     {
         DensePolynomial::from_coefficients_vec(poly.coeffs.iter().zip(self.sid.iter()).

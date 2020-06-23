@@ -11,6 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles, ProofEvaluations};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
+use plonk_circuits::gate::SPONGE_WIDTH;
 use crate::plonk_sponge::{FrSponge};
 use oracle::utils::Utils;
 use rand_core::OsRng;
@@ -40,32 +41,41 @@ impl<G: CommitmentCurve> ProverProof<G>
             |(proof, f_comm)|
             {
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index);
-                let zeta1 = oracles.zeta.pow(&[index.max_poly_size as u64]);
-                let zeta2 = oracles.zeta.pow(&[index.domain.size]);
+                let zeta1 = oracles.zeta.pow(&[index.domain.size]);
                 let zetaw = oracles.zeta * &index.domain.group_gen;
-                let alpsq = oracles.alpha.square();
                 let bz = oracles.beta * &oracles.zeta;
+                let mut alpha = oracles.alpha;
+                let alpha = (0..SPONGE_WIDTH+1).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // evaluate committed polynoms
-                let evals = ProofEvaluations::<Fr<G>>
-                {
-                    l: DensePolynomial::eval_polynomial(&proof.evals[0].l, zeta1),
-                    r: DensePolynomial::eval_polynomial(&proof.evals[0].r, zeta1),
-                    o: DensePolynomial::eval_polynomial(&proof.evals[0].o, zeta1),
-                    z: DensePolynomial::eval_polynomial(&proof.evals[0].z, zeta1),
-                    t: DensePolynomial::eval_polynomial(&proof.evals[0].t, zeta1),
-                    f: DensePolynomial::eval_polynomial(&proof.evals[0].f, zeta1),
-                    sigma1: DensePolynomial::eval_polynomial(&proof.evals[0].sigma1, zeta1),
-                    sigma2: DensePolynomial::eval_polynomial(&proof.evals[0].sigma2, zeta1),
-                };
+                let evlp =
+                [
+                    oracles.zeta.pow(&[index.max_poly_size as u64]),
+                    zetaw.pow(&[index.max_poly_size as u64])
+                ];
+                
+                let evals = (0..2).map
+                (
+                    |i| ProofEvaluations::<Fr<G>>
+                    {
+                        l: DensePolynomial::eval_polynomial(&proof.evals[i].l, evlp[i]),
+                        r: DensePolynomial::eval_polynomial(&proof.evals[i].r, evlp[i]),
+                        o: DensePolynomial::eval_polynomial(&proof.evals[i].o, evlp[i]),
+                        z: DensePolynomial::eval_polynomial(&proof.evals[i].z, evlp[i]),
+                        t: DensePolynomial::eval_polynomial(&proof.evals[i].t, evlp[i]),
+                        f: DensePolynomial::eval_polynomial(&proof.evals[i].f, evlp[i]),
+                        sigma1: DensePolynomial::eval_polynomial(&proof.evals[i].sigma1, evlp[i]),
+                        sigma2: DensePolynomial::eval_polynomial(&proof.evals[i].sigma2, evlp[i]),
+                    }
+                ).collect::<Vec<_>>();
 
                 // evaluate lagrange polynoms
                 let mut lagrange = (0..proof.public.len()).zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
                 algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
-                lagrange.iter_mut().for_each(|l| *l *= &(zeta2 - &Fr::<G>::one()));
+                lagrange.iter_mut().for_each(|l| *l *= &(zeta1 - &Fr::<G>::one()));
 
-                let ab = (evals.l + &(oracles.beta * &evals.sigma1) + &oracles.gamma) *
-                    &(evals.r + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
+                let ab = (evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
+                    &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
                     &oracles.alpha * &DensePolynomial::eval_polynomial(&proof.evals[1].z, zetaw.pow(&[index.max_poly_size as u64]));
 
                 // compute linearization polynomial commitment
@@ -74,9 +84,27 @@ impl<G: CommitmentCurve> ProverProof<G>
                     shifted: None,
                     unshifted:
                     {
-                        let p = [&index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &index.sigma_comm[2]];
+                        let p =
+                        [
+                            &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &index.sigma_comm[2],
+                            &index.fpm_comm, &index.pfm_comm, &index.psm_comm,
+                            &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
+                        ];
+                        let lro = [oracle::poseidon::sbox(evals[0].l), oracle::poseidon::sbox(evals[0].r), oracle::poseidon::sbox(evals[0].o)];
+                        let s =
+                        [
+                            evals[0].l * &evals[0].r, evals[0].l, evals[0].r, evals[0].o, Fr::<G>::one(), -ab * &oracles.beta,
+                            (lro[0] + &lro[2]) * &alpha[1] +
+                                &((lro[0] + &lro[1]) * &alpha[2]) +
+                                &((lro[1] + &lro[2]) * &alpha[3]),
+                            (evals[0].l + &evals[0].o) * &alpha[1] +
+                                &((evals[0].l + &evals[0].r) * &alpha[2]) +
+                                &((evals[0].r + &evals[0].o) * &alpha[3]),
+                            -evals[1].l * &alpha[1] - &(evals[1].r * &alpha[2]) - &(evals[1].o * &alpha[3]),
+                            alpha[1], alpha[2], alpha[3],
+                        ];
+
                         let n = p.iter().map(|c| c.unshifted.len()).max().unwrap();
-                        let s = [evals.l * &evals.r, evals.l, evals.r, evals.o, Fr::<G>::one(), -ab * &oracles.beta];
                         (0..n).map
                         (
                             |i|
@@ -93,17 +121,17 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 // check linearization polynomial evaluation consistency
                 if
-                    (evals.f - &(ab * &(evals.o + &oracles.gamma)) -
+                    (evals[0].f - &(ab * &(evals[0].o + &oracles.gamma)) -
                     &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).map
                         (|((l, p), w)| *l * p * &w).fold(Fr::<G>::zero(), |x, y| x + &y) * &index.domain.size_inv) +
-                    &((evals.z - &Fr::<G>::one()) * &(lagrange[0] * &alpsq)))
+                    &((evals[0].z - &Fr::<G>::one()) * &(lagrange[0] * &alpha[0])))
                     +
-                    &((evals.l + &bz + &oracles.gamma) *
-                    &(evals.r + &(bz * &index.r) + &oracles.gamma) *
-                    &(evals.o + &(bz * &index.o) + &oracles.gamma) *
-                    &oracles.alpha * &evals.z)
+                    &((evals[0].l + &bz + &oracles.gamma) *
+                    &(evals[0].r + &(bz * &index.r) + &oracles.gamma) *
+                    &(evals[0].o + &(bz * &index.o) + &oracles.gamma) *
+                    &oracles.alpha * &evals[0].z)
                 !=
-                    evals.t * &(zeta2 - &Fr::<G>::one()) {return Err(ProofError::ProofVerification)}
+                    evals[0].t * &(zeta1 - &Fr::<G>::one()) {return Err(ProofError::ProofVerification)}
 
                 // prepare for the opening proof verification
                 Ok

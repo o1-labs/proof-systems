@@ -92,7 +92,7 @@ fn dlog_plonk_group_addition()
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
-    ).unwrap();
+    );
     
     positive(&index);
     negative(&index);

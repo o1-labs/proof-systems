@@ -74,7 +74,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
         URSSpec::Generate(&mut OsRng)
-    ).unwrap();
+    );
     
     positive(&index);
     negative(&index);
@@ -159,7 +159,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
-    let verifier_index = index.verifier_index();
+    let verifier_index = index.verifier_index().unwrap();
     // verify one proof serially
     match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index)
     {

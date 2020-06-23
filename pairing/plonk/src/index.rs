@@ -6,11 +6,11 @@ This source file implements Plonk Protocol Index primitive.
 
 use rand_core::RngCore;
 use commitment_pairing::urs::URS;
+use oracle::poseidon::ArithmeticSpongeParams;
+use plonk_circuits::constraints::ConstraintSystem;
 use ff_fft::{DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as Domain};
 use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}, Zero, One};
 use oracle::rndoracle::ProofError;
-use oracle::poseidon::ArithmeticSpongeParams;
-use plonk_circuits::constraints::ConstraintSystem;
 
 pub trait CoordinatesCurve: AffineCurve {
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
@@ -79,15 +79,6 @@ pub struct Index<'a, E: PairingEngine>
     // polynomial commitment keys
     pub urs: URSValue<'a, E>,
 
-    // index polynomial commitments
-    pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array
-    pub sid_comm:    E::G1Affine,        // SID commitment
-    pub ql_comm:     E::G1Affine,        // left input wire commitment
-    pub qr_comm:     E::G1Affine,        // right input wire commitment
-    pub qo_comm:     E::G1Affine,        // output wire commitment
-    pub qm_comm:     E::G1Affine,        // multiplication commitment
-    pub qc_comm:     E::G1Affine,        // constant wire commitment
-
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
@@ -151,49 +142,49 @@ where E::G1Affine: CoordinatesCurve
         fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
         fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
         urs : URSSpec<'a, 'b, E>
-    ) -> Result<Self, ProofError>
+    ) -> Self
     {
         let urs = URSValue::create(cs.domain.d1.size()+3, urs);
         let (endo_q, endo_r) = endos::<E>();
 
-        Ok(Index
+        Index
         {
-            sigma_comm: [urs.get_ref().commit(&cs.sigmam[0])?, urs.get_ref().commit(&cs.sigmam[1])?, urs.get_ref().commit(&cs.sigmam[2])?],
-            sid_comm: urs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
-            ql_comm: urs.get_ref().commit(&cs.ql)?,
-            qr_comm: urs.get_ref().commit(&cs.qr)?,
-            qo_comm: urs.get_ref().commit(&cs.qo)?,
-            qm_comm: urs.get_ref().commit(&cs.qm)?,
-            qc_comm: urs.get_ref().commit(&cs.qc)?,
-
             fr_sponge_params,
             fq_sponge_params,
             endo_q,
             endo_r,
             urs,
             cs,
-        })
+        }
     }
 
-    pub fn verifier_index(&self) -> VerifierIndex<E>
+    pub fn verifier_index(&self) -> Result<VerifierIndex<E>, ProofError>
     {
-        VerifierIndex
+        let urs = self.urs.get_ref().clone();
+        Ok(VerifierIndex
         {
             domain: self.cs.domain.d1,
-            sigma_comm: self.sigma_comm,
-            sid_comm: self.sid_comm,
-            ql_comm: self.ql_comm,
-            qr_comm: self.qr_comm,
-            qo_comm: self.qo_comm,
-            qm_comm: self.qm_comm,
-            qc_comm: self.qc_comm,
+
+            sid_comm: urs.commit(&DensePolynomial::from_coefficients_slice(&[E::Fr::zero(), E::Fr::one()]))?,
+            sigma_comm:
+            [
+                urs.commit(&self.cs.sigmam[0])?,
+                urs.commit(&self.cs.sigmam[1])?,
+                urs.commit(&self.cs.sigmam[2])?,
+            ],
+            ql_comm: urs.commit(&self.cs.ql)?,
+            qr_comm: urs.commit(&self.cs.qr)?,
+            qo_comm: urs.commit(&self.cs.qo)?,
+            qm_comm: urs.commit(&self.cs.qm)?,
+            qc_comm: urs.commit(&self.cs.qc)?,
+
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo_q: self.endo_q,
             endo_r: self.endo_r,
-            urs: self.urs.get_ref().clone(),
+            urs,
             r: self.cs.r,
             o: self.cs.o,
-        }
+        })
     }
 }
