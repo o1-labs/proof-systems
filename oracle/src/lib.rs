@@ -2,6 +2,7 @@ pub mod poseidon;
 pub mod rndoracle;
 pub mod bn_382;
 pub mod sponge;
+pub mod utils;
 
 use algebra::Field;
 

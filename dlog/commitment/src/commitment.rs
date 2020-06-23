@@ -19,6 +19,7 @@ use algebra::{
 };
 use ff_fft::DensePolynomial;
 use oracle::{FqSponge, sponge::ScalarChallenge};
+use oracle::utils::Utils;
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
@@ -664,48 +665,4 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
         res += &(x * y);
     }
     res
-}
-
-pub trait Utils<F: Field> {
-    fn scale(&self, elm: F) -> Self;
-    fn shiftr(&self, size: usize) -> Self;
-    fn eval_polynomial(coeffs: &[F], x: F) -> F;
-    fn eval(&self, elm: F, size: usize) -> Vec<F>;
-}
-
-impl<F: Field> Utils<F> for DensePolynomial<F> {
-    fn eval_polynomial(coeffs: &[F], x: F) -> F {
-        let mut res = F::zero();
-        for c in coeffs.iter().rev() {
-            res *= &x;
-            res += c;
-        }
-        res
-    }
-
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
-    fn scale(&self, elm: F) -> Self {
-        let mut result = self.clone();
-        for coeff in &mut result.coeffs {
-            *coeff *= &elm
-        }
-        result
-    }
-
-    fn shiftr(&self, size: usize) -> Self {
-        let mut result = vec![F::zero(); size];
-        result.extend(self.coeffs.clone());
-        DensePolynomial::<F>::from_coefficients_vec(result)
-    }
-
-    // This function evaluates polynomial in chunks
-    fn eval(&self, elm: F, size: usize) -> Vec<F>
-    {
-        (0..self.coeffs.len()).step_by(size).map
-        (
-            |i| Self::from_coefficients_slice
-                (&self.coeffs[i..if i+size > self.coeffs.len() {self.coeffs.len()} else {i+size}]).evaluate(elm)
-        ).collect()
-    }
 }

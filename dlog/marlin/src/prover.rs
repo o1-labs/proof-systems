@@ -5,9 +5,9 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One};
-use oracle::{sponge::ScalarChallenge, FqSponge, rndoracle::{ProofError}};
+use oracle::{sponge::ScalarChallenge, utils::Utils, FqSponge, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, EvaluationDomain};
-use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use marlin_circuits::domains::EvaluationDomains;
 use crate::marlin_sponge::FrSponge;
 pub use super::index::Index;

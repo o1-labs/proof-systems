@@ -5,10 +5,10 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One};
-use oracle::{FqSponge, rndoracle::{ProofError}};
+use oracle::{FqSponge, utils::Utils, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial};
-use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, OpeningProof};
-use plonk_circuits::{domains::EvaluationDomains, gate::SPONGE_WIDTH};
+use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof};
+use plonk_circuits::gate::SPONGE_WIDTH;
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
@@ -85,14 +85,14 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -EvaluationDomains::evals_from_coeffs(public.clone(), index.cs.domain.d1).interpolate();
+        let p = -DensePolynomial::evals_from_coeffs(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+        let l = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let r = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+        let r = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let o = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+        let o = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to the l, r, o wire values
@@ -136,7 +136,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         );
 
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        let z = &EvaluationDomains::evals_from_coeffs(z, index.cs.domain.d1).interpolate() +
+        let z = &DensePolynomial::evals_from_coeffs(z, index.cs.domain.d1).interpolate() +
             &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to z
@@ -152,16 +152,16 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // generic constraints contribution
         let t1 =
-            &(&(&EvaluationDomains::<Fr<G>>::multiply(&[&l, &r, &index.cs.qm], index.cs.domain.d3).interpolate() +
+            &(&(&DensePolynomial::multiply(&[&l, &r, &index.cs.qm], index.cs.domain.d3).interpolate() +
             &(
-                &(&EvaluationDomains::<Fr<G>>::multiply(&[&l, &index.cs.ql], index.cs.domain.d2) +
-                &EvaluationDomains::<Fr<G>>::multiply(&[&r, &index.cs.qr], index.cs.domain.d2)) +
-                &EvaluationDomains::<Fr<G>>::multiply(&[&o, &index.cs.qo], index.cs.domain.d2)
+                &(&DensePolynomial::multiply(&[&l, &index.cs.ql], index.cs.domain.d2) +
+                &DensePolynomial::multiply(&[&r, &index.cs.qr], index.cs.domain.d2)) +
+                &DensePolynomial::multiply(&[&o, &index.cs.qo], index.cs.domain.d2)
             ).interpolate()) +
             &index.cs.qc) + &p;
 
         // permutation check contribution
-        let t2 = EvaluationDomains::<Fr<G>>::multiply
+        let t2 = DensePolynomial::multiply
             (&[
                 &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
                 &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r])),
@@ -169,7 +169,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 &z
             ], index.cs.domain.d4);
 
-        let t3 = EvaluationDomains::<Fr<G>>::multiply
+        let t3 = DensePolynomial::multiply
             (&[
                 &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
                 &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),
@@ -184,11 +184,10 @@ impl<G: CommitmentCurve> ProverProof<G>
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        // poseidon constraints contribution
-        let p1 = &(&index.cs.posmul(&[&l, &o]) + &index.cs.rc[0]) - &index.cs.shift(&l);
-        let p2 = &(&index.cs.posmul(&[&l, &r]) + &index.cs.rc[1]) - &index.cs.shift(&r);
-        let p3 = &(&index.cs.posmul(&[&r, &o]) + &index.cs.rc[2]) - &index.cs.shift(&o);
-        let p = &(&(&p1.scale(alpha[1]) + &p2.scale(alpha[2])) + &p3.scale(alpha[3])) * &index.cs.ps;
+        // psdn_quot constraints contribution
+        let p = &(&index.cs.psdn_quot(&[&l, &o], 0, &l).scale(alpha[1]) +
+            &index.cs.psdn_quot(&[&l, &r], 1, &r).scale(alpha[2])) +
+            &index.cs.psdn_quot(&[&r, &o], 2, &o).scale(alpha[3]);
 
         let (mut t, res) = (&(&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &p).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
@@ -232,14 +231,14 @@ impl<G: CommitmentCurve> ProverProof<G>
         (
             |i| ProofEvaluations::<Fr<G>>
             {
-                l: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].l, evlp1[i]),
-                r: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].r, evlp1[i]),
-                o: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].o, evlp1[i]),
-                z: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].z, evlp1[i]),
-                t: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].t, evlp1[i]),
+                l: DensePolynomial::eval_polynomial(&evals[i].l, evlp1[i]),
+                r: DensePolynomial::eval_polynomial(&evals[i].r, evlp1[i]),
+                o: DensePolynomial::eval_polynomial(&evals[i].o, evlp1[i]),
+                z: DensePolynomial::eval_polynomial(&evals[i].z, evlp1[i]),
+                t: DensePolynomial::eval_polynomial(&evals[i].t, evlp1[i]),
     
-                sigma1: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].sigma1, evlp1[i]),
-                sigma2: DensePolynomial::<Fr<G>>::eval_polynomial(&evals[i].sigma2, evlp1[i]),
+                sigma1: DensePolynomial::eval_polynomial(&evals[i].sigma1, evlp1[i]),
+                sigma2: DensePolynomial::eval_polynomial(&evals[i].sigma2, evlp1[i]),
     
                 f: Fr::<G>::zero(),
             }
@@ -248,7 +247,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         // compute linearization polynomial
 
         let f =
-            &(&(&(&(&index.cs.qm.scale(e[0].l*&e[0].r) +
+            &(&(&(&(&(&index.cs.qm.scale(e[0].l*&e[0].r) +
             &index.cs.ql.scale(e[0].l)) +
             &index.cs.qr.scale(e[0].r)) +
             &index.cs.qo.scale(e[0].o)) +
@@ -259,8 +258,12 @@ impl<G: CommitmentCurve> ProverProof<G>
                 (e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
                 &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
                 &(oracles.beta * &e[1].z * &oracles.alpha)
-            );
-            
+            ))
+            +
+            &(&(&index.cs.psdn_lnrz(&[e[0].l, e[0].o], 0, e[1].l).scale(alpha[1]) +
+            &index.cs.psdn_lnrz(&[e[0].l, e[0].r], 1, e[1].r).scale(alpha[1])) +
+            &index.cs.psdn_lnrz(&[e[0].r, e[0].o], 2, e[1].o).scale(alpha[1]));
+
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
 

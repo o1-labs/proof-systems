@@ -1,5 +1,5 @@
 use algebra::FftField;
-use ff_fft::{EvaluationDomain, Evaluations, GeneralEvaluationDomain, Radix2EvaluationDomain as Domain, DensePolynomial};
+use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvaluationDomains<F : FftField>
@@ -25,34 +25,5 @@ impl<F : FftField> EvaluationDomains<F> {
             d4: Domain::<F>::new(Domain::<F>::compute_size_of_domain(4*n+9)?)?,
             dp: Domain::<F>::new(Domain::<F>::compute_size_of_domain((n+2)*oracle::poseidon::SPONGE_BOX+n)?)?,
         })
-    }
-
-    pub fn evals_from_coeffs
-    (
-        v : Vec<F>,
-        d : Domain<F>
-    ) -> Evaluations<F, GeneralEvaluationDomain<F>>
-    {
-        Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
-    }
-
-    // utility function for efficient multiplication of several polys
-    pub fn multiply(polys: &[&DensePolynomial<F>], domain: Domain<F>) -> Evaluations<F>
-    {
-        let evals = polys.iter().map
-        (
-            |p|
-            {
-                let mut e = p.evaluate_over_domain_by_ref(domain);
-                e.evals.resize(domain.size(), F::zero());
-                e
-            }
-        ).collect::<Vec<_>>();
-
-        Evaluations::<F>::from_vec_and_domain
-        (
-            (0..domain.size()).map(|i| evals.iter().map(|e| e.evals[i]).fold(F::one(), |x, y| x * &y)).collect::<Vec<_>>(),
-            GeneralEvaluationDomain::Radix2(domain)
-        )
     }
 }

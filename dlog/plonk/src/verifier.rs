@@ -9,9 +9,10 @@ use oracle::rndoracle::ProofError;
 pub use super::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles, ProofEvaluations};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
+use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use crate::plonk_sponge::{FrSponge};
-use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm};
+use oracle::utils::Utils;
 use rand_core::OsRng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -48,14 +49,14 @@ impl<G: CommitmentCurve> ProverProof<G>
                 // evaluate committed polynoms
                 let evals = ProofEvaluations::<Fr<G>>
                 {
-                    l: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].l, zeta1),
-                    r: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].r, zeta1),
-                    o: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].o, zeta1),
-                    z: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].z, zeta1),
-                    t: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].t, zeta1),
-                    f: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].f, zeta1),
-                    sigma1: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].sigma1, zeta1),
-                    sigma2: DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[0].sigma2, zeta1),
+                    l: DensePolynomial::eval_polynomial(&proof.evals[0].l, zeta1),
+                    r: DensePolynomial::eval_polynomial(&proof.evals[0].r, zeta1),
+                    o: DensePolynomial::eval_polynomial(&proof.evals[0].o, zeta1),
+                    z: DensePolynomial::eval_polynomial(&proof.evals[0].z, zeta1),
+                    t: DensePolynomial::eval_polynomial(&proof.evals[0].t, zeta1),
+                    f: DensePolynomial::eval_polynomial(&proof.evals[0].f, zeta1),
+                    sigma1: DensePolynomial::eval_polynomial(&proof.evals[0].sigma1, zeta1),
+                    sigma2: DensePolynomial::eval_polynomial(&proof.evals[0].sigma2, zeta1),
                 };
 
                 // evaluate lagrange polynoms
@@ -65,7 +66,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                 let ab = (evals.l + &(oracles.beta * &evals.sigma1) + &oracles.gamma) *
                     &(evals.r + &(oracles.beta * &evals.sigma2) + &oracles.gamma) *
-                    &oracles.alpha * &DensePolynomial::<Fr<G>>::eval_polynomial(&proof.evals[1].z, zetaw.pow(&[index.max_poly_size as u64]));
+                    &oracles.alpha * &DensePolynomial::eval_polynomial(&proof.evals[1].z, zetaw.pow(&[index.max_poly_size as u64]));
 
                 // compute linearization polynomial commitment
                 *f_comm = PolyComm::<G>
@@ -90,7 +91,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                     }
                 };
 
-                // check quotient polynomial evaluation consistency
+                // check linearization polynomial evaluation consistency
                 if
                     (evals.f - &(ab * &(evals.o + &oracles.gamma)) -
                     &(lagrange.iter().zip(proof.public.iter()).zip(index.domain.elements()).map

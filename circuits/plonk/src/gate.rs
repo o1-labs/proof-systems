@@ -23,9 +23,9 @@ pub struct CircuitGate<F: Field>
     pub qc: F, // constant selector
 
     // poseidon gate selectors
-    pub ps: F, // poseidon selector
-    pub rc: [F; SPONGE_WIDTH], // round constant selectors
-    pub ip: F, // indicator selector
+    pub ps: F, // poseidon selector: 1 if poseidon gate, 0 otherwise
+    pub ip: F, // partial/full round indicator selector
+    pub rc: [F; SPONGE_WIDTH], // round constants
 }
 
 impl<F: Field> CircuitGate<F>

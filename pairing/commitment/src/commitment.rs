@@ -20,6 +20,7 @@ use oracle::rndoracle::ProofError;
 use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, UniformRand, VariableBaseMSM, One, Zero};
 use std::collections::HashMap;
 use ff_fft::DensePolynomial;
+use oracle::utils::Utils;
 pub use super::urs::URS;
 use rand_core::RngCore;
 
@@ -222,13 +223,12 @@ impl<E: PairingEngine> URS<E>
     }
 }
 
-pub trait Utils<F: Field>
+pub trait Divide<F: Field>
 {
     fn divide(&self, elm: F) -> Self;
-    fn scale(&self, elm: F) -> Self;
 }
 
-impl<F: Field> Utils<F> for DensePolynomial<F>
+impl<F: Field> Divide<F> for DensePolynomial<F>
 {
     // This function divides this polynomial difference: (F(x)-F(elm))/(x-elm)
     //    elm: base field element
@@ -249,14 +249,5 @@ impl<F: Field> Utils<F> for DensePolynomial<F>
             rcff = *y * &elm;
         }
         Self::from_coefficients_vec(pos)
-    }
-
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
-    fn scale(&self, elm: F) -> Self
-    {
-        let mut result = self.clone();
-        for coeff in &mut result.coeffs {*coeff *= &elm}
-        result
     }
 }

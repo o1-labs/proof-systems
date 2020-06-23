@@ -5,14 +5,13 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use rand_core::OsRng;
-use algebra::{Field, PairingEngine, Zero, One};
 use oracle::rndoracle::{ProofError};
+use algebra::{Field, PairingEngine, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain};
-use plonk_circuits::domains::EvaluationDomains;
-use commitment_pairing::commitment::Utils;
-pub use super::index::Index;
-use oracle::sponge::FqSponge;
 use crate::plonk_sponge::FrSponge;
+use oracle::sponge::FqSponge;
+pub use super::index::Index;
+use oracle::utils::Utils;
 
 #[derive(Clone)]
 pub struct ProverProof<E: PairingEngine>
@@ -63,14 +62,14 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -EvaluationDomains::evals_from_coeffs(public.clone(), index.cs.domain.d1).interpolate();
+        let p = -DensePolynomial::evals_from_coeffs(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+        let l = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let r = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+        let r = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let o = &EvaluationDomains::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+        let o = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to the l, r, o wire values
@@ -112,7 +111,7 @@ impl<E: PairingEngine> ProverProof<E>
         );
 
         if z.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
-        let z = EvaluationDomains::evals_from_coeffs(z, index.cs.domain.d1).interpolate();
+        let z = DensePolynomial::evals_from_coeffs(z, index.cs.domain.d1).interpolate();
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
@@ -126,16 +125,16 @@ impl<E: PairingEngine> ProverProof<E>
 
         // generic constraints contribution
         let t1 =
-            &(&(&EvaluationDomains::<E::Fr>::multiply(&[&l, &r, &index.cs.qm], index.cs.domain.d3).interpolate() +
+            &(&(&DensePolynomial::multiply(&[&l, &r, &index.cs.qm], index.cs.domain.d3).interpolate() +
             &(
-                &(&EvaluationDomains::<E::Fr>::multiply(&[&l, &index.cs.ql], index.cs.domain.d2) +
-                &EvaluationDomains::<E::Fr>::multiply(&[&r, &index.cs.qr], index.cs.domain.d2)) +
-                &EvaluationDomains::<E::Fr>::multiply(&[&o, &index.cs.qo], index.cs.domain.d2)
+                &(&DensePolynomial::multiply(&[&l, &index.cs.ql], index.cs.domain.d2) +
+                &DensePolynomial::multiply(&[&r, &index.cs.qr], index.cs.domain.d2)) +
+                &DensePolynomial::multiply(&[&o, &index.cs.qo], index.cs.domain.d2)
             ).interpolate()) +
             &index.cs.qc) + &p;
 
         // permutation check contribution
-        let t2 = EvaluationDomains::<E::Fr>::multiply
+        let t2 = DensePolynomial::multiply
             (&[
                 &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
                 &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r])),
@@ -143,7 +142,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &z
             ], index.cs.domain.d4);
 
-        let t3 = EvaluationDomains::<E::Fr>::multiply
+        let t3 = DensePolynomial::multiply
             (&[
                 &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
                 &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),

@@ -9,6 +9,7 @@ use ff_fft::{EvaluationDomain, DensePolynomial};
 pub use super::gate::{CircuitGate, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
 use array_init::array_init;
+use oracle::utils::Utils;
 use rand_core::OsRng;
 
 #[derive(Clone)]
@@ -18,10 +19,10 @@ pub struct ConstraintSystem<F: FftField>
     pub domain: EvaluationDomains<F>,       // evaluation domains
     pub gates:  Vec<CircuitGate<F>>,        // circuit gates
 
-    // index polynomials over the monomial base
+    // polynomials over the monomial base    
     pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
 
-    // generic selector polynomials
+    // generic constraint selector polynomials
     pub ql:     DensePolynomial<F>,         // left input wire polynomial
     pub qr:     DensePolynomial<F>,         // right input wire polynomial
     pub qo:     DensePolynomial<F>,         // output wire polynomial
@@ -29,14 +30,18 @@ pub struct ConstraintSystem<F: FftField>
     pub qc:     DensePolynomial<F>,         // constant wire polynomial
 
     // poseidon selector polynomials
-    pub ps:     DensePolynomial<F>,         // poseidon selector polynomial
     pub rc:     [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
+    pub wm:     DensePolynomial<F>,         // full/partial round indicator polynomial
+    pub pm:     DensePolynomial<F>,         // f(wx) constraint selector polynomial
     
-    // index polynomials over Lagrange base
+    // permutation polynomials over Lagrange base
     pub sigmal: [Vec<F>; 3],                // permutation polynomial array
     pub sid:    Vec<F>,                     // SID polynomial
-    pub pbox:   Vec<F>,                     // poseidon indicator evaluations over domain.dp
-    pub p2:     Vec<F>,                     // poseidon indicator 1-w evaluations over domain.d2
+
+    // poseidon selector polynomials over Lagrange bases
+    pub wp:     Vec<F>,                     // poseidon indicator evaluations w over domain.dp
+    pub w2:     Vec<F>,                     // poseidon indicator 1-w evaluations over domain.d2
+    pub ps:     Vec<F>,                     // poseidon selector for f(wx) over domain.d2
 
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
@@ -93,32 +98,30 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         sid.append(&mut s);
 
         // compute poseidon constraint polynomials
-        let mut pm = EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.ip).collect(), domain.d1).interpolate();
-        let pbox = EvaluationDomains::evals_from_coeffs(pm.coeffs.clone(), domain.dp).evals;
-        pm = &DensePolynomial::from_coefficients_slice(&[F::one()]) - &pm;
+        let wm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ip * & gate.ps).collect(), domain.d1).interpolate();
+        let mut w2 = wm.clone();
+        if w2.is_zero() == false {w2 = &DensePolynomial::from_coefficients_slice(&[F::one()]) - &w2}
+        let pm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ps).collect(), domain.d1).interpolate();
 
         Some(ConstraintSystem
         {
             domain,
             public,
             sid,
-            sigmam:
-            [
-                EvaluationDomains::evals_from_coeffs(sigmal[0].clone(), domain.d1).interpolate(),
-                EvaluationDomains::evals_from_coeffs(sigmal[1].clone(), domain.d1).interpolate(),
-                EvaluationDomains::evals_from_coeffs(sigmal[2].clone(), domain.d1).interpolate(),
-            ],
+            sigmam: array_init(|i| DensePolynomial::evals_from_coeffs(sigmal[i].clone(), domain.d1).interpolate()),
             sigmal,
-            ql: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.ql).collect(), domain.d1).interpolate(),
-            qr: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.qr).collect(), domain.d1).interpolate(),
-            qo: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.qo).collect(), domain.d1).interpolate(),
-            qm: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.qm).collect(), domain.d1).interpolate(),
-            qc: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.qc).collect(), domain.d1).interpolate(),
+            ql: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ql).collect(), domain.d1).interpolate(),
+            qr: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qr).collect(), domain.d1).interpolate(),
+            qo: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qo).collect(), domain.d1).interpolate(),
+            qm: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qm).collect(), domain.d1).interpolate(),
+            qc: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qc).collect(), domain.d1).interpolate(),
             
-            ps: EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.ps).collect(), domain.d1).interpolate(),
-            rc: array_init(|i| EvaluationDomains::evals_from_coeffs(gates.iter().map(|gate| gate.rc[i]).collect(), domain.d1).interpolate()),
-            p2: EvaluationDomains::evals_from_coeffs(pm.coeffs, domain.d2).evals,
-            pbox,
+            rc: array_init(|i| DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.rc[i]).collect(), domain.d1).interpolate()),
+            ps: pm.evaluate_over_domain_by_ref(domain.d2).evals,
+            wp: wm.evaluate_over_domain_by_ref(domain.dp).evals,
+            w2: w2.evaluate_over_domain_by_ref(domain.d2).evals,
+            wm,
+            pm,
             
             gates,
             r,
@@ -161,8 +164,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         true
     }
 
-    // poseidon witness poly multiplication f*(1-W) + f^17*W
-    pub fn posmul(&self, polys: &[&DensePolynomial<F>]) -> DensePolynomial<F>
+    // poseidon quotient poly contribution computation f*(1-W) + f^5*W + c(x) - f(wx)
+    pub fn psdn_quot(&self, polys: &[&DensePolynomial<F>], i: usize, f: &DensePolynomial<F>) -> DensePolynomial<F>
     {
         let mut evals = polys.iter().map
         (
@@ -173,22 +176,44 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 evals
             }
         ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.dp), |x, y| &x + &y);
-        evals.evals.iter_mut().zip(self.pbox.iter()).for_each(|(e, p)| *e *= p);
+        evals.evals.iter_mut().zip(self.wp.iter()).for_each(|(e, p)| *e *= p);
 
         let mut ret = evals.interpolate();
 
-        let evals = polys.iter().map
+        let mut evals = polys.iter().map
         (
             |poly|
             {
                 let mut evals = poly.evaluate_over_domain_by_ref(self.domain.d2);
-                evals.evals.iter_mut().zip(self.p2.iter()).for_each(|(e, p)| *e *= p);
+                evals.evals.iter_mut().zip(self.w2.iter()).for_each(|(e, p)| *e *= p);
                 evals
             }
         ).fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d2), |x, y| &x + &y);
 
-        ret += &evals.interpolate();
+        evals -=
+        &{
+            let mut evals = self.shift(f).evaluate_over_domain_by_ref(self.domain.d2);
+            evals.evals.iter_mut().zip(self.ps.iter()).for_each(|(e, p)| *e *= p);
+            evals
+        };
+
+        ret += &(&evals.interpolate() + &self.rc[i]);
         ret
+    }
+
+    // poseidon linearization poly contribution computation f*(1-W) + f^5*W + c(x) - f(wx)
+    pub fn psdn_lnrz(&self, evals: &[F], i: usize, f: F) -> DensePolynomial<F>
+    {
+        &(&(&evals.iter().map
+        (
+            |eval| {self.wm.scale(oracle::poseidon::sbox(*eval))}
+        ).fold(DensePolynomial::<F>::zero(), |x, y| &x + &y)
+        +
+        &evals.iter().map
+        (
+            |eval| {(&DensePolynomial::from_coefficients_slice(&[F::one()]) - &self.wm).scale(*eval)}
+        ).fold(DensePolynomial::<F>::zero(), |x, y| &x + &y))
+        + &self.pm.scale(f)) + &self.rc[i]
     }
 
     // utility function for eshifting poly along domain coordinate
