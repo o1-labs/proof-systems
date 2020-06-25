@@ -11,7 +11,7 @@ use algebra::Field;
 
 pub const ROUNDS_FULL: usize = 8;
 pub const ROUNDS_PARTIAL: usize = 30;
-const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
+pub const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
 pub const SPONGE_BOX: usize = 17;
@@ -59,52 +59,48 @@ pub struct ArithmeticSpongeParams<F: Field> {
 pub struct ArithmeticSponge<F: Field> {
     sponge_state: SpongeState,
     rate: usize,
-    state: Vec<F>,
+    pub state: Vec<F>,
 }
 
 impl<F: Field> ArithmeticSponge<F> {
+    pub fn full_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
+        for (i, x) in params.round_constants[r].iter().enumerate() {
+            self.state[i].add_assign(x);
+        }
+        for i in 0..self.state.len() {
+            self.state[i] = sbox(self.state[i]);
+        }
+        let new_state = apply_near_mds_matrix(&self.state);
+        for i in 0..new_state.len() {
+            self.state[i] = new_state[i];
+        }
+    }
+
+    pub fn partial_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
+        for (i, x) in params.round_constants[HALF_ROUNDS_FULL + r]
+        .iter()
+        .enumerate()
+        {
+            self.state[i].add_assign(x);
+        }
+        self.state[0] = sbox(self.state[0]);
+        let new_state = apply_near_mds_matrix(&self.state);
+        for i in 0..new_state.len() {
+            self.state[i] = new_state[i];
+        }
+    }
+
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
         for r in 0..HALF_ROUNDS_FULL {
-            for (i, x) in params.round_constants[r].iter().enumerate() {
-                self.state[i].add_assign(x);
-            }
-            for i in 0..self.state.len() {
-                self.state[i] = sbox(self.state[i]);
-            }
-            let new_state = apply_near_mds_matrix(&self.state);
-            for i in 0..new_state.len() {
-                self.state[i] = new_state[i];
-            }
+            self.full_round(r, params);
         }
 
         for r in 0..ROUNDS_PARTIAL {
-            for (i, x) in params.round_constants[HALF_ROUNDS_FULL + r]
-                .iter()
-                .enumerate()
-            {
-                self.state[i].add_assign(x);
-            }
-            self.state[0] = sbox(self.state[0]);
-            let new_state = apply_near_mds_matrix(&self.state);
-            for i in 0..new_state.len() {
-                self.state[i] = new_state[i];
-            }
+            self.partial_round(r, params);
         }
 
         for r in 0..HALF_ROUNDS_FULL {
-            for (i, x) in params.round_constants[HALF_ROUNDS_FULL + ROUNDS_PARTIAL + r]
-                .iter()
-                .enumerate()
-            {
-                self.state[i].add_assign(x);
-            }
-            for i in 0..self.state.len() {
-                self.state[i] = sbox(self.state[i]);
-            }
-            let new_state = apply_near_mds_matrix(&self.state);
-            for i in 0..new_state.len() {
-                self.state[i] = new_state[i];
-            }
+            self.full_round(r, params);
         }
     }
 }

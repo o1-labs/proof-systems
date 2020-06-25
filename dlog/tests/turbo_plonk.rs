@@ -1,43 +1,37 @@
+/*********************************************************************************************************
+
+This source file tests constraints for the following computatios:
+
+1. Weierstrass curve y^2 = x^3 + 7 group addition of non-special pairs of points
+   with wire permutations via generic Plonk constraints
+
+    (x2 - x1) * s = y2 - y1
+    s * s = x1 + x2 + x3
+    (x1 - x3) * s = y3 + y1
+
+2. Poseidon hash function permutation via custom constraints for Poseidon
+
+**********************************************************************************************************/
+
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use algebra::{bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use std::{io, io::Write};
+use oracle::poseidon::*;
 use groupmap::GroupMap;
 use std::time::Instant;
 use colored::Colorize;
 
-/*********************************************************************************************************
-
-This source file tests constraints for the Weierstrass curve y^2 = x^3 + 7 group addition
-of non-special pairs of points with wire permutations
-
-    (x2 - x1) * s = y2 - y1
-    s * s = x1 + x2 + x3
-    (x1 - x3) * s = y3 + y1
-
-**********************************************************************************************************/
-
 type Fr = <Affine as AffineCurve>::ScalarField;
-const MAX_SIZE: usize = 8;
+const MAX_SIZE: usize = 8; // max size of poly chunks
+const N: usize = 64; // Plonk domain size
 
 #[test]
-fn dlog_plonk_group_addition()
+fn turbo_plonk()
 {
-    let params: ArithmeticSpongeParams<Fr> = oracle::bn_382::fq::params();
-    let mut sponge = ArithmeticSponge::<Fr>::new();
-
-    sponge.absorb(&params, &[Fr::zero()]);
-    let alpha = sponge.squeeze(&params);
-
-
-
-
-
-
-
-    const N: usize = 16;
+    let c = &oracle::bn_382::fq::params().round_constants;
 
     let z = Fr::zero();
     let p = Fr::one();
@@ -63,25 +57,47 @@ fn dlog_plonk_group_addition()
     // circuit gates
 
     let mut i = 0;
-    let gates = vec!
+    let mut gates = vec!
     [
-        CircuitGate::<Fr>::create((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z, z, [z,z,z], z), // 0  c
-        CircuitGate::<Fr>::create(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z, z, [z,z,z], z), // 1  c
-        CircuitGate::<Fr>::create(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z, z, [z,z,z], z), // 2  c
-        CircuitGate::<Fr>::create(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z, z, [z,z,z], z), // 3  c
-        CircuitGate::<Fr>::create(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z, z, [z,z,z], z), // 4  c
-        CircuitGate::<Fr>::create(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z, z, [z,z,z], z), // 5  c
-        CircuitGate::<Fr>::create(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7), p, n, n, z, z, z, [z,z,z], z), // 6  -
-        CircuitGate::<Fr>::create(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8), z, z, n, p, z, z, [z,z,z], z), // 7  *
-        CircuitGate::<Fr>::create(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7), p, n, n, z, z, z, [z,z,z], z), // 8  -
-        CircuitGate::<Fr>::create(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11), z, z, n, p, z, z, [z,z,z], z), // 9  *
-        CircuitGate::<Fr>::create(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11), p, p, n, z, z, z, [z,z,z], z), // 10 +
-        CircuitGate::<Fr>::create(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9), p, p, n, z, z, z, [z,z,z], z), // 11 +
-        CircuitGate::<Fr>::create(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13), p, n, n, z, z, z, [z,z,z], z), // 12 -
-        CircuitGate::<Fr>::create(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14), z, z, n, p, z, z, [z,z,z], z), // 13 *
-        CircuitGate::<Fr>::create(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13), p, p, n, z, z, z, [z,z,z], z), // 14 +
-        CircuitGate::<Fr>::create(({i+=1; i},     15),  (i+N,   N+15), (i+2*N, 2*N+15), z, z, z, z, z, z, [z,z,z], z), // 15
+        // public input constraints
+
+        CircuitGate::<Fr>::create_generic((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
+
+        // generic constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
+
+        CircuitGate::<Fr>::create_generic(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7), p, n, n, z, z), // 6  -
+        CircuitGate::<Fr>::create_generic(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8), z, z, n, p, z), // 7  *
+        CircuitGate::<Fr>::create_generic(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7), p, n, n, z, z), // 8  -
+        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11), z, z, n, p, z), // 9  *
+        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11), p, p, n, z, z), // 10 +
+        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9), p, p, n, z, z), // 11 +
+        CircuitGate::<Fr>::create_generic(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13), p, n, n, z, z), // 12 -
+        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14), z, z, n, p, z), // 13 *
+        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13), p, p, n, z, z), // 14 +
     ];
+
+    // custom constraints for Poseidon hash function permutation
+
+    // HALF_ROUNDS_FULL full rounds constraint gates
+    for j in 0..HALF_ROUNDS_FULL
+    {
+        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[0][2]], p));
+    }
+    // ROUNDS_PARTIAL partial rounds constraint gates
+    for j in 0..ROUNDS_PARTIAL
+    {
+        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[0][2]], z));
+    }
+    // HALF_ROUNDS_FULL full rounds constraint gates
+    for j in 0..HALF_ROUNDS_FULL
+    {
+        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[0][2]], p));
+    }
 
     let srs = SRS::create(MAX_SIZE);
 
@@ -101,6 +117,9 @@ fn dlog_plonk_group_addition()
 fn positive(index: &Index<Affine>)
 where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
+    let params: ArithmeticSpongeParams<Fr> = oracle::bn_382::fq::params();
+    let mut sponge = ArithmeticSponge::<Fr>::new();
+
     let z = Fr::zero();
     let mut batch = Vec::new();
     let points = sample_points();
@@ -113,60 +132,48 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
+
+        let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
+        let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
+        let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
         
-        let witness = vec!
-        [
-            x1,
-            x2,
-            x3,
-            y1,
-            y2,
-            y3,
-            x2,
-            x2-&x1,
-            y2,
-            s,
-            x1,
-            x3,
-            x1,
-            s,
-            y1,
-            z,
+        sponge.state = vec![x1, x2, x3];
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
 
-            z,
-            z,
-            z,
-            z,
-            z,
-            z,
-            x1,
-            s,
-            y1,
-            s,
-            x2,
-            x1+&x2,
-            x3,
-            x1-&x3,
-            y3,
-            z,
+        // HALF_ROUNDS_FULL full rounds constraint gates
+        for j in 0..HALF_ROUNDS_FULL
+        {
+            sponge.full_round(j, &params);
+            l.push(sponge.state[0]);
+            r.push(sponge.state[1]);
+            o.push(sponge.state[2]);
+        }
+        // ROUNDS_PARTIAL partial rounds constraint gates
+        for j in 0..ROUNDS_PARTIAL
+        {
+            sponge.partial_round(j, &params);
+            l.push(sponge.state[0]);
+            r.push(sponge.state[1]);
+            o.push(sponge.state[2]);
+        }
+        // HALF_ROUNDS_FULL full rounds constraint gates
+        for j in 0..HALF_ROUNDS_FULL
+        {
+            sponge.full_round(j, &params);
+            l.push(sponge.state[0]);
+            r.push(sponge.state[1]);
+            o.push(sponge.state[2]);
+        }
 
-            z, 
-            z,
-            z,
-            z,
-            z,
-            z,
-            x2 - &x1,
-            (x2 - &x1) * &s,
-            y2 - &y1,
-            s.square(),
-            x1 + &x2,
-            x1 + &x2 + &x3,
-            x1 - &x3,
-            (x1 - &x3) * &s,
-            y1 + &y3,
-            z,
-        ];
+        l.resize(N, Fr::zero());
+        r.resize(N, Fr::zero());
+        o.resize(N, Fr::zero());
+
+        let mut witness = l;
+        witness.append(&mut r);
+        witness.append(&mut o);
 
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&witness), true);
@@ -201,8 +208,6 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 fn negative(index: &Index<Affine>)
 where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
-    let z = Fr::zero();
-
     // non-satisfying witness
     let x1 = <Fr as std::str::FromStr>::from_str("7502226838017077786426654731704772400845471875650491266565363420906771040750427824367287841412217114884691397809929").unwrap();
     let y1 = <Fr as std::str::FromStr>::from_str("3558210182254086348603204259628694223851158529696790509955564950434596266578621349330875065217679787287369448875015").unwrap();
@@ -213,59 +218,47 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let s = (y2 - &y1) / &(x2 - &x1);
     
-    let witness = vec!
-    [
-        x1,
-        x2,
-        x3,
-        y1,
-        y2,
-        y3,
-        x2,
-        x2-&x1,
-        y2,
-        s,
-        x1,
-        x3,
-        x1,
-        s,
-        y1,
-        z,
+    let mut sponge = ArithmeticSponge::<Fr>::new();
+    let params: ArithmeticSpongeParams<Fr> = oracle::bn_382::fq::params();
+    sponge.state = vec![x1, x2, x3];
+    let z = Fr::zero();
 
-        z,
-        z,
-        z,
-        z,
-        z,
-        z,
-        x1,
-        s,
-        y1,
-        s,
-        x2,
-        x1+&x2,
-        x3,
-        x1-&x3,
-        y3,
-        z,
+    let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
+    let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
+    let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
+    
+    // HALF_ROUNDS_FULL full rounds constraint gates
+    for j in 0..HALF_ROUNDS_FULL
+    {
+        sponge.full_round(j, &params);
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
+    }
+    // ROUNDS_PARTIAL partial rounds constraint gates
+    for j in 0..ROUNDS_PARTIAL
+    {
+        sponge.partial_round(j, &params);
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
+    }
+    // HALF_ROUNDS_FULL full rounds constraint gates
+    for j in 0..HALF_ROUNDS_FULL
+    {
+        sponge.full_round(j, &params);
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
+    }
 
-        z, 
-        z,
-        z,
-        z,
-        z,
-        z,
-        x2 - &x1,
-        (x2 - &x1) * &s,
-        y2 - &y1,
-        s.square(),
-        x1 + &x2,
-        x1 + &x2 + &x3,
-        x1 - &x3,
-        (x1 - &x3) * &s,
-        y1 + &y3,
-        z,
-    ];
+    l.resize(N, Fr::zero());
+    r.resize(N, Fr::zero());
+    o.resize(N, Fr::zero());
+
+    let mut witness = l;
+    witness.append(&mut r);
+    witness.append(&mut o);
 
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);

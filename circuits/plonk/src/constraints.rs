@@ -6,7 +6,7 @@ This source file implements Plonk circuit constraint primitive.
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{EvaluationDomain, DensePolynomial};
-pub use super::gate::{CircuitGate, SPONGE_WIDTH};
+pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
 use array_init::array_init;
 use oracle::utils::Utils;
@@ -85,7 +85,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sigmal = s.clone();
 
         // compute permutation polynomials
-        gates.iter().for_each
+        gates.iter().filter(|&g| g.typ != GateType::Zero).for_each
         (
             |gate|
             {
@@ -99,9 +99,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         sid.append(&mut s);
 
         // compute poseidon constraint polynomials
-        let fpm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.fp * &gate.ps).collect(), domain.d1).interpolate();
-        let pfm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| (F::one()-&gate.fp)*&gate.ps).collect(), domain.d1).interpolate();
-        let psm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ps).collect(), domain.d1).interpolate();
+        let fpm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.fp()).collect(), domain.d1).interpolate();
+        let pfm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| F::one()-&gate.fp()).collect(), domain.d1).interpolate();
+        let psm = DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| if gate.typ==GateType::Poseidon {F::one()} else {F::zero()}).collect(), domain.d1).interpolate();
 
         Some(ConstraintSystem
         {
@@ -110,13 +110,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             sid,
             sigmam: array_init(|i| DensePolynomial::evals_from_coeffs(sigmal[i].clone(), domain.d1).interpolate()),
             sigmal,
-            ql: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ql).collect(), domain.d1).interpolate(),
-            qr: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qr).collect(), domain.d1).interpolate(),
-            qo: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qo).collect(), domain.d1).interpolate(),
-            qm: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qm).collect(), domain.d1).interpolate(),
-            qc: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qc).collect(), domain.d1).interpolate(),
+            ql: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.ql()).collect(), domain.d1).interpolate(),
+            qr: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qr()).collect(), domain.d1).interpolate(),
+            qo: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qo()).collect(), domain.d1).interpolate(),
+            qm: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qm()).collect(), domain.d1).interpolate(),
+            qc: DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.qc()).collect(), domain.d1).interpolate(),
             
-            rcm: array_init(|i| DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.rc[i]).collect(), domain.d1).interpolate()),
+            rcm: array_init(|i| DensePolynomial::evals_from_coeffs(gates.iter().map(|gate| gate.rc()[i]).collect(), domain.d1).interpolate()),
             psl: psm.evaluate_over_domain_by_ref(domain.d2).evals,
             fpl: fpm.evaluate_over_domain_by_ref(domain.dp).evals,
             pfl: pfm.evaluate_over_domain_by_ref(domain.d2).evals,
@@ -140,27 +140,20 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         witness: &Vec<F>
     ) -> bool
     {
-        // verify witness against constraints
         if witness.len() != 3*self.domain.d1.size() {return false}
-        for gate in self.gates.iter().skip(self.public)
+        for i in self.public..self.gates.len()
         {
             if
-            !(
-                gate.ql * &witness[gate.l.0] +
-                &(gate.qr * &witness[gate.r.0]) +
-                &(gate.qo * &witness[gate.o.0]) +
-                &(gate.qm * &witness[gate.l.0] * &witness[gate.r.0]) +
-                &gate.qc
-            ).is_zero()
-            ||
-            !(
-                gate.ql * &witness[gate.l.1] +
-                &(gate.qr * &witness[gate.r.1]) +
-                &(gate.qo * &witness[gate.o.1]) +
-                &(gate.qm * &witness[gate.l.1] * &witness[gate.r.1]) +
-                &gate.qc
-            ).is_zero()
-            {return false}
+            // verify permutation consistency
+            witness[self.gates[i].l.1] != witness[self.gates[i].l.0] ||
+            witness[self.gates[i].r.1] != witness[self.gates[i].r.0] ||
+            witness[self.gates[i].o.1] != witness[self.gates[i].o.0] ||
+            
+            // verify witness against constraints
+            !self.gates[i].verify(witness, if i+1==self.gates.len() {&self.gates[i]} else {&self.gates[i+1]})
+            {
+                return false
+            }
         }
         true
     }
@@ -214,7 +207,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         (
             |eval| {self.pfm.scale(*eval)}
         ).fold(DensePolynomial::<F>::zero(), |x, y| &x + &y))
-        + &self.psm.scale(f)) + &self.rcm[i]
+        +
+        &self.psm.scale(f)) + &self.rcm[i]
     }
 
     // utility function for shifting poly along domain coordinate

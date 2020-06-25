@@ -185,11 +185,11 @@ impl<G: CommitmentCurve> ProverProof<G>
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // psdn_quot constraints contribution
-        let p = &(&index.cs.psdn_quot(&[&l, &o], 0, &l).scale(alpha[1]) +
+        let pos = &(&index.cs.psdn_quot(&[&l, &o], 0, &l).scale(alpha[1]) +
             &index.cs.psdn_quot(&[&l, &r], 1, &r).scale(alpha[2])) +
             &index.cs.psdn_quot(&[&r, &o], 2, &o).scale(alpha[3]);
 
-        let (mut t, res) = (&(&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &p).
+        let (mut t, res) = (&(&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &pos).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
         t += &t4.scale(alpha[0]);
