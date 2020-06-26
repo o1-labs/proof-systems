@@ -4,16 +4,14 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-use oracle::FqSponge;
-use oracle::rndoracle::ProofError;
 pub use super::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles, ProofEvaluations};
+use oracle::{FqSponge, rndoracle::ProofError, utils::Utils, poseidon::{sbox, SPONGE_BOX}};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use plonk_circuits::gate::SPONGE_WIDTH;
 use crate::plonk_sponge::{FrSponge};
-use oracle::utils::Utils;
 use rand_core::OsRng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -35,13 +33,14 @@ impl<G: CommitmentCurve> ProverProof<G>
         index: &Index<G>,
     ) -> Result<bool, ProofError>
     {
+        let n = index.domain.size();
         let mut f_comm = vec![PolyComm::<G>{unshifted: Vec::new(), shifted: None}; proofs.len()];
         let mut batch = proofs.iter().zip(f_comm.iter_mut()).map
         (
             |(proof, f_comm)|
             {
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index);
-                let zeta1 = oracles.zeta.pow(&[index.domain.size]);
+                let zeta1 = oracles.zeta.pow(&[n as u64]);
                 let zetaw = oracles.zeta * &index.domain.group_gen;
                 let bz = oracles.beta * &oracles.zeta;
                 let mut alpha = oracles.alpha;
@@ -87,20 +86,19 @@ impl<G: CommitmentCurve> ProverProof<G>
                         let p =
                         [
                             &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &index.sigma_comm[2],
+
                             &index.fpm_comm, &index.pfm_comm, &index.psm_comm,
                             &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
                         ];
-                        let lro = [oracle::poseidon::sbox(evals[0].l), oracle::poseidon::sbox(evals[0].r), oracle::poseidon::sbox(evals[0].o)];
+                        let lro = [sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o)];
                         let s =
                         [
                             evals[0].l * &evals[0].r, evals[0].l, evals[0].r, evals[0].o, Fr::<G>::one(), -ab * &oracles.beta,
-                            (lro[0] + &lro[2]) * &alpha[1] +
-                                &((lro[0] + &lro[1]) * &alpha[2]) +
-                                &((lro[1] + &lro[2]) * &alpha[3]),
-                            (evals[0].l + &evals[0].o) * &alpha[1] +
-                                &((evals[0].l + &evals[0].r) * &alpha[2]) +
-                                &((evals[0].r + &evals[0].o) * &alpha[3]),
-                            -evals[1].l * &alpha[1] - &(evals[1].r * &alpha[2]) - &(evals[1].o * &alpha[3]),
+
+                            (lro[2] * &alpha[1]) + &(lro[1] * &alpha[2]) + &((lro[1] + &lro[2]) * &alpha[3]),
+                            (evals[0].o * &alpha[1]) + &(evals[0].r * &alpha[2]) + &((evals[0].r + &evals[0].o) * &alpha[3]),
+                            ((lro[0] - &evals[1].l) * &alpha[1]) + &((lro[0] - &evals[1].r) * &alpha[2]) - &(evals[1].o * &alpha[3]),
+
                             alpha[1], alpha[2], alpha[3],
                         ];
 
@@ -146,7 +144,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(3*index.domain.size()+6)),
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(SPONGE_BOX * (n+2) + n - SPONGE_BOX)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
 

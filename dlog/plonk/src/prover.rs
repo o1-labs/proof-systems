@@ -5,8 +5,8 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One};
-use oracle::{FqSponge, utils::Utils, rndoracle::{ProofError}};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial};
+use oracle::{FqSponge, utils::Utils, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof};
 use plonk_circuits::gate::SPONGE_WIDTH;
 use crate::plonk_sponge::{FrSponge};
@@ -185,9 +185,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // poseidon constraints contribution
-        let pos = &(&index.cs.psdn_quot(&[&l, &o], 0, &l).scale(alpha[1]) +
-            &index.cs.psdn_quot(&[&l, &r], 1, &r).scale(alpha[2])) +
-            &index.cs.psdn_quot(&[&r, &o], 2, &o).scale(alpha[3]);
+        let pos = index.cs.psdn_quot(&[&l, &r, &o], &[alpha[1], alpha[2], alpha[3]]);
 
         let (mut t, res) = (&(&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &pos).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
@@ -195,7 +193,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         t += &t4.scale(alpha[0]);
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, Some(3*n+6));
+        let t_comm = index.srs.get_ref().commit(&t, Some(SPONGE_BOX * (n+2) + n - SPONGE_BOX));
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
@@ -260,9 +258,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 &(oracles.beta * &e[1].z * &oracles.alpha)
             ))
             +
-            &(&(&index.cs.psdn_lnrz(&[e[0].l, e[0].o], 0, e[1].l).scale(alpha[1]) +
-            &index.cs.psdn_lnrz(&[e[0].l, e[0].r], 1, e[1].r).scale(alpha[2])) +
-            &index.cs.psdn_lnrz(&[e[0].r, e[0].o], 2, e[1].o).scale(alpha[3]));
+            &index.cs.psdn_lnrz(&[e[0].l,e[0].r,e[0].o], &[e[1].l,e[1].r,e[1].o], &[alpha[1],alpha[2],alpha[3]]);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -288,7 +284,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                     (&r, None),
                     (&o, None),
                     (&z, None),
-                    (&t, Some(3*n+6)),
+                    (&t, Some(SPONGE_BOX * (n+2) + n - SPONGE_BOX)),
                     (&f, None),
                     (&index.cs.sigmam[0], None),
                     (&index.cs.sigmam[1], None),

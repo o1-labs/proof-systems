@@ -25,7 +25,7 @@ use std::time::Instant;
 use colored::Colorize;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
-const MAX_SIZE: usize = 8; // max size of poly chunks
+const MAX_SIZE: usize = 1000; // max size of poly chunks
 const N: usize = 64; // Plonk domain size
 
 #[test]
@@ -125,10 +125,10 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let points = sample_points();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    println!("{}", "Prover 1000 zk-proofs computation".green());
+    println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
 
-    for test in 0..1000
+    for test in 0..100
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
