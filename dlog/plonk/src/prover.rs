@@ -184,7 +184,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        // psdn_quot constraints contribution
+        // poseidon constraints contribution
         let pos = &(&index.cs.psdn_quot(&[&l, &o], 0, &l).scale(alpha[1]) +
             &index.cs.psdn_quot(&[&l, &r], 1, &r).scale(alpha[2])) +
             &index.cs.psdn_quot(&[&r, &o], 2, &o).scale(alpha[3]);

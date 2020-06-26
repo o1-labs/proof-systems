@@ -86,17 +86,17 @@ fn turbo_plonk()
     // HALF_ROUNDS_FULL full rounds constraint gates
     for j in 0..HALF_ROUNDS_FULL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[0][2]], p));
+        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
     }
     // ROUNDS_PARTIAL partial rounds constraint gates
-    for j in 0..ROUNDS_PARTIAL
+    for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[0][2]], z));
+        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], z));
     }
     // HALF_ROUNDS_FULL full rounds constraint gates
-    for j in 0..HALF_ROUNDS_FULL
+    for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[0][2]], p));
+        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
     }
 
     let srs = SRS::create(MAX_SIZE);
@@ -151,7 +151,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             o.push(sponge.state[2]);
         }
         // ROUNDS_PARTIAL partial rounds constraint gates
-        for j in 0..ROUNDS_PARTIAL
+        for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
         {
             sponge.partial_round(j, &params);
             l.push(sponge.state[0]);
@@ -159,7 +159,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             o.push(sponge.state[2]);
         }
         // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in 0..HALF_ROUNDS_FULL
+        for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
         {
             sponge.full_round(j, &params);
             l.push(sponge.state[0]);

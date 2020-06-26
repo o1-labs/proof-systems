@@ -36,16 +36,22 @@ impl<F: Field> CircuitGate<F>
 
     pub fn verify_poseidon(&self, witness: &Vec<F>, next: &Self) -> bool
     {
+        let fp = self.fp();
+        let pf = F::one() - &fp;
+
         self.typ == GateType::Poseidon
         &&
-        {if self.fp()==F::one() {sbox(witness[self.l.0]) + &sbox(witness[self.o.0])} else {-witness[self.l.0] - &witness[self.l.0]}}
-        + &self.rc()[0] - &witness[next.l.0] == F::zero()
+        sbox(witness[self.l.0]) +
+        &(fp * &sbox(witness[self.o.0])) + &(pf * &witness[self.o.0]) +
+        &self.rc()[0] == witness[next.l.0]
         &&
-        {if self.fp()==F::one() {sbox(witness[self.l.0]) + &sbox(witness[self.r.0])} else {-witness[self.l.0] - &witness[self.r.0]}}
-        + &self.rc()[1] - &witness[next.r.0] == F::zero()
+        sbox(witness[self.l.0]) +
+        &(fp * &sbox(witness[self.r.0])) + &(pf * &witness[self.r.0]) +
+        &self.rc()[1] == witness[next.r.0]
         &&
-        {if self.fp()==F::one() {sbox(witness[self.r.0]) + &sbox(witness[self.o.0])} else {-witness[self.r.0] - &witness[self.l.0]}}
-        + &self.rc()[0] - &witness[next.o.0] == F::zero()
+        fp * &sbox(witness[self.r.0]) + &(pf * &witness[self.r.0]) +
+        &(fp * &sbox(witness[self.o.0])) + &(pf * &witness[self.o.0]) +
+        &self.rc()[2] == witness[next.o.0]
     }
 
     pub fn fp(&self) -> F {if self.typ == GateType::Poseidon {self.c[3]} else {F::zero()}}

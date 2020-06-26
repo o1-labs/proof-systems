@@ -32,14 +32,19 @@ pub struct CircuitGate<F: Field>
 impl<F: Field> CircuitGate<F>
 {
     // this function creates "empty" circuit gate
-    pub fn zero () -> Self
+    pub fn zero
+    (
+        l: (usize, usize),
+        r: (usize, usize),
+        o: (usize, usize),
+    ) -> Self
     {
         CircuitGate
         {
             typ: GateType::Zero,
-            l: (0, 0),
-            r: (0, 0),
-            o: (0, 0),
+            l,
+            r,
+            o,
             c: Vec::new()
         }
     }

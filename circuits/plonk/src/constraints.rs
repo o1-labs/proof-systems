@@ -74,7 +74,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         };
 
         let n = domain.d1.size();
-        gates.resize(n, CircuitGate::<F>::zero());
+        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero((i,i), (n+i,n+i), (2*n+i,2*n+i))).collect();
+        gates.append(&mut padding);
 
         let s =
         [
