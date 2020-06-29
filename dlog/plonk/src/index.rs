@@ -91,6 +91,9 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub pfm_comm:   PolyComm<G>,        // partial/full round indicator polynomial commitment
     pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomialcommitment
 
+    // EC addition polynomial commitments
+    pub add1_comm:  PolyComm<G>,        // full/partial round indicator polynomial commitment
+
     pub r:          Fr<G>,              // coordinate shift for right wires
     pub o:          Fr<G>,              // coordinate shift for output wires
 
@@ -114,16 +117,18 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
 
             sigma_comm: array_init(|i| srs.get_ref().commit(&self.cs.sigmam[i], None)),
             sid_comm: srs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[Fr::<G>::zero(), Fr::<G>::one()]), None),
-            ql_comm: srs.get_ref().commit(&self.cs.ql, None),
-            qr_comm: srs.get_ref().commit(&self.cs.qr, None),
-            qo_comm: srs.get_ref().commit(&self.cs.qo, None),
-            qm_comm: srs.get_ref().commit(&self.cs.qm, None),
+            ql_comm: srs.get_ref().commit(&self.cs.qlm, None),
+            qr_comm: srs.get_ref().commit(&self.cs.qrm, None),
+            qo_comm: srs.get_ref().commit(&self.cs.qom, None),
+            qm_comm: srs.get_ref().commit(&self.cs.qmm, None),
             qc_comm: srs.get_ref().commit(&self.cs.qc, None),
 
             rcm_comm: array_init(|i| srs.get_ref().commit(&self.cs.rcm[i], None)),
             fpm_comm: srs.get_ref().commit(&self.cs.fpm, None),
             pfm_comm: srs.get_ref().commit(&self.cs.pfm, None),
             psm_comm: srs.get_ref().commit(&self.cs.psm, None),
+
+            add1_comm: srs.get_ref().commit(&self.cs.add1m, None),
 
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),

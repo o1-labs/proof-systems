@@ -15,6 +15,8 @@ pub enum GateType
     Zero,       // zero gate
     Generic,    // generic arithmetic gate
     Poseidon,   // Poseidon permutation gate
+    Add1,       // Gate constraining EC addition in Affine form
+    Add2,       // Gate constraining EC point abscissa distinctness
 }
 
 #[derive(Clone)]
@@ -58,6 +60,8 @@ impl<F: Field> CircuitGate<F>
             GateType::Zero => true,
             GateType::Generic => self.verify_generic(witness),
             GateType::Poseidon => self.verify_poseidon(witness, next),
+            GateType::Add1 => self.verify_add1(witness, next),
+            GateType::Add2 => self.verify_add2(witness),
         }
     }
 }

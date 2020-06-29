@@ -1,4 +1,4 @@
-use crate::prover::ProofEvaluations;
+use plonk_circuits::evals::ProofEvaluations;
 use algebra::{
     Field, PairingEngine, PrimeField,
 };

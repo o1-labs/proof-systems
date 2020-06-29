@@ -20,8 +20,8 @@ impl<F : FftField> EvaluationDomains<F> {
         Some(EvaluationDomains
         {
             d1: Domain::<F>::new(n)?,
-            d2: Domain::<F>::new(Domain::<F>::compute_size_of_domain(2*n+2)?)?,
-            d3: Domain::<F>::new(Domain::<F>::compute_size_of_domain(3*n+4)?)?,
+            d2: Domain::<F>::new(Domain::<F>::compute_size_of_domain(2*n+4)?)?,
+            d3: Domain::<F>::new(Domain::<F>::compute_size_of_domain(3*n+6)?)?,
             d4: Domain::<F>::new(Domain::<F>::compute_size_of_domain(4*n+9)?)?,
             dp: Domain::<F>::new(Domain::<F>::compute_size_of_domain((n+2)*oracle::poseidon::SPONGE_BOX+n)?)?,
         })

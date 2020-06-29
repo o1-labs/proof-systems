@@ -5,12 +5,12 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 pub use super::index::{VerifierIndex as Index};
-pub use super::prover::{ProverProof, RandomOracles, ProofEvaluations};
-use oracle::{FqSponge, rndoracle::ProofError, utils::Utils, poseidon::{sbox, SPONGE_BOX}};
+pub use super::prover::{ProverProof, RandomOracles};
+use oracle::{FqSponge, rndoracle::ProofError, utils:: PolyUtils, poseidon::{sbox, SPONGE_BOX}};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
+use plonk_circuits::{gate::SPONGE_WIDTH, evals::ProofEvaluations};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
-use plonk_circuits::gate::SPONGE_WIDTH;
 use crate::plonk_sponge::{FrSponge};
 use rand_core::OsRng;
 
@@ -44,7 +44,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 let zetaw = oracles.zeta * &index.domain.group_gen;
                 let bz = oracles.beta * &oracles.zeta;
                 let mut alpha = oracles.alpha;
-                let alpha = (0..SPONGE_WIDTH+1).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+                let alpha = (0..SPONGE_WIDTH+3).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // evaluate committed polynoms
                 let evlp =
@@ -85,21 +85,30 @@ impl<G: CommitmentCurve> ProverProof<G>
                     {
                         let p =
                         [
+                            // generic constraint/permutation polynomial commitments
                             &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &index.sigma_comm[2],
-
-                            &index.fpm_comm, &index.pfm_comm, &index.psm_comm,
-                            &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
+                            // poseidon constraint polynomial commitments
+                            &index.fpm_comm, &index.pfm_comm, &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
+                            // EC addition constraint polynomial commitments
+                            &index.add1_comm,
                         ];
-                        let lro = [sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o)];
+                        let (l, r, o) = (sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o));
                         let s =
                         [
+                            // generic constraint/permutation linearization scalars
                             evals[0].l * &evals[0].r, evals[0].l, evals[0].r, evals[0].o, Fr::<G>::one(), -ab * &oracles.beta,
 
-                            (lro[2] * &alpha[1]) + &(lro[1] * &alpha[2]) + &((lro[1] + &lro[2]) * &alpha[3]),
+                            // poseidon constraint linearization scalars
+                            (o * &alpha[1]) + &(r * &alpha[2]) + &((r + &o) * &alpha[3]),
                             (evals[0].o * &alpha[1]) + &(evals[0].r * &alpha[2]) + &((evals[0].r + &evals[0].o) * &alpha[3]),
-                            ((lro[0] - &evals[1].l) * &alpha[1]) + &((lro[0] - &evals[1].r) * &alpha[2]) - &(evals[1].o * &alpha[3]),
-
+                            ((l - &evals[1].l) * &alpha[1]) + &((l - &evals[1].r) * &alpha[2]) - &(evals[1].o * &alpha[3]),
                             alpha[1], alpha[2], alpha[3],
+
+                            // EC addition constraint linearization scalars
+                            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
+                            &((evals[1].l - &evals[1].o) * &(evals[0].l - &evals[0].r))) * &alpha[4] +
+                            &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
+                            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[5]),
                         ];
 
                         let n = p.iter().map(|c| c.unshifted.len()).max().unwrap();

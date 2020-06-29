@@ -19,7 +19,7 @@ use algebra::{
 };
 use ff_fft::DensePolynomial;
 use oracle::{FqSponge, sponge::ScalarChallenge};
-use oracle::utils::Utils;
+use oracle::utils::PolyUtils;
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;

@@ -3,13 +3,16 @@
 This source file tests constraints for the following computatios:
 
 1. Weierstrass curve y^2 = x^3 + 7 group addition of non-special pairs of points
-   with wire permutations via generic Plonk constraints
+   via generic Plonk constraints
 
     (x2 - x1) * s = y2 - y1
     s * s = x1 + x2 + x3
     (x1 - x3) * s = y3 + y1
 
-2. Poseidon hash function permutation via custom constraints for Poseidon
+1. Weierstrass curve y^2 = x^3 + 7 group addition of non-special pairs of points
+    via custom Plonk constraints
+
+3. Poseidon hash function permutation via custom constraints for Poseidon
 
 **********************************************************************************************************/
 
@@ -39,12 +42,18 @@ fn turbo_plonk()
 
     /* permutation sets:
 
-        L0, R6, L10, L12
-        L1, L6, R10
-        L2, R12, L11
-        L3, R8, L14
-        L4, L8
-        L5, R14
+    L0-L5           --- public input
+    L, R, O 6-14    --- EC addition witness for generic constraints
+    L15, R15, O15   --- EC addition witness for custom constraints
+
+        L0, R6, L10, L12, L16
+        L1, L6, R10, R16
+        L2, R12, L11, O16
+
+        L3, R8, L14, L15
+        L4, L8, R15
+        L5, R14, O15
+
         O6, L7
         O7, O8
         R7, L9, R9, L13
@@ -61,12 +70,12 @@ fn turbo_plonk()
     [
         // public input constraints
 
-        CircuitGate::<Fr>::create_generic((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
+        CircuitGate::<Fr>::create_generic((i,             16),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+16),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i}, 2*N+16),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},     15),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+15),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
+        CircuitGate::<Fr>::create_generic(({i+=1; i}, 2*N+15),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
 
         // generic constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
 
@@ -80,6 +89,20 @@ fn turbo_plonk()
         CircuitGate::<Fr>::create_generic(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14), z, z, n, p, z), // 13 *
         CircuitGate::<Fr>::create_generic(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13), p, p, n, z, z), // 14 +
     ];
+
+    // custom constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
+
+    let mut eca = CircuitGate::<Fr>::create_add
+    (
+        ({i+=1; i}, 14),
+        (i+N,       8),
+        (i+2*N,     N+14),
+        
+        ({i+=1; i}, 12),
+        (i+N,       N+10),
+        (i+2*N,     11),
+    );
+    gates.append(&mut eca);
 
     // custom constraints for Poseidon hash function permutation
 
@@ -128,15 +151,28 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
 
-    for test in 0..100
+    for test in 0..1
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
+
+        // public input and EC addition witness for generic constraints
 
         let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
         let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
         let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
         
+        // EC addition witness for custom constraints
+         
+        l.push(y1);
+        r.push(y2);
+        o.push(y3);
+        l.push(x1);
+        r.push(x2);
+        o.push(x3);
+
+        //  witness for Poseidon permutation custom constraints
+         
         sponge.state = vec![x1, x2, x3];
         l.push(sponge.state[0]);
         r.push(sponge.state[1]);

@@ -54,7 +54,7 @@ impl<F: Field> CircuitGate<F>
         &self.rc()[2] == witness[next.o.0]
     }
 
-    pub fn ps(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}
+    pub fn poseidon(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}
     pub fn fp(&self) -> F {if self.typ == GateType::Poseidon {self.c[3]} else {F::zero()}}
     pub fn rc(&self) -> [F; 3] {if self.typ == GateType::Poseidon {[self.c[0], self.c[1], self.c[2]]} else {[F::zero(); 3]}}
 }

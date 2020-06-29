@@ -4,14 +4,14 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, PairingEngine, Zero, One};
 use oracle::rndoracle::{ProofError};
+use algebra::{Field, PairingEngine, Zero, One};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use oracle::sponge::{FqSponge, ScalarChallenge};
 use marlin_circuits::domains::EvaluationDomains;
 use crate::marlin_sponge::{FrSponge};
+use oracle::utils::PolyUtils;
 pub use super::index::Index;
-use oracle::utils::Utils;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fr> {

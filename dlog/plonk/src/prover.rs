@@ -5,10 +5,10 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial};
-use oracle::{FqSponge, utils::Utils, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as Domain};
+use oracle::{FqSponge, utils::{EvalUtils, PolyUtils}, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof};
-use plonk_circuits::gate::SPONGE_WIDTH;
+use plonk_circuits::{gate::SPONGE_WIDTH, evals::ProofEvaluations};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
@@ -24,18 +24,6 @@ pub struct RandomOracles<F: Field>
     pub zeta: F,
     pub v: F,
     pub u: F,
-}
-
-#[derive(Clone)]
-pub struct ProofEvaluations<Fs> {
-    pub l: Fs,
-    pub r: Fs,
-    pub o: Fs,
-    pub z: Fs,
-    pub t: Fs,
-    pub f: Fs,
-    pub sigma1: Fs,
-    pub sigma2: Fs,
 }
 
 #[derive(Clone)]
@@ -85,15 +73,18 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -DensePolynomial::evals_from_coeffs(public.clone(), index.cs.domain.d1).interpolate();
+        let p = -Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+        let l = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let r = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+        let r = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let o = &DensePolynomial::evals_from_coeffs(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+        let o = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
+        
+        // evaluate witness polynomials over domains
+        let lagrange = index.cs.evaluate(&l, &r, &o);
 
         // commit to the l, r, o wire values
         let l_comm = index.srs.get_ref().commit(&l, None);
@@ -116,9 +107,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         z.iter_mut().skip(1).enumerate().for_each
         (
             |(j, x)| *x =
-                (witness[j] + &(index.cs.sigmal[0][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+n] + &(index.cs.sigmal[1][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+2*n] + &(index.cs.sigmal[2][j] * &oracles.beta) + &oracles.gamma)
+                (witness[j] + &(index.cs.sigmal1[0][j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+n] + &(index.cs.sigmal1[1][j] * &oracles.beta) + &oracles.gamma) *&
+                (witness[j+2*n] + &(index.cs.sigmal1[2][j] * &oracles.beta) + &oracles.gamma)
         );
         
         algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n]);
@@ -136,7 +127,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         );
 
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        let z = &DensePolynomial::evals_from_coeffs(z, index.cs.domain.d1).interpolate() +
+        let z = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate() +
             &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to z
@@ -146,35 +137,41 @@ impl<G: CommitmentCurve> ProverProof<G>
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
         let mut alpha = oracles.alpha;
-        let alpha = (0..SPONGE_WIDTH+1).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = (0..SPONGE_WIDTH+3).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
         // compute quotient polynomial
 
         // generic constraints contribution
-        let t1 =
-            &(&(&DensePolynomial::multiply(&[&l, &r, &index.cs.qm], index.cs.domain.d3).interpolate() +
-            &(
-                &(&DensePolynomial::multiply(&[&l, &index.cs.ql], index.cs.domain.d2) +
-                &DensePolynomial::multiply(&[&r, &index.cs.qr], index.cs.domain.d2)) +
-                &DensePolynomial::multiply(&[&o, &index.cs.qo], index.cs.domain.d2)
-            ).interpolate()) +
-            &index.cs.qc) + &p;
+        let gen = index.cs.gnrc_quot(&lagrange, &p);
+
+        // EC addition constraints contribution
+        let eca = index.cs.ecad_quot(&lagrange, &alpha);
+
+        let (_, res) = eca.divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
+
+        // poseidon constraints contribution
+        let pos = index.cs.psdn_quot(&lagrange, &alpha);
+
+        let (_, res) = pos.divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // permutation check contribution
-        let t2 = DensePolynomial::multiply
+        let l0 = &index.cs.l0.scale(oracles.gamma);
+        let t2 = Evaluations::multiply
             (&[
-                &(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta])),
-                &(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.r])),
-                &(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma, oracles.beta*&index.cs.o])),
-                &z
+                &(&lagrange.d4.this.l + &(l0 + &index.cs.l1.scale(oracles.beta))),
+                &(&lagrange.d4.this.r + &(l0 + &index.cs.l1.scale(oracles.beta * &index.cs.r))),
+                &(&lagrange.d4.this.o + &(l0 + &index.cs.l1.scale(oracles.beta * &index.cs.o))),
+                &z.evaluate_over_domain_by_ref(index.cs.domain.d4)
             ], index.cs.domain.d4);
 
-        let t3 = DensePolynomial::multiply
+        let t3 = Evaluations::multiply
             (&[
-                &(&(&l + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[0].scale(oracles.beta)),
-                &(&(&r + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[1].scale(oracles.beta)),
-                &(&(&o + &DensePolynomial::from_coefficients_slice(&[oracles.gamma])) + &index.cs.sigmam[2].scale(oracles.beta)),
-                &index.cs.shift(&z)
+                &(&lagrange.d4.this.l + &(l0 + &index.cs.sigmal4[0].scale(oracles.beta))),
+                &(&lagrange.d4.this.r + &(l0 + &index.cs.sigmal4[1].scale(oracles.beta))),
+                &(&lagrange.d4.this.o + &(l0 + &index.cs.sigmal4[2].scale(oracles.beta))),
+                &index.cs.shift(&z).evaluate_over_domain_by_ref(index.cs.domain.d4)
             ], index.cs.domain.d4);
 
         // premutation boundary condition check contribution
@@ -184,10 +181,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        // poseidon constraints contribution
-        let pos = index.cs.psdn_quot(&[&l, &r, &o], &[alpha[1], alpha[2], alpha[3]]);
-
-        let (mut t, res) = (&(&t1 + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &pos).
+        let (mut t, res) = (&(&gen + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &(&pos + &eca)).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
         t += &t4.scale(alpha[0]);
@@ -245,20 +239,15 @@ impl<G: CommitmentCurve> ProverProof<G>
         // compute linearization polynomial
 
         let f =
-            &(&(&(&(&(&index.cs.qm.scale(e[0].l*&e[0].r) +
-            &index.cs.ql.scale(e[0].l)) +
-            &index.cs.qr.scale(e[0].r)) +
-            &index.cs.qo.scale(e[0].o)) +
-            &index.cs.qc)
-            -
+            &(&(&index.cs.gnrc_lnrz(&e[0]) +
+            &index.cs.psdn_lnrz(&e, &alpha)) -
+            &index.cs.ecad_lnrz(&e, &alpha)) -
             &index.cs.sigmam[2].scale
             (
                 (e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
                 &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
                 &(oracles.beta * &e[1].z * &oracles.alpha)
-            ))
-            +
-            &index.cs.psdn_lnrz(&[e[0].l,e[0].r,e[0].o], &[e[1].l,e[1].r,e[1].o], &[alpha[1],alpha[2],alpha[3]]);
+            );
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);

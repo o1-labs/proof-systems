@@ -1,16 +1,44 @@
 use algebra::FftField;
-use ff_fft::{EvaluationDomain, Evaluations, GeneralEvaluationDomain, Radix2EvaluationDomain as Domain, DensePolynomial};
+use ff_fft::{Evaluations, Radix2EvaluationDomain as Domain, DensePolynomial};
 
-pub trait Utils<F: FftField> {
+
+pub trait EvalUtils<F: FftField> {
+    fn scale(&self, elm: F) -> Self;
+    fn multiply(polys: &[&Evaluations<F, Domain<F>>], d : Domain<F>) -> Evaluations<F, Domain<F>>;
+}
+
+impl<F: FftField> EvalUtils<F> for Evaluations<F, Domain<F>> {
+    // This function "scales" (multiplies) polynomaial with a scalar
+    // It is implemented to have the desired functionality for DensePolynomial
+    fn scale(&self, elm: F) -> Self
+    {
+        let mut result = self.clone();
+        for coeff in &mut result.evals
+        {
+            *coeff *= &elm
+        }
+        result
+    }
+
+    // utility function for efficient multiplication of several polys
+    fn multiply(evals: &[&Self], d : Domain<F>) -> Self
+    {
+        Self::from_vec_and_domain
+        (
+            (0..d.size as usize).map(|i| evals.iter().map(|e| e.evals[i]).fold(F::one(), |x, y| x * &y)).collect::<Vec<_>>(),
+            d
+        )
+    }
+}
+
+pub trait PolyUtils<F: FftField> {
     fn scale(&self, elm: F) -> Self;
     fn shiftr(&self, size: usize) -> Self;
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
     fn eval(&self, elm: F, size: usize) -> Vec<F>;
-    fn evals_from_coeffs(v : Vec<F>, d : Domain<F>) -> Evaluations<F, GeneralEvaluationDomain<F>>;
-    fn multiply(polys: &[&DensePolynomial<F>], domain: Domain<F>) -> Evaluations<F>;
 }
 
-impl<F: FftField> Utils<F> for DensePolynomial<F> {
+impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     fn eval_polynomial(coeffs: &[F], x: F) -> F {
         let mut res = F::zero();
         for c in coeffs.iter().rev() {
@@ -44,30 +72,5 @@ impl<F: FftField> Utils<F> for DensePolynomial<F> {
             |i| Self::from_coefficients_slice
                 (&self.coeffs[i..if i+size > self.coeffs.len() {self.coeffs.len()} else {i+size}]).evaluate(elm)
         ).collect()
-    }
-
-    fn evals_from_coeffs(v : Vec<F>, d : Domain<F>) -> Evaluations<F, GeneralEvaluationDomain<F>>
-    {
-        Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
-    }
-
-    // utility function for efficient multiplication of several polys
-    fn multiply(polys: &[&DensePolynomial<F>], domain: Domain<F>) -> Evaluations<F>
-    {
-        let evals = polys.iter().map
-        (
-            |p|
-            {
-                let mut e = p.evaluate_over_domain_by_ref(domain);
-                e.evals.resize(domain.size(), F::zero());
-                e
-            }
-        ).collect::<Vec<_>>();
-
-        Evaluations::<F>::from_vec_and_domain
-        (
-            (0..domain.size()).map(|i| evals.iter().map(|e| e.evals[i]).fold(F::one(), |x, y| x * &y)).collect::<Vec<_>>(),
-            GeneralEvaluationDomain::Radix2(domain)
-        )
     }
 }
