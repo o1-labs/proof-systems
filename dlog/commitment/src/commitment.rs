@@ -115,7 +115,7 @@ pub fn b_poly<F: Field>(chals: &Vec<F>, chal_invs: &Vec<F>, x: F) -> F {
     product((0..k).map(|i| (chal_invs[i] + &(chals[i] * &pow_twos[k - 1 - i]))))
 }
 
-pub fn b_poly_coefficients<F: Field>(s0: F, chal_squareds: &Vec<F>) -> Vec<F> {
+pub fn b_poly_coefficients<F: Field>(s0: F, chal_squareds: &[F]) -> Vec<F> {
     let rounds = chal_squareds.len();
     let s_length = 1 << rounds;
     let mut s = vec![F::one(); s_length];

@@ -150,7 +150,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
-        
+
         // absorb the public input into the argument
         fq_sponge.absorb_g(& x_hat_comm.unshifted);
         // absorb W, ZA, ZB polycommitments
