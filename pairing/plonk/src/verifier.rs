@@ -48,7 +48,8 @@ impl<E: PairingEngine> ProverProof<E>
             ).into_affine();
 
             // evaluate lagrange polynoms
-            let mut lagrange = (0..proof.public.len()).zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
+            let mut lagrange = (0..if proof.public.len() > 0 {proof.public.len()} else {1}).
+                zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
             algebra::fields::batch_inversion::<E::Fr>(&mut lagrange);
             lagrange.iter_mut().for_each(|l| *l *= &(zeta2 - &E::Fr::one()));
 

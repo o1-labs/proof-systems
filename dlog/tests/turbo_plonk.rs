@@ -29,7 +29,7 @@ use colored::Colorize;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
 const MAX_SIZE: usize = 1000; // max size of poly chunks
-const N: usize = 64; // Plonk domain size
+const N: usize = 128; // Plonk domain size
 
 #[test]
 fn turbo_plonk()

@@ -253,15 +253,15 @@ impl<G: CommitmentCurve> SRS<G> {
         let shifted = match max
         {
             None => None,
-            Some(max) =>
+            Some(m) =>
             {
-                if max % n == 0 {None}
+                if m % n == 0 {None}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul
                     (
-                        &self.g[n - (max%n)..],
-                        &plnm.coeffs[max-(max%n)..p]
+                        &self.g[n - (m % n)..],
+                        &plnm.coeffs[m - (m % n)..p]
                             .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine())
                 }

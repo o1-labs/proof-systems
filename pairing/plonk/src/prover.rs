@@ -5,13 +5,11 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use rand_core::OsRng;
-use oracle::rndoracle::{ProofError};
 use algebra::{Field, PairingEngine, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use oracle::{utils::PolyUtils, sponge::FqSponge, rndoracle::ProofError};
 use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
-use oracle::utils::{PolyUtils, EvalUtils};
 use crate::plonk_sponge::FrSponge;
-use oracle::sponge::FqSponge;
 pub use super::index::Index;
 
 #[derive(Clone)]
@@ -82,9 +80,6 @@ impl<E: PairingEngine> ProverProof<E>
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
         let o = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        
-        // evaluate witness polynomials over domains
-        let lagrange = index.cs.evaluate(&l, &r, &o);
 
         // commit to the l, r, o wire values
         let l_comm = index.urs.get_ref().commit(&l)?;
@@ -126,6 +121,9 @@ impl<E: PairingEngine> ProverProof<E>
 
         if z.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
         let z = Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
+        
+        // evaluate witness polynomials over domains
+        let lagrange = index.cs.evaluate(&l, &r, &o, &z);
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
@@ -138,37 +136,24 @@ impl<E: PairingEngine> ProverProof<E>
         // compute quotient polynomial
 
         // generic constraints contribution
-        let gen = index.cs.gnrc_quot(&lagrange, &p);
+        let (gen2, genp) = index.cs.gnrc_quot(&lagrange, &p);
 
         // permutation check contribution
-        let l0 = &index.cs.l0.scale(oracles.gamma);
-        let t2 = Evaluations::multiply
-            (&[
-                &(&lagrange.d4.this.l + &(l0 + &index.cs.l1.scale(oracles.beta))),
-                &(&lagrange.d4.this.r + &(l0 + &index.cs.l1.scale(oracles.beta * &index.cs.r))),
-                &(&lagrange.d4.this.o + &(l0 + &index.cs.l1.scale(oracles.beta * &index.cs.o))),
-                &z.evaluate_over_domain_by_ref(index.cs.domain.d4)
-            ], index.cs.domain.d4);
+        let perm = index.cs.perm_quot(&lagrange, &oracles);
 
-        let t3 = Evaluations::multiply
-            (&[
-                &(&lagrange.d4.this.l + &(l0 + &index.cs.sigmal4[0].scale(oracles.beta))),
-                &(&lagrange.d4.this.r + &(l0 + &index.cs.sigmal4[1].scale(oracles.beta))),
-                &(&lagrange.d4.this.o + &(l0 + &index.cs.sigmal4[2].scale(oracles.beta))),
-                &index.cs.shift(&z).evaluate_over_domain_by_ref(index.cs.domain.d4)
-            ], index.cs.domain.d4);
+        // divide contributions with vanishing polynomial
+        let (mut t, res) = (&(&gen2.interpolate() + &perm.interpolate()) + &genp).
+            divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // premutation boundary condition check contribution
-        let (t4, res) =
+        let (bnd, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[E::Fr::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-E::Fr::one(), E::Fr::one()]).into()).
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let (mut t, res) = (&gen + &(&t2 - &t3).interpolate().scale(oracles.alpha)).
-            divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-        t += &t4.scale(alpsq);
+        t += &bnd.scale(alpsq);
 
         // split t to fit to the commitment
         let tlow: DensePolynomial<E::Fr>;

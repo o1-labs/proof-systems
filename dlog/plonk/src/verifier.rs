@@ -69,7 +69,8 @@ impl<G: CommitmentCurve> ProverProof<G>
                 ).collect::<Vec<_>>();
 
                 // evaluate lagrange polynoms
-                let mut lagrange = (0..proof.public.len()).zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
+                let mut lagrange = (0..if proof.public.len() > 0 {proof.public.len()} else {1}).
+                    zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
                 algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
                 lagrange.iter_mut().for_each(|l| *l *= &(zeta1 - &Fr::<G>::one()));
 
@@ -153,7 +154,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(SPONGE_BOX * (n+2) + n - SPONGE_BOX)),
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(SPONGE_BOX * (n+2) - SPONGE_BOX)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
 

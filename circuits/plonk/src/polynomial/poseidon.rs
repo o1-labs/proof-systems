@@ -5,7 +5,7 @@ This source file implements Posedon constraint polynomials.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial};
+use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use oracle::{utils::{EvalUtils, PolyUtils}, poseidon::sbox};
 use crate::polynomials::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
@@ -14,7 +14,11 @@ use crate::scalars::ProofEvaluations;
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
     // poseidon quotient poly contribution computation f*(1-W) + f^5*W + c(x) - f(wx)
-    pub fn psdn_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> DensePolynomial<F>
+    pub fn psdn_quot
+    (
+        &self, polys: &WitnessOverDomains<F>,
+        alpha: &Vec<F>
+    ) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>, DensePolynomial<F>)
     {
         let mut l = polys.d4.this.l.clone();
         let mut r = polys.d4.this.r.clone();
@@ -26,10 +30,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let mut rows = [&l + &o, &l + &r, &r + &o];
 
-        let mut ret = rows.iter_mut().zip(alpha[1..4].iter()).
+        let pos4 = rows.iter_mut().zip(alpha[1..4].iter()).
             map(|(e, a)| {e.evals.iter_mut().for_each(|e| *e *= a); e}).
-            fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d4), |x, y| &x + &y).
-            interpolate();
+            fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d4), |x, y| &x + &y);
 
         let ln = &Evaluations::multiply(&[&polys.d2.next.l, &self.ps2], self.domain.d2);
         let rn = &Evaluations::multiply(&[&polys.d2.next.r, &self.ps2], self.domain.d2);
@@ -40,12 +43,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let mut rows = [o - ln, r - rn, &(r + o) - on];
 
-        ret += &rows.iter_mut().zip(alpha[1..4].iter()).
+        let pos2 = rows.iter_mut().zip(alpha[1..4].iter()).
             map(|(e, a)| {e.evals.iter_mut().for_each(|e| *e *= a); e}).
-            fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d2), |x, y| &x + &y).
-            interpolate();
+            fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d2), |x, y| &x + &y);
 
-        self.rcm.iter().zip(alpha[1..4].iter()).map(|(r, a)| r.scale(*a)).fold(ret, |x, y| &x + &y)
+        let posp = self.rcm.iter().zip(alpha[1..4].iter()).map(|(r, a)| r.scale(*a)).fold(DensePolynomial::<F>::zero(), |x, y| &x + &y);
+
+        (pos2, pos4, posp)
     }
 
     // poseidon linearization poly contribution computation f*(1-W) + f^5*W + c(x) - f(wx)

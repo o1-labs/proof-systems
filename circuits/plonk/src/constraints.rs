@@ -224,12 +224,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         l: &DensePolynomial<F>,
         r: &DensePolynomial<F>,
         o: &DensePolynomial<F>,
+        z: &DensePolynomial<F>,
     ) -> WitnessOverDomains<F>
     {
         // compute shifted witness polynomials
-        let ln = self.shift(&l);
-        let rn = self.shift(&r);
-        let on = self.shift(&o);
+        let (ln, rn, on, zn) = (self.shift(&l), self.shift(&r), self.shift(&o), self.shift(&z));
+        let dummy = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
 
         WitnessOverDomains
         {
@@ -240,12 +240,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                     l: l.evaluate_over_domain_by_ref(self.domain.d2),
                     r: r.evaluate_over_domain_by_ref(self.domain.d2),
                     o: o.evaluate_over_domain_by_ref(self.domain.d2),
+                    z: dummy.clone()
                 },
                 next: WitnessEvals
                 {
                     l: ln.evaluate_over_domain_by_ref(self.domain.d2),
                     r: rn.evaluate_over_domain_by_ref(self.domain.d2),
                     o: on.evaluate_over_domain_by_ref(self.domain.d2),
+                    z: dummy
                 }
             },
             d4: WitnessShifts
@@ -255,12 +257,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                     l: l.evaluate_over_domain_by_ref(self.domain.d4),
                     r: r.evaluate_over_domain_by_ref(self.domain.d4),
                     o: o.evaluate_over_domain_by_ref(self.domain.d4),
+                    z: z.evaluate_over_domain_by_ref(self.domain.d4),
                 },
                 next: WitnessEvals
                 {
                     l: ln.evaluate_over_domain_by_ref(self.domain.d4),
                     r: rn.evaluate_over_domain_by_ref(self.domain.d4),
                     o: on.evaluate_over_domain_by_ref(self.domain.d4),
+                    z: zn.evaluate_over_domain_by_ref(self.domain.d4),
                 }
             },
         }

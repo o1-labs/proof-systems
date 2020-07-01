@@ -13,6 +13,7 @@ pub struct WitnessEvals<F: FftField>
     pub l: Evaluations<F, D<F>>,   // left wire evaluations
     pub r: Evaluations<F, D<F>>,   // right wire evaluations
     pub o: Evaluations<F, D<F>>,   // output wire evaluations
+    pub z: Evaluations<F, D<F>>,   // permutation evaluations
 }
 
 #[derive(Clone)]

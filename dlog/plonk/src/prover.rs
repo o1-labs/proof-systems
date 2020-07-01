@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use oracle::{FqSponge, utils::{PolyUtils, EvalUtils}, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
+use oracle::{FqSponge, utils::PolyUtils, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
 use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof};
 use crate::plonk_sponge::{FrSponge};
@@ -72,9 +72,6 @@ impl<G: CommitmentCurve> ProverProof<G>
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
         let o = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        
-        // evaluate witness polynomials over domains
-        let lagrange = index.cs.evaluate(&l, &r, &o);
 
         // commit to the l, r, o wire values
         let l_comm = index.srs.get_ref().commit(&l, None);
@@ -119,6 +116,9 @@ impl<G: CommitmentCurve> ProverProof<G>
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
         let z = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate() +
             &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
+        
+        // evaluate polynomials over domains
+        let lagrange = index.cs.evaluate(&l, &r, &o, &z);
 
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None);
@@ -132,46 +132,33 @@ impl<G: CommitmentCurve> ProverProof<G>
         // compute quotient polynomial
 
         // generic constraints contribution
-        let gen = index.cs.gnrc_quot(&lagrange, &p);
+        let (gen2, genp) = index.cs.gnrc_quot(&lagrange, &p);
 
         // poseidon constraints contribution
-        let pos = index.cs.psdn_quot(&lagrange, &alpha);
+        let (pos2, pos4, posp) = index.cs.psdn_quot(&lagrange, &alpha);
 
         // EC addition constraints contribution
-        let eca = index.cs.ecad_quot(&lagrange, &alpha);
+        let (eca2, eca4) = index.cs.ecad_quot(&lagrange, &alpha);
 
         // permutation check contribution
-        let l0 = &index.cs.l0.scale(oracles.gamma);
-        let t2 = Evaluations::multiply
-            (&[
-                &(&lagrange.d4.this.l + &(l0 + &index.cs.l1.scale(oracles.beta))),
-                &(&lagrange.d4.this.r + &(l0 + &index.cs.l1.scale(oracles.beta * &index.cs.r))),
-                &(&lagrange.d4.this.o + &(l0 + &index.cs.l1.scale(oracles.beta * &index.cs.o))),
-                &z.evaluate_over_domain_by_ref(index.cs.domain.d4)
-            ], index.cs.domain.d4);
+        let perm = index.cs.perm_quot(&lagrange, &oracles);
 
-        let t3 = Evaluations::multiply
-            (&[
-                &(&lagrange.d4.this.l + &(l0 + &index.cs.sigmal4[0].scale(oracles.beta))),
-                &(&lagrange.d4.this.r + &(l0 + &index.cs.sigmal4[1].scale(oracles.beta))),
-                &(&lagrange.d4.this.o + &(l0 + &index.cs.sigmal4[2].scale(oracles.beta))),
-                &index.cs.shift(&z).evaluate_over_domain_by_ref(index.cs.domain.d4)
-            ], index.cs.domain.d4);
+        // divide contributions with vanishing polynomial
+        let (mut t, res) = (&(&(&(&gen2 + &pos2) + &eca2).interpolate() + &(&(&pos4 + &eca4) + &perm).interpolate()) + &(&genp + &posp)).
+            divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // premutation boundary condition check contribution
-        let (t4, res) =
+        let (bnd, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let (mut t, res) = (&(&gen + &(&t2 - &t3).interpolate().scale(oracles.alpha)) + &(&pos + &eca)).
-            divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-        t += &t4.scale(alpha[0]);
+        t += &bnd.scale(alpha[0]);
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, Some(SPONGE_BOX * (n+2) + n - SPONGE_BOX));
+        let t_comm = index.srs.get_ref().commit(&t, Some(SPONGE_BOX * (n+2) - SPONGE_BOX));
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
@@ -226,12 +213,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             &(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) -
-            &index.cs.sigmam[2].scale
-            (
-                (e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
-                &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
-                &(oracles.beta * &e[1].z * &oracles.alpha)
-            );
+            &index.cs.perm_lnrz(&e, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -260,7 +242,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                     (&r, None),
                     (&o, None),
                     (&z, None),
-                    (&t, Some(SPONGE_BOX * (n+2) + n - SPONGE_BOX)),
+                    (&t, Some(SPONGE_BOX * (n+2) - SPONGE_BOX)),
                     (&f, None),
                     (&index.cs.sigmam[0], None),
                     (&index.cs.sigmam[1], None),
