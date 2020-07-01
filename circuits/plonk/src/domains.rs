@@ -1,29 +1,25 @@
 use algebra::FftField;
-use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as Domain};
+use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvaluationDomains<F : FftField>
 {
-    pub d1: Domain<F>,
-    pub d2: Domain<F>,
-    pub d3: Domain<F>,
-    pub d4: Domain<F>,
-    pub dp: Domain<F>,
+    pub d1: D<F>, // size n
+    pub d2: D<F>, // size 4n
+    pub d4: D<F>, // size 8n
 }
 
 impl<F : FftField> EvaluationDomains<F> {
     pub fn create(n : usize) -> Option<Self>
     {
-        let n = Domain::<F>::compute_size_of_domain(n)?;
+        let n = D::<F>::compute_size_of_domain(n)?;
 
         // create domains accounting for the blinders
         Some(EvaluationDomains
         {
-            d1: Domain::<F>::new(n)?,
-            d2: Domain::<F>::new(Domain::<F>::compute_size_of_domain(2*n+4)?)?,
-            d3: Domain::<F>::new(Domain::<F>::compute_size_of_domain(3*n+6)?)?,
-            d4: Domain::<F>::new(Domain::<F>::compute_size_of_domain(4*n+9)?)?,
-            dp: Domain::<F>::new(Domain::<F>::compute_size_of_domain((n+2)*oracle::poseidon::SPONGE_BOX+n)?)?,
+            d1: D::<F>::new(n)?,
+            d2: D::<F>::new(D::<F>::compute_size_of_domain(2*n+4)?)?,
+            d4: D::<F>::new(D::<F>::compute_size_of_domain(4*n+9)?)?,
         })
     }
 }

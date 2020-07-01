@@ -5,7 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, PolyComm}};
-use ff_fft::{DensePolynomial, Radix2EvaluationDomain as Domain};
+use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use plonk_circuits::constraints::ConstraintSystem;
 use oracle::poseidon::ArithmeticSpongeParams;
 use algebra::{AffineCurve, Zero, One};
@@ -72,7 +72,7 @@ pub struct MatrixValues<C: AffineCurve> {
 
 pub struct VerifierIndex<'a, G: CommitmentCurve>
 {
-    pub domain: Domain<Fr<G>>,          // evaluation domain
+    pub domain: D<Fr<G>>,          // evaluation domain
     pub max_poly_size: usize,           // maximal size of polynomial section
     pub srs: SRSValue<'a, G>,           // polynomial commitment keys
 

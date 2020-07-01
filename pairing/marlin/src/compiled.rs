@@ -8,7 +8,7 @@ use sprs::CsMat;
 use commitment_pairing::urs::URS;
 use oracle::rndoracle::ProofError;
 use algebra::{Field, PairingEngine, Zero};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as Domain, EvaluationDomain, GeneralEvaluationDomain};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D, EvaluationDomain, GeneralEvaluationDomain};
 pub use super::index::Index;
 
 pub struct Compiled<E: PairingEngine>
@@ -47,9 +47,9 @@ impl<E: PairingEngine> Compiled<E>
     pub fn compile
     (
         urs: &URS<E>,
-        h_group: Domain<E::Fr>,
-        k_group: Domain<E::Fr>,
-        b_group: Domain<E::Fr>,
+        h_group: D<E::Fr>,
+        k_group: D<E::Fr>,
+        b_group: D<E::Fr>,
         constraints: CsMat<E::Fr>,
     ) -> Result<Self, ProofError>
     {

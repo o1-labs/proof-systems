@@ -6,8 +6,9 @@ This source file implements zk-proof batch verifier functionality.
 
 use rand_core::OsRng;
 use oracle::rndoracle::ProofError;
+pub use super::prover::ProverProof;
 use crate::index::{VerifierIndex as Index};
-pub use super::prover::{ProverProof, RandomOracles};
+use plonk_circuits::scalars::RandomOracles;
 use algebra::{Field, PrimeField, PairingEngine, ProjectiveCurve, VariableBaseMSM, Zero, One};
 use crate::plonk_sponge::FrSponge;
 use oracle::sponge::FqSponge;

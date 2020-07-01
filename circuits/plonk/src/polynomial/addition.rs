@@ -27,7 +27,7 @@ use ff_fft::{Evaluations, DensePolynomial};
 use crate::polynomials::WitnessOverDomains;
 use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
-use crate::evals::ProofEvaluations;
+use crate::scalars::ProofEvaluations;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
@@ -38,17 +38,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
             (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
         */
-        let ylo = &(&polys.d3.this.l + &polys.d3.this.o);
-        let xlo = &(&polys.d4.this.l - &polys.d4.this.o);
+        let ylo = &(&polys.d2.this.l + &polys.d2.this.o);
+        let xlo = &(&polys.d4.next.l - &polys.d4.next.o);
 
         &(&Evaluations::multiply
         (
-            &[&(&polys.d3.next.r - &polys.d3.next.l), ylo, &self.add1l3], self.domain.d3
+            &[&(&polys.d2.next.r - &polys.d2.next.l), ylo, &self.add1l3], self.domain.d2
         )
         -
         &Evaluations::multiply
         (
-            &[&(&polys.d3.next.l - &polys.d3.next.o), &(&polys.d3.this.l - &polys.d3.this.r), &self.add1l3], self.domain.d3
+            &[&(&polys.d2.next.l - &polys.d2.next.o), &(&polys.d2.this.r - &polys.d2.this.l), &self.add1l3], self.domain.d2
         )).interpolate().scale(alpha[4])
         +
         &(&Evaluations::multiply
@@ -58,7 +58,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         -
         &Evaluations::multiply
         (
-            &[ylo, ylo, &self.add1l3], self.domain.d3
+            &[ylo, ylo, &self.add1l3], self.domain.d2
         ).interpolate()).scale(alpha[5])
 }
 
@@ -68,7 +68,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         self.add1m.scale
         (
             ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-            &((evals[1].l - &evals[1].o) * &(evals[0].l - &evals[0].r))) * &alpha[4] +
+            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[4] +
             &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
             &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[5])
         )

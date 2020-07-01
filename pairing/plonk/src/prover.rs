@@ -7,9 +7,9 @@ This source file implements prover's zk-proof primitive.
 use rand_core::OsRng;
 use oracle::rndoracle::{ProofError};
 use algebra::{Field, PairingEngine, Zero, One};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as Domain};
-use plonk_circuits::evals::ProofEvaluations;
-use oracle::utils::{EvalUtils, PolyUtils};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
+use oracle::utils::{PolyUtils, EvalUtils};
 use crate::plonk_sponge::FrSponge;
 use oracle::sponge::FqSponge;
 pub use super::index::Index;
@@ -73,16 +73,16 @@ impl<E: PairingEngine> ProverProof<E>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -Evaluations::<E::Fr, Domain<E::Fr>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
+        let p = -Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &Evaluations::<E::Fr, Domain<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+        let l = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let r = &Evaluations::<E::Fr, Domain<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+        let r = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let o = &Evaluations::<E::Fr, Domain<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+        let o = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-
+        
         // evaluate witness polynomials over domains
         let lagrange = index.cs.evaluate(&l, &r, &o);
 
@@ -125,7 +125,7 @@ impl<E: PairingEngine> ProverProof<E>
         );
 
         if z.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
-        let z = Evaluations::<E::Fr, Domain<E::Fr>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
+        let z = Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
 
         // commit to z
         let z_comm = index.urs.get_ref().commit(&z)?;
@@ -210,7 +210,12 @@ impl<E: PairingEngine> ProverProof<E>
         // compute linearization polynomial
 
         let bz = oracles.beta * &oracles.zeta;
-        let f1 = index.cs.gnrc_lnrz(&evals);
+        let f1 =
+            &(&(&(&index.cs.qmm.scale(evals.l*&evals.r) +
+            &index.cs.qlm.scale(evals.l)) +
+            &index.cs.qrm.scale(evals.r)) +
+            &index.cs.qom.scale(evals.o)) +
+            &index.cs.qc;
         let f2 =
             z.scale
             (
@@ -261,29 +266,5 @@ impl<E: PairingEngine> ProverProof<E>
             evals,
             public
         })
-    }
-}
-
-pub struct RandomOracles<F: Field>
-{
-    pub beta: F,
-    pub gamma: F,
-    pub alpha: F,
-    pub zeta: F,
-    pub v: F,
-}
-
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
-        Self
-        {
-            beta: F::zero(),
-            gamma: F::zero(),
-            alpha: F::zero(),
-            zeta: F::zero(),
-            v: F::zero(),
-        }
     }
 }

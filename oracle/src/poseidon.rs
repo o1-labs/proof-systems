@@ -14,7 +14,7 @@ pub const ROUNDS_PARTIAL: usize = 30;
 pub const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
-pub const SPONGE_BOX: usize = 17;
+pub const SPONGE_BOX: usize = 5;
 
 pub trait Sponge<Input, Digest> {
     type Params;

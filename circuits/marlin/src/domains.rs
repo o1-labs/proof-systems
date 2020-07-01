@@ -1,12 +1,12 @@
 use algebra::FftField;
-use ff_fft::{EvaluationDomain, Evaluations, GeneralEvaluationDomain, Radix2EvaluationDomain as Domain};
+use ff_fft::{EvaluationDomain, Evaluations, GeneralEvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvaluationDomains<F : FftField> {
-    pub h: Domain<F>,
-    pub k: Domain<F>,
-    pub b: Domain<F>,
-    pub x: Domain<F>,
+    pub h: D<F>,
+    pub k: D<F>,
+    pub b: D<F>,
+    pub x: D<F>,
 }
 
 impl<F : FftField> EvaluationDomains<F> {
@@ -16,11 +16,11 @@ impl<F : FftField> EvaluationDomains<F> {
         nonzero_entries: usize) -> Option<Self> {
 
         let h_group_size = 
-            Domain::<F>::compute_size_of_domain(variables)?;
+            D::<F>::compute_size_of_domain(variables)?;
         let x_group_size =
-            Domain::<F>::compute_size_of_domain(public_inputs)?;
+            D::<F>::compute_size_of_domain(public_inputs)?;
         let k_group_size =
-            Domain::<F>::compute_size_of_domain(nonzero_entries)?;
+            D::<F>::compute_size_of_domain(nonzero_entries)?;
 
         let h = EvaluationDomain::<F>::new(h_group_size)?;
         let k = EvaluationDomain::<F>::new(k_group_size)?;
@@ -33,7 +33,7 @@ impl<F : FftField> EvaluationDomains<F> {
     pub fn evals_from_coeffs
     (
         v : Vec<F>,
-        d : Domain<F>
+        d : D<F>
     ) -> Evaluations<F, GeneralEvaluationDomain<F>>
     {
         Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))

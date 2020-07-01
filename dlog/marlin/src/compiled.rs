@@ -8,7 +8,7 @@ use sprs::CsMat;
 use commitment_dlog::{srs::SRS, commitment::{PolyComm, CommitmentCurve}};
 use oracle::rndoracle::ProofError;
 use algebra::{Field, AffineCurve, Zero};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as Domain, GeneralEvaluationDomain};
+use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D, GeneralEvaluationDomain};
 pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -49,9 +49,9 @@ impl<G: CommitmentCurve> Compiled<G>
     pub fn compile
     (
         srs: &SRS<G>,
-        h_group: Domain<Fr<G>>,
-        k_group: Domain<Fr<G>>,
-        b_group: Domain<Fr<G>>,
+        h_group: D<Fr<G>>,
+        k_group: D<Fr<G>>,
+        b_group: D<Fr<G>>,
         constraints: CsMat<Fr<G>>,
     ) -> Result<Self, ProofError>
     {

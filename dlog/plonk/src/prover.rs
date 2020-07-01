@@ -5,26 +5,16 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as Domain};
-use oracle::{FqSponge, utils::{EvalUtils, PolyUtils}, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
+use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::{FqSponge, utils::{PolyUtils, EvalUtils}, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
+use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof};
-use plonk_circuits::{gate::SPONGE_WIDTH, evals::ProofEvaluations};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
- 
-pub struct RandomOracles<F: Field>
-{
-    pub beta: F,
-    pub gamma: F,
-    pub alpha: F,
-    pub zeta: F,
-    pub v: F,
-    pub u: F,
-}
 
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve>
@@ -73,14 +63,14 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         // compute public input polynomial
         let public = witness[0..index.cs.public].to_vec();
-        let p = -Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
+        let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+        let l = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let r = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+        let r = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let o = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+        let o = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
         
         // evaluate witness polynomials over domains
@@ -127,7 +117,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         );
 
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        let z = &Evaluations::<Fr<G>, Domain<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate() +
+        let z = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate() +
             &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to z
@@ -144,17 +134,11 @@ impl<G: CommitmentCurve> ProverProof<G>
         // generic constraints contribution
         let gen = index.cs.gnrc_quot(&lagrange, &p);
 
-        // EC addition constraints contribution
-        let eca = index.cs.ecad_quot(&lagrange, &alpha);
-
-        let (_, res) = eca.divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-
         // poseidon constraints contribution
         let pos = index.cs.psdn_quot(&lagrange, &alpha);
 
-        let (_, res) = pos.divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
+        // EC addition constraints contribution
+        let eca = index.cs.ecad_quot(&lagrange, &alpha);
 
         // permutation check contribution
         let l0 = &index.cs.l0.scale(oracles.gamma);
@@ -240,7 +224,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
         let f =
             &(&(&index.cs.gnrc_lnrz(&e[0]) +
-            &index.cs.psdn_lnrz(&e, &alpha)) -
+            &index.cs.psdn_lnrz(&e, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) -
             &index.cs.sigmam[2].scale
             (
@@ -248,6 +232,9 @@ impl<G: CommitmentCurve> ProverProof<G>
                 &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
                 &(oracles.beta * &e[1].z * &oracles.alpha)
             );
+
+        evals[0].f = f.eval(evlp[0], index.max_poly_size);
+        evals[1].f = f.eval(evlp[1], index.max_poly_size);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -287,21 +274,5 @@ impl<G: CommitmentCurve> ProverProof<G>
             evals,
             public
         })
-    }
-}
-
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
-        Self
-        {
-            beta: F::zero(),
-            gamma: F::zero(),
-            alpha: F::zero(),
-            zeta: F::zero(),
-            v: F::zero(),
-            u: F::zero(),
-        }
     }
 }

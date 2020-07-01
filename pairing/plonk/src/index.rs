@@ -8,7 +8,7 @@ use rand_core::RngCore;
 use commitment_pairing::urs::URS;
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_circuits::constraints::ConstraintSystem;
-use ff_fft::{DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as Domain};
+use ff_fft::{DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
 use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine}, Zero, One};
 use oracle::rndoracle::ProofError;
 
@@ -90,7 +90,7 @@ pub struct Index<'a, E: PairingEngine>
 
 pub struct VerifierIndex<E: PairingEngine>
 {
-    pub domain: Domain<E::Fr>, // evaluation domain
+    pub domain: D<E::Fr>, // evaluation domain
 
     // index polynomial commitments
     pub sigma_comm:  [E::G1Affine; 3],   // permutation commitment array

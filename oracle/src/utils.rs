@@ -1,13 +1,19 @@
 use algebra::FftField;
-use ff_fft::{Evaluations, Radix2EvaluationDomain as Domain, DensePolynomial};
+use ff_fft::{Evaluations, Radix2EvaluationDomain as D, DensePolynomial};
 
+pub trait PolyUtils<F: FftField> {
+    fn scale(&self, elm: F) -> Self;
+    fn shiftr(&self, size: usize) -> Self;
+    fn eval_polynomial(coeffs: &[F], x: F) -> F;
+    fn eval(&self, elm: F, size: usize) -> Vec<F>;
+}
 
 pub trait EvalUtils<F: FftField> {
     fn scale(&self, elm: F) -> Self;
-    fn multiply(polys: &[&Evaluations<F, Domain<F>>], d : Domain<F>) -> Evaluations<F, Domain<F>>;
+    fn multiply(polys: &[&Evaluations<F, D<F>>], d : D<F>) -> Evaluations<F, D<F>>;
 }
 
-impl<F: FftField> EvalUtils<F> for Evaluations<F, Domain<F>> {
+impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
     // This function "scales" (multiplies) polynomaial with a scalar
     // It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self
@@ -21,7 +27,7 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, Domain<F>> {
     }
 
     // utility function for efficient multiplication of several polys
-    fn multiply(evals: &[&Self], d : Domain<F>) -> Self
+    fn multiply(evals: &[&Self], d : D<F>) -> Self
     {
         Self::from_vec_and_domain
         (
@@ -29,13 +35,6 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, Domain<F>> {
             d
         )
     }
-}
-
-pub trait PolyUtils<F: FftField> {
-    fn scale(&self, elm: F) -> Self;
-    fn shiftr(&self, size: usize) -> Self;
-    fn eval_polynomial(coeffs: &[F], x: F) -> F;
-    fn eval(&self, elm: F, size: usize) -> Vec<F>;
 }
 
 impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {

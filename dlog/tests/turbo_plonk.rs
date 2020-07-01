@@ -151,7 +151,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
 
-    for test in 0..1
+    for test in 0..100
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
@@ -163,7 +163,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
         
         // EC addition witness for custom constraints
-         
+
         l.push(y1);
         r.push(y2);
         o.push(y3);

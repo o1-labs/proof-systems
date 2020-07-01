@@ -4,11 +4,11 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
+pub use super::prover::ProverProof;
 pub use super::index::{VerifierIndex as Index};
-pub use super::prover::{ProverProof, RandomOracles};
-use oracle::{FqSponge, rndoracle::ProofError, utils:: PolyUtils, poseidon::{sbox, SPONGE_BOX}};
+use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::{sbox, SPONGE_BOX}};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
-use plonk_circuits::{gate::SPONGE_WIDTH, evals::ProofEvaluations};
+use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use crate::plonk_sponge::{FrSponge};
@@ -106,7 +106,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 
                             // EC addition constraint linearization scalars
                             ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-                            &((evals[1].l - &evals[1].o) * &(evals[0].l - &evals[0].r))) * &alpha[4] +
+                            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[4] +
                             &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
                             &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[5]),
                         ];

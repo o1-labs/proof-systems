@@ -4,4 +4,4 @@ pub mod constraints;
 pub mod polynomials;
 pub mod polynomial;
 pub mod domains;
-pub mod evals;
+pub mod scalars;

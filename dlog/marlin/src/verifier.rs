@@ -5,12 +5,12 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 use rand_core::RngCore;
+use algebra::{Field, AffineCurve, Zero, One};
 pub use super::index::{VerifierIndex as Index};
+pub use super::prover::{ProverProof, RandomOracles};
 use oracle::{FqSponge, utils::PolyUtils, sponge::ScalarChallenge};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
-pub use super::prover::{ProverProof, RandomOracles};
-use algebra::{Field, AffineCurve, Zero, One};
 use crate::marlin_sponge::{FrSponge};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;

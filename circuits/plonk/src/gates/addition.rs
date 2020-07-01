@@ -65,6 +65,7 @@ impl<F: Field> CircuitGate<F>
             (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
             (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
         */
+
         self.typ == GateType::Add1
         &&
         (witness[next.r.0] - &witness[next.l.0]) * &(witness[self.o.0] + &witness[self.l.0]) ==
