@@ -4,9 +4,9 @@ This source file benchmark constraints for the Poseino hash permutations
 
 **********************************************************************************************************/
 
+use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use algebra::{bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use std::{io, io::Write};
@@ -17,7 +17,7 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
-const MAX_SIZE: usize = 1000; // max size of poly chunks
+const MAX_SIZE: usize = 10000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = 64*NUM_POS; // Plonk domain size
 
@@ -32,7 +32,7 @@ fn poseidon()
     // circuit gates
 
     let mut i = 0;
-    let mut gates = vec![];
+    let mut gates: Vec<CircuitGate::<Fr>> = Vec::with_capacity(N);
 
     // custom constraints for Poseidon hash function permutation
 
@@ -86,18 +86,20 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     println!("{}{:?}", "Circuit size: ".yellow(), N);
+    println!("{}{:?}", "Polycommitment chunk size: ".yellow(), MAX_SIZE);
     println!("{}{:?}", "Number oh Poseidon hashes in the circuit: ".yellow(), NUM_POS);
     println!("{}{:?}", "Full rounds: ".yellow(), ROUNDS_FULL);
     println!("{}{:?}", "Sbox alpha: ".yellow(), SPONGE_BOX);
     println!("{}", "Base curve: bn_382".green());
     println!();
+    println!("{}", "Prover zk-proof computation".green());
     let mut start = Instant::now();
 
     for test in 0..1
     {
-        let mut l = vec![];
-        let mut r = vec![];
-        let mut o = vec![];
+        let mut l: Vec<Fr> = Vec::with_capacity(N);
+        let mut r: Vec<Fr> = Vec::with_capacity(N);
+        let mut o: Vec<Fr> = Vec::with_capacity(N);
         
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
