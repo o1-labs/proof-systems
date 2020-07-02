@@ -261,8 +261,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     Some(VariableBaseMSM::multi_scalar_mul
                     (
                         &self.g[n - (m % n)..],
-                        &plnm.coeffs[m - (m % n)..p]
-                            .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                        &plnm.coeffs[m - (m % n)..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine())
                 }
             }

@@ -17,9 +17,11 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 type Fr = <Affine as AffineCurve>::ScalarField;
+
+const PERIOD: usize = ROUNDS_FULL + 1;
 const MAX_SIZE: usize = 10000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
-const N: usize = 64*NUM_POS; // Plonk domain size
+const N: usize = PERIOD * NUM_POS; // Plonk domain size
 
 #[test]
 fn poseidon()
@@ -41,22 +43,22 @@ fn poseidon()
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in 0..HALF_ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fr>::create_poseidon((i, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fr>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
             i+=1;
         }
         // ROUNDS_PARTIAL partial rounds constraint gates
         for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
         {
-            gates.push(CircuitGate::<Fr>::create_poseidon((i, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], z));
+            gates.push(CircuitGate::<Fr>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], z));
             i+=1;
         }
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
         {
-            gates.push(CircuitGate::<Fr>::create_poseidon((i, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fr>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
             i+=1;
         }
-        gates.push(CircuitGate::<Fr>::zero((i, i), (i+N, N+i), (i+2*N, 2*N+i)));
+        gates.push(CircuitGate::<Fr>::zero((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))));
         i+=1;
     }
 
@@ -100,11 +102,13 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         let mut l: Vec<Fr> = Vec::with_capacity(N);
         let mut r: Vec<Fr> = Vec::with_capacity(N);
         let mut o: Vec<Fr> = Vec::with_capacity(N);
+
+        let (x, y, z) = (Fr::rand(rng), Fr::rand(rng), Fr::rand(rng));
         
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
         {
-            sponge.state = vec![Fr::rand(rng), Fr::rand(rng), Fr::rand(rng)];
+            sponge.state = vec![x, y, z];
             l.push(sponge.state[0]);
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);

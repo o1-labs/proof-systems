@@ -156,6 +156,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         t += &bnd.scale(alpha[0]);
+        t.coeffs.resize(SPONGE_BOX * (n+2) - SPONGE_BOX, Fr::<G>::zero());
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(SPONGE_BOX * (n+2) - SPONGE_BOX));
