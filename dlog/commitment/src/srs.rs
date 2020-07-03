@@ -57,7 +57,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
         let v : Vec<_> = (0..depth + 1).map(|i| {
             let mut h = Blake2b::new();
             h.input(&(i as u32).to_be_bytes());
-            let random_bytes = &h.result()[..32];
+            let random_bytes = &h.result()[..31];
             let t = G::BaseField::from_random_bytes(&random_bytes).unwrap();
             let (x, y) = m.to_group(t);
             G::of_coordinates(x, y)

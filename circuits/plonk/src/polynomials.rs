@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements Plonk prover plonomials primitive.
+This source file implements Plonk prover polynomials primitive.
 
 *****************************************************************************************************************/
 
@@ -26,6 +26,6 @@ pub struct WitnessShifts<F: FftField>
 #[derive(Clone)]
 pub struct WitnessOverDomains<F: FftField>
 {
-    pub d2: WitnessShifts<F>,           // evaluations ovrt domain d2
-    pub d4: WitnessShifts<F>,           // evaluations ovrt domain d4
+    pub d2: WitnessShifts<F>,           // evaluations over domain d2
+    pub d4: WitnessShifts<F>,           // evaluations over domain d4
 }

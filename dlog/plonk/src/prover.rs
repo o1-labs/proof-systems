@@ -148,7 +148,7 @@ impl<G: CommitmentCurve> ProverProof<G>
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        // premutation boundary condition check contribution
+        // permutation boundary condition check contribution
         let (bnd, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
@@ -208,16 +208,13 @@ impl<G: CommitmentCurve> ProverProof<G>
             }
         ).collect::<Vec<_>>();
 
-        // compute linearization polynomial
+        // compute and evaluate linearization polynomial
 
         let f =
             &(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) -
             &index.cs.perm_lnrz(&e, &oracles);
-
-        evals[0].f = f.eval(evlp[0], index.max_poly_size);
-        evals[1].f = f.eval(evlp[1], index.max_poly_size);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);

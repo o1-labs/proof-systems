@@ -24,7 +24,7 @@ const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 
 #[test]
-fn poseidon()
+fn poseidon_bn382()
 {
     let c = &oracle::bn_382::fq::params().round_constants;
 
