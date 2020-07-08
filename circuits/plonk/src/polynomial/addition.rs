@@ -44,22 +44,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         (
             &(&Evaluations::multiply
             (
-                &[&(&polys.d2.next.r - &polys.d2.next.l), ylo, &self.add1l3], self.domain.d2
+                &[&(&polys.d2.next.r - &polys.d2.next.l), ylo, &self.addl3], self.domain.d2
             )
             -
             &Evaluations::multiply
             (
-                &[&(&polys.d2.next.l - &polys.d2.next.o), &(&polys.d2.this.r - &polys.d2.this.l), &self.add1l3], self.domain.d2
+                &[&(&polys.d2.next.l - &polys.d2.next.o), &(&polys.d2.this.r - &polys.d2.this.l), &self.addl3], self.domain.d2
             )).scale(alpha[4])
             -
             &Evaluations::multiply
             (
-                &[ylo, ylo, &self.add1l3], self.domain.d2
+                &[ylo, ylo, &self.addl3], self.domain.d2
             ).scale(alpha[5])
             ,
             Evaluations::multiply
             (
-                &[&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)), xlo, xlo, &self.add1l4], self.domain.d4
+                &[&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)), xlo, xlo, &self.addl4], self.domain.d4
             ).scale(alpha[5])
         )
     }
@@ -67,7 +67,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // EC Affine addition constraint linearization poly contribution computation
     pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> DensePolynomial<F>
     {
-        self.add1m.scale
+        self.addm.scale
         (
             ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
             &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[4] +

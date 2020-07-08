@@ -5,7 +5,7 @@ This source file implements Marlin Protocol Index primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, PolyComm}};
+use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
 use algebra::AffineCurve;
 use oracle::{rndoracle::ProofError, poseidon::ArithmeticSpongeParams};
 use marlin_circuits::{gate::CircuitGate, domains::EvaluationDomains};
@@ -48,7 +48,7 @@ impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
     }
 }
 
-pub struct Index<'a, G: CommitmentCurve>
+pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 {
     // constraint system compilation
     pub compiled: [Compiled<G>; 3],
@@ -99,7 +99,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : QnrField
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {
@@ -196,7 +196,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
         {
             for val in self.compiled[i].constraints.iter()
             {
-                gates[(val.1).0].wire[i] += &(witness[(val.1).1] * &val.0)
+                gates[(val.1).0].wire[i] += &(witness[(val.1).1] * val.0)
             }
         }
         for gate in gates.iter()

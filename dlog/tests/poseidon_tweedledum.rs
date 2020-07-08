@@ -7,7 +7,7 @@ This source file benchmark constraints for the Poseidon hash permutations
 use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
+use algebra::{tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -21,17 +21,17 @@ const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 
 #[test]
-fn poseidon_tweedledee()
+fn poseidon_tweedledum()
 {
-    let c = &oracle::tweedle::fp::params().round_constants;
+    let c = &oracle::tweedle::fq::params().round_constants;
 
-    let z = Fp::zero();
-    let p = Fp::one();
+    let z = Fq::zero();
+    let p = Fq::one();
 
     // circuit gates
 
     let mut i = 0;
-    let mut gates: Vec<CircuitGate::<Fp>> = Vec::with_capacity(N);
+    let mut gates: Vec<CircuitGate::<Fq>> = Vec::with_capacity(N);
 
     // custom constraints for Poseidon hash function permutation
 
@@ -40,22 +40,22 @@ fn poseidon_tweedledee()
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in 0..HALF_ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fq>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
             i+=1;
         }
         // ROUNDS_PARTIAL partial rounds constraint gates
         for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], z));
+            gates.push(CircuitGate::<Fq>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], z));
             i+=1;
         }
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fq>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
             i+=1;
         }
-        gates.push(CircuitGate::<Fp>::zero((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))));
+        gates.push(CircuitGate::<Fq>::zero((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))));
         i+=1;
     }
 
@@ -63,10 +63,10 @@ fn poseidon_tweedledee()
 
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fp>::create(gates, 0).unwrap(),
+        ConstraintSystem::<Fq>::create(gates, 0).unwrap(),
         MAX_SIZE,
-        oracle::tweedle::fp::params(),
         oracle::tweedle::fq::params(),
+        oracle::tweedle::fp::params(),
         SRSSpec::Use(&srs)
     );
     
@@ -74,12 +74,11 @@ fn poseidon_tweedledee()
 }
 
 fn positive(index: &Index<Affine>)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let rng = &mut OsRng;
 
-    let params = oracle::tweedle::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp>::new();
+    let params = oracle::tweedle::fq::params();
+    let mut sponge = ArithmeticSponge::<Fq>::new();
 
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -96,11 +95,11 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     for test in 0..1
     {
-        let mut l: Vec<Fp> = Vec::with_capacity(N);
-        let mut r: Vec<Fp> = Vec::with_capacity(N);
-        let mut o: Vec<Fp> = Vec::with_capacity(N);
+        let mut l: Vec<Fq> = Vec::with_capacity(N);
+        let mut r: Vec<Fq> = Vec::with_capacity(N);
+        let mut o: Vec<Fq> = Vec::with_capacity(N);
 
-        let (x, y, z) = (Fp::rand(rng), Fp::rand(rng), Fp::rand(rng));
+        let (x, y, z) = (Fq::rand(rng), Fq::rand(rng), Fq::rand(rng));
         
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
@@ -143,7 +142,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.cs.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters>, DefaultFrSponge<Fp>>(
+        batch.push(ProverProof::create::<DefaultFqSponge<TweedledumParameters>, DefaultFrSponge<Fq>>(
             &group_map, &witness, &index).unwrap());
 
         print!("{:?}\r", test);
@@ -155,7 +154,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters>, DefaultFrSponge<Fp>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters>, DefaultFrSponge<Fq>>(&group_map, &batch, &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

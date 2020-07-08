@@ -4,7 +4,7 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, PolyComm}};
+use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use plonk_circuits::constraints::ConstraintSystem;
 use oracle::poseidon::ArithmeticSpongeParams;
@@ -47,7 +47,7 @@ impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
     }
 }
 
-pub struct Index<'a, G: CommitmentCurve>
+pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 {
     // constraints as Lagrange-based polynoms
     pub cs: ConstraintSystem<Fr<G>>,
@@ -92,7 +92,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomialcommitment
 
     // EC addition polynomial commitments
-    pub add1_comm:  PolyComm<G>,        // full/partial round indicator polynomial commitment
+    pub add_comm:  PolyComm<G>,        // full/partial round indicator polynomial commitment
 
     pub r:          Fr<G>,              // coordinate shift for right wires
     pub o:          Fr<G>,              // coordinate shift for output wires
@@ -102,7 +102,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : QnrField
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let srs = match &self.srs
@@ -128,7 +128,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
             pfm_comm: srs.get_ref().commit(&self.cs.pfm, None),
             psm_comm: srs.get_ref().commit(&self.cs.psm, None),
 
-            add1_comm: srs.get_ref().commit(&self.cs.add1m, None),
+            add_comm: srs.get_ref().commit(&self.cs.addm, None),
 
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),

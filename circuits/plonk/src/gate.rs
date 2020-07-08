@@ -14,9 +14,15 @@ pub enum GateType
 {
     Zero,       // zero gate
     Generic,    // generic arithmetic gate
+
     Poseidon,   // Poseidon permutation gate
+
     Add1,       // Gate constraining EC addition in Affine form
     Add2,       // Gate constraining EC point abscissa distinctness
+
+    Vbmul1,     // Gate constraining EC variable base scalar multiplication 
+    Vbmul2,     // Gate constraining EC variable base scalar multiplication 
+    Vbmul3,     // Gate constraining EC variable base scalar multiplication 
 }
 
 #[derive(Clone)]
@@ -62,6 +68,9 @@ impl<F: Field> CircuitGate<F>
             GateType::Poseidon => self.verify_poseidon(witness, next),
             GateType::Add1 => self.verify_add1(witness, next),
             GateType::Add2 => self.verify_add2(witness),
+            GateType::Vbmul1 => self.verify_vbmul1(witness, next),
+            GateType::Vbmul2 => self.verify_vbmul2(witness, next),
+            GateType::Vbmul3 => self.verify_vbmul3(witness, next),
         }
     }
 }

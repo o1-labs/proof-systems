@@ -9,7 +9,7 @@ pub use super::index::{VerifierIndex as Index};
 use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::{sbox, SPONGE_BOX}};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
 use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
-use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use crate::plonk_sponge::{FrSponge};
 use rand_core::OsRng;
@@ -17,7 +17,7 @@ use rand_core::OsRng;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function verifies the batch of zk-proofs
     //     proofs: vector of Plonk proofs
@@ -91,7 +91,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                             // poseidon constraint polynomial commitments
                             &index.fpm_comm, &index.pfm_comm, &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
                             // EC addition constraint polynomial commitments
-                            &index.add1_comm,
+                            &index.add_comm,
                         ];
                         let (l, r, o) = (sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o));
                         let s =

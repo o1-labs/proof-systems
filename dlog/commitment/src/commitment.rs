@@ -19,22 +19,22 @@ use algebra::{
 };
 use ff_fft::DensePolynomial;
 use oracle::{FqSponge, sponge::ScalarChallenge};
-use oracle::utils::PolyUtils;
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
+pub use crate::QnrField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PolyComm<C: AffineCurve>
 {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -50,7 +50,7 @@ pub struct Challenges<F> {
     pub chal_squared_inv : Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> {
+impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
@@ -157,24 +157,23 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
     // TODO: Make this a parameter
-    let nonresidue: Fr = (7 as u64).into();
     let mut pre = squeeze_prechallenge(sponge).to_field(endo_r);
     match pre.legendre() {
         LegendreSymbol::Zero => (),
         LegendreSymbol::QuadraticResidue => (),
         LegendreSymbol::QuadraticNonResidue => {
-            pre *= &nonresidue;
+            pre *= &Fr::QNR;
         }
     };
     pre
 }
 
-fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -221,7 +220,7 @@ fn to_group<G : CommitmentCurve>(
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound
@@ -253,15 +252,16 @@ impl<G: CommitmentCurve> SRS<G> {
         let shifted = match max
         {
             None => None,
-            Some(m) =>
+            Some(max) =>
             {
-                if m % n == 0 {None}
+                if max % n == 0 {None}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul
                     (
-                        &self.g[n - (m % n)..],
-                        &plnm.coeffs[m - (m % n)..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                        &self.g[n - (max%n)..],
+                        &plnm.coeffs[max-(max%n)..p]
+                            .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine())
                 }
             }
@@ -519,7 +519,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut rand_base_i = Fr::<G>::one();
         let mut sg_rand_base_i = Fr::<G>::one();
 
-        for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
+        for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
@@ -536,13 +536,13 @@ impl<G: CommitmentCurve> SRS<G> {
                 let mut res = Fr::<G>::zero();
                 for &e in evaluation_points.iter() {
                     res += &(scale * &b_poly(&chal, &chal_inv, e));
-                    scale *= r;
+                    scale *= *r;
                 }
                 res
             };
 
             let s = b_poly_coefficients(
-                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * &y),
+                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y),
                 &chal_squared,
             );
 
@@ -615,12 +615,12 @@ impl<G: CommitmentCurve> SRS<G> {
 
                     // iterating over the polynomial segments
                     for (comm_ch, eval) in comm.unshifted.iter().zip(evals.iter()) {
-
                         let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
+
                         res += &(xi_i * &term);
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
-                        xi_i *= xi;
+                        xi_i *= *xi;
                     }
 
                     if let Some(m) = shifted {
@@ -630,13 +630,14 @@ impl<G: CommitmentCurve> SRS<G> {
                             let shifted_evals: Vec<_> = evaluation_points
                                 .iter()
                                 .zip(evals[evals.len()-1].iter())
-                                .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * &f_elm)
+                                .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm)
                                 .collect();
 
                             scalars.push(rand_base_i_c_i * &xi_i);
                             points.push(comm_ch);
                             res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
-                            xi_i *= xi;
+
+                            xi_i *= *xi;
                         }
                     }
                 }
@@ -664,4 +665,48 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
         res += &(x * y);
     }
     res
+}
+
+pub trait Utils<F: Field> {
+    fn scale(&self, elm: F) -> Self;
+    fn shiftr(&self, size: usize) -> Self;
+    fn eval_polynomial(coeffs: &[F], x: F) -> F;
+    fn eval(&self, elm: F, size: usize) -> Vec<F>;
+}
+
+impl<F: Field> Utils<F> for DensePolynomial<F> {
+    fn eval_polynomial(coeffs: &[F], x: F) -> F {
+        let mut res = F::zero();
+        for c in coeffs.iter().rev() {
+            res *= &x;
+            res += c;
+        }
+        res
+    }
+
+    // This function "scales" (multiplies) polynomaial with a scalar
+    // It is implemented to have the desired functionality for DensePolynomial
+    fn scale(&self, elm: F) -> Self {
+        let mut result = self.clone();
+        for coeff in &mut result.coeffs {
+            *coeff *= &elm
+        }
+        result
+    }
+
+    fn shiftr(&self, size: usize) -> Self {
+        let mut result = vec![F::zero(); size];
+        result.extend(self.coeffs.clone());
+        DensePolynomial::<F>::from_coefficients_vec(result)
+    }
+
+    // This function evaluates polynomial in chunks
+    fn eval(&self, elm: F, size: usize) -> Vec<F>
+    {
+        (0..self.coeffs.len()).step_by(size).map
+        (
+            |i| Self::from_coefficients_slice
+                (&self.coeffs[i..if i+size > self.coeffs.len() {self.coeffs.len()} else {i+size}]).evaluate(elm)
+        ).collect()
+    }
 }

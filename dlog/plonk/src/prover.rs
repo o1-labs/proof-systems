@@ -8,7 +8,7 @@ use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
 use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
-use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
@@ -36,7 +36,7 @@ pub struct ProverProof<G: AffineCurve>
     pub public: Vec<Fr<G>>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness

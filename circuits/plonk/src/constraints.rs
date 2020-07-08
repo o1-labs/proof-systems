@@ -37,8 +37,7 @@ pub struct ConstraintSystem<F: FftField>
     pub psm:    DensePolynomial<F>,         // poseidon constraint selector polynomial
     
     // EC point addition constraint polynomials
-    pub add1m:  DensePolynomial<F>,         // EC point addition constraint selector polynomial
-    pub add2m:  DensePolynomial<F>,         // EC point distinctness constraint selector polynomial
+    pub addm:   DensePolynomial<F>,         // EC point addition constraint selector polynomial
     
     // POLYNOMIALS OVER LAGRANGE BASE
 
@@ -53,15 +52,15 @@ pub struct ConstraintSystem<F: FftField>
     pub sigmal4:[Evaluations<F, D<F>>; 3],  // permutation polynomial array evaluations over domain d4
     pub sid:    Vec<F>,                     // SID polynomial
 
-    // poseidon selector polynomials over
+    // poseidon selector polynomials
     pub fpl:    Evaluations<F, D<F>>,       // full/partial round indicator evaluations w over domain.d4
     pub pfl:    Evaluations<F, D<F>>,       // partial/full round indicator 1-w evaluations over domain.d2
     pub ps2:    Evaluations<F, D<F>>,       // poseidon selector over domain.d2
     pub psp:    Evaluations<F, D<F>>,       // poseidon selector over domain.d4
 
-    // EC point addition selector polynomials over Lagrange bases
-    pub add1l3: Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d2
-    pub add1l4: Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
+    // EC point addition selector polynomials
+    pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d2
+    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
 
     pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d4
     pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d4
@@ -135,8 +134,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let pfm = &psm - &fpm;
 
         // compute EC point addition constraint polynomials
-        let add1m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add1()).collect(), domain.d1).interpolate();
-        let add2m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add2()).collect(), domain.d1).interpolate();
+        let addm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add1()).collect(), domain.d1).interpolate();
 
         Some(ConstraintSystem
         {
@@ -169,14 +167,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             pfm,
             
             // EC point addition constraint polynomial
-            add1l3: add1m.evaluate_over_domain_by_ref(domain.d2),
-            add1l4: add1m.evaluate_over_domain_by_ref(domain.d4),
-            add1m,
-            add2m,
+            addl3: addm.evaluate_over_domain_by_ref(domain.d2),
+            addl4: addm.evaluate_over_domain_by_ref(domain.d4),
+            addm,
             
             l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d4),
             l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d4),
-        gates,
+            gates,
             r,
             o,
         })

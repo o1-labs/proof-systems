@@ -1,6 +1,6 @@
 /*********************************************************************************************************
 
-This source file benchmark constraints for the Poseino hash permutations
+This source file benchmark constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
@@ -113,7 +113,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
 
-            // HALF_ROUNDS_FULL full rounds constraint gates
+            // HALF_ROUNDS_FULL full rounds
             for j in 0..HALF_ROUNDS_FULL
             {
                 sponge.full_round(j, &params);
@@ -121,7 +121,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
                 r.push(sponge.state[1]);
                 o.push(sponge.state[2]);
             }
-            // ROUNDS_PARTIAL partial rounds constraint gates
+            // ROUNDS_PARTIAL partial rounds
             for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
             {
                 sponge.partial_round(j, &params);
@@ -129,7 +129,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
                 r.push(sponge.state[1]);
                 o.push(sponge.state[2]);
             }
-            // HALF_ROUNDS_FULL full rounds constraint gates
+            // HALF_ROUNDS_FULL full rounds
             for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
             {
                 sponge.full_round(j, &params);
@@ -155,13 +155,6 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     let verifier_index = index.verifier_index();
-    // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &vec![batch[0].clone()], &verifier_index)
-    {
-        Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
-        Ok(_) => {}
-    }
-
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
