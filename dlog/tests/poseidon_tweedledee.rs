@@ -1,6 +1,6 @@
 /*********************************************************************************************************
 
-This source file benchmark constraints for the Poseidon hash permutations
+This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 

@@ -1,6 +1,6 @@
 /*********************************************************************************************************
 
-This source file benchmark constraints for the Poseidon hash permutations
+This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
@@ -88,7 +88,7 @@ fn positive(index: &Index<Affine>)
     println!("{}{:?}", "Number oh Poseidon hashes in the circuit: ".yellow(), NUM_POS);
     println!("{}{:?}", "Full rounds: ".yellow(), ROUNDS_FULL);
     println!("{}{:?}", "Sbox alpha: ".yellow(), SPONGE_BOX);
-    println!("{}", "Base curve: tweedledee".green());
+    println!("{}", "Base curve: tweedledum".green());
     println!();
     println!("{}", "Prover zk-proof computation".green());
     let mut start = Instant::now();
