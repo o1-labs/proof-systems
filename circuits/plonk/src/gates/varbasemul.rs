@@ -17,7 +17,7 @@ S = (P + (b ? T : −T)) + P
 
 Gate 0
     b*b = b
-    (xT - xP) × λ1 = (yT) × (2·b - 1) - yP
+    (xT - xP) × λ1 = (yT) × (2*b - 1) - yP
 
 Gate 1
     λ1^2 = xP + xT + xR
@@ -93,7 +93,7 @@ impl<F: Field> CircuitGate<F>
         // verify booleanity of the scalar bit
         witness[self.r.0] == witness[self.r.0].square()
         &&
-        // (xP - xT) × λ1 = yP - (yT × (2·b - 1))
+        // (xP - xT) × λ1 = yP - (yT × (2*b - 1))
         (witness[next.l.0] - &witness[self.l.0]) * &witness[next.r.0]
         ==
         witness[next.o.0] - &(witness[self.o.0] * &(witness[self.r.0].double() - &F::one()))
@@ -114,7 +114,7 @@ impl<F: Field> CircuitGate<F>
         // (xP - xS) × (2*yP - (2*xP - λ1^2 + xT) × λ1) = (yS + yP) * (2*xP - λ1^2 + xT)
         (witness[self.l.0] - &witness[next.l.0]) * &(witness[self.o.0].double() - &(tmp * &witness[self.r.0]))
         ==
-        (witness[next.r.0] + &witness[self.o.0]) * &tmp
+        (witness[next.o.0] + &witness[self.o.0]) * &tmp
     }
 
     pub fn verify_vbmul3(&self, _witness: &Vec<F>, _next: &Self) -> bool

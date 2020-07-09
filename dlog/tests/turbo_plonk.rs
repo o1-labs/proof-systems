@@ -12,7 +12,9 @@ This source file tests constraints for the following computatios:
 1. Weierstrass curve y^2 = x^3 + 7 group addition of non-special pairs of points
     via custom Plonk constraints
 
-3. Poseidon hash function permutation via custom constraints for Poseidon
+3. Poseidon hash function permutation via custom Plonk constraints
+
+4. short Weierstrass curve variable base scalar multiplication via custom Plonk constraints
 
 **********************************************************************************************************/
 
@@ -121,6 +123,40 @@ fn turbo_plonk()
     {
         gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
     }
+    gates.push(CircuitGate::<Fr>::zero(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)));
+
+    // custom constraint gates for short Weierstrass curve variable base scalar multiplication
+
+    let mut vbm = CircuitGate::<Fr>::create_vbmul
+    (
+        ({i+=1; i}, i),
+        (i+N,       i+N),
+        (i+2*N,     i+2*N),
+        
+        ({i+=1; i}, i),
+        (i+N,       i+N),
+        (i+2*N,     i+2*N),
+        
+        ({i+=1; i}, i),
+        (i+N,       i+N),
+        (i+2*N,     i+2*N),
+    );
+    gates.append(&mut vbm);
+    let mut vbm = CircuitGate::<Fr>::create_vbmul
+    (
+        ({i+=1; i}, i),
+        (i+N,       i+N),
+        (i+2*N,     i+2*N),
+        
+        ({i+=1; i}, i),
+        (i+N,       i+N),
+        (i+2*N,     i+2*N),
+        
+        ({i+=1; i}, i),
+        (i+N,       i+N),
+        (i+2*N,     i+2*N),
+    );
+    gates.append(&mut vbm);
 
     let srs = SRS::create(MAX_SIZE);
 
@@ -153,7 +189,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     for test in 0..100
     {
-        let (x1, y1, x2, y2, x3, y3) = points[test % 10];
+        let (x1, y1, x2, y2, _, _) = points[test % 10];
+        let (x3, y3) = add_points((x1, y1), (x2, y2));
         let s = (y2 - &y1) / &(x2 - &x1);
 
         // public input and EC addition witness for generic constraints
@@ -202,6 +239,33 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
         }
+        
+        // variable base scalar multiplication witness for custom constraints
+
+        let (s1x, s1y) = add_points((x2, y2), add_points((x2, y2), (x1, y1)));
+
+        l.push(x1);
+        r.push(Fr::one());
+        o.push(y1);
+        l.push(x2);
+        r.push(s);
+        o.push(y2);
+        l.push(s1x);
+        r.push(x1);
+        o.push(s1y);
+
+        let (s2x, s2y) = add_points((s1x, s1y), add_points((s1x, s1y), (x1, -y1)));
+        let s = (s1y + &y1) / &(s1x - &x1);
+
+        l.push(x1);
+        r.push(Fr::zero());
+        o.push(y1);
+        l.push(s1x);
+        r.push(s);
+        o.push(s1y);
+        l.push(s2x);
+        r.push(x1);
+        o.push(s2y);
 
         l.resize(N, Fr::zero());
         r.resize(N, Fr::zero());
@@ -298,6 +362,28 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     // verify the circuit negative satisfiability by the computed witness
     assert_eq!(index.cs.verify(&witness), false);
+}
+
+fn add_points(a: (Fr, Fr), b: (Fr, Fr)) -> (Fr, Fr)
+{
+    if a == (Fr::zero(), Fr::zero()) {b}
+    else if b == (Fr::zero(), Fr::zero()) {a}
+    else if a.0 == b.0 && (a.1 != b.1 || b.1 == Fr::zero()) {(Fr::zero(), Fr::zero())}
+    else if a.0 == b.0 && a.1 == b.1
+    {
+        let sq = a.0.square();
+        let s = (sq.double() + &sq) / &a.1.double();
+        let x = s.square() - &a.0.double();
+        let y = -a.1 - &(s * &(x - &a.0));
+        (x, y)
+    }
+    else
+    {
+        let s = (a.1 - &b.1) / &(a.0 - &b.0);
+        let x = s.square() - &a.0 - &b.0;
+        let y = -a.1 - &(s * &(x - &a.0));
+        (x, y)
+    }
 }
 
 fn sample_points() -> [(Fr, Fr, Fr, Fr, Fr, Fr); 10]
