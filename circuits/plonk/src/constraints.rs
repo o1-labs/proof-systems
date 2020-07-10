@@ -39,6 +39,10 @@ pub struct ConstraintSystem<F: FftField>
     // EC point addition constraint polynomials
     pub addm:   DensePolynomial<F>,         // EC point addition constraint selector polynomial
     
+    // variable base scalar multiplication constraint polynomials
+    pub mul1m:  DensePolynomial<F>,         // gate0 constraint selector polynomial
+    pub mul2m:  DensePolynomial<F>,         // gate1 constraint selector polynomial
+    
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
@@ -58,9 +62,11 @@ pub struct ConstraintSystem<F: FftField>
     pub ps2:    Evaluations<F, D<F>>,       // poseidon selector over domain.d2
     pub psp:    Evaluations<F, D<F>>,       // poseidon selector over domain.d4
 
-    // EC point addition selector polynomials
+    // ECC arithmetic selector polynomials
     pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d2
     pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
+    pub mul1l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d2
+    pub mul2l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d4
 
     pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d4
     pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d4
@@ -133,8 +139,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let fpm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.fp()).collect(), domain.d1).interpolate();
         let pfm = &psm - &fpm;
 
-        // compute EC point addition constraint polynomials
+        // compute ECC arithmetic constraint polynomials
         let addm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add1()).collect(), domain.d1).interpolate();
+        let mul1m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.vbmul1()).collect(), domain.d1).interpolate();
+        let mul2m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.vbmul2()).collect(), domain.d1).interpolate();
 
         Some(ConstraintSystem
         {
@@ -166,10 +174,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             fpm,
             pfm,
             
-            // EC point addition constraint polynomial
+            // ECC arithmetic constraint polynomials
             addl3: addm.evaluate_over_domain_by_ref(domain.d2),
             addl4: addm.evaluate_over_domain_by_ref(domain.d4),
             addm,
+            mul1l: mul1m.evaluate_over_domain_by_ref(domain.d2),
+            mul2l: mul2m.evaluate_over_domain_by_ref(domain.d4),
+            mul1m,
+            mul2m,
             
             l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d4),
             l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d4),

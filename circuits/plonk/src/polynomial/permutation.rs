@@ -22,21 +22,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> Evaluations<F, D<F>>
     {
         let l0 = &self.l0.scale(oracles.gamma);
-        (&Evaluations::multiply
-        (&[
-            &(&lagrange.d4.this.l + &(l0 + &self.l1.scale(oracles.beta))),
-            &(&lagrange.d4.this.r + &(l0 + &self.l1.scale(oracles.beta * &self.r))),
-            &(&lagrange.d4.this.o + &(l0 + &self.l1.scale(oracles.beta * &self.o))),
-            &lagrange.d4.this.z
-        ], self.domain.d4)
+
+        (&(&(&(&(&lagrange.d4.this.l + &(l0 + &self.l1.scale(oracles.beta))) *
+        &(&lagrange.d4.this.r + &(l0 + &self.l1.scale(oracles.beta * &self.r)))) *
+        &(&lagrange.d4.this.o + &(l0 + &self.l1.scale(oracles.beta * &self.o)))) *
+        &lagrange.d4.this.z)
         -
-        &Evaluations::multiply
-        (&[
-            &(&lagrange.d4.this.l + &(l0 + &self.sigmal4[0].scale(oracles.beta))),
-            &(&lagrange.d4.this.r + &(l0 + &self.sigmal4[1].scale(oracles.beta))),
-            &(&lagrange.d4.this.o + &(l0 + &self.sigmal4[2].scale(oracles.beta))),
-            &lagrange.d4.next.z
-        ], self.domain.d4)).scale(oracles.alpha)
+        &(&(&(&(&lagrange.d4.this.l + &(l0 + &self.sigmal4[0].scale(oracles.beta))) *
+        &(&lagrange.d4.this.r + &(l0 + &self.sigmal4[1].scale(oracles.beta)))) *
+        &(&lagrange.d4.this.o + &(l0 + &self.sigmal4[2].scale(oracles.beta)))) *
+        &lagrange.d4.next.z)).scale(oracles.alpha)
     }
 
     // permutation linearization poly contribution computation

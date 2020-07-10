@@ -6,7 +6,7 @@ This source file implements Posedon constraint polynomials.
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::{utils::{EvalUtils, PolyUtils}, poseidon::sbox};
+use oracle::{utils::PolyUtils, poseidon::sbox};
 use crate::polynomials::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
@@ -34,12 +34,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             map(|(e, a)| {e.evals.iter_mut().for_each(|e| *e *= a); e}).
             fold(DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(self.domain.d4), |x, y| &x + &y);
 
-        let ln = &Evaluations::multiply(&[&polys.d2.next.l, &self.ps2], self.domain.d2);
-        let rn = &Evaluations::multiply(&[&polys.d2.next.r, &self.ps2], self.domain.d2);
-        let on = &Evaluations::multiply(&[&polys.d2.next.o, &self.ps2], self.domain.d2);
+        let ln = &(&polys.d2.next.l * &self.ps2);
+        let rn = &(&polys.d2.next.r * &self.ps2);
+        let on = &(&polys.d2.next.o * &self.ps2);
 
-        let r = &Evaluations::multiply(&[&polys.d2.this.r, &self.pfl], self.domain.d2);
-        let o = &Evaluations::multiply(&[&polys.d2.this.o, &self.pfl], self.domain.d2);
+        let r = &(&polys.d2.this.r * &self.pfl);
+        let o = &(&polys.d2.this.o * &self.pfl);
 
         let mut rows = [o - ln, r - rn, &(r + o) - on];
 

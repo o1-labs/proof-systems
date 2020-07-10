@@ -10,7 +10,7 @@ pub trait PolyUtils<F: FftField> {
 
 pub trait EvalUtils<F: FftField> {
     fn scale(&self, elm: F) -> Self;
-    fn multiply(polys: &[&Evaluations<F, D<F>>], d : D<F>) -> Evaluations<F, D<F>>;
+    fn pow(&self, pow: usize) -> Self;
 }
 
 impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
@@ -26,14 +26,11 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
         result
     }
 
-    // utility function for efficient multiplication of several polys
-    fn multiply(evals: &[&Self], d : D<F>) -> Self
+    fn pow(&self, pow: usize) -> Self
     {
-        Self::from_vec_and_domain
-        (
-            (0..d.size as usize).map(|i| evals.iter().map(|e| e.evals[i]).fold(F::one(), |x, y| x * &y)).collect::<Vec<_>>(),
-            d
-        )
+        let mut result = self.clone();
+        result.evals.iter_mut().for_each(|e| *e = e.pow([pow as u64]));
+        result
     }
 }
 

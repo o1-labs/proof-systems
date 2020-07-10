@@ -7,9 +7,9 @@ This source file implements generic constraint polynomials.
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use crate::polynomials::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
+use oracle::utils::PolyUtils;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
@@ -17,11 +17,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn gnrc_quot(&self, polys: &WitnessOverDomains<F>, p: &DensePolynomial<F>) -> (Evaluations<F, D<F>>, DensePolynomial<F>)
     {
         (
-            &Evaluations::multiply(&[&polys.d2.this.l, &polys.d2.this.r, &self.qml], self.domain.d2) +
+            &(&(&polys.d2.this.l * &polys.d2.this.r) * &self.qml) +
             &(
-                &(&Evaluations::multiply(&[&polys.d2.this.l, &self.qll], self.domain.d2) +
-                &Evaluations::multiply(&[&polys.d2.this.r, &self.qrl], self.domain.d2)) +
-                &Evaluations::multiply(&[&polys.d2.this.o, &self.qol], self.domain.d2)
+                &(&(&polys.d2.this.l * &self.qll) +
+                &(&polys.d2.this.r * &self.qrl)) +
+                &(&polys.d2.this.o * &self.qol)
             ),
             &self.qc + &p
         )

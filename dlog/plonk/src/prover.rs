@@ -127,7 +127,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
         let mut alpha = oracles.alpha;
-        let alpha = (0..SPONGE_WIDTH+3).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = (0..SPONGE_WIDTH+7).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
         // compute quotient polynomial
 
@@ -137,6 +137,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         // poseidon constraints contribution
         let (pos2, pos4, posp) = index.cs.psdn_quot(&lagrange, &alpha);
 
+        // variable base scalar multiplication constraints contribution
+        let (mul2, mul4) = index.cs.vbmul_quot(&lagrange, &alpha);
+
         // EC addition constraints contribution
         let (eca2, eca4) = index.cs.ecad_quot(&lagrange, &alpha);
 
@@ -144,7 +147,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let perm = index.cs.perm_quot(&lagrange, &oracles);
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&(&(&gen2 + &pos2) + &eca2).interpolate() + &(&(&pos4 + &eca4) + &perm).interpolate()) + &(&genp + &posp)).
+        let (mut t, res) = (&(&(&(&gen2 + &pos2) + &(&eca2 + &mul2)).interpolate() + &(&(&pos4 + &(&eca4 + &mul4)) + &perm).interpolate()) + &(&genp + &posp)).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
@@ -211,9 +214,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         // compute and evaluate linearization polynomial
 
         let f =
-            &(&(&index.cs.gnrc_lnrz(&e[0]) +
+            &(&(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &alpha)) +
-            &index.cs.ecad_lnrz(&e, &alpha)) -
+            &index.cs.ecad_lnrz(&e, &alpha)) +
+            &index.cs.vbmul_lnrz(&e, &alpha)) -
             &index.cs.perm_lnrz(&e, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);

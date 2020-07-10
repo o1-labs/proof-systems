@@ -42,25 +42,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let xlo = &(&polys.d4.next.l - &polys.d4.next.o);
 
         (
-            &(&Evaluations::multiply
-            (
-                &[&(&polys.d2.next.r - &polys.d2.next.l), ylo, &self.addl3], self.domain.d2
-            )
+            &(&(&(&(&polys.d2.next.r - &polys.d2.next.l) * ylo)
             -
-            &Evaluations::multiply
-            (
-                &[&(&polys.d2.next.l - &polys.d2.next.o), &(&polys.d2.this.r - &polys.d2.this.l), &self.addl3], self.domain.d2
-            )).scale(alpha[4])
+            &(&(&polys.d2.next.l - &polys.d2.next.o) * &(&polys.d2.this.r - &polys.d2.this.l))).scale(alpha[4])
             -
-            &Evaluations::multiply
-            (
-                &[ylo, ylo, &self.addl3], self.domain.d2
-            ).scale(alpha[5])
+            &(ylo * ylo).scale(alpha[5]))
+            *
+            &self.addl3
             ,
-            Evaluations::multiply
-            (
-                &[&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)), xlo, xlo, &self.addl4], self.domain.d4
-            ).scale(alpha[5])
+            (&(&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)) * &(xlo * xlo)) * &self.addl4).scale(alpha[5])
         )
     }
 

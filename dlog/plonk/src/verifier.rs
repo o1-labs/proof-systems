@@ -44,7 +44,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 let zetaw = oracles.zeta * &index.domain.group_gen;
                 let bz = oracles.beta * &oracles.zeta;
                 let mut alpha = oracles.alpha;
-                let alpha = (0..SPONGE_WIDTH+3).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+                let alpha = (0..SPONGE_WIDTH+7).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // evaluate committed polynoms
                 let evlp =
@@ -92,8 +92,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                             &index.fpm_comm, &index.pfm_comm, &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
                             // EC addition constraint polynomial commitments
                             &index.add_comm,
+                            // EC variable base scalar multiplication constraint polynomial commitments
+                            &index.mul1_comm, &index.mul2_comm,
                         ];
                         let (l, r, o) = (sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o));
+                        let tmp = evals[0].l.double() - &evals[0].r.square() + &evals[1].r;
                         let s =
                         [
                             // generic constraint/permutation linearization scalars
@@ -110,6 +113,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                             &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[4] +
                             &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
                             &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[5]),
+
+                            // EC variable base scalar multiplication constraint linearization scalars
+                            (evals[0].r.square() - &evals[0].r) * &alpha[6] + ((evals[1].l - &evals[0].l) * &evals[1].r -
+                            &evals[1].o + &(evals[0].o * &(evals[0].r.double() - &Fr::<G>::one()))) * &alpha[7]
+                            ,
+                            ((evals[0].o.double() - (tmp * &evals[0].r)).square() -
+                            &((evals[0].r.square() - &evals[1].r + &evals[1].l) * &tmp.square())) * &alpha[8] +
+                            &(((evals[0].l - &evals[1].l) * &(evals[0].o.double() - &(tmp * &evals[0].r)) -
+                            ((evals[1].o + &evals[0].o) * &tmp)) * &alpha[9])
                         ];
 
                         let n = p.iter().map(|c| c.unshifted.len()).max().unwrap();

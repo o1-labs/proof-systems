@@ -91,8 +91,10 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub pfm_comm:   PolyComm<G>,        // partial/full round indicator polynomial commitment
     pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomialcommitment
 
-    // EC addition polynomial commitments
-    pub add_comm:  PolyComm<G>,        // full/partial round indicator polynomial commitment
+    // ECC arithmetic polynomial commitments
+    pub add_comm:  PolyComm<G>,        // EC addition selector polynomial commitment
+    pub mul1_comm: PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
+    pub mul2_comm: PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
 
     pub r:          Fr<G>,              // coordinate shift for right wires
     pub o:          Fr<G>,              // coordinate shift for output wires
@@ -129,6 +131,8 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             psm_comm: srs.get_ref().commit(&self.cs.psm, None),
 
             add_comm: srs.get_ref().commit(&self.cs.addm, None),
+            mul1_comm: srs.get_ref().commit(&self.cs.mul1m, None),
+            mul2_comm: srs.get_ref().commit(&self.cs.mul2m, None),
 
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
