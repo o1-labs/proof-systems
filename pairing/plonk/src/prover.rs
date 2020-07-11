@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use rand_core::OsRng;
 use algebra::{Field, PairingEngine, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
-use oracle::{utils::PolyUtils, sponge::FqSponge, rndoracle::ProofError};
+use oracle::{utils::PolyUtils, sponge::{FqSponge, ScalarChallenge}, rndoracle::ProofError};
 use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::FrSponge;
 pub use super::index::Index;
@@ -180,21 +180,21 @@ impl<E: PairingEngine> ProverProof<E>
         // absorb the polycommitments into the argument and sample zeta
         
         fq_sponge.absorb_g(&[tlow_comm, tmid_comm, thgh_comm]);
-        oracles.zeta = fq_sponge.challenge();
-        let zeta2 = oracles.zeta.pow(&[n as u64]);
+        oracles.zeta = ScalarChallenge(fq_sponge.challenge());
+        let zeta2 = oracles.zeta.0.pow(&[n as u64]);
         let zeta3 = zeta2.square();
 
         // evaluate the polynomials
-        evals.l = l.evaluate(oracles.zeta);
-        evals.r = r.evaluate(oracles.zeta);
-        evals.o = o.evaluate(oracles.zeta);
-        evals.sigma1 = index.cs.sigmam[0].evaluate(oracles.zeta);
-        evals.sigma2 = index.cs.sigmam[1].evaluate(oracles.zeta);
-        evals.z = z.evaluate(oracles.zeta * &index.cs.domain.d1.group_gen);
+        evals.l = l.evaluate(oracles.zeta.0);
+        evals.r = r.evaluate(oracles.zeta.0);
+        evals.o = o.evaluate(oracles.zeta.0);
+        evals.sigma1 = index.cs.sigmam[0].evaluate(oracles.zeta.0);
+        evals.sigma2 = index.cs.sigmam[1].evaluate(oracles.zeta.0);
+        evals.z = z.evaluate(oracles.zeta.0 * &index.cs.domain.d1.group_gen);
 
         // compute linearization polynomial
 
-        let bz = oracles.beta * &oracles.zeta;
+        let bz = oracles.beta * &oracles.zeta.0;
         let f1 =
             &(&(&(&index.cs.qmm.scale(evals.l*&evals.r) +
             &index.cs.qlm.scale(evals.l)) +
@@ -208,7 +208,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(evals.r + &(bz * &index.cs.r) + &oracles.gamma) *
                 &(evals.o + &(bz * &index.cs.o) + &oracles.gamma) *
                 &oracles.alpha +
-                &(alpsq * &(zeta2 - &E::Fr::one()) / &(oracles.zeta - &E::Fr::one()))
+                &(alpsq * &(zeta2 - &E::Fr::one()) / &(oracles.zeta.0 - &E::Fr::one()))
             );
         let f3 =
             index.cs.sigmam[2].scale
@@ -218,7 +218,7 @@ impl<E: PairingEngine> ProverProof<E>
                 &(oracles.beta * &evals.z * &oracles.alpha)
             );
         let f = &(&f1 + &f2) - &f3;
-        evals.f = f.evaluate(oracles.zeta);
+        evals.f = f.evaluate(oracles.zeta.0);
 
         // query opening scaler challenge
         oracles.v = fq_sponge.challenge();
@@ -245,9 +245,9 @@ impl<E: PairingEngine> ProverProof<E>
                     &index.cs.sigmam[1],
                 ],
                 oracles.v,
-                oracles.zeta
+                oracles.zeta.0
             )?,
-            proof2: index.urs.get_ref().open(vec![&z], oracles.v, oracles.zeta * &index.cs.domain.d1.group_gen)?,
+            proof2: index.urs.get_ref().open(vec![&z], oracles.v, oracles.zeta.0 * &index.cs.domain.d1.group_gen)?,
             evals,
             public
         })

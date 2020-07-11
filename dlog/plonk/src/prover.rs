@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use oracle::{FqSponge, utils::PolyUtils, rndoracle::{ProofError}, poseidon::SPONGE_BOX};
+use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, poseidon::SPONGE_BOX, sponge::ScalarChallenge};
 use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof};
 use crate::plonk_sponge::{FrSponge};
@@ -116,9 +116,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         if z.pop().unwrap() != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
         let z = &Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate() +
             &DensePolynomial::rand(2, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        
-        // evaluate polynomials over domains
-        let lagrange = index.cs.evaluate(&l, &r, &o, &z);
 
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None);
@@ -128,6 +125,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         oracles.alpha = fq_sponge.challenge();
         let mut alpha = oracles.alpha;
         let alpha = (0..SPONGE_WIDTH+7).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        
+        // evaluate polynomials over domains
+        let lagrange = index.cs.evaluate(&l, &r, &o, &z);
 
         // compute quotient polynomial
 
@@ -166,11 +166,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
-        oracles.zeta = fq_sponge.challenge();
+        oracles.zeta = ScalarChallenge(fq_sponge.challenge());
+        let zeta = oracles.zeta.to_field(&index.srs.get_ref().endo_r);
 
         // evaluate the polynomials
 
-        let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.d1.group_gen];
+        let evlp = [zeta, zeta * &index.cs.domain.d1.group_gen];
         let evals = (0..2).map
         (
             |i| ProofEvaluations::<Vec<Fr<G>>>
@@ -189,11 +190,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         ).collect::<Vec<_>>();
         let mut evals = [evals[0].clone(), evals[1].clone()];
 
-        let evlp1 =
-        [
-            oracles.zeta.pow(&[index.max_poly_size as u64]),
-            (oracles.zeta * &index.cs.domain.d1.group_gen).pow(&[index.max_poly_size as u64])
-        ];
+        let evlp1 = [evlp[0].pow(&[index.max_poly_size as u64]), evlp[1].pow(&[index.max_poly_size as u64])];
         let e = (0..2).map
         (
             |i| ProofEvaluations::<Fr<G>>

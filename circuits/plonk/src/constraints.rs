@@ -46,10 +46,10 @@ pub struct ConstraintSystem<F: FftField>
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
-    pub qll:     Evaluations<F, D<F>>,      // left input wire polynomial over domain.d2
-    pub qrl:     Evaluations<F, D<F>>,      // right input wire polynomial over domain.d2
-    pub qol:     Evaluations<F, D<F>>,      // output wire polynomial over domain.d2
-    pub qml:     Evaluations<F, D<F>>,      // multiplication evaluations over domain.d2
+    pub qll:    Evaluations<F, D<F>>,       // left input wire polynomial over domain.d2
+    pub qrl:    Evaluations<F, D<F>>,       // right input wire polynomial over domain.d2
+    pub qol:    Evaluations<F, D<F>>,       // output wire polynomial over domain.d2
+    pub qml:    Evaluations<F, D<F>>,       // multiplication evaluations over domain.d2
 
     // permutation polynomials
     pub sigmal1:[Vec<F>; 3],                // permutation polynomial array evaluations over domain d1

@@ -5,6 +5,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 *****************************************************************************************************************/
 
 use algebra::Field;
+use oracle::sponge::ScalarChallenge;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
@@ -23,7 +24,7 @@ pub struct RandomOracles<F: Field>
     pub beta: F,
     pub gamma: F,
     pub alpha: F,
-    pub zeta: F,
+    pub zeta: ScalarChallenge<F>,
     pub v: F,
     pub u: F,
 }
@@ -37,7 +38,7 @@ impl<F: Field> RandomOracles<F>
             beta: F::zero(),
             gamma: F::zero(),
             alpha: F::zero(),
-            zeta: F::zero(),
+            zeta: ScalarChallenge(F::zero()),
             v: F::zero(),
             u: F::zero(),
         }

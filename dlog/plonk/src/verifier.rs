@@ -6,7 +6,7 @@ This source file implements zk-proof batch verifier functionality.
 
 pub use super::prover::ProverProof;
 pub use super::index::{VerifierIndex as Index};
-use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::{sbox, SPONGE_BOX}};
+use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::{sbox, SPONGE_BOX}, sponge::ScalarChallenge};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
 use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm};
@@ -40,16 +40,17 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             |(proof, f_comm)|
             {
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index);
-                let zeta1 = oracles.zeta.pow(&[n as u64]);
-                let zetaw = oracles.zeta * &index.domain.group_gen;
-                let bz = oracles.beta * &oracles.zeta;
+                let zeta = oracles.zeta.to_field(&index.srs.get_ref().endo_r);
+                let zeta1 = zeta.pow(&[n as u64]);
+                let zetaw = zeta * &index.domain.group_gen;
+                let bz = oracles.beta * &zeta;
                 let mut alpha = oracles.alpha;
                 let alpha = (0..SPONGE_WIDTH+7).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // evaluate committed polynoms
                 let evlp =
                 [
-                    oracles.zeta.pow(&[index.max_poly_size as u64]),
+                    zeta.pow(&[index.max_poly_size as u64]),
                     zetaw.pow(&[index.max_poly_size as u64])
                 ];
                 
@@ -70,7 +71,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
                 // evaluate lagrange polynoms
                 let mut lagrange = (0..if proof.public.len() > 0 {proof.public.len()} else {1}).
-                    zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
+                    zip(index.domain.elements()).map(|(_,w)| zeta - &w).collect::<Vec<_>>();
                 algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
                 lagrange.iter_mut().for_each(|l| *l *= &(zeta1 - &Fr::<G>::one()));
 
@@ -157,7 +158,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 Ok
                 ((
                     fq_sponge,
-                    vec![oracles.zeta, zetaw],
+                    vec![zeta, zetaw],
                     oracles.v,
                     oracles.u,
                     vec!
@@ -216,7 +217,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&self.t_comm.unshifted);
-        oracles.zeta = fq_sponge.challenge();
+        oracles.zeta = ScalarChallenge(fq_sponge.challenge());
         // query opening scaler challenges
         oracles.v = fq_sponge.challenge();
         oracles.u = fq_sponge.challenge();
