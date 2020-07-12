@@ -9,6 +9,7 @@ use ff_fft::{EvaluationDomain, DensePolynomial, Evaluations, Radix2EvaluationDom
 pub use super::polynomials::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
+use oracle::utils::EvalUtils;
 use array_init::array_init;
 use rand_core::OsRng;
 
@@ -219,13 +220,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         true
     }
 
-    // utility function for shifting poly along domain coordinate
-    pub fn shift(&self, poly: &DensePolynomial<F>) -> DensePolynomial<F>
-    {
-        DensePolynomial::from_coefficients_vec(poly.coeffs.iter().zip(self.sid.iter()).
-            map(|(p, w)| *p * w).collect::<Vec<_>>())
-    }
-    
     // evaluate witness polynomials over domains
     pub fn evaluate
     (
@@ -237,44 +231,52 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> WitnessOverDomains<F>
     {
         // compute shifted witness polynomials
-        let (ln, rn, on, zn) = (self.shift(&l), self.shift(&r), self.shift(&o), self.shift(&z));
         let dummy = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+
+        let l2 = l.evaluate_over_domain_by_ref(self.domain.d2);
+        let r2 = r.evaluate_over_domain_by_ref(self.domain.d2);
+        let o2 = o.evaluate_over_domain_by_ref(self.domain.d2);
+
+        let l4 = l.evaluate_over_domain_by_ref(self.domain.d4);
+        let r4 = r.evaluate_over_domain_by_ref(self.domain.d4);
+        let o4 = o.evaluate_over_domain_by_ref(self.domain.d4);
+        let z4 = z.evaluate_over_domain_by_ref(self.domain.d4);
 
         WitnessOverDomains
         {
             d2: WitnessShifts
-            {
-                this: WitnessEvals
-                {
-                    l: l.evaluate_over_domain_by_ref(self.domain.d2),
-                    r: r.evaluate_over_domain_by_ref(self.domain.d2),
-                    o: o.evaluate_over_domain_by_ref(self.domain.d2),
-                    z: dummy.clone()
-                },
+            {                
                 next: WitnessEvals
                 {
-                    l: ln.evaluate_over_domain_by_ref(self.domain.d2),
-                    r: rn.evaluate_over_domain_by_ref(self.domain.d2),
-                    o: on.evaluate_over_domain_by_ref(self.domain.d2),
+                    l: l2.shift(4),
+                    r: r2.shift(4),
+                    o: o2.shift(4),
+                    z: dummy.clone()
+                },
+                this: WitnessEvals
+                {
+                    l: l2,
+                    r: r2,
+                    o: o2,
                     z: dummy
-                }
+                },
             },
             d4: WitnessShifts
             {
-                this: WitnessEvals
-                {
-                    l: l.evaluate_over_domain_by_ref(self.domain.d4),
-                    r: r.evaluate_over_domain_by_ref(self.domain.d4),
-                    o: o.evaluate_over_domain_by_ref(self.domain.d4),
-                    z: z.evaluate_over_domain_by_ref(self.domain.d4),
-                },
                 next: WitnessEvals
                 {
-                    l: ln.evaluate_over_domain_by_ref(self.domain.d4),
-                    r: rn.evaluate_over_domain_by_ref(self.domain.d4),
-                    o: on.evaluate_over_domain_by_ref(self.domain.d4),
-                    z: zn.evaluate_over_domain_by_ref(self.domain.d4),
-                }
+                    l: l4.shift(8),
+                    r: r4.shift(8),
+                    o: o4.shift(8),
+                    z: z4.shift(8),
+                },
+                this: WitnessEvals
+                {
+                    l: l4,
+                    r: r4,
+                    o: o4,
+                    z: z4,
+                },
             },
         }
     }

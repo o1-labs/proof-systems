@@ -11,6 +11,7 @@ pub trait PolyUtils<F: FftField> {
 pub trait EvalUtils<F: FftField> {
     fn scale(&self, elm: F) -> Self;
     fn pow(&self, pow: usize) -> Self;
+    fn shift(&self, len: usize) -> Self;
 }
 
 impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
@@ -30,6 +31,18 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
     {
         let mut result = self.clone();
         result.evals.iter_mut().for_each(|e| *e = e.pow([pow as u64]));
+        result
+    }
+
+    // utility function for shifting poly along domain coordinate
+    fn shift(&self, len: usize) -> Self
+    {
+        let len = len % self.evals.len();
+        let mut result = self.clone();
+        result.evals.clear();
+        result.evals = self.evals[len..].to_vec();
+        let mut tail = self.evals[0..len].to_vec();
+        result.evals.append(&mut tail);
         result
     }
 }
