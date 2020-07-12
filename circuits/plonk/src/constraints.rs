@@ -10,8 +10,8 @@ pub use super::polynomials::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
 use oracle::utils::EvalUtils;
+use blake2::{Blake2b, Digest};
 use array_init::array_init;
-use rand_core::OsRng;
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField>
@@ -88,18 +88,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sid = domain.d1.elements().map(|elm| {elm}).collect::<Vec<_>>();
 
         // sample the coordinate shifts
-        let r =
-        {
-            let mut r = domain.d1.sample_element_outside_domain(&mut OsRng);
-            while r.legendre().is_qnr() == false {r = domain.d1.sample_element_outside_domain(&mut OsRng)}
-            r
-        };
-        let o =
-        {
-            let mut o = domain.d1.sample_element_outside_domain(&mut OsRng);
-            while o.legendre().is_qnr() == false || r==o {o = domain.d1.sample_element_outside_domain(&mut OsRng)}
-            o
-        };
+        let mut i: u32 = 7;
+        let r = Self::sample_shift(&domain.d1, &mut i);
+        let mut o = Self::sample_shift(&domain.d1, &mut i);
+        while r == o {o = Self::sample_shift(&domain.d1, &mut i)}
 
         let n = domain.d1.size();
         let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero((i,i), (n+i,n+i), (2*n+i,2*n+i))).collect();
@@ -218,6 +210,21 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             }
         }
         true
+    }
+
+    // sample coordinate shifts deterministacally
+    pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F
+    {
+        let mut h = Blake2b::new();
+        h.input(&{*i += 1; *i}.to_be_bytes());
+        let mut r = F::from_random_bytes(&h.result()[..31]).unwrap();
+        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero()
+        {
+            let mut h = Blake2b::new();
+            h.input(&{*i += 1; *i}.to_be_bytes());
+            r = F::from_random_bytes(&h.result()[..31]).unwrap();
+        }
+        r
     }
 
     // evaluate witness polynomials over domains
