@@ -12,16 +12,15 @@ Constraint vector format:
 
 *****************************************************************************************************************/
 
-use algebra::Field;
+use algebra::FftField;
 use crate::gate::{CircuitGate, GateType};
+use crate::wires::GateWires;
 
-impl<F: Field> CircuitGate<F>
+impl<F: FftField> CircuitGate<F>
 {
     pub fn create_generic
     (
-        l: (usize, usize),
-        r: (usize, usize),
-        o: (usize, usize),
+        wires: GateWires,
         ql: F,
         qr: F,
         qo: F,
@@ -32,9 +31,7 @@ impl<F: Field> CircuitGate<F>
         CircuitGate
         {
             typ: GateType::Generic,
-            l,
-            r,
-            o,
+            wires,
             c: vec!
             [
                 ql,
@@ -50,10 +47,10 @@ impl<F: Field> CircuitGate<F>
     {
         self.typ == GateType::Generic &&
         (
-            self.ql() * &witness[self.l.0] +
-            &(self.qr() * &witness[self.r.0]) +
-            &(self.qo() * &witness[self.o.0]) +
-            &(self.qm() * &witness[self.l.0] * &witness[self.r.0]) +
+            self.ql() * &witness[self.wires.l.0] +
+            &(self.qr() * &witness[self.wires.r.0]) +
+            &(self.qo() * &witness[self.wires.o.0]) +
+            &(self.qm() * &witness[self.wires.l.0] * &witness[self.wires.r.0]) +
             &self.qc()
         ).is_zero()
     }

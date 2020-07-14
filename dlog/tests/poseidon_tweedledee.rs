@@ -6,7 +6,7 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use algebra::{tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use std::{io, io::Write};
@@ -40,22 +40,22 @@ fn poseidon_tweedledee()
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in 0..HALF_ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]], p));
             i+=1;
         }
         // ROUNDS_PARTIAL partial rounds constraint gates
         for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], z));
+            gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]], z));
             i+=1;
         }
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]], p));
             i+=1;
         }
-        gates.push(CircuitGate::<Fp>::zero((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))));
+        gates.push(CircuitGate::<Fp>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));
         i+=1;
     }
 

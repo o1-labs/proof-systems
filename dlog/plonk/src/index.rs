@@ -63,13 +63,6 @@ pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-pub struct MatrixValues<C: AffineCurve> {
-    pub row : PolyComm<C>,
-    pub col : PolyComm<C>,
-    pub val : PolyComm<C>,
-    pub rc : PolyComm<C>,
-}
-
 pub struct VerifierIndex<'a, G: CommitmentCurve>
 {
     pub domain: D<Fr<G>>,          // evaluation domain
@@ -146,7 +139,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
     // this function compiles the index from constraints
     pub fn create
     (
-        cs: ConstraintSystem<Fr<G>>,
+        mut cs: ConstraintSystem<Fr<G>>,
         max_poly_size: usize,
         fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
@@ -154,6 +147,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
     ) -> Self
     {
         let srs = SRSValue::create(max_poly_size, srs);
+        cs.endo = srs.get_ref().endo_r;
         Index
         {
             fr_sponge_params,

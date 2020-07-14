@@ -18,11 +18,11 @@ This source file tests constraints for the following computatios:
 
 **********************************************************************************************************/
 
-use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use algebra::{bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use std::{io, io::Write};
 use oracle::poseidon::*;
 use groupmap::GroupMap;
@@ -72,37 +72,34 @@ fn turbo_plonk()
     [
         // public input constraints
 
-        CircuitGate::<Fr>::create_generic((i,             16),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+16),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i}, 2*N+16),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},     15),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+15),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
-        CircuitGate::<Fr>::create_generic(({i+=1; i}, 2*N+15),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
+        CircuitGate::<Fr>::create_generic(GateWires::wires((i,             16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 0  c
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},   N+16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 1  c
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i}, 2*N+16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 2  c
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},     15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 3  c
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},   N+15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 4  c
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i}, 2*N+15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 5  c
 
         // generic constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
 
-        CircuitGate::<Fr>::create_generic(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7), p, n, n, z, z), // 6  -
-        CircuitGate::<Fr>::create_generic(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8), z, z, n, p, z), // 7  *
-        CircuitGate::<Fr>::create_generic(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7), p, n, n, z, z), // 8  -
-        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11), z, z, n, p, z), // 9  *
-        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11), p, p, n, z, z), // 10 +
-        CircuitGate::<Fr>::create_generic(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9), p, p, n, z, z), // 11 +
-        CircuitGate::<Fr>::create_generic(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13), p, n, n, z, z), // 12 -
-        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14), z, z, n, p, z), // 13 *
-        CircuitGate::<Fr>::create_generic(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13), p, p, n, z, z), // 14 +
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7)), p, n, n, z, z), // 6  -
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8)), z, z, n, p, z), // 7  *
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7)), p, n, n, z, z), // 8  -
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11)), z, z, n, p, z), // 9  *
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11)), p, p, n, z, z), // 10 +
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9)), p, p, n, z, z), // 11 +
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13)), p, n, n, z, z), // 12 -
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14)), z, z, n, p, z), // 13 *
+        CircuitGate::<Fr>::create_generic(GateWires::wires(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13)), p, p, n, z, z), // 14 +
     ];
 
     // custom constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
 
     let mut eca = CircuitGate::<Fr>::create_add
     (
-        ({i+=1; i}, 14),
-        (i+N,       8),
-        (i+2*N,     N+14),
-        
-        ({i+=1; i}, 12),
-        (i+N,       N+10),
-        (i+2*N,     11),
+        &[
+            GateWires::wires(({i+=1; i}, 14), (i+N, 8), (i+2*N, N+14)),
+            GateWires::wires(({i+=1; i}, 12), (i+N, N+10), (i+2*N, 11)),
+        ]
     );
     gates.append(&mut eca);
 
@@ -111,52 +108,53 @@ fn turbo_plonk()
     // HALF_ROUNDS_FULL full rounds constraint gates
     for j in 0..HALF_ROUNDS_FULL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
+        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]], p));
     }
     // ROUNDS_PARTIAL partial rounds constraint gates
     for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], z));
+        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]], z));
     }
     // HALF_ROUNDS_FULL full rounds constraint gates
     for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i), [c[j][0],c[j][1],c[j][2]], p));
+        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]], p));
     }
-    gates.push(CircuitGate::<Fr>::zero(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)));
+    gates.push(CircuitGate::<Fr>::zero(GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))));
 
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication
+    // test with 2-bit scalar
 
-    let mut vbm = CircuitGate::<Fr>::create_vbmul
-    (
-        ({i+=1; i}, i),
-        (i+N,       i+N),
-        (i+2*N,     i+2*N),
-        
-        ({i+=1; i}, i),
-        (i+N,       i+N),
-        (i+2*N,     i+2*N),
-        
-        ({i+=1; i}, i),
-        (i+N,       i+N),
-        (i+2*N,     i+2*N),
-    );
-    gates.append(&mut vbm);
-    let mut vbm = CircuitGate::<Fr>::create_vbmul
-    (
-        ({i+=1; i}, i),
-        (i+N,       i+N),
-        (i+2*N,     i+2*N),
-        
-        ({i+=1; i}, i),
-        (i+N,       i+N),
-        (i+2*N,     i+2*N),
-        
-        ({i+=1; i}, i),
-        (i+N,       i+N),
-        (i+2*N,     i+2*N),
-    );
-    gates.append(&mut vbm);
+    for _ in 0..2
+    {
+        let mut vbm = CircuitGate::<Fr>::create_vbmul
+        (
+            &[
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))
+            ]
+        );
+        gates.append(&mut vbm);
+    }
+
+    // custom constraint gates for short Weierstrass curve variable base
+    // scalar multiplication with group endomorphism optimization
+    // test with 8-bit scalar
+
+    for _ in 0..4
+    {
+        let mut endomul = CircuitGate::<Fr>::create_endomul
+        (
+            &[
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
+                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))
+            ]
+        );
+        gates.append(&mut endomul);
+    }
 
     let srs = SRS::create(MAX_SIZE);
 
@@ -241,11 +239,12 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         }
         
         // variable base scalar multiplication witness for custom constraints
+        // test with 2-bit scalar
 
         let (s1x, s1y) = add_points((x2, y2), add_points((x2, y2), (x1, y1)));
 
         l.push(x1);
-        r.push(Fr::one());
+        r.push(Fr::one()); // scalar bit
         o.push(y1);
         l.push(x2);
         r.push(s);
@@ -258,7 +257,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         let s = (s1y + &y1) / &(s1x - &x1);
 
         l.push(x1);
-        r.push(Fr::zero());
+        r.push(Fr::zero()); // scalar bit
         o.push(y1);
         l.push(s1x);
         r.push(s);
@@ -266,6 +265,89 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         l.push(s2x);
         r.push(x1);
         o.push(s2y);
+        
+        // group endomorphism optimised variable base scalar multiplication witness for custom constraints
+        // test with 8-bit scalar 11001001
+
+        let b2i = Fr::one();
+        let b2i1 = Fr::one();
+        let xq = (Fr::one() + &((index.srs.get_ref().endo_r - &Fr::one()) * &b2i1)) * &x1;
+        let yq = if b2i == Fr::one() {y1} else {-y1};
+        let (s1x, s1y) = add_points((x2, y2), add_points((x2, y2), (xq, yq)));
+        let s = (y2 - &yq) / &(x2 - &xq);
+
+        l.push(b2i1); // scalar bit
+        r.push(x1);
+        o.push(Fr::zero()); // dummy
+        l.push(b2i); // scalar bit
+        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
+        o.push(y1);
+        l.push(x2);
+        r.push(s);
+        o.push(y2);
+        l.push(s1x);
+        r.push(xq);
+        o.push(s1y);
+
+        let b2i = Fr::zero();
+        let b2i1 = Fr::zero();
+        let xq = (Fr::one() + &((index.srs.get_ref().endo_r - &Fr::one()) * &b2i1)) * &x1;
+        let yq = if b2i == Fr::one() {y1} else {-y1};
+        let (s2x, s2y) = add_points((s1x, s1y), add_points((s1x, s1y), (xq, yq)));
+        let s = (s1y - &yq) / &(s1x - &xq);
+
+        l.push(b2i1); // scalar bit
+        r.push(x1);
+        o.push(Fr::zero()); // dummy
+        l.push(b2i); // scalar bit
+        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
+        o.push(y1);
+        l.push(s1x);
+        r.push(s);
+        o.push(s1y);
+        l.push(s2x);
+        r.push(xq);
+        o.push(s2y);
+
+        let b2i = Fr::one();
+        let b2i1 = Fr::zero();
+        let xq = (Fr::one() + &((index.srs.get_ref().endo_r - &Fr::one()) * &b2i1)) * &x1;
+        let yq = if b2i == Fr::one() {y1} else {-y1};
+        let (s3x, s3y) = add_points((s2x, s2y), add_points((s2x, s2y), (xq, yq)));
+        let s = (s2y - &yq) / &(s2x - &xq);
+
+        l.push(b2i1); // scalar bit
+        r.push(x1);
+        o.push(Fr::zero()); // dummy
+        l.push(b2i); // scalar bit
+        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
+        o.push(y1);
+        l.push(s2x);
+        r.push(s);
+        o.push(s2y);
+        l.push(s3x);
+        r.push(xq);
+        o.push(s3y);
+
+        let b2i = Fr::zero();
+        let b2i1 = Fr::one();
+        let xq = (Fr::one() + &((index.srs.get_ref().endo_r - &Fr::one()) * &b2i1)) * &x1;
+        let yq = if b2i == Fr::one() {y1} else {-y1};
+        let (s4x, s4y) = add_points((s3x, s3y), add_points((s3x, s3y), (xq, yq)));
+        let s = (s3y - &yq) / &(s3x - &xq);
+
+        l.push(b2i1); // scalar bit
+        r.push(x1);
+        o.push(Fr::zero()); // dummy
+        l.push(b2i); // scalar bit
+        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
+        o.push(y1);
+        l.push(s3x);
+        r.push(s);
+        o.push(s3y);
+        l.push(s4x);
+        r.push(xq);
+        o.push(s4y);
 
         l.resize(N, Fr::zero());
         r.resize(N, Fr::zero());

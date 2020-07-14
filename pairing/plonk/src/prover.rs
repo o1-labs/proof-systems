@@ -74,11 +74,11 @@ impl<E: PairingEngine> ProverProof<E>
         let p = -Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
 
         // compute witness polynomials
-        let l = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.l.0]).collect(), index.cs.domain.d1).interpolate()
+        let l = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.l.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let r = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.r.0]).collect(), index.cs.domain.d1).interpolate()
+        let r = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.r.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
-        let o = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.o.0]).collect(), index.cs.domain.d1).interpolate()
+        let o = &Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.o.0]).collect(), index.cs.domain.d1).interpolate()
             + &DensePolynomial::rand(1, &mut OsRng).mul_by_vanishing_poly(index.cs.domain.d1);
 
         // commit to the l, r, o wire values

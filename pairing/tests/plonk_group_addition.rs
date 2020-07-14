@@ -1,4 +1,4 @@
-use plonk_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{bn_382::{Fp, Bn_382, g1::Bn_382G1Parameters}, Field, One, Zero};
 use plonk_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
@@ -50,22 +50,22 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let mut i = 0;
     let gates = vec!
     [
-        CircuitGate::<Fp>::create_generic((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 0  c
-        CircuitGate::<Fp>::create_generic(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 1  c
-        CircuitGate::<Fp>::create_generic(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 2  c
-        CircuitGate::<Fp>::create_generic(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 3  c
-        CircuitGate::<Fp>::create_generic(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 4  c
-        CircuitGate::<Fp>::create_generic(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N), p, z, z, z, z), // 5  c
-        CircuitGate::<Fp>::create_generic(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7), p, n, n, z, z), // 6  -
-        CircuitGate::<Fp>::create_generic(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8), z, z, n, p, z), // 7  *
-        CircuitGate::<Fp>::create_generic(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7), p, n, n, z, z), // 8  -
-        CircuitGate::<Fp>::create_generic(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11), z, z, n, p, z), // 9  *
-        CircuitGate::<Fp>::create_generic(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11), p, p, n, z, z), // 10 +
-        CircuitGate::<Fp>::create_generic(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9), p, p, n, z, z), // 11 +
-        CircuitGate::<Fp>::create_generic(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13), p, n, n, z, z), // 12 -
-        CircuitGate::<Fp>::create_generic(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14), z, z, n, p, z), // 13 *
-        CircuitGate::<Fp>::create_generic(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13), p, p, n, z, z), // 14 +
-        CircuitGate::<Fp>::create_generic(({i+=1; i},     15),  (i+N,   N+15), (i+2*N, 2*N+15), z, z, z, z, z), // 15
+        CircuitGate::<Fp>::create_generic(GateWires::wires((i,             12),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 0  c
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+10),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 1  c
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     11),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 2  c
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     14),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 3  c
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      8),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 4  c
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+14),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 5  c
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7)), p, n, n, z, z), // 6  -
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8)), z, z, n, p, z), // 7  *
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7)), p, n, n, z, z), // 8  -
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11)), z, z, n, p, z), // 9  *
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11)), p, p, n, z, z), // 10 +
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9)), p, p, n, z, z), // 11 +
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13)), p, n, n, z, z), // 12 -
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14)), z, z, n, p, z), // 13 *
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13)), p, p, n, z, z), // 14 +
+        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     15),  (i+N,   N+15), (i+2*N, 2*N+15)), z, z, z, z, z), // 15
     ];
 
     let index = Index::<Bn_382>::create

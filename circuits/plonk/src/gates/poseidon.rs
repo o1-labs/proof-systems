@@ -9,17 +9,16 @@ Constraint vector format:
 
 *****************************************************************************************************************/
 
-use algebra::Field;
+use algebra::FftField;
 use oracle::poseidon::sbox;
 use crate::gate::{CircuitGate, GateType, SPONGE_WIDTH};
+use crate::wires::GateWires;
 
-impl<F: Field> CircuitGate<F>
+impl<F: FftField> CircuitGate<F>
 {
     pub fn create_poseidon
     (
-        l: (usize, usize),
-        r: (usize, usize),
-        o: (usize, usize),
+        wires: GateWires,
         rc: [F; SPONGE_WIDTH],
         fp: F,
     ) -> Self
@@ -27,31 +26,29 @@ impl<F: Field> CircuitGate<F>
         CircuitGate
         {
             typ: GateType::Poseidon,
-            l,
-            r,
-            o,
+            wires,
             c: vec![rc[0], rc[1], rc[2], fp]
         }
     }
 
-    pub fn verify_poseidon(&self, witness: &Vec<F>, next: &Self) -> bool
+    pub fn verify_poseidon(&self, next: &Self, witness: &Vec<F>) -> bool
     {
         let fp = self.fp();
         let pf = F::one() - &fp;
 
         self.typ == GateType::Poseidon
         &&
-        sbox(witness[self.l.0]) +
-        &(fp * &sbox(witness[self.o.0])) + &(pf * &witness[self.o.0]) +
-        &self.rc()[0] == witness[next.l.0]
+        sbox(witness[self.wires.l.0]) +
+        &(fp * &sbox(witness[self.wires.o.0])) + &(pf * &witness[self.wires.o.0]) +
+        &self.rc()[0] == witness[next.wires.l.0]
         &&
-        sbox(witness[self.l.0]) +
-        &(fp * &sbox(witness[self.r.0])) + &(pf * &witness[self.r.0]) +
-        &self.rc()[1] == witness[next.r.0]
+        sbox(witness[self.wires.l.0]) +
+        &(fp * &sbox(witness[self.wires.r.0])) + &(pf * &witness[self.wires.r.0]) +
+        &self.rc()[1] == witness[next.wires.r.0]
         &&
-        fp * &sbox(witness[self.r.0]) + &(pf * &witness[self.r.0]) +
-        &(fp * &sbox(witness[self.o.0])) + &(pf * &witness[self.o.0]) +
-        &self.rc()[2] == witness[next.o.0]
+        fp * &sbox(witness[self.wires.r.0]) + &(pf * &witness[self.wires.r.0]) +
+        &(fp * &sbox(witness[self.wires.o.0])) + &(pf * &witness[self.wires.o.0]) +
+        &self.rc()[2] == witness[next.wires.o.0]
     }
 
     pub fn ps(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}

@@ -5,3 +5,4 @@ pub mod polynomials;
 pub mod polynomial;
 pub mod domains;
 pub mod scalars;
+pub mod wires;

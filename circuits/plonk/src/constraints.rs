@@ -9,8 +9,9 @@ use ff_fft::{EvaluationDomain, DensePolynomial, Evaluations, Radix2EvaluationDom
 pub use super::polynomials::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
-use oracle::utils::EvalUtils;
+pub use super::wires::GateWires;
 use blake2::{Blake2b, Digest};
+use oracle::utils::EvalUtils;
 use array_init::array_init;
 
 #[derive(Clone)]
@@ -74,6 +75,7 @@ pub struct ConstraintSystem<F: FftField>
 
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
+    pub endo:   F,                          // coefficient for the group endomorphism
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
@@ -94,7 +96,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         while r == o {o = Self::sample_shift(&domain.d1, &mut i)}
 
         let n = domain.d1.size();
-        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero((i,i), (n+i,n+i), (2*n+i,2*n+i))).collect();
+        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(GateWires::wires((i,i), (n+i,n+i), (2*n+i,2*n+i)))).collect();
         gates.append(&mut padding);
 
         let s =
@@ -110,9 +112,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         (
             |gate|
             {
-                sigmal1[0][gate.l.0] = s[gate.l.1 / n][gate.l.1 % n];
-                sigmal1[1][gate.r.0-n] = s[gate.r.1 / n][gate.r.1 % n];
-                sigmal1[2][gate.o.0-2*n] = s[gate.o.1 / n][gate.o.1 % n];
+                sigmal1[0][gate.wires.l.0] = s[gate.wires.l.1 / n][gate.wires.l.1 % n];
+                sigmal1[1][gate.wires.r.0-n] = s[gate.wires.r.1 / n][gate.wires.r.1 % n];
+                sigmal1[2][gate.wires.o.0-2*n] = s[gate.wires.o.1 / n][gate.wires.o.1 % n];
             }
         );
         let sigmam: [DensePolynomial<F>; 3] = array_init
@@ -181,6 +183,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             gates,
             r,
             o,
+            endo: F::zero(),
         })
     }
     
@@ -199,12 +202,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         {
             if
             // verify permutation consistency
-            witness[self.gates[i].l.1] != witness[self.gates[i].l.0] ||
-            witness[self.gates[i].r.1] != witness[self.gates[i].r.0] ||
-            witness[self.gates[i].o.1] != witness[self.gates[i].o.0] ||
+            witness[self.gates[i].wires.l.1] != witness[self.gates[i].wires.l.0] ||
+            witness[self.gates[i].wires.r.1] != witness[self.gates[i].wires.r.0] ||
+            witness[self.gates[i].wires.o.1] != witness[self.gates[i].wires.o.0] ||
             
             // verify witness against constraints
-            !self.gates[i].verify(witness, if i+1==self.gates.len() {&self.gates[i]} else {&self.gates[i+1]})
+            !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]} else {&self.gates[i+1]}, witness, &self)
             {
                 return false
             }
@@ -212,7 +215,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         true
     }
 
-    // sample coordinate shifts deterministacally
+    // sample coordinate shifts deterministically
     pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F
     {
         let mut h = Blake2b::new();
@@ -238,11 +241,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> WitnessOverDomains<F>
     {
         // compute shifted witness polynomials
-        let dummy = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
-
         let l2 = l.evaluate_over_domain_by_ref(self.domain.d2);
         let r2 = r.evaluate_over_domain_by_ref(self.domain.d2);
         let o2 = o.evaluate_over_domain_by_ref(self.domain.d2);
+        let z2 = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
 
         let l4 = l.evaluate_over_domain_by_ref(self.domain.d4);
         let r4 = r.evaluate_over_domain_by_ref(self.domain.d4);
@@ -258,14 +260,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                     l: l2.shift(4),
                     r: r2.shift(4),
                     o: o2.shift(4),
-                    z: dummy.clone()
+                    z: z2.clone() // dummy evaluation
                 },
                 this: WitnessEvals
                 {
                     l: l2,
                     r: r2,
                     o: o2,
-                    z: dummy
+                    z: z2 // dummy evaluation
                 },
             },
             d4: WitnessShifts
