@@ -7,8 +7,8 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, poseidon::SPONGE_BOX, sponge::ScalarChallenge};
-use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof};
+use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
@@ -124,7 +124,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
         let mut alpha = oracles.alpha;
-        let alpha = (0..SPONGE_WIDTH+7).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
         
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&l, &r, &o, &z);
@@ -132,22 +132,29 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         // compute quotient polynomial
 
         // generic constraints contribution
-        let (gen2, genp) = index.cs.gnrc_quot(&lagrange, &p);
+        let (gen4, genp) = index.cs.gnrc_quot(&lagrange, &p);
 
         // poseidon constraints contribution
-        let (pos2, pos4, posp) = index.cs.psdn_quot(&lagrange, &alpha);
+        let (pos4, pos8, posp) = index.cs.psdn_quot(&lagrange, &alpha);
 
         // variable base scalar multiplication constraints contribution
-        let (mul2, mul4) = index.cs.vbmul_quot(&lagrange, &alpha);
+        let (mul4, mul8) = index.cs.vbmul_quot(&lagrange, &alpha);
+
+        // group endomorphism optimised variable base scalar multiplication constraints contribution
+        let (emul4, emul8) = index.cs.endomul_quot(&lagrange, &alpha);
 
         // EC addition constraints contribution
-        let (eca2, eca4) = index.cs.ecad_quot(&lagrange, &alpha);
+        let (eca4, eca8) = index.cs.ecad_quot(&lagrange, &alpha);
 
         // permutation check contribution
         let perm = index.cs.perm_quot(&lagrange, &oracles);
 
+        // collect contribution evaluations
+        let t4 = &(&gen4 + &pos4) + &(&eca4 + &(&mul4 + &emul4));
+        let t8 = &(&pos8 + &(&eca8 + &(&mul8 + &emul8))) + &perm;
+
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&(&(&gen2 + &pos2) + &(&eca2 + &mul2)).interpolate() + &(&(&pos4 + &(&eca4 + &mul4)) + &perm).interpolate()) + &(&genp + &posp)).
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
@@ -211,10 +218,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         // compute and evaluate linearization polynomial
 
         let f =
-            &(&(&(&index.cs.gnrc_lnrz(&e[0]) +
+            &(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) +
-            &index.cs.vbmul_lnrz(&e, &alpha)) -
+            &index.cs.vbmul_lnrz(&e, &alpha)) +
+            &index.cs.endomul_lnrz(&e, &alpha)) -
             &index.cs.perm_lnrz(&e, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);

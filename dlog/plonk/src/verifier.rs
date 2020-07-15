@@ -6,9 +6,9 @@ This source file implements zk-proof batch verifier functionality.
 
 pub use super::prover::ProverProof;
 pub use super::index::{VerifierIndex as Index};
-use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::{sbox, SPONGE_BOX}, sponge::ScalarChallenge};
+use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::SPONGE_BOX, sponge::ScalarChallenge};
+use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
-use plonk_circuits::{gate::SPONGE_WIDTH, scalars::{ProofEvaluations, RandomOracles}};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use crate::plonk_sponge::{FrSponge};
@@ -45,7 +45,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 let zetaw = zeta * &index.domain.group_gen;
                 let bz = oracles.beta * &zeta;
                 let mut alpha = oracles.alpha;
-                let alpha = (0..SPONGE_WIDTH+7).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+                let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // evaluate committed polynoms
                 let evlp =
@@ -87,43 +87,32 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     {
                         let p =
                         [
-                            // generic constraint/permutation polynomial commitments
-                            &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm, &index.sigma_comm[2],
+                            // permutation polynomial commitments
+                            &index.sigma_comm[2],
+                            // generic constraint polynomial commitments
+                            &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm,
                             // poseidon constraint polynomial commitments
                             &index.fpm_comm, &index.pfm_comm, &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
                             // EC addition constraint polynomial commitments
                             &index.add_comm,
                             // EC variable base scalar multiplication constraint polynomial commitments
                             &index.mul1_comm, &index.mul2_comm,
+                            // group endomorphism optimised variable base scalar multiplication constraint polynomial commitments
+                            &index.emul1_comm, &index.emul2_comm, &index.emul3_comm,
                         ];
-                        let (l, r, o) = (sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o));
-                        let tmp = evals[0].l.double() - &evals[0].r.square() + &evals[1].r;
-                        let s =
-                        [
-                            // generic constraint/permutation linearization scalars
-                            evals[0].l * &evals[0].r, evals[0].l, evals[0].r, evals[0].o, Fr::<G>::one(), -ab * &oracles.beta,
 
-                            // poseidon constraint linearization scalars
-                            (o * &alpha[1]) + &(r * &alpha[2]) + &((r + &o) * &alpha[3]),
-                            (evals[0].o * &alpha[1]) + &(evals[0].r * &alpha[2]) + &((evals[0].r + &evals[0].o) * &alpha[3]),
-                            ((l - &evals[1].l) * &alpha[1]) + &((l - &evals[1].r) * &alpha[2]) - &(evals[1].o * &alpha[3]),
-                            alpha[1], alpha[2], alpha[3],
-
-                            // EC addition constraint linearization scalars
-                            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-                            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[4] +
-                            &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
-                            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[5]),
-
-                            // EC variable base scalar multiplication constraint linearization scalars
-                            (evals[0].r.square() - &evals[0].r) * &alpha[6] + ((evals[1].l - &evals[0].l) * &evals[1].r -
-                            &evals[1].o + &(evals[0].o * &(evals[0].r.double() - &Fr::<G>::one()))) * &alpha[7]
-                            ,
-                            ((evals[0].o.double() - (tmp * &evals[0].r)).square() -
-                            &((evals[0].r.square() - &evals[1].r + &evals[1].l) * &tmp.square())) * &alpha[8] +
-                            &(((evals[0].l - &evals[1].l) * &(evals[0].o.double() - &(tmp * &evals[0].r)) -
-                            ((evals[1].o + &evals[0].o) * &tmp)) * &alpha[9])
-                        ];
+                        // permutation linearization scalars
+                        let mut s = vec![-ab * &oracles.beta];
+                        // generic constraint/permutation linearization scalars
+                        s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
+                        // poseidon constraint linearization scalars
+                        s.extend(&ConstraintSystem::psdn_scalars(&evals, &alpha));
+                        // EC addition constraint linearization scalars
+                        s.extend(&ConstraintSystem::ecad_scalars(&evals, &alpha));
+                        // EC variable base scalar multiplication constraint linearization scalars
+                        s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha));
+                        // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
+                        s.extend(&ConstraintSystem::endomul_scalars(&evals, index.srs.get_ref().endo_r, &alpha));
 
                         let n = p.iter().map(|c| c.unshifted.len()).max().unwrap();
                         (0..n).map

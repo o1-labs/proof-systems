@@ -5,8 +5,8 @@ use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as D};
 pub struct EvaluationDomains<F : FftField>
 {
     pub d1: D<F>, // size n
-    pub d2: D<F>, // size 4n
-    pub d4: D<F>, // size 8n
+    pub d4: D<F>, // size 4n
+    pub d8: D<F>, // size 8n
 }
 
 impl<F : FftField> EvaluationDomains<F> {
@@ -18,8 +18,8 @@ impl<F : FftField> EvaluationDomains<F> {
         Some(EvaluationDomains
         {
             d1: D::<F>::new(n)?,
-            d2: D::<F>::new(D::<F>::compute_size_of_domain(2*n+4)?)?,
-            d4: D::<F>::new(D::<F>::compute_size_of_domain(4*n+9)?)?,
+            d4: D::<F>::new(4*n)?,
+            d8: D::<F>::new(8*n)?,
         })
     }
 }

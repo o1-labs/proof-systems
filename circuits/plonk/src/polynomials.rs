@@ -26,6 +26,6 @@ pub struct WitnessShifts<F: FftField>
 #[derive(Clone)]
 pub struct WitnessOverDomains<F: FftField>
 {
-    pub d2: WitnessShifts<F>,           // evaluations over domain d2
     pub d4: WitnessShifts<F>,           // evaluations over domain d4
+    pub d8: WitnessShifts<F>,           // evaluations over domain d8
 }

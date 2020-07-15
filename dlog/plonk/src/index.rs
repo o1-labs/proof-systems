@@ -85,9 +85,12 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomialcommitment
 
     // ECC arithmetic polynomial commitments
-    pub add_comm:  PolyComm<G>,        // EC addition selector polynomial commitment
-    pub mul1_comm: PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
-    pub mul2_comm: PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
+    pub add_comm:   PolyComm<G>,        // EC addition selector polynomial commitment
+    pub mul1_comm:  PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
+    pub mul2_comm:  PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
+    pub emul1_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
+    pub emul2_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
+    pub emul3_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
 
     pub r:          Fr<G>,              // coordinate shift for right wires
     pub o:          Fr<G>,              // coordinate shift for output wires
@@ -126,6 +129,9 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             add_comm: srs.get_ref().commit(&self.cs.addm, None),
             mul1_comm: srs.get_ref().commit(&self.cs.mul1m, None),
             mul2_comm: srs.get_ref().commit(&self.cs.mul2m, None),
+            emul1_comm: srs.get_ref().commit(&self.cs.emul1m, None),
+            emul2_comm: srs.get_ref().commit(&self.cs.emul2m, None),
+            emul3_comm: srs.get_ref().commit(&self.cs.emul3m, None),
 
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),

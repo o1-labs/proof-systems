@@ -17,21 +17,26 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn gnrc_quot(&self, polys: &WitnessOverDomains<F>, p: &DensePolynomial<F>) -> (Evaluations<F, D<F>>, DensePolynomial<F>)
     {
         (
-            &(&(&polys.d2.this.l * &polys.d2.this.r) * &self.qml) +
+            &(&(&polys.d4.this.l * &polys.d4.this.r) * &self.qml) +
             &(
-                &(&(&polys.d2.this.l * &self.qll) +
-                &(&polys.d2.this.r * &self.qrl)) +
-                &(&polys.d2.this.o * &self.qol)
+                &(&(&polys.d4.this.l * &self.qll) +
+                &(&polys.d4.this.r * &self.qrl)) +
+                &(&polys.d4.this.o * &self.qol)
             ),
             &self.qc + &p
         )
     }
 
+    pub fn gnrc_scalars(evals: &ProofEvaluations<F>) -> Vec<F>
+    {
+        vec![evals.l * &evals.r, evals.l, evals.r, evals.o, F::one()]
+    }
+
     // generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(&self, evals: &ProofEvaluations<F>) -> DensePolynomial<F>
     {
-        &(&(&(&self.qmm.scale(evals.l*evals.r) + &self.qlm.scale(evals.l)) +
-            &self.qrm.scale(evals.r)) + &self.qom.scale(evals.o)) + &self.qc
-
+        let scalars = Self::gnrc_scalars(evals);
+        &(&(&(&self.qmm.scale(scalars[0]) + &self.qlm.scale(scalars[1])) +
+            &self.qrm.scale(scalars[2])) + &self.qom.scale(scalars[3])) + &self.qc
     }
 }

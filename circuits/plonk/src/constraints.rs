@@ -42,36 +42,42 @@ pub struct ConstraintSystem<F: FftField>
     pub addm:   DensePolynomial<F>,         // EC point addition constraint selector polynomial
     
     // variable base scalar multiplication constraint polynomials
-    pub mul1m:  DensePolynomial<F>,         // gate0 constraint selector polynomial
-    pub mul2m:  DensePolynomial<F>,         // gate1 constraint selector polynomial
+    pub mul1m:  DensePolynomial<F>,         // mul1m constraint selector polynomial
+    pub mul2m:  DensePolynomial<F>,         // mul1m constraint selector polynomial
+    pub emul1m: DensePolynomial<F>,         // emul1m constraint selector polynomial
+    pub emul2m: DensePolynomial<F>,         // emul2m constraint selector polynomial
+    pub emul3m: DensePolynomial<F>,         // emul3m constraint selector polynomial
     
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
-    pub qll:    Evaluations<F, D<F>>,       // left input wire polynomial over domain.d2
-    pub qrl:    Evaluations<F, D<F>>,       // right input wire polynomial over domain.d2
-    pub qol:    Evaluations<F, D<F>>,       // output wire polynomial over domain.d2
-    pub qml:    Evaluations<F, D<F>>,       // multiplication evaluations over domain.d2
+    pub qll:    Evaluations<F, D<F>>,       // left input wire polynomial over domain.d4
+    pub qrl:    Evaluations<F, D<F>>,       // right input wire polynomial over domain.d4
+    pub qol:    Evaluations<F, D<F>>,       // output wire polynomial over domain.d4
+    pub qml:    Evaluations<F, D<F>>,       // multiplication evaluations over domain.d4
 
     // permutation polynomials
     pub sigmal1:[Vec<F>; 3],                // permutation polynomial array evaluations over domain d1
-    pub sigmal4:[Evaluations<F, D<F>>; 3],  // permutation polynomial array evaluations over domain d4
+    pub sigmal4:[Evaluations<F, D<F>>; 3],  // permutation polynomial array evaluations over domain d8
     pub sid:    Vec<F>,                     // SID polynomial
 
     // poseidon selector polynomials
-    pub fpl:    Evaluations<F, D<F>>,       // full/partial round indicator evaluations w over domain.d4
-    pub pfl:    Evaluations<F, D<F>>,       // partial/full round indicator 1-w evaluations over domain.d2
-    pub ps2:    Evaluations<F, D<F>>,       // poseidon selector over domain.d2
-    pub psp:    Evaluations<F, D<F>>,       // poseidon selector over domain.d4
+    pub fpl:    Evaluations<F, D<F>>,       // full/partial round indicator evaluations w over domain.d8
+    pub pfl:    Evaluations<F, D<F>>,       // partial/full round indicator 1-w evaluations over domain.d4
+    pub ps2:    Evaluations<F, D<F>>,       // poseidon selector over domain.d4
+    pub psp:    Evaluations<F, D<F>>,       // poseidon selector over domain.d8
 
     // ECC arithmetic selector polynomials
-    pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d2
-    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
-    pub mul1l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d2
-    pub mul2l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d4
+    pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
+    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d8
+    pub mul1l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d4
+    pub mul2l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d8
+    pub emul1l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d4
+    pub emul2l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d4
+    pub emul3l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d8
 
-    pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d4
-    pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d4
+    pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d8
+    pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d8
 
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
@@ -138,6 +144,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let addm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add1()).collect(), domain.d1).interpolate();
         let mul1m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.vbmul1()).collect(), domain.d1).interpolate();
         let mul2m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.vbmul2()).collect(), domain.d1).interpolate();
+        let emul1m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.endomul1()).collect(), domain.d1).interpolate();
+        let emul2m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.endomul2()).collect(), domain.d1).interpolate();
+        let emul3m = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.endomul3()).collect(), domain.d1).interpolate();
 
         Some(ConstraintSystem
         {
@@ -145,14 +154,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             public,
             sid,
             sigmal1,
-            sigmal4: array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d4)),
+            sigmal4: array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8)),
             sigmam,
 
             // generic constraint polynomials
-            qll: qlm.evaluate_over_domain_by_ref(domain.d2),
-            qrl: qrm.evaluate_over_domain_by_ref(domain.d2),
-            qol: qom.evaluate_over_domain_by_ref(domain.d2),
-            qml: qmm.evaluate_over_domain_by_ref(domain.d2),
+            qll: qlm.evaluate_over_domain_by_ref(domain.d4),
+            qrl: qrm.evaluate_over_domain_by_ref(domain.d4),
+            qol: qom.evaluate_over_domain_by_ref(domain.d4),
+            qml: qmm.evaluate_over_domain_by_ref(domain.d4),
             qlm,
             qrm,
             qom,
@@ -161,25 +170,31 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             
             // poseidon constraint polynomials
             rcm: array_init(|i| Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.rc()[i]).collect(), domain.d1).interpolate()),
-            ps2: psm.evaluate_over_domain_by_ref(domain.d2),
-            psp: psm.evaluate_over_domain_by_ref(domain.d4),
-            fpl: fpm.evaluate_over_domain_by_ref(domain.d4),
-            pfl: pfm.evaluate_over_domain_by_ref(domain.d2),
+            ps2: psm.evaluate_over_domain_by_ref(domain.d4),
+            psp: psm.evaluate_over_domain_by_ref(domain.d8),
+            fpl: fpm.evaluate_over_domain_by_ref(domain.d8),
+            pfl: pfm.evaluate_over_domain_by_ref(domain.d4),
             psm,
             fpm,
             pfm,
             
             // ECC arithmetic constraint polynomials
-            addl3: addm.evaluate_over_domain_by_ref(domain.d2),
-            addl4: addm.evaluate_over_domain_by_ref(domain.d4),
+            addl3: addm.evaluate_over_domain_by_ref(domain.d4),
+            addl4: addm.evaluate_over_domain_by_ref(domain.d8),
             addm,
-            mul1l: mul1m.evaluate_over_domain_by_ref(domain.d2),
-            mul2l: mul2m.evaluate_over_domain_by_ref(domain.d4),
+            mul1l: mul1m.evaluate_over_domain_by_ref(domain.d4),
+            mul2l: mul2m.evaluate_over_domain_by_ref(domain.d8),
             mul1m,
             mul2m,
+            emul1l: emul1m.evaluate_over_domain_by_ref(domain.d4),
+            emul2l: emul2m.evaluate_over_domain_by_ref(domain.d4),
+            emul3l: emul3m.evaluate_over_domain_by_ref(domain.d8),
+            emul1m,
+            emul2m,
+            emul3m,
             
-            l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d4),
-            l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d4),
+            l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
+            l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8),
             gates,
             r,
             o,
@@ -241,19 +256,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> WitnessOverDomains<F>
     {
         // compute shifted witness polynomials
-        let l2 = l.evaluate_over_domain_by_ref(self.domain.d2);
-        let r2 = r.evaluate_over_domain_by_ref(self.domain.d2);
-        let o2 = o.evaluate_over_domain_by_ref(self.domain.d2);
+        let l2 = l.evaluate_over_domain_by_ref(self.domain.d4);
+        let r2 = r.evaluate_over_domain_by_ref(self.domain.d4);
+        let o2 = o.evaluate_over_domain_by_ref(self.domain.d4);
         let z2 = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
 
-        let l4 = l.evaluate_over_domain_by_ref(self.domain.d4);
-        let r4 = r.evaluate_over_domain_by_ref(self.domain.d4);
-        let o4 = o.evaluate_over_domain_by_ref(self.domain.d4);
-        let z4 = z.evaluate_over_domain_by_ref(self.domain.d4);
+        let l4 = l.evaluate_over_domain_by_ref(self.domain.d8);
+        let r4 = r.evaluate_over_domain_by_ref(self.domain.d8);
+        let o4 = o.evaluate_over_domain_by_ref(self.domain.d8);
+        let z4 = z.evaluate_over_domain_by_ref(self.domain.d8);
 
         WitnessOverDomains
         {
-            d2: WitnessShifts
+            d4: WitnessShifts
             {                
                 next: WitnessEvals
                 {
@@ -270,7 +285,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                     z: z2 // dummy evaluation
                 },
             },
-            d4: WitnessShifts
+            d8: WitnessShifts
             {
                 next: WitnessEvals
                 {

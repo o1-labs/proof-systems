@@ -38,31 +38,36 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
             (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
         */
-        let ylo = &(&polys.d2.this.l + &polys.d2.this.o);
-        let xlo = &(&polys.d4.next.l - &polys.d4.next.o);
+        let ylo = &(&polys.d4.this.l + &polys.d4.this.o);
+        let xlo = &(&polys.d8.next.l - &polys.d8.next.o);
 
         (
-            &(&(&(&(&polys.d2.next.r - &polys.d2.next.l) * ylo)
+            &(&(&(&(&polys.d4.next.r - &polys.d4.next.l) * ylo)
             -
-            &(&(&polys.d2.next.l - &polys.d2.next.o) * &(&polys.d2.this.r - &polys.d2.this.l))).scale(alpha[4])
+            &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l))).scale(alpha[1])
             -
-            &(ylo * ylo).scale(alpha[5]))
+            &(ylo * ylo).scale(alpha[2]))
             *
             &self.addl3
             ,
-            (&(&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)) * &(xlo * xlo)) * &self.addl4).scale(alpha[5])
+            (&(&(&polys.d8.next.l + &(&polys.d8.next.r + &polys.d8.next.o)) * &(xlo * xlo)) * &self.addl4).scale(alpha[2])
         )
+    }
+
+    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> Vec<F>
+    {
+        vec!
+        [
+            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
+            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[1] +
+            &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
+            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[2])
+        ]
     }
 
     // EC Affine addition constraint linearization poly contribution computation
     pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> DensePolynomial<F>
     {
-        self.addm.scale
-        (
-            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[4] +
-            &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
-            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[5])
-        )
+        self.addm.scale(Self::ecad_scalars(evals, alpha)[0])
     }
 }
