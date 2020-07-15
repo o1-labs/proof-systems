@@ -16,6 +16,9 @@ This source file tests constraints for the following computatios:
 
 4. short Weierstrass curve variable base scalar multiplication via custom Plonk constraints
 
+5. short Weierstrass curve group endomorphism optimised variable base
+   scalar multiplication via custom Plonk constraints
+
 **********************************************************************************************************/
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
@@ -42,7 +45,7 @@ fn turbo_plonk()
     let p = Fr::one();
     let n = -Fr::one();
 
-    /* permutation sets:
+    /* permutation sets for the generic constraint subcircuit test:
 
     L0-L5           --- public input
     L, R, O 6-14    --- EC addition witness for generic constraints

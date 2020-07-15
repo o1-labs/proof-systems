@@ -6,7 +6,7 @@ This source file implements Plonk circuit constraint primitive.
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{EvaluationDomain, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-pub use super::polynomials::{WitnessOverDomains, WitnessShifts, WitnessEvals};
+pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
 pub use super::wires::GateWires;
