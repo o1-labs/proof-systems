@@ -75,9 +75,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
                 lagrange.iter_mut().for_each(|l| *l *= &(zeta1 - &Fr::<G>::one()));
 
-                let ab = (evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
-                    &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
-                    &oracles.alpha * &DensePolynomial::eval_polynomial(&proof.evals[1].z, zetaw.pow(&[index.max_poly_size as u64]));
+                let ab = ConstraintSystem::perm_scalars(&evals, &oracles)[0];
 
                 // compute linearization polynomial commitment
                 *f_comm = PolyComm::<G>
