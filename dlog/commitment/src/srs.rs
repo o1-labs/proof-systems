@@ -9,7 +9,7 @@ or sequential hashing into the group has to be utilized.
 *****************************************************************************************************************/
 
 use algebra::{
-    FromBytes, PrimeField, ToBytes, Field, BigInteger
+    FromBytes, PrimeField, ToBytes, BigInteger
 };
 use blake2::{Blake2b, Digest};
 use std::io::{Read, Result as IoResult, Write};

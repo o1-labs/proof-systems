@@ -68,7 +68,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             |i|
             {
                 if i%2==0 {srs.commit(&a[i].clone(), Some(a[i].coeffs.len()))}
-                else {(srs.commit(&a[i].clone(), None))}
+                else {srs.commit(&a[i].clone(), None)}
             }
         ).collect::<Vec<_>>();
         commit += start.elapsed();
