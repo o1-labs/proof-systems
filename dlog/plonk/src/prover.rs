@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, poseidon::SPONGE_BOX, sponge::ScalarChallenge};
+use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof};
 use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
@@ -166,10 +166,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         t += &bnd.scale(alpha[0]);
-        t.coeffs.resize(SPONGE_BOX * (n+2) - SPONGE_BOX, Fr::<G>::zero());
+        t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, Some(SPONGE_BOX * (n+2) - SPONGE_BOX));
+        let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
@@ -249,7 +249,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     (&r, None),
                     (&o, None),
                     (&z, None),
-                    (&t, Some(SPONGE_BOX * (n+2) - SPONGE_BOX)),
+                    (&t, Some(index.max_quot_size)),
                     (&f, None),
                     (&index.cs.sigmam[0], None),
                     (&index.cs.sigmam[1], None),

@@ -7,7 +7,7 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, One, Zero, UniformRand};
+use algebra::{tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -25,9 +25,6 @@ fn poseidon_tweedledum()
 {
     let c = &oracle::tweedle::fq::params().round_constants;
 
-    let z = Fq::zero();
-    let p = Fq::one();
-
     // circuit gates
 
     let mut i = 0;
@@ -37,22 +34,10 @@ fn poseidon_tweedledum()
 
     for _ in 0..NUM_POS
     {
-        // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in 0..HALF_ROUNDS_FULL
+        // ROUNDS_FULL full rounds constraint gates
+        for j in 0..ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]], p));
-            i+=1;
-        }
-        // ROUNDS_PARTIAL partial rounds constraint gates
-        for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
-        {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]], z));
-            i+=1;
-        }
-        // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
-        {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]], p));
+            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
             i+=1;
         }
         gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));
@@ -110,23 +95,7 @@ fn positive(index: &Index<Affine>)
             o.push(sponge.state[2]);
 
             // HALF_ROUNDS_FULL full rounds
-            for j in 0..HALF_ROUNDS_FULL
-            {
-                sponge.full_round(j, &params);
-                l.push(sponge.state[0]);
-                r.push(sponge.state[1]);
-                o.push(sponge.state[2]);
-            }
-            // ROUNDS_PARTIAL partial rounds
-            for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
-            {
-                sponge.partial_round(j, &params);
-                l.push(sponge.state[0]);
-                r.push(sponge.state[1]);
-                o.push(sponge.state[2]);
-            }
-            // HALF_ROUNDS_FULL full rounds
-            for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
+            for j in 0..ROUNDS_FULL
             {
                 sponge.full_round(j, &params);
                 l.push(sponge.state[0]);
