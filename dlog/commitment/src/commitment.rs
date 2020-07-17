@@ -22,18 +22,19 @@ use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
+pub use crate::QnrField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PolyComm<C: AffineCurve>
 {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -49,7 +50,7 @@ pub struct Challenges<F> {
     pub chal_squared_inv : Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> {
+impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
@@ -114,7 +115,7 @@ pub fn b_poly<F: Field>(chals: &Vec<F>, chal_invs: &Vec<F>, x: F) -> F {
     product((0..k).map(|i| (chal_invs[i] + &(chals[i] * &pow_twos[k - 1 - i]))))
 }
 
-pub fn b_poly_coefficients<F: Field>(s0: F, chal_squareds: &Vec<F>) -> Vec<F> {
+pub fn b_poly_coefficients<F: Field>(s0: F, chal_squareds: &[F]) -> Vec<F> {
     let rounds = chal_squareds.len();
     let s_length = 1 << rounds;
     let mut s = vec![F::one(); s_length];
@@ -156,24 +157,23 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
     // TODO: Make this a parameter
-    let nonresidue: Fr = (7 as u64).into();
     let mut pre = squeeze_prechallenge(sponge).to_field(endo_r);
     match pre.legendre() {
         LegendreSymbol::Zero => (),
         LegendreSymbol::QuadraticResidue => (),
         LegendreSymbol::QuadraticNonResidue => {
-            pre *= &nonresidue;
+            pre *= &Fr::QNR;
         }
     };
     pre
 }
 
-fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -220,7 +220,7 @@ fn to_group<G : CommitmentCurve>(
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound
@@ -519,7 +519,7 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut rand_base_i = Fr::<G>::one();
         let mut sg_rand_base_i = Fr::<G>::one();
 
-        for ( sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
+        for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
@@ -536,13 +536,13 @@ impl<G: CommitmentCurve> SRS<G> {
                 let mut res = Fr::<G>::zero();
                 for &e in evaluation_points.iter() {
                     res += &(scale * &b_poly(&chal, &chal_inv, e));
-                    scale *= r;
+                    scale *= *r;
                 }
                 res
             };
 
             let s = b_poly_coefficients(
-                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * &y),
+                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y),
                 &chal_squared,
             );
 
@@ -615,12 +615,12 @@ impl<G: CommitmentCurve> SRS<G> {
 
                     // iterating over the polynomial segments
                     for (comm_ch, eval) in comm.unshifted.iter().zip(evals.iter()) {
-
                         let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
+
                         res += &(xi_i * &term);
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
-                        xi_i *= xi;
+                        xi_i *= *xi;
                     }
 
                     if let Some(m) = shifted {
@@ -630,13 +630,14 @@ impl<G: CommitmentCurve> SRS<G> {
                             let shifted_evals: Vec<_> = evaluation_points
                                 .iter()
                                 .zip(evals[evals.len()-1].iter())
-                                .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * &f_elm)
+                                .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm)
                                 .collect();
 
                             scalars.push(rand_base_i_c_i * &xi_i);
                             points.push(comm_ch);
                             res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
-                            xi_i *= xi;
+
+                            xi_i *= *xi;
                         }
                     }
                 }

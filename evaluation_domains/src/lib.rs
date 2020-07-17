@@ -12,11 +12,14 @@ pub struct EvaluationDomains<F : FftField> {
 impl<F : FftField> EvaluationDomains<F> {
     pub fn create(
         variables : usize,
+        constraints : usize,
         public_inputs: usize,
         nonzero_entries: usize) -> Option<Self> {
 
-        let h_group_size = 
-            Domain::<F>::compute_size_of_domain(variables)?;
+        let h_group_size = {
+            let m = if constraints > variables { constraints } else { variables };
+            Domain::<F>::compute_size_of_domain(m)?
+        };
         let x_group_size =
             Domain::<F>::compute_size_of_domain(public_inputs)?;
         let k_group_size =

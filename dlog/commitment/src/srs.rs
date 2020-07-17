@@ -9,7 +9,7 @@ or sequential hashing into the group has to be utilized.
 *****************************************************************************************************************/
 
 use algebra::{
-    FromBytes, PrimeField, ToBytes, Field,
+    FromBytes, PrimeField, ToBytes, BigInteger
 };
 use blake2::{Blake2b, Digest};
 use std::io::{Read, Result as IoResult, Write};
@@ -27,7 +27,7 @@ pub struct SRS<G: CommitmentCurve>
     pub endo_q: G::BaseField,
 }
 
-fn endos<G: CommitmentCurve>() -> (G::ScalarField, G::BaseField)
+pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
 where G::BaseField : PrimeField {
     let endo_q : G::BaseField = oracle::marlin_sponge::endo_coefficient();
     let endo_r = {
@@ -41,7 +41,7 @@ where G::BaseField : PrimeField {
             potential_endo_r * &potential_endo_r
         }
     };
-    (endo_r, endo_q)
+    (endo_q, endo_r)
 }
 
 impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
@@ -54,16 +54,26 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
+        const N : usize = 31;
         let v : Vec<_> = (0..depth + 1).map(|i| {
             let mut h = Blake2b::new();
             h.input(&(i as u32).to_be_bytes());
-            let random_bytes = &h.result()[..32];
-            let t = G::BaseField::from_random_bytes(&random_bytes).unwrap();
+
+            let random_bytes = &h.result()[..N];
+            let mut bits = [false;8*N];
+            for i in 0..N {
+                for j in 0..8 {
+                    bits[8*i + j] = (random_bytes[i] >> j) & 1 == 1;
+                }
+            }
+
+            let n = <G::BaseField as PrimeField>::BigInt::from_bits(&bits);
+            let t = G::BaseField::from_repr(n);
             let (x, y) = m.to_group(t);
             G::of_coordinates(x, y)
         }).collect();
 
-        let (endo_r, endo_q) = endos::<G>();
+        let (endo_q, endo_r) = endos::<G>();
 
         SRS {
             g: v[0..depth].iter().map(|e| *e).collect(),
@@ -88,7 +98,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
             g.push(G::read(&mut reader)?);
         }
         let h = G::read(&mut reader)?;
-        let (endo_r, endo_q) = endos::<G>();
+        let (endo_q, endo_r) = endos::<G>();
         Ok(SRS { g, h, endo_r, endo_q })
     }
 }

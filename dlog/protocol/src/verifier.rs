@@ -11,7 +11,7 @@ pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use crate::marlin_sponge::{FrSponge};
-use commitment_dlog::commitment::{CommitmentCurve, Utils, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, Utils, PolyComm, b_poly, b_poly_coefficients, product};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -33,7 +33,7 @@ pub struct ProofEvals<Fr> {
     pub rc: [Fr; 3],
 }
 
-impl<G: CommitmentCurve> ProverProof<G>
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
@@ -170,6 +170,7 @@ impl<G: CommitmentCurve> ProverProof<G>
                 Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)).interpolate();
                 // TODO: No degree bound needed
                 let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
+
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm.clone(), &x_hat);
 
                 let beta =
@@ -188,28 +189,45 @@ impl<G: CommitmentCurve> ProverProof<G>
                         algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
                         cs
                     };
-                    let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+
+                    let s0 = product(chal_invs.iter().map(|x| *x) );
                     let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
-                    let b = b_poly_coefficients(s0, &chal_squareds);
+
+                    let b_len = 1 << chal_invs.len();
+                    let mut b : Option<Vec<Fr<G>>> = None;
 
                     let evals = (0..3).map
                     (
                         |i|
                         {
                             let full = b_poly(&chals, &chal_invs, oracles.beta[i].to_field(endo));
-                            if index.max_poly_size == b.len() {return vec![full]}
+                            if index.max_poly_size == b_len {
+                                return vec![full]
+                            }
                             let mut betaacc = Fr::<G>::one();
-                            let diff = (index.max_poly_size..b.len()).map
-                            (
-                                |j| {let ret = betaacc * &b[j]; betaacc *= &oracles.beta[i].to_field(endo); ret}
-                            ).fold(Fr::<G>::zero(), |x, y| x + &y);
+                            let diff = (index.max_poly_size..b_len).map(|j| {
+                                let b_j =
+                                    match &b {
+                                        None => {
+                                            let t = b_poly_coefficients(s0, &chal_squareds);
+                                            let res = t[j];
+                                            b = Some(t);
+                                            res
+                                        },
+                                        Some(b) => b[j]
+                                    };
+
+                                let ret = betaacc * &b_j;
+                                betaacc *= &oracles.beta[i].to_field(endo);
+                                ret
+                            }).fold(Fr::<G>::zero(), |x, y| x + &y);
                             vec![full - &(diff * &beta[i]), diff]
                         }
                     ).collect::<Vec<_>>();
     
                     (poly.clone(), evals)
                 }).collect::<Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>>();
-    
+
                 (beta, x_hat_comm, fq_sponge, oracles, polys)
             }
         ).collect::<Vec<_>>();
@@ -319,7 +337,7 @@ impl<G: CommitmentCurve> ProverProof<G>
         ).collect::<Result<Vec<_>, _>>()
         // second, verify the commitment opening proofs
         {
-            Ok(mut batch) =>  index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
+            Ok(mut batch) => index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
             Err(_) => false
         }
     }
@@ -353,18 +371,21 @@ impl<G: CommitmentCurve> ProverProof<G>
         oracles.eta_c = fq_sponge.challenge();
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&self.g1_comm.unshifted);
+        fq_sponge.absorb_g(&[self.g1_comm.shifted.unwrap()]);
         fq_sponge.absorb_g(&self.h1_comm.unshifted);
         // sample beta[0] oracle
         oracles.beta[0] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma2 scalar
         fq_sponge.absorb_fr(&self.sigma2);
         fq_sponge.absorb_g(&self.g2_comm.unshifted);
+        fq_sponge.absorb_g(&[self.g2_comm.shifted.unwrap()]);
         fq_sponge.absorb_g(&self.h2_comm.unshifted);
         // sample beta[1] oracle
         oracles.beta[1] = ScalarChallenge(fq_sponge.challenge());
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&self.sigma3);
         fq_sponge.absorb_g(&self.g3_comm.unshifted);
+        fq_sponge.absorb_g(&[self.g3_comm.shifted.unwrap()]);
         fq_sponge.absorb_g(&self.h3_comm.unshifted);
         // sample beta[2] & batch oracles
         oracles.beta[2] = ScalarChallenge(fq_sponge.challenge());

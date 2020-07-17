@@ -5,7 +5,7 @@ This source file implements the compiled constraints primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use commitment_dlog::{srs::SRS, commitment::{PolyComm, CommitmentCurve}};
+use commitment_dlog::{srs::SRS, commitment::{QnrField, PolyComm, CommitmentCurve}};
 use oracle::rndoracle::ProofError;
 use algebra::{Field, AffineCurve, Zero,};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as Domain, GeneralEvaluationDomain};
@@ -13,7 +13,7 @@ pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 
-pub struct Compiled<G: CommitmentCurve>
+pub struct Compiled<G: CommitmentCurve> where G::ScalarField : QnrField
 {
     // constraint system coefficients in dense form
     pub constraints: CsMat<Fr<G>>,
@@ -38,7 +38,7 @@ pub struct Compiled<G: CommitmentCurve>
     pub rc_eval_b : Evaluations<Fr<G>>,
 }
 
-impl<G: CommitmentCurve> Compiled<G>
+impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : QnrField
 {
     // this function compiles the constraints
     //  srs: universal reference string
@@ -77,7 +77,7 @@ impl<G: CommitmentCurve> Compiled<G>
         algebra::fields::batch_inversion::<Fr<G>>(&mut val_eval_k);
         for (c, val) in constraints.iter().zip(val_eval_k.iter_mut())
         {
-            *val = *c.0 * val;
+            *val = *c.0 * *val;
         }
 
         let k_group = GeneralEvaluationDomain::Radix2(k_group);
@@ -131,7 +131,7 @@ impl<G: CommitmentCurve> Compiled<G>
         (
             |((row, col), rc)|
             {
-                oracle2 * &oracle1 - &(oracle1 * &row) - &(oracle2 * &col) + &rc
+                oracle2 * &oracle1 - &(oracle1 * row) - &(oracle2 * col) + rc
             }
         ).collect()
     }

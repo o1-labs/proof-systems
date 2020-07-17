@@ -209,7 +209,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             let k = ceil_log2(index.srs.get_ref().g.len());
             let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
             let comm = {
-                let chal_squareds = chals.iter().map(|x| x.square()).collect();
+                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
                 let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
                 index.srs.get_ref().commit(&b, None)

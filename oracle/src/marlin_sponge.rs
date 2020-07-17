@@ -7,10 +7,9 @@ use algebra::{
 
 pub use crate::FqSponge;
 
-pub const DIGEST_LENGTH_IN_LIMBS: usize = 4;
 pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
-const HIGH_ENTROPY_LIMBS: usize = 4;
+const HIGH_ENTROPY_LIMBS: usize = 2;
 
 // A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
@@ -97,7 +96,7 @@ impl<Fr: PrimeField> DefaultFrSponge<Fr> {
             Fr::from_repr(pack::<Fr::BigInt>(&limbs))
         } else {
             let x = self.sponge.squeeze(&self.params).into_repr();
-            self.last_squeezed.extend(x.as_ref());
+            self.last_squeezed.extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze(num_limbs)
         }
     }
@@ -120,6 +119,11 @@ where
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze_limbs(num_limbs)
         }
+    }
+
+    pub fn squeeze_field(&mut self) -> P::BaseField {
+        self.last_squeezed = vec![];
+        self.sponge.squeeze(&self.params)
     }
 
     pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
@@ -197,7 +201,8 @@ where
     }
 
     fn digest(mut self) -> P::ScalarField {
-        self.squeeze(DIGEST_LENGTH_IN_LIMBS)
+        let x : <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
+        P::ScalarField::from_repr(x.into())
     }
 
     fn challenge(&mut self) -> P::ScalarField {
@@ -205,7 +210,6 @@ where
     }
 
     fn challenge_fq(&mut self) -> P::BaseField {
-        P::BaseField::from_repr(pack(& 
-            self.squeeze_limbs(CHALLENGE_LENGTH_IN_LIMBS)))
+        self.squeeze_field()
     }
 }
