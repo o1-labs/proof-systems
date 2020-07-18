@@ -4,12 +4,12 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
+use ff_fft::Radix2EvaluationDomain as D;
 use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
-use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use plonk_circuits::constraints::ConstraintSystem;
 use oracle::poseidon::ArithmeticSpongeParams;
-use algebra::{AffineCurve, Zero, One};
 use array_init::array_init;
+use algebra::AffineCurve;
 use algebra::PrimeField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
