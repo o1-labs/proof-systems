@@ -9,9 +9,7 @@ It implements Poseidon Hash Function primitive
 
 use algebra::Field;
 
-pub const ROUNDS_FULL: usize = 63; // TODO: correct even division
-pub const ROUNDS_PARTIAL: usize = 0;
-pub const HALF_ROUNDS_FULL: usize = ROUNDS_FULL / 2;
+pub const ROUNDS_FULL: usize = 63;
 pub const SPONGE_CAPACITY: usize = 1;
 pub const SPONGE_RATE: usize = 2;
 pub const SPONGE_BOX: usize = 5;
@@ -69,27 +67,8 @@ impl<F: Field> ArithmeticSponge<F> {
         }
     }
 
-    pub fn partial_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
-        self.state[0] = sbox(self.state[0]);
-        let new_state = apply_near_mds_matrix(&self.state);
-        for i in 0..new_state.len() {
-            self.state[i] = new_state[i];
-        }
-        for (i, x) in params.round_constants[r].iter().enumerate() {
-            self.state[i].add_assign(x);
-        }
-    }
-
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
-        for r in 0..HALF_ROUNDS_FULL {
-            self.full_round(r, params);
-        }
-
-        for r in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL {
-            self.partial_round(r, params);
-        }
-
-        for r in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL {
+        for r in 0..ROUNDS_FULL {
             self.full_round(r, params);
         }
     }

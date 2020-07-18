@@ -34,8 +34,6 @@ pub struct ConstraintSystem<F: FftField>
 
     // poseidon selector polynomials
     pub rcm:    [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
-    pub fpm:    DensePolynomial<F>,         // full/partial round indicator polynomial
-    pub pfm:    DensePolynomial<F>,         // partial/full round indicator polynomial
     pub psm:    DensePolynomial<F>,         // poseidon constraint selector polynomial
     
     // EC point addition constraint polynomials
@@ -62,10 +60,8 @@ pub struct ConstraintSystem<F: FftField>
     pub sid:    Vec<F>,                     // SID polynomial
 
     // poseidon selector polynomials
-    pub fpl:    Evaluations<F, D<F>>,       // full/partial round indicator evaluations w over domain.d8
-    pub pfl:    Evaluations<F, D<F>>,       // partial/full round indicator 1-w evaluations over domain.d4
-    pub ps2:    Evaluations<F, D<F>>,       // poseidon selector over domain.d4
-    pub psp:    Evaluations<F, D<F>>,       // poseidon selector over domain.d8
+    pub ps4:    Evaluations<F, D<F>>,       // poseidon selector over domain.d4
+    pub ps8:    Evaluations<F, D<F>>,       // poseidon selector over domain.d8
 
     // ECC arithmetic selector polynomials
     pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
@@ -137,8 +133,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         
         // compute poseidon constraint polynomials
         let psm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ps()).collect(), domain.d1).interpolate();
-        let fpm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.fp()).collect(), domain.d1).interpolate();
-        let pfm = &psm - &fpm;
 
         // compute ECC arithmetic constraint polynomials
         let addm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add1()).collect(), domain.d1).interpolate();
@@ -170,13 +164,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             
             // poseidon constraint polynomials
             rcm: array_init(|i| Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.rc()[i]).collect(), domain.d1).interpolate()),
-            ps2: psm.evaluate_over_domain_by_ref(domain.d4),
-            psp: psm.evaluate_over_domain_by_ref(domain.d8),
-            fpl: fpm.evaluate_over_domain_by_ref(domain.d8),
-            pfl: pfm.evaluate_over_domain_by_ref(domain.d4),
+            ps4: psm.evaluate_over_domain_by_ref(domain.d4),
+            ps8: psm.evaluate_over_domain_by_ref(domain.d8),
             psm,
-            fpm,
-            pfm,
             
             // ECC arithmetic constraint polynomials
             addl3: addm.evaluate_over_domain_by_ref(domain.d4),

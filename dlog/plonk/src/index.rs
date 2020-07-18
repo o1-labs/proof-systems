@@ -58,6 +58,9 @@ pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
     // maximal size of polynomial section
     pub max_poly_size: usize,
 
+    // maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
@@ -65,9 +68,12 @@ pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 
 pub struct VerifierIndex<'a, G: CommitmentCurve>
 {
-    pub domain: D<Fr<G>>,          // evaluation domain
+    pub domain: D<Fr<G>>,               // evaluation domain
     pub max_poly_size: usize,           // maximal size of polynomial section
+    pub max_quot_size: usize,           // maximal size of the quotient polynomial according to the supported constraints
     pub srs: SRSValue<'a, G>,           // polynomial commitment keys
+
+    
 
     // index polynomial commitments
     pub sigma_comm: [PolyComm<G>; 3],   // permutation commitment array
@@ -80,8 +86,6 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
 
     // poseidon polynomial commitments
     pub rcm_comm:   [PolyComm<G>; 3],   // round constant polynomia commitment array
-    pub fpm_comm:   PolyComm<G>,        // full/partial round indicator polynomial commitment
-    pub pfm_comm:   PolyComm<G>,        // partial/full round indicator polynomial commitment
     pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomialcommitment
 
     // ECC arithmetic polynomial commitments
@@ -122,8 +126,6 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             qc_comm: srs.get_ref().commit(&self.cs.qc, None),
 
             rcm_comm: array_init(|i| srs.get_ref().commit(&self.cs.rcm[i], None)),
-            fpm_comm: srs.get_ref().commit(&self.cs.fpm, None),
-            pfm_comm: srs.get_ref().commit(&self.cs.pfm, None),
             psm_comm: srs.get_ref().commit(&self.cs.psm, None),
 
             add_comm: srs.get_ref().commit(&self.cs.addm, None),
@@ -136,12 +138,13 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             max_poly_size: self.max_poly_size,
+            max_quot_size: self.max_quot_size,
             srs,
             r: self.cs.r,
             o: self.cs.o,
         }
     }
-
+    
     // this function compiles the index from constraints
     pub fn create
     (
@@ -156,6 +159,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = srs.get_ref().endo_r;
         Index
         {
+            max_quot_size: 5 * (cs.domain.d1.size as usize + 2) - 5,
             fr_sponge_params,
             fq_sponge_params,
             max_poly_size,

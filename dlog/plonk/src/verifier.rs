@@ -5,13 +5,13 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 pub use super::prover::ProverProof;
-pub use super::index::{VerifierIndex as Index};
-use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, poseidon::SPONGE_BOX, sponge::ScalarChallenge};
+pub use super::index::VerifierIndex as Index;
+use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
 use algebra::{Field, PrimeField, AffineCurve, VariableBaseMSM, ProjectiveCurve, Zero, One};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm};
 use ff_fft::{DensePolynomial, EvaluationDomain};
-use crate::plonk_sponge::{FrSponge};
+use crate::plonk_sponge::FrSponge;
 use rand_core::OsRng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -90,7 +90,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                             // generic constraint polynomial commitments
                             &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm,
                             // poseidon constraint polynomial commitments
-                            &index.fpm_comm, &index.pfm_comm, &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
+                            &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
                             // EC addition constraint polynomial commitments
                             &index.add_comm,
                             // EC variable base scalar multiplication constraint polynomial commitments
@@ -154,7 +154,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(SPONGE_BOX * (n+2) - SPONGE_BOX)),
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
 

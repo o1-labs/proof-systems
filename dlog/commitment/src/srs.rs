@@ -9,7 +9,7 @@ or sequential hashing into the group has to be utilized.
 *****************************************************************************************************************/
 
 use algebra::{
-    FromBytes, PrimeField, ToBytes, Field,
+    FromBytes, PrimeField, ToBytes, BigInteger
 };
 use blake2::{Blake2b, Digest};
 use std::io::{Read, Result as IoResult, Write};
@@ -54,11 +54,21 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
+        const N : usize = 31;
         let v : Vec<_> = (0..depth + 1).map(|i| {
             let mut h = Blake2b::new();
             h.input(&(i as u32).to_be_bytes());
-            let random_bytes = &h.result()[..31];
-            let t = G::BaseField::from_random_bytes(&random_bytes).unwrap();
+
+            let random_bytes = &h.result()[..N];
+            let mut bits = [false;8*N];
+            for i in 0..N {
+                for j in 0..8 {
+                    bits[8*i + j] = (random_bytes[i] >> j) & 1 == 1;
+                }
+            }
+
+            let n = <G::BaseField as PrimeField>::BigInt::from_bits(&bits);
+            let t = G::BaseField::from_repr(n);
             let (x, y) = m.to_group(t);
             G::of_coordinates(x, y)
         }).collect();

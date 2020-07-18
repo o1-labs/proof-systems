@@ -108,20 +108,10 @@ fn turbo_plonk()
 
     // custom constraints for Poseidon hash function permutation
 
-    // HALF_ROUNDS_FULL full rounds constraint gates
-    for j in 0..HALF_ROUNDS_FULL
+    // ROUNDS_FULL full rounds constraint gates
+    for j in 0..ROUNDS_FULL
     {
-        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]], p));
-    }
-    // ROUNDS_PARTIAL partial rounds constraint gates
-    for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
-    {
-        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]], z));
-    }
-    // HALF_ROUNDS_FULL full rounds constraint gates
-    for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
-    {
-        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]], p));
+        gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]]));
     }
     gates.push(CircuitGate::<Fr>::zero(GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))));
 
@@ -217,23 +207,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         o.push(sponge.state[2]);
 
         // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in 0..HALF_ROUNDS_FULL
-        {
-            sponge.full_round(j, &params);
-            l.push(sponge.state[0]);
-            r.push(sponge.state[1]);
-            o.push(sponge.state[2]);
-        }
-        // ROUNDS_PARTIAL partial rounds constraint gates
-        for j in HALF_ROUNDS_FULL .. HALF_ROUNDS_FULL+ROUNDS_PARTIAL
-        {
-            sponge.partial_round(j, &params);
-            l.push(sponge.state[0]);
-            r.push(sponge.state[1]);
-            o.push(sponge.state[2]);
-        }
-        // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in HALF_ROUNDS_FULL+ROUNDS_PARTIAL .. ROUNDS_FULL+ROUNDS_PARTIAL
+        for j in 0..ROUNDS_FULL
         {
             sponge.full_round(j, &params);
             l.push(sponge.state[0]);
@@ -412,24 +386,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
     let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
     
-    // HALF_ROUNDS_FULL full rounds constraint gates
-    for j in 0..HALF_ROUNDS_FULL
-    {
-        sponge.full_round(j, &params);
-        l.push(sponge.state[0]);
-        r.push(sponge.state[1]);
-        o.push(sponge.state[2]);
-    }
-    // ROUNDS_PARTIAL partial rounds constraint gates
-    for j in 0..ROUNDS_PARTIAL
-    {
-        sponge.partial_round(j, &params);
-        l.push(sponge.state[0]);
-        r.push(sponge.state[1]);
-        o.push(sponge.state[2]);
-    }
-    // HALF_ROUNDS_FULL full rounds constraint gates
-    for j in 0..HALF_ROUNDS_FULL
+    // ROUNDS_FULL full rounds constraint gates
+    for j in 0..ROUNDS_FULL
     {
         sponge.full_round(j, &params);
         l.push(sponge.state[0]);
