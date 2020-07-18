@@ -73,11 +73,8 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub max_quot_size: usize,           // maximal size of the quotient polynomial according to the supported constraints
     pub srs: SRSValue<'a, G>,           // polynomial commitment keys
 
-    
-
     // index polynomial commitments
     pub sigma_comm: [PolyComm<G>; 3],   // permutation commitment array
-    pub sid_comm:   PolyComm<G>,        // SID commitment
     pub ql_comm:    PolyComm<G>,        // left input wire commitment
     pub qr_comm:    PolyComm<G>,        // right input wire commitment
     pub qo_comm:    PolyComm<G>,        // output wire commitment
@@ -85,8 +82,8 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub qc_comm:    PolyComm<G>,        // constant wire commitment
 
     // poseidon polynomial commitments
-    pub rcm_comm:   [PolyComm<G>; 3],   // round constant polynomia commitment array
-    pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomialcommitment
+    pub rcm_comm:   [PolyComm<G>; 3],   // round constant polynomial commitment array
+    pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomial commitment
 
     // ECC arithmetic polynomial commitments
     pub add_comm:   PolyComm<G>,        // EC addition selector polynomial commitment
@@ -118,7 +115,6 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             domain: self.cs.domain.d1,
 
             sigma_comm: array_init(|i| srs.get_ref().commit(&self.cs.sigmam[i], None)),
-            sid_comm: srs.get_ref().commit(&DensePolynomial::from_coefficients_slice(&[Fr::<G>::zero(), Fr::<G>::one()]), None),
             ql_comm: srs.get_ref().commit(&self.cs.qlm, None),
             qr_comm: srs.get_ref().commit(&self.cs.qrm, None),
             qo_comm: srs.get_ref().commit(&self.cs.qom, None),
