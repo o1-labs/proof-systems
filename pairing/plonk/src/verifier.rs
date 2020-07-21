@@ -81,7 +81,7 @@ impl<E: PairingEngine> ProverProof<E>
             batch.push
             ((
                 oracles.zeta.0,
-                oracles.v,
+                oracles.v.0,
                 vec!
                 [
                     (t_comm,                t, None),
@@ -97,7 +97,7 @@ impl<E: PairingEngine> ProverProof<E>
             batch.push
             ((
                 oracles.zeta.0 * &index.domain.group_gen,
-                oracles.v,
+                oracles.v.0,
                 vec![(proof.z_comm, proof.evals.z, None)],
                 proof.proof2
             ));
@@ -140,7 +140,7 @@ impl<E: PairingEngine> ProverProof<E>
         fq_sponge.absorb_g(&[self.tlow_comm, self.tmid_comm, self.thgh_comm]);
         oracles.zeta = ScalarChallenge(fq_sponge.challenge());
         // query opening scaler challenge
-        oracles.v = fq_sponge.challenge();
+        oracles.v = ScalarChallenge(fq_sponge.challenge());
 
         Ok(oracles)
     }

@@ -13,7 +13,7 @@ use crate::scalars::ProofEvaluations;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
-    // poseidon quotient poly contribution computation f*(1-W) + f^5*W + c(x) - f(wx)
+    // poseidon quotient poly contribution computation f^5 + c(x) - f(wx)
     pub fn psdn_quot
     (
         &self, polys: &WitnessOverDomains<F>,
@@ -47,7 +47,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         ]
     }
 
-    // poseidon linearization poly contribution computation f*(1-W) + f^5*W + c(x) - f(wx)
+    // poseidon linearization poly contribution computation f^5 + c(x) - f(wx)
     pub fn psdn_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> DensePolynomial<F>
     {
         self.rcm.iter().zip(alpha[1..4].iter()).map(|(r, a)| r.scale(*a)).

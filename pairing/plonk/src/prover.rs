@@ -221,7 +221,7 @@ impl<E: PairingEngine> ProverProof<E>
         evals.f = f.evaluate(oracles.zeta.0);
 
         // query opening scaler challenge
-        oracles.v = fq_sponge.challenge();
+        oracles.v = ScalarChallenge(fq_sponge.challenge());
 
         Ok(Self
         {
@@ -244,10 +244,10 @@ impl<E: PairingEngine> ProverProof<E>
                     &index.cs.sigmam[0],
                     &index.cs.sigmam[1],
                 ],
-                oracles.v,
+                oracles.v.0,
                 oracles.zeta.0
             )?,
-            proof2: index.urs.get_ref().open(vec![&z], oracles.v, oracles.zeta.0 * &index.cs.domain.d1.group_gen)?,
+            proof2: index.urs.get_ref().open(vec![&z], oracles.v.0, oracles.zeta.0 * &index.cs.domain.d1.group_gen)?,
             evals,
             public
         })

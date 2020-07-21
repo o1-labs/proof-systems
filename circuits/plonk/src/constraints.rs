@@ -246,15 +246,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> WitnessOverDomains<F>
     {
         // compute shifted witness polynomials
-        let l2 = l.evaluate_over_domain_by_ref(self.domain.d4);
-        let r2 = r.evaluate_over_domain_by_ref(self.domain.d4);
-        let o2 = o.evaluate_over_domain_by_ref(self.domain.d4);
-        let z2 = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+        let l4 = l.evaluate_over_domain_by_ref(self.domain.d4);
+        let r4 = r.evaluate_over_domain_by_ref(self.domain.d4);
+        let o4 = o.evaluate_over_domain_by_ref(self.domain.d4);
+        let z4 = DensePolynomial::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
 
-        let l4 = l.evaluate_over_domain_by_ref(self.domain.d8);
-        let r4 = r.evaluate_over_domain_by_ref(self.domain.d8);
-        let o4 = o.evaluate_over_domain_by_ref(self.domain.d8);
-        let z4 = z.evaluate_over_domain_by_ref(self.domain.d8);
+        let l8 = l.evaluate_over_domain_by_ref(self.domain.d8);
+        let r8 = r.evaluate_over_domain_by_ref(self.domain.d8);
+        let o8 = o.evaluate_over_domain_by_ref(self.domain.d8);
+        let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
 
         WitnessOverDomains
         {
@@ -262,34 +262,34 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             {                
                 next: WitnessEvals
                 {
-                    l: l2.shift(4),
-                    r: r2.shift(4),
-                    o: o2.shift(4),
-                    z: z2.clone() // dummy evaluation
-                },
-                this: WitnessEvals
-                {
-                    l: l2,
-                    r: r2,
-                    o: o2,
-                    z: z2 // dummy evaluation
-                },
-            },
-            d8: WitnessShifts
-            {
-                next: WitnessEvals
-                {
-                    l: l4.shift(8),
-                    r: r4.shift(8),
-                    o: o4.shift(8),
-                    z: z4.shift(8),
+                    l: l4.shift(4),
+                    r: r4.shift(4),
+                    o: o4.shift(4),
+                    z: z4.clone() // dummy evaluation
                 },
                 this: WitnessEvals
                 {
                     l: l4,
                     r: r4,
                     o: o4,
-                    z: z4,
+                    z: z4 // dummy evaluation
+                },
+            },
+            d8: WitnessShifts
+            {
+                next: WitnessEvals
+                {
+                    l: l8.shift(8),
+                    r: r8.shift(8),
+                    o: o8.shift(8),
+                    z: z8.shift(8),
+                },
+                this: WitnessEvals
+                {
+                    l: l8,
+                    r: r8,
+                    o: o8,
+                    z: z8,
                 },
             },
         }

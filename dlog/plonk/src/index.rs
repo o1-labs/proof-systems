@@ -4,12 +4,12 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use ff_fft::Radix2EvaluationDomain as D;
+use ff_fft::{Radix2EvaluationDomain as D, Evaluations};
 use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
 use plonk_circuits::constraints::ConstraintSystem;
 use oracle::poseidon::ArithmeticSpongeParams;
+use algebra::{AffineCurve, Zero, One};
 use array_init::array_init;
-use algebra::AffineCurve;
 use algebra::PrimeField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -49,7 +49,7 @@ impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
 
 pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 {
-    // constraints as Lagrange-based polynoms
+    // constraints system polynoms
     pub cs: ConstraintSystem<Fr<G>>,
 
     // polynomial commitment keys
@@ -93,6 +93,9 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub emul2_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
     pub emul3_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
 
+    // Lagrange polynomial commitments
+    pub lgr_comm:   Vec<PolyComm<G>>,   // this is for committing publuc input poly by verifier
+
     pub r:          Fr<G>,              // coordinate shift for right wires
     pub o:          Fr<G>,              // coordinate shift for output wires
 
@@ -131,6 +134,18 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             emul2_comm: srs.get_ref().commit(&self.cs.emul2m, None),
             emul3_comm: srs.get_ref().commit(&self.cs.emul3m, None),
 
+            // TODO: move Lagrange base commitments into SRS
+            lgr_comm: (0..self.cs.public).map
+            (
+                |i|
+                {
+                    let mut lagr = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain
+                        (vec![Fr::<G>::zero(); self.cs.domain.d1.size as usize], self.cs.domain.d1);
+                    lagr.evals[i] = Fr::<G>::one();
+                    srs.get_ref().commit(&lagr.interpolate(), None)
+                }
+            ).collect::<Vec<_>>(),
+
             fr_sponge_params: self.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             max_poly_size: self.max_poly_size,
@@ -151,6 +166,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         srs : SRSSpec<'a, G>
     ) -> Self
     {
+        assert!(max_poly_size >= cs.public);
         let srs = SRSValue::create(max_poly_size, srs);
         cs.endo = srs.get_ref().endo_r;
         Index

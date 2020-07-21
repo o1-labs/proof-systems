@@ -79,7 +79,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let o_comm = index.srs.get_ref().commit(&o, None);
 
         // absorb the public input, l, r, o polycommitments into the argument
-        fq_sponge.absorb_fr(&public);
+        fq_sponge.absorb_g(&index.srs.get_ref().commit(&p, None).unshifted);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
         fq_sponge.absorb_g(&o_comm.unshifted);
@@ -179,18 +179,18 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         // evaluate the polynomials
 
         let evlp = [zeta, zeta * &index.cs.domain.d1.group_gen];
-        let evals = (0..2).map
+        let evals = evlp.iter().map
         (
-            |i| ProofEvaluations::<Vec<Fr<G>>>
+            |e| ProofEvaluations::<Vec<Fr<G>>>
             {
-                l : l.eval(evlp[i], index.max_poly_size),
-                r : r.eval(evlp[i], index.max_poly_size),
-                o : o.eval(evlp[i], index.max_poly_size),
-                z : z.eval(evlp[i], index.max_poly_size),
-                t : t.eval(evlp[i], index.max_poly_size),
+                l : l.eval(*e, index.max_poly_size),
+                r : r.eval(*e, index.max_poly_size),
+                o : o.eval(*e, index.max_poly_size),
+                z : z.eval(*e, index.max_poly_size),
+                t : t.eval(*e, index.max_poly_size),
 
-                sigma1: index.cs.sigmam[0].eval(evlp[i], index.max_poly_size),
-                sigma2: index.cs.sigmam[1].eval(evlp[i], index.max_poly_size),
+                sigma1: index.cs.sigmam[0].eval(*e, index.max_poly_size),
+                sigma2: index.cs.sigmam[1].eval(*e, index.max_poly_size),
 
                 f: Vec::new(),
             }
@@ -198,18 +198,18 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let mut evals = [evals[0].clone(), evals[1].clone()];
 
         let evlp1 = [evlp[0].pow(&[index.max_poly_size as u64]), evlp[1].pow(&[index.max_poly_size as u64])];
-        let e = (0..2).map
+        let e = &evals.iter().zip(evlp1.iter()).map
         (
-            |i| ProofEvaluations::<Fr<G>>
+            |(es, &e1)| ProofEvaluations::<Fr<G>>
             {
-                l: DensePolynomial::eval_polynomial(&evals[i].l, evlp1[i]),
-                r: DensePolynomial::eval_polynomial(&evals[i].r, evlp1[i]),
-                o: DensePolynomial::eval_polynomial(&evals[i].o, evlp1[i]),
-                z: DensePolynomial::eval_polynomial(&evals[i].z, evlp1[i]),
-                t: DensePolynomial::eval_polynomial(&evals[i].t, evlp1[i]),
+                l: DensePolynomial::eval_polynomial(&es.l, e1),
+                r: DensePolynomial::eval_polynomial(&es.r, e1),
+                o: DensePolynomial::eval_polynomial(&es.o, e1),
+                z: DensePolynomial::eval_polynomial(&es.z, e1),
+                t: DensePolynomial::eval_polynomial(&es.t, e1),
     
-                sigma1: DensePolynomial::eval_polynomial(&evals[i].sigma1, evlp1[i]),
-                sigma2: DensePolynomial::eval_polynomial(&evals[i].sigma2, evlp1[i]),
+                sigma1: DensePolynomial::eval_polynomial(&es.sigma1, e1),
+                sigma2: DensePolynomial::eval_polynomial(&es.sigma2, e1),
     
                 f: Fr::<G>::zero(),
             }
@@ -228,10 +228,20 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
 
-        // query opening scaler challenges
-        oracles.v = fq_sponge.challenge();
-        oracles.u = fq_sponge.challenge();
         let fq_sponge_before_evaluations = fq_sponge.clone();
+        let mut fr_sponge =
+        {
+            let mut s = EFrSponge::new(index.fr_sponge_params.clone());
+            s.absorb(&fq_sponge.digest());
+            s
+        };
+        let p_eval = if p.is_zero() {[Vec::new(), Vec::new()]}
+            else {[vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]};
+        for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])}
+
+        // query opening scaler challenges
+        oracles.v = fr_sponge.challenge();
+        oracles.u = fr_sponge.challenge();
 
         Ok(Self
         {
@@ -251,12 +261,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     (&z, None),
                     (&t, Some(index.max_quot_size)),
                     (&f, None),
+                    (&p, None),
                     (&index.cs.sigmam[0], None),
                     (&index.cs.sigmam[1], None),
                 ],
                 &evlp.to_vec(),
-                oracles.v,
-                oracles.u,
+                oracles.v.to_field(&index.srs.get_ref().endo_r),
+                oracles.u.to_field(&index.srs.get_ref().endo_r),
                 fq_sponge_before_evaluations,
                 &mut OsRng
             ),

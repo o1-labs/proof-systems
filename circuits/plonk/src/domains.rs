@@ -14,7 +14,6 @@ impl<F : FftField> EvaluationDomains<F> {
     {
         let n = D::<F>::compute_size_of_domain(n)?;
 
-        // create domains accounting for the blinders
         Some(EvaluationDomains
         {
             d1: D::<F>::new(n)?,

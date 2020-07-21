@@ -25,8 +25,8 @@ pub struct RandomOracles<F: Field>
     pub gamma: F,
     pub alpha: F,
     pub zeta: ScalarChallenge<F>,
-    pub v: F,
-    pub u: F,
+    pub v: ScalarChallenge<F>,
+    pub u: ScalarChallenge<F>,
 }
 
 impl<F: Field> RandomOracles<F>
@@ -39,8 +39,8 @@ impl<F: Field> RandomOracles<F>
             gamma: F::zero(),
             alpha: F::zero(),
             zeta: ScalarChallenge(F::zero()),
-            v: F::zero(),
-            u: F::zero(),
+            v: ScalarChallenge(F::zero()),
+            u: ScalarChallenge(F::zero()),
         }
     }
 }
