@@ -30,7 +30,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let size = 80;
     let polysize = 500;
-    let srs = SRS::<Affine>::create(size);
+    let srs = SRS::<Affine>::create(size, 0, 0);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 

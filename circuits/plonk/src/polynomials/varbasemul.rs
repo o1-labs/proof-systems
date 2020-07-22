@@ -16,6 +16,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // scalar multiplication constraint quotient poly contribution computation
     pub fn vbmul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
     {
+        if self.mul1m.is_zero() && self.mul2m.is_zero() {return (self.mul1l.clone(), self.mul2l.clone())}
+
         let one = Evaluations::<F, D<F>>::from_vec_and_domain(vec![F::one(); self.domain.d4.size as usize], self.domain.d4);
 
         // 2*xP - λ1^2 + xT

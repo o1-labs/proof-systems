@@ -10,7 +10,7 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
-use crate::srs::{SRS};
+use crate::srs::SRS;
 use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},

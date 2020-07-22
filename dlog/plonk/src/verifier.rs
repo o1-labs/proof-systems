@@ -41,8 +41,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         (
             |(proof, (f_comm, (p_comm, p_eval)))|
             {
+                // commit to public input polynomial
                 *p_comm = PolyComm::<G>::multi_scalar_mul
-                    (&index.lgr_comm.iter().map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
+                    (&index.srs.get_ref().lgr_comm.iter().map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
 
                 // Run random oracle argument to sample verifier oracles
                 let mut oracles = RandomOracles::<Fr<G>>::zero();
@@ -77,10 +78,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // compute Lagrange base evaluation denominators
-                // TODO:
-                // 1. factorize the Lagrange-based polynomial evaluation into separate function
-                // 2. generalize the evaluation algorithm for polys with length larger than the
-                //    maximal polynomial segment length as dictated by the commitment schema
                 let len = if proof.public.len() > 0 {proof.public.len()} else {1};
                 let w = (0..len).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
                 let mut lagrange = w.iter().map(|w| zeta - w).collect::<Vec<_>>();
@@ -89,6 +86,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 let zmw = lagrange[0];
 
                 // evaluate public input polynomials
+                // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain 
                 if proof.public.len() > 0
                 {
                     (*p_eval)[0] = vec![(proof.public.iter().zip(lagrange.iter()).

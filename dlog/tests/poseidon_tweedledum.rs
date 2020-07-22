@@ -44,7 +44,7 @@ fn poseidon_tweedledum()
         i+=1;
     }
 
-    let srs = SRS::create(MAX_SIZE);
+    let srs = SRS::create(MAX_SIZE, 0, 0);
 
     let index = Index::<Affine>::create
     (

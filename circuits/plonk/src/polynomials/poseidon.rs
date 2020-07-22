@@ -20,6 +20,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         alpha: &Vec<F>
     ) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>, DensePolynomial<F>)
     {
+        if self.psm.is_zero() {return (self.ps4.clone(), self.ps8.clone(), DensePolynomial::<F>::zero())}
+
         let mut l = polys.d8.this.l.clone();
         let mut r = polys.d8.this.r.clone();
         let mut o = polys.d8.this.o.clone();

@@ -34,6 +34,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // EC Affine addition constraint quotient poly contribution computation
     pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
     {
+        if self.addm.is_zero() {return (self.addl3.clone(), self.addl4.clone())}
         /*
             (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
             (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0

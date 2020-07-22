@@ -17,6 +17,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // endomorphism optimised scalar multiplication constraint quotient poly contribution computation
     pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
     {
+        if self.emul1m.is_zero() && self.emul2m.is_zero() && self.emul3m.is_zero()
+        {return (self.emul1l.clone(), self.emul3l.clone())}
+
         let one = Evaluations::<F, D<F>>::from_vec_and_domain(vec![F::one(); self.domain.d4.size as usize], self.domain.d4);
         let xr = &(&polys.d8.this.r.pow(2) - &polys.d8.this.l) - &polys.d8.next.r;
         let t = &polys.d8.this.l - &xr;

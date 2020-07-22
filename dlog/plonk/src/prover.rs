@@ -98,9 +98,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 (witness[j+n] + &(index.cs.sigmal1[1][j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[j+2*n] + &(index.cs.sigmal1[2][j] * &oracles.beta) + &oracles.gamma)
         );
-        
         algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n]);
-
         (0..n).for_each
         (
             |j|

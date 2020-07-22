@@ -68,7 +68,7 @@ fn dlog_marlin_group_addition()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
-    let srs = SRS::create(MAX_SIZE);
+    let srs = SRS::create(MAX_SIZE, 0, 0);
 
     let index = Index::<Affine>::create
     (

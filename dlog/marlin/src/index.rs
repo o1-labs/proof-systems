@@ -35,15 +35,15 @@ pub enum SRSSpec <'a, G: CommitmentCurve>{
     Generate
 }
 
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : QnrField {
     pub fn generate(size: usize) -> SRS<G> {
-        SRS::<G>::create(size)
+        SRS::<G>::create(size, 0, 0)
     }
 
     pub fn create<'b>(size: usize, spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
         match spec {
             SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate => SRSValue::Value(Self::generate(size))
+            SRSSpec::Generate => SRSValue::Value(Self::generate(size,))
         }
     }
 }
