@@ -10,8 +10,8 @@ pub use super::prover::ProverProof;
 use crate::index::{VerifierIndex as Index};
 use plonk_circuits::scalars::RandomOracles;
 use algebra::{Field, PrimeField, PairingEngine, ProjectiveCurve, VariableBaseMSM, Zero, One};
-use oracle::sponge::{FqSponge, ScalarChallenge};
 use crate::plonk_sponge::FrSponge;
+use oracle::sponge::FqSponge;
 use ff_fft::EvaluationDomain;
 
 impl<E: PairingEngine> ProverProof<E>
@@ -33,9 +33,9 @@ impl<E: PairingEngine> ProverProof<E>
         for proof in proofs.iter()
         {
             let oracles = proof.oracles::<EFqSponge, EFrSponge>(index)?;
-            let zeta2 = oracles.zeta.0.pow(&[index.domain.size]);
+            let zeta2 = oracles.zeta.pow(&[index.domain.size]);
             let alpsq = oracles.alpha.square();
-            let bz = oracles.beta * &oracles.zeta.0;
+            let bz = oracles.beta * &oracles.zeta;
             let ab = (proof.evals.l + &(oracles.beta * &proof.evals.sigma1) + &oracles.gamma) *
                 &(proof.evals.r + &(oracles.beta * &proof.evals.sigma2) + &oracles.gamma) *
                 &oracles.alpha * &proof.evals.z;
@@ -49,7 +49,7 @@ impl<E: PairingEngine> ProverProof<E>
 
             // evaluate lagrange polynoms
             let mut lagrange = (0..if proof.public.len() > 0 {proof.public.len()} else {1}).
-                zip(index.domain.elements()).map(|(_,w)| oracles.zeta.0 - &w).collect::<Vec<_>>();
+                zip(index.domain.elements()).map(|(_,w)| oracles.zeta - &w).collect::<Vec<_>>();
             algebra::fields::batch_inversion::<E::Fr>(&mut lagrange);
             lagrange.iter_mut().for_each(|l| *l *= &(zeta2 - &E::Fr::one()));
 
@@ -80,8 +80,8 @@ impl<E: PairingEngine> ProverProof<E>
             // prepare for the opening proof verification
             batch.push
             ((
-                oracles.zeta.0,
-                oracles.v.0,
+                oracles.zeta,
+                oracles.v,
                 vec!
                 [
                     (t_comm,                t, None),
@@ -96,8 +96,8 @@ impl<E: PairingEngine> ProverProof<E>
             ));
             batch.push
             ((
-                oracles.zeta.0 * &index.domain.group_gen,
-                oracles.v.0,
+                oracles.zeta * &index.domain.group_gen,
+                oracles.v,
                 vec![(proof.z_comm, proof.evals.z, None)],
                 proof.proof2
             ));
@@ -138,9 +138,9 @@ impl<E: PairingEngine> ProverProof<E>
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&[self.tlow_comm, self.tmid_comm, self.thgh_comm]);
-        oracles.zeta = ScalarChallenge(fq_sponge.challenge());
+        oracles.zeta = fq_sponge.challenge();
         // query opening scaler challenge
-        oracles.v = ScalarChallenge(fq_sponge.challenge());
+        oracles.v = fq_sponge.challenge();
 
         Ok(oracles)
     }

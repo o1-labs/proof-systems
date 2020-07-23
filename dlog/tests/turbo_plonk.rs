@@ -178,7 +178,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
 
-    for test in 0..100
+    for test in 0..1
     {
         let (x1, y1, x2, y2, _, _) = points[test % 10];
         let (x3, y3) = add_points((x1, y1), (x2, y2));

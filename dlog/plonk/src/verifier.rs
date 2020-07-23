@@ -33,7 +33,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         index: &Index<G>,
     ) -> Result<bool, ProofError>
     {
-        let n = index.domain.size();
+        let n = index.domain.size;
         let mut p_eval = vec![[Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]; proofs.len()];
         let mut p_comm = vec![PolyComm::<G>{unshifted: Vec::new(), shifted: None}; proofs.len()];
         let mut f_comm = p_comm.clone();
@@ -61,7 +61,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 oracles.alpha = fq_sponge.challenge();
                 // absorb the polycommitments into the argument and sample zeta
                 fq_sponge.absorb_g(&proof.t_comm.unshifted);
-                oracles.zeta = ScalarChallenge(fq_sponge.challenge());
+                oracles.zeta = ScalarChallenge(fq_sponge.challenge()).to_field(&index.srs.get_ref().endo_r);
                 let mut fr_sponge =
                 {
                     let mut s = EFrSponge::new(index.fr_sponge_params.clone());
@@ -70,20 +70,16 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 };
         
                 // prepare some often used values
-                let zeta = oracles.zeta.to_field(&index.srs.get_ref().endo_r);
-                let zeta1 = zeta.pow(&[n as u64]);
-                let zetaw = zeta * &index.domain.group_gen;
-                let bz = oracles.beta * &zeta;
+                let zeta1 = oracles.zeta.pow(&[n]);
+                let zetaw = oracles.zeta * &index.domain.group_gen;
                 let mut alpha = oracles.alpha;
                 let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
                 // compute Lagrange base evaluation denominators
-                let len = if proof.public.len() > 0 {proof.public.len()} else {1};
-                let w = (0..len).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
-                let mut lagrange = w.iter().map(|w| zeta - w).collect::<Vec<_>>();
+                let w = (0..proof.public.len()).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
+                let mut lagrange = w.iter().map(|w| oracles.zeta - w).collect::<Vec<_>>();
                 (0..proof.public.len()).zip(w.iter()).for_each(|(_,w)| lagrange.push(zetaw - w));
                 algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
-                let zmw = lagrange[0];
 
                 // evaluate public input polynomials
                 // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain 
@@ -99,13 +95,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &proof.evals[i])}
 
                 // query opening scaler challenges
-                oracles.v = fr_sponge.challenge();
-                oracles.u = fr_sponge.challenge();
+                oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
+                oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
 
                 // evaluate committed polynoms
                 let evlp =
                 [
-                    zeta.pow(&[index.max_poly_size as u64]),
+                    oracles.zeta.pow(&[index.max_poly_size as u64]),
                     zetaw.pow(&[index.max_poly_size as u64])
                 ];
                 
@@ -124,13 +120,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     }
                 ).collect::<Vec<_>>();
 
-                let ab = ConstraintSystem::perm_scalars(&evals, &oracles)[0];
-
                 // compute linearization polynomial commitment
-                let p =
-                vec![
+                let p = vec!
+                [
                     // permutation polynomial commitments
-                    &index.sigma_comm[2],
+                    &proof.z_comm, &index.sigma_comm[2],
                     // generic constraint polynomial commitments
                     &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm,
                     // poseidon constraint polynomial commitments
@@ -144,7 +138,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 ];
 
                 // permutation linearization scalars
-                let mut s = vec![-ab * &oracles.beta];
+                let mut s = ConstraintSystem::perm_scalars(&evals, &oracles, (index.r, index.o), n);
                 // generic constraint/permutation linearization scalars
                 s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
                 // poseidon constraint linearization scalars
@@ -160,24 +154,25 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
                 // check linearization polynomial evaluation consistency
                 if
-                    (evals[0].f - &(ab * &(evals[0].o + &oracles.gamma)) +
-                    &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()}) +
-                    &((evals[0].z - &Fr::<G>::one()) * &(zmw * &(zeta1 - &Fr::<G>::one()) * &alpha[0])))
-                    +
-                    &((evals[0].l + &bz + &oracles.gamma) *
-                    &(evals[0].r + &(bz * &index.r) + &oracles.gamma) *
-                    &(evals[0].o + &(bz * &index.o) + &oracles.gamma) *
-                    &oracles.alpha * &evals[0].z)
+                    (evals[0].f + &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()})
+                    -
+                    ((evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
+                    &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
+                    (evals[0].o + &oracles.gamma) * &evals[1].z * &oracles.alpha)
+                    -
+                    evals[0].t * &(zeta1 - &Fr::<G>::one()))
+                    *
+                    &(oracles.zeta - &Fr::<G>::one())
                 !=
-                    evals[0].t * &(zeta1 - &Fr::<G>::one())
+                    (zeta1 - &Fr::<G>::one()) * &alpha[0]
                 {return Err(ProofError::ProofVerification)}
 
                 // prepare for the opening proof verification
                 Ok((
                     fq_sponge,
-                    vec![zeta, zetaw],
-                    oracles.v.to_field(&index.srs.get_ref().endo_r),
-                    oracles.u.to_field(&index.srs.get_ref().endo_r),
+                    vec![oracles.zeta, zetaw],
+                    oracles.v,
+                    oracles.u,
                     vec!
                     [
                         (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),

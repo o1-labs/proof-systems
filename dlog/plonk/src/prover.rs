@@ -171,12 +171,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
-        oracles.zeta = ScalarChallenge(fq_sponge.challenge());
-        let zeta = oracles.zeta.to_field(&index.srs.get_ref().endo_r);
+        oracles.zeta = ScalarChallenge(fq_sponge.challenge()).to_field(&index.srs.get_ref().endo_r);
 
         // evaluate the polynomials
 
-        let evlp = [zeta, zeta * &index.cs.domain.d1.group_gen];
+        let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.d1.group_gen];
         let evals = evlp.iter().map
         (
             |e| ProofEvaluations::<Vec<Fr<G>>>
@@ -220,8 +219,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             &index.cs.psdn_lnrz(&e, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) +
             &index.cs.vbmul_lnrz(&e, &alpha)) +
-            &index.cs.endomul_lnrz(&e, &alpha)) -
-            &index.cs.perm_lnrz(&e, &oracles);
+            &index.cs.endomul_lnrz(&e, &alpha)) +
+            &index.cs.perm_lnrz(&e, &z, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -238,8 +237,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])}
 
         // query opening scaler challenges
-        oracles.v = fr_sponge.challenge();
-        oracles.u = fr_sponge.challenge();
+        oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
+        oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
 
         Ok(Self
         {
@@ -264,8 +263,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     (&index.cs.sigmam[1], None),
                 ],
                 &evlp.to_vec(),
-                oracles.v.to_field(&index.srs.get_ref().endo_r),
-                oracles.u.to_field(&index.srs.get_ref().endo_r),
+                oracles.v,
+                oracles.u,
                 fq_sponge_before_evaluations,
                 &mut OsRng
             ),

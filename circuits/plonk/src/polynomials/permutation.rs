@@ -34,19 +34,38 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         &lagrange.d8.next.z)).scale(oracles.alpha)
     }
 
-    pub fn perm_lnrz(&self, e: &Vec<ProofEvaluations<F>>, oracles: &RandomOracles<F>) -> DensePolynomial<F>
+    pub fn perm_lnrz
+    (
+        &self, e: &Vec<ProofEvaluations<F>>,
+        z: &DensePolynomial<F>,
+        oracles: &RandomOracles<F>
+    ) -> DensePolynomial<F>
     {
-        self.sigmam[2].scale(Self::perm_scalars(e, oracles)[0] * &oracles.beta)
+        let scalars = Self::perm_scalars(e, oracles, (self.r, self.o), self.domain.d1.size);
+        &z.scale(scalars[0]) + &self.sigmam[2].scale(scalars[1])
     }
 
     // permutation linearization poly contribution computation
-    pub fn perm_scalars(e: &Vec<ProofEvaluations<F>>, oracles: &RandomOracles<F>) -> Vec<F>
+    pub fn perm_scalars
+    (
+        e: &Vec<ProofEvaluations<F>>,
+        oracles: &RandomOracles<F>,
+        shift: (F, F),
+        n: u64,
+    ) -> Vec<F>
     {
+        let bz = oracles.beta * &oracles.zeta;
         vec!
         [
-            (e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
+            (e[0].l + &bz + &oracles.gamma) *
+            &(e[0].r + &(bz * &shift.0) + &oracles.gamma) *
+            &(e[0].o + &(bz * &shift.1) + &oracles.gamma) *
+            &oracles.alpha +
+            &(oracles.alpha.square() * &(oracles.zeta.pow(&[n]) - &F::one()) / &(oracles.zeta - &F::one()))
+            ,
+            -(e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
             &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
-            &(e[1].z * &oracles.alpha)
+            &(e[1].z * &oracles.beta * &oracles.alpha)
         ]
     }
 }
