@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
-groupmap = { git = "https://github.com/o1-labs/zexe/" }
-ff-fft = { git = "https://github.com/o1-labs/zexe/" }
+algebra = { path = "../../zexe/algebra/", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
+groupmap = { path = "../../zexe/groupmap/" }
+ff-fft = { path = "../../zexe/ff-fft" }
 commitment_dlog = { path = "commitment" }
 marlin_circuits = { path = "../circuits/marlin" }
 marlin_protocol_dlog = { path = "marlin" }

@@ -7,8 +7,8 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
-ff-fft = { git = "https://github.com/o1-labs/zexe/" }
+algebra = { path = "../../../zexe/algebra/", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
+ff-fft = { path = "../../../zexe/ff-fft" }
 commitment_dlog = { path = "../commitment" }
 plonk_circuits = { path = "../../circuits/plonk" }
 oracle = { path = "../../oracle" }
