@@ -9,6 +9,9 @@ use algebra::{
 // output (c, d) such that
 // h = c * g^d, where c is in the orthogonal complement of < g >
 fn decompose<P: FftParameters + Fp256Parameters>(h : Fp256<P>) -> (Fp256<P>, u64) {
+    let d = two_adic_discrete_log(h);
+    let g : Fp256<P> = FftField::two_adic_root_of_unity();
+    let c = g.pow([d as u64]).inverse() * &h;
 }
 
 // Given 
