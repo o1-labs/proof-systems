@@ -1,0 +1,15 @@
+[package]
+name = "plonk_circuits"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "parallel", "bn_382", "asm" ] }
+ff-fft = { git = "https://github.com/o1-labs/zexe/" }
+oracle = { path = "../../oracle" }
+rand_core = { version = "0.5" }
+array-init = { version = "0.1.1" }
+blake2 = "0.7"

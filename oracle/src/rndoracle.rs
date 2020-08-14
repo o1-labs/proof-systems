@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements the random oracle argument API for Marlin.
+This source file implements the random oracle argument API.
 
 *****************************************************************************************************************/
 
@@ -11,6 +11,7 @@ pub use super::poseidon::{ArithmeticSpongeParams, ArithmeticSponge, Sponge};
 pub enum ProofError
 {
     WitnessCsInconsistent,
+    DomainCreation,
     PolyDivision,
     PolyCommit,
     PolyCommitWithBound,

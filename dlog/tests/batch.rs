@@ -6,10 +6,11 @@ verification of a batch of batched opening proofs of polynomial commitments
 *****************************************************************************************************************/
 
 use algebra::{bn_382::{g::{Affine, Bn_382GParameters}, Fp}, UniformRand, AffineCurve};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, Utils, OpeningProof, PolyComm}};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, OpeningProof, PolyComm}};
+use oracle::utils::PolyUtils;
 
 use oracle::FqSponge;
-use oracle::marlin_sponge::{DefaultFqSponge};
+use oracle::sponge::{DefaultFqSponge};
 
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -29,7 +30,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let size = 80;
     let polysize = 500;
-    let srs = SRS::<Affine>::create(size);
+    let srs = SRS::<Affine>::create(size, 0, 0);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 

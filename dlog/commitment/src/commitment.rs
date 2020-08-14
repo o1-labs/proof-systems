@@ -10,7 +10,7 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
-use crate::srs::{SRS};
+use crate::srs::SRS;
 use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
@@ -18,7 +18,7 @@ use algebra::{
     UniformRand, VariableBaseMSM, SWModelParameters, One, Zero
 };
 use ff_fft::DensePolynomial;
-use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
+use oracle::{FqSponge, sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
@@ -32,6 +32,45 @@ pub struct PolyComm<C: AffineCurve>
 {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
+}
+
+impl<C: AffineCurve> PolyComm<C>
+{
+    pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self
+    {
+        PolyComm::<C>
+        {
+            shifted:
+            {
+                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {None}
+                else
+                {
+                    let points = com.iter().map(|c| {assert!(c.shifted.is_some()); c.shifted.unwrap()}).collect::<Vec<_>>();
+                    let scalars = elm.iter().map(|s| {s.into_repr()}).collect::<Vec<_>>();
+                    Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+                }
+            },
+            unshifted:
+            {
+                if com.len() == 0 || elm.len() == 0 {Vec::new()}
+                else
+                {
+                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                    (0..n).map
+                    (
+                        |i|
+                        {
+                            let mut points = Vec::new();
+                            let mut scalars = Vec::new();
+                            com.iter().zip(elm.iter()).for_each
+                                (|(p, s)| if i < p.unshifted.len() {points.push(p.unshifted[i]); scalars.push(s.into_repr())});
+                            VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
+                        }
+                    ).collect::<Vec<_>>()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -230,23 +269,25 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G>
-    {
+    {        
         let n = self.g.len();
         let p = plnm.coeffs.len();
 
         // committing all the segments without shifting
-        let unshifted = (0..p/n + if p%n != 0 {1} else {0}).map
-        (
-            |i|
-            {
-                VariableBaseMSM::multi_scalar_mul
-                (
-                    &self.g,
-                    &plnm.coeffs[i*n..p]
-                        .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-                ).into_affine()
-            }
-        ).collect();
+        let unshifted = if plnm.is_zero() {Vec::new()}
+        else 
+        {
+            (0..p/n + if p%n != 0 {1} else {0}).map
+            (
+                |i|
+                {
+                    VariableBaseMSM::multi_scalar_mul
+                    (
+                        &self.g, &plnm.coeffs[i*n..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                    ).into_affine()
+                }
+            ).collect()
+        };
 
         // committing only last segment shifted to the right edge of SRS
         let shifted = match max
@@ -254,14 +295,14 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
             None => None,
             Some(max) =>
             {
-                if max % n == 0 {None}
+                if plnm.is_zero() {Some(G::zero())}
+                else if max % n == 0 {None}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul
                     (
                         &self.g[n - (max%n)..],
-                        &plnm.coeffs[max-(max%n)..p]
-                            .iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                        &plnm.coeffs[max-(max%n)..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine())
                 }
             }
@@ -307,7 +348,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
             let mut scale = Fr::<G>::one();
 
             // iterating over polynomials in the batch        
-            for (p_i, degree_bound) in plnms.iter() {
+            for (p_i, degree_bound) in plnms.iter().filter(|p| p.0.is_zero() == false) {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
                 while offset < p_i.coeffs.len() {
@@ -604,7 +645,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
                 let mut res = Fr::<G>::zero();
                 let mut xi_i = Fr::<G>::one();
 
-                for (comm, evals_tr, shifted) in polys {
+                for (comm, evals_tr, shifted) in polys.iter().filter(|x| x.0.unshifted.len() > 0) {
                     // transpose the evaluations
                     let evals = (0..evals_tr[0].len()).map
                     (

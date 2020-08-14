@@ -4,11 +4,13 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { git = "https://github.com/o1-labs/zexe/", branch = "dlog-only-clean-cargo", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
-ff-fft = { git = "https://github.com/o1-labs/zexe/", branch = "dlog-only-clean-cargo" }
+algebra = { git = "https://github.com/o1-labs/zexe/", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
+ff-fft = { git = "https://github.com/o1-labs/zexe/" }
 commitment_pairing = { path = "commitment" }
-circuits_pairing = { path = "circuits" }
-protocol_pairing = { path = "protocol" }
+marlin_circuits = { path = "../circuits/marlin" }
+marlin_protocol_pairing = { path = "marlin" }
+plonk_circuits = { path = "../circuits/plonk" }
+plonk_protocol_pairing = { path = "plonk" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.2"
