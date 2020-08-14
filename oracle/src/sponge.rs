@@ -149,8 +149,12 @@ where
         self.last_squeezed = vec![];
         for g in g.iter()
         {
-            self.sponge.absorb(&self.params, &[g.x]);
-            self.sponge.absorb(&self.params, &[g.y]);
+            if g.infinity {
+                panic!("sponge got zero curve point");
+            } else {
+                self.sponge.absorb(&self.params, &[g.x]);
+                self.sponge.absorb(&self.params, &[g.y]);
+            }
         }
     }
 
