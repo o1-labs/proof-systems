@@ -3,7 +3,7 @@ use algebra::{
     Field, PairingEngine, PrimeField,
 };
 
-use oracle::{sponge::{DefaultFrSponge, FqSponge, ScalarChallenge}, poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}};
+use oracle::{sponge::{DefaultFrSponge, FqSponge, ScalarChallenge}, poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, MarlinSpongeConstants}};
 
 pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
@@ -17,8 +17,8 @@ pub trait SpongePairingEngine: PairingEngine {
     type FrSponge: FrSponge<Self::Fr>;
 }
 
-impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
-    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr> {
+impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, MarlinSpongeConstants> {
+    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, MarlinSpongeConstants> {
         DefaultFrSponge {
             params,
             sponge: ArithmeticSponge::new(),

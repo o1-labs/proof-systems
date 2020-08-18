@@ -2,7 +2,7 @@ use crate::prover::ProofEvaluations;
 use algebra::{
     Field, PrimeField,
 };
-use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
+use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, MarlinSpongeConstants};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {
@@ -12,8 +12,8 @@ pub trait FrSponge<Fr: Field> {
     fn absorb_evaluations(&mut self, x_hat_beta1: &[Fr], e: &ProofEvaluations<Fr>);
 }
 
-impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
-    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr> {
+impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, MarlinSpongeConstants> {
+    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, MarlinSpongeConstants> {
         DefaultFrSponge {
             params,
             sponge: ArithmeticSponge::new(),

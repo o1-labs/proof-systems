@@ -9,10 +9,40 @@ It implements Poseidon Hash Function primitive
 
 use algebra::Field;
 
-pub const ROUNDS_FULL: usize = 63;
-pub const SPONGE_CAPACITY: usize = 1;
-pub const SPONGE_RATE: usize = 2;
-pub const SPONGE_BOX: usize = 5;
+pub trait SpongeConstants {
+    const ROUNDS_FULL: usize;
+    const ROUNDS_PARTIAL: usize;
+    const HALF_ROUNDS_FULL: usize;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_RATE: usize = 2;
+    const SPONGE_BOX: usize;
+}
+
+#[derive(Clone)]
+pub struct MarlinSpongeConstants {
+}
+
+impl SpongeConstants for MarlinSpongeConstants {
+    const ROUNDS_FULL: usize = 8;
+    const ROUNDS_PARTIAL: usize = 30;
+    const HALF_ROUNDS_FULL: usize = 4;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_RATE: usize = 2;
+    const SPONGE_BOX: usize = 17;
+}
+
+#[derive(Clone)]
+pub struct PlonkSpongeConstants {
+}
+
+impl SpongeConstants for PlonkSpongeConstants {
+    const ROUNDS_FULL: usize = 63;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_RATE: usize = 2;
+    const SPONGE_BOX: usize = 5;
+}
 
 pub trait Sponge<Input, Digest> {
     type Params;
@@ -21,8 +51,8 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
-pub fn sbox<F: Field>(x: F) -> F {
-    x.pow([SPONGE_BOX as u64])
+pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
+    x.pow([SC::SPONGE_BOX as u64])
 }
 
 /*
@@ -47,16 +77,17 @@ pub struct ArithmeticSpongeParams<F: Field> {
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field> {
+pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,
     pub state: Vec<F>,
+    pub constants: std::marker::PhantomData<SC>,
 }
 
-impl<F: Field> ArithmeticSponge<F> {
+impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     pub fn full_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
         for i in 0..self.state.len() {
-            self.state[i] = sbox(self.state[i]);
+            self.state[i] = sbox::<F, SC>(self.state[i]);
         }
         let new_state = apply_near_mds_matrix(&self.state);
         for i in 0..new_state.len() {
@@ -67,19 +98,68 @@ impl<F: Field> ArithmeticSponge<F> {
         }
     }
 
+    fn half_rounds(&mut self, params: &ArithmeticSpongeParams<F>) {
+        for r in 0..SC::HALF_ROUNDS_FULL {
+            for (i, x) in params.round_constants[r].iter().enumerate() {
+                self.state[i].add_assign(x);
+            }
+            for i in 0..self.state.len() {
+                self.state[i] = sbox::<F, SC>(self.state[i]);
+            }
+            let new_state = apply_near_mds_matrix(&self.state);
+            for i in 0..new_state.len() {
+                self.state[i] = new_state[i];
+            }
+        }
+
+        for r in 0..SC::ROUNDS_PARTIAL {
+            for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + r]
+                .iter()
+                .enumerate()
+            {
+                self.state[i].add_assign(x);
+            }
+            self.state[0] = sbox::<F, SC>(self.state[0]);
+            let new_state = apply_near_mds_matrix(&self.state);
+            for i in 0..new_state.len() {
+                self.state[i] = new_state[i];
+            }
+        }
+
+        for r in 0..SC::HALF_ROUNDS_FULL {
+            for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
+                .iter()
+                .enumerate()
+            {
+                self.state[i].add_assign(x);
+            }
+            for i in 0..self.state.len() {
+                self.state[i] = sbox::<F, SC>(self.state[i]);
+            }
+            let new_state = apply_near_mds_matrix(&self.state);
+            for i in 0..new_state.len() {
+                self.state[i] = new_state[i];
+            }
+        }
+    }
+
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
-        for r in 0..ROUNDS_FULL {
-            self.full_round(r, params);
+        if SC::HALF_ROUNDS_FULL == 0 {
+            for r in 0..SC::ROUNDS_FULL {
+                self.full_round(r, params);
+            }
+        } else {
+            self.half_rounds(params);
         }
     }
 }
 
-impl<F: Field> Sponge<F, F> for ArithmeticSponge<F> {
+impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
     type Params = ArithmeticSpongeParams<F>;
 
-    fn new() -> ArithmeticSponge<F> {
-        let capacity = SPONGE_CAPACITY;
-        let rate = SPONGE_RATE;
+    fn new() -> ArithmeticSponge<F, SC> {
+        let capacity = SC::SPONGE_CAPACITY;
+        let rate = SC::SPONGE_RATE;
 
         let mut state = Vec::with_capacity(capacity + rate);
 
@@ -91,6 +171,7 @@ impl<F: Field> Sponge<F, F> for ArithmeticSponge<F> {
             state,
             rate,
             sponge_state: SpongeState::Absorbed(0),
+            constants: std::marker::PhantomData,
         }
     }
 

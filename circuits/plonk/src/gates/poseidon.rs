@@ -9,7 +9,7 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use algebra::{FftField};
-use oracle::poseidon::sbox;
+use oracle::poseidon::{sbox, PlonkSpongeConstants as SC};
 use crate::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 use crate::wires::GateWires;
 
@@ -33,11 +33,11 @@ impl<F: FftField> CircuitGate<F>
     {
         self.typ == GateType::Poseidon
         &&
-        sbox(witness[self.wires.l.0]) + &sbox(witness[self.wires.o.0]) + &self.rc()[0] == witness[next.wires.l.0]
+        sbox::<F, SC>(witness[self.wires.l.0]) + &sbox::<F, SC>(witness[self.wires.o.0]) + &self.rc()[0] == witness[next.wires.l.0]
         &&
-        sbox(witness[self.wires.l.0]) + &sbox(witness[self.wires.r.0]) + &self.rc()[1] == witness[next.wires.r.0]
+        sbox::<F, SC>(witness[self.wires.l.0]) + &sbox::<F, SC>(witness[self.wires.r.0]) + &self.rc()[1] == witness[next.wires.r.0]
         &&
-        sbox(witness[self.wires.r.0]) + &sbox(witness[self.wires.o.0]) + &self.rc()[2] == witness[next.wires.o.0]
+        sbox::<F, SC>(witness[self.wires.r.0]) + &sbox::<F, SC>(witness[self.wires.o.0]) + &self.rc()[2] == witness[next.wires.o.0]
     }
 
     pub fn ps(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}

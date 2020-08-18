@@ -21,7 +21,7 @@ of non-special pairs of points
 **********************************************************************************************************/
 
 use sprs::{CsMat, CsVecView};
-use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use marlin_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
 use algebra::{bn_382::{Fp, Bn_382, g1::Bn_382G1Parameters}, One, Zero};
 use rand_core::{RngCore, OsRng};
@@ -202,7 +202,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&witness, &index).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -211,7 +211,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&vec![batch[0].clone()], &verifier_index, rng)
     {
         Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
@@ -220,7 +220,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&batch, &verifier_index, rng)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
@@ -254,7 +254,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     assert_eq!(index.verify(&witness), false);
 
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index)
+    match ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&witness, &index)
     {
         Ok(_) => {panic!("Failure invalidating the witness")}
         _ => {}

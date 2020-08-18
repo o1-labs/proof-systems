@@ -1,5 +1,5 @@
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::{poseidon::ArithmeticSpongeParams, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{bn_382::{Fp, Bn_382, g1::Bn_382G1Parameters}, Field, One, Zero};
 use plonk_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
 use std::{io, io::Write};
@@ -152,7 +152,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.cs.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&witness, &index).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&witness, &index).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -161,7 +161,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index().unwrap();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&vec![batch[0].clone()], &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&vec![batch[0].clone()], &verifier_index)
     {
         Ok(_) => {}
         _ => {panic!("Failure verifying the prover's proof")}
@@ -170,7 +170,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters>, DefaultFrSponge<Fp>>(&batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&batch, &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

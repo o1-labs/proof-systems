@@ -6,8 +6,9 @@ This source file implements Plonk constraint gate primitive.
 
 use algebra::FftField;
 pub use super::{wires::GateWires, constraints::ConstraintSystem};
+use oracle::poseidon::{PlonkSpongeConstants, SpongeConstants};
 
-pub const SPONGE_WIDTH: usize = oracle::poseidon::SPONGE_CAPACITY + oracle::poseidon::SPONGE_RATE;
+pub const SPONGE_WIDTH: usize = PlonkSpongeConstants::SPONGE_CAPACITY + PlonkSpongeConstants::SPONGE_RATE;
 
 #[derive(Clone)]
 #[derive(PartialEq)]
