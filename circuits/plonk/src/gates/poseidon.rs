@@ -8,7 +8,7 @@ Constraint vector format:
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use algebra::{FftField};
 use oracle::poseidon::sbox;
 use crate::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 use crate::wires::GateWires;

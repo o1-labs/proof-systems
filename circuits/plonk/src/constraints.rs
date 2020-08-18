@@ -11,7 +11,7 @@ pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
 pub use super::domains::EvaluationDomains;
 pub use super::wires::GateWires;
 use blake2::{Blake2b, Digest};
-use oracle::utils::EvalUtils;
+use oracle::utils::{EvalUtils};
 use array_init::array_init;
 
 #[derive(Clone)]
