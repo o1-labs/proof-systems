@@ -5,7 +5,7 @@ This source file implements non-special point (with distinct abscissas) Weierstr
     (x2 - x1) * s = y2 - y1
     s * s = x1 + x2 + x3
     (x1 - x3) * s = y3 + y1
- 
+
     =>
 
     (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)

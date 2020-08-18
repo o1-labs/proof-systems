@@ -159,7 +159,7 @@ fn turbo_plonk()
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
     );
-    
+
     positive(&index);
     negative(&index);
 }
@@ -189,7 +189,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
         let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
         let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
-        
+
         // EC addition witness for custom constraints
 
         l.push(y1);
@@ -200,7 +200,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         o.push(x3);
 
         //  witness for Poseidon permutation custom constraints
-         
+
         sponge.state = vec![x1, x2, x3];
         l.push(sponge.state[0]);
         r.push(sponge.state[1]);
@@ -214,7 +214,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
         }
-        
+
         // variable base scalar multiplication witness for custom constraints
         // test with 2-bit scalar
 
@@ -242,7 +242,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         l.push(s2x);
         r.push(x1);
         o.push(s2y);
-        
+
         // group endomorphism optimised variable base scalar multiplication witness for custom constraints
         // test with 8-bit scalar 11001001
 
@@ -376,7 +376,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let y3 = <Fr as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
 
     let s = (y2 - &y1) / &(x2 - &x1);
-    
+
     let mut sponge = ArithmeticSponge::<Fr>::new();
     let params: ArithmeticSpongeParams<Fr> = oracle::bn_382::fq::params();
     sponge.state = vec![x1, x2, x3];
@@ -385,7 +385,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
     let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
     let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
-    
+
     // ROUNDS_FULL full rounds constraint gates
     for j in 0..ROUNDS_FULL
     {

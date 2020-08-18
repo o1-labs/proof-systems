@@ -104,7 +104,7 @@ impl<E: PairingEngine> ProverProof<E>
                 (witness[j+n] + &(index.cs.sigmal1[1][j] * &oracles.beta) + &oracles.gamma) *&
                 (witness[j+2*n] + &(index.cs.sigmal1[2][j] * &oracles.beta) + &oracles.gamma)
         );
-        
+
         algebra::fields::batch_inversion::<E::Fr>(&mut z[1..=n]);
 
         (0..n).for_each
@@ -121,7 +121,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         if z.pop().unwrap() != E::Fr::one() {return Err(ProofError::ProofCreation)};
         let z = Evaluations::<E::Fr, D<E::Fr>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
-        
+
         // evaluate witness polynomials over domains
         let lagrange = index.cs.evaluate(&l, &r, &o, &z);
 
@@ -178,7 +178,7 @@ impl<E: PairingEngine> ProverProof<E>
         let thgh_comm = index.urs.get_ref().commit(&thgh)?;
 
         // absorb the polycommitments into the argument and sample zeta
-        
+
         fq_sponge.absorb_g(&[tlow_comm, tmid_comm, thgh_comm]);
         oracles.zeta = fq_sponge.challenge();
         let zeta2 = oracles.zeta.pow(&[n as u64]);

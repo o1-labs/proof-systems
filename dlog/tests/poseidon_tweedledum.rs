@@ -54,7 +54,7 @@ fn poseidon_tweedledum()
         oracle::tweedle::fp::params(),
         SRSSpec::Use(&srs)
     );
-    
+
     positive(&index);
 }
 
@@ -85,7 +85,7 @@ fn positive(index: &Index<Affine>)
         let mut o: Vec<Fq> = Vec::with_capacity(N);
 
         let (x, y, z) = (Fq::rand(rng), Fq::rand(rng), Fq::rand(rng));
-        
+
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
         {

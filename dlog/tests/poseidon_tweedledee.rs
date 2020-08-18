@@ -54,7 +54,7 @@ fn poseidon_tweedledee()
         oracle::tweedle::fq::params(),
         SRSSpec::Use(&srs)
     );
-    
+
     positive(&index);
 }
 
@@ -86,7 +86,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let mut o: Vec<Fp> = Vec::with_capacity(N);
 
         let (x, y, z) = (Fp::rand(rng), Fp::rand(rng), Fp::rand(rng));
-        
+
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
         {

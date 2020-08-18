@@ -269,13 +269,13 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G>
-    {        
+    {
         let n = self.g.len();
         let p = plnm.coeffs.len();
 
         // committing all the segments without shifting
         let unshifted = if plnm.is_zero() {Vec::new()}
-        else 
+        else
         {
             (0..p/n + if p%n != 0 {1} else {0}).map
             (
@@ -347,7 +347,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
             let mut p = DensePolynomial::<Fr<G>>::zero();
             let mut scale = Fr::<G>::one();
 
-            // iterating over polynomials in the batch        
+            // iterating over polynomials in the batch
             for (p_i, degree_bound) in plnms.iter().filter(|p| p.0.is_zero() == false) {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
@@ -666,7 +666,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
 
                     if let Some(m) = shifted {
                         if let Some(comm_ch) = comm.shifted {
-                            
+
                             // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
                             let shifted_evals: Vec<_> = evaluation_points
                                 .iter()

@@ -15,7 +15,7 @@ use rand_core::RngCore;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
- 
+
 #[derive(Clone, Debug)]
 pub struct ProofEvaluations<Fr> {
     pub w: Vec<Fr>,
@@ -80,7 +80,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         index: &Index<G>,
         prev_challenges: Vec< (Vec<Fr<G>>, PolyComm<G>) >,
         rng: &mut dyn RngCore,
-    ) 
+    )
     -> Result<Self, ProofError>
     {
         // random oracles have to be retrieved from the non-interactive argument
@@ -126,7 +126,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             }
         }
 
-        let x_hat = 
+        let x_hat =
             EvaluationDomains::evals_from_coeffs(public.clone(), index.domains.x).interpolate();
          // TODO: Should have no degree bound when we add the correct degree bound method
         let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
@@ -331,7 +331,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 (&g2, Some(index.domains.h.size()-1)),
                 (&g3, Some(index.domains.k.size()-1)),
             ]);
-            
+
         Ok(ProverProof
         {
             // polynomial commitments
@@ -355,7 +355,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 oracles.evals.to_field(endo),
                 fq_sponge_before_evaluations,
                 rng
-            ), 
+            ),
 
             // polynomial evaluations
             evals,

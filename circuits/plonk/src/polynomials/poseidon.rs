@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements Posedon constraint polynomials.
+This source file implements Poseidon constraint polynomials.
 
 *****************************************************************************************************************/
 
@@ -11,7 +11,7 @@ use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // poseidon quotient poly contribution computation f^5 + c(x) - f(wx)
     pub fn psdn_quot

@@ -29,7 +29,7 @@ use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // EC Affine addition constraint quotient poly contribution computation
     pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)

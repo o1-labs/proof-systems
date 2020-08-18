@@ -75,7 +75,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         oracle::bn_382::fq::params(),
         URSSpec::Generate(&mut OsRng)
     );
-    
+
     positive(&index);
     negative(&index);
 }
@@ -93,7 +93,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
-        
+
         let witness = vec!
         [
             x1,
@@ -130,7 +130,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             y3,
             z,
 
-            z, 
+            z,
             z,
             z,
             z,
@@ -191,7 +191,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let y3 = <Fp as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
 
     let s = (y2 - &y1) / &(x2 - &x1);
-    
+
     let witness = vec!
     [
         x1,
@@ -228,7 +228,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         y3,
         z,
 
-        z, 
+        z,
         z,
         z,
         z,

@@ -11,7 +11,7 @@ use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // scalar multiplication constraint quotient poly contribution computation
     pub fn vbmul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
@@ -39,7 +39,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 -
                 &(&(&(&polys.d8.this.r.pow(2) - &polys.d8.next.r) + &polys.d8.next.l) * &tmp.pow(2))
             ).scale(alpha[1])
-            + 
+            +
             &(
                 // (xP - xS) × (2*yP - (2*xP - λ1^2 + xT) × λ1) - (yS + yP) * (2*xP - λ1^2 + xT)
                 &(&(&polys.d8.this.l - &polys.d8.next.l) * &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)))

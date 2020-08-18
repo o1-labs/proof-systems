@@ -57,7 +57,7 @@ fn poseidon_bn382()
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
     );
-    
+
     positive(&index);
 }
 
@@ -89,7 +89,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         let mut o: Vec<Fr> = Vec::with_capacity(N);
 
         let (x, y, z) = (Fr::rand(rng), Fr::rand(rng), Fr::rand(rng));
-        
+
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
         {

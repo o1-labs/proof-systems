@@ -11,7 +11,7 @@ use crate::polynomial::WitnessOverDomains;
 use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // permutation quotient poly contribution computation
     pub fn perm_quot
