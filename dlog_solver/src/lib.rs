@@ -1,7 +1,13 @@
+extern crate num_integer;
+
+use num_integer::Integer;
+
 use algebra::{
     One, Field, FftField, Fp256Parameters,
     fields::{FftParameters, Fp256},
 };
+
+
 
 // Given 
 // - an order p field F with p - 1 = t * 2^k, t odd, g an element of order 2^k in F,
@@ -11,7 +17,9 @@ use algebra::{
 fn decompose<P: FftParameters + Fp256Parameters>(h : Fp256<P>) -> (Fp256<P>, u64) {
     let d = two_adic_discrete_log(h);
     let g : Fp256<P> = FftField::two_adic_root_of_unity();
-    let c = g.pow([d as u64]).inverse() * &h;
+    let c = g.pow([d as u64]).inverse().unwrap() * &h;
+
+    (c,d)
 }
 
 // Given 
@@ -58,3 +66,71 @@ fn pow2_pow<F : Field>(x : F, k : usize) -> F {
     res
 }
 
+
+
+
+// Given a, b, output GCD of a,b
+pub fn egcd<T: Copy + Integer>(a: T, b: T) -> (T, T, T) {
+    if a == T::zero() {
+        (b, T::zero(), T::one())
+    }
+    else {
+        let (g, x, y) = egcd(b % a, a);
+        (g, y - (b / a) * x, x)
+    }
+}
+
+// given a, m, compute inverse of a mod m
+pub fn modinverse<T: Copy + Integer>(a: T, m: T) -> Option<T> {
+    let (g, x, _) = egcd(a, m);
+    if g != T::one() {
+        None
+    }
+    else {
+        Some((x % m + m) % m)
+    }
+}
+
+
+// given c of order 2^k, generate a witness to check its order. 
+//The witness is cwitness = c^{(2^k)^-1 mod t}. This can be verified by checking
+// k squarings of cwitness
+fn witness_c_order<P: FftParameters + Fp256Parameters>(c : Fp256<P>, k : u32) -> Fp256<P>{
+    let base : u128 = 2;
+    let two_to_k = base.pow(k);
+    let p = algebra::FpParameters::MODULUS;
+    let exp = modinverse(two_to_k, (p-1)/two_to_k);
+    let cwitness = c.pow(exp);
+    c
+}
+
+
+// convert d to binary
+fn witness_d_binary(d: u64) -> algebra::String {
+    let bin = format!("{:b}", d);
+    bin
+}
+
+
+// renaming the original sqrt function to detsqrt
+pub fn det_qrt<P: FftParameters + Fp256Parameters>(a : Fp256<P>) ->Fp256<P>{
+    let root = a.sqrt();
+    root
+}
+
+pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters>{
+    c: Fp256<P>,
+    d: u64,
+    c_inverse_order: Fp256<P>,
+    d_in_binary : algebra::String;
+
+}
+
+
+pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters>(b : Fp256<P>)->  Witness_correct_sqrt<P>{
+    let (c,d) : (Fp256<P>, u64) = decompose(b);
+    let cwitness : Fp256<P> = witness_c_order(c,P::TWO_ADICITY);
+    let dwitness : algebra::String = witness_d_binary(d);
+    let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt<P> { c: c, d: d, c_inverse_order : cwitness, d_in_binary : dwitness};
+
+}

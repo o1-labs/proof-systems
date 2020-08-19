@@ -79,7 +79,7 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
             cs
         };
 
-        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.sqrt().unwrap()).collect();
+        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| dlog::dlog::solver::lib::det_sqrt(x).unwrap()).collect();
         let chal_inv = {
             let mut cs = chal.clone();
             algebra::fields::batch_inversion(&mut cs);

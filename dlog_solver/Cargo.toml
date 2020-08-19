@@ -9,3 +9,4 @@ path = "src/lib.rs"
 [dependencies]
 algebra = { git = "https://github.com/o1-labs/zexe/", branch = "dlog-only-clean-cargo", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
 rand = "0.7.3"
+num-integer = "0.1"
