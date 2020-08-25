@@ -22,6 +22,7 @@ use oracle::{FqSponge, marlin_sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
+use dlog_solver::DetSquareRootField;
 pub use crate::QnrField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -50,7 +51,7 @@ pub struct Challenges<F> {
     pub chal_squared_inv : Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
+impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField + DetSquareRootField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
@@ -79,7 +80,7 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
             cs
         };
 
-        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| dlog::dlog::solver::lib::det_sqrt(x).unwrap()).collect();
+        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.det_sqrt().unwrap()).collect();
         let chal_inv = {
             let mut cs = chal.clone();
             algebra::fields::batch_inversion(&mut cs);

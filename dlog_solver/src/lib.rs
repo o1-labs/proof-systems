@@ -3,7 +3,7 @@ extern crate num_integer;
 use num_integer::Integer;
 
 use algebra::{
-    One, Field, FftField, Fp256Parameters,
+    One, Field, FftField, SquareRootField, Fp256Parameters,
     fields::{FftParameters, Fp256},
 };
 
@@ -14,11 +14,14 @@ use algebra::{
 // - h : F
 // output (c, d) such that
 // h = c * g^d, where c is in the orthogonal complement of < g >
-fn decompose<P: FftParameters + Fp256Parameters>(h : Fp256<P>) -> (Fp256<P>, u64) {
-    let d = two_adic_discrete_log(h);
-    let g : Fp256<P> = FftField::two_adic_root_of_unity();
-    let c = g.pow([d as u64]).inverse().unwrap() * &h;
-
+// algorithm: first compute c = (h^2^k)^{inv(2^k) mod t}
+fn decompose<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(h : Fp256<P>) -> (Fp256<P>, u64) {
+    let e = P::TWO_ADICITY as u32;
+    let exponent = u64::pow(2, e);
+    let t_component : Fp256<P> = h.pow([exponent]);
+    let c =  t_component.pow(P::TWO_TO_TWO_ADICITY_INV.as_ref());
+    let two_to_k_component =  c.inverse() * h;
+    let d = two_adic_discrete_log(two_to_k_component);
     (c,d)
 }
 
@@ -69,60 +72,51 @@ fn pow2_pow<F : Field>(x : F, k : usize) -> F {
 
 
 
-// Given a, b, output GCD of a,b
-pub fn egcd<T: Copy + Integer>(a: T, b: T) -> (T, T, T) {
-    if a == T::zero() {
-        (b, T::zero(), T::one())
-    }
-    else {
-        let (g, x, y) = egcd(b % a, a);
-        (g, y - (b / a) * x, x)
-    }
+
+
+
+
+pub trait DetSquareRootParameters : FftParameters {
+    const TWO_TO_TWO_ADICITY_INV: Self::BigInt;
 }
 
-// given a, m, compute inverse of a mod m
-pub fn modinverse<T: Copy + Integer>(a: T, m: T) -> Option<T> {
-    let (g, x, _) = egcd(a, m);
-    if g != T::one() {
-        None
-    }
-    else {
-        Some((x % m + m) % m)
-    }
+pub trait DetSquareRootField : FftField {
+    type DetSquareRootParams : DetSquareRootParameters;
+    fn det_sqrt(&self) -> Option<Self>;
+
 }
 
+impl<F : FftField + SquareRootField, P : DetSquareRootParameters> DetSquareRootField for F{
+    type DetSquareRootParams = P;
+    fn det_sqrt(&self)-> Option<Self>{
+        match self.sqrt() {
+            None => None,
+            Some(x) => { 
+                let (c,d) =decompose(x);
+                let d_deterministic = d & (2.pow(63) as u64);
+                (c, d_deterministic)
+            }
+        }
+
+    }
+}
 
 // given c of order 2^k, generate a witness to check its order. 
 //The witness is cwitness = c^{(2^k)^-1 mod t}. This can be verified by checking
 // k squarings of cwitness
-fn witness_c_order<P: FftParameters + Fp256Parameters>(c : Fp256<P>, k : u32) -> Fp256<P>{
-    let base : u128 = 2;
-    let two_to_k = base.pow(k);
-    let p = algebra::FpParameters::MODULUS;
-    let exp = modinverse(two_to_k, (p-1)/two_to_k);
-    let cwitness = c.pow(exp);
+fn witness_c_order<P: DetSquareRootParameters + Fp256Parameters>(c : Fp256<P>) -> Fp256<P>{
+ 
+    let cwitness = c.pow(P::TWO_TO_TWO_ADICITY_INV.as_ref());
     c
 }
 
 
-// convert d to binary
-fn witness_d_binary(d: u64) -> algebra::String {
-    let bin = format!("{:b}", d);
-    bin
-}
 
-
-// renaming the original sqrt function to detsqrt
-pub fn det_qrt<P: FftParameters + Fp256Parameters>(a : Fp256<P>) ->Fp256<P>{
-    let root = a.sqrt();
-    root
-}
 
 pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters>{
     c: Fp256<P>,
     d: u64,
-    c_inverse_order: Fp256<P>,
-    d_in_binary : algebra::String;
+    c_inverse_order: Fp256<P>;
 
 }
 
@@ -130,7 +124,10 @@ pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters>{
 pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters>(b : Fp256<P>)->  Witness_correct_sqrt<P>{
     let (c,d) : (Fp256<P>, u64) = decompose(b);
     let cwitness : Fp256<P> = witness_c_order(c,P::TWO_ADICITY);
-    let dwitness : algebra::String = witness_d_binary(d);
     let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt<P> { c: c, d: d, c_inverse_order : cwitness, d_in_binary : dwitness};
 
 }
+
+
+//todo, first compute c then derive d
+//2^k, k is two_adicity
