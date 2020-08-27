@@ -51,9 +51,8 @@ fn poseidon_bn382()
 
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fr>::create(gates, 0).unwrap(),
+        ConstraintSystem::<Fr>::create(gates, oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>, 0).unwrap(),
         MAX_SIZE,
-        oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
     );

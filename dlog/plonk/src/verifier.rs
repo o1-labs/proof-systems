@@ -142,7 +142,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 // generic constraint/permutation linearization scalars
                 s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
                 // poseidon constraint linearization scalars
-                s.extend(&ConstraintSystem::psdn_scalars(&evals, &alpha));
+                s.extend(&ConstraintSystem::psdn_scalars(&evals, &index.fr_sponge_params, &alpha));
                 // EC addition constraint linearization scalars
                 s.extend(&ConstraintSystem::ecad_scalars(&evals, &alpha));
                 // EC variable base scalar multiplication constraint linearization scalars

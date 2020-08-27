@@ -48,9 +48,8 @@ fn poseidon_tweedledum()
 
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, 0).unwrap(),
+        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), 0).unwrap(),
         MAX_SIZE,
-        oracle::tweedle::fq::params(),
         oracle::tweedle::fp::params(),
         SRSSpec::Use(&srs)
     );

@@ -153,9 +153,8 @@ fn turbo_plonk()
 
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fr>::create(gates, 6).unwrap(),
+        ConstraintSystem::<Fr>::create(gates, oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>, 6).unwrap(),
         MAX_SIZE,
-        oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
     );

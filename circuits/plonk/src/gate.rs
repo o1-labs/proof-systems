@@ -7,8 +7,6 @@ This source file implements Plonk constraint gate primitive.
 use algebra::FftField;
 pub use super::{wires::GateWires, constraints::ConstraintSystem};
 
-pub const SPONGE_WIDTH: usize = oracle::poseidon::SPONGE_CAPACITY + oracle::poseidon::SPONGE_RATE;
-
 #[derive(Clone)]
 #[derive(PartialEq)]
 pub enum GateType
@@ -60,7 +58,7 @@ impl<F: FftField> CircuitGate<F>
         {
             GateType::Zero      => true,
             GateType::Generic   => self.verify_generic(witness),
-            GateType::Poseidon  => self.verify_poseidon(next, witness),
+            GateType::Poseidon  => self.verify_poseidon(next, witness, cs),
             GateType::Add1      => self.verify_add1(next, witness),
             GateType::Add2      => self.verify_add2(witness),
             GateType::Vbmul1    => self.verify_vbmul1(next, witness),

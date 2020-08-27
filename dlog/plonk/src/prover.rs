@@ -133,7 +133,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let (gen4, genp) = index.cs.gnrc_quot(&lagrange, &p);
 
         // poseidon constraints contribution
-        let (pos4, pos8, posp) = index.cs.psdn_quot(&lagrange, &alpha);
+        let (pos4, pos8, posp) = index.cs.psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alpha);
 
         // variable base scalar multiplication constraints contribution
         let (mul4, mul8) = index.cs.vbmul_quot(&lagrange, &alpha);
@@ -216,7 +216,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
         let f =
             &(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
-            &index.cs.psdn_lnrz(&e, &alpha)) +
+            &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) +
             &index.cs.vbmul_lnrz(&e, &alpha)) +
             &index.cs.endomul_lnrz(&e, &alpha)) +
@@ -228,7 +228,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge =
         {
-            let mut s = EFrSponge::new(index.fr_sponge_params.clone());
+            let mut s = EFrSponge::new(index.cs.fr_sponge_params.clone());
             s.absorb(&fq_sponge.digest());
             s
         };

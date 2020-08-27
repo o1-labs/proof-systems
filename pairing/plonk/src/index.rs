@@ -80,7 +80,6 @@ pub struct Index<'a, E: PairingEngine>
     pub urs: URSValue<'a, E>,
 
     // random oracle argument parameters
-    pub fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
     pub fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
 
     // Coefficients for the curve endomorphism
@@ -139,7 +138,6 @@ where E::G1Affine: CoordinatesCurve
     pub fn create<'b>
     (
         cs: ConstraintSystem<E::Fr>,
-        fr_sponge_params: ArithmeticSpongeParams<E::Fr>,
         fq_sponge_params: ArithmeticSpongeParams<E::Fq>,
         urs : URSSpec<'a, 'b, E>
     ) -> Self
@@ -149,7 +147,6 @@ where E::G1Affine: CoordinatesCurve
 
         Index
         {
-            fr_sponge_params,
             fq_sponge_params,
             endo_q,
             endo_r,
@@ -178,7 +175,7 @@ where E::G1Affine: CoordinatesCurve
             qm_comm: urs.commit(&self.cs.qmm)?,
             qc_comm: urs.commit(&self.cs.qc)?,
 
-            fr_sponge_params: self.fr_sponge_params.clone(),
+            fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo_q: self.endo_q,
             endo_r: self.endo_r,
