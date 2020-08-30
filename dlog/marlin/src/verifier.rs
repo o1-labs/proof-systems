@@ -155,16 +155,27 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         >
     (
         group_map: &G::Map,
-        proofs: &Vec<ProverProof<G>>,
-        index: &Index<G>,
+        proofs: &Vec<(&Index<G>, ProverProof<G>)>,
         rng: &mut dyn RngCore
     ) -> bool
     {
-        let endo = &index.srs.get_ref().endo_r;
+        // TODO: In the future, we should make it possible to batch verify against different SRS
+        // lengths
+
+        if proofs.len() == 0 {
+            return true;
+        }
+
+        let n = proofs[0].0.srs.get_ref().g.len();
+        for (index, _) in proofs.iter() {
+            assert_eq!(index.srs.get_ref().g.len(), n);
+        }
+
         let params = proofs.iter().map
         (
-            |proof|
+            |(index, proof)|
             {
+                let endo = &index.srs.get_ref().endo_r;
                 let x_hat =
                 // TODO: Cache this interpolated polynomial.
                 Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)).interpolate();
@@ -234,7 +245,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         
         match proofs.iter().zip(params.iter()).map
         (
-            |(proof, (beta, x_hat_comm, fq_sponge, oracles, polys))|
+            |((index, proof), (beta, x_hat_comm, fq_sponge, oracles, polys))|
             {
                 let evals =
                 {
@@ -325,6 +336,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     ]
                 );
 
+                let endo = &index.srs.get_ref().endo_r;
+
                 Ok((
                     fq_sponge.clone(),
                     oracles.beta.iter().map(|x| x.to_field(endo)).collect(),
@@ -337,7 +350,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         ).collect::<Result<Vec<_>, _>>()
         // second, verify the commitment opening proofs
         {
-            Ok(mut batch) => index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
+            Ok(mut batch) => proofs[0].0.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
             Err(_) => false
         }
     }

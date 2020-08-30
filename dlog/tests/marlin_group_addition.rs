@@ -185,6 +185,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let group_map = <Affine as CommitmentCurve>::Map::setup();
     let mut start = Instant::now();
 
+    let verifier_index = index.verifier_index();
+
     let tests = 0..1000;
     let mut batch = Vec::new();
     for test in tests.clone()
@@ -218,18 +220,17 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         };
 
         // add the proof to the batch
-        batch.push(
+        batch.push((&verifier_index,
             ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(
-                &group_map, &witness, &index, vec![prev], rng).unwrap());
+                &group_map, &witness, &index, vec![prev], rng).unwrap()));
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
-    let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &vec![batch[0].clone()], &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &vec![batch[0].clone()], rng)
     {
         false => {panic!("Failure verifying the prover's proof")},
         true => {}
@@ -238,7 +239,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, rng)
     {
         false => {panic!("Failure verifying the prover's proofs in batch")},
         true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
