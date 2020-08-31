@@ -31,7 +31,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
     // argument context by verifier
     // This setup is partial; the values `u` and `v` are initialized to zero so
     // that the evaluations it uses can be cached for use in the verification.
-    pub fn setupOracles
+    pub fn setup_oracles
         <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
          EFrSponge: FrSponge<Fr<G>>,
         >
@@ -62,7 +62,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         (fq_sponge, oracles)
     }
 
-    pub fn genCachedValues
+    pub fn gen_cached_values
     (
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>
@@ -82,7 +82,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         &self,
         index: &Index<G>,
         oracles: &RandomOracles<Fr<G>>,
-        cachedValues: &CachedValues<Fr<G>>,
+        cached_values: &CachedValues<Fr<G>>,
         p_eval: &mut[Vec<Fr<G>>; 2],
     ) -> ()
     {
@@ -91,7 +91,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         // compute Lagrange base evaluation denominators
         let w = (0..self.public.len()).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
         let mut lagrange = w.iter().map(|w| oracles.zeta - w).collect::<Vec<_>>();
-        (0..self.public.len()).zip(w.iter()).for_each(|(_,w)| lagrange.push(cachedValues.zetaw - w));
+        (0..self.public.len()).zip(w.iter()).for_each(|(_,w)| lagrange.push(cached_values.zetaw - w));
         algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
@@ -100,15 +100,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         {
             (*p_eval)[0] = vec![(self.public.iter().zip(lagrange.iter()).
                 zip(index.domain.elements()).map(|((p, l), w)| -*l * p * &w).
-                fold(Fr::<G>::zero(), |x, y| x + &y)) * &(cachedValues.zeta1 - &Fr::<G>::one()) * &index.domain.size_inv];
+                fold(Fr::<G>::zero(), |x, y| x + &y)) * &(cached_values.zeta1 - &Fr::<G>::one()) * &index.domain.size_inv];
             (*p_eval)[1] = vec![(self.public.iter().zip(lagrange[self.public.len()..].iter()).
                 zip(index.domain.elements()).map(|((p, l), w)| -*l * p * &w).
-                fold(Fr::<G>::zero(), |x, y| x + &y)) * &index.domain.size_inv * &(cachedValues.zetaw.pow(&[n as u64]) - &Fr::<G>::one())];
+                fold(Fr::<G>::zero(), |x, y| x + &y)) * &index.domain.size_inv * &(cached_values.zetaw.pow(&[n as u64]) - &Fr::<G>::one())];
         }
     }
 
     // This function constructs the values `u` and `v` in the random oracle.
-    pub fn finalizeOracles
+    pub fn finalize_oracles
         <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
          EFrSponge: FrSponge<Fr<G>>,
         >
@@ -160,19 +160,17 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 *p_comm = PolyComm::<G>::multi_scalar_mul
                     (&index.srs.get_ref().lgr_comm.iter().map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
 
-                let (mut fq_sponge, mut oracles) = proof.setupOracles::<EFqSponge, EFrSponge>(index, p_comm);
+                let (mut fq_sponge, mut oracles) = proof.setup_oracles::<EFqSponge, EFrSponge>(index, p_comm);
                 // prepare some often used values
-                let cachedValues = ProverProof::<G>::genCachedValues(index, &oracles);
-                proof.p_eval(index, &oracles, &cachedValues, p_eval);
-                {
-                    proof.finalizeOracles::<EFqSponge, EFrSponge>(index, p_eval, &mut fq_sponge, &mut oracles);
-                }
+                let cached_values = ProverProof::<G>::gen_cached_values(index, &oracles);
+                proof.p_eval(index, &oracles, &cached_values, p_eval);
+                proof.finalize_oracles::<EFqSponge, EFrSponge>(index, p_eval, &mut fq_sponge, &mut oracles);
 
                 // evaluate committed polynoms
                 let evlp =
                 [
                     oracles.zeta.pow(&[index.max_poly_size as u64]),
-                    cachedValues.zetaw.pow(&[index.max_poly_size as u64])
+                    cached_values.zetaw.pow(&[index.max_poly_size as u64])
                 ];
 
                 let evals = (0..2).map
@@ -212,13 +210,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 // generic constraint/permutation linearization scalars
                 s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
                 // poseidon constraint linearization scalars
-                s.extend(&ConstraintSystem::psdn_scalars(&evals, &cachedValues.alpha));
+                s.extend(&ConstraintSystem::psdn_scalars(&evals, &cached_values.alpha));
                 // EC addition constraint linearization scalars
-                s.extend(&ConstraintSystem::ecad_scalars(&evals, &cachedValues.alpha));
+                s.extend(&ConstraintSystem::ecad_scalars(&evals, &cached_values.alpha));
                 // EC variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::vbmul_scalars(&evals, &cachedValues.alpha));
+                s.extend(&ConstraintSystem::vbmul_scalars(&evals, &cached_values.alpha));
                 // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.srs.get_ref().endo_r, &cachedValues.alpha));
+                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.srs.get_ref().endo_r, &cached_values.alpha));
 
                 *f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
@@ -230,17 +228,17 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
                     (evals[0].o + &oracles.gamma) * &evals[1].z * &oracles.alpha)
                     -
-                    evals[0].t * &(cachedValues.zeta1 - &Fr::<G>::one()))
+                    evals[0].t * &(cached_values.zeta1 - &Fr::<G>::one()))
                     *
                     &(oracles.zeta - &Fr::<G>::one())
                 !=
-                    (cachedValues.zeta1 - &Fr::<G>::one()) * &cachedValues.alpha[0]
+                    (cached_values.zeta1 - &Fr::<G>::one()) * &cached_values.alpha[0]
                 {return Err(ProofError::ProofVerification)}
 
                 // prepare for the opening proof verification
                 Ok((
                     fq_sponge,
-                    vec![oracles.zeta, cachedValues.zetaw],
+                    vec![oracles.zeta, cached_values.zetaw],
                     oracles.v,
                     oracles.u,
                     vec!
