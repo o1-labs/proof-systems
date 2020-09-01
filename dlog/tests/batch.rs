@@ -11,6 +11,7 @@ use oracle::utils::PolyUtils;
 
 use oracle::FqSponge;
 use oracle::sponge::{DefaultFqSponge};
+use oracle::poseidon::{PlonkSpongeConstants as SC};
 
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -40,7 +41,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let mut proofs = Vec::
         <(
-            DefaultFqSponge<Bn_382GParameters>,
+            DefaultFqSponge<Bn_382GParameters, SC>,
             Vec<Fr>,
             Fr,
             Fr,
@@ -84,9 +85,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         ).collect::<Vec<_>>();
 
         start = Instant::now();
-        let sponge = DefaultFqSponge::<Bn_382GParameters>::new(oracle::bn_382::fp::params());
+        let sponge = DefaultFqSponge::<Bn_382GParameters, SC>::new(oracle::bn_382::fp::params());
 
-        let proof = srs.open::<DefaultFqSponge<Bn_382GParameters>>
+        let proof = srs.open::<DefaultFqSponge<Bn_382GParameters, SC>>
         (
             &group_map,
             (0..a.len()).map
@@ -122,7 +123,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         println!("{}{:?}", "open time: ".magenta(), open);
 
         let start = Instant::now();
-        assert_eq!(srs.verify::<DefaultFqSponge<Bn_382GParameters>>
+        assert_eq!(srs.verify::<DefaultFqSponge<Bn_382GParameters, SC>>
             (
                 &group_map,
                 &mut proofs,

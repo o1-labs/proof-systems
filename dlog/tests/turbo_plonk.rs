@@ -22,7 +22,7 @@ This source file tests constraints for the following computatios:
 **********************************************************************************************************/
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge}, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
@@ -109,7 +109,7 @@ fn turbo_plonk()
     // custom constraints for Poseidon hash function permutation
 
     // ROUNDS_FULL full rounds constraint gates
-    for j in 0..ROUNDS_FULL
+    for j in 0..SC::ROUNDS_FULL
     {
         gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]]));
     }
@@ -159,7 +159,7 @@ fn turbo_plonk()
         oracle::bn_382::fp::params(),
         SRSSpec::Use(&srs)
     );
-    
+
     positive(&index);
     negative(&index);
 }
@@ -168,7 +168,7 @@ fn positive(index: &Index<Affine>)
 where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
     let params: ArithmeticSpongeParams<Fr> = oracle::bn_382::fq::params();
-    let mut sponge = ArithmeticSponge::<Fr>::new();
+    let mut sponge = ArithmeticSponge::<Fr, SC>::new();
 
     let z = Fr::zero();
     let mut batch = Vec::new();
@@ -189,7 +189,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
         let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
         let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
-        
+
         // EC addition witness for custom constraints
 
         l.push(y1);
@@ -200,21 +200,21 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         o.push(x3);
 
         //  witness for Poseidon permutation custom constraints
-         
+
         sponge.state = vec![x1, x2, x3];
         l.push(sponge.state[0]);
         r.push(sponge.state[1]);
         o.push(sponge.state[2]);
 
         // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in 0..ROUNDS_FULL
+        for j in 0..SC::ROUNDS_FULL
         {
             sponge.full_round(j, &params);
             l.push(sponge.state[0]);
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
         }
-        
+
         // variable base scalar multiplication witness for custom constraints
         // test with 2-bit scalar
 
@@ -242,7 +242,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         l.push(s2x);
         r.push(x1);
         o.push(s2y);
-        
+
         // group endomorphism optimised variable base scalar multiplication witness for custom constraints
         // test with 8-bit scalar 11001001
 
@@ -338,7 +338,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(index.cs.verify(&witness), true);
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(
+        batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
             &group_map, &witness, &index).unwrap());
 
         print!("{:?}\r", test);
@@ -348,7 +348,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &vec![batch[0].clone()], &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &vec![batch[0].clone()], &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
         Ok(_) => {}
@@ -357,7 +357,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
@@ -376,8 +376,8 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let y3 = <Fr as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
 
     let s = (y2 - &y1) / &(x2 - &x1);
-    
-    let mut sponge = ArithmeticSponge::<Fr>::new();
+
+    let mut sponge = ArithmeticSponge::<Fr, SC>::new();
     let params: ArithmeticSpongeParams<Fr> = oracle::bn_382::fq::params();
     sponge.state = vec![x1, x2, x3];
     let z = Fr::zero();
@@ -385,9 +385,9 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
     let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
     let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
-    
+
     // ROUNDS_FULL full rounds constraint gates
-    for j in 0..ROUNDS_FULL
+    for j in 0..SC::ROUNDS_FULL
     {
         sponge.full_round(j, &params);
         l.push(sponge.state[0]);

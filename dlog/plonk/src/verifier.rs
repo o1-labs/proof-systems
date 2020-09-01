@@ -68,7 +68,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     s.absorb(&fq_sponge.clone().digest());
                     s
                 };
-        
+
                 // prepare some often used values
                 let zeta1 = oracles.zeta.pow(&[n]);
                 let zetaw = oracles.zeta * &index.domain.group_gen;
@@ -82,7 +82,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
                 // evaluate public input polynomials
-                // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain 
+                // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
                 if proof.public.len() > 0
                 {
                     (*p_eval)[0] = vec![(proof.public.iter().zip(lagrange.iter()).
@@ -104,7 +104,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     oracles.zeta.pow(&[index.max_poly_size as u64]),
                     zetaw.pow(&[index.max_poly_size as u64])
                 ];
-                
+
                 let evals = (0..2).map
                 (
                     |i| ProofEvaluations::<Fr<G>>

@@ -6,8 +6,9 @@ This source file implements Plonk constraint gate primitive.
 
 use algebra::FftField;
 pub use super::{wires::GateWires, constraints::ConstraintSystem};
+use oracle::poseidon::{PlonkSpongeConstants, SpongeConstants};
 
-pub const SPONGE_WIDTH: usize = oracle::poseidon::SPONGE_CAPACITY + oracle::poseidon::SPONGE_RATE;
+pub const SPONGE_WIDTH: usize = PlonkSpongeConstants::SPONGE_CAPACITY + PlonkSpongeConstants::SPONGE_RATE;
 
 #[derive(Clone)]
 #[derive(PartialEq)]
@@ -21,9 +22,9 @@ pub enum GateType
     Add1,       // Gate constraining EC addition in Affine form
     Add2,       // Gate constraining EC point abscissa distinctness
 
-    Vbmul1,     // Gate constraining EC variable base scalar multiplication 
-    Vbmul2,     // Gate constraining EC variable base scalar multiplication 
-    Vbmul3,     // Gate constraining EC variable base scalar multiplication 
+    Vbmul1,     // Gate constraining EC variable base scalar multiplication
+    Vbmul2,     // Gate constraining EC variable base scalar multiplication
+    Vbmul3,     // Gate constraining EC variable base scalar multiplication
 
     Endomul1,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
     Endomul2,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization

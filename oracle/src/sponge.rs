@@ -1,4 +1,4 @@
-use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
+use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeConstants};
 use algebra::{
     curves::{short_weierstrass_jacobian::GroupAffine, SWModelParameters},
     One, Zero,
@@ -66,15 +66,15 @@ impl<F : PrimeField> ScalarChallenge<F> {
 }
 
 #[derive(Clone)]
-pub struct DefaultFqSponge<P: SWModelParameters> {
+pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
     pub params: ArithmeticSpongeParams<P::BaseField>,
-    pub sponge: ArithmeticSponge<P::BaseField>,
+    pub sponge: ArithmeticSponge<P::BaseField, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
-pub struct DefaultFrSponge<Fr: Field> {
+pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
     pub params: ArithmeticSpongeParams<Fr>,
-    pub sponge: ArithmeticSponge<Fr>,
+    pub sponge: ArithmeticSponge<Fr, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
@@ -87,7 +87,7 @@ fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
     res
 }
 
-impl<Fr: PrimeField> DefaultFrSponge<Fr> {
+impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
     pub fn squeeze(&mut self, num_limbs: usize) -> Fr {
         if self.last_squeezed.len() >= num_limbs {
             let last_squeezed = self.last_squeezed.clone();
@@ -102,7 +102,7 @@ impl<Fr: PrimeField> DefaultFrSponge<Fr> {
     }
 }
 
-impl<P: SWModelParameters> DefaultFqSponge<P>
+impl<P: SWModelParameters, SC: SpongeConstants> DefaultFqSponge<P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
@@ -131,13 +131,13 @@ where
     }
 }
 
-impl<P: SWModelParameters> FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField>
-    for DefaultFqSponge<P>
+impl<P: SWModelParameters, SC: SpongeConstants> FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField>
+    for DefaultFqSponge<P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
-    fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P> {
+    fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         DefaultFqSponge {
             params,
             sponge: ArithmeticSponge::new(),

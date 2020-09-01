@@ -2,7 +2,7 @@ use plonk_circuits::scalars::ProofEvaluations;
 use algebra::{
     Field, PrimeField,
 };
-use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
+use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {
@@ -12,8 +12,8 @@ pub trait FrSponge<Fr: Field> {
     fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>);
 }
 
-impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr> {
-    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr> {
+impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
+    fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
         DefaultFrSponge {
             params,
             sponge: ArithmeticSponge::new(),

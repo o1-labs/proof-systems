@@ -50,7 +50,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         group_map: &G::Map,
         witness: &Vec::<Fr<G>>,
         index: &Index<G>,
-    ) 
+    )
     -> Result<Self, ProofError>
     {
         let n = index.cs.domain.d1.size as usize;
@@ -123,7 +123,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         oracles.alpha = fq_sponge.challenge();
         let mut alpha = oracles.alpha;
         let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
-        
+
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&l, &r, &o, &z);
 
@@ -204,10 +204,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 o: DensePolynomial::eval_polynomial(&es.o, e1),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
                 t: DensePolynomial::eval_polynomial(&es.t, e1),
-    
+
                 sigma1: DensePolynomial::eval_polynomial(&es.sigma1, e1),
                 sigma2: DensePolynomial::eval_polynomial(&es.sigma2, e1),
-    
+
                 f: Fr::<G>::zero(),
             }
         ).collect::<Vec<_>>();

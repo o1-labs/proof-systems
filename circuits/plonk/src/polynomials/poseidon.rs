@@ -1,17 +1,17 @@
 /*****************************************************************************************************************
 
-This source file implements Posedon constraint polynomials.
+This source file implements Poseidon constraint polynomials.
 
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::sbox};
+use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{sbox, PlonkSpongeConstants as SC}};
 use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // poseidon quotient poly contribution computation f^5 + c(x) - f(wx)
     pub fn psdn_quot
@@ -26,9 +26,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut r = polys.d8.this.r.clone();
         let mut o = polys.d8.this.o.clone();
 
-        l.evals.iter_mut().for_each(|l| *l = sbox(*l));
-        r.evals.iter_mut().for_each(|r| *r = sbox(*r));
-        o.evals.iter_mut().for_each(|o| *o = sbox(*o));
+        l.evals.iter_mut().for_each(|l| *l = sbox::<F, SC>(*l));
+        r.evals.iter_mut().for_each(|r| *r = sbox::<F, SC>(*r));
+        o.evals.iter_mut().for_each(|o| *o = sbox::<F, SC>(*o));
 
         (
             &self.ps4 * &(&(&polys.d4.next.l.scale(-alpha[1]) - &polys.d4.next.r.scale(alpha[2])) - &polys.d4.next.o.scale(alpha[3])),
@@ -39,7 +39,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
     pub fn psdn_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> Vec<F>
     {
-        let (l, r, o) = (sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o));
+        let (l, r, o) = (sbox::<F, SC>(evals[0].l), sbox::<F, SC>(evals[0].r), sbox::<F, SC>(evals[0].o));
         vec!
         [
             ((l + &o - &evals[1].l) * &alpha[1]) + &((l + &r - &evals[1].r) * &alpha[2]) + &((r + &o - &evals[1].o) * &alpha[3]),
