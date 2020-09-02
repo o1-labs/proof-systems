@@ -16,8 +16,8 @@ use algebra::{
 // h = c * g^d, where c is in the orthogonal complement of < g >
 // algorithm: first compute c = (h^2^k)^{inv(2^k) mod t}
 fn decompose<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(h : Fp256<P>) -> (Fp256<P>, u64) {
-    let e = P::TWO_ADICITY as u32;
-    let exponent = u64::pow(2, e);
+    let k = P::TWO_ADICITY as u32;
+    let exponent = u64::pow(2, k);
     let t_component : Fp256<P> = h.pow([exponent]);
     let c =  t_component.pow(P::TWO_TO_TWO_ADICITY_INV.as_ref());
     let two_to_k_component =  c.inverse() * h;
@@ -124,10 +124,9 @@ pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters>{
 pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters>(b : Fp256<P>)->  Witness_correct_sqrt<P>{
     let (c,d) : (Fp256<P>, u64) = decompose(b);
     let cwitness : Fp256<P> = witness_c_order(c,P::TWO_ADICITY);
-    let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt<P> { c: c, d: d, c_inverse_order : cwitness, d_in_binary : dwitness};
-
+    let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt<P> { c: c, d: d, c_inverse_order : cwitness};
+    witnesscd
 }
 
 
-//todo, first compute c then derive d
-//2^k, k is two_adicity
+
