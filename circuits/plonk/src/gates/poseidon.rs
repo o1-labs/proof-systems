@@ -8,17 +8,17 @@ Constraint vector format:
 
 *****************************************************************************************************************/
 
-use algebra::{FftField};
-use oracle::poseidon::{sbox, PlonkSpongeConstants as SC};
-use crate::gate::{CircuitGate, GateType, SPONGE_WIDTH};
-use crate::wires::GateWires;
+use algebra::FftField;
+use oracle::poseidon::{SpongeConstants, PlonkSpongeConstants, sbox};
+use crate::{wires::GateWires, constraints::ConstraintSystem};
+use crate::gate::{CircuitGate, GateType};
 
 impl<F: FftField> CircuitGate<F>
 {
     pub fn create_poseidon
     (
         wires: GateWires,
-        rc: [F; SPONGE_WIDTH]
+        rc: [F; PlonkSpongeConstants::SPONGE_WIDTH]
     ) -> Self
     {
         CircuitGate
@@ -29,15 +29,21 @@ impl<F: FftField> CircuitGate<F>
         }
     }
 
-    pub fn verify_poseidon(&self, next: &Self, witness: &Vec<F>) -> bool
+    pub fn verify_poseidon(&self, next: &Self, witness: &Vec<F>, cs: &ConstraintSystem<F>) -> bool
     {
-        self.typ == GateType::Poseidon
-        &&
-        sbox::<F, SC>(witness[self.wires.l.0]) + &sbox::<F, SC>(witness[self.wires.o.0]) + &self.rc()[0] == witness[next.wires.l.0]
-        &&
-        sbox::<F, SC>(witness[self.wires.l.0]) + &sbox::<F, SC>(witness[self.wires.r.0]) + &self.rc()[1] == witness[next.wires.r.0]
-        &&
-        sbox::<F, SC>(witness[self.wires.r.0]) + &sbox::<F, SC>(witness[self.wires.o.0]) + &self.rc()[2] == witness[next.wires.o.0]
+        let rc = self.rc();
+        let sbox =
+        [
+            sbox::<F, PlonkSpongeConstants>(witness[self.wires.l.0]),
+            sbox::<F, PlonkSpongeConstants>(witness[self.wires.r.0]),
+            sbox::<F, PlonkSpongeConstants>(witness[self.wires.o.0])
+        ];
+        let next = [witness[next.wires.l.0], witness[next.wires.r.0], witness[next.wires.o.0]];
+
+        let perm = cs.fr_sponge_params.mds.iter().enumerate().
+            map(|(i, m)| rc[i] + &sbox.iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).collect::<Vec<_>>();
+
+        self.typ == GateType::Poseidon && !perm.iter().zip(next.iter()).any(|(p, n)| p != n)
     }
 
     pub fn ps(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}
