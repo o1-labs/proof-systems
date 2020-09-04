@@ -26,7 +26,7 @@ use marlin_protocol_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
 use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
 use marlin_protocol_dlog::{prover::{ProverProof}};
-use oracle::{sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::ArithmeticSpongeParams};
+use oracle::{sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}};
 use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use rand_core::OsRng;
 use ff_fft::{DensePolynomial};
@@ -150,12 +150,12 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
       ( chals, comm )
     };
 
-    batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &witness, &index, vec![prev], rng).unwrap());
+    batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &witness, &index, vec![prev], rng).unwrap());
     let prover_time = start.elapsed();
 
     let verifier_index = index.verifier_index();
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters>, DefaultFrSponge<Fr>>(&group_map, &batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, &verifier_index, rng)
     {
         false => {panic!("Failure verifying the prover's proofs in batch")},
         true => {}

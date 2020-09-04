@@ -12,7 +12,7 @@ pub use super::gate::{CircuitGate, GateType};
 pub use super::domains::EvaluationDomains;
 pub use super::wires::GateWires;
 use blake2::{Blake2b, Digest};
-use oracle::utils::EvalUtils;
+use oracle::utils::{EvalUtils};
 use array_init::array_init;
 
 #[derive(Clone)]
@@ -22,7 +22,7 @@ pub struct ConstraintSystem<F: FftField>
     pub domain: EvaluationDomains<F>,       // evaluation domains
     pub gates:  Vec<CircuitGate<F>>,        // circuit gates
 
-    // POLYNOMIALS OVER THE MONOMIAL BASE    
+    // POLYNOMIALS OVER THE MONOMIAL BASE
 
     pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
 
@@ -36,17 +36,17 @@ pub struct ConstraintSystem<F: FftField>
     // poseidon selector polynomials
     pub rcm:    [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
     pub psm:    DensePolynomial<F>,         // poseidon constraint selector polynomial
-    
+
     // EC point addition constraint polynomials
     pub addm:   DensePolynomial<F>,         // EC point addition constraint selector polynomial
-    
+
     // variable base scalar multiplication constraint polynomials
     pub mul1m:  DensePolynomial<F>,         // mul1m constraint selector polynomial
     pub mul2m:  DensePolynomial<F>,         // mul1m constraint selector polynomial
     pub emul1m: DensePolynomial<F>,         // emul1m constraint selector polynomial
     pub emul2m: DensePolynomial<F>,         // emul2m constraint selector polynomial
     pub emul3m: DensePolynomial<F>,         // emul3m constraint selector polynomial
-    
+
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
@@ -84,7 +84,7 @@ pub struct ConstraintSystem<F: FftField>
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     pub fn create
     (
@@ -135,7 +135,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let qrm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.qr()).collect(), domain.d1).interpolate();
         let qom = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.qo()).collect(), domain.d1).interpolate();
         let qmm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.qm()).collect(), domain.d1).interpolate();
-        
+
         // compute poseidon constraint polynomials
         let psm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ps()).collect(), domain.d1).interpolate();
 
@@ -166,13 +166,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             qom,
             qmm,
             qc: Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.qc()).collect(), domain.d1).interpolate(),
-            
+
             // poseidon constraint polynomials
             rcm: array_init(|i| Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.rc()[i]).collect(), domain.d1).interpolate()),
             ps4: psm.evaluate_over_domain_by_ref(domain.d4),
             ps8: psm.evaluate_over_domain_by_ref(domain.d8),
             psm,
-            
+
             // ECC arithmetic constraint polynomials
             addl3: addm.evaluate_over_domain_by_ref(domain.d4),
             addl4: addm.evaluate_over_domain_by_ref(domain.d8),
@@ -187,7 +187,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             emul1m,
             emul2m,
             emul3m,
-            
+
             l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
             l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8),
             gates,
@@ -197,7 +197,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             fr_sponge_params,
         })
     }
-    
+
     // This function verifies the consistency of the wire
     // assignements (witness) against the constraints
     //     witness: wire assignement witness
@@ -216,7 +216,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             witness[self.gates[i].wires.l.1] != witness[self.gates[i].wires.l.0] ||
             witness[self.gates[i].wires.r.1] != witness[self.gates[i].wires.r.0] ||
             witness[self.gates[i].wires.o.1] != witness[self.gates[i].wires.o.0] ||
-            
+
             // verify witness against constraints
             !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]} else {&self.gates[i+1]}, witness, &self)
             {
@@ -265,7 +265,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         WitnessOverDomains
         {
             d4: WitnessShifts
-            {                
+            {
                 next: WitnessEvals
                 {
                     l: l4.shift(4),

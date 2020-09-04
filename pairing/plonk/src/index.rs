@@ -57,7 +57,7 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
 
         URS::<E>::create
         (
-            
+
             degree,
             vec![],
         rng )

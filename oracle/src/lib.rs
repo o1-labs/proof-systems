@@ -16,4 +16,3 @@ pub trait FqSponge<Fq: Field, G, Fr> {
 
     fn digest(self) -> Fr;
 }
-

@@ -54,7 +54,7 @@ pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 
     // polynomial commitment keys
     pub srs: SRSValue<'a, G>,
-    
+
     // maximal size of polynomial section
     pub max_poly_size: usize,
 
@@ -108,7 +108,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             SRSValue::Value(s) => SRSValue::Value(s.clone()),
             SRSValue::Ref(x) => SRSValue::Ref(x)
         };
-        
+
         VerifierIndex
         {
             domain: self.cs.domain.d1,
@@ -139,7 +139,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             o: self.cs.o,
         }
     }
-    
+
     // this function compiles the index from constraints
     pub fn create
     (

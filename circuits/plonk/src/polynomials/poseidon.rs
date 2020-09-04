@@ -6,7 +6,7 @@ This source file implements Posedon constraint polynomials.
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{sbox, ArithmeticSpongeParams}};
+use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{PlonkSpongeConstants,sbox, ArithmeticSpongeParams}};
 use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
@@ -24,7 +24,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         if self.psm.is_zero() {return (self.ps4.clone(), self.ps8.clone(), DensePolynomial::<F>::zero())}
 
         let mut lro = [polys.d8.this.l.clone(), polys.d8.this.r.clone(), polys.d8.this.o.clone()];
-        lro.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox(*p)));
+        lro.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p)));
 
         let scalers = (0..params.mds.len()).
             map(|i| (0..params.mds[i].len()).fold(F::zero(), |x, j| alpha[j+1] * params.mds[j][i] + x)).
@@ -45,8 +45,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> Vec<F>
     {
         let lro = params.mds.iter().
-            map(|m| [sbox(evals[0].l), sbox(evals[0].r), sbox(evals[0].o)].iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).
-            collect::<Vec<_>>();
+            map
+            (
+                |m|
+                [
+                    sbox::<F, PlonkSpongeConstants>(evals[0].l),
+                    sbox::<F, PlonkSpongeConstants>(evals[0].r),
+                    sbox::<F, PlonkSpongeConstants>(evals[0].o)
+                ].iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).collect::<Vec<_>>();
 
         vec!
         [

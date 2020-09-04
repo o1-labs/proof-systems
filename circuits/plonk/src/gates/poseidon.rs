@@ -9,7 +9,7 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use oracle::poseidon::{sbox, SPONGE_WIDTH};
+use oracle::poseidon::{SpongeConstants, PlonkSpongeConstants, sbox};
 use crate::{wires::GateWires, constraints::ConstraintSystem};
 use crate::gate::{CircuitGate, GateType};
 
@@ -18,7 +18,7 @@ impl<F: FftField> CircuitGate<F>
     pub fn create_poseidon
     (
         wires: GateWires,
-        rc: [F; SPONGE_WIDTH]
+        rc: [F; PlonkSpongeConstants::SPONGE_WIDTH]
     ) -> Self
     {
         CircuitGate
@@ -32,7 +32,12 @@ impl<F: FftField> CircuitGate<F>
     pub fn verify_poseidon(&self, next: &Self, witness: &Vec<F>, cs: &ConstraintSystem<F>) -> bool
     {
         let rc = self.rc();
-        let sbox = [sbox(witness[self.wires.l.0]), sbox(witness[self.wires.r.0]), sbox(witness[self.wires.o.0])];
+        let sbox =
+        [
+            sbox::<F, PlonkSpongeConstants>(witness[self.wires.l.0]),
+            sbox::<F, PlonkSpongeConstants>(witness[self.wires.r.0]),
+            sbox::<F, PlonkSpongeConstants>(witness[self.wires.o.0])
+        ];
         let next = [witness[next.wires.l.0], witness[next.wires.r.0], witness[next.wires.o.0]];
 
         let perm = cs.fr_sponge_params.mds.iter().enumerate().

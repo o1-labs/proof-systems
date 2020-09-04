@@ -4,18 +4,19 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
-use commitment_dlog::{srs::SRS, commitment::CommitmentCurve};
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
+use algebra::{Field, tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use ff_fft::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
 use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
-const PERIOD: usize = ROUNDS_FULL + 1;
+const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
 const MAX_SIZE: usize = 40000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
@@ -35,7 +36,7 @@ fn poseidon_tweedledum()
     for _ in 0..NUM_POS
     {
         // ROUNDS_FULL full rounds constraint gates
-        for j in 0..ROUNDS_FULL
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL
         {
             gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
             i+=1;
@@ -53,7 +54,7 @@ fn poseidon_tweedledum()
         oracle::tweedle::fp::params(),
         SRSSpec::Use(&srs)
     );
-    
+
     positive(&index);
 }
 
@@ -62,7 +63,7 @@ fn positive(index: &Index<Affine>)
     let rng = &mut OsRng;
 
     let params = oracle::tweedle::fq::params();
-    let mut sponge = ArithmeticSponge::<Fq>::new();
+    let mut sponge = ArithmeticSponge::<Fq, PlonkSpongeConstants>::new();
 
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -70,8 +71,8 @@ fn positive(index: &Index<Affine>)
     println!("{}{:?}", "Circuit size: ".yellow(), N);
     println!("{}{:?}", "Polycommitment chunk size: ".yellow(), MAX_SIZE);
     println!("{}{:?}", "Number oh Poseidon hashes in the circuit: ".yellow(), NUM_POS);
-    println!("{}{:?}", "Full rounds: ".yellow(), ROUNDS_FULL);
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SPONGE_BOX);
+    println!("{}{:?}", "Full rounds: ".yellow(), PlonkSpongeConstants::ROUNDS_FULL);
+    println!("{}{:?}", "Sbox alpha: ".yellow(), PlonkSpongeConstants::SPONGE_BOX);
     println!("{}", "Base curve: tweedledum".green());
     println!();
     println!("{}", "Prover zk-proof computation".green());
@@ -84,7 +85,7 @@ fn positive(index: &Index<Affine>)
         let mut o: Vec<Fq> = Vec::with_capacity(N);
 
         let (x, y, z) = (Fq::rand(rng), Fq::rand(rng), Fq::rand(rng));
-        
+
         //  witness for Poseidon permutation custom constraints
         for _ in 0..NUM_POS
         {
@@ -94,7 +95,7 @@ fn positive(index: &Index<Affine>)
             o.push(sponge.state[2]);
 
             // HALF_ROUNDS_FULL full rounds
-            for j in 0..ROUNDS_FULL
+            for j in 0..PlonkSpongeConstants::ROUNDS_FULL
             {
                 sponge.full_round(j, &params);
                 l.push(sponge.state[0]);
@@ -109,9 +110,21 @@ fn positive(index: &Index<Affine>)
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&witness), true);
 
+        let prev = {
+            let k = ceil_log2(index.srs.get_ref().g.len());
+            let chals : Vec<_> = (0..k).map(|_| Fq::rand(rng)).collect();
+            let comm = {
+                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
+                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                index.srs.get_ref().commit(&b, None)
+            };
+            ( chals, comm )
+        };
+
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledumParameters>, DefaultFrSponge<Fq>>(
-            &group_map, &witness, &index).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(
+            &group_map, &witness, &index, vec![prev]).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -122,7 +135,7 @@ fn positive(index: &Index<Affine>)
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters>, DefaultFrSponge<Fq>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(&group_map, &batch, &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
