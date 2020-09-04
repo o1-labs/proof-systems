@@ -17,7 +17,7 @@ pub trait SpongeConstants {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize;
-    const FULL_MDX: bool;
+    const FULL_MDS: bool;
 }
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ impl SpongeConstants for MarlinSpongeConstants {
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize = 17;
-    const FULL_MDX: bool = false;
+    const FULL_MDS: bool = false;
 }
 
 #[derive(Clone)]
@@ -47,7 +47,7 @@ impl SpongeConstants for PlonkSpongeConstants {
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize = 5;
-    const FULL_MDX: bool = true;
+    const FULL_MDS: bool = true;
 }
 
 pub trait Sponge<Input, Digest> {
@@ -83,7 +83,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     fn apply_mds_matrix(&mut self, params: &ArithmeticSpongeParams<F>) {
-        self.state = if SC::FULL_MDX
+        self.state = if SC::FULL_MDS
         {
             params.mds.iter().
                 map(|m| self.state.iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).collect()
