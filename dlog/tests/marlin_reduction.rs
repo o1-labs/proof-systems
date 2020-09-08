@@ -117,28 +117,42 @@ fn test
     b: CsMat<Fr>,
     c: CsMat<Fr>,
     witness: Vec<Fr>,
-    srs_size: usize,
+    min_srs_size: usize,
 ) -> (Duration, Duration)
 where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
     let rng = &mut OsRng;
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let index = Index::<Affine>::create
-    (
-        a,
-        b,
-        c,
-        4,
-        srs_size,
-        oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
-        oracle::bn_382::fp::params(),
-        SRSSpec::Generate
-    ).unwrap();
 
-    let mut batch = Vec::new();
+    let num_different_indexes = 2;
+    let srs_size = |i : usize| -> usize {
+        // TODO: Enable this when this works across different SRS lengths
+        let variable_sizes = false;
+        if variable_sizes {
+            (i + 1) * min_srs_size
+        } else {
+            min_srs_size
+        }
+    };
+
+    let indexes : Vec<_> = (0..num_different_indexes).map(|i|
+        Index::<Affine>::create
+        (
+            a.clone(),
+            b.clone(),
+            c.clone(),
+            4,
+            srs_size(i),
+            oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
+            oracle::bn_382::fp::params(),
+            SRSSpec::Generate
+        ).unwrap()
+    ).collect();
+
     let mut start = Instant::now();
 
     let prev = {
+      let index = &indexes[0];
       let k = ceil_log2(index.srs.get_ref().g.len());
       let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
       let comm = {
