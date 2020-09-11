@@ -19,10 +19,17 @@ fn decompose<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(h : F
     let exponent = u64::pow(2, k);
     let t_component : Fp256<P> = h.pow([exponent]);
     let c =  t_component.pow(P::TWO_TO_TWO_ADICITY_INV.as_ref());
-    let two_to_k_component =  c.inverse() * h;
+    let two_to_k_component =  c.inverse().unwrap() * h;
     let d = two_adic_discrete_log(two_to_k_component);
     (c,d)
 }
+
+fn compose<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(c: Fp256<P>, d: u64) ->  Fp256<P> {
+    let g : Fp256<P> = FftField::two_adic_root_of_unity();
+    let h : Fp256<P> = c * g.pow([d]);
+    h
+}
+
 
 // Given 
 // - an order p field F with p - 1 = t * 2^e, t odd, g an element of order 2^e in F,
@@ -80,34 +87,30 @@ pub trait DetSquareRootParameters : FftParameters {
 }
 
 pub trait DetSquareRootField : FftField {
-    type DetSquareRootParams : DetSquareRootParameters;
-    fn det_sqrt<DetSquareRootParams>(&self) -> Option<Self>;
+    fn det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(&self) -> Option<Self>;
 
 }
 
-//impl<F : FftField + SquareRootField, P : DetSquareRootParameters> DetSquareRootField for F{
-//    type DetSquareRootParams = P;
- //   fn det_sqrt(&self)-> Option<Self>{
- //       match self.sqrt() {
- //           None => None,
- //           Some(x) => { 
- //               let (c,d) =decompose(x);
- //               let d_deterministic = d & (2.pow(63) as u64);
- //               (c, d_deterministic)
- //           }
- //       }
-//
- //   }
-//}
+impl<F : FftField + SquareRootField> DetSquareRootField for F{
+       fn det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(&self)-> Option<Self>{
+           match self.sqrt() {
+               None => None,
+               Some(x) => {
+                   let (c,d) =decompose::<P>(x as Fp256<P>);
+                   let d_deterministic = d & (2_i32.pow(63) as u64);
+                   let h = compose::<P>(c, d_deterministic);
+                   h
+               }
+           }
+    
+       }
+    }
 
 
-impl<F> DetSquareRootField for F
-    where 
-        F: FftField + SquareRootField,
-        F::DetSquareRootParams : DetSquareRootParameters,
-{
-    type DetSquareRootParams = Self::DetSquareRootParams;
-    fn det_sqrt<DetSquareRootParams>(&self)-> Option<Self>{
+/*
+impl<F : FftField + SquareRootField, P : DetSquareRootParameters> DetSquareRootField for F{
+    type DetSquareRootParams = P;
+    fn det_sqrt<P>(&self)-> Option<Self>{
         match self.sqrt() {
             None => None,
             Some(x) => { 
@@ -117,8 +120,27 @@ impl<F> DetSquareRootField for F
             }
         }
 
-    }
+   }
 }
+*/
+
+//impl<F: FftField + SquareRootField> DetSquareRootField for F
+ //   where 
+  //      F: FftField + SquareRootField
+//{
+ //   type DetSquareRootParams;
+  //  fn det_sqrt<DetSquareRootParams>(&self)-> Option<Self>{
+ //       match self.sqrt() {
+  //          None => None,
+  //          Some(x) => { 
+  //              let (c,d) =decompose(x);
+  //              let d_deterministic = d & (2.pow(63) as u64);
+  //              (c, d_deterministic)
+  //          }
+   //     }
+
+  //  }
+//}
 
 
 
@@ -143,8 +165,8 @@ pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters>{
 
 
 pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters>(b : Fp256<P>)->  Witness_correct_sqrt<P>{
-    let (c,d) : (Fp256<P>, u64) = decompose(b);
-    let cwitness : Fp256<P> = witness_c_order(c,P::TWO_ADICITY);
+    let (c,d) : (Fp256<P>, u64) = decompose::<P>(b);
+    let cwitness : Fp256<P> = witness_c_order::<P>(c);
     let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt::<P> { c: c, d: d, c_inverse_order : cwitness};
     witnesscd
 }
