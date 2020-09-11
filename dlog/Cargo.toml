@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { git = "https://github.com/o1-labs/zexe/", branch = "dlog-only-clean-cargo", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
-groupmap = { git = "https://github.com/o1-labs/zexe/", branch = "dlog-only-clean-cargo" }
-ff-fft = { git = "https://github.com/o1-labs/zexe/", branch = "dlog-only-clean-cargo" }
+algebra = { path = "../../zexe/algebra", branch = "dlog-only-clean-cargo", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
+groupmap = { path = "../../zexe/groupmap", branch = "dlog-only-clean-cargo" }
+ff-fft = { path = "../../zexe/ff-fft", branch = "dlog-only-clean-cargo" }
 commitment_dlog = { path = "commitment" }
 circuits_dlog = { path = "circuits" }
 protocol_dlog = { path = "protocol" }
