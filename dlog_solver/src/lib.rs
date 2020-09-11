@@ -91,12 +91,15 @@ pub trait DetSquareRootField : FftField {
 
 }
 
-impl<F : FftField + SquareRootField> DetSquareRootField for F{
+
+
+ 
+impl<Fp256 : FftField + SquareRootField> DetSquareRootField for Fp256{
        fn det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(&self)-> Option<Self>{
            match self.sqrt() {
                None => None,
                Some(x) => {
-                   let (c,d) =decompose::<P>(x as Fp256<P>);
+                   let (c,d) =decompose::<P>(x);
                    let d_deterministic = d & (2_i32.pow(63) as u64);
                    let h = compose::<P>(c, d_deterministic);
                    h
