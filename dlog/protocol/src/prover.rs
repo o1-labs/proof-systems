@@ -11,6 +11,7 @@ use commitment_dlog::commitment::{QnrField, CommitmentCurve, Utils, PolyComm, Op
 use circuits_dlog::index::Index;
 use crate::marlin_sponge::{FrSponge};
 use rand_core::RngCore;
+use dlog_solver::DetSquareRootField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -69,7 +70,7 @@ fn evals_from_coeffs<F: FftField>(
     Evaluations::<F>::from_vec_and_domain(v, GeneralEvaluationDomain::Radix2(d))
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField + DetSquareRootField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness

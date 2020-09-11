@@ -221,7 +221,7 @@ fn to_group<G : CommitmentCurve>(
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
+impl<G: CommitmentCurve> SRS<G> where G::ScalarField  : QnrField + DetSquareRootField {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound

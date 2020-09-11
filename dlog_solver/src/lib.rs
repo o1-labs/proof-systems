@@ -87,22 +87,22 @@ pub trait DetSquareRootParameters : FftParameters {
 }
 
 pub trait DetSquareRootField : FftField {
-    fn det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(&self) -> Option<Self>;
+    fn det_sqrt(&self) -> Option<Self>;
 
 }
 
 
 
  
-impl<Fp256 : FftField + SquareRootField> DetSquareRootField for Fp256{
-       fn det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(&self)-> Option<Self>{
+impl<P: FftParameters + Fp256Parameters + DetSquareRootParameters> DetSquareRootField for Fp256<P>{
+       fn det_sqrt(&self)-> Option<Self>{
            match self.sqrt() {
                None => None,
                Some(x) => {
                    let (c,d) =decompose::<P>(x);
                    let d_deterministic = d & (2_i32.pow(63) as u64);
                    let h = compose::<P>(c, d_deterministic);
-                   h
+                   Some(h)
                }
            }
     
@@ -167,12 +167,12 @@ pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters>{
 }
 
 
-pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters>(b : Fp256<P>)->  Witness_correct_sqrt<P>{
+pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(b : Fp256<P>)->  Witness_correct_sqrt<P>{
     let (c,d) : (Fp256<P>, u64) = decompose::<P>(b);
     let cwitness : Fp256<P> = witness_c_order::<P>(c);
     let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt::<P> { c: c, d: d, c_inverse_order : cwitness};
     witnesscd
 }
 
-
+ 
 

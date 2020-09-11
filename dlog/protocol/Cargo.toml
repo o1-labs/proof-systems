@@ -9,6 +9,7 @@ path = "src/lib.rs"
 [dependencies]
 algebra = { path = "../../../zexe/algebra", branch = "dlog-only-clean-cargo", features = [ "asm", "parallel", "bn_382", "tweedle" ] }
 ff-fft = { path = "../../../zexe/ff-fft", branch = "dlog-only-clean-cargo" }
+dlog_solver = { path = "../../dlog_solver", branch = "dlog_solver" }
 commitment_dlog = { path = "../commitment" }
 circuits_dlog = { path = "../circuits" }
 oracle = { path = "../../oracle" }

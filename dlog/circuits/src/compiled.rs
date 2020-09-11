@@ -9,6 +9,7 @@ use commitment_dlog::{srs::SRS, commitment::{QnrField, PolyComm, CommitmentCurve
 use oracle::rndoracle::ProofError;
 use algebra::{Field, AffineCurve, Zero,};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as Domain, GeneralEvaluationDomain};
+use dlog_solver::DetSquareRootField;
 pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -38,7 +39,7 @@ pub struct Compiled<G: CommitmentCurve> where G::ScalarField : QnrField
     pub rc_eval_b : Evaluations<Fr<G>>,
 }
 
-impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : QnrField
+impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : QnrField  + DetSquareRootField
 {
     // this function compiles the constraints
     //  srs: universal reference string
