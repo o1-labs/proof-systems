@@ -322,6 +322,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
     //     RETURN: commitment opening proof
     pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
+        rounds: usize,
         group_map: &G::Map,
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>)>, // vector of polynomial with optional degree bound
         elm: &Vec<Fr<G>>,                                     // vector of evaluation points
@@ -333,10 +334,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
         let t = sponge.challenge_fq();
         let u: G = to_group(group_map, t);
 
-        let rounds = ceil_log2(self.g.len());
-        let padded_length = 1 << rounds;
-
-        // TODO: Trim this to the degree of the largest polynomial
+        assert!((1 << rounds) <= self.g.len());
 
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
@@ -545,6 +543,11 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
 
         let padded_length = 1 << max_rounds;
 
+        /*
+        // No padding for now
+        assert_eq!(padded_length, nonzero_length);
+        */
+
         // TODO: This will need adjusting
         let padding = padded_length - nonzero_length;
         let mut points = vec![self.h];
@@ -566,6 +569,8 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
             let u: G = to_group(group_map, t);
 
             let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>(&self.endo_r, sponge);
+
+            assert!(chal.len() < max_rounds);
 
             sponge.absorb_g(&[opening.delta]);
             let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
