@@ -78,8 +78,8 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
         let mut srs = SRS
         {
-            g: v[0..depth].iter().map(|e| *e).collect(),
-            h: v[depth],
+            g: v[1..depth + 1].iter().map(|e| *e).collect(),
+            h: v[0],
             lgr_comm: Vec::new(),
             endo_r, endo_q
         };
