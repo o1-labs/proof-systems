@@ -22,7 +22,8 @@ use oracle::{FqSponge, sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
-pub use crate::QnrField;
+pub use crate::CommitmentField;
+use dlog_solver::DetSquareRootField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -89,7 +90,7 @@ pub struct Challenges<F> {
     pub chal_squared_inv : Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
+impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
@@ -118,7 +119,7 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
             cs
         };
 
-        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.sqrt().unwrap()).collect();
+        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.det_sqrt().unwrap()).collect();
         let chal_inv = {
             let mut cs = chal.clone();
             algebra::fields::batch_inversion(&mut cs);
@@ -196,7 +197,7 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -212,7 +213,7 @@ fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+QnrField, EFqSponge: Fq
     pre
 }
 
-fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -259,7 +260,7 @@ fn to_group<G : CommitmentCurve>(
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
+impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound

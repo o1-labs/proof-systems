@@ -5,7 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use ff_fft::Radix2EvaluationDomain as D;
-use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
+use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
 use plonk_circuits::constraints::ConstraintSystem;
 use oracle::poseidon::ArithmeticSpongeParams;
 use array_init::array_init;
@@ -34,7 +34,7 @@ pub enum SRSSpec <'a, G: CommitmentCurve>{
     Generate
 }
 
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : QnrField {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
     pub fn generate(size: usize, public: usize, circ: usize) -> SRS<G> {
         SRS::<G>::create(size, public, circ)
     }
@@ -47,7 +47,7 @@ impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G:
     }
 }
 
-pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
+pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : CommitmentField
 {
     // constraints system polynoms
     pub cs: ConstraintSystem<Fr<G>>,
@@ -101,7 +101,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : QnrField
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let srs = match &self.srs
