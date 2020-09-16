@@ -17,13 +17,6 @@ use rand_core::OsRng;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Clone)]
-pub struct CachedValues<Fs> {
-    pub zeta1: Fs,
-    pub zetaw: Fs,
-    pub alpha: Vec<Fs>,
-}
-
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
 
