@@ -14,7 +14,7 @@ plonk_circuits = { path = "../circuits/plonk" }
 plonk_protocol_dlog = { path = "plonk" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
-colored = "1.9.2"
+colored = "1.9.2" 
 rand = "0.7.3"
 sprs = "0.7.1"
 rayon = { version = "1" }

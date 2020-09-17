@@ -132,3 +132,16 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         println!("{}{:?}", "verification time: ".green(), start.elapsed());
     }
 }
+
+
+
+
+
+
+pub fn rand<R: Rng>(d: usize, rng: &mut R) -> Self {
+    let mut random_coeffs = Vec::new();
+    for _ in 0..=d {
+        random_coeffs.push(F::rand(rng));
+    }
+    Self::from_coefficients_vec(random_coeffs)
+}
