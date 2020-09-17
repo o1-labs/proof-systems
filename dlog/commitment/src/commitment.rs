@@ -217,7 +217,7 @@ fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + CommitmentField, EFqSpo
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
-    squeeze_square_challenge(endo_r, sponge).sqrt().unwrap()
+    squeeze_square_challenge(endo_r, sponge).det_sqrt().unwrap()
 }
 
 pub trait CommitmentCurve : AffineCurve {
