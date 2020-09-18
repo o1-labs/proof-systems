@@ -13,9 +13,11 @@ pub trait SpongeConstants {
     const ROUNDS_FULL: usize;
     const ROUNDS_PARTIAL: usize;
     const HALF_ROUNDS_FULL: usize;
+    const SPONGE_WIDTH: usize = 3;
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize;
+    const FULL_MDS: bool;
 }
 
 #[derive(Clone)]
@@ -27,8 +29,10 @@ impl SpongeConstants for MarlinSpongeConstants {
     const ROUNDS_PARTIAL: usize = 30;
     const HALF_ROUNDS_FULL: usize = 4;
     const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize = 17;
+    const FULL_MDS: bool = false;
 }
 
 #[derive(Clone)]
@@ -40,8 +44,10 @@ impl SpongeConstants for PlonkSpongeConstants {
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize = 5;
+    const FULL_MDS: bool = true;
 }
 
 pub trait Sponge<Input, Digest> {
@@ -55,16 +61,6 @@ pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
     x.pow([SC::SPONGE_BOX as u64])
 }
 
-/*
-Apply the matrix
-[[1, 0, 1],
- [1, 1, 0],
- [0, 1, 1]]
- */
-fn apply_near_mds_matrix<F: Field>(v: &Vec<F>) -> Vec<F> {
-    vec![v[0] + &v[2], v[0] + &v[1], v[1] + &v[2]]
-}
-
 #[derive(Clone, Debug)]
 pub enum SpongeState {
     Absorbed(usize),
@@ -74,6 +70,7 @@ pub enum SpongeState {
 #[derive(Clone)]
 pub struct ArithmeticSpongeParams<F: Field> {
     pub round_constants: Vec<Vec<F>>,
+    pub mds: Vec<Vec<F>>,
 }
 
 #[derive(Clone)]
@@ -85,14 +82,28 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
+    fn apply_mds_matrix(&mut self, params: &ArithmeticSpongeParams<F>) {
+        self.state = if SC::FULL_MDS
+        {
+            params.mds.iter().
+                map(|m| self.state.iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).collect()
+        }
+        else
+        {
+            vec!
+            [
+                self.state[0] + &self.state[2],
+                self.state[0] + &self.state[1],
+                self.state[1] + &self.state[2]
+            ]
+        };
+    }
+
     pub fn full_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
         for i in 0..self.state.len() {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
-        let new_state = apply_near_mds_matrix(&self.state);
-        for i in 0..new_state.len() {
-            self.state[i] = new_state[i];
-        }
+        self.apply_mds_matrix(params);
         for (i, x) in params.round_constants[r].iter().enumerate() {
             self.state[i].add_assign(x);
         }
@@ -106,10 +117,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             for i in 0..self.state.len() {
                 self.state[i] = sbox::<F, SC>(self.state[i]);
             }
-            let new_state = apply_near_mds_matrix(&self.state);
-            for i in 0..new_state.len() {
-                self.state[i] = new_state[i];
-            }
+            self.apply_mds_matrix(params);
         }
 
         for r in 0..SC::ROUNDS_PARTIAL {
@@ -120,10 +128,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
                 self.state[i].add_assign(x);
             }
             self.state[0] = sbox::<F, SC>(self.state[0]);
-            let new_state = apply_near_mds_matrix(&self.state);
-            for i in 0..new_state.len() {
-                self.state[i] = new_state[i];
-            }
+            self.apply_mds_matrix(params);
         }
 
         for r in 0..SC::HALF_ROUNDS_FULL {
@@ -136,10 +141,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             for i in 0..self.state.len() {
                 self.state[i] = sbox::<F, SC>(self.state[i]);
             }
-            let new_state = apply_near_mds_matrix(&self.state);
-            for i in 0..new_state.len() {
-                self.state[i] = new_state[i];
-            }
+            self.apply_mds_matrix(params);
         }
     }
 

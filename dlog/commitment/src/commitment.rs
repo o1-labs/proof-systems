@@ -548,11 +548,12 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
         // TODO: This will need adjusting
         let padding = padded_length - nonzero_length;
-        let mut points = self.g.clone();
+        let mut points = vec![self.h];
+        points.extend(self.g.clone());
         points.extend(vec![G::zero(); padding]);
 
-        points.push(self.h);
         let mut scalars = vec![Fr::<G>::zero(); padded_length + 1];
+        assert_eq!(scalars.len(), points.len());
 
         // sample randomiser to scale the proofs with
         let rand_base = Fr::<G>::rand(rng);
@@ -607,13 +608,13 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 let terms: Vec<_> = s.par_iter().map(|s| sg_rand_base_i * s).collect();
 
                 for (i, term) in terms.iter().enumerate() {
-                    scalars[i] += term;
+                    scalars[i + 1] += term;
                 }
             }
 
             // TERM
             // - rand_base_i * z2 * H
-            scalars[padded_length] -= &(rand_base_i * &opening.z2);
+            scalars[0] -= &(rand_base_i * &opening.z2);
 
             // TERM
             // -rand_base_i * (z1 * b0 * U)

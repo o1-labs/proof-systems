@@ -62,7 +62,6 @@ pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : CommitmentField
     pub max_quot_size: usize,
 
     // random oracle argument parameters
-    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
@@ -131,7 +130,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             emul2_comm: srs.get_ref().commit(&self.cs.emul2m, None),
             emul3_comm: srs.get_ref().commit(&self.cs.emul3m, None),
 
-            fr_sponge_params: self.fr_sponge_params.clone(),
+            fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
@@ -146,7 +145,6 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
     (
         mut cs: ConstraintSystem<Fr<G>>,
         max_poly_size: usize,
-        fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         srs : SRSSpec<'a, G>
     ) -> Self
@@ -160,7 +158,6 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         Index
         {
             max_quot_size: 5 * (cs.domain.d1.size as usize + 2) - 5,
-            fr_sponge_params,
             fq_sponge_params,
             max_poly_size,
             srs,
