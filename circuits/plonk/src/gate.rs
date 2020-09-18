@@ -5,7 +5,7 @@ This source file implements Plonk constraint gate primitive.
 *****************************************************************************************************************/
 
 use algebra::FftField;
-pub use super::{wires::GateWires, constraints::ConstraintSystem};
+pub use super::{wires::{*}, constraints::ConstraintSystem};
 
 #[derive(Clone)]
 #[derive(PartialEq)]
@@ -70,4 +70,12 @@ impl<F: FftField> CircuitGate<F>
             GateType::Endomul4  => self.verify_endomul4(next, witness),
         }
     }
+}
+
+#[derive(Clone)]
+pub struct Gate<F: FftField>
+{
+    pub typ: GateType,      // type of the gate
+    pub wires: Wires,       // gate wires
+    pub c: Vec<F>,          // constraints vector
 }
