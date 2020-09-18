@@ -8,7 +8,7 @@ pub use super::prover::ProverProof;
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
-use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use algebra::{Field, AffineCurve, Zero, One};
 use crate::plonk_sponge::FrSponge;
@@ -17,7 +17,14 @@ use rand_core::OsRng;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
+#[derive(Clone)]
+pub struct CachedValues<Fs> {
+    pub zeta1: Fs,
+    pub zetaw: Fs,
+    pub alpha: Vec<Fs>,
+}
+
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
 
     // This function runs random oracle argument

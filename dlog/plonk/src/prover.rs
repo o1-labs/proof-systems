@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
@@ -39,7 +39,7 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness

@@ -10,7 +10,7 @@ pub use super::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles};
 use oracle::{FqSponge, utils::PolyUtils, sponge::ScalarChallenge};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
-use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
 use crate::marlin_sponge::{FrSponge};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -33,7 +33,7 @@ pub struct ProofEvals<Fr> {
     pub rc: [Fr; 3],
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
