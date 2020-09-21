@@ -36,7 +36,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
 
         let points = [
             &e.l,
-            &e.t,
+            &e.r,
             &e.o,
             &e.z,
             &e.t,

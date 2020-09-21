@@ -97,10 +97,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sid = domain.d1.elements().map(|elm| {elm}).collect::<Vec<_>>();
 
         // sample the coordinate shifts
-        let mut i: u32 = 7;
-        let r = Self::sample_shift(&domain.d1, &mut i);
-        let mut o = Self::sample_shift(&domain.d1, &mut i);
-        while r == o {o = Self::sample_shift(&domain.d1, &mut i)}
+        let (r, o) = Self::sample_shifts(&domain.d1);
 
         let n = domain.d1.size();
         let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(GateWires::wires((i,i), (n+i,n+i), (2*n+i,2*n+i)))).collect();
@@ -227,7 +224,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // sample coordinate shifts deterministically
-    pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F
+    fn sample_shift(domain: &D<F>, i: &mut u32) -> F
     {
         let mut h = Blake2b::new();
         h.input(&{*i += 1; *i}.to_be_bytes());
@@ -239,6 +236,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             r = F::from_random_bytes(&h.result()[..31]).unwrap();
         }
         r
+    }
+
+    pub fn sample_shifts(domain: &D<F>) -> (F, F) {
+        let mut i: u32 = 7;
+        let r = Self::sample_shift(&domain, &mut i);
+        let mut o = Self::sample_shift(&domain, &mut i);
+        while r == o {o = Self::sample_shift(&domain, &mut i)}
+        (r, o)
     }
 
     // evaluate witness polynomials over domains

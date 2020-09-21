@@ -108,6 +108,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
     (
         group_map: &G::Map,
         proofs: &Vec<ProverProof<G>>,
+        lgr_comm: &Vec<PolyComm<G>>,
         index: &Index<G>,
     ) -> Result<bool, ProofError>
     {
@@ -118,8 +119,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             |proof|
             {
                 // commit to public input polynomial
+<<<<<<< Updated upstream
                 let p_comm = PolyComm::<G>::multi_scalar_mul
                     (&index.srs.get_ref().lgr_comm.iter().map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
+=======
+                *p_comm = PolyComm::<G>::multi_scalar_mul
+                    (&lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(),
+                    &proof.public.iter().map(|s| -*s).collect());
+>>>>>>> Stashed changes
 
                 let (fq_sponge, _, oracles, alpha, p_eval, zeta1, zetaw) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 
@@ -260,6 +267,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (
                     vec!
                     [
+                        (&*p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
                         (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
@@ -267,7 +275,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
-                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
 
                         (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
                         (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),

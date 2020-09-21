@@ -18,9 +18,6 @@ pub struct SRS<G: CommitmentCurve>
     pub g: Vec<G>,    // for committing polynomials
     pub h: G,         // blinding
 
-    // Lagrange polynomial commitments
-    pub lgr_comm: Vec<PolyComm<G>>,
-
     // Coefficients for the curve endomorphism
     pub endo_r: G::ScalarField,
     pub endo_q: G::BaseField,
@@ -76,26 +73,12 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
         let (endo_q, endo_r) = endos::<G>();
 
-        let mut srs = SRS
+        SRS
         {
             g: v[1..depth + 1].iter().map(|e| *e).collect(),
             h: v[0],
-            lgr_comm: Vec::new(),
             endo_r, endo_q
-        };
-
-        srs.lgr_comm = (0..public).map
-        (
-            |i|
-            {
-                let mut lagr = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain
-                    (vec![G::ScalarField::zero(); size], D::<G::ScalarField>::new(size).unwrap());
-                lagr.evals[i] = G::ScalarField::one();
-                srs.commit(&lagr.interpolate(), None)
-            }
-        ).collect::<Vec<_>>();
-
-        srs
+        }
     }
 
     pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
@@ -103,10 +86,11 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         for x in &self.g {
             G::write(x, &mut writer)?;
         }
+        /*
         u64::write(&(self.lgr_comm.len() as u64), &mut writer)?;
         for x in &self.lgr_comm {
             G::write(&x.unshifted[0], &mut writer)?;
-        }
+        } */
         G::write(&self.h, &mut writer)?;
         Ok(())
     }
@@ -117,14 +101,15 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         for _ in 0..n {
             g.push(G::read(&mut reader)?);
         }
+        /*
         let n = u64::read(&mut reader)? as usize;
         let mut lgr_comm = Vec::with_capacity(n);
         for _ in 0..n {
             lgr_comm.push(PolyComm::<G>{shifted: None, unshifted: vec![G::read(&mut reader)?]});
-        }
+        } */
 
         let h = G::read(&mut reader)?;
         let (endo_q, endo_r) = endos::<G>();
-        Ok(SRS { g, lgr_comm, h, endo_r, endo_q })
+        Ok(SRS { g, h, endo_r, endo_q })
     }
 }

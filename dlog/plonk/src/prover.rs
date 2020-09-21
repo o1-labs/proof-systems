@@ -257,13 +257,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         polynoms.extend(
             vec!
             [
+                (&p, None),
                 (&l, None),
                 (&r, None),
                 (&o, None),
                 (&z, None),
                 (&t, Some(index.max_quot_size)),
                 (&f, None),
-                (&p, None),
                 (&index.cs.sigmam[0], None),
                 (&index.cs.sigmam[1], None),
             ]);

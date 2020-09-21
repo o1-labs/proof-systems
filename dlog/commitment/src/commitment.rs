@@ -63,8 +63,12 @@ impl<C: AffineCurve> PolyComm<C>
                         {
                             let mut points = Vec::new();
                             let mut scalars = Vec::new();
-                            com.iter().zip(elm.iter()).for_each
-                                (|(p, s)| if i < p.unshifted.len() {points.push(p.unshifted[i]); scalars.push(s.into_repr())});
+                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
+                                if i < p.unshifted.len() {
+                                    points.push(p.unshifted[i]);
+                                    scalars.push(s.into_repr())
+                                }
+                            });
                             VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
                         }
                     ).collect::<Vec<_>>()
