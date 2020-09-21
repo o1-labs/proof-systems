@@ -336,6 +336,8 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
 
         assert!((1 << rounds) <= self.g.len());
 
+        let padded_length =  1 << self.max_rounds;
+
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);

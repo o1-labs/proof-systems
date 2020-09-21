@@ -18,6 +18,8 @@ pub struct SRS<G: CommitmentCurve>
     pub g: Vec<G>,    // for committing polynomials
     pub h: G,         // blinding
 
+    pub max_rounds : usize, // 1 << max_rounds will be the size of g
+
     // Lagrange polynomial commitments
     pub lgr_comm: Vec<PolyComm<G>>,
 
@@ -80,6 +82,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         {
             g: v[1..depth + 1].iter().map(|e| *e).collect(),
             h: v[0],
+            max_rounds : depth,
             lgr_comm: Vec::new(),
             endo_r, endo_q
         };
@@ -118,6 +121,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
             g.push(G::read(&mut reader)?);
         }
         let n = u64::read(&mut reader)? as usize;
+        let max_rounds = u64::read(&mut reader)? as usize;
         let mut lgr_comm = Vec::with_capacity(n);
         for _ in 0..n {
             lgr_comm.push(PolyComm::<G>{shifted: None, unshifted: vec![G::read(&mut reader)?]});
@@ -125,6 +129,6 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
         let h = G::read(&mut reader)?;
         let (endo_q, endo_r) = endos::<G>();
-        Ok(SRS { g, lgr_comm, h, endo_r, endo_q })
+        Ok(SRS { g, max_rounds, lgr_comm, h, endo_r, endo_q })
     }
 }

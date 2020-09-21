@@ -240,6 +240,30 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
         oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
 
+        // compute maximum degree of polynomials that need opening proofs
+        let vec_of_polys = vec!
+        [
+            (&l, None),
+            (&r, None),
+            (&o, None),
+            (&z, None),
+            (&t, Some(index.max_quot_size)),
+            (&f, None),
+            (&p, None),
+            (&index.cs.sigmam[0], None),
+            (&index.cs.sigmam[1], None),
+        ];
+
+
+        let mut max_size = 0;
+        for (plm, _) in &vec_of_polys {
+            if plm.coeffs.len() > max_size {
+                max_size = plm.coeffs.len();
+            }
+        }
+
+        let rounds = 1 >> max_size;
+
         Ok(Self
         {
             l_comm,
@@ -249,19 +273,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             t_comm,
             proof: index.srs.get_ref().open
             (
+                rounds,
                 group_map,
-                vec!
-                [
-                    (&l, None),
-                    (&r, None),
-                    (&o, None),
-                    (&z, None),
-                    (&t, Some(index.max_quot_size)),
-                    (&f, None),
-                    (&p, None),
-                    (&index.cs.sigmam[0], None),
-                    (&index.cs.sigmam[1], None),
-                ],
+                vec_of_polys,
                 &evlp.to_vec(),
                 oracles.v,
                 oracles.u,

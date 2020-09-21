@@ -332,6 +332,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 (&g3, Some(index.domains.k.size()-1)),
             ]);
 
+            let mut max_size = 0;
+            for (plm, _) in &polynoms {
+                if plm.coeffs.len() > max_size {
+                    max_size = plm.coeffs.len();
+                }
+            }
+    
+            let rounds = 1 >> max_size;
+
         Ok(ProverProof
         {
             // polynomial commitments
@@ -348,6 +357,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             // polynomial commitment batched opening proofs
             proof: index.srs.get_ref().open::<EFqSponge>
             (
+                rounds,
                 group_map,
                 polynoms,
                 &beta,
