@@ -1,5 +1,5 @@
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::{poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon::{PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{bn_382::{Fp, Bn_382, g1::Bn_382G1Parameters}, Field, One, Zero};
 use plonk_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
 use std::{io, io::Write};
@@ -70,8 +70,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let index = Index::<Bn_382>::create
     (
-        ConstraintSystem::<Fp>::create(gates, 6).unwrap(),
-        oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
+        ConstraintSystem::<Fp>::create(gates, oracle::bn_382::fp::params(), 6).unwrap(),
         oracle::bn_382::fq::params(),
         URSSpec::Generate(&mut OsRng)
     );

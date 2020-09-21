@@ -164,24 +164,26 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
       ( chals, comm )
     };
 
-    batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &witness, &index, vec![prev], rng).unwrap());
+    let ver_indexes = indexes.iter().map(|ind| ind.verifier_index()).collect::<Vec<_>>();
+    let mut batch = Vec::new();
+    for (prind, vrind) in indexes.iter().zip(ver_indexes.iter())
+    {
+        batch.push
+        ((
+            vrind,
+            ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &witness, &prind, vec![prev.clone()], rng).unwrap()
+        ));
+    }
     let prover_time = start.elapsed();
 
-    let verifier_index = index.verifier_index();
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, &verifier_index, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, rng)
     {
         false => {panic!("Failure verifying the prover's proofs in batch")},
         true => {}
     }
     let verifier_time = start.elapsed();
 
-    if srs_size == 1000
-    {
-        println!("{}{:?}", "H domain size: ".magenta(), index.domains.h.size);
-        println!("{}{:?}", "K domain size: ".magenta(), index.domains.k.size);
-        println!();
-    }
-    println!("{:?}\t\t\t{:?}\t\t\t{:?}", index.srs.get_ref().g.len(), prover_time, verifier_time);
+    println!("{:?}\t\t\t{:?}\t\t\t{:?}", min_srs_size, prover_time, verifier_time);
     (prover_time, verifier_time)
 }

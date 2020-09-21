@@ -29,3 +29,22 @@ impl GateWires
         }
     }
 }
+
+#[derive(Clone, Copy)]
+pub enum Col {L, R, O}
+
+#[derive(Clone, Copy)]
+pub struct Wire
+{
+    pub row: usize,         // wire row
+    pub col: Col,           // wire column
+}
+
+#[derive(Clone, Copy)]
+pub struct Wires
+{
+    pub row: usize,         // gate wire row
+    pub l: Wire,            // left input wire permutation
+    pub r: Wire,            // right input wire permutation
+    pub o: Wire,            // output input wire permutation
+}

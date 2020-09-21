@@ -6,8 +6,8 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
-use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof};
 use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
@@ -34,9 +34,12 @@ pub struct ProverProof<G: AffineCurve>
 
     // public part of the witness
     pub public: Vec<Fr<G>>,
+
+    // The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -50,6 +53,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         group_map: &G::Map,
         witness: &Vec::<Fr<G>>,
         index: &Index<G>,
+        prev_challenges: Vec< (Vec<Fr<G>>, PolyComm<G>) >,
     )
     -> Result<Self, ProofError>
     {
@@ -133,7 +137,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let (gen4, genp) = index.cs.gnrc_quot(&lagrange, &p);
 
         // poseidon constraints contribution
-        let (pos4, pos8, posp) = index.cs.psdn_quot(&lagrange, &alpha);
+        let (pos4, pos8, posp) = index.cs.psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alpha);
 
         // variable base scalar multiplication constraints contribution
         let (mul4, mul8) = index.cs.vbmul_quot(&lagrange, &alpha);
@@ -216,7 +220,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 
         let f =
             &(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
-            &index.cs.psdn_lnrz(&e, &alpha)) +
+            &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha)) +
             &index.cs.ecad_lnrz(&e, &alpha)) +
             &index.cs.vbmul_lnrz(&e, &alpha)) +
             &index.cs.endomul_lnrz(&e, &alpha)) +
@@ -228,7 +232,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge =
         {
-            let mut s = EFrSponge::new(index.fr_sponge_params.clone());
+            let mut s = EFrSponge::new(index.cs.fr_sponge_params.clone());
             s.absorb(&fq_sponge.digest());
             s
         };
@@ -240,23 +244,32 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
         oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
         oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
 
-        // compute maximum degree of polynomials that need opening proofs
-        let vec_of_polys = vec!
-        [
-            (&l, None),
-            (&r, None),
-            (&o, None),
-            (&z, None),
-            (&t, Some(index.max_quot_size)),
-            (&f, None),
-            (&p, None),
-            (&index.cs.sigmam[0], None),
-            (&index.cs.sigmam[1], None),
-        ];
+        // construct the proof
+        // --------------------------------------------------------------------
+        let polys = prev_challenges.iter().map(|(chals, _comm)| {
+            let s0 = product(chals.iter().map(|x| *x)).inverse().unwrap();
+            let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
+            let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+            b
+        }).collect::<Vec<_>>();
 
+        let mut polynoms = polys.iter().map(|p| (p, None)).collect::<Vec<_>>();
+        polynoms.extend(
+            vec!
+            [
+                (&l, None),
+                (&r, None),
+                (&o, None),
+                (&z, None),
+                (&t, Some(index.max_quot_size)),
+                (&f, None),
+                (&p, None),
+                (&index.cs.sigmam[0], None),
+                (&index.cs.sigmam[1], None),
+            ]);
 
         let mut max_size = 0;
-        for (plm, _) in &vec_of_polys {
+        for (plm, _) in &polynoms {
             if plm.coeffs.len() > max_size {
                 max_size = plm.coeffs.len();
             }
@@ -275,7 +288,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             (
                 rounds,
                 group_map,
-                vec_of_polys,
+                polynoms,
                 &evlp.to_vec(),
                 oracles.v,
                 oracles.u,
@@ -283,7 +296,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 &mut OsRng
             ),
             evals,
-            public
+            public,
+            prev_challenges,
         })
     }
 }

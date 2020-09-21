@@ -5,13 +5,14 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
+use oracle::poseidon::{SpongeConstants, PlonkSpongeConstants, ArithmeticSpongeParams};
 use ff_fft::{EvaluationDomain, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
-pub use super::gate::{CircuitGate, GateType, SPONGE_WIDTH};
+pub use super::gate::{CircuitGate, GateType};
 pub use super::domains::EvaluationDomains;
 pub use super::wires::GateWires;
 use blake2::{Blake2b, Digest};
-use oracle::utils::{EvalUtils};
+use oracle::utils::EvalUtils;
 use array_init::array_init;
 
 #[derive(Clone)]
@@ -33,7 +34,7 @@ pub struct ConstraintSystem<F: FftField>
     pub qc:     DensePolynomial<F>,         // constant wire polynomial
 
     // poseidon selector polynomials
-    pub rcm:    [DensePolynomial<F>; SPONGE_WIDTH], // round constant polynomials
+    pub rcm:    [DensePolynomial<F>; PlonkSpongeConstants::SPONGE_WIDTH], // round constant polynomials
     pub psm:    DensePolynomial<F>,         // poseidon constraint selector polynomial
 
     // EC point addition constraint polynomials
@@ -78,6 +79,9 @@ pub struct ConstraintSystem<F: FftField>
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
     pub endo:   F,                          // coefficient for the group endomorphism
+
+    // random oracle argument parameters
+    pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
@@ -85,6 +89,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn create
     (
         mut gates: Vec<CircuitGate<F>>,
+        fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self>
     {
@@ -189,6 +194,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             r,
             o,
             endo: F::zero(),
+            fr_sponge_params,
         })
     }
 
