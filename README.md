@@ -9,6 +9,10 @@ List visible targets:
 You can ignore the `//cargo` and `//bzl` targets. `//:verbose` is a
 command line switch, to use it pass `--//:verbose`.
 
+Bazel supports CLI completion, so you can type e.g. `$ bazel build
+circuits` and whale on the tab key until you find a target (targets
+will always involve ':' after the dir name).
+
 Build a target: three equivalent commands:
 
 * `$ bazel build oracle`
