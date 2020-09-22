@@ -1,0 +1,16 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "plonk_circuits",
+    visibility = ["//visibility:public"],
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "@zexe//algebra",
+        "@zexe//algebra-core:algebra_core",
+        "@zexe//ff-fft:ff_fft",
+        "//oracle",
+        "//cargo:array_init",
+        "//cargo:blake2",
+        "//cargo:rand_core",
+    ],
+)

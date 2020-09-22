@@ -1,0 +1,34 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "commitment_dlog",
+    visibility = ["//visibility:public"],
+    crate_type = "lib",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "@zexe//algebra",
+        "@zexe//groupmap",
+        "@zexe//ff-fft:ff_fft",
+
+        "//oracle",
+        "//dlog_solver",
+
+        "//cargo:rand_core",
+        "//cargo:colored",
+        "//cargo:rand",
+        "//cargo:rayon",
+        "//cargo:blake2",
+        "//cargo:itertools"
+    ],
+    # dev-dependencies
+    # + ["//cargo:rand", "//cargo:rand_xorshift"],
+    # + select({
+    #     "//profile:dev": ["//cargo:rand", "//cargo:rand_xorshift"],
+    #     "//conditions:default": []
+    # }),
+    crate_features = [
+        "asm",
+        "bn_382",
+        "parallel",
+    ]
+)

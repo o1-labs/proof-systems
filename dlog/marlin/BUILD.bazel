@@ -1,0 +1,29 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "marlin_protocol_dlog",
+    visibility = ["//visibility:public"],
+    # crate_type = "lib",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "@zexe//algebra",
+        "@zexe//ff-fft:ff_fft",
+
+        "//dlog/commitment:commitment_dlog",
+        "//circuits/marlin:marlin_circuits",
+        "//circuits/plonk:plonk_circuits",
+        "//oracle",
+
+        "//cargo:rand_core",
+        "//cargo:colored",
+        "//cargo:rand",
+        "//cargo:sprs",
+        "//cargo:rayon",
+    ],
+    crate_features = [
+        "parallel",
+        "bn_382",
+        "tweedle",
+        "asm"
+    ]
+)

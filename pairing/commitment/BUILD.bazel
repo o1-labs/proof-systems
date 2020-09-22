@@ -1,0 +1,16 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "commitment_pairing",
+    visibility = ["//visibility:public"],
+    edition = "2018",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "@zexe//algebra",
+        "@zexe//ff-fft:ff_fft",
+        "//oracle",
+        "//cargo:rand",
+        "//cargo:rand_core",
+        "//cargo:colored",
+    ]
+)
