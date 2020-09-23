@@ -55,7 +55,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         oracles.alpha = fq_sponge.challenge();
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&self.t_comm.unshifted);
-        oracles.zeta = ScalarChallenge(fq_sponge.challenge()).to_field(&index.srs.get_ref().endo_r);
+        oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
         let digest = fq_sponge.clone().digest();
         let mut fr_sponge =
         {
@@ -91,8 +92,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])}
 
         // query opening scaler challenges
-        oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
-        oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
+        oracles.v_chal = fr_sponge.challenge();
+        oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
+        oracles.u_chal = fr_sponge.challenge();
+        oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
 
         (fq_sponge, digest, oracles, alpha, p_eval, zeta1, zetaw)
     }
@@ -119,14 +122,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             |proof|
             {
                 // commit to public input polynomial
-<<<<<<< Updated upstream
                 let p_comm = PolyComm::<G>::multi_scalar_mul
-                    (&index.srs.get_ref().lgr_comm.iter().map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
-=======
-                *p_comm = PolyComm::<G>::multi_scalar_mul
-                    (&lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(),
-                    &proof.public.iter().map(|s| -*s).collect());
->>>>>>> Stashed changes
+                    (& lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
 
                 let (fq_sponge, _, oracles, alpha, p_eval, zeta1, zetaw) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 

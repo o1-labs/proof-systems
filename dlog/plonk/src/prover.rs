@@ -175,7 +175,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
-        oracles.zeta = ScalarChallenge(fq_sponge.challenge()).to_field(&index.srs.get_ref().endo_r);
+        oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
 
         // evaluate the polynomials
 
@@ -241,8 +242,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])}
 
         // query opening scaler challenges
-        oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
-        oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
+        oracles.v_chal = fr_sponge.challenge();
+        oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
+        oracles.u_chal = fr_sponge.challenge();
+        oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
 
         // construct the proof
         // --------------------------------------------------------------------
