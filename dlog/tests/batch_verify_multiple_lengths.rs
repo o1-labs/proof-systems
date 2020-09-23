@@ -21,7 +21,7 @@ use rand_core::OsRng;
 use rand::Rng;
 use groupmap::GroupMap;
 
-use std::cell::RefCell;
+
 
 
 type Fr = <Affine as AffineCurve>::ScalarField;
@@ -66,7 +66,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
             let a = (0..polys_per_opening).map(|_| DensePolynomial::<Fr>::rand(size,rng)).collect::<Vec<_>>();
             
-            let mut comm_temp  = (0..a.len()).map
+            let mut comm  = (0..a.len()).map
             (
                 |j|
                 {
@@ -75,7 +75,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 }
             ).collect::<Vec<_>>();
 
-            let comm =  RefCell::new(comm_temp);
 
 
             let x = (0..7).map(|_| Fr::rand(rng)).collect::<Vec<Fr>>();
@@ -117,15 +116,12 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 evalmask,
                 (0..a.len()).map
                 (
-                    |i|
-                    {
-                    let mut borrowed = comm.borrow_mut();
+                    move |k|                   
                     (
-                        &borrowed[i],
-                        evals[i].iter().map(|evl| evl).collect::<Vec<_>>(),
-                        if i%2==0 {Some(a[i].coeffs.len())} else {None})
+                        &comm[k],
+                        evals[k].iter().map(|evl| evl).collect::<Vec<_>>(),
+                        if k%2==0 {Some(a[i].coeffs.len())} else {None})
                     ).collect::<Vec<_>>(),
-                }
                 &proof,
             )); 
             proofs       
