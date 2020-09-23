@@ -21,8 +21,13 @@ use rand_core::OsRng;
 use rand::Rng;
 use groupmap::GroupMap;
 
+use std::cell::RefCell;
+
+
+type Fr = <Affine as AffineCurve>::ScalarField;
+
 #[test]
-fn heterogeneous_batch_commitment_test()
+pub fn heterogeneous_batch_commitment_test()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let max_rounds = 10;
@@ -36,7 +41,10 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let mut random = rand::thread_rng();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let batches : Vec<_> = 
+    //let evals : Vec<Vec<Fr>> = Vec::with_capacity(polys_per_opening);
+    //let mut comm : Vec<Vec<PolyComm<Affine>>> = Vec::new();
+    
+    let mut batches : Vec<_> = 
         (0..batch_size).map(|i| {
             // TODO: Produce opening proofs with (max_rounds - i) many rounds
             // ..
@@ -50,13 +58,15 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 &OpeningProof<Affine>,
             )>::new();
 
-            let size = max_rounds - i;
+            let rounds = max_rounds - i;
+            let size = 1 << rounds;
 
-            let srsnew = SRS {g : srs.g[0..(1 << size)], ..*srs};
+            let srsnew = SRS {g : srs.g[0..size].to_vec(), lgr_comm : srs.lgr_comm.clone(),..srs};
+           
 
-            let a = (0..3).iter().map(|_| DensePolynomial::<Fr>::rand(size,rng)).collect::<Vec<_>>();
+            let a = (0..polys_per_opening).map(|_| DensePolynomial::<Fr>::rand(size,rng)).collect::<Vec<_>>();
             
-            let comm = (0..a.len()).map
+            let mut comm_temp  = (0..a.len()).map
             (
                 |j|
                 {
@@ -64,6 +74,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                     else {srsnew.commit(&a[i].clone(), None)}
                 }
             ).collect::<Vec<_>>();
+
+            let comm =  RefCell::new(comm_temp);
+
 
             let x = (0..7).map(|_| Fr::rand(rng)).collect::<Vec<Fr>>();
             let polymask = Fr::rand(rng);
@@ -78,6 +91,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
             let proof = srsnew.open::<DefaultFqSponge<Bn_382GParameters, SC>>
             (
+                rounds,
                 &group_map,
                 (0..a.len()).map
                 (
@@ -90,6 +104,11 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 rng,
             );
 
+           
+
+            //let proofs_intermediate = proofs_intermdediate_create(a, evals, comm);
+           
+
             proofs.push
             ((
                 sponge.clone(),
@@ -99,19 +118,43 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 (0..a.len()).map
                 (
                     |i|
+                    {
+                    let mut borrowed = comm.borrow_mut();
                     (
-                        &comm[i],
+                        &borrowed[i],
                         evals[i].iter().map(|evl| evl).collect::<Vec<_>>(),
                         if i%2==0 {Some(a[i].coeffs.len())} else {None})
                     ).collect::<Vec<_>>(),
+                }
                 &proof,
-            ));        
-        }).collect();
+            )); 
+            proofs       
+        }).flatten().collect();
 
-    assert!(srs.verify::<DefaultFqSponge<Bn_382GParameters, SC>>
-        (
-            &group_map,
-            &mut proofs,
-            rng
-        ));
+     
+
+
+        
+
+        assert!(srs.verify::<DefaultFqSponge<Bn_382GParameters, SC>>
+            (
+                &group_map,
+                &mut batches,
+                rng
+            ));
 }
+
+
+/*pub fn proofs_intermediate_create<Fr, Affine>(a : Vec<&DensePolynomial<Fr>>, evals : Vec<&Fr>, comm : Vec<(PolyComm<Affine>)>) -> Vec<(PolyComm<Affine>, Vec<Vec<Fr>>, Option<usize>)> {
+
+    let proofs = (0..a.len()).map
+                (
+                    |k|
+                    (
+                        &comm[k],
+                        evals[k].iter().map(|evl| evl).collect::<Vec<_>>(),
+                        if k%2==0 {Some(a[k].coeffs.len())} else {None})
+                    ).collect::<Vec<_>>();
+    proofs
+
+}*/
