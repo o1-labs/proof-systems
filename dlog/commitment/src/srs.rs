@@ -86,11 +86,6 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         for x in &self.g {
             G::write(x, &mut writer)?;
         }
-        /*
-        u64::write(&(self.lgr_comm.len() as u64), &mut writer)?;
-        for x in &self.lgr_comm {
-            G::write(&x.unshifted[0], &mut writer)?;
-        } */
         G::write(&self.h, &mut writer)?;
         Ok(())
     }
