@@ -5,7 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use ff_fft::Radix2EvaluationDomain as D;
-use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
+use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
 use plonk_circuits::constraints::ConstraintSystem;
 use oracle::poseidon::ArithmeticSpongeParams;
 use array_init::array_init;
@@ -34,7 +34,7 @@ pub enum SRSSpec <'a, G: CommitmentCurve>{
     Generate
 }
 
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : QnrField {
     pub fn generate(size: usize, public: usize, circ: usize) -> SRS<G> {
         SRS::<G>::create(size, public, circ)
     }
@@ -47,7 +47,7 @@ impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G:
     }
 }
 
-pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : CommitmentField
+pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 {
     // constraints system polynoms
     pub cs: ConstraintSystem<Fr<G>>,
@@ -100,7 +100,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : QnrField
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let srs = match &self.srs
@@ -146,7 +146,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         mut cs: ConstraintSystem<Fr<G>>,
         max_poly_size: usize,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-        srs : SRSSpec<'a, G>
+        srs: SRSSpec<'a, G>
     ) -> Self
     {
         if cs.public > 0
@@ -161,6 +161,28 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             fq_sponge_params,
             max_poly_size,
             srs,
+            cs,
+        }
+    }
+
+    pub fn create_cs_srs
+    (
+        mut cs: ConstraintSystem<Fr<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+        srs: &'static SRS<G>
+    ) -> Self
+    {
+        if cs.public > 0
+        {
+            assert!(srs.g.len() >= cs.domain.d1.size as usize, "polynomial segment size has to be not smaller that that of the circuit!");
+        }
+        cs.endo = srs.endo_r;
+        Index
+        {
+            max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
+            fq_sponge_params,
+            max_poly_size: srs.g.len(),
+            srs: SRSValue::Ref(srs),
             cs,
         }
     }
