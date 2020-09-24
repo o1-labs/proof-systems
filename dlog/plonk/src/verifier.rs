@@ -110,17 +110,18 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         >
     (
         group_map: &G::Map,
-        proofs: &Vec<ProverProof<G>>,
-        lgr_comm: &Vec<PolyComm<G>>,
-        index: &Index<G>,
+        proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError>
     {
-        let n = index.domain.size;
+        if proofs.len() == 0 {
+            return Ok(true);
+        }
 
         let params = proofs.iter().map
         (
-            |proof|
+            |(index, lgr_comm, proof)|
             {
+                let n = index.domain.size;
                 // commit to public input polynomial
                 let p_comm = PolyComm::<G>::multi_scalar_mul
                     (& lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
@@ -250,7 +251,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         
         let mut batch = proofs.iter().zip(params.iter()).map
         (
-            |(proof, (p_eval, p_comm, f_comm, fq_sponge, oracles, polys))|
+            |((index, _lgr_comm, proof), (p_eval, p_comm, f_comm, fq_sponge, oracles, polys))|
             {
                 let mut polynoms = polys.iter().map
                 (
@@ -291,7 +292,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         ).collect::<Vec<_>>();
 
         // verify the opening proofs
-        match index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, &mut OsRng)
+        // TODO: Account for the different SRS lengths
+        let srs = proofs[0].0.srs.get_ref();
+        for (index, _, _) in proofs.iter() {
+            assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
+        }
+
+        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut OsRng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)
