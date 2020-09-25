@@ -5,7 +5,7 @@ This source file implements Marlin Protocol Index primitive.
 *****************************************************************************************************************/
 
 use sprs::CsMat;
-use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
+use commitment_dlog::{srs::SRS, QnrField, commitment::{CommitmentCurve, PolyComm}};
 use algebra::AffineCurve;
 use oracle::{rndoracle::ProofError, poseidon::ArithmeticSpongeParams};
 use marlin_circuits::{gate::CircuitGate, domains::EvaluationDomains};
@@ -35,7 +35,7 @@ pub enum SRSSpec <'a, G: CommitmentCurve>{
     Generate
 }
 
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : QnrField {
     pub fn generate(size: usize) -> SRS<G> {
         SRS::<G>::create(size, 0, 0)
     }
@@ -48,7 +48,7 @@ impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G:
     }
 }
 
-pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : CommitmentField
+pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : QnrField
 {
     // constraint system compilation
     pub compiled: [Compiled<G>; 3],
@@ -99,7 +99,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : QnrField
 {
     fn matrix_values(c : &Compiled<G>) -> MatrixValues<G> {
         MatrixValues {

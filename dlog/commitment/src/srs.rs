@@ -4,7 +4,7 @@ This source file implements the Marlin structured reference string primitive
 
 *****************************************************************************************************************/
 
-pub use crate::{QnrField, CommitmentField};
+pub use crate::QnrField;
 use blake2::{Blake2b, Digest};
 use std::io::{Read, Result as IoResult, Write};
 use algebra::{FromBytes, PrimeField, ToBytes, BigInteger, Zero, One};
@@ -43,7 +43,7 @@ where G::BaseField : PrimeField {
     (endo_q, endo_r)
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField : QnrField {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
@@ -78,8 +78,8 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
         let mut srs = SRS
         {
-            g: v[1..depth + 1].iter().map(|e| *e).collect(),
-            h: v[0],
+            g: v[0..depth].iter().map(|e| *e).collect(),
+            h: v[depth],
             lgr_comm: Vec::new(),
             endo_r, endo_q
         };

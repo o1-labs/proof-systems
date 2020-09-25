@@ -7,8 +7,8 @@ This source file implements Plonk constraint gate primitive.
 use algebra::FftField;
 pub use super::{wires::{*}, constraints::ConstraintSystem};
 
-#[derive(Clone)]
-#[derive(PartialEq)]
+#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum GateType
 {
     Zero,       // zero gate
@@ -29,6 +29,7 @@ pub enum GateType
     Endomul4,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
 }
 
+#[derive(Debug)]
 #[derive(Clone)]
 pub struct CircuitGate<F: FftField>
 {
@@ -73,6 +74,7 @@ impl<F: FftField> CircuitGate<F>
 }
 
 #[derive(Clone)]
+#[derive(Debug)]
 pub struct Gate<F: FftField>
 {
     pub typ: GateType,      // type of the gate

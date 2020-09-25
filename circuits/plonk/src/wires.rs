@@ -5,6 +5,7 @@ This source file implements Plonk circuit gate wires primitive.
 *****************************************************************************************************************/
 
 #[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct GateWires
 {
     pub l: (usize, usize),  // left input wire index and its permutation
@@ -31,9 +32,11 @@ impl GateWires
 }
 
 #[derive(Clone, Copy)]
+#[derive(Debug)]
 pub enum Col {L, R, O}
 
 #[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct Wire
 {
     pub row: usize,         // wire row
@@ -41,6 +44,7 @@ pub struct Wire
 }
 
 #[derive(Clone, Copy)]
+#[derive(Debug)]
 pub struct Wires
 {
     pub row: usize,         // gate wire row

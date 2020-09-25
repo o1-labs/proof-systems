@@ -6,6 +6,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 use algebra::Field;
 
+#[derive(Debug)]
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
     pub l: Fs,

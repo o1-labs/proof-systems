@@ -3,7 +3,6 @@ members = [
     "dlog",
     "pairing",
     "oracle",
-    "dlog_solver",
 ]
 
 [profile.release]

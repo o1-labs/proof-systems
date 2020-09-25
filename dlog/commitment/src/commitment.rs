@@ -22,8 +22,7 @@ use oracle::{FqSponge, sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
-pub use crate::CommitmentField;
-use dlog_solver::DetSquareRootField;
+pub use crate::QnrField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -90,7 +89,7 @@ pub struct Challenges<F> {
     pub chal_squared_inv : Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
+impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : QnrField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
         .iter()
@@ -119,7 +118,7 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
             cs
         };
 
-        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.det_sqrt().unwrap()).collect();
+        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.sqrt().unwrap()).collect();
         let chal_inv = {
             let mut cs = chal.clone();
             algebra::fields::batch_inversion(&mut cs);
@@ -197,7 +196,7 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -213,11 +212,11 @@ fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSpo
     pre
 }
 
-fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + QnrField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
-    squeeze_square_challenge(endo_r, sponge).det_sqrt().unwrap()
+    squeeze_square_challenge(endo_r, sponge).sqrt().unwrap()
 }
 
 pub trait CommitmentCurve : AffineCurve {
@@ -260,7 +259,7 @@ fn to_group<G : CommitmentCurve>(
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
+impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound
@@ -548,12 +547,11 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
         // TODO: This will need adjusting
         let padding = padded_length - nonzero_length;
-        let mut points = vec![self.h];
-        points.extend(self.g.clone());
+        let mut points = self.g.clone();
         points.extend(vec![G::zero(); padding]);
 
+        points.push(self.h);
         let mut scalars = vec![Fr::<G>::zero(); padded_length + 1];
-        assert_eq!(scalars.len(), points.len());
 
         // sample randomiser to scale the proofs with
         let rand_base = Fr::<G>::rand(rng);
@@ -608,13 +606,13 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 let terms: Vec<_> = s.par_iter().map(|s| sg_rand_base_i * s).collect();
 
                 for (i, term) in terms.iter().enumerate() {
-                    scalars[i + 1] += term;
+                    scalars[i] += term;
                 }
             }
 
             // TERM
             // - rand_base_i * z2 * H
-            scalars[0] -= &(rand_base_i * &opening.z2);
+            scalars[padded_length] -= &(rand_base_i * &opening.z2);
 
             // TERM
             // -rand_base_i * (z1 * b0 * U)

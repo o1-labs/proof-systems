@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
@@ -16,6 +16,7 @@ use rand_core::OsRng;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+#[derive(Debug)]
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve>
 {
@@ -39,7 +40,7 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -57,8 +58,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
     )
     -> Result<Self, ProofError>
     {
+//        witness.iter().for_each(|w| println!("{:?}", w));
+//        index.cs.gates.iter().for_each(|g| println!("{:?}", g));
+
         let n = index.cs.domain.d1.size as usize;
-        if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
+        if witness.len() != 3*n || index.cs.verify(witness) != true
+            {return Err(ProofError::WitnessCsInconsistent)}
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 

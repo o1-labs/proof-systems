@@ -117,42 +117,28 @@ fn test
     b: CsMat<Fr>,
     c: CsMat<Fr>,
     witness: Vec<Fr>,
-    min_srs_size: usize,
+    srs_size: usize,
 ) -> (Duration, Duration)
 where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 {
     let rng = &mut OsRng;
     let group_map = <Affine as CommitmentCurve>::Map::setup();
+    let index = Index::<Affine>::create
+    (
+        a,
+        b,
+        c,
+        4,
+        srs_size,
+        oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
+        oracle::bn_382::fp::params(),
+        SRSSpec::Generate
+    ).unwrap();
 
-    let num_different_indexes = 2;
-    let srs_size = |i : usize| -> usize {
-        // TODO: Enable this when this works across different SRS lengths
-        let variable_sizes = false;
-        if variable_sizes {
-            (i + 1) * min_srs_size
-        } else {
-            min_srs_size
-        }
-    };
-
-    let indexes : Vec<_> = (0..num_different_indexes).map(|i|
-        Index::<Affine>::create
-        (
-            a.clone(),
-            b.clone(),
-            c.clone(),
-            4,
-            srs_size(i),
-            oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
-            oracle::bn_382::fp::params(),
-            SRSSpec::Generate
-        ).unwrap()
-    ).collect();
-
+    let mut batch = Vec::new();
     let mut start = Instant::now();
 
     let prev = {
-      let index = &indexes[0];
       let k = ceil_log2(index.srs.get_ref().g.len());
       let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
       let comm = {
@@ -164,26 +150,24 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
       ( chals, comm )
     };
 
-    let ver_indexes = indexes.iter().map(|ind| ind.verifier_index()).collect::<Vec<_>>();
-    let mut batch = Vec::new();
-    for (prind, vrind) in indexes.iter().zip(ver_indexes.iter())
-    {
-        batch.push
-        ((
-            vrind,
-            ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &witness, &prind, vec![prev.clone()], rng).unwrap()
-        ));
-    }
+    batch.push(ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &witness, &index, vec![prev], rng).unwrap());
     let prover_time = start.elapsed();
 
+    let verifier_index = index.verifier_index();
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, rng)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, &verifier_index, rng)
     {
         false => {panic!("Failure verifying the prover's proofs in batch")},
         true => {}
     }
     let verifier_time = start.elapsed();
 
-    println!("{:?}\t\t\t{:?}\t\t\t{:?}", min_srs_size, prover_time, verifier_time);
+    if srs_size == 1000
+    {
+        println!("{}{:?}", "H domain size: ".magenta(), index.domains.h.size);
+        println!("{}{:?}", "K domain size: ".magenta(), index.domains.k.size);
+        println!();
+    }
+    println!("{:?}\t\t\t{:?}\t\t\t{:?}", index.srs.get_ref().g.len(), prover_time, verifier_time);
     (prover_time, verifier_time)
 }

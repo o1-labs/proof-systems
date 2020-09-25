@@ -10,7 +10,7 @@ pub use super::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles};
 use oracle::{FqSponge, utils::PolyUtils, sponge::ScalarChallenge};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
 use crate::marlin_sponge::{FrSponge};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -33,7 +33,7 @@ pub struct ProofEvals<Fr> {
     pub rc: [Fr; 3],
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
 {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
@@ -155,27 +155,16 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         >
     (
         group_map: &G::Map,
-        proofs: &Vec<(&Index<G>, ProverProof<G>)>,
+        proofs: &Vec<ProverProof<G>>,
+        index: &Index<G>,
         rng: &mut dyn RngCore
     ) -> bool
     {
-        // TODO: In the future, we should make it possible to batch verify against different SRS
-        // lengths
-
-        if proofs.len() == 0 {
-            return true;
-        }
-
-        let n = proofs[0].0.srs.get_ref().g.len();
-        for (index, _) in proofs.iter() {
-            assert_eq!(index.srs.get_ref().g.len(), n);
-        }
-
+        let endo = &index.srs.get_ref().endo_r;
         let params = proofs.iter().map
         (
-            |(index, proof)|
+            |proof|
             {
-                let endo = &index.srs.get_ref().endo_r;
                 let x_hat =
                 // TODO: Cache this interpolated polynomial.
                 Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)).interpolate();
@@ -245,7 +234,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         
         match proofs.iter().zip(params.iter()).map
         (
-            |((index, proof), (beta, x_hat_comm, fq_sponge, oracles, polys))|
+            |(proof, (beta, x_hat_comm, fq_sponge, oracles, polys))|
             {
                 let evals =
                 {
@@ -336,8 +325,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     ]
                 );
 
-                let endo = &index.srs.get_ref().endo_r;
-
                 Ok((
                     fq_sponge.clone(),
                     oracles.beta.iter().map(|x| x.to_field(endo)).collect(),
@@ -350,7 +337,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         ).collect::<Result<Vec<_>, _>>()
         // second, verify the commitment opening proofs
         {
-            Ok(mut batch) => proofs[0].0.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
+            Ok(mut batch) => index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, rng),
             Err(_) => false
         }
     }
