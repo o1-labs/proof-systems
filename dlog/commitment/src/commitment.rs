@@ -271,24 +271,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         max: Option<usize>,
     ) -> PolyComm<G>
     {
-        if let Some(m) = max
-        {
-            if m > plnm.coeffs.len()
-            {
-                let mut plnm = plnm.clone();
-                plnm.coeffs.resize(m, G::ScalarField::zero());
-                return self.commit_helper(&plnm, max)
-            }
-        }
-        self.commit_helper(plnm, max)
-    }
-
-    pub fn commit_helper(
-        &self,
-        plnm: &DensePolynomial<Fr<G>>,
-        max: Option<usize>,
-    ) -> PolyComm<G>
-    {
         let n = self.g.len();
         let p = plnm.coeffs.len();
 
@@ -314,14 +296,15 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             None => None,
             Some(max) =>
             {
-                if plnm.is_zero() {Some(G::zero())}
+                let start = max - (max % n);
+                if plnm.is_zero() || start >= p {Some(G::zero())}
                 else if max % n == 0 {None}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul
                     (
                         &self.g[n - (max%n)..],
-                        &plnm.coeffs[max-(max%n)..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                        &plnm.coeffs[start..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine())
                 }
             }
@@ -368,51 +351,32 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
             // iterating over polynomials in the batch
             for (p_i, degree_bound) in plnms.iter().filter(|p| p.0.is_zero() == false) {
-                fn poly_mixer<F: Field>
-                (
-                    p: &mut DensePolynomial<F>,
-                    p_i: &DensePolynomial<F>,
-                    degree_bound: &Option<usize>,
-                    scale: &mut F,
-                    polyscale: F,
-                    len: usize
-                )
-                {
-                    let mut offset = 0;
-                    // iterating over chunks of the polynomial
+                let mut offset = 0;
+                // iterating over chunks of the polynomial
+                if let Some(m) = degree_bound {
                     while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<F>::from_coefficients_slice
-                            (&p_i.coeffs[offset..if offset+len > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+len}]);
+                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
+                            (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
                         // always mixing in the unshifted segments
-                        *p += &segment.scale(*scale);
-                        *scale *= &polyscale;
-                        offset += len;
-                        if offset > p_i.coeffs.len() {
-                            if let Some(m) = degree_bound {
-                                // mixing in the shifted segment since degree is bounded
-                                *p += &(segment.shiftr(len - m%len).scale(*scale));
-                                *scale *= &polyscale;
-                            }
+                        p += &segment.scale(scale);
+                        scale *= &polyscale;
+                        offset += self.g.len();
+                        if offset > *m {
+                            // mixing in the shifted segment since degree is bounded
+                            p += &(segment.shiftr(self.g.len() - m%self.g.len()).scale(scale));
                         }
                     }
+                    scale *= &polyscale;
                 }
-
-                if let Some(m) = *degree_bound
-                {
-                    if m > p_i.coeffs.len()
-                    {
-                        let mut p_i = (*p_i).clone();
-                        p_i.coeffs.resize(m, Fr::<G>::zero());
-                        poly_mixer::<Fr<G>>(&mut p, &p_i, degree_bound, &mut scale, polyscale, self.g.len());
+                else {
+                    while offset < p_i.coeffs.len() {
+                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
+                            (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
+                        // always mixing in the unshifted segments
+                        p += &segment.scale(scale);
+                        scale *= &polyscale;
+                        offset += self.g.len();
                     }
-                    else
-                    {
-                        poly_mixer::<Fr<G>>(&mut p, p_i, degree_bound, &mut scale, polyscale, self.g.len());
-                    }
-                }
-                else
-                {
-                    poly_mixer::<Fr<G>>(&mut p, p_i, degree_bound, &mut scale, polyscale, self.g.len());
                 }
             }
             p
@@ -717,9 +681,10 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                         if let Some(comm_ch) = comm.shifted {
 
                             // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
+                            let last_evals = if *m > evals.len()*self.g.len() {vec![Fr::<G>::zero(); evaluation_points.len()]} else {evals[evals.len()-1].clone()};
                             let shifted_evals: Vec<_> = evaluation_points
                                 .iter()
-                                .zip(evals[evals.len()-1].iter())
+                                .zip(last_evals.iter())
                                 .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm)
                                 .collect();
 
