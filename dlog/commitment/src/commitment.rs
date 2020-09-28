@@ -297,8 +297,8 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             Some(max) =>
             {
                 let start = max - (max % n);
-                if plnm.is_zero() || start >= p {Some(G::zero())}
-                else if max % n == 0 {None}
+                if plnm.is_zero() {Some(G::zero())}
+                else if max % n == 0 || start >= p {None}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul
@@ -691,9 +691,8 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                             scalars.push(rand_base_i_c_i * &xi_i);
                             points.push(comm_ch);
                             res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
-
-                            xi_i *= *xi;
                         }
+                        xi_i *= *xi;
                     }
                 }
                 res
