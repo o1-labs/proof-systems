@@ -175,6 +175,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.unshifted);
+        fq_sponge.absorb_g(&[t_comm.shifted.unwrap()]);
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
 
