@@ -168,7 +168,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         t += &bnd.scale(alpha[0]);
-        t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));
