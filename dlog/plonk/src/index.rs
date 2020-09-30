@@ -31,18 +31,18 @@ impl<'a, G : CommitmentCurve> SRSValue<'a, G> {
 
 pub enum SRSSpec <'a, G: CommitmentCurve>{
     Use(&'a SRS<G>),
-    Generate
+    Generate(usize)
 }
 
 impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
-    pub fn generate(size: usize, public: usize, circ: usize) -> SRS<G> {
-        SRS::<G>::create(size, public, circ)
+    pub fn generate(size: usize) -> SRS<G> {
+        SRS::<G>::create(size)
     }
 
-    pub fn create<'b>(size: usize, public: usize, circ: usize, spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
+    pub fn create<'b>(spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
         match spec {
             SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate => SRSValue::Value(Self::generate(size, public, circ))
+            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size))
         }
     }
 }
@@ -109,6 +109,30 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             SRSValue::Ref(x) => SRSValue::Ref(x)
         };
 
+        println!("verifier_index");
+        println!("cs.qlm {}", self.cs.qlm.coeffs.len());
+        println!("cs.qrm {}", self.cs.qrm.coeffs.len());
+        println!("cs.qom {}", self.cs.qom.coeffs.len());
+        println!("cs.qmm {}", self.cs.qmm.coeffs.len());
+        println!("cs.qc {}", self.cs.qc.coeffs.len());
+
+        println!("cs.sigmam[0] {}", self.cs.sigmam[0].coeffs.len());
+        println!("cs.sigmam[1] {}", self.cs.sigmam[1].coeffs.len());
+        println!("cs.sigmam[2] {}", self.cs.sigmam[2].coeffs.len());
+
+        println!("cs.rcm[0] {}", self.cs.rcm[0].coeffs.len());
+        println!("cs.rcm[1] {}", self.cs.rcm[1].coeffs.len());
+        println!("cs.rcm[2] {}", self.cs.rcm[2].coeffs.len());
+
+        println!("cs.psm {}", self.cs.psm.coeffs.len());
+        println!("cs.addm {}", self.cs.addm.coeffs.len());
+        println!("cs.mul1m {}", self.cs.mul1m.coeffs.len());
+        println!("cs.mul2m {}", self.cs.mul2m.coeffs.len());
+
+        println!("cs.emul1m {}", self.cs.emul1m.coeffs.len());
+        println!("cs.emul2m {}", self.cs.emul2m.coeffs.len());
+        println!("cs.emul3m {}", self.cs.emul3m.coeffs.len());
+
         VerifierIndex
         {
             domain: self.cs.domain.d1,
@@ -144,16 +168,16 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
     pub fn create
     (
         mut cs: ConstraintSystem<Fr<G>>,
-        max_poly_size: usize,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         srs : SRSSpec<'a, G>
     ) -> Self
     {
+        let srs = SRSValue::create(srs);
+        let max_poly_size = srs.get_ref().g.len();
         if cs.public > 0
         {
             assert!(max_poly_size >= cs.domain.d1.size as usize, "polynomial segment size has to be not smaller that that of the circuit!");
         }
-        let srs = SRSValue::create(max_poly_size, cs.public, cs.domain.d1.size as usize, srs);
         cs.endo = srs.get_ref().endo_r;
         Index
         {

@@ -52,10 +52,18 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         oracles.gamma = fq_sponge.challenge();
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.z_comm.unshifted);
-        oracles.alpha = fq_sponge.challenge();
+        oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         // absorb the polycommitments into the argument and sample zeta
+        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
+        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&self.t_comm.unshifted);
-        fq_sponge.absorb_g(&[self.t_comm.shifted.unwrap()]);
+        fq_sponge.absorb_g(&vec![dummy; max_t_size - self.t_comm.unshifted.len()]);
+        match self.t_comm.shifted {
+            None => fq_sponge.absorb_g(&[dummy]),
+            Some(g) => fq_sponge.absorb_g(&[g]),
+        }
+
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
         let digest = fq_sponge.clone().digest();

@@ -23,6 +23,7 @@ pub struct RandomOracles<F: Field>
 {
     pub beta: F,
     pub gamma: F,
+    pub alpha_chal: ScalarChallenge<F>,
     pub alpha: F,
     pub zeta: F,
     pub v: F,
@@ -45,6 +46,7 @@ impl<F: Field> RandomOracles<F>
             zeta: F::zero(),
             v: F::zero(),
             u: F::zero(),
+            alpha_chal: c,
             zeta_chal: c,
             v_chal: c,
             u_chal: c,

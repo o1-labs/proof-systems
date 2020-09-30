@@ -7,9 +7,8 @@ This source file implements the Marlin structured reference string primitive
 pub use crate::{QnrField, CommitmentField};
 use blake2::{Blake2b, Digest};
 use std::io::{Read, Result as IoResult, Write};
-use algebra::{FromBytes, PrimeField, ToBytes, BigInteger, Zero, One};
-use ff_fft::{Radix2EvaluationDomain as D, Evaluations, EvaluationDomain};
-use crate::commitment::{CommitmentCurve, PolyComm};
+use algebra::{FromBytes, PrimeField, ToBytes, BigInteger};
+use crate::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 
 #[derive(Debug, Clone)]
@@ -47,9 +46,8 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
     // This function creates SRS instance for circuits up to depth d
     //      depth: maximal depth of SRS string
-    //      public: maximal number of public inputs
     //      size: circuit size
-    pub fn create(depth: usize, public: usize, size: usize) -> Self {
+    pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
         const N : usize = 31;

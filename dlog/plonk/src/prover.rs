@@ -124,7 +124,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
-        oracles.alpha = fq_sponge.challenge();
+        oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         let mut alpha = oracles.alpha;
         let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
@@ -174,8 +175,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));
 
         // absorb the polycommitments into the argument and sample zeta
+        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
+        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.unshifted);
-        fq_sponge.absorb_g(&[t_comm.shifted.unwrap()]);
+        fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.unshifted.len()]);
+        match t_comm.shifted {
+            None => fq_sponge.absorb_g(&[dummy]),
+            Some(g) => fq_sponge.absorb_g(&[g]),
+        }
+
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
 
