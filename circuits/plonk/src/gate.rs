@@ -10,7 +10,7 @@ use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
 use algebra::bytes::{FromBytes, ToBytes};
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[derive(PartialEq)]
 #[derive(FromPrimitive, ToPrimitive)]
 pub enum GateType
@@ -45,7 +45,8 @@ pub struct CircuitGate<F: FftField>
 impl<F: FftField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        ToPrimitive::to_u8(&self.typ).write(&mut w)?;
+        let typ : u8 = ToPrimitive::to_u8(&self.typ).unwrap();
+        typ.write(&mut w)?;
         self.wires.write(&mut w)?;
 
         (self.c.len() as u8).write(&mut w)?;
@@ -59,8 +60,9 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
 impl<F: FftField> FromBytes for CircuitGate<F> {
     #[inline]
     fn read<R: Read>(mut r: R) -> IoResult<Self> {
+        let code = u8::read(&mut r)?;
         let typ =
-            match FromPrimitive::from_u8(u8::read(&mut r)?) {
+            match FromPrimitive::from_u8(code) {
                 Some(x) => Ok(x),
                 None => Err(Error::new(ErrorKind::Other, "Invalid gate type"))
             }?;
