@@ -301,7 +301,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             Some(max) =>
             {
                 if plnm.is_zero() {Some(G::zero())}
-                else if max % n == 0 {None}
+                else if max % n == 0 {Some(G::zero())}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul

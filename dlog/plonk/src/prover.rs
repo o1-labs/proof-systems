@@ -179,10 +179,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.unshifted.len()]);
-        match t_comm.shifted {
-            None => fq_sponge.absorb_g(&[dummy]),
-            Some(g) => fq_sponge.absorb_g(&[g]),
-        }
+        {
+            let s = t_comm.shifted.unwrap();
+            if s.is_zero() {
+                fq_sponge.absorb_g(&[dummy])
+            } else {
+                fq_sponge.absorb_g(&[s])
+            }
+        };
 
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
