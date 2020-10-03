@@ -21,6 +21,9 @@ use rand_core::OsRng;
 use rand::Rng;
 use groupmap::GroupMap;
 
+
+type Fr = <Affine as AffineCurve>::ScalarField;
+
 #[test]
 fn heterogeneous_batch_commitment_test()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
@@ -31,6 +34,25 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let polys_per_opening = 3;
     let batch_size = 5;
+
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
+    let rng = &mut OsRng;
+    let mut random = rand::thread_rng();
+
+    let mut proofs = Vec::
+        <(
+            DefaultFqSponge<Bn_382GParameters, SC>,
+            Vec<Fr>,
+            Fr,
+            Fr,
+            Vec<(&PolyComm<Affine>, Vec<&Vec<Fr>>, Option<usize>)>,
+            &OpeningProof<Affine>,
+        )>::new();
+
+    for i in 0..batch_size {
+        // TODO: Produce opening proofs with (max_rounds - i) many rounds
+
+    }
 
     let batches : Vec<_> = 
         (0..batch_size).map(|i| {

@@ -249,7 +249,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             t_comm,
             proof: index.srs.get_ref().open
             (
-                group_map,
+                1 >> index.max_poly_size,
+                group_map,              
                 vec!
                 [
                     (&l, None),

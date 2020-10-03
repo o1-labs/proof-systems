@@ -89,6 +89,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let proof = srs.open::<DefaultFqSponge<Bn_382GParameters, SC>>
         (
+            1 >> polysize,
             &group_map,
             (0..a.len()).map
             (

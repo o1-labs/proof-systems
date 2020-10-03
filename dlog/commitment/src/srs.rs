@@ -18,6 +18,8 @@ pub struct SRS<G: CommitmentCurve>
     pub g: Vec<G>,    // for committing polynomials
     pub h: G,         // blinding
 
+    pub max_size: usize, // max SRS size
+
     // Lagrange polynomial commitments
     pub lgr_comm: Vec<PolyComm<G>>,
 
@@ -80,6 +82,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         {
             g: v[1..depth + 1].iter().map(|e| *e).collect(),
             h: v[0],
+            max_size : depth,
             lgr_comm: Vec::new(),
             endo_r, endo_q
         };
@@ -103,6 +106,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         for x in &self.g {
             G::write(x, &mut writer)?;
         }
+        u64::write(&(self.max_size as u64), &mut writer)?;
         u64::write(&(self.lgr_comm.len() as u64), &mut writer)?;
         for x in &self.lgr_comm {
             G::write(&x.unshifted[0], &mut writer)?;
@@ -112,6 +116,7 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
     }
 
     pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
+        let max_size = u64::read(&mut reader)? as usize;
         let n = u64::read(&mut reader)? as usize;
         let mut g = vec![];
         for _ in 0..n {
@@ -125,6 +130,6 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
         let h = G::read(&mut reader)?;
         let (endo_q, endo_r) = endos::<G>();
-        Ok(SRS { g, lgr_comm, h, endo_r, endo_q })
+        Ok(SRS { max_size, g, lgr_comm, h, endo_r, endo_q })
     }
 }

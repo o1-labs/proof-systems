@@ -348,6 +348,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
             // polynomial commitment batched opening proofs
             proof: index.srs.get_ref().open::<EFqSponge>
             (
+                index.max_poly_size,
                 group_map,
                 polynoms,
                 &beta,
