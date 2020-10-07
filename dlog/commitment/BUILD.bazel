@@ -20,12 +20,6 @@ rust_library(
         "//cargo:blake2",
         "//cargo:itertools"
     ],
-    # dev-dependencies
-    # + ["//cargo:rand", "//cargo:rand_xorshift"],
-    # + select({
-    #     "//profile:dev": ["//cargo:rand", "//cargo:rand_xorshift"],
-    #     "//conditions:default": []
-    # }),
     crate_features = [
         "asm",
         "bn_382",

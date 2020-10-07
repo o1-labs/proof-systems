@@ -1,0 +1,30 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "circuits_dlog",
+    visibility = ["//visibility:public"],
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "//oracle",
+        "//evaluation_domains",
+        "//dlog/commitment:commitment_dlog",
+
+        "@zexe//algebra",
+        "@zexe//ff-fft:ff_fft",
+
+        "//cargo:colored",
+        "//cargo:rand_core",
+        "//cargo:rand",
+        "//cargo:sprs"
+    ],
+    # deps = select({
+    #     "//conditions:default": ["//algebra-core:algebra_core"],
+    # })
+    # dev-dependencies
+    # + ["//cargo:rand", "//cargo:rand_xorshift"],
+    # + select({
+    #     "//profile:dev": ["//cargo:rand", "//cargo:rand_xorshift"],
+    #     "//conditions:default": []
+    # }),
+    crate_features = ["std"]
+)

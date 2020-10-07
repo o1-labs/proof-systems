@@ -19,6 +19,8 @@ Build a target: three equivalent commands:
 * `$ bazel build //oracle`
 * `$ bazel build //oracle:oracle`
 
+Build all: `$ bazel build //...`.  For more options see [Specifying targets to build](https://docs.bazel.build/versions/master/guide.html#specifying-targets-to-build)
+
 You may see some debug messages like
 
 `DEBUG: Rule 'raze__syn__0_15_44' indicated that a canonical reproducible form can be obtained by modifying arguments sha256 = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"`

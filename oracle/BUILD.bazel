@@ -4,8 +4,6 @@ rust_library(
     name = "oracle",
     visibility = ["//visibility:public"],
     edition = "2018",
-    # crate_type = "lib",
-    # crate_root = "src/lib.rs",
     srcs = glob(["src/**/*.rs"]),
     deps = [
         "@zexe//algebra",
