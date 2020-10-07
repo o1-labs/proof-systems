@@ -80,12 +80,18 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
 // given value, insert reference into the vector
     pub fn insert(&mut self, proof_collection_values: &'a ProofCollectionValues) {
+
+        let evals = proof_collection_values.a.iter().map
+        (
+            |a| proof_collection_values.x.iter().map(|xx| a.eval(*xx, proof_collection_values.size)).collect::<Vec<_>>()
+        ).collect::<Vec<_>>();
+
         let inner_vector = (0..proof_collection_values.a.len()).map
         (
             |j|
             (
-                &proof_collection_values.comm[j].clone(),
-                proof_collection_values.evals[j].iter().map(|evl| evl.clone()).collect::<Vec<_>>(),
+                &proof_collection_values.comm[j],
+                evals[j].iter().map(|evl| evl.clone()).collect::<Vec<_>>(),
                 if j%2==0 {Some(proof_collection_values.a[j].coeffs.len())} else {None})
             ).collect::<Vec<_>>();
         let final_tuple = (
@@ -101,7 +107,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             }
     }
 
-        //todo
+        //todo split pcv into with and without lifetimes
+        
 
     //structure of vector of values (no references)
 
@@ -112,7 +119,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             evalmask: Fr,
             comm: Vec<PolyComm<Affine>>,
             a: Vec<DensePolynomial<Fr>>,
-            evals: Vec<Vec<Vec<Fr>>>,
+            size: usize,
             proof: OpeningProof<Affine>       
     }
 
@@ -166,7 +173,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             evalmask: evalmask,
             comm: comm,
             a: a,
-            evals: evals,
+            size: size,
             proof: proof,
         };
 
