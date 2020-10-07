@@ -112,7 +112,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sigmal1 = s.clone();
 
         // compute permutation polynomials
-        gates.iter().filter(|&g| g.typ != GateType::Zero).for_each
+        gates.iter().for_each
         (
             |gate|
             {
@@ -124,7 +124,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let sigmam: [DensePolynomial<F>; 3] = array_init
             (|i| Evaluations::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate());
 
-        let mut s = sid[0..3].to_vec();
+        let mut s = sid[0..2].to_vec();
         sid.append(&mut s);
 
         // compute generic constraint polynomials

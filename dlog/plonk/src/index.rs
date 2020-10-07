@@ -109,30 +109,6 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             SRSValue::Ref(x) => SRSValue::Ref(x)
         };
 
-        println!("verifier_index");
-        println!("cs.qlm {}", self.cs.qlm.coeffs.len());
-        println!("cs.qrm {}", self.cs.qrm.coeffs.len());
-        println!("cs.qom {}", self.cs.qom.coeffs.len());
-        println!("cs.qmm {}", self.cs.qmm.coeffs.len());
-        println!("cs.qc {}", self.cs.qc.coeffs.len());
-
-        println!("cs.sigmam[0] {}", self.cs.sigmam[0].coeffs.len());
-        println!("cs.sigmam[1] {}", self.cs.sigmam[1].coeffs.len());
-        println!("cs.sigmam[2] {}", self.cs.sigmam[2].coeffs.len());
-
-        println!("cs.rcm[0] {}", self.cs.rcm[0].coeffs.len());
-        println!("cs.rcm[1] {}", self.cs.rcm[1].coeffs.len());
-        println!("cs.rcm[2] {}", self.cs.rcm[2].coeffs.len());
-
-        println!("cs.psm {}", self.cs.psm.coeffs.len());
-        println!("cs.addm {}", self.cs.addm.coeffs.len());
-        println!("cs.mul1m {}", self.cs.mul1m.coeffs.len());
-        println!("cs.mul2m {}", self.cs.mul2m.coeffs.len());
-
-        println!("cs.emul1m {}", self.cs.emul1m.coeffs.len());
-        println!("cs.emul2m {}", self.cs.emul2m.coeffs.len());
-        println!("cs.emul3m {}", self.cs.emul3m.coeffs.len());
-
         VerifierIndex
         {
             domain: self.cs.domain.d1,
@@ -181,7 +157,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = srs.get_ref().endo_r;
         Index
         {
-            max_quot_size: 5 * (cs.domain.d1.size as usize + 2) - 5,
+            max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
             fq_sponge_params,
             max_poly_size,
             srs,

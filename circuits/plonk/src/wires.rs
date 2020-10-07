@@ -63,6 +63,7 @@ impl GateWires
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy)]
 pub enum Col {L, R, O}
 

@@ -10,6 +10,7 @@ use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
 use algebra::bytes::{FromBytes, ToBytes};
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
+#[repr(C)]
 #[derive(Clone, Debug)]
 #[derive(PartialEq)]
 #[derive(FromPrimitive, ToPrimitive)]
