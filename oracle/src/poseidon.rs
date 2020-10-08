@@ -182,13 +182,8 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
     }
 
     fn absorb(&mut self, params: &ArithmeticSpongeParams<F>, x: &[F]) {
-        println!("Rabsorb state pre");
-        for x in self.state.iter() {
-            println!("{}", x);
-        }
         for x in x.iter()
         {
-            println!("Rabsorb {}", x);
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {
@@ -206,18 +201,9 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                 }
             }
         }
-        println!("Rabsorb state post");
-        for x in self.state.iter() {
-            println!("{}", x);
-        }
     }
 
     fn squeeze(&mut self, params: &ArithmeticSpongeParams<F>) -> F {
-        println!("Rsqueeze state pre");
-        for x in self.state.iter() {
-            println!("{}", x);
-        }
-        let res = 
         match self.sponge_state {
             SpongeState::Squeezed(n) => {
                 if n == self.rate {
@@ -234,12 +220,6 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                 self.sponge_state = SpongeState::Squeezed(1);
                 self.state[0]
             }
-        };
-        println!("Rsqueeze {}", res);
-        println!("Rsqueeze state post");
-        for x in self.state.iter() {
-            println!("{}", x);
         }
-        res
     }
 }
