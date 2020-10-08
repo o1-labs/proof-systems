@@ -79,7 +79,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
    
 
 // given value, insert reference into the vector
-    pub fn insert(&mut self, proof_collection_values: &'a ProofCollectionValues) {
+    pub fn insert(&mut self, proof_collection_values: &'a  ProofCollectionValues) {
 
         let evals = proof_collection_values.a.iter().map
         (
@@ -100,7 +100,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             proof_collection_values.polymask,
             proof_collection_values.evalmask,
             inner_vector,
-            &proof_collection_values.proof
+            proof_collection_values.proof
         );
 
         self.proofs_new.push(final_tuple);
@@ -108,7 +108,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     }
 
         //todo split pcv into with and without lifetimes
-        
+
 
     //structure of vector of values (no references)
 
