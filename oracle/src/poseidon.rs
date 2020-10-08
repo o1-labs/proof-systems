@@ -57,6 +57,7 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
+// TODO: Specialize to 5
 pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
     x.pow([SC::SPONGE_BOX as u64])
 }
@@ -104,7 +105,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
         self.apply_mds_matrix(params);
-        for (i, x) in params.round_constants[r].iter().enumerate() {
+        for (i, x) in params.round_constants[r + 1].iter().enumerate() {
             self.state[i].add_assign(x);
         }
     }
@@ -147,6 +148,9 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
 
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
         if SC::HALF_ROUNDS_FULL == 0 {
+            for (i, x) in params.round_constants[0].iter().enumerate() {
+                self.state[i].add_assign(x);
+            }
             for r in 0..SC::ROUNDS_FULL {
                 self.full_round(r, params);
             }
@@ -178,8 +182,13 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
     }
 
     fn absorb(&mut self, params: &ArithmeticSpongeParams<F>, x: &[F]) {
+        println!("Rabsorb state pre");
+        for x in self.state.iter() {
+            println!("{}", x);
+        }
         for x in x.iter()
         {
+            println!("Rabsorb {}", x);
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {
@@ -197,9 +206,18 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                 }
             }
         }
+        println!("Rabsorb state post");
+        for x in self.state.iter() {
+            println!("{}", x);
+        }
     }
 
     fn squeeze(&mut self, params: &ArithmeticSpongeParams<F>) -> F {
+        println!("Rsqueeze state pre");
+        for x in self.state.iter() {
+            println!("{}", x);
+        }
+        let res = 
         match self.sponge_state {
             SpongeState::Squeezed(n) => {
                 if n == self.rate {
@@ -216,6 +234,12 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                 self.sponge_state = SpongeState::Squeezed(1);
                 self.state[0]
             }
+        };
+        println!("Rsqueeze {}", res);
+        println!("Rsqueeze state post");
+        for x in self.state.iter() {
+            println!("{}", x);
         }
+        res
     }
 }
