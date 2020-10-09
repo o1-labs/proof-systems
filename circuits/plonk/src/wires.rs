@@ -7,7 +7,7 @@ This source file implements Plonk circuit gate wires primitive.
 use algebra::bytes::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct GateWires
 {
     pub l: (usize, usize),  // left input wire index and its permutation
@@ -64,17 +64,17 @@ impl GateWires
 }
 
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Col {L, R, O}
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Wire
 {
     pub row: usize,         // wire row
     pub col: Col,           // wire column
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Wires
 {
     pub row: usize,         // gate wire row

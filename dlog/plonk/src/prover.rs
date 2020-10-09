@@ -58,7 +58,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
     -> Result<Self, ProofError>
     {
         let n = index.cs.domain.d1.size as usize;
-        if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
+        if witness.len() != 3*n || !index.cs.verify(&witness) {return Err(ProofError::WitnessCsInconsistent)}
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
@@ -83,7 +83,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let o_comm = index.srs.get_ref().commit(&o, None);
 
         // absorb the public input, l, r, o polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.get_ref().commit(&p, None).unshifted);
+        let public_input_comm = &index.srs.get_ref().commit(&p, None).unshifted;
+        assert_eq!(public_input_comm.len(), 1);
+        { let public_input_comm = public_input_comm[0].to_coordinates().unwrap();
+        println!("prover public_input_comm {} {}", public_input_comm.0, public_input_comm.1) };
+        fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
         fq_sponge.absorb_g(&o_comm.unshifted);

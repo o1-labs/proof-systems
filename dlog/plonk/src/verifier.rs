@@ -43,6 +43,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         // absorb the public input, l, r, o polycommitments into the argument
+        { 
+        assert_eq!(p_comm.unshifted.len(), 1);
+            let public_input_comm = p_comm.unshifted[0].to_coordinates().unwrap();
+        println!("oracles public_input_comm {} {}", public_input_comm.0, public_input_comm.1) };
         fq_sponge.absorb_g(&p_comm.unshifted);
         fq_sponge.absorb_g(&self.l_comm.unshifted);
         fq_sponge.absorb_g(&self.r_comm.unshifted);
