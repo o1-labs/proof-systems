@@ -145,6 +145,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
     (
         mut cs: ConstraintSystem<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+        endo_q: Fr<G>,
         srs : SRSSpec<'a, G>
     ) -> Self
     {
@@ -154,7 +155,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         {
             assert!(max_poly_size >= cs.domain.d1.size as usize, "polynomial segment size has to be not smaller that that of the circuit!");
         }
-        cs.endo = srs.get_ref().endo_r;
+        cs.endo = endo_q;
         Index
         {
             max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
