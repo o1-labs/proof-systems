@@ -46,7 +46,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             Vec<Fr>,
             Fr,
             Fr,
-            Vec<(&PolyComm<Affine>, Vec<&Vec<Fr>>, Option<usize>)>,
+            Vec<(&PolyComm<Affine>, &Vec<Vec<Fr>>, Option<usize>)>,
             &OpeningProof<Affine>,
         )>::new();
 
@@ -57,7 +57,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             Vec<Fr>,
             Fr,
             Fr,
-            Vec<(&'a PolyComm<Affine>, Vec<&'a Vec<Fr>>, Option<usize>)>,
+            Vec<(&'a PolyComm<Affine>, &'a Vec<Vec<Fr>>, Option<usize>)>,
             &'a OpeningProof<Affine>,
         )>
     }
@@ -71,7 +71,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                     Vec<Fr>,
                     Fr,
                     Fr,
-                    Vec<(&PolyComm<Affine>, Vec<&Vec<Fr>>, Option<usize>)>,
+                    Vec<(&PolyComm<Affine>, &Vec<Vec<Fr>>, Option<usize>)>,
                     &OpeningProof<Affine>,
                 )>::new() }
             }
@@ -83,15 +83,27 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let evals = proof_collection_values.a.iter().map
         (
-            |a| proof_collection_values.x.iter().map(|xx| a.eval(*xx, proof_collection_values.size)).collect::<Vec<_>>()
+            |a| proof_collection_values.x.into_iter().map(|xx| a.eval(*xx, proof_collection_values.size)).collect::<Vec<_>>()
         ).collect::<Vec<_>>();
+        
+        let evals_temp = (0..proof_collection_values.a.len()).map
+        (
+            |j|
+            (
+                let tempvec: Vec<_> = evals[j].iter().map(|evl| format!("{}Foo", evl)).cloned().collect();
+                tempvec
+            )
+
+        ).collect::<Vec<_>>();
+
+        
 
         let inner_vector = (0..proof_collection_values.a.len()).map
         (
             |j|
             (
                 &proof_collection_values.comm[j],
-                evals[j].iter().map(|evl| evl.clone()).collect::<Vec<_>>(),
+                &evals[j],
                 if j%2==0 {Some(proof_collection_values.a[j].coeffs.len())} else {None})
             ).collect::<Vec<_>>();
         let final_tuple = (

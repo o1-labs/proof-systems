@@ -235,6 +235,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     (cached_values.zeta1 - &Fr::<G>::one()) * &cached_values.alpha[0]
                 {return Err(ProofError::ProofVerification)}
 
+
                 // prepare for the opening proof verification
                 Ok((
                     fq_sponge,
@@ -243,17 +244,17 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                     oracles.u,
                     vec!
                     [
-                        (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
-                        (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
-                        (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
-                        (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
+                        (&proof.l_comm, &proof.evals.into_iter().map(|e| e.l).collect::<Vec<_>>(), None),
+                        (&proof.r_comm, &proof.evals.into_iter().map(|e| e.r).collect::<Vec<_>>(), None),
+                        (&proof.o_comm, &proof.evals.into_iter().map(|e| e.o).collect::<Vec<_>>(), None),
+                        (&proof.z_comm, &proof.evals.into_iter().map(|e| e.z).collect::<Vec<_>>(), None),
+                        (&proof.t_comm, &proof.evals.into_iter().map(|e| e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
 
-                        (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
-                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+                        (f_comm, &proof.evals.into_iter().map(|e| e.f).collect::<Vec<_>>(), None),
+                        (p_comm, p_eval.into_iter().map( |e| *e).collect::<Vec<_>>(), None),
 
-                        (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
-                        (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
+                        (&index.sigma_comm[0], &proof.evals.into_iter().map(|e| e.sigma1).collect::<Vec<_>>(), None),
+                        (&index.sigma_comm[1], &proof.evals.into_iter().map(|e| e.sigma2).collect::<Vec<_>>(), None),
                     ],
                     &proof.proof
                 ))

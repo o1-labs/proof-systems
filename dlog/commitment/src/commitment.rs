@@ -511,7 +511,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : QnrField {
             Fr<G>,      // scaling factor for evaluation point powers
             Vec<(
                 &PolyComm<G>,       // polycommitment
-                Vec<&Vec<Fr<G>>>,   // vector of evaluations
+                &Vec<Vec<Fr<G>>>,   // vector of evaluations
                 Option<usize>,      // optional degree bound
             )>,
             &OpeningProof<G>, // batched opening proof
