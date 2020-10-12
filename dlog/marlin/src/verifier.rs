@@ -3,7 +3,7 @@
 This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
-
+extern crate arrayvec;
 use rand_core::RngCore;
 use algebra::{Field, AffineCurve, Zero, One};
 pub use super::index::{VerifierIndex as Index};
@@ -12,6 +12,8 @@ use oracle::{FqSponge, utils::PolyUtils, sponge::ScalarChallenge};
 use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use commitment_dlog::commitment::{QnrField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
 use crate::marlin_sponge::{FrSponge};
+use std::convert::TryInto;
+use arrayvec::ArrayVec;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -301,7 +303,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 (
                     |(comm, evals)|
                     {
-                        (comm, &evals.into_iter().map(|x| x.clone()).collect::<Vec<_>>(), None)
+                        (comm, evals, None)
                     }
                 ).collect::<Vec<(&PolyComm<G>, &Vec<Vec<Fr<G>>>, Option<usize>)>>();
 
@@ -309,30 +311,30 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : QnrField
                 (
                     vec!
                     [
-                        (x_hat_comm,         &oracles.x_hat.iter().map(|e| e.clone()).collect::<Vec<_>>(), None),
-                        (&proof.w_comm,      &proof.evals.iter().map(|e| e.w).collect::<Vec<_>>(), None),
-                        (&proof.za_comm,     &proof.evals.iter().map(|e| e.za).collect::<Vec<_>>(), None),
-                        (&proof.zb_comm,     &proof.evals.iter().map(|e| e.zb).collect::<Vec<_>>(), None),
-                        (&proof.h1_comm,     &proof.evals.iter().map(|e| e.h1).collect::<Vec<_>>(), None),
-                        (&proof.h2_comm,     &proof.evals.iter().map(|e| e.h2).collect::<Vec<_>>(), None),
-                        (&proof.h3_comm,     &proof.evals.iter().map(|e| e.h3).collect::<Vec<_>>(), None),
+                        (x_hat_comm,         &oracles.x_hat, None),
+                        (&proof.w_comm,      &proof.evals.into_iter().map(|e| e.w).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&proof.za_comm,     &proof.evals.into_iter().map(|e| e.za).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&proof.zb_comm,     &proof.evals.into_iter().map(|e| e.zb).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&proof.h1_comm,     &proof.evals.into_iter().map(|e| e.h1).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&proof.h2_comm,     &proof.evals.into_iter().map(|e| e.h2).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&proof.h3_comm,     &proof.evals.into_iter().map(|e| e.h3).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
                         
-                        (&index.matrix_commitments[0].row, &proof.evals.iter().map(|e| e.row[0]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[1].row, &proof.evals.iter().map(|e| e.row[1]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[2].row, &proof.evals.iter().map(|e| e.row[2]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[0].col, &proof.evals.iter().map(|e| e.col[0]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[1].col, &proof.evals.iter().map(|e| e.col[1]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[2].col, &proof.evals.iter().map(|e| e.col[2]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[0].val, &proof.evals.iter().map(|e| e.val[0]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[1].val, &proof.evals.iter().map(|e| e.val[1]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[2].val, &proof.evals.iter().map(|e| e.val[2]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[0].rc, &proof.evals.iter().map(|e| e.rc[0]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[1].rc, &proof.evals.iter().map(|e| e.rc[1]).collect::<Vec<_>>(), None),
-                        (&index.matrix_commitments[2].rc, &proof.evals.iter().map(|e| e.rc[2]).collect::<Vec<_>>(), None),
+                        (&index.matrix_commitments[0].row, &proof.evals.into_iter().map(|e| e.row[0]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[1].row, &proof.evals.into_iter().map(|e| e.row[1]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[2].row, &proof.evals.into_iter().map(|e| e.row[2]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[0].col, &proof.evals.into_iter().map(|e| e.col[0]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[1].col, &proof.evals.into_iter().map(|e| e.col[1]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[2].col, &proof.evals.into_iter().map(|e| e.col[2]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[0].val, &proof.evals.into_iter().map(|e| e.val[0]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[1].val, &proof.evals.into_iter().map(|e| e.val[1]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[2].val, &proof.evals.into_iter().map(|e| e.val[2]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[0].rc, &proof.evals.into_iter().map(|e| e.rc[0]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[1].rc, &proof.evals.into_iter().map(|e| e.rc[1]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
+                        (&index.matrix_commitments[2].rc, &proof.evals.into_iter().map(|e| e.rc[2]).collect::<ArrayVec<_>>().into_inner().unwrap(), None),
 
-                        (&proof.g1_comm,     &proof.evals.iter().map(|e| e.g1).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
-                        (&proof.g2_comm,     &proof.evals.iter().map(|e| e.g2).collect::<Vec<_>>(), Some(index.domains.h.size()-1)),
-                        (&proof.g3_comm,     &proof.evals.iter().map(|e| e.g3).collect::<Vec<_>>(), Some(index.domains.k.size()-1)),
+                        (&proof.g1_comm,     &proof.evals.into_iter().map(|e| e.g1).collect::<ArrayVec<_>>().into_inner().unwrap(), Some(index.domains.h.size()-1)),
+                        (&proof.g2_comm,     &proof.evals.into_iter().map(|e| e.g2).collect::<ArrayVec<_>>().into_inner().unwrap(), Some(index.domains.h.size()-1)),
+                        (&proof.g3_comm,     &proof.evals.into_iter().map(|e| e.g3).collect::<ArrayVec<_>>().into_inner().unwrap(), Some(index.domains.k.size()-1)),
                     ]
                 );
 
