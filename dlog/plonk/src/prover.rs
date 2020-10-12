@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One};
+use algebra::{Field, AffineCurve, Zero, One, PrimeField};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
@@ -12,6 +12,7 @@ use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
+use std::time::Instant;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -39,7 +40,7 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, G::BaseField : PrimeField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -57,6 +58,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
     )
     -> Result<Self, ProofError>
     {
+        let tm = Instant::now();
         let n = index.cs.domain.d1.size as usize;
         if witness.len() != 3*n || !index.cs.verify(&witness) {return Err(ProofError::WitnessCsInconsistent)}
 
@@ -85,8 +87,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // absorb the public input, l, r, o polycommitments into the argument
         let public_input_comm = &index.srs.get_ref().commit(&p, None).unshifted;
         assert_eq!(public_input_comm.len(), 1);
-        { let public_input_comm = public_input_comm[0].to_coordinates().unwrap();
-        println!("prover public_input_comm {} {}", public_input_comm.0, public_input_comm.1) };
         fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
@@ -281,32 +281,35 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (&r, None),
                 (&o, None),
                 (&z, None),
-                (&t, Some(index.max_quot_size)),
                 (&f, None),
                 (&index.cs.sigmam[0], None),
                 (&index.cs.sigmam[1], None),
+                (&t, Some(index.max_quot_size)),
             ]);
 
-        Ok(Self
-        {
-            l_comm,
-            r_comm,
-            o_comm,
-            z_comm,
-            t_comm,
-            proof: index.srs.get_ref().open
-            (
-                group_map,
-                polynoms,
-                &evlp.to_vec(),
-                oracles.v,
-                oracles.u,
-                fq_sponge_before_evaluations,
-                &mut OsRng
-            ),
-            evals,
-            public,
-            prev_challenges,
-        })
+        let proof =
+            Self
+            {
+                l_comm,
+                r_comm,
+                o_comm,
+                z_comm,
+                t_comm,
+                proof: index.srs.get_ref().open
+                (
+                    group_map,
+                    polynoms,
+                    &evlp.to_vec(),
+                    oracles.v,
+                    oracles.u,
+                    fq_sponge_before_evaluations,
+                    &mut OsRng
+                ),
+                evals,
+                public,
+                prev_challenges,
+            };
+
+        Ok(proof)
     }
 }

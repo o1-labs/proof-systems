@@ -21,7 +21,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let one = Evaluations::<F, D<F>>::from_vec_and_domain(vec![F::one(); self.domain.d4.size as usize], self.domain.d4);
 
         // 2*xP - λ1^2 + xT
-        let tmp = &(&polys.d8.this.l.scale((2 as u64).into()) - &polys.d8.this.r.pow(2)) + &polys.d8.next.r;
+        let tmp = &(&polys.d8.this.l.scale((2 as u64).into()) - &polys.d8.this.r.square()) + &polys.d8.next.r;
 
         (
             // verify booleanity of the scalar bit
@@ -35,9 +35,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             ,
             &(&(
                 // (2*yP - (2*xP - λ1^2 + xT) × λ1)^2 - (λ1^2 - xT + xS) * (2*xP - λ1^2 + xT)^2
-                &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)).pow(2)
+                &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)).square()
                 -
-                &(&(&(&polys.d8.this.r.pow(2) - &polys.d8.next.r) + &polys.d8.next.l) * &tmp.pow(2))
+                &(&(&(&polys.d8.this.r.square() - &polys.d8.next.r) + &polys.d8.next.l) * &tmp.square())
             ).scale(alpha[1])
             +
             &(

@@ -57,9 +57,12 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
-// TODO: Specialize to 5
 pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
-    x.pow([SC::SPONGE_BOX as u64])
+    let mut res = x;
+    res.square_in_place();
+    res.square_in_place();
+    res *= x;
+    res
 }
 
 #[derive(Clone, Debug)]

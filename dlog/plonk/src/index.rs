@@ -98,6 +98,9 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+
+    // Endo from the other curve
+    pub endo: Fr<G>
 }
 
 impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
@@ -132,6 +135,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
 
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
+            endo: self.cs.endo,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             srs,

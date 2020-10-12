@@ -10,6 +10,7 @@ use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{PlonkSpongeConstants,sbox
 use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
+use rayon::prelude::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
@@ -24,7 +25,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         if self.psm.is_zero() {return (self.ps4.clone(), self.ps8.clone(), DensePolynomial::<F>::zero())}
 
         let mut lro = [polys.d8.this.l.clone(), polys.d8.this.r.clone(), polys.d8.this.o.clone()];
-        lro.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p)));
+        lro.iter_mut().for_each(|p| p.evals.par_iter_mut().for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p)));
 
         let scalers = (0..params.mds.len()).
             map(|i| (0..params.mds[i].len()).fold(F::zero(), |x, j| alpha[j+1] * params.mds[j][i] + x)).

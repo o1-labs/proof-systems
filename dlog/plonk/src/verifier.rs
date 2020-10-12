@@ -43,10 +43,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         // absorb the public input, l, r, o polycommitments into the argument
-        { 
-        assert_eq!(p_comm.unshifted.len(), 1);
-            let public_input_comm = p_comm.unshifted[0].to_coordinates().unwrap();
-        println!("oracles public_input_comm {} {}", public_input_comm.0, public_input_comm.1) };
         fq_sponge.absorb_g(&p_comm.unshifted);
         fq_sponge.absorb_g(&self.l_comm.unshifted);
         fq_sponge.absorb_g(&self.r_comm.unshifted);
@@ -243,7 +239,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // EC variable base scalar multiplication constraint linearization scalars
                 s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha));
                 // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.srs.get_ref().endo_r, &alpha));
+                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha));
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
@@ -287,12 +283,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
 
                         (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
                         (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
+
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
                     ]
                 );
 

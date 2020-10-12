@@ -593,14 +593,16 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 let mut scale = Fr::<G>::one();
                 let mut res = Fr::<G>::zero();
                 for &e in evaluation_points.iter() {
-                    res += &(scale * &b_poly(&chal, &chal_inv, e));
+                    let term = b_poly(&chal, &chal_inv, e);
+                    res += &(scale * &term);
                     scale *= *r;
                 }
                 res
             };
 
+            let s0 = chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y);
             let s = b_poly_coefficients(
-                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y),
+                s0,
                 &chal_squared,
             );
 
@@ -642,6 +644,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             //   (sum_j (chal_squareds[j] L_j + chal_squared_invs[j] R_j) + P_prime)
             // where P_prime = combined commitment + combined_inner_product * U
             let rand_base_i_c_i = c * &rand_base_i;
+            let mut lr_prod = G::Projective::zero();
             for ((l, r), (u, u_inv)) in opening
                 .lr
                 .iter()
@@ -652,6 +655,9 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
                 points.push(*r);
                 scalars.push(rand_base_i_c_i * u_inv);
+
+                lr_prod += &l.mul(*u);
+                lr_prod += &r.mul(*u_inv);
             }
 
             // TERM
@@ -679,6 +685,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
                         xi_i *= *xi;
+
                     }
 
                     if let Some(m) = shifted {
@@ -690,7 +697,9 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 								let shifted_evals: Vec<_> = evaluation_points
 									.iter()
 									.zip(last_evals.iter())
-									.map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm)
+									.map(|(elm, f_elm)| {
+                                        elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm
+                                    })
 									.collect();
 
 								scalars.push(rand_base_i_c_i * &xi_i);
