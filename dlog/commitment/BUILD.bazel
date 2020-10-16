@@ -8,7 +8,7 @@ rust_library(
     deps = [
         "@zexe//algebra",
         "@zexe//groupmap",
-        "@zexe//ff-fft:ff_fft",
+        "@zexe//ff-fft",
 
         "//oracle",
         "//dlog_solver",

@@ -6,8 +6,8 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     deps = [
         "@zexe//algebra",
-        "@zexe//algebra-core:algebra_core",
-        "@zexe//ff-fft:ff_fft",
+        "@zexe//algebra-core",
+        "@zexe//ff-fft",
         "//oracle",
         "//cargo:array_init",
         "//cargo:blake2",

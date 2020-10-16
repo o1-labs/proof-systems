@@ -6,7 +6,7 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     deps = [
         "@zexe//algebra",
-        "@zexe//ff-fft:ff_fft",
+        "@zexe//ff-fft",
 
         "//dlog/commitment:commitment_dlog",
         "//circuits/plonk:plonk_circuits",

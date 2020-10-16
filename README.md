@@ -48,3 +48,8 @@ To update:
 * to pin versions, from within `cargo` run `$ cargo generate-lockfile`
 * commit changes to git
 
+IMPORTANT: the cargo/Cargo.toml file must list the deps of zexe as
+well as those of marlin! The workspace file can import the Zexe
+repository, but it will not evaluate Zexe's WORKSPACE rules to acquire
+its dependencies. So they must be included here.
+
