@@ -41,7 +41,7 @@ fn dlog_full() {
         let rng = &mut OsRng;
 
         let x = Fp256::<P>::rand(rng);
-        let (c, d) = decompose(x);
+        let (c, d) = decompose(&x);
         assert!(in_orthogonal_complement(c));
         assert_eq!(compose((c, d)), x);
     }
@@ -59,7 +59,7 @@ fn det_sqrt() {
 
         let y = x.det_sqrt().unwrap();
 
-        let (_, d) = decompose(y);
+        let (_, d) = decompose(&y);
         assert_eq!(d >> (P::TWO_ADICITY - 1), 0);
 
         assert_eq!(y * y, x);

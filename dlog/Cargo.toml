@@ -6,7 +6,7 @@ edition = "2018"
 [dependencies]
 algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
 groupmap = { path = "../../zexe/groupmap" }
-ff-fft = { path = "../../zexe/ff-fft" }
+ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel" ] }
 commitment_dlog = { path = "commitment" }
 marlin_circuits = { path = "../circuits/marlin" }
 marlin_protocol_dlog = { path = "marlin" }

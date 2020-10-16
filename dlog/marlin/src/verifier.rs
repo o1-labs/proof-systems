@@ -194,24 +194,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 let polys = proof.prev_challenges.iter().map(|(chals, poly)| {
                     // No need to check the correctness of poly explicitly. Its correctness is assured by the
                     // checking of the inner product argument.
-                    // TODO: Use batch inversion across proofs
-                    let chal_invs = {
-                        let mut cs = chals.clone();
-                        algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
-                        cs
-                    };
-
-                    let s0 = product(chal_invs.iter().map(|x| *x) );
-                    let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
-
-                    let b_len = 1 << chal_invs.len();
+                    let b_len = 1 << chals.len();
                     let mut b : Option<Vec<Fr<G>>> = None;
 
                     let evals = (0..3).map
                     (
                         |i|
                         {
-                            let full = b_poly(&chals, &chal_invs, oracles.beta[i].to_field(endo));
+                            let full = b_poly(&chals, oracles.beta[i].to_field(endo));
                             if index.max_poly_size == b_len {
                                 return vec![full]
                             }
@@ -220,7 +210,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                                 let b_j =
                                     match &b {
                                         None => {
-                                            let t = b_poly_coefficients(s0, &chal_squareds);
+                                            let t = b_poly_coefficients(&chals);
                                             let res = t[j];
                                             b = Some(t);
                                             res
