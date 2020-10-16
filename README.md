@@ -21,10 +21,30 @@ Build a target: three equivalent commands:
 
 Build all: `$ bazel build //...`.  For more options see [Specifying targets to build](https://docs.bazel.build/versions/master/guide.html#specifying-targets-to-build)
 
-You may see some debug messages like
+NOTE: you may see the following error message. It does not seem to prevent a successful build.
 
-`DEBUG: Rule 'raze__syn__0_15_44' indicated that a canonical reproducible form can be obtained by modifying arguments sha256 = "9ca4b3b69a77cbe1ffc9e198781b7acb0c7365a883670e8f1c1bc66fba79a5c5"`
+```
+INFO: From CargoBuildScriptRun external/raze__crossbeam_utils__0_7_2/crossbeam_utils_build_script.out_dir:
+error[E0658]: use of unstable library feature 'integer_atomics'
+ --> <anon>:1:18
+  |
+1 | pub type Probe = core::sync::atomic::AtomicU128;
+  |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: see issue #32976 <https://github.com/rust-lang/rust/issues/32976> for more information
 
-That's because we have not pinned specific versions/commits.  Which is
-ok for the moment.
+error: aborting due to previous error
+```
+
+## maintenance
+
+Use [cargo-raze](https://github.com/google/cargo-raze) to manage Bazel support.
+
+To update:
+
+* edit `cargo/Cargo.toml`
+* from within `cargo/` run `$ cargo raze`
+* test the build
+* to pin versions, from within `cargo` run `$ cargo generate-lockfile`
+* commit changes to git
 
