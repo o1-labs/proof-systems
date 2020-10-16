@@ -43,5 +43,5 @@ git_repository(
     # tag    = use tag instead of branch once a release tag has been published
 )
 
-load("//cargo:crates.bzl", "raze_fetch_remote_crates")
+load("//bzl/cargo:crates.bzl", "raze_fetch_remote_crates")
 raze_fetch_remote_crates()

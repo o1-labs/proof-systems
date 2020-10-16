@@ -12,12 +12,12 @@ rust_library(
         "//circuits/plonk:plonk_circuits",
         "//oracle",
 
-        "//cargo:rand_core",
-        "//cargo:colored",
-        "//cargo:rand",
-        "//cargo:sprs",
-        "//cargo:rayon",
-        "//cargo:array_init"
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
+        "//bzl/cargo:rand",
+        "//bzl/cargo:sprs",
+        "//bzl/cargo:rayon",
+        "//bzl/cargo:array_init"
     ],
     crate_features = [
         "parallel",

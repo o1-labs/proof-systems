@@ -17,8 +17,8 @@ build --sandbox_debug
 # query --keep_going
 
 
-## You can override the WORKSPACE definition of a repo.
+## Override the WORKSPACE definition of a repo:
 
-# build --override_repository=obazl_rules_ocaml=/path/to/obazl
-# query --override_repository=obazl_rules_ocaml=/path/to/obazl
+# build --override_repository=zexe=/path/to/zexe
+# query --override_repository=zexe=/path/to/zexe
 

@@ -13,10 +13,10 @@ rust_library(
         "//circuits/plonk:plonk_circuits",
         "//oracle",
 
-        "//cargo:rand",
-        "//cargo:rand_core",
-        "//cargo:colored",
-        "//cargo:sprs",
-        "//cargo:array_init"
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
+        "//bzl/cargo:sprs",
+        "//bzl/cargo:array_init"
     ]
 )

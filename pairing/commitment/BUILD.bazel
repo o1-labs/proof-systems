@@ -9,8 +9,8 @@ rust_library(
         "@zexe//algebra",
         "@zexe//ff-fft",
         "//oracle",
-        "//cargo:rand",
-        "//cargo:rand_core",
-        "//cargo:colored",
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
     ]
 )

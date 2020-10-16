@@ -13,9 +13,9 @@ rust_library(
         "//circuits/marlin:marlin_circuits",
         "//oracle",
 
-        "//cargo:rand",
-        "//cargo:rand_core",
-        "//cargo:colored",
-        "//cargo:sprs",
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
+        "//bzl/cargo:sprs",
     ]
 )

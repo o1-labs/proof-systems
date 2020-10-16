@@ -7,9 +7,9 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     deps = [
         "@zexe//algebra",
-        "//cargo:rand",
-        "//cargo:rand_core",
-        "//cargo:num_integer",
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:num_integer",
     ],
     crate_features = [
         "asm",

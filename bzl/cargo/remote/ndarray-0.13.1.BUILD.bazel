@@ -1,0 +1,127 @@
+"""
+@generated
+cargo-raze crate build file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+# buildifier: disable=load
+load(
+    "@io_bazel_rules_rust//rust:rust.bzl",
+    "rust_binary",
+    "rust_library",
+    "rust_test",
+)
+
+package(default_visibility = [
+    # Public for visibility by "@raze__crate__version//" targets.
+    #
+    # Prefer access through "//bzl/cargo", which limits external
+    # visibility to explicit Cargo.toml dependencies.
+    "//visibility:public",
+])
+
+licenses([
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
+])
+
+# Generated targets
+# buildifier: disable=load-on-top
+load(
+    "@io_bazel_rules_rust//cargo:cargo_build_script.bzl",
+    "cargo_build_script",
+)
+
+# buildifier: leave-alone
+cargo_build_script(
+    name = "ndarray_build_script",
+    srcs = glob(["**/*.rs"]),
+    crate_root = "build.rs",
+    edition = "2018",
+    # buildifier: leave-alone
+    deps = [
+    ],
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    crate_features = [
+    ],
+    build_script_env = {
+    },
+    data = glob(["**"]),
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+    version = "0.13.1",
+    visibility = ["//visibility:private"],
+)
+
+# Unsupported target "array" with type "test" omitted
+# Unsupported target "array-construct" with type "test" omitted
+# Unsupported target "axis_ops" with type "example" omitted
+# Unsupported target "azip" with type "test" omitted
+# Unsupported target "bench1" with type "bench" omitted
+# Unsupported target "bounds_check_elim" with type "example" omitted
+# Unsupported target "broadcast" with type "test" omitted
+# Unsupported target "chunks" with type "bench" omitted
+# Unsupported target "clone" with type "test" omitted
+# Unsupported target "column_standardize" with type "example" omitted
+# Unsupported target "complex" with type "test" omitted
+# Unsupported target "construct" with type "bench" omitted
+# Unsupported target "convo" with type "example" omitted
+# Unsupported target "dimension" with type "test" omitted
+# Unsupported target "format" with type "test" omitted
+# Unsupported target "gemv" with type "bench" omitted
+# Unsupported target "higher-order" with type "bench" omitted
+# Unsupported target "higher_order_f" with type "test" omitted
+# Unsupported target "indices" with type "test" omitted
+# Unsupported target "into-ixdyn" with type "test" omitted
+# Unsupported target "iter" with type "bench" omitted
+# Unsupported target "iterator_chunks" with type "test" omitted
+# Unsupported target "iterators" with type "test" omitted
+# Unsupported target "ix0" with type "test" omitted
+# Unsupported target "ixdyn" with type "test" omitted
+# Unsupported target "life" with type "example" omitted
+
+# buildifier: leave-alone
+rust_library(
+    name = "ndarray",
+    crate_type = "lib",
+    deps = [
+        ":ndarray_build_script",
+        "@raze__matrixmultiply__0_2_3//:matrixmultiply",
+        "@raze__num_complex__0_2_4//:num_complex",
+        "@raze__num_integer__0_1_43//:num_integer",
+        "@raze__num_traits__0_2_11//:num_traits",
+        "@raze__rawpointer__0_2_1//:rawpointer",
+    ],
+    srcs = glob(["**/*.rs"]),
+    crate_root = "src/lib.rs",
+    edition = "2018",
+    rustc_flags = [
+        "--cap-lints=allow",
+    ],
+    version = "0.13.1",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+    crate_features = [
+    ],
+)
+# Unsupported target "numeric" with type "bench" omitted
+# Unsupported target "numeric" with type "test" omitted
+# Unsupported target "oper" with type "test" omitted
+# Unsupported target "par_azip" with type "test" omitted
+# Unsupported target "par_rayon" with type "bench" omitted
+# Unsupported target "par_rayon" with type "test" omitted
+# Unsupported target "par_zip" with type "test" omitted
+# Unsupported target "raw_views" with type "test" omitted
+# Unsupported target "rollaxis" with type "example" omitted
+# Unsupported target "s" with type "test" omitted
+# Unsupported target "sort-axis" with type "example" omitted
+# Unsupported target "stacking" with type "test" omitted
+# Unsupported target "windows" with type "test" omitted
+# Unsupported target "zip_many" with type "example" omitted
+# Unsupported target "zst" with type "test" omitted

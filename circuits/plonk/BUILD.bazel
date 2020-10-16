@@ -9,8 +9,8 @@ rust_library(
         "@zexe//algebra-core",
         "@zexe//ff-fft",
         "//oracle",
-        "//cargo:array_init",
-        "//cargo:blake2",
-        "//cargo:rand_core",
+        "//bzl/cargo:array_init",
+        "//bzl/cargo:blake2",
+        "//bzl/cargo:rand_core",
     ],
 )

@@ -8,6 +8,6 @@ rust_library(
     deps = [
         "@zexe//algebra",
         "@zexe//ff-fft",
-        "//cargo:rand",
+        "//bzl/cargo:rand",
     ]
 )

@@ -13,12 +13,12 @@ rust_library(
         "//oracle",
         "//dlog_solver",
 
-        "//cargo:rand_core",
-        "//cargo:colored",
-        "//cargo:rand",
-        "//cargo:rayon",
-        "//cargo:blake2",
-        "//cargo:itertools"
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rayon",
+        "//bzl/cargo:blake2",
+        "//bzl/cargo:itertools"
     ],
     crate_features = [
         "asm",
