@@ -263,7 +263,6 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
 
     let windows2 = BitIterator::new(x2.into_repr()).tuples();
 
-    // let mut p = g1.clone().to_vec();
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
     let mut denominators = vec![P::BaseField::zero(); n];
