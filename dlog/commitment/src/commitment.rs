@@ -91,35 +91,6 @@ pub struct Challenges<F> {
     pub chal_inv : Vec<F>,
 }
 
-/*
-fn random_vanishing_on<F:Field>(ps : &[F], d : usize, rng: &mut dyn RngCore) {
-    // Pick a random degree (d - ps.len()) polynomial and then
-    // multiply by (x - p0) ... (x - p_{n-1})
-
-    // Say f has degree n.
-    // (x - p) * f is
-    // [ 0 - p f0, f0 - p f1, ..., f_{n-1} - p f_n, f_n ]
-    fn times_x_minus_p<F: Field>(p : F, f : &mut Vec<F>) -> Vec<F> {
-        // TODO Optimize
-        let mut res = vec![F::zero()];
-        res.append(f);
-        for (i, a) in f.iter().enumerate() {
-            res[i] -= p * a;
-        }
-        res
-    }
-
-    let mut res = vec![];
-    for _ in 0..(d + 1 - ps.len()) {
-        res.push(F::rand(rng))
-    }
-
-    for p in ps.iter() {
-        res = times_x_minus_p(*p, &mut res);
-    }
-
-} */
-
 impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         self.lr
