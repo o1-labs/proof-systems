@@ -40,7 +40,7 @@ cargo_build_script(
     edition = "2015",
     # buildifier: leave-alone
     deps = [
-        "@raze__autocfg__0_1_7//:autocfg",
+        "@marlin__autocfg__0_1_7//:autocfg",
     ],
     rustc_flags = [
         "--cap-lints=allow",
@@ -77,8 +77,8 @@ rust_library(
     crate_type = "lib",
     deps = [
         ":num_bigint_build_script",
-        "@raze__num_integer__0_1_43//:num_integer",
-        "@raze__num_traits__0_2_11//:num_traits",
+        "@marlin__num_integer__0_1_43//:num_integer",
+        "@marlin__num_traits__0_2_11//:num_traits",
     ],
     srcs = glob(["**/*.rs"]),
     crate_root = "src/lib.rs",

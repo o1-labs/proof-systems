@@ -40,26 +40,8 @@ alias(
 )
 
 alias(
-    name = "derivative",
-    actual = "@raze__derivative__2_1_1//:derivative",
-    tags = [
-        "cargo-raze",
-        "manual",
-    ],
-)
-
-alias(
     name = "itertools",
     actual = "@raze__itertools__0_8_2//:itertools",
-    tags = [
-        "cargo-raze",
-        "manual",
-    ],
-)
-
-alias(
-    name = "num_bigint",
-    actual = "@raze__num_bigint__0_2_3//:num_bigint",
     tags = [
         "cargo-raze",
         "manual",
@@ -130,44 +112,8 @@ alias(
 )
 
 alias(
-    name = "rustc_version",
-    actual = "@raze__rustc_version__0_2_3//:rustc_version",
-    tags = [
-        "cargo-raze",
-        "manual",
-    ],
-)
-
-alias(
     name = "sprs",
     actual = "@raze__sprs__0_7_1//:sprs",
-    tags = [
-        "cargo-raze",
-        "manual",
-    ],
-)
-
-alias(
-    name = "syn",
-    actual = "@raze__syn__1_0_17//:syn",
-    tags = [
-        "cargo-raze",
-        "manual",
-    ],
-)
-
-alias(
-    name = "typenum",
-    actual = "@raze__typenum__1_12_0//:typenum",
-    tags = [
-        "cargo-raze",
-        "manual",
-    ],
-)
-
-alias(
-    name = "unroll",
-    actual = "@raze__unroll__0_1_4//:unroll",
     tags = [
         "cargo-raze",
         "manual",

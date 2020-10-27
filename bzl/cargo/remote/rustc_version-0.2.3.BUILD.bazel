@@ -32,7 +32,7 @@ rust_library(
     name = "rustc_version",
     crate_type = "lib",
     deps = [
-        "@raze__semver__0_9_0//:semver",
+        "@marlin__semver__0_9_0//:semver",
     ],
     srcs = glob(["**/*.rs"]),
     crate_root = "src/lib.rs",

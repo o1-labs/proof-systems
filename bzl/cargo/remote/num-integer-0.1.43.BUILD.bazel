@@ -51,7 +51,6 @@ rust_library(
     ],
     crate_features = [
         "default",
-        "i128",
         "std",
     ],
 )

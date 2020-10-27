@@ -33,8 +33,8 @@ rust_library(
     name = "unroll",
     crate_type = "proc-macro",
     deps = [
-        "@raze__quote__0_6_13//:quote",
-        "@raze__syn__0_15_44//:syn",
+        "@marlin__quote__0_6_13//:quote",
+        "@marlin__syn__0_15_44//:syn",
     ],
     srcs = glob(["**/*.rs"]),
     crate_root = "src/lib.rs",

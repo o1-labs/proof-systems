@@ -76,9 +76,9 @@ rust_library(
     crate_type = "lib",
     deps = [
         ":syn_build_script",
-        "@raze__proc_macro2__1_0_17//:proc_macro2",
-        "@raze__quote__1_0_6//:quote",
-        "@raze__unicode_xid__0_2_1//:unicode_xid",
+        "@marlin__proc_macro2__1_0_17//:proc_macro2",
+        "@marlin__quote__1_0_6//:quote",
+        "@marlin__unicode_xid__0_2_1//:unicode_xid",
     ],
     srcs = glob(["**/*.rs"]),
     crate_root = "src/lib.rs",

@@ -34,7 +34,7 @@ rust_library(
     name = "semver",
     crate_type = "lib",
     deps = [
-        "@raze__semver_parser__0_7_0//:semver_parser",
+        "@marlin__semver_parser__0_7_0//:semver_parser",
     ],
     srcs = glob(["**/*.rs"]),
     crate_root = "src/lib.rs",

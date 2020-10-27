@@ -66,7 +66,7 @@ rust_library(
     crate_type = "lib",
     deps = [
         ":proc_macro2_build_script",
-        "@raze__unicode_xid__0_1_0//:unicode_xid",
+        "@marlin__unicode_xid__0_1_0//:unicode_xid",
     ],
     srcs = glob(["**/*.rs"]),
     crate_root = "src/lib.rs",
