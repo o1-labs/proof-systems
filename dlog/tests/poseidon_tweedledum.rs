@@ -20,6 +20,7 @@ const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
 const MAX_SIZE: usize = 40000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
+const M: usize = PERIOD * (NUM_POS-1);
 
 #[test]
 fn poseidon_tweedledum()
@@ -33,25 +34,38 @@ fn poseidon_tweedledum()
 
     // custom constraints for Poseidon hash function permutation
 
-    for _ in 0..NUM_POS
+    for _ in 0..NUM_POS-1
     {
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
+            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M))), [c[j][0],c[j][1],c[j][2]]));
             i+=1;
         }
-        gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));
+        gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M)))));
         i+=1;
     }
 
+    for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+    {
+        gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i))), [c[j][0],c[j][1],c[j][2]]));
+        i+=1;
+    }
+    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    i+=1;
+    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    i+=1;
+    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+
     let srs = SRS::create(MAX_SIZE, 0, 0);
 
+    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dee::Affine>();
     let index = Index::<Affine>::create
     (
         ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), 0).unwrap(),
         MAX_SIZE,
         oracle::tweedle::fp::params(),
+        endo_q,
         SRSSpec::Use(&srs)
     );
 
@@ -87,7 +101,7 @@ fn positive(index: &Index<Affine>)
         let (x, y, z) = (Fq::rand(rng), Fq::rand(rng), Fq::rand(rng));
 
         //  witness for Poseidon permutation custom constraints
-        for _ in 0..NUM_POS
+        for _ in 0..NUM_POS-1
         {
             sponge.state = vec![x, y, z];
             l.push(sponge.state[0]);
@@ -103,6 +117,28 @@ fn positive(index: &Index<Affine>)
                 o.push(sponge.state[2]);
             }
         }
+
+        sponge.state = vec![x, y, z];
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
+
+        // HALF_ROUNDS_FULL full rounds
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+        {
+            sponge.full_round(j, &params);
+            l.push(sponge.state[0]);
+            r.push(sponge.state[1]);
+            o.push(sponge.state[2]);
+        }
+
+        l.push(Fq::rand(rng));
+        r.push(Fq::rand(rng));
+        o.push(Fq::rand(rng));
+        l.push(Fq::rand(rng));
+        r.push(Fq::rand(rng));
+        o.push(Fq::rand(rng));
+
         let mut witness = l;
         witness.append(&mut r);
         witness.append(&mut o);

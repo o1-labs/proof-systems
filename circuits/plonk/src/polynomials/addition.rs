@@ -32,7 +32,7 @@ use crate::scalars::ProofEvaluations;
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // EC Affine addition constraint quotient poly contribution computation
-    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &Vec<F>) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
+    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
     {
         if self.addm.is_zero() {return (self.addl3.clone(), self.addl4.clone())}
         /*
@@ -45,29 +45,29 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         (
             &(&(&(&(&polys.d4.next.r - &polys.d4.next.l) * ylo)
             -
-            &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l))).scale(alpha[1])
+            &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l))).scale(alpha[0])
             -
-            &(ylo * ylo).scale(alpha[2]))
+            &(ylo * ylo).scale(alpha[1]))
             *
             &self.addl3
             ,
-            (&(&(&polys.d8.next.l + &(&polys.d8.next.r + &polys.d8.next.o)) * &(xlo * xlo)) * &self.addl4).scale(alpha[2])
+            (&(&(&polys.d8.next.l + &(&polys.d8.next.r + &polys.d8.next.o)) * &(xlo * xlo)) * &self.addl4).scale(alpha[1])
         )
     }
 
-    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> Vec<F>
+    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> Vec<F>
     {
         vec!
         [
             ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[1] +
+            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[0] +
             &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
-            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[2])
+            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[1])
         ]
     }
 
     // EC Affine addition constraint linearization poly contribution computation
-    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &Vec<F>) -> DensePolynomial<F>
+    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
     {
         self.addm.scale(Self::ecad_scalars(evals, alpha)[0])
     }

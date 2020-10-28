@@ -23,7 +23,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     {
         let l0 = &self.l0.scale(oracles.gamma);
 
-        (&(&(&(&(&lagrange.d8.this.l + &(l0 + &self.l1.scale(oracles.beta))) *
+        &((&(&(&(&(&lagrange.d8.this.l + &(l0 + &self.l1.scale(oracles.beta))) *
         &(&lagrange.d8.this.r + &(l0 + &self.l1.scale(oracles.beta * &self.r)))) *
         &(&lagrange.d8.this.o + &(l0 + &self.l1.scale(oracles.beta * &self.o)))) *
         &lagrange.d8.this.z)
@@ -31,17 +31,29 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         &(&(&(&(&lagrange.d8.this.l + &(l0 + &self.sigmal4[0].scale(oracles.beta))) *
         &(&lagrange.d8.this.r + &(l0 + &self.sigmal4[1].scale(oracles.beta)))) *
         &(&lagrange.d8.this.o + &(l0 + &self.sigmal4[2].scale(oracles.beta)))) *
-        &lagrange.d8.next.z)).scale(oracles.alpha)
+        &lagrange.d8.next.z)).scale(oracles.alpha))
+        *
+        &self.zkpl
     }
 
     pub fn perm_lnrz
     (
         &self, e: &Vec<ProofEvaluations<F>>,
         z: &DensePolynomial<F>,
-        oracles: &RandomOracles<F>
+        oracles: &RandomOracles<F>,
+        alpha: &[F]
     ) -> DensePolynomial<F>
     {
-        let scalars = Self::perm_scalars(e, oracles, (self.r, self.o), self.domain.d1.size);
+        let scalars = Self::perm_scalars
+        (
+            e,
+            oracles,
+            (self.r, self.o),
+            alpha,
+            self.domain.d1.size,
+            self.zkpm.evaluate(oracles.zeta),
+            self.sid[self.domain.d1.size as usize -3]
+        );
         &z.scale(scalars[0]) + &self.sigmam[2].scale(scalars[1])
     }
 
@@ -51,7 +63,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         e: &Vec<ProofEvaluations<F>>,
         oracles: &RandomOracles<F>,
         shift: (F, F),
+        alpha: &[F],
         n: u64,
+        z: F,
+        w: F,
     ) -> Vec<F>
     {
         let bz = oracles.beta * &oracles.zeta;
@@ -60,12 +75,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             (e[0].l + &bz + &oracles.gamma) *
             &(e[0].r + &(bz * &shift.0) + &oracles.gamma) *
             &(e[0].o + &(bz * &shift.1) + &oracles.gamma) *
-            &oracles.alpha +
-            &(oracles.alpha.square() * &(oracles.zeta.pow(&[n]) - &F::one()) / &(oracles.zeta - &F::one()))
+            &oracles.alpha * &z +
+            &(alpha[0] * &(oracles.zeta.pow(&[n]) - &F::one()) / &(oracles.zeta - &F::one())) +
+            &(alpha[1] * &(oracles.zeta.pow(&[n]) - &F::one()) / &(oracles.zeta - &w))
             ,
             -(e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma) *
             &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma) *
-            &(e[1].z * &oracles.beta * &oracles.alpha)
+            &(e[1].z * &oracles.beta * &oracles.alpha * &z)
         ]
     }
 }

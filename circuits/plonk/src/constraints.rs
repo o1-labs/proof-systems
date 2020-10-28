@@ -25,6 +25,7 @@ pub struct ConstraintSystem<F: FftField>
     // POLYNOMIALS OVER THE MONOMIAL BASE
 
     pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
+    pub zkpm:   DensePolynomial<F>,         // zero-knowledge polynomial
 
     // generic constraint selector polynomials
     pub qlm:    DensePolynomial<F>,         // left input wire polynomial
@@ -75,6 +76,7 @@ pub struct ConstraintSystem<F: FftField>
 
     pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d8
     pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d8
+    pub zkpl:   Evaluations<F, D<F>>,       // zero-knowledge polynomial over domain.d8
 
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
@@ -115,7 +117,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sigmal1 = s.clone();
 
         // compute permutation polynomials
-        gates.iter().filter(|&g| g.typ != GateType::Zero).for_each
+        gates.iter().for_each
         (
             |gate|
             {
@@ -127,8 +129,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let sigmam: [DensePolynomial<F>; 3] = array_init
             (|i| Evaluations::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate());
 
-        let mut s = sid[0..3].to_vec();
+        let mut s = sid[0..2].to_vec();
         sid.append(&mut s);
+
+        // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+        let zkpm = DensePolynomial::from_coefficients_slice(&
+            [
+                -sid[n-1]*&sid[n-2]*&sid[n-3],
+                (sid[n-1]*&sid[n-2]) + &(sid[n-1]*&sid[n-3]) + &(sid[n-3]*&sid[n-2]),
+                -sid[n-1] - &sid[n-2] - &sid[n-3],
+                F::one()
+            ]);
 
         // compute generic constraint polynomials
         let qlm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ql()).collect(), domain.d1).interpolate();
@@ -190,6 +201,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
             l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
             l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8),
+            zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
+            zkpm,
+
             gates,
             r,
             o,

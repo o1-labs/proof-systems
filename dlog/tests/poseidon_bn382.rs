@@ -7,7 +7,7 @@ This source file benchmark constraints for the Poseidon hash permutations
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use algebra::{Field, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, UniformRand};
+use algebra::{Field, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, UniformRand, Zero};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -55,6 +55,7 @@ fn poseidon_bn382()
         ConstraintSystem::<Fr>::create(gates, oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>, 0).unwrap(),
         MAX_SIZE,
         oracle::bn_382::fp::params(),
+        Fr::zero(),
         SRSSpec::Use(&srs)
     );
 
