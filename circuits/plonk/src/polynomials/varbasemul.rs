@@ -18,18 +18,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     {
         if self.mul1m.is_zero() && self.mul2m.is_zero() {return (self.mul1l.clone(), self.mul2l.clone())}
 
-        let one = Evaluations::<F, D<F>>::from_vec_and_domain(vec![F::one(); self.domain.d4.size as usize], self.domain.d4);
-
         // 2*xP - λ1^2 + xT
         let tmp = &(&polys.d8.this.l.scale((2 as u64).into()) - &polys.d8.this.r.pow(2)) + &polys.d8.next.r;
 
         (
             // verify booleanity of the scalar bit
-            &(&(&(&polys.d4.this.r - &one) * &polys.d4.this.r).scale(alpha[0])
+            &(&(&(&polys.d4.this.r - &self.l04) * &polys.d4.this.r).scale(alpha[0])
             +
             // (xP - xT) × λ1 - yP + (yT × (2*b - 1))
             &(&(&(&(&polys.d4.next.l - &polys.d4.this.l) * &polys.d4.next.r) - &polys.d4.next.o) +
-                &(&(polys.d4.this.o) * &(&polys.d4.this.r.scale((2 as u64).into()) - &one))).scale(alpha[1]))
+                &(&(polys.d4.this.o) * &(&polys.d4.this.r.scale((2 as u64).into()) - &self.l04))).scale(alpha[1]))
             *
             &self.mul1l
             ,

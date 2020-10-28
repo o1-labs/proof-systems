@@ -21,7 +21,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         oracles: &RandomOracles<F>,
     ) -> Evaluations<F, D<F>>
     {
-        let l0 = &self.l0.scale(oracles.gamma);
+        let l0 = &self.l08.scale(oracles.gamma);
 
         &((&(&(&(&(&lagrange.d8.this.l + &(l0 + &self.l1.scale(oracles.beta))) *
         &(&lagrange.d8.this.r + &(l0 + &self.l1.scale(oracles.beta * &self.r)))) *

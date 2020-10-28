@@ -20,25 +20,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         if self.emul1m.is_zero() && self.emul2m.is_zero() && self.emul3m.is_zero()
         {return (self.emul1l.clone(), self.emul3l.clone())}
 
-        let one = Evaluations::<F, D<F>>::from_vec_and_domain(vec![F::one(); self.domain.d4.size as usize], self.domain.d4);
         let xr = &(&polys.d8.this.r.pow(2) - &polys.d8.this.l) - &polys.d8.next.r;
         let t = &polys.d8.this.l - &xr;
         let u = &polys.d8.this.o.scale((2 as u64).into()) - &(&t * &polys.d8.this.r);
 
         (
             // verify booleanity of the scalar bits
-            &(&(&(&(&(&polys.d4.this.l - &one) * &polys.d4.this.l).scale(alpha[0])
+            &(&(&(&(&(&polys.d4.this.l - &self.l04) * &polys.d4.this.l).scale(alpha[0])
             +
-            &(&(&polys.d4.next.l - &one) * &polys.d4.next.l).scale(alpha[1]))
+            &(&(&polys.d4.next.l - &self.l04) * &polys.d4.next.l).scale(alpha[1]))
             +
             // xQ - (1 + (endo - 1) * b2i1) * xT
-            &(&polys.d4.next.r - &(&(&one + &polys.d4.this.l.scale(self.endo - &F::one())) * &polys.d4.this.r)).scale(alpha[2]))
+            &(&polys.d4.next.r - &(&(&self.l04 + &polys.d4.this.l.scale(self.endo - &F::one())) * &polys.d4.this.r)).scale(alpha[2]))
             *
             &self.emul1l)
             +
             // (xP - xQ) × λ1 - yP + (yT * (2 * b2i - 1))
             &(&(&(&(&(&polys.d4.next.l - &polys.d4.this.r) * &polys.d4.next.r) - &polys.d4.next.o) +
-                &(&polys.d4.this.o * &(&polys.d4.this.l.scale((2 as u64).into()) - &one))) * &self.emul2l).scale(alpha[3])
+                &(&polys.d4.this.o * &(&polys.d4.this.l.scale((2 as u64).into()) - &self.l04))) * &self.emul2l).scale(alpha[3])
             ,
             // u^2 - t^2 * (xR + xP + xS)
             &(&(&u.pow(2) - &(&t.pow(2) * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[4])

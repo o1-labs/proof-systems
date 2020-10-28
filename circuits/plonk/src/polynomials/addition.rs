@@ -32,27 +32,23 @@ use crate::scalars::ProofEvaluations;
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // EC Affine addition constraint quotient poly contribution computation
-    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
+    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
     {
-        if self.addm.is_zero() {return (self.addl3.clone(), self.addl4.clone())}
+        if self.addm.is_zero() {return self.addl4.clone()}
         /*
             (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
             (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
         */
         let ylo = &(&polys.d4.this.l + &polys.d4.this.o);
-        let xlo = &(&polys.d8.next.l - &polys.d8.next.o);
+        let xlo = &(&polys.d4.next.l - &polys.d4.next.o);
 
-        (
             &(&(&(&(&polys.d4.next.r - &polys.d4.next.l) * ylo)
             -
             &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l))).scale(alpha[0])
             -
-            &(ylo * ylo).scale(alpha[1]))
+            &(&(ylo * ylo) - &(&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)) * &(xlo * xlo))).scale(alpha[1]))
             *
-            &self.addl3
-            ,
-            (&(&(&polys.d8.next.l + &(&polys.d8.next.r + &polys.d8.next.o)) * &(xlo * xlo)) * &self.addl4).scale(alpha[1])
-        )
+            &self.addl4
     }
 
     pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> Vec<F>

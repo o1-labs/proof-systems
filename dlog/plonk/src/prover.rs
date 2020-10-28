@@ -144,14 +144,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let (emul4, emul8) = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
 
         // EC addition constraints contribution
-        let (eca4, eca8) = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
+        let eca = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
 
         // permutation check contribution
         let perm = index.cs.perm_quot(&lagrange, &oracles);
 
         // collect contribution evaluations
-        let t4 = &(&gen4 + &pos4) + &(&eca4 + &(&mul4 + &emul4));
-        let t8 = &(&pos8 + &(&eca8 + &(&mul8 + &emul8))) + &perm;
+        let t4 = &(&gen4 + &pos4) + &(&eca + &(&mul4 + &emul4));
+        let t8 = &(&pos8 + &(&mul8 + &emul8)) + &perm;
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).

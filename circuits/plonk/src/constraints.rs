@@ -66,15 +66,15 @@ pub struct ConstraintSystem<F: FftField>
     pub ps8:    Evaluations<F, D<F>>,       // poseidon selector over domain.d8
 
     // ECC arithmetic selector polynomials
-    pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
-    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d8
+    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
     pub mul1l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d4
     pub mul2l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d8
     pub emul1l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d4
     pub emul2l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d4
     pub emul3l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d8
 
-    pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d8
+    pub l04:    Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d4
+    pub l08:    Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d8
     pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d8
     pub zkpl:   Evaluations<F, D<F>>,       // zero-knowledge polynomial over domain.d8
 
@@ -185,8 +185,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             psm,
 
             // ECC arithmetic constraint polynomials
-            addl3: addm.evaluate_over_domain_by_ref(domain.d4),
-            addl4: addm.evaluate_over_domain_by_ref(domain.d8),
+            addl4: addm.evaluate_over_domain_by_ref(domain.d4),
             addm,
             mul1l: mul1m.evaluate_over_domain_by_ref(domain.d4),
             mul2l: mul2m.evaluate_over_domain_by_ref(domain.d8),
@@ -199,7 +198,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             emul2m,
             emul3m,
 
-            l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
+            l04: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d4),
+            l08: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
             l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8),
             zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
             zkpm,
