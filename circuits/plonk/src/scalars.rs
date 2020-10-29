@@ -5,17 +5,15 @@ This source file implements Plonk prover polynomial evaluations primitive.
 *****************************************************************************************************************/
 
 use algebra::Field;
+pub use super::wires::COLUMNS;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
-    pub l: Fs,
-    pub r: Fs,
-    pub o: Fs,
+    pub w: [Fs; COLUMNS],
     pub z: Fs,
     pub t: Fs,
     pub f: Fs,
-    pub sigma1: Fs,
-    pub sigma2: Fs,
+    pub s: [Fs; COLUMNS-1],
 }
 
 pub struct RandomOracles<F: Field>

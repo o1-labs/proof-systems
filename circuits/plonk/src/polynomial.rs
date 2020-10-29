@@ -6,14 +6,13 @@ This source file implements Plonk prover polynomials primitive.
 
 use algebra::FftField;
 use ff_fft::{Evaluations, Radix2EvaluationDomain as D};
+pub use super::wires::COLUMNS;
 
 #[derive(Clone)]
 pub struct WitnessEvals<F: FftField>
 {
-    pub l: Evaluations<F, D<F>>,    // left wire evaluations
-    pub r: Evaluations<F, D<F>>,    // right wire evaluations
-    pub o: Evaluations<F, D<F>>,    // output wire evaluations
-    pub z: Evaluations<F, D<F>>,    // permutation evaluations
+    pub w: [Evaluations<F, D<F>>; COLUMNS], // wire evaluations
+    pub z: Evaluations<F, D<F>>,            // permutation evaluations
 }
 
 #[derive(Clone)]

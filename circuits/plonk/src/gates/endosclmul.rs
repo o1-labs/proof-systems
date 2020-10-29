@@ -3,92 +3,107 @@
 This source file implements group endomorphism optimised
 variable base scalar multiplication custom Plonk constraints.
 
-The constraints are designed as per the discussuion in
-https://github.com/o1-labs/marlin/issues/41
+EVBSM gate constrains
+
+    b1*(b1-1) = 0
+    b2*(b2-1) = 0
+    (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
+    s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
+    (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
+    (xp – xs) * s2 = ys + yp
+
+Permutation constrains
+
+    -> b1(i)
+    -> b2(i+1)
+    -> xt(i) -> xt(i+2) -> … -> xt(255)
+    -> yt(i) -> yt(i+2) -> … -> yt(255)
+    -> xp(i)
+    -> xp(i+2) -> xs(i) ->
+    -> yp(i)
+    -> yp(i+2) -> ys(i) ->
+    xs(255) ->
+    ys(255) ->
+
+The constrains above are derived from the following EC Affine arithmetic equations:
+
+    (xq - xp) * s1 = yq - yp
+    s1 * s1 = xp + xq + x1
+    (xp – x1) * s1 = y1 + yp
+
+    (x1 – xp) * s2 = y1 – yp
+    s2 * s2 = xp + x1 + xs
+    (xp – xs) * s2 = ys + yp
+
+    =>
+
+    (xq - xp) * s1 = yq - yp
+    s1^2 = xp + xq + x1
+    (xp – x1) * (s1 + s2) = 2*yp
+    s2^2 = xp + x1 + xs
+    (xp – xs) * s2 = ys + yp
+
+    =>
+
+    (xq - xp) * s1 = yq - yp
+    s1^2 - s2^2 = xq - xs
+    (2*xp + xq – s1^2) * (s1 + s2) = 2*yp
+    (xp – xs) * s2 = ys + yp
 
 *****************************************************************************************************************/
 
 use algebra::FftField;
 use crate::gate::{CircuitGate, GateType};
-use crate::{wires::GateWires, constraints::ConstraintSystem};
+use crate::{wires::{GateWires, COLUMNS}, constraints::ConstraintSystem};
+use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F>
 {
-    pub fn create_endomul(wires: &[GateWires; 4]) -> Vec<Self>
+    pub fn create_endomul(row: usize, wires: &[GateWires; 2]) -> Vec<Self>
     {
         vec![
             CircuitGate
             {
-                typ: GateType::Endomul1,
+                row,
+                typ: GateType::Endomul,
                 wires: wires[0],
                 c: vec![]
             },
             CircuitGate
             {
-                typ: GateType::Endomul2,
+                row: row + 1,
+                typ: GateType::Zero,
                 wires: wires[1],
-                c: vec![]
-            },
-            CircuitGate
-            {
-                typ: GateType::Endomul3,
-                wires: wires[2],
-                c: vec![]
-            },
-            CircuitGate
-            {
-                typ: GateType::Endomul4,
-                wires: wires[3],
                 c: vec![]
             },
         ]
     }
 
-    pub fn verify_endomul1(&self, next: &Self, witness: &Vec<F>, cs: &ConstraintSystem<F>) -> bool
+    pub fn verify_endomul(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
     {
-        self.typ == GateType::Endomul1
+        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
+        let xq = (F::one() + &((cs.endo - &F::one()) * &next[4])) * &this[0];
+        
+        self.typ == GateType::Endomul
         &&
         // verify booleanity of the scalar bits
-        witness[self.wires.l.0] == witness[self.wires.l.0].square()
+        this[3] == this[3].square()
         &&
-        witness[next.wires.l.0] == witness[next.wires.l.0].square()
+        this[4] == this[4].square()
         &&
-        // xQ = (1 + (endo - 1) * b2i1) * xT
-        witness[next.wires.r.0] == (F::one() + &((cs.endo - &F::one()) * &witness[self.wires.l.0])) * &witness[self.wires.r.0]
+        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
+        (next[2] - &xq) * &this[2] == next[3] - &(this[1] * &(this[4].double() - F::one()))
+        &&
+        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
+        this[2].square() - &this[3].square() == xq - &next[0]
+        &&
+        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
+        (next[2].double() + &xq - &this[2].square()) * &(this[2] + &this[3]) == next[3].double()
+        &&
+        // (xp – xs) * s2 = ys + yp
+        (next[2] - &next[0]) * &this[3] == next[1] + &next[3]
     }
 
-    pub fn verify_endomul2(&self, next: &Self, witness: &Vec<F>) -> bool
-    {
-        self.typ == GateType::Endomul2
-        &&
-        // (xP - xQ) × λ1 = yP - (yT * (2 * b2i - 1))
-        (witness[next.wires.l.0] - &witness[self.wires.r.0]) * &witness[next.wires.r.0]
-        ==
-        witness[next.wires.o.0] - &(witness[self.wires.o.0] * &(witness[self.wires.l.0].double() - &F::one()))
-    }
-
-    pub fn verify_endomul3(&self, next: &Self, witness: &Vec<F>) -> bool
-    {
-        let xr = witness[self.wires.r.0].square() - &witness[self.wires.l.0] - &witness[next.wires.r.0];
-        let t = witness[self.wires.l.0] - &xr;
-        let u = witness[self.wires.o.0].double() - &(t * &witness[self.wires.r.0]);
-
-        self.typ == GateType::Endomul3
-        &&
-        // u^2 = t^2 * (xR + xP + xS)
-        u.square() == t.square() * &(xr + &witness[self.wires.l.0] + &witness[next.wires.l.0])
-        &&
-        // (xP - xS) * u = t * (yS + yP)
-        (witness[self.wires.l.0] - &witness[next.wires.l.0]) * &u == t * &(witness[self.wires.o.0] + &witness[next.wires.o.0])
-    }
-
-    pub fn verify_endomul4(&self, _next: &Self, _witness: &Vec<F>) -> bool
-    {
-        self.typ == GateType::Endomul4
-    }
-
-    pub fn endomul1(&self) -> F {if self.typ == GateType::Endomul1 {F::one()} else {F::zero()}}
-    pub fn endomul2(&self) -> F {if self.typ == GateType::Endomul2 {F::one()} else {F::zero()}}
-    pub fn endomul3(&self) -> F {if self.typ == GateType::Endomul3 {F::one()} else {F::zero()}}
-    pub fn endomul4(&self) -> F {if self.typ == GateType::Endomul4 {F::one()} else {F::zero()}}
+    pub fn endomul(&self) -> F {if self.typ == GateType::Endomul {F::one()} else {F::zero()}}
 }

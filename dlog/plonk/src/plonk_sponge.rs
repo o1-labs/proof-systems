@@ -35,14 +35,18 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.sponge.absorb(&self.params, p);
 
         let points = [
-            &e.l,
-            &e.t,
-            &e.o,
+            &e.w[0],
+            &e.w[1],
+            &e.w[2],
+            &e.w[3],
+            &e.w[4],
             &e.z,
             &e.t,
             &e.f,
-            &e.sigma1,
-            &e.sigma2,
+            &e.s[0],
+            &e.s[1],
+            &e.s[2],
+            &e.s[3],
         ];
 
         for p in &points {

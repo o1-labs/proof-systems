@@ -4,34 +4,25 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-pub use super::prover::ProverProof;
+use crate::plonk_sponge::FrSponge;
+pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, sponge::ScalarChallenge};
-use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
+use plonk_circuits::{wires::COLUMNS, scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use algebra::{Field, AffineCurve, Zero, One};
-use crate::plonk_sponge::FrSponge;
+use array_init::array_init;
 use rand_core::OsRng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Clone)]
-pub struct CachedValues<Fs> {
-    pub zeta1: Fs,
-    pub zetaw: Fs,
-    pub alpha: Vec<Fs>,
-}
-
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
-
     // This function runs random oracle argument
     pub fn oracles
-        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
-         EFrSponge: FrSponge<Fr<G>>,
-        >
+        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>
     (
         &self,
         index: &Index<G>,
@@ -44,9 +35,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_g(&p_comm.unshifted);
-        fq_sponge.absorb_g(&self.l_comm.unshifted);
-        fq_sponge.absorb_g(&self.r_comm.unshifted);
-        fq_sponge.absorb_g(&self.o_comm.unshifted);
+        self.w_comm.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
@@ -68,7 +57,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let zeta1 = oracles.zeta.pow(&[n]);
         let zetaw = oracles.zeta * &index.domain.group_gen;
         let mut alpha = oracles.alpha;
-        let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = (0..34).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
         // compute Lagrange base evaluation denominators
         let w = (0..self.public.len()).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
@@ -182,46 +171,61 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (
                     |i| ProofEvaluations::<Fr<G>>
                     {
-                        l: DensePolynomial::eval_polynomial(&proof.evals[i].l, evlp[i]),
-                        r: DensePolynomial::eval_polynomial(&proof.evals[i].r, evlp[i]),
-                        o: DensePolynomial::eval_polynomial(&proof.evals[i].o, evlp[i]),
+                        w: array_init(|j| DensePolynomial::eval_polynomial(&proof.evals[i].w[j], evlp[i])),
+                        s: array_init(|j| DensePolynomial::eval_polynomial(&proof.evals[i].s[j], evlp[i])),
                         z: DensePolynomial::eval_polynomial(&proof.evals[i].z, evlp[i]),
                         t: DensePolynomial::eval_polynomial(&proof.evals[i].t, evlp[i]),
                         f: DensePolynomial::eval_polynomial(&proof.evals[i].f, evlp[i]),
-                        sigma1: DensePolynomial::eval_polynomial(&proof.evals[i].sigma1, evlp[i]),
-                        sigma2: DensePolynomial::eval_polynomial(&proof.evals[i].sigma2, evlp[i]),
                     }
                 ).collect::<Vec<_>>();
 
                 // compute linearization polynomial commitment
-                let p = vec!
-                [
-                    // permutation polynomial commitments
-                    &proof.z_comm, &index.sigma_comm[2],
-                    // generic constraint polynomial commitments
-                    &index.qm_comm, &index.ql_comm, &index.qr_comm, &index.qo_comm, &index.qc_comm,
-                    // poseidon constraint polynomial commitments
-                    &index.psm_comm, &index.rcm_comm[0], &index.rcm_comm[1], &index.rcm_comm[2],
-                    // EC addition constraint polynomial commitments
-                    &index.add_comm,
-                    // EC variable base scalar multiplication constraint polynomial commitments
-                    &index.mul1_comm, &index.mul2_comm,
-                    // group endomorphism optimised variable base scalar multiplication constraint polynomial commitments
-                    &index.emul1_comm, &index.emul2_comm, &index.emul3_comm,
-                ];
 
-                // permutation linearization scalars
-                let mut s = ConstraintSystem::perm_scalars(&evals, &oracles, (index.r, index.o), n);
-                // generic constraint/permutation linearization scalars
+                // permutation
+                let zkp = index.zkpm.evaluate(oracles.zeta);
+                let mut p = vec![&proof.z_comm, &index.sigma_comm[COLUMNS-1]];
+                let mut s = ConstraintSystem::perm_scalars
+                (
+                    &evals,
+                    &oracles,
+                    &index.shift,
+                    &alpha[range::PERM],
+                    n,
+                    zkp,
+                    index.w
+                );
+
+                // generic
+                p.push(&index.qm_comm);
+                p.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
+                p.push(&index.qc_comm);
                 s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
-                // poseidon constraint linearization scalars
-                s.extend(&ConstraintSystem::psdn_scalars(&evals, &index.fr_sponge_params, &alpha));
-                // EC addition constraint linearization scalars
-                s.extend(&ConstraintSystem::ecad_scalars(&evals, &alpha));
-                // EC variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha));
-                // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.srs.get_ref().endo_r, &alpha));
+
+                // poseidon
+                s.extend(&ConstraintSystem::psdn_scalars(&evals, &index.fr_sponge_params, &alpha[range::PSDN]));
+                p.push(&index.psm_comm);
+                p.extend(index.rcm_comm.iter().map(|c| c).collect::<Vec<_>>());
+
+                // EC addition
+                s.push(ConstraintSystem::ecad_scalars(&evals, &alpha[range::ADD]));
+                p.push(&index.add_comm);
+
+                // EC doubling
+                s.push(ConstraintSystem::double_scalars(&evals, &alpha[range::DBL]));
+                p.push(&index.double_comm);
+
+                // variable base endoscalar multiplication
+                s.push(ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha[range::ENDML]));
+                p.push(&index.emul_comm);
+
+                // packing
+                s.push(ConstraintSystem::pack_scalars(&evals, &alpha[range::PACK]));
+                p.push(&index.pack_comm);
+
+                // EC variable base scalar multiplication
+                s.push(ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
+                s.push(ConstraintSystem::vbmulpck_scalars(&evals, &alpha[range::MLPCK]));
+                p.extend([&index.mul1_comm, &index.mul2_comm].to_vec());
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
@@ -229,16 +233,16 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 if
                     (evals[0].f + &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()})
                     -
-                    ((evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
-                    &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
-                    (evals[0].o + &oracles.gamma) * &evals[1].z * &oracles.alpha)
+                    evals[0].w.iter().zip(evals[0].s.iter()).
+                        map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
+                        fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
                     -
-                    evals[0].t * &(zeta1 - &Fr::<G>::one()))
-                    *
-                    &(oracles.zeta - &Fr::<G>::one())
+                    evals[0].t * &(zeta1 - &Fr::<G>::one())) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
                 !=
-                    (zeta1 - &Fr::<G>::one()) * &alpha[0]
-                {return Err(ProofError::ProofVerification)}
+                    ((zeta1 - &Fr::<G>::one()) * &alpha[0] * &(oracles.zeta - &index.w))
+                    +
+                    ((zeta1 - &Fr::<G>::one()) * &alpha[1] * &(oracles.zeta - &Fr::<G>::one()))
+            {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }
@@ -256,23 +260,20 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     }
                 ).collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
+                polynoms.extend(proof.w_comm.iter().zip((0..COLUMNS).map(|i| proof.evals.iter().map(|e| &e.w[i]).
+                    collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
                 polynoms.extend
                 (
                     vec!
                     [
-                        (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
-                        (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
-                        (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
-                        (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
-
-                        (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
-                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
-
-                        (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
-                        (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
+                        (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect(), None),
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect(), Some(index.max_quot_size)),
+                        (f_comm, proof.evals.iter().map(|e| &e.f).collect(), None),
+                        (p_comm, p_eval.iter().map(|e| e).collect(), None),
                     ]
                 );
+                polynoms.extend(index.sigma_comm.iter().zip((0..COLUMNS-1).map(|i| proof.evals.iter().map(|e| &e.s[i]).
+                    collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
 
                 // prepare for the opening proof verification
                 (

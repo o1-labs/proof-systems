@@ -5,7 +5,7 @@ This source file implements Plonk constraint gate primitive.
 *****************************************************************************************************************/
 
 use algebra::FftField;
-pub use super::{wires::{*}, constraints::ConstraintSystem};
+pub use super::{wires::{GateWires, Wires, COLUMNS}, constraints::ConstraintSystem};
 
 #[derive(Clone)]
 #[derive(PartialEq)]
@@ -13,25 +13,19 @@ pub enum GateType
 {
     Zero,       // zero gate
     Generic,    // generic arithmetic gate
-
     Poseidon,   // Poseidon permutation gate
-
-    Add1,       // Gate constraining EC addition in Affine form
-    Add2,       // Gate constraining EC point abscissa distinctness
-
+    Add,        // Gate constraining EC addition in Affine form
+    Double,     // Gate constraining EC point doubling in Affine form
     Vbmul1,     // Gate constraining EC variable base scalar multiplication 
-    Vbmul2,     // Gate constraining EC variable base scalar multiplication 
-    Vbmul3,     // Gate constraining EC variable base scalar multiplication 
-
-    Endomul1,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
-    Endomul2,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
-    Endomul3,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
-    Endomul4,   // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
+    Vbmul2,     // Gate constraining unpacking EC variable base scalar multiplication 
+    Endomul,    // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
+    Pack,       // Gate constraining packing
 }
 
 #[derive(Clone)]
 pub struct CircuitGate<F: FftField>
 {
+    pub row: usize,         // row position in the circuit
     pub typ: GateType,      // type of the gate
     pub wires: GateWires,   // gate wires
     pub c: Vec<F>,          // constraints vector
@@ -40,10 +34,11 @@ pub struct CircuitGate<F: FftField>
 impl<F: FftField> CircuitGate<F>
 {
     // this function creates "empty" circuit gate
-    pub fn zero(wires: GateWires) -> Self
+    pub fn zero(row: usize, wires: GateWires) -> Self
     {
         CircuitGate
         {
+            row,
             typ: GateType::Zero,
             c: Vec::new(),
             wires,
@@ -52,22 +47,19 @@ impl<F: FftField> CircuitGate<F>
 
     // This function verifies the consistency of the wire
     // assignements (witness) against the constraints
-    pub fn verify(&self, next: &Self, witness: &Vec<F>, cs: &ConstraintSystem<F>) -> bool
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
     {
         match self.typ
         {
             GateType::Zero      => true,
             GateType::Generic   => self.verify_generic(witness),
-            GateType::Poseidon  => self.verify_poseidon(next, witness, cs),
-            GateType::Add1      => self.verify_add1(next, witness),
-            GateType::Add2      => self.verify_add2(witness),
-            GateType::Vbmul1    => self.verify_vbmul1(next, witness),
-            GateType::Vbmul2    => self.verify_vbmul2(next, witness),
-            GateType::Vbmul3    => self.verify_vbmul3(next, witness),
-            GateType::Endomul1  => self.verify_endomul1(next, witness, cs),
-            GateType::Endomul2  => self.verify_endomul2(next, witness),
-            GateType::Endomul3  => self.verify_endomul3(next, witness),
-            GateType::Endomul4  => self.verify_endomul4(next, witness),
+            GateType::Poseidon  => self.verify_poseidon(witness, cs),
+            GateType::Add       => self.verify_add(witness),
+            GateType::Double    => self.verify_double(witness),
+            GateType::Vbmul1    => self.verify_vbmul1(witness),
+            GateType::Vbmul2    => self.verify_vbmul2(witness),
+            GateType::Endomul   => self.verify_endomul(witness, cs),
+            GateType::Pack      => self.verify_pack(witness),
         }
     }
 }

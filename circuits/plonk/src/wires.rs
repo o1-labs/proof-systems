@@ -4,47 +4,21 @@ This source file implements Plonk circuit gate wires primitive.
 
 *****************************************************************************************************************/
 
-#[derive(Clone, Copy)]
-pub struct GateWires
-{
-    pub l: (usize, usize),  // left input wire index and its permutation
-    pub r: (usize, usize),  // right input wire index and its permutation
-    pub o: (usize, usize),  // output wire index and its permutation
-}
+pub const COLUMNS: usize = 5;
+pub const WIRES: [usize; COLUMNS] = [0,1,2,3,4];
 
-impl GateWires
-{
-    pub fn wires
-    (
-        l: (usize, usize),
-        r: (usize, usize),
-        o: (usize, usize),
-    ) -> Self
-    {
-        GateWires
-        {
-            l,
-            r,
-            o,
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub enum Col {L, R, O}
+pub type GateWires = [(usize, usize); COLUMNS];
 
 #[derive(Clone, Copy)]
 pub struct Wire
 {
-    pub row: usize,         // wire row
-    pub col: Col,           // wire column
+    pub row: usize,
+    pub col: usize,
 }
 
 #[derive(Clone, Copy)]
 pub struct Wires
 {
-    pub row: usize,         // gate wire row
-    pub l: Wire,            // left input wire permutation
-    pub r: Wire,            // right input wire permutation
-    pub o: Wire,            // output input wire permutation
+    pub row: usize,
+    pub wires: [Wire; COLUMNS]
 }

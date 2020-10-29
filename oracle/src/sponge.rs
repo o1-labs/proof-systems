@@ -150,7 +150,8 @@ where
         for g in g.iter()
         {
             if g.infinity {
-                panic!("sponge got zero curve point");
+                continue;
+                //panic!("sponge got zero curve point");
             } else {
                 self.sponge.absorb(&self.params, &[g.x]);
                 self.sponge.absorb(&self.params, &[g.y]);

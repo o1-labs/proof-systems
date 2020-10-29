@@ -4,10 +4,10 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use ff_fft::Radix2EvaluationDomain as D;
+use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
-use plonk_circuits::constraints::ConstraintSystem;
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants};
+use plonk_circuits::{constraints::ConstraintSystem, wires::COLUMNS};
 use array_init::array_init;
 use algebra::AffineCurve;
 use algebra::PrimeField;
@@ -67,33 +67,33 @@ pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : CommitmentField
 
 pub struct VerifierIndex<'a, G: CommitmentCurve>
 {
-    pub domain: D<Fr<G>>,               // evaluation domain
-    pub max_poly_size: usize,           // maximal size of polynomial section
-    pub max_quot_size: usize,           // maximal size of the quotient polynomial according to the supported constraints
-    pub srs: SRSValue<'a, G>,           // polynomial commitment keys
+    pub domain: D<Fr<G>>,                   // evaluation domain
+    pub max_poly_size: usize,               // maximal size of polynomial section
+    pub max_quot_size: usize,               // maximal size of the quotient polynomial according to the supported constraints
+    pub srs: SRSValue<'a, G>,               // polynomial commitment keys
 
     // index polynomial commitments
-    pub sigma_comm: [PolyComm<G>; 3],   // permutation commitment array
-    pub ql_comm:    PolyComm<G>,        // left input wire commitment
-    pub qr_comm:    PolyComm<G>,        // right input wire commitment
-    pub qo_comm:    PolyComm<G>,        // output wire commitment
-    pub qm_comm:    PolyComm<G>,        // multiplication commitment
-    pub qc_comm:    PolyComm<G>,        // constant wire commitment
+    pub sigma_comm: [PolyComm<G>; COLUMNS], // permutation commitment array
+    pub qw_comm:    [PolyComm<G>; COLUMNS], // wire commitment array
+    pub qm_comm:    PolyComm<G>,            // multiplication commitment
+    pub qc_comm:    PolyComm<G>,            // constant wire commitment
 
     // poseidon polynomial commitments
-    pub rcm_comm:   [PolyComm<G>; 3],   // round constant polynomial commitment array
-    pub psm_comm:   PolyComm<G>,        // poseidon constraint selector polynomial commitment
+    pub rcm_comm:   [PolyComm<G>; COLUMNS], // round constant polynomial commitment array
+    pub psm_comm:   PolyComm<G>,            // poseidon constraint selector polynomial commitment
 
     // ECC arithmetic polynomial commitments
-    pub add_comm:   PolyComm<G>,        // EC addition selector polynomial commitment
-    pub mul1_comm:  PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
-    pub mul2_comm:  PolyComm<G>,        // EC variable base scalar multiplication selector polynomial commitment
-    pub emul1_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
-    pub emul2_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
-    pub emul3_comm: PolyComm<G>,        // endoscalar multiplication selector polynomial commitment
+    pub add_comm:   PolyComm<G>,            // EC addition selector polynomial commitment
+    pub double_comm:PolyComm<G>,            // EC doubling selector polynomial commitment
+    pub mul1_comm:  PolyComm<G>,            // EC variable base scalar multiplication selector polynomial commitment
+    pub mul2_comm:  PolyComm<G>,            // EC variable base scalar unpacking multiplication selector polynomial commitment
+    pub emul_comm:  PolyComm<G>,            // endoscalar multiplication selector polynomial commitment
+    pub pack_comm:  PolyComm<G>,            // packing selector polynomial commitment
 
-    pub r:          Fr<G>,              // coordinate shift for right wires
-    pub o:          Fr<G>,              // coordinate shift for output wires
+    pub zkpm:       DensePolynomial<Fr<G>>, // zero-knowledge polynomial
+    pub shift:      [Fr<G>; COLUMNS],       // wire coordinate shifts
+    pub endo:       Fr<G>,                  // coefficient for the group endomorphism
+    pub w:          Fr<G>,                  // root of unity for zero-knowledge
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
@@ -114,9 +114,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             domain: self.cs.domain.d1,
 
             sigma_comm: array_init(|i| srs.get_ref().commit(&self.cs.sigmam[i], None)),
-            ql_comm: srs.get_ref().commit(&self.cs.qlm, None),
-            qr_comm: srs.get_ref().commit(&self.cs.qrm, None),
-            qo_comm: srs.get_ref().commit(&self.cs.qom, None),
+            qw_comm: array_init(|i| srs.get_ref().commit(&self.cs.qwm[i], None)),
             qm_comm: srs.get_ref().commit(&self.cs.qmm, None),
             qc_comm: srs.get_ref().commit(&self.cs.qc, None),
 
@@ -124,19 +122,21 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             psm_comm: srs.get_ref().commit(&self.cs.psm, None),
 
             add_comm: srs.get_ref().commit(&self.cs.addm, None),
+            double_comm: srs.get_ref().commit(&self.cs.doublem, None),
             mul1_comm: srs.get_ref().commit(&self.cs.mul1m, None),
             mul2_comm: srs.get_ref().commit(&self.cs.mul2m, None),
-            emul1_comm: srs.get_ref().commit(&self.cs.emul1m, None),
-            emul2_comm: srs.get_ref().commit(&self.cs.emul2m, None),
-            emul3_comm: srs.get_ref().commit(&self.cs.emul3m, None),
+            emul_comm: srs.get_ref().commit(&self.cs.emulm, None),
+            pack_comm: srs.get_ref().commit(&self.cs.packm, None),
 
+            w: self.cs.sid[self.cs.domain.d1.size as usize -3],
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
+            zkpm: self.cs.zkpm.clone(),
+            shift: self.cs.shift,
+            endo: self.cs.endo,
             srs,
-            r: self.cs.r,
-            o: self.cs.o,
         }
     }
 
@@ -146,6 +146,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         mut cs: ConstraintSystem<Fr<G>>,
         max_poly_size: usize,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+        endo_q: Fr<G>,
         srs : SRSSpec<'a, G>
     ) -> Self
     {
@@ -154,10 +155,10 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             assert!(max_poly_size >= cs.domain.d1.size as usize, "polynomial segment size has to be not smaller that that of the circuit!");
         }
         let srs = SRSValue::create(max_poly_size, cs.public, cs.domain.d1.size as usize, srs);
-        cs.endo = srs.get_ref().endo_r;
+        cs.endo = endo_q;
         Index
         {
-            max_quot_size: 5 * (cs.domain.d1.size as usize + 2) - 5,
+            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
             fq_sponge_params,
             max_poly_size,
             srs,
