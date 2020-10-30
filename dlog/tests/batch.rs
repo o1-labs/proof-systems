@@ -27,9 +27,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let rng = &mut OsRng;
     let mut random = rand::thread_rng();
 
-    let size = 80;
+    let size = 1 << 7;
     let polysize = 500;
-    let srs = SRS::<Affine>::create(size, 0, 0);
+    let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
     let sponge = DefaultFqSponge::<TweedledeeParameters, SC>::new(oracle::tweedle::fq::params());

@@ -37,7 +37,7 @@ pub enum SRSSpec <'a, G: CommitmentCurve>{
 
 impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
     pub fn generate(size: usize) -> SRS<G> {
-        SRS::<G>::create(size, 0, 0)
+        SRS::<G>::create(size)
     }
 
     pub fn create<'b>(size: usize, spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{

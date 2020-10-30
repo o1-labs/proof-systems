@@ -26,7 +26,7 @@ use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkS
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
-use ff_fft::DensePolynomial;
+use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
 use oracle::poseidon::*;
 use groupmap::GroupMap;
@@ -36,6 +36,7 @@ use rand_core::OsRng;
 
 const MAX_SIZE: usize = 128; // max size of poly chunks
 const N: usize = 128; // Plonk domain size
+const PUBLIC: usize = 6;
 
 #[test]
 fn turbo_plonk()
@@ -151,12 +152,11 @@ fn turbo_plonk()
     }
 
     let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dum::Affine>();
-    let srs = SRS::create(MAX_SIZE, 6, N);
+    let srs = SRS::create(MAX_SIZE);
 
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp::params() as ArithmeticSpongeParams<Fp>, 6).unwrap(),
-        MAX_SIZE,
+        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
         oracle::tweedle::fq::params(),
         endo_q,
         SRSSpec::Use(&srs)
@@ -179,8 +179,19 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let points = sample_points();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
+    let lgr_comms : Vec<_> = (0..PUBLIC).map(|i| {
+        let mut v = vec![Fr::zero(); i + 1];
+        v[i] = Fr::one();
+
+        let p = Evaluations::<Fr, D<Fr>>::from_vec_and_domain(
+            v, index.cs.domain.d1).interpolate();
+        index.srs.get_ref().commit(&p, None)
+    }).collect();
+
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
+
+    let verifier_index = index.verifier_index();
 
     for test in 0..100
     {
@@ -345,9 +356,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             let k = ceil_log2(index.srs.get_ref().g.len());
             let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
-                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
-                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit(&b, None)
             };
             ( chals, comm )
@@ -362,9 +371,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
-    let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(&group_map, &vec![batch[0].clone()], &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &group_map, &vec![ (&verifier_index, &lgr_comms, &batch[0]) ])
     {
         Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
         Ok(_) => {}
@@ -373,7 +382,9 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(&group_map, &batch, &verifier_index)
+    let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

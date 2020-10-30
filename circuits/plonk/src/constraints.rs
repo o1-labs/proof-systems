@@ -99,10 +99,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sid = domain.d1.elements().map(|elm| {elm}).collect::<Vec<_>>();
 
         // sample the coordinate shifts
-        let mut i: u32 = 7;
-        let r = Self::sample_shift(&domain.d1, &mut i);
-        let mut o = Self::sample_shift(&domain.d1, &mut i);
-        while r == o {o = Self::sample_shift(&domain.d1, &mut i)}
+        let (r, o) = Self::sample_shifts(&domain.d1);
 
         let n = domain.d1.size();
         let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(GateWires::wires((i,i), (n+i,n+i), (2*n+i,2*n+i)))).collect();
@@ -232,8 +229,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             witness[self.gates[i].wires.o.1] != witness[self.gates[i].wires.o.0] ||
 
             // verify witness against constraints
-            !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]} else {&self.gates[i+1]}, witness, &self)
+            !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]}
+                                                      else {&self.gates[i+1]}, witness, &self)
             {
+                for &i in [ i, 194037 ].iter() {
+                    println!("fail gate[{}] =", i);
+                    println!("typ = {:?}", self.gates[i].typ);
+                    println!("wires = {:?}", self.gates[i].wires);
+                    println!("c");
+                    for x in self.gates[i].c.iter() {
+                        println!("{}", x);
+                    }
+                    println!("{} vs {}", witness[self.gates[i].wires.l.0], witness[self.gates[i].wires.l.1]);
+                    println!("{} vs {}", witness[self.gates[i].wires.r.0], witness[self.gates[i].wires.r.1]);
+                    println!("{} vs {}", witness[self.gates[i].wires.o.0], witness[self.gates[i].wires.o.1]);
+                    println!("public input = {}", self.public);
+                    println!("gates = {}", self.gates.len());
+                    println!("domain = {}", self.domain.d1.size());
+                }
                 return false
             }
         }
@@ -241,7 +254,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // sample coordinate shifts deterministically
-    pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F
+    fn sample_shift(domain: &D<F>, i: &mut u32) -> F
     {
         let mut h = Blake2b::new();
         h.input(&{*i += 1; *i}.to_be_bytes());
@@ -253,6 +266,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             r = F::from_random_bytes(&h.result()[..31]).unwrap();
         }
         r
+    }
+
+    pub fn sample_shifts(domain: &D<F>) -> (F, F) {
+        let mut i: u32 = 7;
+        let r = Self::sample_shift(&domain, &mut i);
+        let mut o = Self::sample_shift(&domain, &mut i);
+        while r == o {o = Self::sample_shift(&domain, &mut i)}
+        (r, o)
     }
 
     // evaluate witness polynomials over domains

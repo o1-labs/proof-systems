@@ -20,7 +20,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         if self.emul1m.is_zero() && self.emul2m.is_zero() && self.emul3m.is_zero()
         {return (self.emul1l.clone(), self.emul3l.clone())}
 
-        let xr = &(&polys.d8.this.r.pow(2) - &polys.d8.this.l) - &polys.d8.next.r;
+        let xr = &(&polys.d8.this.r.square() - &polys.d8.this.l) - &polys.d8.next.r;
         let t = &polys.d8.this.l - &xr;
         let u = &polys.d8.this.o.scale((2 as u64).into()) - &(&t * &polys.d8.this.r);
 
@@ -40,7 +40,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 &(&polys.d4.this.o * &(&polys.d4.this.l.scale((2 as u64).into()) - &self.l04))) * &self.emul2l).scale(alpha[3])
             ,
             // u^2 - t^2 * (xR + xP + xS)
-            &(&(&u.pow(2) - &(&t.pow(2) * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[4])
+            &(&(&u.square() - &(&t.square() * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[4])
             +
             // (xP - xS) * u - t * (yS + yP)
             &(&(&(&polys.d8.this.l - &polys.d8.next.l) * &u) - &(&t * &(&polys.d8.this.o + &polys.d8.next.o))).scale(alpha[5]))

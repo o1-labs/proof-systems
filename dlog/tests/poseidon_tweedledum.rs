@@ -5,9 +5,9 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{Field, tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
+use algebra::{Field, tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -21,6 +21,7 @@ const MAX_SIZE: usize = 40000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 const M: usize = PERIOD * (NUM_POS-1);
+const PUBLIC : usize = 0;
 
 #[test]
 fn poseidon_tweedledum()
@@ -57,13 +58,12 @@ fn poseidon_tweedledum()
     i+=1;
     gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
 
-    let srs = SRS::create(MAX_SIZE, 0, 0);
+    let srs = SRS::create(MAX_SIZE);
 
     let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dee::Affine>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), 0).unwrap(),
-        MAX_SIZE,
+        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), PUBLIC).unwrap(),
         oracle::tweedle::fp::params(),
         endo_q,
         SRSSpec::Use(&srs)
@@ -150,9 +150,7 @@ fn positive(index: &Index<Affine>)
             let k = ceil_log2(index.srs.get_ref().g.len());
             let chals : Vec<_> = (0..k).map(|_| Fq::rand(rng)).collect();
             let comm = {
-                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
-                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit(&b, None)
             };
             ( chals, comm )
@@ -168,10 +166,14 @@ fn positive(index: &Index<Affine>)
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     let verifier_index = index.verifier_index();
+
+    let lgr_comms = vec![];
+    let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
+
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(&group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
