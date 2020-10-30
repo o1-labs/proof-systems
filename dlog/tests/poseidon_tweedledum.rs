@@ -5,9 +5,9 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{Field, tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
+use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -60,7 +60,7 @@ fn poseidon_tweedledum()
 
     let srs = SRS::create(MAX_SIZE);
 
-    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dee::Affine>();
+    let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
         ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), PUBLIC).unwrap(),

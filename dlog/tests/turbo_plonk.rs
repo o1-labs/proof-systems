@@ -23,7 +23,7 @@ This source file tests constraints for the following computatios:
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
@@ -180,10 +180,10 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     let lgr_comms : Vec<_> = (0..PUBLIC).map(|i| {
-        let mut v = vec![Fr::zero(); i + 1];
-        v[i] = Fr::one();
+        let mut v = vec![Fp::zero(); i + 1];
+        v[i] = Fp::one();
 
-        let p = Evaluations::<Fr, D<Fr>>::from_vec_and_domain(
+        let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(
             v, index.cs.domain.d1).interpolate();
         index.srs.get_ref().commit(&p, None)
     }).collect();
