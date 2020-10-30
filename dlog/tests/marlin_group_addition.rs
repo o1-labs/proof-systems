@@ -68,7 +68,7 @@ fn dlog_marlin_group_addition()
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
     .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
-    let srs = SRS::create(MAX_SIZE, 0, 0);
+    let srs = SRS::create(MAX_SIZE);
 
     let index = Index::<Affine>::create
     (
@@ -211,9 +211,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             let k = ceil_log2(index.srs.get_ref().g.len());
             let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
             let comm = {
-                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
-                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit(&b, None)
             };
             ( chals, comm )

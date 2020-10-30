@@ -218,6 +218,21 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]}
                                                       else {&self.gates[i+1]}, witness, &self)
             {
+                for &i in [ i, 194037 ].iter() {
+                    println!("fail gate[{}] =", i);
+                    println!("typ = {:?}", self.gates[i].typ);
+                    println!("wires = {:?}", self.gates[i].wires);
+                    println!("c");
+                    for x in self.gates[i].c.iter() {
+                        println!("{}", x);
+                    }
+                    println!("{} vs {}", witness[self.gates[i].wires.l.0], witness[self.gates[i].wires.l.1]);
+                    println!("{} vs {}", witness[self.gates[i].wires.r.0], witness[self.gates[i].wires.r.1]);
+                    println!("{} vs {}", witness[self.gates[i].wires.o.0], witness[self.gates[i].wires.o.1]);
+                    println!("public input = {}", self.public);
+                    println!("gates = {}", self.gates.len());
+                    println!("domain = {}", self.domain.d1.size());
+                }
                 return false
             }
         }

@@ -254,6 +254,54 @@ fn affine_window_combine_base<P: SWModelParameters>(
     p
 }
 
+fn affine_window_combine_one_base<P: SWModelParameters>(
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
+    x2: P::ScalarField,
+) -> Vec<SWJAffine<P>> {
+    let n = g1.len();
+
+    let windows2 = BitIterator::new(x2.into_repr()).tuples();
+
+    let mut p = vec![SWJAffine::<P>::zero(); n];
+
+    let mut denominators = vec![P::BaseField::zero(); n];
+
+    let [g01, g10, g11] = affine_shamir_window_table_one(&mut denominators, g2);
+
+    for (hi_2, lo_2) in windows2 {
+        // double in place
+        for _ in 0..2 {
+            for i in 0..n {
+                denominators[i] = p[i].y.double();
+            }
+            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+
+            // TODO: Use less memory
+            for i in 0..n {
+                let d = denominators[i];
+                let sq = p[i].x.square();
+                let s = (sq.double() + &sq + &P::COEFF_A) * &d;
+                let x = s.square() - &p[i].x.double();
+                let y = -p[i].y - &(s * &(x - &p[i].x));
+                p[i].x = x;
+                p[i].y = y;
+            }
+        }
+
+        match (hi_2, lo_2) {
+            (false, false) => (),
+            (false, true) => batch_add_assign(&mut denominators, &mut p, &g01),
+            (true, false) => batch_add_assign(&mut denominators, &mut p, &g10),
+            (true, true) => batch_add_assign(&mut denominators, &mut p, &g11),
+        }
+    }
+
+    batch_add_assign(&mut denominators, &mut p, &g1);
+
+    p
+}
+
 #[cfg(test)]
 fn affine_combine<P: SWModelParameters>(
     g1: &Vec<SWJAffine<P>>,
@@ -281,6 +329,20 @@ pub fn affine_window_combine<P: SWModelParameters>(
     let v: Vec<_> = b
         .into_par_iter()
         .map(|(v1, v2)| affine_window_combine_base(v1, v2, x1, x2))
+        .collect();
+    v.concat()
+}
+
+pub fn affine_window_combine_one<P: SWModelParameters>(
+    g1: &Vec<SWJAffine<P>>,
+    g2: &Vec<SWJAffine<P>>,
+    x2: P::ScalarField,
+) -> Vec<SWJAffine<P>> {
+    const CHUNK_SIZE: usize = 10_000;
+    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    let v: Vec<_> = b
+        .into_par_iter()
+        .map(|(v1, v2)| affine_window_combine_one_base(v1, v2, x2))
         .collect();
     v.concat()
 }
@@ -427,6 +489,38 @@ pub fn affine_shamir_window_table<P: SWModelParameters>(
 
     assign(g11_11, g10_11);
     batch_add_assign(&mut denominators, g11_11, g1);
+
+    res
+}
+
+pub fn affine_shamir_window_table_one<P: SWModelParameters>(
+    mut denominators: &mut [P::BaseField],
+    g1: &[SWJAffine<P>],
+) -> [Vec<SWJAffine<P>>; 3] {
+    fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
+        let n = dst.len();
+        for i in 0..n {
+            dst[i] = src[i]
+        }
+    }
+
+    let n = g1.len();
+
+    let mut res: [Vec<_>; 3] = [
+        vec![SWJAffine::<P>::zero(); n],
+        vec![SWJAffine::<P>::zero(); n],
+        vec![SWJAffine::<P>::zero(); n],
+    ];
+
+    let [g01, g10, g11] = &mut res;
+
+    assign(g01, g1);
+
+    assign(g10, g1);
+    batch_add_assign(&mut denominators, g10, g1);
+
+    assign(g11, g10);
+    batch_add_assign(&mut denominators, g11, g1);
 
     res
 }

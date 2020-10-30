@@ -8,7 +8,7 @@ pub use super::prover::ProverProof;
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use algebra::{Field, AffineCurve, Zero, One};
 use crate::plonk_sponge::FrSponge;
@@ -158,9 +158,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         cs
                     };
 
-                    let s0 = product(chal_invs.iter().map(|x| *x) );
-                    let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
-
                     let b_len = 1 << chal_invs.len();
                     let mut b : Option<Vec<Fr<G>>> = None;
 
@@ -168,7 +165,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     (
                         |i|
                         {
-                            let full = b_poly(&chals, &chal_invs, ep[i]);
+                            let full = b_poly(&chals, ep[i]);
                             if index.max_poly_size == b_len {
                                 return vec![full]
                             }
@@ -177,7 +174,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                                 let b_j =
                                     match &b {
                                         None => {
-                                            let t = b_poly_coefficients(s0, &chal_squareds);
+                                            let t = b_poly_coefficients(&chals);
                                             let res = t[j];
                                             b = Some(t);
                                             res

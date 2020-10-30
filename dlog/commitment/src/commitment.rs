@@ -14,7 +14,7 @@ use crate::srs::SRS;
 use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
-    AffineCurve, Field, LegendreSymbol, PrimeField, ProjectiveCurve, SquareRootField,
+    AffineCurve, Field, PrimeField, ProjectiveCurve, SquareRootField,
     UniformRand, VariableBaseMSM, SWModelParameters, One, Zero
 };
 use ff_fft::DensePolynomial;
@@ -23,7 +23,6 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
 pub use crate::CommitmentField;
-use dlog_solver::DetSquareRootField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -90,8 +89,6 @@ pub struct OpeningProof<G: AffineCurve> {
 pub struct Challenges<F> {
     pub chal : Vec<F>,
     pub chal_inv : Vec<F>,
-    pub chal_squared : Vec<F>,
-    pub chal_squared_inv : Vec<F>,
 }
 
 impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
@@ -107,23 +104,16 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
     }
 
     pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, endo_r: &Fr<G>, sponge : &mut EFqSponge) -> Challenges<Fr<G>> {
-        let chal_squared: Vec<_> = self
+        let chal: Vec<_> = self
             .lr
             .iter()
             .map(|(l, r)| {
                 sponge.absorb_g(&[*l]);
                 sponge.absorb_g(&[*r]);
-                squeeze_square_challenge(endo_r, sponge)
+                squeeze_challenge(endo_r, sponge)
             })
             .collect();
 
-        let chal_squared_inv = {
-            let mut cs = chal_squared.clone();
-            algebra::fields::batch_inversion(&mut cs);
-            cs
-        };
-
-        let chal: Vec<Fr<G>> = chal_squared.iter().map(|x| x.det_sqrt().unwrap()).collect();
         let chal_inv = {
             let mut cs = chal.clone();
             algebra::fields::batch_inversion(&mut cs);
@@ -133,8 +123,6 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
         Challenges {
             chal,
             chal_inv,
-            chal_squared,
-            chal_squared_inv
         }
     }
 }
@@ -147,7 +135,7 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     res
 }
 
-pub fn b_poly<F: Field>(chals: &Vec<F>, chal_invs: &Vec<F>, x: F) -> F {
+pub fn b_poly<F: Field>(chals: &Vec<F>, x: F) -> F {
     let k = chals.len();
 
     let mut pow_twos = vec![x];
@@ -156,20 +144,20 @@ pub fn b_poly<F: Field>(chals: &Vec<F>, chal_invs: &Vec<F>, x: F) -> F {
         pow_twos.push(pow_twos[i - 1].square());
     }
 
-    product((0..k).map(|i| (chal_invs[i] + &(chals[i] * &pow_twos[k - 1 - i]))))
+    product((0..k).map(|i| (F::one() + &(chals[i] * &pow_twos[k - 1 - i]))))
 }
 
-pub fn b_poly_coefficients<F: Field>(s0: F, chal_squareds: &[F]) -> Vec<F> {
-    let rounds = chal_squareds.len();
+pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
+    let rounds = chals.len();
     let s_length = 1 << rounds;
     let mut s = vec![F::one(); s_length];
-    s[0] = s0;
+    s[0] = F::one();
     let mut k: usize = 0;
     let mut pow: usize = 1;
     for i in 1..s_length {
         k += if i == pow { 1 } else { 0 };
         pow <<= if i == pow { 1 } else { 0 };
-        s[i] = s[i - (pow >> 1)] * &chal_squareds[rounds - 1 - (k - 1)];
+        s[i] = s[i - (pow >> 1)] * &chals[rounds - 1 - (k - 1)];
     }
     s
 }
@@ -201,27 +189,11 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_square_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
-    // TODO: Make this a parameter
-    let mut pre = squeeze_prechallenge(sponge).to_field(endo_r);
-    match pre.legendre() {
-        LegendreSymbol::Zero => (),
-        LegendreSymbol::QuadraticResidue => (),
-        LegendreSymbol::QuadraticNonResidue => {
-            pre *= &Fr::QNR;
-        }
-    };
-    pre
-}
-
-fn squeeze_sqrt_challenge<Fq: Field, G, Fr: PrimeField + CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
-    endo_r: &Fr,
-    sponge: &mut EFqSponge,
-) -> Fr {
-    squeeze_square_challenge(endo_r, sponge).det_sqrt().unwrap()
+    squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
 pub trait CommitmentCurve : AffineCurve {
@@ -230,6 +202,11 @@ pub trait CommitmentCurve : AffineCurve {
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
     fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
+
+    // Combine where x1 = one
+    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2:Self::ScalarField) -> Vec<Self> {
+        crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2)
+    }
 
     fn combine(g1: &Vec<Self>, g2: &Vec<Self>, x1:Self::ScalarField, x2:Self::ScalarField) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, x1, x2)
@@ -250,6 +227,10 @@ impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField 
 
     fn of_coordinates(x : P::BaseField, y : P::BaseField) -> SWJAffine<P> {
         SWJAffine::<P>::new(x, y, false)
+    }
+
+    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2:Self::ScalarField) -> Vec<Self> {
+        crate::combine::affine_window_combine_one(g1, g2, x2)
     }
 
     fn combine(g1: &Vec<Self>, g2: &Vec<Self>, x1:Self::ScalarField, x2:Self::ScalarField) -> Vec<Self> {
@@ -316,8 +297,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
         PolyComm::<G>{unshifted, shifted}
     }
-
-    // TODO: Figure out a sound way of padding with 0 group elements
 
     // This function opens polynomial commitments in batch
     //     plnms: batch of polynomials to open commitments for with, optionally, max degrees
@@ -429,14 +408,14 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             let rand_r = Fr::<G>::rand(rng);
 
             let l = VariableBaseMSM::multi_scalar_mul(
-                &[&g[n..], &[self.h, u]].concat(),
-                &[&a[0..n], &[rand_l, inner_prod(a_lo, b_hi)]].concat()
+                &[&g[0..n], &[self.h, u]].concat(),
+                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]].concat()
                     .iter().map(|x| x.into_repr()).collect::<Vec<_>>()
             ).into_affine();
 
             let r = VariableBaseMSM::multi_scalar_mul(
-                &[&g[0..n], &[self.h, u]].concat(),
-                &[&a[n..], &[rand_r, inner_prod(a_hi, b_lo)]].concat()
+                &[&g[n..], &[self.h, u]].concat(),
+                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]].concat()
                     .iter().map(|x| x.into_repr()).collect::<Vec<_>>()
             ).into_affine();
 
@@ -446,7 +425,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
-            let u = squeeze_sqrt_challenge(&self.endo_r, &mut sponge);
+            let u = squeeze_challenge(&self.endo_r, &mut sponge);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -456,8 +435,10 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 .par_iter()
                 .zip(a_lo)
                 .map(|(&hi, &lo)| {
-                    let mut res = hi * &u_inv;
-                    res += &(lo * &u);
+                    // lo + u_inv * hi
+                    let mut res = hi;
+                    res *= u_inv;
+                    res += &lo;
                     res
                 })
                 .collect();
@@ -466,13 +447,15 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 .par_iter()
                 .zip(b_hi)
                 .map(|(&lo, &hi)| {
-                    let mut res = lo * &u_inv;
-                    res += &(hi * &u);
+                    // lo + u * hi
+                    let mut res = hi;
+                    res *= u;
+                    res += &lo;
                     res
                 })
                 .collect();
 
-            g = G::combine(&g_lo, &g_hi, u_inv, u);
+            g = G::combine_one(&g_lo, &g_hi, u);
         }
 
         assert!(g.len() == 1);
@@ -483,7 +466,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         let r_prime = blinders
             .iter()
             .zip(chals.iter().zip(chal_invs.iter()))
-            .map(|((l, r), (u, u_inv))| ((*l) * &u.square()) + &(*r * &u_inv.square()))
+            .map(|((l, r), (u, u_inv))| ((*l) * u_inv) + &(*r * u))
             .fold(blinding_factor, |acc, x| acc + &x);
 
         let d = Fr::<G>::rand(rng);
@@ -581,7 +564,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
-            let Challenges { chal, chal_inv, chal_squared, chal_squared_inv } = opening.challenges::<EFqSponge>(&self.endo_r, sponge);
+            let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&self.endo_r, sponge);
 
             sponge.absorb_g(&[opening.delta]);
             let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
@@ -593,18 +576,14 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 let mut scale = Fr::<G>::one();
                 let mut res = Fr::<G>::zero();
                 for &e in evaluation_points.iter() {
-                    let term = b_poly(&chal, &chal_inv, e);
+                    let term = b_poly(&chal, e);
                     res += &(scale * &term);
                     scale *= *r;
                 }
                 res
             };
 
-            let s0 = chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y);
-            let s = b_poly_coefficients(
-                s0,
-                &chal_squared,
-            );
+            let s = b_poly_coefficients(&chal);
 
             let neg_rand_base_i = -rand_base_i;
 
@@ -641,23 +620,19 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             // TERM
             // rand_base_i c_i Q_i
             // = rand_base_i c_i
-            //   (sum_j (chal_squareds[j] L_j + chal_squared_invs[j] R_j) + P_prime)
+            //   (sum_j (chal_invs[j] L_j + chals[j] R_j) + P_prime)
             // where P_prime = combined commitment + combined_inner_product * U
             let rand_base_i_c_i = c * &rand_base_i;
-            let mut lr_prod = G::Projective::zero();
-            for ((l, r), (u, u_inv)) in opening
+            for ((l, r), (u_inv, u)) in opening
                 .lr
                 .iter()
-                .zip(chal_squared.iter().zip(chal_squared_inv.iter()))
+                .zip(chal_inv.iter().zip(chal.iter()))
             {
                 points.push(*l);
-                scalars.push(rand_base_i_c_i * u);
-
-                points.push(*r);
                 scalars.push(rand_base_i_c_i * u_inv);
 
-                lr_prod += &l.mul(*u);
-                lr_prod += &r.mul(*u_inv);
+                points.push(*r);
+                scalars.push(rand_base_i_c_i * u);
             }
 
             // TERM
