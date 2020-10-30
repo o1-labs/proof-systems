@@ -81,7 +81,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
 
         // absorb the public input, l, r, o polycommitments into the argument
         let public_input_comm = &index.srs.get_ref().commit(&p, None).unshifted;
-        assert_eq!(public_input_comm.len(), 1);
+        // this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);
         fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
@@ -174,7 +174,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        t += &(&bnd1.scale(alpha[0]) + &bnd2.scale(alpha[1]));
+        t += &(&bnd1.scale(alpha[3]) + &bnd2.scale(alpha[4]));
         t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t

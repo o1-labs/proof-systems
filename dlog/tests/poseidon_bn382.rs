@@ -42,7 +42,7 @@ fn poseidon_bn382()
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..SC::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
+            gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
             i+=1;
         }
         gates.push(CircuitGate::<Fr>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));

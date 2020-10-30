@@ -40,7 +40,7 @@ fn poseidon_tweedledum()
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M))), [c[j][0],c[j][1],c[j][2]]));
+            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
             i+=1;
         }
         gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M)))));
@@ -49,7 +49,7 @@ fn poseidon_tweedledum()
 
     for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
     {
-        gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i))), [c[j][0],c[j][1],c[j][2]]));
+        gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
         i+=1;
     }
     gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));

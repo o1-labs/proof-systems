@@ -113,7 +113,7 @@ fn turbo_plonk()
     // ROUNDS_FULL full rounds constraint gates
     for j in 0..SC::ROUNDS_FULL
     {
-        gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j][0],c[j][1],c[j][2]]));
+        gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j+1][0],c[j+1][1],c[j+1][2]]));
     }
     gates.push(CircuitGate::<Fp>::zero(GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))));
 
