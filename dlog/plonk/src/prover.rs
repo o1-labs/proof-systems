@@ -12,7 +12,6 @@ use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
 use crate::plonk_sponge::{FrSponge};
 pub use super::index::Index;
 use rand_core::OsRng;
-use std::time::Instant;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -58,7 +57,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
     )
     -> Result<Self, ProofError>
     {
-        let tm = Instant::now();
         let n = index.cs.domain.d1.size as usize;
         if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
 
