@@ -115,8 +115,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
-        let mut alpha = oracles.alpha;
-        let alpha = (0..34).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = range::alpha(oracles.alpha);
 
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&w, &z);
@@ -164,7 +163,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        t += &(&bnd1.scale(alpha[0]) + &bnd2.scale(alpha[1]));
+        t += &(&bnd1.scale(alpha[5]) + &bnd2.scale(alpha[6]));
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));

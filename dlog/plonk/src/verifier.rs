@@ -239,9 +239,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     -
                     evals[0].t * &(zeta1 - &Fr::<G>::one())) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
                 !=
-                    ((zeta1 - &Fr::<G>::one()) * &alpha[0] * &(oracles.zeta - &index.w))
+                    ((zeta1 - &Fr::<G>::one()) * &alpha[5] * &(oracles.zeta - &index.w))
                     +
-                    ((zeta1 - &Fr::<G>::one()) * &alpha[1] * &(oracles.zeta - &Fr::<G>::one()))
+                    ((zeta1 - &Fr::<G>::one()) * &alpha[6] * &(oracles.zeta - &Fr::<G>::one()))
             {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))

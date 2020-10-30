@@ -70,13 +70,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> Vec<F>
     {
         let bz = oracles.beta * &oracles.zeta;
+        let mut denominator = [oracles.zeta - &F::one(), oracles.zeta - &w];
+        algebra::fields::batch_inversion::<F>(&mut denominator);
+        let numerator = oracles.zeta.pow(&[n]) - &F::one();
+
         vec!
         [
             e[0].w.iter().zip(shift.iter()).
                 map(|(w, s)| oracles.gamma + &(bz * s) + w).
                 fold(oracles.alpha * &z, |x, y| x * y) +
-            &(alpha[0] * &(oracles.zeta.pow(&[n]) - &F::one()) / &(oracles.zeta - &F::one())) +
-            &(alpha[1] * &(oracles.zeta.pow(&[n]) - &F::one()) / &(oracles.zeta - &w))
+            &(alpha[0] * &numerator * &denominator[0]) +
+            &(alpha[1] * &numerator * &denominator[1])
             ,
             -e[0].w.iter().zip(e[0].s.iter()).
                 map(|(w, s)| oracles.gamma + &(oracles.beta * s) + w).

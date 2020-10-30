@@ -20,7 +20,7 @@ This source file tests constraints for the following computatios:
    scalar multiplication via custom Plonk constraints
 
 **********************************************************************************************************/
-
+/*
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
@@ -466,3 +466,4 @@ fn sample_points() -> [(Fp, Fp, Fp, Fp, Fp, Fp); 10]
         <Fp as std::str::FromStr>::from_str("4149192748600852083475900035990630534222222056341700086574476023821578193169627468582105359207744587896137324600702").unwrap(),
     ))]
 }
+*/
