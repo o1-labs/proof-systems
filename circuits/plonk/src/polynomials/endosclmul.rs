@@ -21,7 +21,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         {return (self.emul1l.clone(), self.emul3l.clone())}
 
         let one = Evaluations::<F, D<F>>::from_vec_and_domain(vec![F::one(); self.domain.d4.size as usize], self.domain.d4);
-        let xr = &(&polys.d8.this.r.pow(2) - &polys.d8.this.l) - &polys.d8.next.r;
+        let xr = &(&polys.d8.this.r.square() - &polys.d8.this.l) - &polys.d8.next.r;
         let t = &polys.d8.this.l - &xr;
         let u = &polys.d8.this.o.scale((2 as u64).into()) - &(&t * &polys.d8.this.r);
 
@@ -41,7 +41,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 &(&polys.d4.this.o * &(&polys.d4.this.l.scale((2 as u64).into()) - &one))) * &self.emul2l)
             ,
             // u^2 - t^2 * (xR + xP + xS)
-            &(&(&u.pow(2) - &(&t.pow(2) * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[1])
+            &(&(&u.square() - &(&t.square() * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[1])
             +
             // (xP - xS) * u - t * (yS + yP)
             &(&(&(&polys.d8.this.l - &polys.d8.next.l) * &u) - &(&t * &(&polys.d8.this.o + &polys.d8.next.o))).scale(alpha[2]))

@@ -6,9 +6,14 @@ This source file implements Plonk constraint gate primitive.
 
 use algebra::FftField;
 pub use super::{wires::{*}, constraints::ConstraintSystem};
+use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
+use algebra::bytes::{FromBytes, ToBytes};
+use num_traits::cast::{FromPrimitive, ToPrimitive};
 
-#[derive(Clone)]
+#[repr(C)]
+#[derive(Clone, Debug)]
 #[derive(PartialEq)]
+#[derive(FromPrimitive, ToPrimitive)]
 pub enum GateType
 {
     Zero,       // zero gate
@@ -35,6 +40,48 @@ pub struct CircuitGate<F: FftField>
     pub typ: GateType,      // type of the gate
     pub wires: GateWires,   // gate wires
     pub c: Vec<F>,          // constraints vector
+}
+
+
+impl<F: FftField> ToBytes for CircuitGate<F> {
+    #[inline]
+    fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
+        let typ : u8 = ToPrimitive::to_u8(&self.typ).unwrap();
+        typ.write(&mut w)?;
+        self.wires.write(&mut w)?;
+
+        (self.c.len() as u8).write(&mut w)?;
+        for x in self.c.iter() {
+            x.write(&mut w)?;
+        }
+        Ok(())
+    }
+}
+
+impl<F: FftField> FromBytes for CircuitGate<F> {
+    #[inline]
+    fn read<R: Read>(mut r: R) -> IoResult<Self> {
+        let code = u8::read(&mut r)?;
+        let typ =
+            match FromPrimitive::from_u8(code) {
+                Some(x) => Ok(x),
+                None => Err(Error::new(ErrorKind::Other, "Invalid gate type"))
+            }?;
+
+        let wires = GateWires::read(&mut r)?;
+
+        let c_len = u8::read(&mut r)?;
+        let mut c = vec![];
+        for _ in 0..c_len {
+            c.push(F::read(&mut r)?);
+        }
+
+        Ok(CircuitGate {
+            typ,
+            wires,
+            c
+        })
+    }
 }
 
 impl<F: FftField> CircuitGate<F>

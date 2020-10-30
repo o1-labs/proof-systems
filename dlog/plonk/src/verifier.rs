@@ -52,10 +52,24 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         oracles.gamma = fq_sponge.challenge();
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.z_comm.unshifted);
-        oracles.alpha = fq_sponge.challenge();
+        oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         // absorb the polycommitments into the argument and sample zeta
+        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
+        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&self.t_comm.unshifted);
-        oracles.zeta = ScalarChallenge(fq_sponge.challenge()).to_field(&index.srs.get_ref().endo_r);
+        fq_sponge.absorb_g(&vec![dummy; max_t_size - self.t_comm.unshifted.len()]);
+        {
+            let s = self.t_comm.shifted.unwrap();
+            if s.is_zero() {
+                fq_sponge.absorb_g(&[dummy])
+            } else {
+                fq_sponge.absorb_g(&[s])
+            }
+        };
+
+        oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
         let digest = fq_sponge.clone().digest();
         let mut fr_sponge =
         {
@@ -91,8 +105,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])}
 
         // query opening scaler challenges
-        oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
-        oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
+        oracles.v_chal = fr_sponge.challenge();
+        oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
+        oracles.u_chal = fr_sponge.challenge();
+        oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
 
         (fq_sponge, digest, oracles, alpha, p_eval, zeta1, zetaw)
     }
@@ -107,19 +123,21 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         >
     (
         group_map: &G::Map,
-        proofs: &Vec<ProverProof<G>>,
-        index: &Index<G>,
+        proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError>
     {
-        let n = index.domain.size;
+        if proofs.len() == 0 {
+            return Ok(true);
+        }
 
         let params = proofs.iter().map
         (
-            |proof|
+            |(index, lgr_comm, proof)|
             {
+                let n = index.domain.size;
                 // commit to public input polynomial
                 let p_comm = PolyComm::<G>::multi_scalar_mul
-                    (&index.srs.get_ref().lgr_comm.iter().map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
+                    (& lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
 
                 let (fq_sponge, _, oracles, alpha, p_eval, zeta1, zetaw) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 
@@ -221,7 +239,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // EC variable base scalar multiplication constraint linearization scalars
                 s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha));
                 // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.srs.get_ref().endo_r, &alpha));
+                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha));
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
@@ -246,7 +264,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         
         let mut batch = proofs.iter().zip(params.iter()).map
         (
-            |(proof, (p_eval, p_comm, f_comm, fq_sponge, oracles, polys))|
+            |((index, _lgr_comm, proof), (p_eval, p_comm, f_comm, fq_sponge, oracles, polys))|
             {
                 let mut polynoms = polys.iter().map
                 (
@@ -260,17 +278,18 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (
                     vec!
                     [
+                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
                         (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
-                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
 
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
-                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
 
                         (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
                         (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
+
+                        (&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
                     ]
                 );
 
@@ -287,7 +306,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         ).collect::<Vec<_>>();
 
         // verify the opening proofs
-        match index.srs.get_ref().verify::<EFqSponge>(group_map, &mut batch, &mut OsRng)
+        // TODO: Account for the different SRS lengths
+        let srs = proofs[0].0.srs.get_ref();
+        for (index, _, _) in proofs.iter() {
+            assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
+        }
+
+        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut OsRng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)

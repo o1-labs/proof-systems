@@ -31,18 +31,18 @@ impl<'a, G : CommitmentCurve> SRSValue<'a, G> {
 
 pub enum SRSSpec <'a, G: CommitmentCurve>{
     Use(&'a SRS<G>),
-    Generate
+    Generate(usize)
 }
 
 impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
-    pub fn generate(size: usize, public: usize, circ: usize) -> SRS<G> {
-        SRS::<G>::create(size, public, circ)
+    pub fn generate(size: usize) -> SRS<G> {
+        SRS::<G>::create(size)
     }
 
-    pub fn create<'b>(size: usize, public: usize, circ: usize, spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
+    pub fn create<'b>(spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
         match spec {
             SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate => SRSValue::Value(Self::generate(size, public, circ))
+            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size))
         }
     }
 }
@@ -98,6 +98,9 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+
+    // Endo from the other curve
+    pub endo: Fr<G>
 }
 
 impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
@@ -132,6 +135,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
 
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
+            endo: self.cs.endo,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             srs,
@@ -144,20 +148,21 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
     pub fn create
     (
         mut cs: ConstraintSystem<Fr<G>>,
-        max_poly_size: usize,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+        endo_q: Fr<G>,
         srs : SRSSpec<'a, G>
     ) -> Self
     {
+        let srs = SRSValue::create(srs);
+        let max_poly_size = srs.get_ref().g.len();
         if cs.public > 0
         {
             assert!(max_poly_size >= cs.domain.d1.size as usize, "polynomial segment size has to be not smaller that that of the circuit!");
         }
-        let srs = SRSValue::create(max_poly_size, cs.public, cs.domain.d1.size as usize, srs);
-        cs.endo = srs.get_ref().endo_r;
+        cs.endo = endo_q;
         Index
         {
-            max_quot_size: 5 * (cs.domain.d1.size as usize + 2) - 5,
+            max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
             fq_sponge_params,
             max_poly_size,
             srs,

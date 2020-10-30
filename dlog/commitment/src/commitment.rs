@@ -63,8 +63,12 @@ impl<C: AffineCurve> PolyComm<C>
                         {
                             let mut points = Vec::new();
                             let mut scalars = Vec::new();
-                            com.iter().zip(elm.iter()).for_each
-                                (|(p, s)| if i < p.unshifted.len() {points.push(p.unshifted[i]); scalars.push(s.into_repr())});
+                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
+                                if i < p.unshifted.len() {
+                                    points.push(p.unshifted[i]);
+                                    scalars.push(s.into_repr())
+                                }
+                            });
                             VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
                         }
                     ).collect::<Vec<_>>()
@@ -296,14 +300,15 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             None => None,
             Some(max) =>
             {
-                if plnm.is_zero() {Some(G::zero())}
+                let start = max - (max % n);
+                if plnm.is_zero() || start >= p {Some(G::zero())}
                 else if max % n == 0 {None}
                 else
                 {
                     Some(VariableBaseMSM::multi_scalar_mul
                     (
                         &self.g[n - (max%n)..],
-                        &plnm.coeffs[max-(max%n)..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
+                        &plnm.coeffs[start..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
                     ).into_affine())
                 }
             }
@@ -352,19 +357,29 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             for (p_i, degree_bound) in plnms.iter().filter(|p| p.0.is_zero() == false) {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
-                while offset < p_i.coeffs.len() {
-                    let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
-                        (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
-                    // always mixing in the unshifted segments
-                    p += &segment.scale(scale);
-                    scale *= &polyscale;
-                    offset += self.g.len();
-                    if offset > p_i.coeffs.len() {
-                        if let Some(m) = degree_bound {
+                if let Some(m) = degree_bound {
+                    while offset < p_i.coeffs.len() {
+                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
+                            (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
+                        // always mixing in the unshifted segments
+                        p += &segment.scale(scale);
+                        scale *= &polyscale;
+                        offset += self.g.len();
+                        if offset > *m {
                             // mixing in the shifted segment since degree is bounded
                             p += &(segment.shiftr(self.g.len() - m%self.g.len()).scale(scale));
-                            scale *= &polyscale;
                         }
+                    }
+                    scale *= &polyscale;
+                }
+                else {
+                    while offset < p_i.coeffs.len() {
+                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
+                            (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
+                        // always mixing in the unshifted segments
+                        p += &segment.scale(scale);
+                        scale *= &polyscale;
+                        offset += self.g.len();
                     }
                 }
             }
@@ -578,14 +593,16 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 let mut scale = Fr::<G>::one();
                 let mut res = Fr::<G>::zero();
                 for &e in evaluation_points.iter() {
-                    res += &(scale * &b_poly(&chal, &chal_inv, e));
+                    let term = b_poly(&chal, &chal_inv, e);
+                    res += &(scale * &term);
                     scale *= *r;
                 }
                 res
             };
 
+            let s0 = chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y);
             let s = b_poly_coefficients(
-                chal_inv.iter().fold(Fr::<G>::one(), |x, y| x * y),
+                s0,
                 &chal_squared,
             );
 
@@ -627,6 +644,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             //   (sum_j (chal_squareds[j] L_j + chal_squared_invs[j] R_j) + P_prime)
             // where P_prime = combined commitment + combined_inner_product * U
             let rand_base_i_c_i = c * &rand_base_i;
+            let mut lr_prod = G::Projective::zero();
             for ((l, r), (u, u_inv)) in opening
                 .lr
                 .iter()
@@ -637,6 +655,9 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
                 points.push(*r);
                 scalars.push(rand_base_i_c_i * u_inv);
+
+                lr_prod += &l.mul(*u);
+                lr_prod += &r.mul(*u_inv);
             }
 
             // TERM
@@ -664,24 +685,29 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
                         xi_i *= *xi;
+
                     }
 
                     if let Some(m) = shifted {
                         if let Some(comm_ch) = comm.shifted {
+							if comm_ch.is_zero() == false {
 
-                            // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
-                            let shifted_evals: Vec<_> = evaluation_points
-                                .iter()
-                                .zip(evals[evals.len()-1].iter())
-                                .map(|(elm, f_elm)| elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm)
-                                .collect();
+								// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
+								let last_evals = if *m > evals.len()*self.g.len() {vec![Fr::<G>::zero(); evaluation_points.len()]} else {evals[evals.len()-1].clone()};
+								let shifted_evals: Vec<_> = evaluation_points
+									.iter()
+									.zip(last_evals.iter())
+									.map(|(elm, f_elm)| {
+                                        elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm
+                                    })
+									.collect();
 
-                            scalars.push(rand_base_i_c_i * &xi_i);
-                            points.push(comm_ch);
-                            res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
-
-                            xi_i *= *xi;
+								scalars.push(rand_base_i_c_i * &xi_i);
+								points.push(comm_ch);
+								res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
+							}
                         }
+                        xi_i *= *xi;
                     }
                 }
                 res

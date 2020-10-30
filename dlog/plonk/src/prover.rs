@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One};
+use algebra::{Field, AffineCurve, Zero, One, PrimeField};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
@@ -39,7 +39,7 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, G::BaseField : PrimeField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -83,7 +83,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let o_comm = index.srs.get_ref().commit(&o, None);
 
         // absorb the public input, l, r, o polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.get_ref().commit(&p, None).unshifted);
+        let public_input_comm = &index.srs.get_ref().commit(&p, None).unshifted;
+        assert_eq!(public_input_comm.len(), 1);
+        fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
         fq_sponge.absorb_g(&o_comm.unshifted);
@@ -124,7 +126,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
-        oracles.alpha = fq_sponge.challenge();
+        oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         let mut alpha = oracles.alpha;
         let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
@@ -168,14 +171,26 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         t += &bnd.scale(alpha[0]);
-        t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));
 
         // absorb the polycommitments into the argument and sample zeta
+        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
+        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.unshifted);
-        oracles.zeta = ScalarChallenge(fq_sponge.challenge()).to_field(&index.srs.get_ref().endo_r);
+        fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.unshifted.len()]);
+        {
+            let s = t_comm.shifted.unwrap();
+            if s.is_zero() {
+                fq_sponge.absorb_g(&[dummy])
+            } else {
+                fq_sponge.absorb_g(&[s])
+            }
+        };
+
+        oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
 
         // evaluate the polynomials
 
@@ -241,8 +256,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])}
 
         // query opening scaler challenges
-        oracles.v = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
-        oracles.u = fr_sponge.challenge().to_field(&index.srs.get_ref().endo_r);
+        oracles.v_chal = fr_sponge.challenge();
+        oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
+        oracles.u_chal = fr_sponge.challenge();
+        oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -257,37 +274,40 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         polynoms.extend(
             vec!
             [
+                (&p, None),
                 (&l, None),
                 (&r, None),
                 (&o, None),
                 (&z, None),
-                (&t, Some(index.max_quot_size)),
                 (&f, None),
-                (&p, None),
                 (&index.cs.sigmam[0], None),
                 (&index.cs.sigmam[1], None),
+                (&t, Some(index.max_quot_size)),
             ]);
 
-        Ok(Self
-        {
-            l_comm,
-            r_comm,
-            o_comm,
-            z_comm,
-            t_comm,
-            proof: index.srs.get_ref().open
-            (
-                group_map,
-                polynoms,
-                &evlp.to_vec(),
-                oracles.v,
-                oracles.u,
-                fq_sponge_before_evaluations,
-                &mut OsRng
-            ),
-            evals,
-            public,
-            prev_challenges,
-        })
+        let proof =
+            Self
+            {
+                l_comm,
+                r_comm,
+                o_comm,
+                z_comm,
+                t_comm,
+                proof: index.srs.get_ref().open
+                (
+                    group_map,
+                    polynoms,
+                    &evlp.to_vec(),
+                    oracles.v,
+                    oracles.u,
+                    fq_sponge_before_evaluations,
+                    &mut OsRng
+                ),
+                evals,
+                public,
+                prev_challenges,
+            };
+
+        Ok(proof)
     }
 }
