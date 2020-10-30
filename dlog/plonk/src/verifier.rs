@@ -275,7 +275,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (
                     vec!
                     [
-                        (&*p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
                         (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),

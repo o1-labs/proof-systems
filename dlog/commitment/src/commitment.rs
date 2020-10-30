@@ -635,8 +635,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 scalars.push(rand_base_i_c_i * u);
             }
 
-            let mut combined_polynomial = G::Projective::zero();
-
             // TERM
             // sum_j r^j (sum_i xi^i f_i) (elm_j)
             // == sum_j sum_i r^j xi^i f_i(elm_j)
@@ -661,7 +659,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                         res += &(xi_i * &term);
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
-                        combined_polynomial += &comm_ch.mul(xi_i);
                         xi_i *= *xi;
 
                     }
@@ -682,7 +679,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
 								scalars.push(rand_base_i_c_i * &xi_i);
 								points.push(comm_ch);
-                                combined_polynomial += &comm_ch.mul(xi_i);
 								res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
 							}
                         }
