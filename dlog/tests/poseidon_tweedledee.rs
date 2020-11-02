@@ -5,9 +5,9 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{Field, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
+use algebra::{ tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -20,6 +20,7 @@ const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
 const MAX_SIZE: usize = 40000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
+const M: usize = PERIOD * (NUM_POS-1);
 const PUBLIC : usize = 0;
 
 #[test]
@@ -34,21 +35,32 @@ fn poseidon_tweedledee()
 
     // custom constraints for Poseidon hash function permutation
 
-    for _ in 0..NUM_POS
+    for _ in 0..NUM_POS-1
     {
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
+            gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
             i+=1;
         }
-        gates.push(CircuitGate::<Fp>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));
+        gates.push(CircuitGate::<Fp>::zero(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M)))));
         i+=1;
     }
 
+    for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+    {
+        gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
+        i+=1;
+    }
+    gates.push(CircuitGate::<Fp>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    i+=1;
+    gates.push(CircuitGate::<Fp>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    i+=1;
+    gates.push(CircuitGate::<Fp>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+
     let srs = SRS::create(MAX_SIZE);
 
-    let (endo_q, _) = endos::<Other>();
+    let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
         ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp::params(), PUBLIC).unwrap(),
@@ -90,7 +102,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let (x, y, z) = (Fp::rand(rng), Fp::rand(rng), Fp::rand(rng));
 
         //  witness for Poseidon permutation custom constraints
-        for _ in 0..NUM_POS
+        for _ in 0..NUM_POS-1
         {
             sponge.state = vec![x, y, z];
             l.push(sponge.state[0]);
@@ -106,6 +118,28 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 o.push(sponge.state[2]);
             }
         }
+
+        sponge.state = vec![x, y, z];
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
+
+        // HALF_ROUNDS_FULL full rounds
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+        {
+            sponge.full_round(j, &params);
+            l.push(sponge.state[0]);
+            r.push(sponge.state[1]);
+            o.push(sponge.state[2]);
+        }
+
+        l.push(Fp::rand(rng));
+        r.push(Fp::rand(rng));
+        o.push(Fp::rand(rng));
+        l.push(Fp::rand(rng));
+        r.push(Fp::rand(rng));
+        o.push(Fp::rand(rng));
+
         let mut witness = l;
         witness.append(&mut r);
         witness.append(&mut o);

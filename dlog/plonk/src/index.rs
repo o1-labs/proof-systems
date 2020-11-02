@@ -4,10 +4,10 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use ff_fft::Radix2EvaluationDomain as D;
+use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
+use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants};
 use plonk_circuits::constraints::ConstraintSystem;
-use oracle::poseidon::ArithmeticSpongeParams;
 use array_init::array_init;
 use algebra::AffineCurve;
 use algebra::PrimeField;
@@ -94,13 +94,13 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
 
     pub r:          Fr<G>,              // coordinate shift for right wires
     pub o:          Fr<G>,              // coordinate shift for output wires
+    pub zkpm:       DensePolynomial<Fr<G>>, // zero-knowledge polynomial
+    pub w:          Fr<G>,              // root of unity for zero-knowledge
+    pub endo:       Fr<G>,              // endoscalar coefficient
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-
-    // Endo from the other curve
-    pub endo: Fr<G>
 }
 
 impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
@@ -133,11 +133,13 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             emul2_comm: srs.get_ref().commit(&self.cs.emul2m, None),
             emul3_comm: srs.get_ref().commit(&self.cs.emul3m, None),
 
+            w: self.cs.sid[self.cs.domain.d1.size as usize -3],
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo: self.cs.endo,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
+            zkpm: self.cs.zkpm.clone(),
             srs,
             r: self.cs.r,
             o: self.cs.o,
@@ -162,7 +164,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = endo_q;
         Index
         {
-            max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
+            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
             fq_sponge_params,
             max_poly_size,
             srs,
