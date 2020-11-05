@@ -152,7 +152,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
-                index.srs.get_ref().commit(&b, None)
+                index.srs.get_ref().commit_non_hiding(&b, None)
             };
             ( chals, comm )
         };

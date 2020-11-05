@@ -185,7 +185,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(
             v, index.cs.domain.d1).interpolate();
-        index.srs.get_ref().commit(&p, None)
+        index.srs.get_ref().commit_non_hiding(&p, None)
     }).collect();
 
     println!("{}", "Prover 100 zk-proofs computation".green());
@@ -357,7 +357,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
-                index.srs.get_ref().commit(&b, None)
+                index.srs.get_ref().commit_non_hiding(&b, None)
             };
             ( chals, comm )
         };
