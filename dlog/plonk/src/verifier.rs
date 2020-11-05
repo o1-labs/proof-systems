@@ -6,13 +6,13 @@ This source file implements zk-proof batch verifier functionality.
 
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
-use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, sponge::ScalarChallenge};
-use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
+use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
+use plonk_circuits::{scalars::RandomOracles, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients};
-use ff_fft::{DensePolynomial, EvaluationDomain};
+use ff_fft::{EvaluationDomain};
 use algebra::{Field, AffineCurve, Zero, One};
 use crate::plonk_sponge::FrSponge;
-use rand_core::OsRng;
+use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -193,20 +193,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 }).collect::<Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>>();
 
                 // evaluate committed polynoms
-                let evals = (0..2).map
-                (
-                    |i| ProofEvaluations::<Fr<G>>
-                    {
-                        l: DensePolynomial::eval_polynomial(&proof.evals[i].l, evlp[i]),
-                        r: DensePolynomial::eval_polynomial(&proof.evals[i].r, evlp[i]),
-                        o: DensePolynomial::eval_polynomial(&proof.evals[i].o, evlp[i]),
-                        z: DensePolynomial::eval_polynomial(&proof.evals[i].z, evlp[i]),
-                        t: DensePolynomial::eval_polynomial(&proof.evals[i].t, evlp[i]),
-                        f: DensePolynomial::eval_polynomial(&proof.evals[i].f, evlp[i]),
-                        sigma1: DensePolynomial::eval_polynomial(&proof.evals[i].sigma1, evlp[i]),
-                        sigma2: DensePolynomial::eval_polynomial(&proof.evals[i].sigma2, evlp[i]),
-                    }
-                ).collect::<Vec<_>>();
+                let evals = (0..2).map(|i| proof.evals[i].combine(evlp[i])).collect::<Vec<_>>();
 
                 // compute linearization polynomial commitment
                 let p = vec!
@@ -286,6 +273,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     vec!
                     [
                         (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+
                         (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
@@ -319,7 +307,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 
-        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut OsRng)
+        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng())
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)
