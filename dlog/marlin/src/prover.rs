@@ -64,6 +64,10 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
+fn non_hiding<F:Field>(n : usize) -> PolyComm<F> {
+    PolyComm { unshifted: vec![F::zero(); n], shifted: None }
+}
+
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
@@ -129,7 +133,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let x_hat =
             EvaluationDomains::evals_from_coeffs(public.clone(), index.domains.x).interpolate();
          // TODO: Should have no degree bound when we add the correct degree bound method
-        let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
+        let x_hat_comm = index.srs.get_ref().commit_non_hiding(&x_hat, None);
 
         // prover interpolates the vectors and computes the evaluation polynomial
         let za = EvaluationDomains::evals_from_coeffs(zv[0].to_vec(), index.domains.h).interpolate();
@@ -139,9 +143,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let zv = [za.clone(), zb.clone(), &za * &zb];
 
         // commit to W, ZA, ZB polynomials
-        let w_comm = index.srs.get_ref().commit(&w.clone(), None);
-        let za_comm = index.srs.get_ref().commit(&za.clone(), None);
-        let zb_comm = index.srs.get_ref().commit(&zb.clone(), None);
+        let (w_comm, omega_w) = index.srs.get_ref().commit(&w.clone(), None, rng);
+        let (za_comm, omega_za) = index.srs.get_ref().commit(&za.clone(), None, rng);
+        let (zb_comm, omega_zb) = index.srs.get_ref().commit(&zb.clone(), None, rng);
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -179,8 +183,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
-        let h1_comm = index.srs.get_ref().commit(&h1, None);
-        let g1_comm = index.srs.get_ref().commit(&g1, Some(index.domains.h.size()-1));
+        let (h1_comm, omega_h1) = index.srs.get_ref().commit(&h1, None, rng);
+        let (g1_comm, omega_g1) = index.srs.get_ref().commit(&g1, Some(index.domains.h.size()-1), rng);
 
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&g1_comm.unshifted);
@@ -195,8 +199,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
-        let h2_comm = index.srs.get_ref().commit(&h2, None);
-        let g2_comm = index.srs.get_ref().commit(&g2, Some(index.domains.h.size()-1));
+        let (h2_comm, omega_h2) = index.srs.get_ref().commit(&h2, None, rng);
+        let (g2_comm, omega_g2) = index.srs.get_ref().commit(&g2, Some(index.domains.h.size()-1), rng);
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&[sigma2]);
@@ -212,8 +216,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
-        let h3_comm = index.srs.get_ref().commit(&h3, None);
-        let g3_comm = index.srs.get_ref().commit(&g3, Some(index.domains.k.size()-1));
+        let (h3_comm, omega_h3) = index.srs.get_ref().commit(&h3, None, rng);
+        let (g3_comm, omega_g3) = index.srs.get_ref().commit(&g3, Some(index.domains.k.size()-1), rng);
 
         // absorb sigma3 scalar
         fq_sponge.absorb_fr(&[sigma3]);
@@ -297,36 +301,42 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // construct the proof
         // --------------------------------------------------------------------
-        let polys = prev_challenges.iter().map(|(chals, _comm)| {
-            DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals))
+        let polys = prev_challenges.iter().map(|(chals, comm)| {
+            (DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)), comm.unshifted.len())
         }).collect::<Vec<_>>();
-        let mut polynoms = polys.iter().map(|p| (p, None)).collect::<Vec<_>>();
+        let mut polynoms = polys.iter().map(|(p, n)| (p, None, non_hiding(*n))).collect::<Vec<_>>();
+
+        fn index_poly_comm<F:Field>(n: usize, p : &DensePolynomial<F>) -> (&DensePolynomial<F>, Option<usize>, PolyComm<F>) {
+            let k = (p.coeffs.len() + n - 1) / n;
+            (p, None, non_hiding(k))
+        };
+        let n = index.srs.get_ref().g.len();
 
         polynoms.extend(
             vec!
             [
-                (&x_hat, None),
-                (&w,  None),
-                (&za, None),
-                (&zb, None),
-                (&h1, None),
-                (&h2, None),
-                (&h3, None),
-                (&index.compiled[0].row, None),
-                (&index.compiled[1].row, None),
-                (&index.compiled[2].row, None),
-                (&index.compiled[0].col, None),
-                (&index.compiled[1].col, None),
-                (&index.compiled[2].col, None),
-                (&index.compiled[0].val, None),
-                (&index.compiled[1].val, None),
-                (&index.compiled[2].val, None),
-                (&index.compiled[0].rc, None),
-                (&index.compiled[1].rc, None),
-                (&index.compiled[2].rc, None),
-                (&g1, Some(index.domains.h.size()-1)),
-                (&g2, Some(index.domains.h.size()-1)),
-                (&g3, Some(index.domains.k.size()-1)),
+                (&x_hat, None, non_hiding(1)),
+                (&w,  None, omega_w),
+                (&za, None, omega_za),
+                (&zb, None, omega_zb),
+                (&h1, None, omega_h1),
+                (&h2, None, omega_h2),
+                (&h3, None, omega_h3),
+                index_poly_comm(n, &index.compiled[0].row),
+                index_poly_comm(n, &index.compiled[1].row),
+                index_poly_comm(n, &index.compiled[2].row),
+                index_poly_comm(n, &index.compiled[0].col),
+                index_poly_comm(n, &index.compiled[1].col),
+                index_poly_comm(n, &index.compiled[2].col),
+                index_poly_comm(n, &index.compiled[0].val),
+                index_poly_comm(n, &index.compiled[1].val),
+                index_poly_comm(n, &index.compiled[2].val),
+                index_poly_comm(n, &index.compiled[0].rc),
+                index_poly_comm(n, &index.compiled[1].rc),
+                index_poly_comm(n, &index.compiled[2].rc),
+                (&g1, Some(index.domains.h.size()-1), omega_g1),
+                (&g2, Some(index.domains.h.size()-1), omega_g2),
+                (&g3, Some(index.domains.k.size()-1), omega_g3),
             ]);
 
         Ok(ProverProof
