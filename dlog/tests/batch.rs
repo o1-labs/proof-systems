@@ -16,7 +16,6 @@ use oracle::poseidon::{PlonkSpongeConstants as SC};
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
 use colored::Colorize;
-use rand_core::OsRng;
 use rand::Rng;
 use groupmap::GroupMap;
 

@@ -272,7 +272,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
-    fn mask<'a>(
+    fn mask(
         &self,
         c : PolyComm<G>,
         rng: &mut dyn RngCore,
