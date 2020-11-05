@@ -7,7 +7,7 @@ This source file implements Plonk Protocol Index primitive.
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
 use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants};
-use plonk_circuits::constraints::ConstraintSystem;
+use plonk_circuits::constraints::{zk_w, ConstraintSystem};
 use array_init::array_init;
 use algebra::AffineCurve;
 use algebra::PrimeField;
@@ -133,7 +133,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             emul2_comm: srs.get_ref().commit_non_hiding(&self.cs.emul2m, None),
             emul3_comm: srs.get_ref().commit_non_hiding(&self.cs.emul3m, None),
 
-            w: self.cs.sid[self.cs.domain.d1.size as usize -3],
+            w: zk_w(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo: self.cs.endo,
