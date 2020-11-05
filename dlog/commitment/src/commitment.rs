@@ -28,10 +28,26 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone, Debug)]
-pub struct PolyComm<C: AffineCurve>
+pub struct PolyComm<C>
 {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
+}
+
+impl<A: Copy> PolyComm<A> {
+    pub fn map<B, F>(&self, mut f: F) -> PolyComm<B> where F: FnMut(A) -> B {
+        let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
+        let shifted = self.shifted.map(f);
+        PolyComm { unshifted, shifted }
+    }
+}
+
+impl<A:Copy, B:Copy> PolyComm<(A, B)> {
+    fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
+        let a = self.map(|(x, _)| x);
+        let b = self.map(|(_, y)| y);
+        (a, b)
+    }
 }
 
 impl<C: AffineCurve> PolyComm<C>
@@ -246,11 +262,40 @@ fn to_group<G : CommitmentCurve>(
 }
 
 impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
+    pub fn commit(
+        &self,
+        plnm: &DensePolynomial<Fr<G>>,
+        max: Option<usize>,
+        rng: &mut dyn RngCore,
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>)
+    {
+        self.mask(self.commit_non_hiding(plnm, max), rng)
+    }
+
+    fn mask<'a>(
+        &self,
+        c : PolyComm<G>,
+        rng: &mut dyn RngCore,
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+        c.map(|g : G| {
+            if g.is_zero() {
+                // TODO: This leaks information when g is the identity!
+                // We should change this so that we still mask in this case
+                (g, Fr::<G>::zero())
+            } else {
+                let w = Fr::<G>::rand(rng);
+                let mut g_masked = self.h.mul(w);
+                g_masked.add_assign_mixed(&g);
+                (g_masked.into_affine(), w)
+            }
+        }).unzip()
+    }
+
     // This function commits a polynomial against URS instance
     //     plnm: polynomial to commit to with max size of sections
     //     max: maximal degree of the polynomial, if none, no degree bound
     //     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
-    pub fn commit(
+    pub fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
@@ -308,7 +353,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
     pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         group_map: &G::Map,
-        plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>)>, // vector of polynomial with optional degree bound
+        plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
         elm: &Vec<Fr<G>>,                                     // vector of evaluation points
         polyscale: Fr<G>,                                     // scaling factor for polynoms
         evalscale: Fr<G>, // scaling factor for evaluation point powers
@@ -328,48 +373,55 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         g.extend(vec![G::zero(); padding]);
 
         // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
-        let p = {
+        let (p, blinding_factor) = {
             let mut p = DensePolynomial::<Fr<G>>::zero();
+
+            let mut omega = Fr::<G>::zero();
             let mut scale = Fr::<G>::one();
 
             // iterating over polynomials in the batch
-            for (p_i, degree_bound) in plnms.iter().filter(|p| p.0.is_zero() == false) {
+            for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| p.0.is_zero() == false) {
                 let mut offset = 0;
+                let mut j = 0;
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
+                    assert!(p_i.coeffs.len() <= m + 1);
                     while offset < p_i.coeffs.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
                             (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
+                        omega += &(omegas.unshifted[j] * scale);
+                        j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
                             p += &(segment.shiftr(self.g.len() - m%self.g.len()).scale(scale));
+                            omega += &(omegas.shifted.unwrap() * scale);
+                            scale *= &polyscale;
                         }
                     }
-                    scale *= &polyscale;
                 }
                 else {
+                    assert!(omegas.shifted.is_none());
                     while offset < p_i.coeffs.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
                             (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
+                        omega += &(omegas.unshifted[j] * scale);
+                        j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
                     }
                 }
+                assert_eq!(j, omegas.unshifted.len());
             }
-            p
+            (p, omega)
         };
 
         let rounds = ceil_log2(self.g.len());
-
-        // TODO: Add blindings to the commitments. Opening will require knowing the blinding factor
-        // for each commitment in the batch.
-        let blinding_factor = Fr::<G>::zero();
 
         // b_j = sum_i r^i elm_i^j
         let b_init = {
@@ -666,7 +718,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                     if let Some(m) = shifted {
                         if let Some(comm_ch) = comm.shifted {
 							if comm_ch.is_zero() == false {
-
 								// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
 								let last_evals = if *m > evals.len()*self.g.len() {vec![Fr::<G>::zero(); evaluation_points.len()]} else {evals[evals.len()-1].clone()};
 								let shifted_evals: Vec<_> = evaluation_points
