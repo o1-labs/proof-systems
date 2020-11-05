@@ -18,3 +18,4 @@ rand = "0.7.3"
 rayon = { version = "1" }
 blake2 = "0.7"
 itertools = "0.8.2"
+array-init = "0.1.1"
