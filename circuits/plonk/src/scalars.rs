@@ -4,8 +4,9 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 *****************************************************************************************************************/
 
-use algebra::Field;
-use oracle::sponge::ScalarChallenge;
+use algebra::{FftField, Field};
+use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
+use ff_fft::DensePolynomial;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
@@ -17,6 +18,22 @@ pub struct ProofEvaluations<Fs> {
     pub f: Fs,
     pub sigma1: Fs,
     pub sigma2: Fs,
+}
+
+impl<F : FftField> ProofEvaluations<Vec<F>> {
+    pub fn combine(&self, pt : F) -> ProofEvaluations<F> {
+        ProofEvaluations::<F>
+        {
+            l: DensePolynomial::eval_polynomial(&self.l, pt),
+            r: DensePolynomial::eval_polynomial(&self.r, pt),
+            o: DensePolynomial::eval_polynomial(&self.o, pt),
+            z: DensePolynomial::eval_polynomial(&self.z, pt),
+            t: DensePolynomial::eval_polynomial(&self.t, pt),
+            f: DensePolynomial::eval_polynomial(&self.f, pt),
+            sigma1: DensePolynomial::eval_polynomial(&self.sigma1, pt),
+            sigma2: DensePolynomial::eval_polynomial(&self.sigma2, pt),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
