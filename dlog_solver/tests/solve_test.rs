@@ -11,7 +11,7 @@ use rand_core::OsRng;
 use algebra::{
     fields::{FftParameters, Fp256},
     tweedle::{FpParameters, FqParameters},
-    FftField, Field, Fp256Parameters, One, SquareRootField, UniformRand,
+    FftField, Field, Fp256Parameters, UniformRand,
 };
 use dlog_solver::{
     compose, decompose, in_orthogonal_complement, two_adic_discrete_log, DetSquareRootField,

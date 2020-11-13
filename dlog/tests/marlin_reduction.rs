@@ -24,10 +24,10 @@ of non-special pairs of points
 use groupmap::GroupMap;
 use marlin_protocol_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
-use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
+use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, One, Zero};
 use marlin_protocol_dlog::{prover::{ProverProof}};
 use oracle::{sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}};
-use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use rand_core::OsRng;
 use ff_fft::{DensePolynomial};
 use std::time::Instant;

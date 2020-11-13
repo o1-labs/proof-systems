@@ -4,7 +4,7 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-pub use super::prover::ProverProof;
+pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, utils::PolyUtils, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
@@ -82,7 +82,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let zeta1 = oracles.zeta.pow(&[n]);
         let zetaw = oracles.zeta * &index.domain.group_gen;
         let mut alpha = oracles.alpha;
-        let alpha = (0..4).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = (0..17).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
 
         // compute Lagrange base evaluation denominators
         let w = (0..self.public.len()).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
@@ -226,15 +226,25 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 ];
 
                 // permutation linearization scalars
-                let mut s = ConstraintSystem::perm_scalars(&evals, &oracles, (index.r, index.o), n);
+                let zkp = index.zkpm.evaluate(oracles.zeta);
+                let mut s = ConstraintSystem::perm_scalars
+                (
+                    &evals,
+                    &oracles,
+                    (index.r, index.o),
+                    &alpha[range::PERM],
+                    n,
+                    zkp,
+                    index.w
+                );
                 // generic constraint/permutation linearization scalars
                 s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
                 // poseidon constraint linearization scalars
-                s.extend(&ConstraintSystem::psdn_scalars(&evals, &index.fr_sponge_params, &alpha));
+                s.extend(&ConstraintSystem::psdn_scalars(&evals, &index.fr_sponge_params, &alpha[range::PSDN]));
                 // EC addition constraint linearization scalars
-                s.extend(&ConstraintSystem::ecad_scalars(&evals, &alpha));
+                s.extend(&ConstraintSystem::ecad_scalars(&evals, &alpha[range::ADD]));
                 // EC variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha));
+                s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
                 // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
                 s.extend(&ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha));
 
@@ -246,14 +256,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     -
                     ((evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
                     &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
-                    (evals[0].o + &oracles.gamma) * &evals[1].z * &oracles.alpha)
+                    (evals[0].o + &oracles.gamma) * &evals[1].z * &zkp * &oracles.alpha)
                     -
-                    evals[0].t * &(zeta1 - &Fr::<G>::one()))
-                    *
-                    &(oracles.zeta - &Fr::<G>::one())
+                    evals[0].t * &(zeta1 - &Fr::<G>::one())) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
                 !=
-                    (zeta1 - &Fr::<G>::one()) * &alpha[0]
-                {return Err(ProofError::ProofVerification)}
+                    ((zeta1 - &Fr::<G>::one()) * &alpha[3] * &(oracles.zeta - &index.w))
+                    +
+                    ((zeta1 - &Fr::<G>::one()) * &alpha[4] * &(oracles.zeta - &Fr::<G>::one()))
+                 {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }
@@ -275,7 +285,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (
                     vec!
                     [
-                        (&*p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
                         (&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
                         (&proof.r_comm, proof.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                         (&proof.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
