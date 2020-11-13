@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, PrimeField};
+use algebra::{Field, AffineCurve, Zero, One, PrimeField, UniformRand};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
@@ -164,7 +164,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // permutation boundary condition check contribution
-        let (bnd1, res) =
+        let (bnd, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
