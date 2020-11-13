@@ -101,6 +101,9 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+
+    // Endo from the other curve
+    pub endo: Fr<G>
 }
 
 impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
@@ -164,7 +167,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = endo_q;
         Index
         {
-            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
             fq_sponge_params,
             max_poly_size,
             srs,
