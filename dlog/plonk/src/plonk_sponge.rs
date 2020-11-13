@@ -39,10 +39,10 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             &e.r,
             &e.o,
             &e.z,
-            &e.t,
             &e.f,
             &e.sigma1,
             &e.sigma2,
+            &e.t,
         ];
 
         for p in &points {

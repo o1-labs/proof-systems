@@ -25,6 +25,7 @@ pub struct ConstraintSystem<F: FftField>
     // POLYNOMIALS OVER THE MONOMIAL BASE
 
     pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
+    pub zkpm:   DensePolynomial<F>,         // zero-knowledge polynomial
 
     // generic constraint selector polynomials
     pub qlm:    DensePolynomial<F>,         // left input wire polynomial
@@ -65,16 +66,17 @@ pub struct ConstraintSystem<F: FftField>
     pub ps8:    Evaluations<F, D<F>>,       // poseidon selector over domain.d8
 
     // ECC arithmetic selector polynomials
-    pub addl3:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
-    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d8
+    pub addl4:  Evaluations<F, D<F>>,       // EC point addition selector evaluations w over domain.d4
     pub mul1l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d4
     pub mul2l:  Evaluations<F, D<F>>,       // scalar multiplication selector evaluations over domain.d8
     pub emul1l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d4
     pub emul2l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d4
     pub emul3l: Evaluations<F, D<F>>,       // endoscalar multiplication selector evaluations over domain.d8
 
-    pub l0:     Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d8
+    pub l04:    Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d4
+    pub l08:    Evaluations<F, D<F>>,       // 0-th Lagrange evaluated over domain.d8
     pub l1:     Evaluations<F, D<F>>,       // 1-st Lagrange evaluated over domain.d8
+    pub zkpl:   Evaluations<F, D<F>>,       // zero-knowledge polynomial over domain.d8
 
     pub r:      F,                          // coordinate shift for right wires
     pub o:      F,                          // coordinate shift for output wires
@@ -127,6 +129,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut s = sid[0..2].to_vec();
         sid.append(&mut s);
 
+        // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+        let zkpm = DensePolynomial::from_coefficients_slice(&
+            [
+                -sid[n-1]*&sid[n-2]*&sid[n-3],
+                (sid[n-1]*&sid[n-2]) + &(sid[n-1]*&sid[n-3]) + &(sid[n-3]*&sid[n-2]),
+                -sid[n-1] - &sid[n-2] - &sid[n-3],
+                F::one()
+            ]);
+
         // compute generic constraint polynomials
         let qlm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ql()).collect(), domain.d1).interpolate();
         let qrm = Evaluations::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.qr()).collect(), domain.d1).interpolate();
@@ -171,8 +182,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             psm,
 
             // ECC arithmetic constraint polynomials
-            addl3: addm.evaluate_over_domain_by_ref(domain.d4),
-            addl4: addm.evaluate_over_domain_by_ref(domain.d8),
+            addl4: addm.evaluate_over_domain_by_ref(domain.d4),
             addm,
             mul1l: mul1m.evaluate_over_domain_by_ref(domain.d4),
             mul2l: mul2m.evaluate_over_domain_by_ref(domain.d8),
@@ -185,8 +195,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             emul2m,
             emul3m,
 
-            l0: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
+            l04: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d4),
+            l08: DensePolynomial::from_coefficients_slice(&[F::one()]).evaluate_over_domain_by_ref(domain.d8),
             l1: DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8),
+            zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
+            zkpm,
+
             gates,
             r,
             o,
@@ -215,7 +229,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             witness[self.gates[i].wires.o.1] != witness[self.gates[i].wires.o.0] ||
 
             // verify witness against constraints
-            !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]} else {&self.gates[i+1]}, witness, &self)
+            !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]}
+                                                      else {&self.gates[i+1]}, witness, &self)
             {
                 return false
             }

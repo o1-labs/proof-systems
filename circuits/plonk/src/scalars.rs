@@ -19,6 +19,7 @@ pub struct ProofEvaluations<Fs> {
     pub sigma2: Fs,
 }
 
+#[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field>
 {
     pub beta: F,

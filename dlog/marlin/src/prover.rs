@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::{DensePolynomial, EvaluationDomain};
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils, FqSponge, rndoracle::{ProofError}};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use marlin_circuits::domains::EvaluationDomains;
 use crate::marlin_sponge::FrSponge;
 pub use super::index::Index;
@@ -298,10 +298,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // construct the proof
         // --------------------------------------------------------------------
         let polys = prev_challenges.iter().map(|(chals, _comm)| {
-            let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-            let chal_squareds : Vec<Fr<G>> = chals.iter().map(|x| x.square()).collect();
-            let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
-            b
+            DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals))
         }).collect::<Vec<_>>();
         let mut polynoms = polys.iter().map(|p| (p, None)).collect::<Vec<_>>();
 

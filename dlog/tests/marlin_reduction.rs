@@ -24,10 +24,10 @@ of non-special pairs of points
 use groupmap::GroupMap;
 use marlin_protocol_dlog::index::{SRSSpec, Index};
 use sprs::{CsMat, CsVecView};
-use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, Field, One, Zero};
+use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, One, Zero};
 use marlin_protocol_dlog::{prover::{ProverProof}};
 use oracle::{sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}};
-use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use rand_core::OsRng;
 use ff_fft::{DensePolynomial};
 use std::time::Instant;
@@ -156,9 +156,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
       let k = ceil_log2(index.srs.get_ref().g.len());
       let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
       let comm = {
-          let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
-          let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-          let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+          let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
           index.srs.get_ref().commit(&b, None)
       };
       ( chals, comm )

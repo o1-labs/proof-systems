@@ -5,9 +5,9 @@ This source file benchmark constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use algebra::{Field, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, UniformRand};
+use algebra::{bn_382::{G1Affine as Other, g::{Affine, Bn_382GParameters}}, AffineCurve, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -23,6 +23,7 @@ const PERIOD: usize = SC::ROUNDS_FULL + 1;
 const MAX_SIZE: usize = 10000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
+const PUBLIC : usize = 0;
 
 #[test]
 fn poseidon_bn382()
@@ -41,20 +42,21 @@ fn poseidon_bn382()
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..SC::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
+            gates.push(CircuitGate::<Fr>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
             i+=1;
         }
         gates.push(CircuitGate::<Fr>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));
         i+=1;
     }
 
-    let srs = SRS::create(MAX_SIZE, 0, 0);
+    let srs = SRS::create(MAX_SIZE);
 
+    let (endo_q, _) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fr>::create(gates, oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>, 0).unwrap(),
-        MAX_SIZE,
+        ConstraintSystem::<Fr>::create(gates, oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>, PUBLIC).unwrap(),
         oracle::bn_382::fp::params(),
+        endo_q,
         SRSSpec::Use(&srs)
     );
 
@@ -118,9 +120,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             let k = ceil_log2(index.srs.get_ref().g.len());
             let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
             let comm = {
-                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
-                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit(&b, None)
             };
             ( chals, comm )
@@ -136,10 +136,14 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     let verifier_index = index.verifier_index();
+
+    let lgr_comms = vec![];
+    let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
+
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

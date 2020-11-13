@@ -5,9 +5,9 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use algebra::{Field, tweedle::{dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
+use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -20,6 +20,8 @@ const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
 const MAX_SIZE: usize = 40000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
+const M: usize = PERIOD * (NUM_POS-1);
+const PUBLIC : usize = 0;
 
 #[test]
 fn poseidon_tweedledum()
@@ -33,25 +35,37 @@ fn poseidon_tweedledum()
 
     // custom constraints for Poseidon hash function permutation
 
-    for _ in 0..NUM_POS
+    for _ in 0..NUM_POS-1
     {
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N))), [c[j][0],c[j][1],c[j][2]]));
+            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
             i+=1;
         }
-        gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%N), (i+N, N+((i+PERIOD)%N)), (i+2*N, 2*N+((i+PERIOD)%N)))));
+        gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M)))));
         i+=1;
     }
 
-    let srs = SRS::create(MAX_SIZE, 0, 0);
+    for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+    {
+        gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
+        i+=1;
+    }
+    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    i+=1;
+    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    i+=1;
+    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
 
+    let srs = SRS::create(MAX_SIZE);
+
+    let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), 0).unwrap(),
-        MAX_SIZE,
+        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), PUBLIC).unwrap(),
         oracle::tweedle::fp::params(),
+        endo_q,
         SRSSpec::Use(&srs)
     );
 
@@ -87,7 +101,7 @@ fn positive(index: &Index<Affine>)
         let (x, y, z) = (Fq::rand(rng), Fq::rand(rng), Fq::rand(rng));
 
         //  witness for Poseidon permutation custom constraints
-        for _ in 0..NUM_POS
+        for _ in 0..NUM_POS-1
         {
             sponge.state = vec![x, y, z];
             l.push(sponge.state[0]);
@@ -103,6 +117,28 @@ fn positive(index: &Index<Affine>)
                 o.push(sponge.state[2]);
             }
         }
+
+        sponge.state = vec![x, y, z];
+        l.push(sponge.state[0]);
+        r.push(sponge.state[1]);
+        o.push(sponge.state[2]);
+
+        // HALF_ROUNDS_FULL full rounds
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+        {
+            sponge.full_round(j, &params);
+            l.push(sponge.state[0]);
+            r.push(sponge.state[1]);
+            o.push(sponge.state[2]);
+        }
+
+        l.push(Fq::rand(rng));
+        r.push(Fq::rand(rng));
+        o.push(Fq::rand(rng));
+        l.push(Fq::rand(rng));
+        r.push(Fq::rand(rng));
+        o.push(Fq::rand(rng));
+
         let mut witness = l;
         witness.append(&mut r);
         witness.append(&mut o);
@@ -114,9 +150,7 @@ fn positive(index: &Index<Affine>)
             let k = ceil_log2(index.srs.get_ref().g.len());
             let chals : Vec<_> = (0..k).map(|_| Fq::rand(rng)).collect();
             let comm = {
-                let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
-                let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(s0, &chal_squareds));
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit(&b, None)
             };
             ( chals, comm )
@@ -132,10 +166,14 @@ fn positive(index: &Index<Affine>)
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     let verifier_index = index.verifier_index();
+
+    let lgr_comms = vec![];
+    let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
+
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(&group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

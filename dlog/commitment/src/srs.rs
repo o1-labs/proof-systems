@@ -94,12 +94,6 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
         for _ in 0..n {
             g.push(G::read(&mut reader)?);
         }
-        /*
-        let n = u64::read(&mut reader)? as usize;
-        let mut lgr_comm = Vec::with_capacity(n);
-        for _ in 0..n {
-            lgr_comm.push(PolyComm::<G>{shifted: None, unshifted: vec![G::read(&mut reader)?]});
-        } */
 
         let h = G::read(&mut reader)?;
         let (endo_q, endo_r) = endos::<G>();

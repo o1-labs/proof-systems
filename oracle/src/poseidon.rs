@@ -58,7 +58,11 @@ pub trait Sponge<Input, Digest> {
 }
 
 pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
-    x.pow([SC::SPONGE_BOX as u64])
+    let mut res = x;
+    res.square_in_place();
+    res.square_in_place();
+    res *= x;
+    res
 }
 
 #[derive(Clone, Debug)]
@@ -104,7 +108,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
         self.apply_mds_matrix(params);
-        for (i, x) in params.round_constants[r].iter().enumerate() {
+        for (i, x) in params.round_constants[r + 1].iter().enumerate() {
             self.state[i].add_assign(x);
         }
     }
@@ -147,6 +151,9 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
 
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
         if SC::HALF_ROUNDS_FULL == 0 {
+            for (i, x) in params.round_constants[0].iter().enumerate() {
+                self.state[i].add_assign(x);
+            }
             for r in 0..SC::ROUNDS_FULL {
                 self.full_round(r, params);
             }
