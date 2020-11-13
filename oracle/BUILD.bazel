@@ -9,5 +9,6 @@ rust_library(
         "@zexe//algebra",
         "@zexe//ff-fft",
         "//bzl/cargo:rand",
+        "//bzl/cargo:rayon",
     ]
 )

@@ -42,10 +42,11 @@ Use [cargo-raze](https://github.com/google/cargo-raze) to manage Bazel support.
 
 To update:
 
-* edit `cargo/Cargo.toml`
-* from within `cargo/` run `$ cargo raze`
+* edit `bzl/cargo/Cargo.toml`
+* run `$ cargo update` to update `Cargo.lock`. This pins the versions.
+* run `cargo raze` - this puts the pinned shas into the repo rules in `crates.bzl`
+* edit `bzl/cargo/cargo.bzl` to rename the fetch fn to `marlin_fetch_remote_crates`
 * test the build
-* to pin versions, from within `cargo` run `$ cargo generate-lockfile`
 * commit changes to git
 
 WARNING: Do NOT use `gen_workspace_prefix` in the `raze` section of
@@ -54,10 +55,4 @@ boostrapped by crates.bzl, which would result in duplicates between
 zexe and marlin. The default uses prefix `raze__`; using this in both
 @marlin and @zexe means only one copy of each repo will be created. If
 multiple copies are created the build will fail.
-
-After re-running `cargo raze` you can edit the fetch command in
-`bzl/cargo/crates.bzl` from `raze_fetch_remote_crates` to
-`zexe_fetch_remote_crates`. Do this for marlin as well and you can
-load each set by name; the logic of the `maybe` function used to load
-repos prevents duplicates.
 

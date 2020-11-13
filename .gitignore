@@ -2,6 +2,7 @@ user.bazelrc
 bazel-*
 .bazel/
 user.bazelrc
+.cpcache
 
 *.log
 log/

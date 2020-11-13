@@ -11,6 +11,9 @@ rust_library(
         "//oracle",
         "//bzl/cargo:array_init",
         "//bzl/cargo:blake2",
+        "//bzl/cargo:num_traits",
         "//bzl/cargo:rand_core",
+        "//bzl/cargo:rayon",
     ],
+    proc_macro_deps = ["//bzl/cargo:num_derive"]
 )
