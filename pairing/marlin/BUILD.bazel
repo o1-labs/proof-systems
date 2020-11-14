@@ -1,0 +1,21 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "marlin_protocol_pairing",
+    visibility = ["//visibility:public"],
+    edition = "2018",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "@zexe//algebra",
+        "@zexe//ff-fft",
+
+        "//pairing/commitment:commitment_pairing",
+        "//circuits/marlin:marlin_circuits",
+        "//oracle",
+
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
+        "//bzl/cargo:sprs",
+    ]
+)

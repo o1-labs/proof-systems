@@ -1,0 +1,23 @@
+build --color=yes
+## build --subcommands   ## no pretty print
+# build --subcommands=pretty_print
+# build --verbose_failures
+# build --sandbox_debug
+# build --show_timestamps
+# common --keep_going
+# build --jobs 600
+
+#### Config flags ####
+# build --//:verbose                 # enable verbose everywhere
+# build --//foo/bar:verbose          # enable verbose for pkg foo/bar
+
+## override external repos:
+# common --override_repository=obazl_rules_ocaml=/ABSOLUTE/PATH/TO/obazl_rules_ocaml
+# common --override_repository=zexe=/ABSOLUTE/PATH/TO/zexe
+
+################################################################
+## DO NOT USE on MacOS:
+# build --symlink_prefix=.bazel/   # use hidden dir instead of top-level symlinks
+## DO NOT USE on MacOS:
+# build --experimental_no_product_name_out_symlink # do not create `bazel-out` symlink
+

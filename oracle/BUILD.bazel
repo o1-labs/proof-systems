@@ -1,0 +1,14 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "oracle",
+    visibility = ["//visibility:public"],
+    edition = "2018",
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "@zexe//algebra",
+        "@zexe//ff-fft",
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rayon",
+    ]
+)
