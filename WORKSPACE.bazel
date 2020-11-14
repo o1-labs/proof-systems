@@ -24,7 +24,7 @@ bazel_version(name = "bazel_version")
 ###############
 git_repository(
     name = "zexe",
-    remote = "https://github.com/o1-labs/marlin",
+    remote = "https://github.com/o1-labs/zexe",
     branch = "master",
     # tag    = use tag instead of branch once a release tag has been published
 )
