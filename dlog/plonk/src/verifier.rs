@@ -30,14 +30,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         self.prev_challenges.iter().map(|(chals, _poly)| {
             // No need to check the correctness of poly explicitly. Its correctness is assured by the
             // checking of the inner product argument.
-            // TODO: Use batch inversion across proofs
-            let chal_invs = {
-                let mut cs = chals.clone();
-                algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
-                cs
-            };
-
-            let b_len = 1 << chal_invs.len();
+            let b_len = 1 << chals.len();
             let mut b : Option<Vec<Fr<G>>> = None;
 
             (0..2).map
