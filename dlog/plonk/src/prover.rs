@@ -4,15 +4,14 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, PrimeField, UniformRand};
+use algebra::{Field, AffineCurve, Zero, One, UniformRand, PrimeField};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
-use plonk_circuits::scalars::{ProofEvaluations, RandomOracles};
+use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
 pub use super::{index::Index, range};
 use crate::plonk_sponge::{FrSponge};
-use rand_core::OsRng;
-use std::time::Instant;
+use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -58,8 +57,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
     )
     -> Result<Self, ProofError>
     {
-        let tm = Instant::now();
         let n = index.cs.domain.d1.size as usize;
+        assert!(n <= index.srs.get_ref().g.len());
         if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
@@ -71,19 +70,21 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let public = witness[0..index.cs.public].to_vec();
         let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
 
+        let rng = &mut thread_rng();
+
         // compute witness polynomials
         let l = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.l.0]).collect(), index.cs.domain.d1).interpolate();
         let r = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.r.0]).collect(), index.cs.domain.d1).interpolate();
         let o = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.o.0]).collect(), index.cs.domain.d1).interpolate();
 
         // commit to the l, r, o wire values
-        let l_comm = index.srs.get_ref().commit(&l, None);
-        let r_comm = index.srs.get_ref().commit(&r, None);
-        let o_comm = index.srs.get_ref().commit(&o, None);
+        let (l_comm, omega_l) = index.srs.get_ref().commit(&l, None, rng);
+        let (r_comm, omega_r) = index.srs.get_ref().commit(&r, None, rng);
+        let (o_comm, omega_o) = index.srs.get_ref().commit(&o, None, rng);
 
         // absorb the public input, l, r, o polycommitments into the argument
-        let public_input_comm = &index.srs.get_ref().commit(&p, None).unshifted;
-        assert_eq!(public_input_comm.len(), 1);
+        let public_input_comm = &index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
+        // this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);
         fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
@@ -117,12 +118,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         );
 
         if z[n-3] != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        z[n-2] = Fr::<G>::rand(&mut OsRng);
-        z[n-1] = Fr::<G>::rand(&mut OsRng);
+        z[n-2] = Fr::<G>::rand(rng);
+        z[n-1] = Fr::<G>::rand(rng);
         let z = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
 
         // commit to z
-        let z_comm = index.srs.get_ref().commit(&z, None);
+        let (z_comm, omega_z) = index.srs.get_ref().commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
@@ -164,16 +165,23 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // permutation boundary condition check contribution
-        let (bnd, res) =
+        let (bnd1, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        t += &bnd.scale(alpha[0]);
+        let (bnd2, res) =
+            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
+                &DensePolynomial::from_coefficients_slice(&[-index.cs.sid[n-3], Fr::<G>::one()]).into()).
+                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
+
+        t += &(&bnd1.scale(alpha[3]) + &bnd2.scale(alpha[4]));
+        t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));
+        let (t_comm, omega_t) = index.srs.get_ref().commit(&t, Some(index.max_quot_size), rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
@@ -263,23 +271,49 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
 
         // construct the proof
         // --------------------------------------------------------------------
-        let polys = prev_challenges.iter().map(|(chals, _comm)| {
-            DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals))
+        let polys = prev_challenges.iter().map(|(chals, comm)| {
+            (DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)), comm.unshifted.len())
         }).collect::<Vec<_>>();
 
-        let mut polynoms = polys.iter().map(|p| (p, None)).collect::<Vec<_>>();
+        let non_hiding = |n : usize| PolyComm { unshifted: vec![Fr::<G>::zero(); n], shifted: None };
+
+        // The verifier computes the commitment to f as
+        //
+        // perm_scalars[0] * z_comm + terms involving unblinded commitments
+        //
+        // Therefore, the coefficient of the blinding base in the f commitment is
+        // perm_scalars[0] * the coefficient in the z commitment.
+        let omega_f = {
+            let zkp = index.cs.zkpm.evaluate(oracles.zeta);
+            let evals = (0..2).map(|i| evals[i].combine(evlp[i])).collect::<Vec<_>>();
+            let perm_scalar0 = ConstraintSystem::perm_scalars
+            (
+                &evals,
+                &oracles,
+                (index.cs.r, index.cs.o),
+                &alpha[range::PERM],
+                n as u64,
+                zkp,
+                // TODO: This 3 is the zero knowledge padding offset. Should be pulled out into
+                // a variable.
+                index.cs.sid[n - 3],
+            )[0];
+            omega_z.map(|x| perm_scalar0 * x)
+        };
+
+        let mut polynoms = polys.iter().map(|(p, n)| (p, None, non_hiding(*n) )).collect::<Vec<_>>();
         polynoms.extend(
             vec!
             [
-                (&p, None),
-                (&l, None),
-                (&r, None),
-                (&o, None),
-                (&z, None),
-                (&f, None),
-                (&index.cs.sigmam[0], None),
-                (&index.cs.sigmam[1], None),
-                (&t, Some(index.max_quot_size)),
+                (&p, None, non_hiding(1)),
+                (&l, None, omega_l),
+                (&r, None, omega_r),
+                (&o, None, omega_o),
+                (&z, None, omega_z),
+                (&f, None, omega_f),
+                (&index.cs.sigmam[0], None, non_hiding(1)),
+                (&index.cs.sigmam[1], None, non_hiding(1)),
+                (&t, Some(index.max_quot_size), omega_t),
             ]);
 
         let proof =
@@ -298,7 +332,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
                     oracles.v,
                     oracles.u,
                     fq_sponge_before_evaluations,
-                    &mut OsRng
+                    rng
                 ),
                 evals,
                 public,

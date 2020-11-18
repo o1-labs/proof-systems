@@ -40,7 +40,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 &(&polys.d4.this.o * &(&polys.d4.this.l.scale((2 as u64).into()) - &self.l04))) * &self.emul2l).scale(alpha[3])
             ,
             // u^2 - t^2 * (xR + xP + xS)
-            &(&(&u.square() - &(&t.square() * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[1])
+            &(&(&u.square() - &(&t.square() * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[4])
             +
             // (xP - xS) * u - t * (yS + yP)
             &(&(&(&polys.d8.this.l - &polys.d8.next.l) * &u) - &(&t * &(&polys.d8.this.o + &polys.d8.next.o))).scale(alpha[5]))

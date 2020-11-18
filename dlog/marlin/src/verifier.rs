@@ -180,7 +180,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // TODO: Cache this interpolated polynomial.
                 Evaluations::<Fr<G>>::from_vec_and_domain(proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)).interpolate();
                 // TODO: No degree bound needed
-                let x_hat_comm = index.srs.get_ref().commit(&x_hat, None);
+                let x_hat_comm = index.srs.get_ref().commit_non_hiding(&x_hat, None);
 
                 let (fq_sponge, oracles) = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm.clone(), &x_hat);
 

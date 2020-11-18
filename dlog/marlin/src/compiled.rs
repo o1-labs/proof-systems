@@ -97,10 +97,10 @@ impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
         Ok(Compiled::<G>
         {
             constraints,
-            rc_comm: srs.commit(&rc, None),
-            row_comm: srs.commit(&row, None),
-            col_comm: srs.commit(&col, None),
-            val_comm: srs.commit(&val, None),
+            rc_comm: srs.commit_non_hiding(&rc, None),
+            row_comm: srs.commit_non_hiding(&row, None),
+            col_comm: srs.commit_non_hiding(&col, None),
+            val_comm: srs.commit_non_hiding(&val, None),
             row_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&row), b_group),
             col_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&col), b_group),
             val_eval_b: Evaluations::<Fr<G>>::from_vec_and_domain(b_group.fft(&val), b_group),

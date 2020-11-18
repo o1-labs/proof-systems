@@ -7,7 +7,7 @@ This source file implements Plonk Protocol Index primitive.
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
 use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants};
-use plonk_circuits::constraints::ConstraintSystem;
+use plonk_circuits::constraints::{zk_w, ConstraintSystem};
 use array_init::array_init;
 use algebra::AffineCurve;
 use algebra::PrimeField;
@@ -116,24 +116,24 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         {
             domain: self.cs.domain.d1,
 
-            sigma_comm: array_init(|i| srs.get_ref().commit(&self.cs.sigmam[i], None)),
-            ql_comm: srs.get_ref().commit(&self.cs.qlm, None),
-            qr_comm: srs.get_ref().commit(&self.cs.qrm, None),
-            qo_comm: srs.get_ref().commit(&self.cs.qom, None),
-            qm_comm: srs.get_ref().commit(&self.cs.qmm, None),
-            qc_comm: srs.get_ref().commit(&self.cs.qc, None),
+            sigma_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.sigmam[i], None)),
+            ql_comm: srs.get_ref().commit_non_hiding(&self.cs.qlm, None),
+            qr_comm: srs.get_ref().commit_non_hiding(&self.cs.qrm, None),
+            qo_comm: srs.get_ref().commit_non_hiding(&self.cs.qom, None),
+            qm_comm: srs.get_ref().commit_non_hiding(&self.cs.qmm, None),
+            qc_comm: srs.get_ref().commit_non_hiding(&self.cs.qc, None),
 
-            rcm_comm: array_init(|i| srs.get_ref().commit(&self.cs.rcm[i], None)),
-            psm_comm: srs.get_ref().commit(&self.cs.psm, None),
+            rcm_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.rcm[i], None)),
+            psm_comm: srs.get_ref().commit_non_hiding(&self.cs.psm, None),
 
-            add_comm: srs.get_ref().commit(&self.cs.addm, None),
-            mul1_comm: srs.get_ref().commit(&self.cs.mul1m, None),
-            mul2_comm: srs.get_ref().commit(&self.cs.mul2m, None),
-            emul1_comm: srs.get_ref().commit(&self.cs.emul1m, None),
-            emul2_comm: srs.get_ref().commit(&self.cs.emul2m, None),
-            emul3_comm: srs.get_ref().commit(&self.cs.emul3m, None),
+            add_comm: srs.get_ref().commit_non_hiding(&self.cs.addm, None),
+            mul1_comm: srs.get_ref().commit_non_hiding(&self.cs.mul1m, None),
+            mul2_comm: srs.get_ref().commit_non_hiding(&self.cs.mul2m, None),
+            emul1_comm: srs.get_ref().commit_non_hiding(&self.cs.emul1m, None),
+            emul2_comm: srs.get_ref().commit_non_hiding(&self.cs.emul2m, None),
+            emul3_comm: srs.get_ref().commit_non_hiding(&self.cs.emul3m, None),
 
-            w: self.cs.sid[self.cs.domain.d1.size as usize -3],
+            w: zk_w(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo: self.cs.endo,
@@ -164,7 +164,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = endo_q;
         Index
         {
-            max_quot_size: 5 * (cs.domain.d1.size as usize + 1),
+            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
             fq_sponge_params,
             max_poly_size,
             srs,

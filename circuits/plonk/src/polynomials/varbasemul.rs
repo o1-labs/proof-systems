@@ -36,7 +36,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)).square()
                 -
                 &(&(&(&polys.d8.this.r.square() - &polys.d8.next.r) + &polys.d8.next.l) * &tmp.square())
-            ).scale(alpha[1])
+            ).scale(alpha[2])
             +
             &(
                 // (xP - xS) × (2*yP - (2*xP - λ1^2 + xT) × λ1) - (yS + yP) * (2*xP - λ1^2 + xT)

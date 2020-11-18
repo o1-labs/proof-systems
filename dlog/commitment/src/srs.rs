@@ -10,6 +10,7 @@ use std::io::{Read, Result as IoResult, Write};
 use algebra::{FromBytes, PrimeField, ToBytes, BigInteger};
 use crate::commitment::CommitmentCurve;
 use groupmap::GroupMap;
+use array_init::array_init;
 
 #[derive(Debug, Clone)]
 pub struct SRS<G: CommitmentCurve>
@@ -39,6 +40,22 @@ where G::BaseField : PrimeField {
     (endo_q, endo_r)
 }
 
+fn point_of_random_bytes<G: CommitmentCurve>(m : &G::Map, random_bytes : &[u8])  -> G
+where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+    const N : usize = 31;
+    let mut bits = [false;8*N];
+    for i in 0..N {
+        for j in 0..8 {
+            bits[8*i + j] = (random_bytes[i] >> j) & 1 == 1;
+        }
+    }
+
+    let n = <G::BaseField as PrimeField>::BigInt::from_bits(&bits);
+    let t = G::BaseField::from_repr(n);
+    let (x, y) = m.to_group(t);
+    G::of_coordinates(x, y)
+}
+
 impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
     pub fn max_degree(&self) -> usize {
         self.g.len()
@@ -50,31 +67,26 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
-        const N : usize = 31;
-        let v : Vec<_> = (0..depth + 1).map(|i| {
+        let g : Vec<_> = (0..depth).map(|i| {
             let mut h = Blake2b::new();
             h.input(&(i as u32).to_be_bytes());
-
-            let random_bytes = &h.result()[..N];
-            let mut bits = [false;8*N];
-            for i in 0..N {
-                for j in 0..8 {
-                    bits[8*i + j] = (random_bytes[i] >> j) & 1 == 1;
-                }
-            }
-
-            let n = <G::BaseField as PrimeField>::BigInt::from_bits(&bits);
-            let t = G::BaseField::from_repr(n);
-            let (x, y) = m.to_group(t);
-            G::of_coordinates(x, y)
+            point_of_random_bytes(&m, &h.result())
         }).collect();
 
         let (endo_q, endo_r) = endos::<G>();
 
+        const MISC : usize = 1;
+        let [h] : [G;MISC] = array_init(|i| {
+            let mut h = Blake2b::new();
+            h.input("srs_misc".as_bytes());
+            h.input(&(i as u32).to_be_bytes());
+            point_of_random_bytes(&m, &h.result())
+        });
+
         SRS
         {
-            g: v[1..depth + 1].iter().map(|e| *e).collect(),
-            h: v[0],
+            g,
+            h,
             endo_r, endo_q
         }
     }

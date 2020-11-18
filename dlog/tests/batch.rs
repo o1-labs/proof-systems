@@ -16,7 +16,6 @@ use oracle::poseidon::{PlonkSpongeConstants as SC};
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
 use colored::Colorize;
-use rand_core::OsRng;
 use rand::Rng;
 use groupmap::GroupMap;
 
@@ -24,11 +23,10 @@ use groupmap::GroupMap;
 fn dlog_commitment_test()
 where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
-    let rng = &mut OsRng;
+    let rng = &mut rand::thread_rng();
     let mut random = rand::thread_rng();
 
     let size = 1 << 7;
-    let polysize = 500;
     let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -45,25 +43,48 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             (
                 |_|
                 {
+                    let polysize = 500;
                     let len: usize = random.gen();
                     (len % polysize)+1
                 }
             ).collect::<Vec<_>>();
             println!("{}{:?}", "sizes: ".bright_cyan(), length);
 
-            let a = length.iter().map(|s| DensePolynomial::<Fp>::rand(s-1,rng)).collect::<Vec<_>>();
+            let a = length.iter().map(|s| {
+                if *s == 0 {
+                    DensePolynomial::<Fp>::zero()
+                } else {
+                    DensePolynomial::<Fp>::rand(s - 1,rng)
+                }
+            }).collect::<Vec<_>>();
+            let bounds = a.iter().enumerate().map(
+                |(i, v)|  if i%2==0 { Some(v.coeffs.len()) } else { None }).collect::<Vec<_>>();
 
             let x = (0..7).map(|_| Fp::rand(rng)).collect::<Vec<Fp>>();
             let polymask = Fp::rand(rng);
             let evalmask = Fp::rand(rng);
 
             let mut start = Instant::now();
+            let comm =
+                (0..a.len()).map
+                (
+                    |i| {
+                    (
+                        srs.commit(&a[i].clone(), bounds[i], rng),
+                        x.iter().map(|xx| a[i].eval(*xx, size)).collect::<Vec<_>>(),
+                        bounds[i]
+                    )
+                    }
+                ).collect::<Vec<_>>();
+            commit += start.elapsed();
+
+            start = Instant::now();
             let proof = srs.open::<DefaultFqSponge<TweedledeeParameters, SC>>
             (
                 &group_map,
                 (0..a.len()).map
                 (
-                    |i| (&a[i], if i%2==0 {Some(a[i].coeffs.len())} else {None})
+                    |i| (&a[i], bounds[i], (comm[i].0).1.clone() )
                 ).collect::<Vec<_>>(),
                 &x.clone(),
                 polymask,
@@ -73,26 +94,16 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             );
             open += start.elapsed();
 
-            start = Instant::now();
-            let comm =
+            let t =
             (
                 sponge.clone(),
                 x.clone(),
                 polymask,
                 evalmask,
-                (0..a.len()).map
-                (
-                    |i|
-                    (
-                        if i%2==0 {srs.commit(&a[i].clone(), Some(a[i].coeffs.len()))} else {srs.commit(&a[i].clone(), None)},
-                        x.iter().map(|xx| a[i].eval(*xx, size)).collect::<Vec<_>>(),
-                        if i%2==0 {Some(a[i].coeffs.len())} else {None}
-                    )
-                ).collect::<Vec<_>>(),
+                comm,
                 proof
             );
-            commit += start.elapsed();
-            comm
+            t
         }
     ).collect::<Vec<_>>();
 
@@ -109,7 +120,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
                 (
                     |poly|
                     (
-                        &poly.0,
+                        &(poly.0).0,
                         poly.1.iter().map(|vector| vector).collect::<Vec<_>>(),
                         poly.2
                     )

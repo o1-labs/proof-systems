@@ -5,9 +5,9 @@ This source file benchmark constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
+use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use algebra::{Field, bn_382::{G1Affine as Other}, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, UniformRand};
+use algebra::{bn_382::{G1Affine as Other, g::{Affine, Bn_382GParameters}}, AffineCurve, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -121,7 +121,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
             let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
-                index.srs.get_ref().commit(&b, None)
+                index.srs.get_ref().commit_non_hiding(&b, None)
             };
             ( chals, comm )
         };
