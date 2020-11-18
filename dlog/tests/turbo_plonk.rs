@@ -23,8 +23,8 @@ This source file tests constraints for the following computatios:
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
-use algebra::{Field, bn_382::{G1Affine as Other}, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, One, Zero, UniformRand};
+use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
+use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
@@ -151,13 +151,13 @@ fn turbo_plonk()
         gates.append(&mut endomul);
     }
 
+    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dum::Affine>();
     let srs = SRS::create(MAX_SIZE);
 
-    let (endo_q, _) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fr>::create(gates, oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>, PUBLIC).unwrap(),
-        oracle::bn_382::fp::params(),
+        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
+        oracle::tweedle::fq::params(),
         endo_q,
         SRSSpec::Use(&srs)
     );
@@ -180,10 +180,10 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     let lgr_comms : Vec<_> = (0..PUBLIC).map(|i| {
-        let mut v = vec![Fr::zero(); i + 1];
-        v[i] = Fr::one();
+        let mut v = vec![Fp::zero(); i + 1];
+        v[i] = Fp::one();
 
-        let p = Evaluations::<Fr, D<Fr>>::from_vec_and_domain(
+        let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(
             v, index.cs.domain.d1).interpolate();
         index.srs.get_ref().commit_non_hiding(&p, None)
     }).collect();
@@ -193,7 +193,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
 
-    for test in 0..1
+    for test in 0..100
     {
         let (x1, y1, x2, y2, _, _) = points[test % 10];
         let (x3, y3) = add_points((x1, y1), (x2, y2));
@@ -372,7 +372,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
         &group_map, &vec![ (&verifier_index, &lgr_comms, &batch[0]) ])
     {
         Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
@@ -383,7 +383,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
     let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
         &group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
