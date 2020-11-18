@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, UniformRand, PrimeField};
+use algebra::{Field, AffineCurve, Zero, One, PrimeField, UniformRand};
 use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
@@ -12,6 +12,7 @@ use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::Co
 pub use super::{index::Index, range};
 use crate::plonk_sponge::{FrSponge};
 use rand::thread_rng;
+use std::time::Instant;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -57,6 +58,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
     )
     -> Result<Self, ProofError>
     {
+        let tm = Instant::now();
         let n = index.cs.domain.d1.size as usize;
         assert!(n <= index.srs.get_ref().g.len());
         if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
@@ -165,20 +167,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         // permutation boundary condition check contribution
-        let (bnd1, res) =
+        let (bnd, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
                 map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let (bnd2, res) =
-            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
-                &DensePolynomial::from_coefficients_slice(&[-index.cs.sid[n-3], Fr::<G>::one()]).into()).
-                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-
-        t += &(&bnd1.scale(alpha[3]) + &bnd2.scale(alpha[4]));
-        t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
+        t += &bnd.scale(alpha[0]);
 
         // commit to t
         let (t_comm, omega_t) = index.srs.get_ref().commit(&t, Some(index.max_quot_size), rng);

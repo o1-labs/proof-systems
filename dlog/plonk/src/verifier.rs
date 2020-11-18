@@ -233,7 +233,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // EC variable base scalar multiplication constraint linearization scalars
                 s.extend(&ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
                 // group endomorphism optimised variable base scalar multiplication constraint linearization scalars
-                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha[range::ENDML]));
+                s.extend(&ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha));
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
