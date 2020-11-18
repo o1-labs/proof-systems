@@ -8,7 +8,7 @@ pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::RandomOracles, constraints::ConstraintSystem};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients};
+use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use ff_fft::{EvaluationDomain};
 use algebra::{Field, AffineCurve, Zero, One};
 use crate::plonk_sponge::FrSponge;
@@ -26,6 +26,43 @@ pub struct CachedValues<Fs> {
 
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
+    pub fn prev_chal_evals(&self, index: &Index<G>, evaluation_points: &[Fr<G>], evlp : &[Fr<G>]) -> Vec<Vec<Vec<Fr<G>>>> {
+        self.prev_challenges.iter().map(|(chals, _poly)| {
+            // No need to check the correctness of poly explicitly. Its correctness is assured by the
+            // checking of the inner product argument.
+            let b_len = 1 << chals.len();
+            let mut b : Option<Vec<Fr<G>>> = None;
+
+            (0..2).map
+            (
+                |i|
+                {
+                    let full = b_poly(&chals, evaluation_points[i]);
+                    if index.max_poly_size == b_len {
+                        return vec![full]
+                    }
+                    let mut betaacc = Fr::<G>::one();
+                    let diff = (index.max_poly_size..b_len).map(|j| {
+                        let b_j =
+                            match &b {
+                                None => {
+                                    let t = b_poly_coefficients(&chals);
+                                    let res = t[j];
+                                    b = Some(t);
+                                    res
+                                },
+                                Some(b) => b[j]
+                            };
+
+                        let ret = betaacc * &b_j;
+                        betaacc *= & evaluation_points[i];
+                        ret
+                    }).fold(Fr::<G>::zero(), |x, y| x + &y);
+                    vec![full - &(diff * &evlp[i]), diff]
+                }
+            ).collect()
+        }).collect()
+    }
 
     // This function runs random oracle argument
     pub fn oracles
@@ -36,7 +73,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         &self,
         index: &Index<G>,
         p_comm: &PolyComm<G>,
-    ) -> (EFqSponge, Fr<G>, RandomOracles<Fr<G>>, Vec<Fr<G>>, [Vec<Fr<G>>; 2], Fr<G>, Fr<G>)
+    ) -> (EFqSponge, Fr<G>, RandomOracles<Fr<G>>, Vec<Fr<G>>, [Vec<Fr<G>>; 2], [Fr<G>; 2], Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>, Fr<G>, Fr<G>)
     {
         let n = index.domain.size;
         // Run random oracle argument to sample verifier oracles
@@ -110,7 +147,44 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         oracles.u_chal = fr_sponge.challenge();
         oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
 
-        (fq_sponge, digest, oracles, alpha, p_eval, zeta1, zetaw)
+        let ep = [oracles.zeta, zetaw];
+
+        let evlp =
+        [
+            oracles.zeta.pow(&[index.max_poly_size as u64]),
+            zetaw.pow(&[index.max_poly_size as u64])
+        ];
+
+        let polys : Vec<(PolyComm<G>, _)> = self.prev_challenges
+            .iter()
+            .zip(self.prev_chal_evals(index, &ep, &evlp))
+            .map(|(c, e)| (c.1.clone(), e)).collect();
+
+        let combined_inner_product = {
+            let mut es : Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys.iter().map(|(_, e)| (e.iter().map(|x| x).collect(), None)).collect();
+            es.extend(
+                vec!
+                [
+                    (p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+
+                    (self.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
+                    (self.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
+                    (self.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
+                    (self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
+
+                    (self.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
+
+                    (self.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
+                    (self.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
+
+                    (self.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
+                ]
+            );
+
+            combined_inner_product::<G>(&ep, &oracles.v, &oracles.u, &es, index.srs.get_ref().g.len())
+        };
+
+        (fq_sponge, digest, oracles, alpha, p_eval, evlp, polys, zeta1, combined_inner_product)
     }
 
     // This function verifies the batch of zk-proofs
@@ -139,58 +213,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 let p_comm = PolyComm::<G>::multi_scalar_mul
                     (& lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
 
-                let (fq_sponge, _, oracles, alpha, p_eval, zeta1, zetaw) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
-
-                let ep = [oracles.zeta, zetaw];
-                let evlp =
-                [
-                    oracles.zeta.pow(&[index.max_poly_size as u64]),
-                    zetaw.pow(&[index.max_poly_size as u64])
-                ];
-
-                let polys = proof.prev_challenges.iter().map(|(chals, poly)| {
-                    // No need to check the correctness of poly explicitly. Its correctness is assured by the
-                    // checking of the inner product argument.
-                    // TODO: Use batch inversion across proofs
-                    let chal_invs = {
-                        let mut cs = chals.clone();
-                        algebra::fields::batch_inversion::<Fr<G>>(&mut cs);
-                        cs
-                    };
-
-                    let b_len = 1 << chal_invs.len();
-                    let mut b : Option<Vec<Fr<G>>> = None;
-
-                    let evals = (0..2).map
-                    (
-                        |i|
-                        {
-                            let full = b_poly(&chals, ep[i]);
-                            if index.max_poly_size == b_len {
-                                return vec![full]
-                            }
-                            let mut betaacc = Fr::<G>::one();
-                            let diff = (index.max_poly_size..b_len).map(|j| {
-                                let b_j =
-                                    match &b {
-                                        None => {
-                                            let t = b_poly_coefficients(&chals);
-                                            let res = t[j];
-                                            b = Some(t);
-                                            res
-                                        },
-                                        Some(b) => b[j]
-                                    };
-
-                                let ret = betaacc * &b_j;
-                                betaacc *= &ep[i];
-                                ret
-                            }).fold(Fr::<G>::zero(), |x, y| x + &y);
-                            vec![full - &(diff * &evlp[i]), diff]
-                        }
-                    ).collect::<Vec<_>>();
-                    (poly.clone(), evals)
-                }).collect::<Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>>();
+                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 
                 // evaluate committed polynoms
                 let evals = (0..2).map(|i| proof.evals[i].combine(evlp[i])).collect::<Vec<_>>();

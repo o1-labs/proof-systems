@@ -15,7 +15,8 @@ use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
     AffineCurve, Field, PrimeField, ProjectiveCurve, SquareRootField,
-    UniformRand, VariableBaseMSM, SWModelParameters, One, Zero
+    UniformRand, VariableBaseMSM, SWModelParameters, One, Zero,
+    FpParameters
 };
 use ff_fft::DensePolynomial;
 use oracle::{FqSponge, sponge::ScalarChallenge};
@@ -48,6 +49,11 @@ impl<A:Copy, B:Copy> PolyComm<(A, B)> {
         let b = self.map(|(_, y)| y);
         (a, b)
     }
+}
+
+pub fn shift_scalar<F:PrimeField>(x : F) -> F {
+    let two : F = (2 as u64).into();
+    x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
 
 impl<C: AffineCurve> PolyComm<C>
@@ -109,6 +115,7 @@ pub struct Challenges<F> {
 
 impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
+        let _t = sponge.challenge_fq();
         self.lr
         .iter()
         .map(|(l, r)| {
@@ -261,6 +268,48 @@ fn to_group<G : CommitmentCurve>(
     G::of_coordinates(x, y)
 }
 
+pub fn combined_inner_product<G: CommitmentCurve>(
+    evaluation_points: &[Fr<G>],
+    xi: &Fr<G>,
+    r: &Fr<G>,
+    polys: &Vec<( Vec<&Vec<Fr<G>>>, Option<usize>)>,
+    srs_length: usize) -> Fr<G> {
+    let mut res = Fr::<G>::zero();
+    let mut xi_i = Fr::<G>::one();
+
+    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| evals_tr[0].len() > 0) {
+        // transpose the evaluations
+        let evals = (0..evals_tr[0].len()).map
+        (
+            |i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>()
+        ).collect::<Vec<_>>();
+
+        // iterating over the polynomial segments
+        for eval in evals.iter() {
+            let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
+
+            res += &(xi_i * &term);
+            xi_i *= xi;
+        }
+
+        if let Some(m) = shifted {
+            // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
+            let last_evals = if *m > evals.len()* srs_length {vec![Fr::<G>::zero(); evaluation_points.len()]} else {evals[evals.len()-1].clone()};
+            let shifted_evals: Vec<_> = evaluation_points
+                .iter()
+                .zip(last_evals.iter())
+                .map(|(elm, f_elm)| {
+                    elm.pow(&[( srs_length - (*m) % srs_length ) as u64]) * f_elm
+                })
+                .collect();
+
+            res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
+            xi_i *= xi;
+        }
+    }
+    res
+}
+
 impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
     pub fn commit(
         &self,
@@ -360,9 +409,6 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> OpeningProof<G> {
-        let t = sponge.challenge_fq();
-        let u: G = to_group(group_map, t);
-
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
@@ -436,6 +482,16 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             }
             res
         };
+
+        let combined_inner_product = 
+            p.coeffs.iter().zip(b_init.iter())
+            .map(|(a, b)| *a * b)
+            .fold(Fr::<G>::zero(), |acc, x| acc + x);
+
+        sponge.absorb_fr(&[shift_scalar(combined_inner_product)]);
+
+        let t = sponge.challenge_fq();
+        let u: G = to_group(group_map, t);
 
         let mut a = p.coeffs;
         assert!(padded_length >= a.len());
@@ -613,6 +669,21 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         let mut sg_rand_base_i = Fr::<G>::one();
 
         for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
+            // TODO: This computation is repeated in ProverProof::oracles
+            let combined_inner_product0 = {
+                let es : Vec<_> = polys.iter().map(|(comm, evals, bound)| {
+                    let bound : Option<usize> = (|| {
+                        let b = (*bound)?;
+                        let x = comm.shifted?;
+                        if x.is_zero() { None } else { Some(b) }
+                    })();
+                    (evals.clone(), bound)
+                }).collect();
+                combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
+            };
+
+            sponge.absorb_fr(&[shift_scalar(combined_inner_product0)]);
+
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
@@ -691,55 +762,31 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             // sum_j r^j (sum_i xi^i f_i) (elm_j)
             // == sum_j sum_i r^j xi^i f_i(elm_j)
             // == sum_i xi^i sum_j r^j f_i(elm_j)
-            let combined_inner_product = {
-                let mut res = Fr::<G>::zero();
+            {
                 let mut xi_i = Fr::<G>::one();
 
-                for (comm, evals_tr, shifted) in polys.iter().filter(|x| x.0.unshifted.len() > 0) {
-                    // transpose the evaluations
-                    let evals = (0..evals_tr[0].len()).map
-                    (
-                        |i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>()
-                    ).collect::<Vec<_>>();
-
-                    assert!(comm.unshifted.len() == evals.len());
-
+                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| x.0.unshifted.len() > 0) {
                     // iterating over the polynomial segments
-                    for (comm_ch, eval) in comm.unshifted.iter().zip(evals.iter()) {
-                        let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
-
-                        res += &(xi_i * &term);
+                    for comm_ch in comm.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
                         xi_i *= *xi;
-
                     }
 
-                    if let Some(m) = shifted {
+                    if let Some(_m) = shifted {
                         if let Some(comm_ch) = comm.shifted {
 							if comm_ch.is_zero() == false {
 								// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
-								let last_evals = if *m > evals.len()*self.g.len() {vec![Fr::<G>::zero(); evaluation_points.len()]} else {evals[evals.len()-1].clone()};
-								let shifted_evals: Vec<_> = evaluation_points
-									.iter()
-									.zip(last_evals.iter())
-									.map(|(elm, f_elm)| {
-                                        elm.pow(&[(self.g.len() - (*m)%self.g.len()) as u64]) * f_elm
-                                    })
-									.collect();
-
 								scalars.push(rand_base_i_c_i * &xi_i);
 								points.push(comm_ch);
-								res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
+                                xi_i *= *xi;
 							}
                         }
-                        xi_i *= *xi;
                     }
                 }
-                res
             };
 
-            scalars.push(rand_base_i_c_i * &combined_inner_product);
+            scalars.push(rand_base_i_c_i * &combined_inner_product0);
             points.push(u);
 
             scalars.push(rand_base_i);

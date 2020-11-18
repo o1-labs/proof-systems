@@ -189,7 +189,7 @@ where
                     );
                 } else {
                     let low_bits =
-                        &P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
+                        P::BaseField::from_repr(<P::BaseField as PrimeField>::BigInt::from_bits(
                             &bits[1..],
                         ));
 
@@ -199,7 +199,7 @@ where
                         P::BaseField::zero()
                     };
 
-                    self.sponge.absorb(&self.params, &[*low_bits]);
+                    self.sponge.absorb(&self.params, &[low_bits]);
                     self.sponge.absorb(&self.params, &[high_bit]);
                 }
             }
