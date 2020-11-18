@@ -191,8 +191,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             combined_inner_product::<G>(&ep, &oracles.v, &oracles.u, &es, index.srs.get_ref().g.len())
         };
 
-        println!("oracle combined_inner_product {}", combined_inner_product);
-
         (fq_sponge, digest, oracles, alpha, p_eval, evlp, polys, zeta1, combined_inner_product)
     }
 
