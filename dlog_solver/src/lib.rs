@@ -103,33 +103,6 @@ impl<P: FftParameters + Fp384Parameters + DetSquareRootParameters> DetSquareRoot
     type DetSquareRootParams = P;
 }
 
-/*
-// given c of order 2^k, generate a witness to check its order.
-// The witness is cwitness = c^{(2^k)^-1 mod t}. This can be verified by checking
-// k squarings of cwitness
-fn witness_c_order<P: DetSquareRootParameters + Fp256Parameters>(c: Fp256<P>) -> Fp256<P> {
-    c.pow(P::TWO_TO_TWO_ADICITY_INV.as_ref())
-}
-
-pub struct Witness_correct_sqrt<P: FftParameters + Fp256Parameters> {
-    c: Fp256<P>,
-    d: u64,
-    c_inverse_order: Fp256<P>,
-}
-
-pub fn witness_det_sqrt<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(
-    b: Fp256<P>,
-) -> Witness_correct_sqrt<P> {
-    let (c, d): (Fp256<P>, u64) = decompose::<P>(b);
-    let cwitness: Fp256<P> = witness_c_order::<P>(c);
-    let witnesscd: Witness_correct_sqrt<P> = Witness_correct_sqrt::<P> {
-        c: c,
-        d: d,
-        c_inverse_order: cwitness,
-    };
-    witnesscd
-} */
-
 use algebra::biginteger::{BigInteger256, BigInteger384};
 use algebra::tweedle::{FpParameters, FqParameters};
 

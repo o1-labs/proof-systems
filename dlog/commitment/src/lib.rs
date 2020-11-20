@@ -3,9 +3,15 @@ mod qnr_field;
 pub use qnr_field::*;
 pub mod srs;
 pub mod commitment;
-use algebra::{tweedle, bn_382};
+use algebra::{tweedle, bn_382, pasta};
 
-pub trait CommitmentField : QnrField + dlog_solver::DetSquareRootField {
+pub trait CommitmentField : QnrField {
+}
+
+impl CommitmentField for pasta::Fp {
+}
+
+impl CommitmentField for pasta::Fq {
 }
 
 impl CommitmentField for tweedle::Fq {
