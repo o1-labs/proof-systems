@@ -56,8 +56,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // prepare some often used values
         let zeta1 = oracles.zeta.pow(&[n]);
         let zetaw = oracles.zeta * &index.domain.group_gen;
-        let mut alpha = oracles.alpha;
-        let alpha = (0..34).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = range::alpha_powers(oracles.alpha);
 
         // compute Lagrange base evaluation denominators
         let w = (0..self.public.len()).zip(index.domain.elements()).map(|(_,w)| w).collect::<Vec<_>>();
@@ -230,6 +229,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
                 // check linearization polynomial evaluation consistency
+                let zeta1m1 = zeta1 - &Fr::<G>::one();
                 if
                     (evals[0].f + &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()})
                     -
@@ -237,12 +237,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
                         fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
                     -
-                    evals[0].t * &(zeta1 - &Fr::<G>::one())) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
+                    evals[0].t * &zeta1m1) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
                 !=
-                    ((zeta1 - &Fr::<G>::one()) * &alpha[5] * &(oracles.zeta - &index.w))
+                    (zeta1m1 * &alpha[range::PERM][0] * &(oracles.zeta - &index.w))
                     +
-                    ((zeta1 - &Fr::<G>::one()) * &alpha[6] * &(oracles.zeta - &Fr::<G>::one()))
-            {return Err(ProofError::ProofVerification)}
+                    (zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one()))
+                {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }

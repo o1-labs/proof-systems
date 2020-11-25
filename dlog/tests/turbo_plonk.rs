@@ -2,7 +2,7 @@
 
 This source file tests constraints for the following computatios:
 
-1. Weierstrass curve y^2 = x^3 + 7 group addition of non-special pairs of points
+1. Weierstrass curve group addition of non-special pairs of points
    via generic Plonk constraints
 
     (x2 - x1) * s = y2 - y1
@@ -20,61 +20,87 @@ This source file tests constraints for the following computatios:
    scalar multiplication via custom Plonk constraints
 
 **********************************************************************************************************/
-/*
-use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
+
+use plonk_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
+use oracle::{poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
-use oracle::poseidon::*;
 use groupmap::GroupMap;
 use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
 const MAX_SIZE: usize = 128; // max size of poly chunks
-const N: usize = 128; // Plonk domain size
+const N: usize = 16; // Plonk domain size
 
 #[test]
 fn turbo_plonk()
 {
-    let c = &oracle::tweedle::fp::params().round_constants;
-
     let z = Fp::zero();
     let p = Fp::one();
     let n = -Fp::one();
 
     // circuit gates
 
-    let mut i = 0;
-    let mut gates = vec!
+    let gates = vec!
     [
         // public input constraints
 
-        CircuitGate::<Fp>::create_generic(GateWires::wires((i,             16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 0  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 1  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i}, 2*N+16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 2  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 3  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 4  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i}, 2*N+15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 5  c
+        /*
+            | x1 | .. | .. | .. | .. |
+            --------------------------
+            | x2 | .. | .. | .. | .. |
+            --------------------------
+            | x3 | .. | .. | .. | .. |
+            --------------------------
+            | y1 | .. | .. | .. | .. |
+            --------------------------
+            | y2 | .. | .. | .. | .. |
+            --------------------------
+            | y3 | .. | .. | .. | .. |
+        */
 
-        // generic constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
+        CircuitGate::<Fp>::create_generic(0, [Wire{col:0, row: 6}, Wire{col:1, row:0}, Wire{col:2, row:0}, Wire{col:3, row:0}, Wire{col:4, row:0}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp>::create_generic(1, [Wire{col:1, row: 6}, Wire{col:1, row:1}, Wire{col:2, row:1}, Wire{col:3, row:1}, Wire{col:4, row:1}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp>::create_generic(2, [Wire{col:4, row: 8}, Wire{col:1, row:2}, Wire{col:2, row:2}, Wire{col:3, row:2}, Wire{col:4, row:2}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp>::create_generic(3, [Wire{col:2, row: 7}, Wire{col:1, row:3}, Wire{col:2, row:3}, Wire{col:3, row:3}, Wire{col:4, row:3}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp>::create_generic(4, [Wire{col:3, row: 7}, Wire{col:1, row:4}, Wire{col:2, row:4}, Wire{col:3, row:4}, Wire{col:4, row:4}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp>::create_generic(5, [Wire{col:3, row:10}, Wire{col:1, row:5}, Wire{col:2, row:5}, Wire{col:3, row:5}, Wire{col:4, row:5}], [p, z, z, z, z], z, z),
 
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7)), p, n, n, z, z), // 6  -
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8)), z, z, n, p, z), // 7  *
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7)), p, n, n, z, z), // 8  -
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11)), z, z, n, p, z), // 9  *
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11)), p, p, n, z, z), // 10 +
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9)), p, p, n, z, z), // 11 +
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13)), p, n, n, z, z), // 12 -
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14)), z, z, n, p, z), // 13 *
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13)), p, p, n, z, z), // 14 +
+        /* custom constraint gates for Weierstrass curve group addition
+
+            (x2 - x1) * s = y2 - y1
+            s * s = x1 + x2 + x3
+            (x1 - x3) * s = y3 + y1
+
+            x1 - x2 + a1
+            a1 * s + y1 - y2
+            s * s - x1 - x2 - x3
+            x1 - x3 - a2
+            a2 * s - y1 - y3
+
+            | x1 | x2 | a1 | .. | .. |
+            --------------------------
+            | a1 | s  | y1 | y2 | .. |
+            --------------------------
+            | s  | s  | x1 | x2 | x3 |
+            --------------------------
+            | x1 | x3 | a2 | .. | .. |
+            --------------------------
+            | a2 | s  | y1 | y3 | .. |
+        */
+
+        CircuitGate::<Fp>::create_generic( 6, [Wire{col:2, row:8}, Wire{col:3, row: 8}, Wire{col:0, row: 7}, Wire{col:3, row:6}, Wire{col:4, row:6}], [p, n, p, z, z], z, z),
+        CircuitGate::<Fp>::create_generic( 7, [Wire{col:2, row:6}, Wire{col:0, row: 8}, Wire{col:2, row:10}, Wire{col:0, row:4}, Wire{col:4, row:7}], [z, z, p, n, z], p, z),
+        CircuitGate::<Fp>::create_generic( 8, [Wire{col:1, row:8}, Wire{col:1, row:10}, Wire{col:0, row: 9}, Wire{col:0, row:1}, Wire{col:1, row:9}], [z, z, p, p, p], n, z),
+        CircuitGate::<Fp>::create_generic( 9, [Wire{col:0, row:0}, Wire{col:0, row: 2}, Wire{col:0, row:10}, Wire{col:3, row:9}, Wire{col:4, row:9}], [p, n, n, z, z], z, z),
+        CircuitGate::<Fp>::create_generic(10, [Wire{col:2, row:9}, Wire{col:1, row: 7}, Wire{col:0, row: 3}, Wire{col:0, row:5}, Wire{col:4, row:10}], [z, z, p, p, z], n, z),
     ];
 
-    // custom constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
-
+    // custom constraint gates for Weierstrass curve group addition
 
     // custom constraints for Poseidon hash function permutation
 
@@ -93,9 +119,9 @@ fn turbo_plonk()
 
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp::params() as ArithmeticSpongeParams<Fp>, 6).unwrap(),
+        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>, 6).unwrap(),
         MAX_SIZE,
-        oracle::tweedle::fq::params(),
+        oracle::tweedle::fq5::params(),
         endo_q,
         SRSSpec::Use(&srs)
     );
@@ -109,10 +135,6 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 {
     let rng = &mut OsRng;
 
-    let params: ArithmeticSpongeParams<Fp> = oracle::tweedle::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
-
-    let z = Fp::zero();
     let mut batch = Vec::new();
     let points = sample_points();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -124,164 +146,67 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     {
         let (x1, y1, x2, y2, _, _) = points[test % 10];
         let (x3, y3) = add_points((x1, y1), (x2, y2));
+        let a1 = x2 - &x1;
+        let a2 = x1 - &x3;
         let s = (y2 - &y1) / &(x2 - &x1);
 
-        // public input and EC addition witness for generic constraints
+        let mut w = || -> Fp {Fp::rand(rng)};
 
-        let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
-        let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
-        let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
+        /* public input and EC addition witness for generic constraints
+
+            | x1 | .. | .. | .. | .. |
+            --------------------------
+            | x2 | .. | .. | .. | .. |
+            --------------------------
+            | x3 | .. | .. | .. | .. |
+            --------------------------
+            | y1 | .. | .. | .. | .. |
+            --------------------------
+            | y2 | .. | .. | .. | .. |
+            --------------------------
+            | y3 | .. | .. | .. | .. |
+            --------------------------
+            | x1 | x2 | a1 | .. | .. |
+            --------------------------
+            | a1 | s  | y1 | y2 | .. |
+            --------------------------
+            | s  | s  | x1 | x2 | x3 |
+            --------------------------
+            | x1 | x3 | a2 | .. | .. |
+            --------------------------
+            | a2 | s  | y1 | y3 | .. |
+        */
+
+        let mut l = vec![ x1, x2, x3, y1, y2, y3, x1, a1,  s, x1, a2];
+        let mut r = vec![w(),w(),w(),w(),w(),w(), x2,  s,  s, x3,  s];
+        let mut o = vec![w(),w(),w(),w(),w(),w(), a1, y1, x1, a2, y1];
+        let mut a = vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3];
+        let mut b = vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w()];
 
         // EC addition witness for custom constraints
 
-        l.push(y1);
-        r.push(y2);
-        o.push(y3);
-        l.push(x1);
-        r.push(x2);
-        o.push(x3);
-
         //  witness for Poseidon permutation custom constraints
 
-        sponge.state = vec![x1, x2, x3];
-        l.push(sponge.state[0]);
-        r.push(sponge.state[1]);
-        o.push(sponge.state[2]);
-
         // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in 0..SC::ROUNDS_FULL
-        {
-            sponge.full_round(j, &params);
-            l.push(sponge.state[0]);
-            r.push(sponge.state[1]);
-            o.push(sponge.state[2]);
-        }
 
         // variable base scalar multiplication witness for custom constraints
         // test with 2-bit scalar
 
-        let (s1x, s1y) = add_points((x2, y2), add_points((x2, y2), (x1, y1)));
-
-        l.push(x1);
-        r.push(Fp::one()); // scalar bit
-        o.push(y1);
-        l.push(x2);
-        r.push(s);
-        o.push(y2);
-        l.push(s1x);
-        r.push(x1);
-        o.push(s1y);
-
-        let (s2x, s2y) = add_points((s1x, s1y), add_points((s1x, s1y), (x1, -y1)));
-        let s = (s1y + &y1) / &(s1x - &x1);
-
-        l.push(x1);
-        r.push(Fp::zero()); // scalar bit
-        o.push(y1);
-        l.push(s1x);
-        r.push(s);
-        o.push(s1y);
-        l.push(s2x);
-        r.push(x1);
-        o.push(s2y);
-
         // group endomorphism optimised variable base scalar multiplication witness for custom constraints
         // test with 8-bit scalar 11001001
-
-        let b2i = Fp::one();
-        let b2i1 = Fp::one();
-        let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
-        let (s1x, s1y) = add_points((x2, y2), add_points((x2, y2), (xq, yq)));
-        let s = (y2 - &yq) / &(x2 - &xq);
-
-        l.push(b2i1); // scalar bit
-        r.push(x1);
-        o.push(Fp::zero()); // dummy
-        l.push(b2i); // scalar bit
-        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
-        o.push(y1);
-        l.push(x2);
-        r.push(s);
-        o.push(y2);
-        l.push(s1x);
-        r.push(xq);
-        o.push(s1y);
-
-        let b2i = Fp::zero();
-        let b2i1 = Fp::zero();
-        let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
-        let (s2x, s2y) = add_points((s1x, s1y), add_points((s1x, s1y), (xq, yq)));
-        let s = (s1y - &yq) / &(s1x - &xq);
-
-        l.push(b2i1); // scalar bit
-        r.push(x1);
-        o.push(Fp::zero()); // dummy
-        l.push(b2i); // scalar bit
-        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
-        o.push(y1);
-        l.push(s1x);
-        r.push(s);
-        o.push(s1y);
-        l.push(s2x);
-        r.push(xq);
-        o.push(s2y);
-
-        let b2i = Fp::one();
-        let b2i1 = Fp::zero();
-        let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
-        let (s3x, s3y) = add_points((s2x, s2y), add_points((s2x, s2y), (xq, yq)));
-        let s = (s2y - &yq) / &(s2x - &xq);
-
-        l.push(b2i1); // scalar bit
-        r.push(x1);
-        o.push(Fp::zero()); // dummy
-        l.push(b2i); // scalar bit
-        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
-        o.push(y1);
-        l.push(s2x);
-        r.push(s);
-        o.push(s2y);
-        l.push(s3x);
-        r.push(xq);
-        o.push(s3y);
-
-        let b2i = Fp::zero();
-        let b2i1 = Fp::one();
-        let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
-        let (s4x, s4y) = add_points((s3x, s3y), add_points((s3x, s3y), (xq, yq)));
-        let s = (s3y - &yq) / &(s3x - &xq);
-
-        l.push(b2i1); // scalar bit
-        r.push(x1);
-        o.push(Fp::zero()); // dummy
-        l.push(b2i); // scalar bit
-        r.push(xq); // xQ = (1 + (endo - 1) * b2i1) * xT
-        o.push(y1);
-        l.push(s3x);
-        r.push(s);
-        o.push(s3y);
-        l.push(s4x);
-        r.push(xq);
-        o.push(s4y);
 
         l.resize(N, Fp::zero());
         r.resize(N, Fp::zero());
         o.resize(N, Fp::zero());
-
-        let mut witness = l;
-        witness.append(&mut r);
-        witness.append(&mut o);
+        a.resize(N, Fp::zero());
+        b.resize(N, Fp::zero());
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&witness), true);
+        assert_eq!(index.cs.verify(&[l.clone(), r.clone(), o.clone(), a.clone(), b.clone()]), true);
 
         let prev = {
             let k = ceil_log2(index.srs.get_ref().g.len());
-            let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
+            let chals : Vec<_> = (0..k).map(|_| w()).collect();
             let comm = {
                 let chal_squareds = chals.iter().map(|x| x.square()).collect::<Vec<_>>();
                 let s0 = product(chals.iter().map(|x| *x) ).inverse().unwrap();
@@ -293,7 +218,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         // add the proof to the batch
         batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
-            &group_map, &witness, &index, vec![prev]).unwrap());
+            &group_map, &[l,r,o,a,b], &index, vec![prev]).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -329,36 +254,27 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let x3 = <Fp as std::str::FromStr>::from_str("3116498715141724683149051461624569979663973751357290170267796754661152457577855966867446609811524433931603777277670").unwrap();
     let y3 = <Fp as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
 
+    let a1 = x2 - &x1;
+    let a2 = x1 - &x3;
     let s = (y2 - &y1) / &(x2 - &x1);
 
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
-    let params: ArithmeticSpongeParams<Fp> = oracle::tweedle::fp::params();
-    sponge.state = vec![x1, x2, x3];
-    let z = Fp::zero();
+    let rng = &mut OsRng;
+    let mut w = || -> Fp {Fp::rand(rng)};
 
-    let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
-    let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
-    let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
-
-    // ROUNDS_FULL full rounds constraint gates
-    for j in 0..SC::ROUNDS_FULL
-    {
-        sponge.full_round(j, &params);
-        l.push(sponge.state[0]);
-        r.push(sponge.state[1]);
-        o.push(sponge.state[2]);
-    }
+    let mut l = vec![ x1, x2, x3, y1, y2, y3, x1, a1,  s, x1, a2];
+    let mut r = vec![w(),w(),w(),w(),w(),w(), x2,  s,  s, x3,  s];
+    let mut o = vec![w(),w(),w(),w(),w(),w(), a1, y1, x1, a2, y1];
+    let mut a = vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3];
+    let mut b = vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w()];
 
     l.resize(N, Fp::zero());
     r.resize(N, Fp::zero());
     o.resize(N, Fp::zero());
-
-    let mut witness = l;
-    witness.append(&mut r);
-    witness.append(&mut o);
+    a.resize(N, Fp::zero());
+    b.resize(N, Fp::zero());
 
     // verify the circuit negative satisfiability by the computed witness
-    assert_eq!(index.cs.verify(&witness), false);
+    assert_eq!(index.cs.verify(&[l,r,o,a,b]), false);
 }
 
 fn add_points(a: (Fp, Fp), b: (Fp, Fp)) -> (Fp, Fp)
@@ -466,4 +382,3 @@ fn sample_points() -> [(Fp, Fp, Fp, Fp, Fp, Fp); 10]
         <Fp as std::str::FromStr>::from_str("4149192748600852083475900035990630534222222056341700086574476023821578193169627468582105359207744587896137324600702").unwrap(),
     ))]
 }
-*/

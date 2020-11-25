@@ -9,8 +9,8 @@ use oracle::poseidon::ArithmeticSpongeParams;
 use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType};
+pub use super::wires::{Wire, COLUMNS, WIRES};
 pub use super::domains::EvaluationDomains;
-pub use super::wires::{COLUMNS, WIRES};
 use blake2::{Blake2b, Digest};
 use oracle::utils::EvalUtils;
 use array_init::array_init;
@@ -101,7 +101,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let shift = [F::one(), shift[0], shift[1], shift[2], shift[3]];
 
         let n = domain.d1.size();
-        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(i, array_init(|j| (WIRES[j], WIRES[i])))).collect();
+        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(i, array_init(|j| Wire{col:WIRES[j], row:i}))).collect();
         gates.append(&mut padding);
 
         let s: [std::vec::Vec<F>; COLUMNS] = array_init(|i| domain.d1.elements().map(|elm| {shift[i] * &elm}).collect());
@@ -110,7 +110,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // compute permutation polynomials
         gates.iter().enumerate().for_each
         (
-            |(i, _)| (0..COLUMNS).for_each(|j| {let wire = gates[i].wires[j]; sigmal1[j][i] = s[wire.0][wire.1]})
+            |(i, _)| (0..COLUMNS).for_each(|j| {let wire = gates[i].wires[j]; sigmal1[j][i] = s[wire.col][wire.row]})
         );
         let sigmam: [DP<F>; COLUMNS] = array_init
             (|i| E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate());
@@ -212,18 +212,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         witness: &[Vec<F>; COLUMNS]
     ) -> bool
     {
-        (self.public..self.gates.len()).all
+        let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero(), F::zero(), F::zero()];
+        (0..self.gates.len()).all
         (
             |j|
                 // verify permutation consistency
                 (0..COLUMNS).all(|i|
                 {
                     let wire = self.gates[j].wires[i];
-                    witness[i][j] == witness[wire.0][wire.1]
+                    witness[i][j] == witness[wire.col][wire.row]
                 })
                 &&
                 // verify witness against constraints
-                self.gates[j].verify(witness, &self)
+                if j < self.public {self.gates[j].c == p} else {self.gates[j].verify(witness, &self)}
         )
     }
 

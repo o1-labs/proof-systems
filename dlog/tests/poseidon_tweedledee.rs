@@ -4,6 +4,7 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
+use plonk_circuits::wires::Wire;
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
@@ -41,22 +42,22 @@ fn poseidon_tweedledee()
         {
             let wires =
             [
-                (0, (i+PERIOD)%M),
-                (1, (i+PERIOD)%M),
-                (2, (i+PERIOD)%M),
-                (3, (i+PERIOD)%M),
-                (4, (i+PERIOD)%M),
+                Wire{col:0, row:(i+PERIOD)%M},
+                Wire{col:1, row:(i+PERIOD)%M},
+                Wire{col:2, row:(i+PERIOD)%M},
+                Wire{col:3, row:(i+PERIOD)%M},
+                Wire{col:4, row:(i+PERIOD)%M},
             ];
             gates.push(CircuitGate::<Fp>::create_poseidon(i, wires, c[j].clone()));
             i+=1;
         }
         let wires =
         [
-            (0, (i+PERIOD)%M),
-            (1, (i+PERIOD)%M),
-            (2, (i+PERIOD)%M),
-            (3, (i+PERIOD)%M),
-            (4, (i+PERIOD)%M),
+            Wire{col:0, row:(i+PERIOD)%M},
+            Wire{col:1, row:(i+PERIOD)%M},
+            Wire{col:2, row:(i+PERIOD)%M},
+            Wire{col:3, row:(i+PERIOD)%M},
+            Wire{col:4, row:(i+PERIOD)%M},
         ];
         gates.push(CircuitGate::<Fp>::zero(i, wires));
         i+=1;
@@ -64,14 +65,14 @@ fn poseidon_tweedledee()
 
     for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
     {
-        gates.push(CircuitGate::<Fp>::create_poseidon(i, [(0, i), (1, i), (2, i), (3, i), (4, i)], c[j].clone()));
+        gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
         i+=1;
     }
-    gates.push(CircuitGate::<Fp>::zero(i, [(0, i), (1, i), (2, i), (3, i), (4, i)]));
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fp>::zero(i, [(0, i), (1, i), (2, i), (3, i), (4, i)]));
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fp>::zero(i, [(0, i), (1, i), (2, i), (3, i), (4, i)]));
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     
     let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dum::Affine>();
     let srs = SRS::create(MAX_SIZE, 0, 0);

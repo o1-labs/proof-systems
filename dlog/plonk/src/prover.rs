@@ -5,7 +5,7 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One, UniformRand};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients, product};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
@@ -115,7 +115,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
         oracles.alpha = fq_sponge.challenge();
-        let alpha = range::alpha(oracles.alpha);
+        let alpha = range::alpha_powers(oracles.alpha);
 
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&w, &z);
@@ -123,7 +123,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // compute quotient polynomial
 
         // permutation
-        let perm = index.cs.perm_quot(&lagrange, &oracles);
+        let (perm, bnd) = index.cs.perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
         // generic
         let (gen, genp) = index.cs.gnrc_quot(&lagrange, &p);
         // poseidon
@@ -150,20 +150,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        // permutation boundary condition check
-        let (bnd1, res) =
-            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
-                &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
-                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-
-        let (bnd2, res) =
-            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
-                &DensePolynomial::from_coefficients_slice(&[-index.cs.sid[n-3], Fr::<G>::one()]).into()).
-                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-
-        t += &(&bnd1.scale(alpha[5]) + &bnd2.scale(alpha[6]));
+        t += &bnd;
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size));
