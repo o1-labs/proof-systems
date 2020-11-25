@@ -44,7 +44,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     {
         if self.addm.is_zero() {return self.zero4.clone()}
         /*
-            (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
+            (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3)
             (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
             (x2 - x1) * r = 1
         */
@@ -52,7 +52,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let x13 = &(&polys.d4.this.w[0] - &polys.d4.next.w[0]);
         let x21 = &(&polys.d4.this.w[2] - &polys.d4.this.w[0]);
 
-        &(&(&(&(x21 * y31) - &(&(&polys.d4.this.w[1] - &polys.d4.this.w[3]) * x13)).scale(alpha[0])
+        &(&(&(&(x21 * y31) - &(&(&polys.d4.this.w[3] - &polys.d4.this.w[1]) * x13)).scale(alpha[0])
         +
         &(&(&(&(&polys.d4.this.w[0] + &polys.d4.this.w[2]) + &polys.d4.next.w[0]) * &x13.pow(2)) - &y31.pow(2)).scale(alpha[1]))
         +
@@ -67,7 +67,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let x13 = evals[0].w[0] - &evals[1].w[0];
         let x21 = evals[0].w[2] - &evals[0].w[0];
 
-        ((x21 * y31) - &((evals[0].w[1] - &evals[0].w[3]) * x13)) * &alpha[0] +
+        ((x21 * y31) - &((evals[0].w[3] - &evals[0].w[1]) * x13)) * &alpha[0] +
         &(((evals[0].w[0] + &evals[0].w[2] + &evals[1].w[0]) * &x13.square() - &y31.square()) * &alpha[1]) +
         &((x21 * &evals[0].w[4] - &F::one()) * &alpha[2])
     }

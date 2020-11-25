@@ -24,7 +24,7 @@ This source file implements non-special point (with distinct abscissas) Weierstr
 
         =>
 
-        (x2 - x1) * (y3 + y1) = (y1 - y2) * (x1 - x3)
+        (x2 - x1) * (y3 + y1) = (y2 - y1) * (x1 - x3)
         (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) = (y3 + y1) * (y3 + y1)
 
 *****************************************************************************************************************/
@@ -65,7 +65,7 @@ impl<F: FftField> CircuitGate<F>
         &&
         (this[2] - &this[0]) * &(next[1] + &this[1])
         ==
-        (this[1] - &this[3]) * &(this[0] - &next[0])
+        (this[3] - &this[1]) * &(this[0] - &next[0])
         &&
         (this[0] + &this[2] + &next[0]) *
             &(this[0] - &next[0]).square()
