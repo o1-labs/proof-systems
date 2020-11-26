@@ -34,7 +34,7 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 const MAX_SIZE: usize = 128; // max size of poly chunks
-const N: usize = 16; // Plonk domain size
+const N: usize = 32; // Plonk domain size
 
 #[test]
 fn turbo_plonk()
@@ -93,10 +93,10 @@ fn turbo_plonk()
             | a2 | s  | y1 | y3 | .. |
         */
 
-        CircuitGate::<Fp>::create_generic( 6, [Wire{col:2, row: 8}, Wire{col:3, row: 8}, Wire{col:0, row: 7}, Wire{col:3, row: 6}, Wire{col:4, row:6}], [p, n, p, z, z], z, z),
-        CircuitGate::<Fp>::create_generic( 7, [Wire{col:2, row: 6}, Wire{col:0, row: 8}, Wire{col:2, row:10}, Wire{col:3, row:11}, Wire{col:4, row:7}], [z, z, p, n, z], p, z),
-        CircuitGate::<Fp>::create_generic( 8, [Wire{col:1, row: 8}, Wire{col:1, row:10}, Wire{col:0, row: 9}, Wire{col:2, row:11}, Wire{col:1, row:9}], [z, z, p, p, p], n, z),
-        CircuitGate::<Fp>::create_generic( 9, [Wire{col:0, row:11}, Wire{col:0, row:12}, Wire{col:0, row:10}, Wire{col:3, row: 9}, Wire{col:4, row:9}], [p, n, n, z, z], z, z),
+        CircuitGate::<Fp>::create_generic( 6, [Wire{col:2, row: 8}, Wire{col:3, row: 8}, Wire{col:0, row: 7}, Wire{col:3, row: 6}, Wire{col:4, row: 6}], [p, n, p, z, z], z, z),
+        CircuitGate::<Fp>::create_generic( 7, [Wire{col:2, row: 6}, Wire{col:0, row: 8}, Wire{col:2, row:10}, Wire{col:3, row:11}, Wire{col:4, row: 7}], [z, z, p, n, z], p, z),
+        CircuitGate::<Fp>::create_generic( 8, [Wire{col:1, row: 8}, Wire{col:1, row:10}, Wire{col:0, row: 9}, Wire{col:2, row:11}, Wire{col:1, row: 9}], [z, z, p, p, p], n, z),
+        CircuitGate::<Fp>::create_generic( 9, [Wire{col:0, row:11}, Wire{col:0, row:12}, Wire{col:0, row:10}, Wire{col:3, row: 9}, Wire{col:4, row: 9}], [p, n, n, z, z], z, z),
         CircuitGate::<Fp>::create_generic(10, [Wire{col:2, row: 9}, Wire{col:1, row: 7}, Wire{col:1, row:11}, Wire{col:1, row:12}, Wire{col:4, row:10}], [z, z, p, p, z], n, z),
     ];
 
@@ -110,11 +110,55 @@ fn turbo_plonk()
     (
         11,
         &[
-            [Wire{col:0, row:0}, Wire{col:0, row: 3}, Wire{col:0, row: 1}, Wire{col:0, row: 4}, Wire{col:4, row:11}],
-            [Wire{col:0, row:2}, Wire{col:0, row: 5}, Wire{col:2, row:12}, Wire{col:3, row:12}, Wire{col:4, row:12}],
+            [Wire{col:0, row:13}, Wire{col:0, row:14}, Wire{col:0, row: 1}, Wire{col:0, row: 4}, Wire{col:4, row:11}],
+            [Wire{col:0, row: 2}, Wire{col:0, row: 5}, Wire{col:2, row:12}, Wire{col:3, row:12}, Wire{col:4, row:12}],
         ]
     );
     gates.append(&mut add);
+
+    /* generic constraint gates for Weierstrass curve group doubling
+
+            2 * s * y1 = 3 * x1^2
+            x2 = s^2 – 2*x1
+            y2 = -y1 - s * (x2 – x1)
+
+            x1 * x1 - x12
+            2 * y1 * s - 3 * x12
+            s * s - 2*x1 – x2
+            s * x21 + y1 + y2
+            x2 – x1 - x21
+
+            | x1 | x1 |x12 | .. | .. |
+            --------------------------
+            | y1 | s  |x12 | .. | .. |
+            --------------------------
+            | s  | s  | x1 | x2 | .. |
+            --------------------------
+            | s  |x21 | y1 | y2 | .. |
+            --------------------------
+            | x2 | x1 |x21 | .. | .. |
+    */
+
+    let mut double = vec!
+    [
+        CircuitGate::<Fp>::create_generic(13, [Wire{col:1, row:13}, Wire{col:2, row:15}, Wire{col:2, row:14}, Wire{col:3, row:13}, Wire{col:4, row:13}], [z, z, n, z, z], p, z),
+        CircuitGate::<Fp>::create_generic(14, [Wire{col:2, row:16}, Wire{col:0, row:15}, Wire{col:2, row:13}, Wire{col:3, row:14}, Wire{col:4, row:14}], [z, z, (n.double() + &n), z, z], p.double(), z),
+        CircuitGate::<Fp>::create_generic(15, [Wire{col:1, row:15}, Wire{col:0, row:16}, Wire{col:1, row:17}, Wire{col:0, row:17}, Wire{col:4, row:15}], [z, z, n.double(), n, z], p, z),
+        CircuitGate::<Fp>::create_generic(16, [Wire{col:1, row:14}, Wire{col:2, row:17}, Wire{col:1, row:18}, Wire{col:3, row:18}, Wire{col:4, row:16}], [z, z, p, p, z], p, z),
+        CircuitGate::<Fp>::create_generic(17, [Wire{col:2, row:18}, Wire{col:0, row:18}, Wire{col:1, row:16}, Wire{col:3, row:17}, Wire{col:4, row:17}], [p, n, n, z, z], z, z),
+    ];
+    gates.append(&mut double);
+
+    /* custom constraint gates for Weierstrass curve group doubling
+        | x1 | y1 | x2 | y2 | r  |
+    */
+
+    let double = CircuitGate::<Fp>::create_double
+    (
+        18,
+        [Wire{col:0, row:0}, Wire{col:0, row: 3}, Wire{col:3, row:15}, Wire{col:3, row:16}, Wire{col:4, row:18}]
+    );
+    gates.push(double);
 
     // custom constraints for Poseidon hash function permutation
     
@@ -162,7 +206,14 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let (x3, y3) = add_points((x1, y1), (x2, y2));
         let a1 = x2 - &x1;
         let a2 = x1 - &x3;
-        let s = (y2 - &y1) / &(x2 - &x1);
+        let s1 = (y2 - &y1) / &(x2 - &x1);
+        let r1 = (x2-&x1).inverse().unwrap();
+
+        let (x4, y4) = add_points((x1, y1), (x1, y1));
+        let x41 = x4 - &x1;
+        let x12 = x1.square();
+        let s2 = (x12.double() + x12) / &y1.double();
+        let r2 = y1.inverse().unwrap();
 
         let mut w = || -> Fp {Fp::rand(rng)};
 
@@ -182,26 +233,42 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             --------------------------
             | x1 | x2 | a1 | .. | .. |
             --------------------------
-            | a1 | s  | y1 | y2 | .. |
+            | a1 | s1 | y1 | y2 | .. |
             --------------------------
-            | s  | s  | x1 | x2 | x3 |
+            | s1 | s1 | x1 | x2 | x3 |
             --------------------------
             | x1 | x3 | a2 | .. | .. |
             --------------------------
-            | a2 | s  | y1 | y3 | .. |
+            | a2 | s1 | y1 | y3 | .. |
         
         custom gates for Weierstrass curve group addition
 
-            | x1 | y1 | x2 | y2 | r  |
+            | x1 | y1 | x2 | y2 | r1 |
             --------------------------
             | x3 | y3 | .. | .. | .. |
-        */
 
-        let mut l = vec![ x1, x2, x3, y1, y2, y3, x1, a1,  s, x1, a2, x1, x3];
-        let mut r = vec![w(),w(),w(),w(),w(),w(), x2,  s,  s, x3,  s, y1, y3];
-        let mut o = vec![w(),w(),w(),w(),w(),w(), a1, y1, x1, a2, y1, x2,w()];
-        let mut a = vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3, y2,w()];
-        let mut b = vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w(), (x2 - &x1).inverse().unwrap(), w()];
+        generic constraint gates for Weierstrass curve group doubling
+
+            | x1 | x1 |x12 | .. | .. |
+            --------------------------
+            | y1 | s2 |x12 | .. | .. |
+            --------------------------
+            | s2 | s2 | x1 | x4 | .. |
+            --------------------------
+            | s2 |x41 | y1 | y4 | .. |
+            --------------------------
+            | x4 | x1 |x41 | .. | .. |
+
+        custom constraint gates for Weierstrass curve group doubling
+
+            | x1 | y1 | x4 | y4 | r2 |
+    */
+
+        let mut l = vec![ x1, x2, x3, y1, y2, y3, x1, a1, s1, x1, a2,x1, x3, x1, y1, s2, s2, x4, x1];
+        let mut r = vec![w(),w(),w(),w(),w(),w(), x2, s1, s1, x3, s1,y1, y3, x1, s2, s2,x41, x1, y1];
+        let mut o = vec![w(),w(),w(),w(),w(),w(), a1, y1, x1, a2, y1,x2,w(),x12,x12, x1, y1,x41, x4];
+        let mut a = vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3,y2,w(),w(),w(), x4, y4,w(), y4];
+        let mut b = vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w(),r1,w(),w(),w(),w(),w(),w(), r2];
 
         // EC addition witness for custom constraints
 

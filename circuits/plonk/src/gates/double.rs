@@ -19,18 +19,18 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
     2 * s * y1 = 3 * x1^2
     x2 = s^2 – 2*x1
-    y2 = y1 + s * (x2 – x1)
+    y2 = -y1 - s * (x2 – x1)
 
     =>
 
     2 * s * y1 = 3 * x1^2
     x2 = s^2 – 2*x1
-    2 * y1 * (y2 - y1) = 3 * x1^2 * (x2 – x1)
+    2 * y1 * (y2 + y1) = 3 * x1^2 * (x1 – x2)
 
     =>
 
     4 * y1^2 * (x2 + 2*x1) = 9 * x1^4
-    2 * y1 * (y2 - y1) = 3 * x1^2 * (x2 – x1)
+    2 * y1 * (y2 + y1) = 3 * x1^2 * (x1 – x2)
 
 *****************************************************************************************************************/
 
@@ -62,9 +62,9 @@ impl<F: FftField> CircuitGate<F>
         ==
         F::from(9 as u64) * &this[0].square().square()
         &&
-        this[1].double() * &(this[3] - &this[1])
+        this[1].double() * &(this[3] + &this[1])
         ==
-        F::from(3 as u64) * &this[0].square() * &(this[2] - &this[0])
+        F::from(3 as u64) * &this[0].square() * &(this[0] - &this[2])
         &&
         this[1] * &this[4] == F::one()
     }
