@@ -127,7 +127,7 @@ fn positive(index: &Index<Affine>)
             sponge.state = init.clone();
             w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
 
-            // HALF_ROUNDS_FULL full rounds
+            // ROUNDS_FULL full rounds
             for j in 0..PlonkSpongeConstants::ROUNDS_FULL
             {
                 sponge.full_round(j, &params);
@@ -138,7 +138,7 @@ fn positive(index: &Index<Affine>)
         sponge.state = init.clone();
         w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
 
-        // HALF_ROUNDS_FULL full rounds
+        // ROUNDS_FULL full rounds
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
         {
             sponge.full_round(j, &params);

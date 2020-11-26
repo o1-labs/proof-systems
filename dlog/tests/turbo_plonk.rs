@@ -21,8 +21,8 @@ This source file tests constraints for the following computatios:
 
 **********************************************************************************************************/
 
+use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::{poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
@@ -34,7 +34,7 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 const MAX_SIZE: usize = 128; // max size of poly chunks
-const N: usize = 32; // Plonk domain size
+const N: usize = 64; // Plonk domain size
 
 #[test]
 fn turbo_plonk()
@@ -162,6 +162,25 @@ fn turbo_plonk()
 
     // custom constraints for Poseidon hash function permutation
     
+    let c = &oracle::tweedle::fp5::params().round_constants;
+    for i in 0..PlonkSpongeConstants::ROUNDS_FULL
+    {
+        gates.push(CircuitGate::<Fp>::create_poseidon
+        (
+            i+19,
+            [
+                Wire{col:0, row:i+19},
+                Wire{col:1, row:i+19},
+                Wire{col:2, row:i+19},
+                Wire{col:3, row:i+19},
+                Wire{col:4, row:i+19},
+            ],
+            c[i].clone()
+        ));
+    }
+    let i = PlonkSpongeConstants::ROUNDS_FULL+19;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
 
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication
     // test with 2-bit scalar
@@ -196,6 +215,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let mut batch = Vec::new();
     let points = sample_points();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
+    let params = oracle::tweedle::fp5::params();
 
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
@@ -241,13 +261,13 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             --------------------------
             | a2 | s1 | y1 | y3 | .. |
         
-        custom gates for Weierstrass curve group addition
+        witness for custom gates for Weierstrass curve group addition
 
             | x1 | y1 | x2 | y2 | r1 |
             --------------------------
             | x3 | y3 | .. | .. | .. |
 
-        generic constraint gates for Weierstrass curve group doubling
+        witness for generic constraint gates for Weierstrass curve group doubling
 
             | x1 | x1 |x12 | .. | .. |
             --------------------------
@@ -259,22 +279,33 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             --------------------------
             | x4 | x1 |x41 | .. | .. |
 
-        custom constraint gates for Weierstrass curve group doubling
+        witness for custom constraint gate for Weierstrass curve group doubling
 
             | x1 | y1 | x4 | y4 | r2 |
     */
 
-        let mut l = vec![ x1, x2, x3, y1, y2, y3, x1, a1, s1, x1, a2,x1, x3, x1, y1, s2, s2, x4, x1];
-        let mut r = vec![w(),w(),w(),w(),w(),w(), x2, s1, s1, x3, s1,y1, y3, x1, s2, s2,x41, x1, y1];
-        let mut o = vec![w(),w(),w(),w(),w(),w(), a1, y1, x1, a2, y1,x2,w(),x12,x12, x1, y1,x41, x4];
-        let mut a = vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3,y2,w(),w(),w(), x4, y4,w(), y4];
-        let mut b = vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w(),r1,w(),w(),w(),w(),w(),w(), r2];
-
-        // EC addition witness for custom constraints
+        let mut witness =
+        [
+            vec![ x1, x2, x3, y1, y2, y3, x1, a1, s1, x1, a2,x1, x3, x1, y1, s2, s2, x4, x1],
+            vec![w(),w(),w(),w(),w(),w(), x2, s1, s1, x3, s1,y1, y3, x1, s2, s2,x41, x1, y1],
+            vec![w(),w(),w(),w(),w(),w(), a1, y1, x1, a2, y1,x2,w(),x12,x12, x1, y1,x41, x4],
+            vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3,y2,w(),w(),w(), x4, y4,w(), y4],
+            vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w(),r1,w(),w(),w(),w(),w(),w(), r2],
+        ];
 
         //  witness for Poseidon permutation custom constraints
 
-        // HALF_ROUNDS_FULL full rounds constraint gates
+        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants>::new();
+        sponge.state = vec![w(), w(), w(), w(), w()];
+        witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+
+        // ROUNDS_FULL full rounds
+
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL
+        {
+            sponge.full_round(j, &params);
+            witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+        }
 
         // variable base scalar multiplication witness for custom constraints
         // test with 2-bit scalar
@@ -282,14 +313,10 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         // group endomorphism optimised variable base scalar multiplication witness for custom constraints
         // test with 8-bit scalar 11001001
 
-        l.resize(N, Fp::zero());
-        r.resize(N, Fp::zero());
-        o.resize(N, Fp::zero());
-        a.resize(N, Fp::zero());
-        b.resize(N, Fp::zero());
+        witness.iter_mut().for_each(|w| w.resize(N, Fp::zero()));
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&[l.clone(), r.clone(), o.clone(), a.clone(), b.clone()]), true);
+        assert_eq!(index.cs.verify(&witness), true);
 
         let prev = {
             let k = ceil_log2(index.srs.get_ref().g.len());
@@ -304,8 +331,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         };
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
-            &group_map, &[l,r,o,a,b], &index, vec![prev]).unwrap());
+        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
+            &group_map, &witness, &index, vec![prev]).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -314,7 +341,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(&group_map, &vec![batch[0].clone()], &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &vec![batch[0].clone()], &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
         Ok(_) => {}
@@ -323,7 +350,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(&group_map, &batch, &verifier_index)
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &batch, &verifier_index)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
