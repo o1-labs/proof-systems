@@ -1,0 +1,130 @@
+"""
+@generated
+cargo-raze generated Bazel file.
+
+DO NOT EDIT! Replaced on runs of cargo-raze
+"""
+
+package(default_visibility = ["//visibility:public"])
+
+licenses([
+    "notice",  # See individual crates for specific licenses
+])
+
+# Aliased targets
+alias(
+    name = "array_init",
+    actual = "@raze__array_init__0_1_1//:array_init",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "blake2",
+    actual = "@raze__blake2__0_7_1//:blake2",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "colored",
+    actual = "@raze__colored__1_9_3//:colored",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "itertools",
+    actual = "@raze__itertools__0_8_2//:itertools",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "num_derive",
+    actual = "@raze__num_derive__0_3_3//:num_derive",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "num_integer",
+    actual = "@raze__num_integer__0_1_43//:num_integer",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "num_traits",
+    actual = "@raze__num_traits__0_2_14//:num_traits",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "proc_macro2",
+    actual = "@raze__proc_macro2__1_0_17//:proc_macro2",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "quote",
+    actual = "@raze__quote__1_0_6//:quote",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "rand",
+    actual = "@raze__rand__0_7_3//:rand",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "rand_core",
+    actual = "@raze__rand_core__0_5_1//:rand_core",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "rayon",
+    actual = "@raze__rayon__1_3_1//:rayon",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "sprs",
+    actual = "@raze__sprs__0_7_1//:sprs",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
