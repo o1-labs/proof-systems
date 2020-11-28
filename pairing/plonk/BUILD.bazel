@@ -1,0 +1,23 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "plonk_protocol_pairing",
+    visibility = ["//visibility:public"],
+    edition = "2018",
+    srcs = glob(["src/**/*.rs"]),
+    # aliases = {"@zexe//ff-fft": "ff_fft"},
+    deps = [
+        "@zexe//algebra",
+        "@zexe//ff-fft",
+
+        "//pairing/commitment:commitment_pairing",
+        "//circuits/plonk:plonk_circuits",
+        "//oracle",
+
+        "//bzl/cargo:rand",
+        "//bzl/cargo:rand_core",
+        "//bzl/cargo:colored",
+        "//bzl/cargo:sprs",
+        "//bzl/cargo:array_init"
+    ]
+)
