@@ -33,15 +33,15 @@ impl<F: FftField> CircuitGate<F>
 
         self.typ == GateType::Pack
         &&
-        this[4] ==
-            this[0] +
-            &this[1].double() +
-            &this[2].double().double() +
-            &this[3].double().double().double() +
-            &next[4].double().double().double().double()
+        next[4] ==
+            next[3] +
+            &next[2].double() +
+            &next[1].double().double() +
+            &next[0].double().double().double() +
+            &this[4].double().double().double().double()
         &&
         // verify booleanity of the scalar bits
-        !(0..COLUMNS-1).map(|i| this[i]).any(|b| b != b.square())
+        !(0..COLUMNS-1).map(|i| next[i]).any(|b| b != b.square())
     }
 
     pub fn pack(&self) -> F {if self.typ == GateType::Pack {F::one()} else {F::zero()}}

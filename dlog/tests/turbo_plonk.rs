@@ -24,7 +24,7 @@ This source file tests constraints for the following computatios:
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, product, b_poly_coefficients}};
-use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
+use algebra::{PrimeField, Field, BigInteger, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
@@ -33,8 +33,8 @@ use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
-const MAX_SIZE: usize = 128; // max size of poly chunks
-const N: usize = 64; // Plonk domain size
+const MAX_SIZE: usize = 256; // max size of poly chunks
+const N: usize = 128; // Plonk domain size
 
 #[test]
 fn turbo_plonk()
@@ -178,10 +178,23 @@ fn turbo_plonk()
             c[i].clone()
         ));
     }
-    let i = PlonkSpongeConstants::ROUNDS_FULL+19;
+    let mut i = PlonkSpongeConstants::ROUNDS_FULL+19;
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i += 1;
 
+    // custom constraints for packing
+    
+    for _ in 0..64
+    {
+        gates.push(CircuitGate::<Fp>::create_pack
+            (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+        i += 1;
+    }
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    //i += 1;
+    
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication
     // test with 2-bit scalar
 
@@ -306,6 +319,40 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             sponge.full_round(j, &params);
             witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
         }
+
+        // witness for packing
+
+        let mut pack = [Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new()];
+
+        let scalar = w();
+        //let scalar = Fp::one();
+        let mut bits = scalar.into_repr().to_bits().iter().
+            map(|b| match *b {true => Fp::one(), false => Fp::zero()}).collect::<Vec<_>>();
+
+        pack.iter_mut().for_each(|w| w.push(Fp::zero()));
+        for k in 0..64
+        {
+            let w0 = bits.remove(0);
+            pack[0].push(w0);
+            let w1 = bits.remove(0);
+            pack[1].push(w1);
+            let w2 = bits.remove(0);
+            pack[2].push(w2);
+            let w3 = bits.remove(0);
+            pack[3].push(w3);
+
+            pack[4].push
+            (
+                w3 +
+                &w2.double() +
+                &w1.double().double() +
+                &w0.double().double().double() +
+                &pack[4][k].double().double().double().double()
+            );
+        }
+    
+        assert_eq!(scalar, pack[4][64]);
+        witness.iter_mut().zip(pack.iter_mut()).for_each(|(w, p)| w.append(p));
 
         // variable base scalar multiplication witness for custom constraints
         // test with 2-bit scalar
