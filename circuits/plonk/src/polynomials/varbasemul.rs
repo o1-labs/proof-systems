@@ -85,7 +85,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             &polys.d4.this.w[0]) + &polys.d4.next.w[0]).scale(alpha[2]))
         +
         // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + &polys.d4.this.w[0]) - &polys.d4.this.w[3].pow(2)) *
+        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + &polys.d4.this.w[0]) - &polys.d4.this.w[2].pow(2)) *
             &(&polys.d4.this.w[2] + &polys.d4.this.w[3])) - &polys.d4.next.w[3].scale(F::from(2 as u64))).scale(alpha[3]))
         +
         // (xp – xs) * s2 = ys + yp
@@ -109,12 +109,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         &((((evals[0].w[2].square() - &evals[0].w[3].square()) - &evals[0].w[0]) + &evals[1].w[0]) * &alpha[2])
         +
         // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-        &((((evals[1].w[2].double() + &evals[0].w[0]) - &evals[0].w[3].square()) *
+        &((((evals[1].w[2].double() + &evals[0].w[0]) - &evals[0].w[2].square()) *
             &(evals[0].w[2] + &evals[0].w[3]) - &evals[1].w[3].double()) * &alpha[3])
         +
         // (xp – xs) * s2 = ys + yp
         &((((evals[1].w[2] - &evals[1].w[0]) * &evals[0].w[3]) -
-            &evals[1].w[1] - &evals[1].w[3]) * &alpha[3])
+            &evals[1].w[1] - &evals[1].w[3]) * &alpha[4])
     }
 
     // scalar multiplication constraint linearization poly contribution computation

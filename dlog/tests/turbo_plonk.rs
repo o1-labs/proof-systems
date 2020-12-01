@@ -9,14 +9,24 @@ This source file tests constraints for the following computatios:
     s * s = x1 + x2 + x3
     (x1 - x3) * s = y3 + y1
 
-1. Weierstrass curve y^2 = x^3 + 7 group addition of non-special pairs of points
+2. Weierstrass curve group addition of non-special pairs of points
     via custom Plonk constraints
 
-3. Poseidon hash function permutation via custom Plonk constraints
+3. Weierstrass curve group doubling of non-special pairs of points
+   via generic Plonk constraints
 
-4. short Weierstrass curve variable base scalar multiplication via custom Plonk constraints
+4. Weierstrass curve group doubling of non-special pairs of points
+    via custom Plonk constraints
 
-5. short Weierstrass curve group endomorphism optimised variable base
+5. Poseidon hash function permutation via custom Plonk constraints
+
+6. Packing via custom Plonk constraints
+
+7. short Weierstrass curve variable base scalar multiplication via custom Plonk constraints without packing
+
+8. short Weierstrass curve variable base scalar multiplication via custom Plonk constraints with packing
+
+9. short Weierstrass curve group endomorphism optimised variable base
    scalar multiplication via custom Plonk constraints
 
 **********************************************************************************************************/
@@ -33,8 +43,8 @@ use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
-const MAX_SIZE: usize = 256; // max size of poly chunks
-const N: usize = 128; // Plonk domain size
+const MAX_SIZE: usize = 2048; // max size of poly chunks
+const N: usize = 1024; // Plonk domain size
 
 #[test]
 fn turbo_plonk()
@@ -193,11 +203,18 @@ fn turbo_plonk()
     }
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
-    //i += 1;
+    i += 1;
     
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication
-    // test with 2-bit scalar
-
+    
+    for j in 0..256
+    {
+        // in production, this has to be fully permutation-constrained
+        gates.push(CircuitGate::<Fp>::create_vbmul
+            (i+2*j, [Wire{col:0, row:i+((2*j+2)%512)}, Wire{col:1, row:i+((2*j+2)%512)}, Wire{col:2, row:i+2*j}, Wire{col:3, row:i+2*j}, Wire{col:4, row:i+2*j}]));
+        gates.push(CircuitGate::<Fp>::zero
+            (i+1+2*j, [Wire{col:0, row:i+1+2*j}, Wire{col:1, row:i+1+2*j}, Wire{col:2, row:i+1+2*j}, Wire{col:3, row:i+1+2*j}, Wire{col:4, row:i+1+2*j}]));
+    }
 
     // custom constraint gates for short Weierstrass curve variable base
     // scalar multiplication with group endomorphism optimization
@@ -233,7 +250,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
 
-    for test in 0..100
+    for test in 0..10
     {
         let (x1, y1, x2, y2, _, _) = points[test % 10];
         let (x3, y3) = add_points((x1, y1), (x2, y2));
@@ -325,20 +342,20 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let mut pack = [Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new()];
 
         let scalar = w();
-        //let scalar = Fp::one();
-        let mut bits = scalar.into_repr().to_bits().iter().
+        let bits = scalar.into_repr().to_bits().iter().
             map(|b| match *b {true => Fp::one(), false => Fp::zero()}).collect::<Vec<_>>();
+        let mut b = bits.clone();
 
         pack.iter_mut().for_each(|w| w.push(Fp::zero()));
         for k in 0..64
         {
-            let w0 = bits.remove(0);
+            let w0 = b.remove(0);
             pack[0].push(w0);
-            let w1 = bits.remove(0);
+            let w1 = b.remove(0);
             pack[1].push(w1);
-            let w2 = bits.remove(0);
+            let w2 = b.remove(0);
             pack[2].push(w2);
-            let w3 = bits.remove(0);
+            let w3 = b.remove(0);
             pack[3].push(w3);
 
             pack[4].push
@@ -354,8 +371,35 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         assert_eq!(scalar, pack[4][64]);
         witness.iter_mut().zip(pack.iter_mut()).for_each(|(w, p)| w.append(p));
 
-        // variable base scalar multiplication witness for custom constraints
-        // test with 2-bit scalar
+        // witness for short Weierstrass curve variable base scalar multiplication, no packing
+
+        let b = bits.clone();
+        let (xt, yt) = (x1, y1);
+        let (mut xp, mut yp) = add_points (add_points ((xt, yt), (xt, yt)), (xt, yt));
+
+        for b in b.iter()
+        {
+            let (xq, yq) = (xt, if *b == Fp::one() {yt} else {-yt});
+            let (xs, ys) = add_points (add_points ((xp, yp), (xp, yp)), (xq, yq));
+            // (xq - xp) * s1 = yq - yp
+            let s1 = (yq - &yp)/&(xq - &xp);
+            // (xp – xs) * s2 = ys + yp
+            let s2 = (ys + &yp)/&(xp - &xs);
+
+            witness[0].push(xt);
+            witness[0].push(xs);
+            witness[1].push(yt);
+            witness[1].push(ys);
+            witness[2].push(s1);
+            witness[2].push(xp);
+            witness[3].push(s2);
+            witness[3].push(yp);
+            witness[4].push(*b);
+            witness[4].push(w());
+
+            xp = xs;
+            yp = ys;
+        }
 
         // group endomorphism optimised variable base scalar multiplication witness for custom constraints
         // test with 8-bit scalar 11001001

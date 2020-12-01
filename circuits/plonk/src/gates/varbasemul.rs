@@ -66,24 +66,15 @@ use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F>
 {
-    pub fn create_vbmul(row: usize, wires: &[GateWires; 2]) -> Vec<Self>
+    pub fn create_vbmul(row: usize, wires: GateWires) -> Self
     {
-        vec![
-            CircuitGate
-            {
-                row,
-                typ: GateType::Vbmul1,
-                wires: wires[0],
-                c: vec![]
-            },
-            CircuitGate
-            {
-                row: row + 1,
-                typ: GateType::Zero,
-                wires: wires[1],
-                c: vec![]
-            },
-        ]
+        CircuitGate
+        {
+            row,
+            typ: GateType::Vbmul1,
+            wires,
+            c: vec![]
+        }
     }
 
     pub fn verify_vbmul1(&self, witness: &[Vec<F>; COLUMNS]) -> bool
