@@ -5,3 +5,9 @@ jobs:
         docker: rust:1.44.1-buster
         steps:
             - cargo test
+
+workflows:
+    version: 2
+    marlin_parallel:
+        jobs:
+        - run-tests
