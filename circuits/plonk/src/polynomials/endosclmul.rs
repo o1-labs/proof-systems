@@ -80,7 +80,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         &(&(&(&polys.d4.this.w[2].pow(2) - &polys.d4.this.w[3].pow(2)) - xq) + &polys.d4.next.w[0]).scale(alpha[3]))
         +
         // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + xq) - &polys.d4.this.w[3].pow(2)) *
+        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + xq) - &polys.d4.this.w[2].pow(2)) *
             &(&polys.d4.this.w[2] + &polys.d4.this.w[3])) - &polys.d4.next.w[3].scale(F::from(2 as u64))).scale(alpha[4]))
         +
         // (xp – xs) * s2 = ys + yp
@@ -107,7 +107,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         &((((evals[0].w[2].square() - &evals[0].w[3].square()) - xq) + &evals[1].w[0]) * &alpha[3])
         +
         // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        &((((evals[1].w[2].double() + xq) - &evals[0].w[3].square()) *
+        &((((evals[1].w[2].double() + xq) - &evals[0].w[2].square()) *
             &(evals[0].w[2] + &evals[0].w[3]) - &evals[1].w[3].double()) * &alpha[4])
         +
         // (xp – xs) * s2 = ys + yp

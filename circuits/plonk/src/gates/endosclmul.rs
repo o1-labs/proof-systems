@@ -59,24 +59,15 @@ use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F>
 {
-    pub fn create_endomul(row: usize, wires: &[GateWires; 2]) -> Vec<Self>
+    pub fn create_endomul(row: usize, wires: GateWires) -> Self
     {
-        vec![
-            CircuitGate
-            {
-                row,
-                typ: GateType::Endomul,
-                wires: wires[0],
-                c: vec![]
-            },
-            CircuitGate
-            {
-                row: row + 1,
-                typ: GateType::Zero,
-                wires: wires[1],
-                c: vec![]
-            },
-        ]
+        CircuitGate
+        {
+            row,
+            typ: GateType::Endomul,
+            wires,
+            c: vec![]
+        }
     }
 
     pub fn verify_endomul(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
@@ -88,9 +79,9 @@ impl<F: FftField> CircuitGate<F>
         self.typ == GateType::Endomul
         &&
         // verify booleanity of the scalar bits
-        this[3] == this[3].square()
-        &&
         this[4] == this[4].square()
+        &&
+        next[4] == next[4].square()
         &&
         // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
         (next[2] - &xq) * &this[2] == next[3] - &(this[1] * &(this[4].double() - F::one()))
