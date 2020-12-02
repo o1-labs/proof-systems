@@ -139,7 +139,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // scalar multiplication
         let mul4 = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
         // unpacking scalar multiplication
-        let mul8 = index.cs.vbmulpck_quot(&lagrange, &alpha[range::ENDML]);
+        let mul8 = index.cs.vbmulpck_quot(&lagrange, &alpha[range::MLPCK]);
 
         // collect contribution evaluations
         let t4 = &add + &(&mul4 + &(&emul4 + &(&pack + &(&pos4 + &gen))));

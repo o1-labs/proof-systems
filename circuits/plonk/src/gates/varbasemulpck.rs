@@ -74,24 +74,15 @@ use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F>
 {
-    pub fn create_vbmul2(row: usize, wires: &[GateWires; 2]) -> Vec<Self>
+    pub fn create_vbmul2(row: usize, wires: GateWires) -> Self
     {
-        vec![
-            CircuitGate
-            {
-                row,
-                typ: GateType::Vbmul2,
-                wires: wires[0],
-                c: vec![]
-            },
-            CircuitGate
-            {
-                row: row + 1,
-                typ: GateType::Zero,
-                wires: wires[1],
-                c: vec![]
-            },
-        ]
+        CircuitGate
+        {
+            row,
+            typ: GateType::Vbmul2,
+            wires,
+            c: vec![]
+        }
     }
 
     pub fn verify_vbmul2(&self, witness: &[Vec<F>; COLUMNS]) -> bool
@@ -113,7 +104,7 @@ impl<F: FftField> CircuitGate<F>
         next[3].double() * &(next[2] - &next[0])
         &&
         // (ys + yp)^2 = (xp – xs)^2 * (s1^2 – xt + xs)
-        (next[1] + &next[3]).square() == (next[2] - &next[0]).square() * &(this[2].square() - &next[0] + &this[0])
+        (next[1] + &next[3]).square() == (next[2] - &next[0]).square() * &(this[2].square() + &next[0] - &this[0])
         &&
         // n1 = 2*n2 + b
         this[4] == next[4].double() + &this[3]

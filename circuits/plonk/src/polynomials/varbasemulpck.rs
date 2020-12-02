@@ -88,7 +88,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         +
         // (xp - xt) * s1 = yp – (2b-1)*yt
         &(&(&(&(&polys.d8.next.w[2] - &polys.d8.this.w[0]) * &polys.d8.this.w[2]) - &polys.d8.next.w[3]) +
-            &(&polys.d8.this.w[1] * &(&polys.d8.this.w[3].scale(F::from(2 as u64)) - &self.l04))).scale(alpha[1]))
+            &(&polys.d8.this.w[1] * &(&polys.d8.this.w[3].scale(F::from(2 as u64)) - &self.l08))).scale(alpha[1]))
         +
         // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
         &(&(&(&(&polys.d8.next.w[2].scale(F::from(2 as u64)) - &polys.d8.this.w[2].pow(2)) + &polys.d8.this.w[0]) *
@@ -99,8 +99,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         &(&(&polys.d8.next.w[1] + &polys.d8.next.w[3]).pow(2) - &(&ps.pow(2) *
             &(&(&polys.d8.this.w[2].pow(2) - &polys.d8.this.w[0]) + &polys.d8.next.w[0]))).scale(alpha[3]))
         +
-        // n1 - 2*n2 + b
-        &(&(&polys.d8.this.w[4] - &polys.d8.next.w[4].scale(F::from(2 as u64))) + &polys.d8.this.w[3]).scale(alpha[4]))
+        // n1 - 2*n2 - b
+        &(&(&polys.d8.this.w[4] - &polys.d8.next.w[4].scale(F::from(2 as u64))) - &polys.d8.this.w[3]).scale(alpha[4]))
         *
         &self.mul2l
     }
@@ -115,19 +115,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         +
         // (xp - xt) * s1 = yp – (2b-1)*yt
         &(((((evals[1].w[2] - &evals[0].w[0]) * &evals[0].w[2]) - &evals[1].w[3]) +
-            &(evals[0].w[1] * &(evals[0].w[3] * &F::from(2 as u64) - &F::one()))) * &alpha[1])
+            &(evals[0].w[1] * &(evals[0].w[3].double() - &F::one()))) * &alpha[1])
         +
         // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
-        &(((((evals[1].w[2] * &F::from(2 as u64) - &evals[0].w[2].square()) + &evals[0].w[0]) *
+        &(((((evals[1].w[2].double() - &evals[0].w[2].square()) + &evals[0].w[0]) *
             &(((ps * &evals[0].w[2]) + &evals[1].w[1]) + &evals[1].w[3])) -
-            &(evals[1].w[3] * &F::from(2 as u64) * ps)) * &alpha[2])
+            &(evals[1].w[3].double() * ps)) * &alpha[2])
         +
         // (ys + yp)^2 - (xp – xs)^2 * (s1^2 – xt + xs)
         &(((evals[1].w[1] + &evals[1].w[3]).square() - &(ps.square() *
-            &((evals[0].w[2].square() - &evals[0].w[0]) + &evals[1].w[0]))) * &alpha[3])
+            &(evals[0].w[2].square() - &evals[0].w[0] + &evals[1].w[0]))) * &alpha[3])
         +
-        // n1 - 2*n2 + b
-        &(((evals[0].w[4] - &(evals[1].w[4] * &F::from(2 as u64))) + &evals[0].w[3]) * &alpha[4])
+        // n1 - 2*n2 - b
+        &(((evals[0].w[4] - &(evals[1].w[4].double())) - &evals[0].w[3]) * &alpha[4])
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation

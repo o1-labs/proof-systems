@@ -44,7 +44,7 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 const MAX_SIZE: usize = 2048; // max size of poly chunks
-const N: usize = 1024; // Plonk domain size
+const N: usize = 2048; // Plonk domain size
 
 #[test]
 fn turbo_plonk()
@@ -205,21 +205,55 @@ fn turbo_plonk()
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
     
-    // custom constraint gates for short Weierstrass curve variable base scalar multiplication
+    // custom constraint gates for short Weierstrass curve variable base scalar multiplication without packing
     
-    for j in 0..256
+    gates.push(CircuitGate::<Fp>::create_vbmul
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i+512}, Wire{col:4, row:i}]));
+    i += 1;
+    for j in 0..254
     {
-        // in production, this has to be fully permutation-constrained
         gates.push(CircuitGate::<Fp>::create_vbmul
-            (i+2*j, [Wire{col:0, row:i+((2*j+2)%512)}, Wire{col:1, row:i+((2*j+2)%512)}, Wire{col:2, row:i+2*j}, Wire{col:3, row:i+2*j}, Wire{col:4, row:i+2*j}]));
+            (i+2*j, [Wire{col:0, row:i+2*j+2}, Wire{col:1, row:i+2*j+2}, Wire{col:2, row:i+2*j+512}, Wire{col:3, row:i+2*j}, Wire{col:3, row:i+512+2*j}]));
         gates.push(CircuitGate::<Fp>::zero
-            (i+1+2*j, [Wire{col:0, row:i+1+2*j}, Wire{col:1, row:i+1+2*j}, Wire{col:2, row:i+1+2*j}, Wire{col:3, row:i+1+2*j}, Wire{col:4, row:i+1+2*j}]));
+            (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j}]));
     }
+    i += 508;
+    gates.push(CircuitGate::<Fp>::create_vbmul
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i+512}, Wire{col:1, row:i+512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
+    i += 1;
+
+    // custom constraint gates for short Weierstrass curve variable base scalar multiplication with packing
+    
+    gates.push(CircuitGate::<Fp>::create_vbmul2
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i+3}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i-512}, Wire{col:3, row:i-512}, Wire{col:4, row:i}]));
+    i += 1;
+    for j in 0..254
+    {
+        gates.push(CircuitGate::<Fp>::create_vbmul2
+            (i+2*j, [Wire{col:0, row:i+2*j+2}, Wire{col:1, row:i+2*j+2}, Wire{col:2, row:i+2*j-512}, Wire{col:4, row:i+2*j-512}, Wire{col:4, row:i+2*j+3}]));
+        gates.push(CircuitGate::<Fp>::zero
+            (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j-3}]));
+    }
+    i += 508;
+    gates.push(CircuitGate::<Fp>::create_vbmul2
+        (i, [Wire{col:0, row:i-1022}, Wire{col:1, row:i-1022}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i-512}, Wire{col:1, row:i-512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i-3}]));
+    //i += 1;
 
     // custom constraint gates for short Weierstrass curve variable base
     // scalar multiplication with group endomorphism optimization
     // test with 8-bit scalar
-
 
     let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dum::Affine>();
     let srs = SRS::create(MAX_SIZE, 6, N);
@@ -400,6 +434,37 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
             xp = xs;
             yp = ys;
         }
+
+        // witness for short Weierstrass curve variable base scalar multiplication, with packing
+
+        let (mut xp, mut yp) = add_points (add_points ((xt, yt), (xt, yt)), (xt, yt));
+        let mut n2 = Fp::zero();
+        let mut n1: Fp;
+
+        for b in b.iter()
+        {
+            let (xq, yq) = (xt, if *b == Fp::one() {yt} else {-yt});
+            let (xs, ys) = add_points (add_points ((xp, yp), (xp, yp)), (xq, yq));
+            // (xq - xp) * s1 = yq - yp
+            let s1 = (yq - &yp)/&(xq - &xp);
+            n1 = n2.double() + b;
+
+            witness[0].push(xt);
+            witness[0].push(xs);
+            witness[1].push(yt);
+            witness[1].push(ys);
+            witness[2].push(s1);
+            witness[2].push(xp);
+            witness[3].push(*b);
+            witness[3].push(yp);
+            witness[4].push(n1);
+            witness[4].push(n2);
+
+            xp = xs;
+            yp = ys;
+            n2 = n1;
+        }
+        assert_eq!(scalar, n2);
 
         // group endomorphism optimised variable base scalar multiplication witness for custom constraints
         // test with 8-bit scalar 11001001
