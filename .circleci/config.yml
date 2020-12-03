@@ -4,7 +4,8 @@ jobs:
     run-tests:
         docker: rust:1.44.1-buster
         steps:
-            - cargo test
+            - checkout
+            - run: cargo test
 
 workflows:
     version: 2
