@@ -2,7 +2,7 @@ version: 2.1
 
 jobs:
     run-tests:
-        docker: rust:1.44.1-buster
+        docker: rust/1.44.1-buster
         steps:
             - checkout
             - run: cargo test
