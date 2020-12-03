@@ -198,7 +198,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             &index.cs.pack_lnrz(&e, &alpha[range::PACK])) +
             &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
             &index.cs.vbmulpck_lnrz(&e, &alpha[range::MLPCK])) +
-            &index.cs.perm_lnrz(&e, &z, &oracles, &alpha[range::PERM]);
+            &index.cs.perm_lnrz(&e, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);

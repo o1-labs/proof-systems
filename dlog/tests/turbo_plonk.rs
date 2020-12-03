@@ -1,6 +1,6 @@
 /*********************************************************************************************************
 
-This source file tests constraints for the following computatios:
+This source file tests constraints for the following computations:
 
 1. Weierstrass curve group addition of non-special pairs of points
    via generic Plonk constraints

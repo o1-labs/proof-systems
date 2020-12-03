@@ -99,8 +99,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         index: &Index<G>,
     ) -> Result<bool, ProofError>
     {
-        let n = index.domain.size;
-
         let params = proofs.iter().map
         (
             |proof|
@@ -182,17 +180,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
                 // permutation
                 let zkp = index.zkpm.evaluate(oracles.zeta);
-                let mut p = vec![&proof.z_comm, &index.sigma_comm[COLUMNS-1]];
-                let mut s = ConstraintSystem::perm_scalars
-                (
-                    &evals,
-                    &oracles,
-                    &index.shift,
-                    &alpha[range::PERM],
-                    n,
-                    zkp,
-                    index.w
-                );
+                let mut p = vec![&index.sigma_comm[COLUMNS-1]];
+                let mut s = vec![ConstraintSystem::perm_scalars(&evals, &oracles, zkp)];
 
                 // generic
                 p.push(&index.qm_comm);
@@ -236,12 +225,18 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     evals[0].w.iter().zip(evals[0].s.iter()).
                         map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
                         fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
-                    -
-                    evals[0].t * &zeta1m1) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
-                !=
-                    (zeta1m1 * &alpha[range::PERM][0] * &(oracles.zeta - &index.w))
                     +
-                    (zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one()))
+                    evals[0].w.iter().zip(index.shift.iter()).
+                        map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w).
+                        fold(oracles.alpha * &zkp * &evals[0].z, |x, y| x * y)
+                    -
+                    evals[0].t * &zeta1m1) * &(oracles.zeta - &index.w) * &(oracles.zeta - &Fr::<G>::one())
+                !=
+                    ((zeta1m1 * &alpha[range::PERM][0] * &(oracles.zeta - &index.w))
+                    +
+                    (zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one())))
+                    *
+                    &(Fr::<G>::one() - evals[0].z)
                 {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))

@@ -57,22 +57,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn perm_lnrz
     (
         &self, e: &Vec<ProofEvaluations<F>>,
-        z: &DensePolynomial<F>,
         oracles: &RandomOracles<F>,
-        alpha: &[F]
     ) -> DensePolynomial<F>
     {
-        let scalars = Self::perm_scalars
+        let scalar = Self::perm_scalars
         (
             e,
             oracles,
-            &self.shift,
-            alpha,
-            self.domain.d1.size,
             self.zkpm.evaluate(oracles.zeta),
-            self.sid[self.domain.d1.size as usize -3]
         );
-        &z.scale(scalars[0]) + &self.sigmam[COLUMNS-1].scale(scalars[1])
+        self.sigmam[COLUMNS-1].scale(scalar)
     }
 
     // permutation linearization poly contribution computation
@@ -80,29 +74,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     (
         e: &Vec<ProofEvaluations<F>>,
         oracles: &RandomOracles<F>,
-        shift: &[F; COLUMNS],
-        alpha: &[F],
-        n: u64,
         z: F,
-        w: F,
-    ) -> Vec<F>
+    ) -> F
     {
-        let bz = oracles.beta * &oracles.zeta;
-        let mut denominator = [oracles.zeta - &F::one(), oracles.zeta - &w];
-        algebra::fields::batch_inversion::<F>(&mut denominator);
-        let numerator = oracles.zeta.pow(&[n]) - &F::one();
-
-        vec!
-        [
-            e[0].w.iter().zip(shift.iter()).
-                map(|(w, s)| oracles.gamma + &(bz * s) + w).
-                fold(oracles.alpha * &z, |x, y| x * y) +
-            &(alpha[0] * &numerator * &denominator[0]) +
-            &(alpha[1] * &numerator * &denominator[1])
-            ,
-            -e[0].w.iter().zip(e[0].s.iter()).
-                map(|(w, s)| oracles.gamma + &(oracles.beta * s) + w).
-                fold(e[1].z * &oracles.beta * &oracles.alpha * &z, |x, y| x * y)
-        ]
+        -e[0].w.iter().zip(e[0].s.iter()).
+            map(|(w, s)| oracles.gamma + &(oracles.beta * s) + w).
+            fold(e[1].z * &oracles.beta * &oracles.alpha * &z, |x, y| x * y)
     }
 }
