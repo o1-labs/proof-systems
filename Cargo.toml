@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "dlog",
+    "pairing",
     "oracle",
     "dlog_solver",
 ]
