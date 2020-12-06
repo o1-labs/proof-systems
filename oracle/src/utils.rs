@@ -1,6 +1,5 @@
 use algebra::FftField;
 use ff_fft::{Evaluations, Radix2EvaluationDomain as D, DensePolynomial};
-use rayon::prelude::*;
 
 pub trait PolyUtils<F: FftField> {
     fn scale(&self, elm: F) -> Self;
@@ -11,7 +10,6 @@ pub trait PolyUtils<F: FftField> {
 
 pub trait EvalUtils<F: FftField> {
     fn scale(&self, elm: F) -> Self;
-    fn square(&self) -> Self;
     fn pow(&self, pow: usize) -> Self;
     fn shift(&self, len: usize) -> Self;
 }
@@ -22,23 +20,17 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
     fn scale(&self, elm: F) -> Self
     {
         let mut result = self.clone();
-        result.evals.par_iter_mut().for_each(|coeff| *coeff *= &elm);
-        result
-    }
-
-    fn square(&self) -> Self
-    {
-        let mut result = self.clone();
-        result.evals.par_iter_mut().for_each(|e| {
-            let _ = e.square_in_place();
-        });
+        for coeff in &mut result.evals
+        {
+            *coeff *= &elm
+        }
         result
     }
 
     fn pow(&self, pow: usize) -> Self
     {
         let mut result = self.clone();
-        result.evals.par_iter_mut().for_each(|e| *e = e.pow([pow as u64]));
+        result.evals.iter_mut().for_each(|e| *e = e.pow([pow as u64]));
         result
     }
 
@@ -69,7 +61,9 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     // It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
-        result.coeffs.par_iter_mut().for_each(|coeff| *coeff *= &elm);
+        for coeff in &mut result.coeffs {
+            *coeff *= &elm
+        }
         result
     }
 

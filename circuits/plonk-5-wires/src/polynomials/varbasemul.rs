@@ -2,7 +2,62 @@
 
 This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 
-*****************************************************************************************************************/
+Acc := [2]T
+for i = n-1 ... 0:
+   Q := (r_i == 1) ? T : -T
+   Acc := Acc + (Q + Acc)
+return (d_0 == 0) ? Q - P : Q
+
+One-bit round constraints:
+
+S = (P + (b ? T : −T)) + P
+
+VBSM gate constrains
+
+    b*(b-1) = 0
+    (xp - xt) * s1 = yp – (2b-1)*yt
+    s1^2 - s2^2 = xt - xs
+    (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
+    (xp – xs) * s2 = ys + yp
+
+Permutation constrains
+
+    -> b(i)
+    -> xt(i) -> xt(i+2) -> … -> xt(509)
+    -> yt(i) -> yt(i+2) -> … -> yt(509)
+    -> xp(i)
+    -> xp(i+2) -> xs(i) ->
+    -> yp(i)
+    -> yp(i+2) -> ys(i) ->
+    xs(509) ->
+    ys(509) ->
+
+The constrains above are derived from the following EC Affine arithmetic equations:
+
+    (xq - xp) * s1 = yq - yp
+    s1 * s1 = xp + xq + x1
+    (xp – x1) * s1 = y1 + yp
+
+    (x1 – xp) * s2 = y1 – yp
+    s2 * s2 = xp + x1 + xs
+    (xp – xs) * s2 = ys + yp
+
+    =>
+
+    (xq - xp) * s1 = yq - yp
+    s1^2 = xp + xq + x1
+    (xp – x1) * (s1 + s2) = 2*yp
+    s2^2 = xp + x1 + xs
+    (xp – xs) * s2 = ys + yp
+
+    =>
+
+    (xq - xp) * s1 = yq - yp
+    s1^2 - s2^2 = xq - xs
+    (2*xp + xq – s1^2) * (s1 + s2) = 2*yp
+    (xp – xs) * s2 = ys + yp
+
+    *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
@@ -14,73 +69,57 @@ use crate::scalars::ProofEvaluations;
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // scalar multiplication constraint quotient poly contribution computation
-    pub fn vbmul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
+    pub fn vbmul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
     {
-        if self.mul1m.is_zero() && self.mul2m.is_zero() {return (self.mul1l.clone(), self.mul2l.clone())}
-
-        // 2*xP - λ1^2 + xT
-        let tmp = &(&polys.d8.this.l.scale((2 as u64).into()) - &polys.d8.this.r.square()) + &polys.d8.next.r;
-
-        (
-            // verify booleanity of the scalar bit
-            &(&(&(&polys.d4.this.r - &self.l04) * &polys.d4.this.r).scale(alpha[0])
-            +
-            // (xP - xT) × λ1 - yP + (yT × (2*b - 1))
-            &(&(&(&(&polys.d4.next.l - &polys.d4.this.l) * &polys.d4.next.r) - &polys.d4.next.o) +
-                &(&(polys.d4.this.o) * &(&polys.d4.this.r.scale((2 as u64).into()) - &self.l04))).scale(alpha[1]))
-            *
-            &self.mul1l
-            ,
-            &(&(
-                // (2*yP - (2*xP - λ1^2 + xT) × λ1)^2 - (λ1^2 - xT + xS) * (2*xP - λ1^2 + xT)^2
-                &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)).square()
-                -
-                &(&(&(&polys.d8.this.r.square() - &polys.d8.next.r) + &polys.d8.next.l) * &tmp.square())
-            ).scale(alpha[2])
-            +
-            &(
-                // (xP - xS) × (2*yP - (2*xP - λ1^2 + xT) × λ1) - (yS + yP) * (2*xP - λ1^2 + xT)
-                &(&(&polys.d8.this.l - &polys.d8.next.l) * &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)))
-                -
-                &(&(&polys.d8.next.o + &polys.d8.this.o) * &tmp)
-            ).scale(alpha[3]))
-            *
-            &self.mul2l
-        )
+        if self.mul1m.is_zero() {return self.zero4.clone()}
+    
+        // verify booleanity of the scalar bits
+        &(&(&(&(&(&polys.d4.this.w[4] - &polys.d4.this.w[4].pow(2)).scale(alpha[0])
+        +
+        // (xp - xt) * s1 = yp – (2b-1)*yt
+        &(&(&(&(&polys.d4.next.w[2] - &polys.d4.this.w[0]) * &polys.d4.this.w[2]) - &polys.d4.next.w[3]) +
+            &(&polys.d4.this.w[1] * &(&polys.d4.this.w[4].scale(F::from(2 as u64)) - &self.l04))).scale(alpha[1]))
+        +
+        // s1^2 - s2^2 = xt - xs
+        &(&(&(&polys.d4.this.w[2].pow(2) - &polys.d4.this.w[3].pow(2)) -
+            &polys.d4.this.w[0]) + &polys.d4.next.w[0]).scale(alpha[2]))
+        +
+        // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
+        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + &polys.d4.this.w[0]) - &polys.d4.this.w[2].pow(2)) *
+            &(&polys.d4.this.w[2] + &polys.d4.this.w[3])) - &polys.d4.next.w[3].scale(F::from(2 as u64))).scale(alpha[3]))
+        +
+        // (xp – xs) * s2 = ys + yp
+        &(&(&(&(&polys.d4.next.w[2] - &polys.d4.next.w[0]) * &polys.d4.this.w[3]) -
+            &polys.d4.next.w[1]) - &polys.d4.next.w[3]).scale(alpha[4]))
+        *
+        &self.mul1l
     }
 
     // scalar multiplication constraint linearization poly contribution computation
-    pub fn vbmul_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> Vec<F>
+    pub fn vbmul_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        // 2*xP - λ1^2 + xT
-        let tmp = evals[0].l.double() - &evals[0].r.square() + &evals[1].r;
-
-        vec!
-        [
-            // verify booleanity of the scalar bit
-            (evals[0].r.square() - &evals[0].r) * &alpha[0]
-            +
-            // (xP - xT) × λ1 = yP - (yT × (2*b - 1))
-            ((evals[1].l - &evals[0].l) * &evals[1].r
-            -
-            &evals[1].o + &(evals[0].o * &(evals[0].r.double() - &F::one()))) * &alpha[1]
-            ,
-            // (2*yP - (2*xP - λ1^2 + xT) × λ1)^2 = (λ1^2 - xT + xS) * (2*xP - λ1^2 + xT)^2
-            ((evals[0].o.double() - (tmp * &evals[0].r)).square()
-            -
-            &((evals[0].r.square() - &evals[1].r + &evals[1].l) * &tmp.square())) * &alpha[2]
-            +
-            // (xP - xS) × (2*yP - (2*xP - λ1^2 + xT) × λ1) = (yS + yP) * (2*xP - λ1^2 + xT)
-            &(((evals[0].l - &evals[1].l) * &(evals[0].o.double() - &(tmp * &evals[0].r))
-            -
-            ((evals[1].o + &evals[0].o) * &tmp)) * &alpha[3])
-        ]
+        // verify booleanity of the scalar bits
+        (evals[0].w[4] - &evals[0].w[4].square()) * &alpha[0]
+        +
+        // (xp - xt) * s1 = yp – (2b-1)*yt
+        &(((evals[1].w[2] - &evals[0].w[0]) * &evals[0].w[2] - &evals[1].w[3] +
+            &(evals[0].w[1] * &(evals[0].w[4].double() - &F::one()))) * &alpha[1])
+        +
+        // s1^2 - s2^2 = xt - xs
+        &((((evals[0].w[2].square() - &evals[0].w[3].square()) - &evals[0].w[0]) + &evals[1].w[0]) * &alpha[2])
+        +
+        // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
+        &((((evals[1].w[2].double() + &evals[0].w[0]) - &evals[0].w[2].square()) *
+            &(evals[0].w[2] + &evals[0].w[3]) - &evals[1].w[3].double()) * &alpha[3])
+        +
+        // (xp – xs) * s2 = ys + yp
+        &((((evals[1].w[2] - &evals[1].w[0]) * &evals[0].w[3]) -
+            &evals[1].w[1] - &evals[1].w[3]) * &alpha[4])
     }
 
     // scalar multiplication constraint linearization poly contribution computation
     pub fn vbmul_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
     {
-        let scalars = Self::vbmul_scalars(evals, alpha);
-        &self.mul1m.scale(scalars[0]) + &self.mul2m.scale(scalars[1])
+        self.mul1m.scale(Self::vbmul_scalars(evals, alpha))
     }
 }

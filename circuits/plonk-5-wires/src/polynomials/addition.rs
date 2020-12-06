@@ -1,24 +1,32 @@
 /*****************************************************************************************************************
 
-This source file implements non-special point Weierstrass curve addition
+This source file implements non-special point Weierstrass curve additionconstraint polynomials.
 
-    (x2 - x1) * s = y2 - y1
-    s * s = x1 + x2 + x3
-    (x1 - x3) * s = y3 + y1
+    ADD gate constrains
 
-constraint polynomials.
+        (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
+        (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
+        (x2 - x1) * r = 1
 
-    (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
-    (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
+    Permutation constrains
 
-1. First gate constrains the point addition
-2. Second gate constrains the abscissas distinctness check
+        -> x1
+        -> y1
+        -> x2
+        -> y2
+        x3 ->
+        y3 ->
 
-Constraint equations on wires l, r, o, l_next, r_next, o_next where
-    l=y1, r=y2, o=y3, l_next=x1, r_next=x2, o_next=x3:
+    The constrains above are derived from the following EC Affine arithmetic equations:
 
-    (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
-    (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
+        (x2 - x1) * s = y2 - y1
+        s * s = x1 + x2 + x3
+        (x1 - x3) * s = y3 + y1
+
+        =>
+
+        (x2 - x1) * (y3 + y1) = (y1 - y2) * (x1 - x3)
+        (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) = (y3 + y1) * (y3 + y1)
 
 *****************************************************************************************************************/
 
@@ -34,37 +42,39 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // EC Affine addition constraint quotient poly contribution computation
     pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
     {
-        if self.addm.is_zero() {return self.addl4.clone()}
+        if self.addm.is_zero() {return self.zero4.clone()}
         /*
-            (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
-            (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
+            (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3)
+            (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
+            (x2 - x1) * r = 1
         */
-        let ylo = &(&polys.d4.this.l + &polys.d4.this.o);
-        let xlo = &(&polys.d4.next.l - &polys.d4.next.o);
+        let y31 = &(&polys.d4.next.w[1] + &polys.d4.this.w[1]);
+        let x13 = &(&polys.d4.this.w[0] - &polys.d4.next.w[0]);
+        let x21 = &(&polys.d4.this.w[2] - &polys.d4.this.w[0]);
 
-            &(&(&(&(&polys.d4.next.r - &polys.d4.next.l) * ylo)
-            -
-            &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l))).scale(alpha[0])
-            -
-            &(&(ylo * ylo) - &(&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)) * &(xlo * xlo))).scale(alpha[1]))
-            *
-            &self.addl4
+        &(&(&(&(x21 * y31) - &(&(&polys.d4.this.w[3] - &polys.d4.this.w[1]) * x13)).scale(alpha[0])
+        +
+        &(&(&(&(&polys.d4.this.w[0] + &polys.d4.this.w[2]) + &polys.d4.next.w[0]) * &x13.pow(2)) - &y31.pow(2)).scale(alpha[1]))
+        +
+        &(&(x21 * &polys.d4.this.w[4]) - &self.l04).scale(alpha[2]))
+        *
+        &self.addl
     }
 
-    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> Vec<F>
+    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        vec!
-        [
-            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[0] +
-            &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
-            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[1])
-        ]
+        let y31 = evals[1].w[1] + &evals[0].w[1];
+        let x13 = evals[0].w[0] - &evals[1].w[0];
+        let x21 = evals[0].w[2] - &evals[0].w[0];
+
+        ((x21 * y31) - &((evals[0].w[3] - &evals[0].w[1]) * x13)) * &alpha[0] +
+        &(((evals[0].w[0] + &evals[0].w[2] + &evals[1].w[0]) * &x13.square() - &y31.square()) * &alpha[1]) +
+        &((x21 * &evals[0].w[4] - &F::one()) * &alpha[2])
     }
 
     // EC Affine addition constraint linearization poly contribution computation
     pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
     {
-        self.addm.scale(Self::ecad_scalars(evals, alpha)[0])
+        self.addm.scale(Self::ecad_scalars(evals, alpha))
     }
 }

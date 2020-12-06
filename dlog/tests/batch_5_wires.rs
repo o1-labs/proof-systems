@@ -30,7 +30,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<TweedledeeParameters, SC>::new(oracle::tweedle::fq::params());
+    let sponge = DefaultFqSponge::<TweedledeeParameters, SC>::new(oracle::tweedle::fq5::params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);

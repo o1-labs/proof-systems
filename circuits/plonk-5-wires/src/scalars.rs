@@ -4,35 +4,31 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 *****************************************************************************************************************/
 
+pub use super::wires::COLUMNS;
 use algebra::{FftField, Field};
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 use ff_fft::DensePolynomial;
+use array_init::array_init;
 
 #[derive(Clone)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct ProofEvaluations<Fs> {
-    pub l: Fs,
-    pub r: Fs,
-    pub o: Fs,
+    pub w: [Fs; COLUMNS],
     pub z: Fs,
     pub t: Fs,
     pub f: Fs,
-    pub sigma1: Fs,
-    pub sigma2: Fs,
+    pub s: [Fs; COLUMNS-1],
 }
 
 impl<F : FftField> ProofEvaluations<Vec<F>> {
     pub fn combine(&self, pt : F) -> ProofEvaluations<F> {
         ProofEvaluations::<F>
         {
-            l: DensePolynomial::eval_polynomial(&self.l, pt),
-            r: DensePolynomial::eval_polynomial(&self.r, pt),
-            o: DensePolynomial::eval_polynomial(&self.o, pt),
+            s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
+            w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             t: DensePolynomial::eval_polynomial(&self.t, pt),
             f: DensePolynomial::eval_polynomial(&self.f, pt),
-            sigma1: DensePolynomial::eval_polynomial(&self.sigma1, pt),
-            sigma2: DensePolynomial::eval_polynomial(&self.sigma2, pt),
         }
     }
 }
