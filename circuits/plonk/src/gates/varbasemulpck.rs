@@ -12,17 +12,19 @@ One-bit round constraints:
 
 S = (P + (b ? T : −T)) + P
 
-VBSM gate constrains
+VBSMPACK gate constrains
 
     b*(b-1) = 0
     (xp - xt) * s1 = yp – (2b-1)*yt
-    s1^2 - s2^2 = xt - xs
-    (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-    (xp – xs) * s2 = ys + yp
+    (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
+    (ys + yp)^2 = (xp – xs)^2 * (s1^2 – xt + xs)
+    n1 = 2*n2 + b
+
+GENERIC gate constrains
+    n2 = 0
 
 Permutation constrains
-
-    -> b(i)
+    n2(i+1) -> n1(i+2)
     -> xt(i) -> xt(i+2) -> … -> xt(509)
     -> yt(i) -> yt(i+2) -> … -> yt(509)
     -> xp(i)
@@ -53,9 +55,15 @@ The constrains above are derived from the following EC Affine arithmetic equatio
     =>
 
     (xq - xp) * s1 = yq - yp
-    s1^2 - s2^2 = xq - xs
-    (2*xp + xq – s1^2) * (s1 + s2) = 2*yp
+    (2*xp – s1^2 + xq) * (s1 + s2) = 2*yp
+    s2^2 = s1^2 - xq + xs
     (xp – xs) * s2 = ys + yp
+
+    =>
+
+    (xq - xp) * s1 = yq - yp
+    (2*xp – s1^2 + xq) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
+    (ys + yp)^2 = (xp – xs)^2 * (s1^2 – xq + xs)
 
 *****************************************************************************************************************/
 
@@ -66,39 +74,41 @@ use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F>
 {
-    pub fn create_vbmul(row: usize, wires: GateWires) -> Self
+    pub fn create_vbmul2(row: usize, wires: GateWires) -> Self
     {
         CircuitGate
         {
             row,
-            typ: GateType::Vbmul1,
+            typ: GateType::Vbmul2,
             wires,
             c: vec![]
         }
     }
 
-    pub fn verify_vbmul1(&self, witness: &[Vec<F>; COLUMNS]) -> bool
+    pub fn verify_vbmul2(&self, witness: &[Vec<F>; COLUMNS]) -> bool
     {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
 
-        self.typ == GateType::Vbmul1
+        self.typ == GateType::Vbmul2
         &&
         // verify booleanity of the scalar bit
-        this[4] == this[4].square()
+        this[3] == this[3].square()
         &&
         // (xp - xt) * s1 = yp – (2*b-1)*yt
-        (next[2] - &this[0]) * &this[2] == next[3] - &(this[1] * &(this[4].double() - F::one()))
+        (next[2] - &this[0]) * &this[2] == next[3] - &(this[1] * &(this[3].double() - F::one()))
         &&
-        // s1^2 - s2^2 = xt - xs
-        this[2].square() - &this[3].square() == this[0] - &next[0]
+        // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
+        (next[2].double() + &this[0] - &this[2].square()) * &(this[2] * &(next[2] - &next[0]) + &next[1] + &next[3])
+        ==
+        next[3].double() * &(next[2] - &next[0])
         &&
-        // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-        (next[2].double() + &this[0] - &this[2].square()) * &(this[2] + &this[3]) == next[3].double()
+        // (ys + yp)^2 = (xp – xs)^2 * (s1^2 – xt + xs)
+        (next[1] + &next[3]).square() == (next[2] - &next[0]).square() * &(this[2].square() + &next[0] - &this[0])
         &&
-        // (xp – xs) * s2 = ys + yp
-        (next[2] - &next[0]) * &this[3] == next[1] + &next[3]
+        // n1 = 2*n2 + b
+        this[4] == next[4].double() + &this[3]
     }
 
-    pub fn vbmul1(&self) -> F {if self.typ == GateType::Vbmul1 {F::one()} else {F::zero()}}
+    pub fn vbmul2(&self) -> F {if self.typ == GateType::Vbmul2 {F::one()} else {F::zero()}}
 }

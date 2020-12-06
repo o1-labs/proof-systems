@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate num_derive;
-
 pub mod gate;
 pub mod gates;
 pub mod constraints;

@@ -4,13 +4,14 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, UniformRand, PrimeField};
-use ff_fft::{DensePolynomial, DenseOrSparsePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use algebra::{Field, AffineCurve, Zero, One, UniformRand};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
-use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, constraints::ConstraintSystem};
+use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
 pub use super::{index::Index, range};
 use crate::plonk_sponge::{FrSponge};
+use array_init::array_init;
 use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -20,9 +21,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 pub struct ProverProof<G: AffineCurve>
 {
     // polynomial commitments
-    pub l_comm: PolyComm<G>,
-    pub r_comm: PolyComm<G>,
-    pub o_comm: PolyComm<G>,
+    pub w_comm: [PolyComm<G>; COLUMNS],
     pub z_comm: PolyComm<G>,
     pub t_comm: PolyComm<G>,
 
@@ -39,27 +38,24 @@ pub struct ProverProof<G: AffineCurve>
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, G::BaseField : PrimeField
+impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
     //     index: Index
     //     RETURN: prover's zk-proof
     pub fn create
-        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
-         EFrSponge: FrSponge<Fr<G>>,
-        >
+        <EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>
     (
         group_map: &G::Map,
-        witness: &Vec::<Fr<G>>,
+        witness: &[Vec::<Fr<G>>; COLUMNS],
         index: &Index<G>,
-        prev_challenges: Vec< (Vec<Fr<G>>, PolyComm<G>) >,
+        prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     )
     -> Result<Self, ProofError>
     {
         let n = index.cs.domain.d1.size as usize;
-        assert!(n <= index.srs.get_ref().g.len());
-        if witness.len() != 3*n {return Err(ProofError::WitnessCsInconsistent)}
+        for w in witness.iter() {if w.len() != n {return Err(ProofError::WitnessCsInconsistent)}};
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
@@ -67,28 +63,21 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // compute public input polynomial
-        let public = witness[0..index.cs.public].to_vec();
+        let public = witness[0][0..index.cs.public].to_vec();
         let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
 
         let rng = &mut thread_rng();
 
         // compute witness polynomials
-        let l = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.l.0]).collect(), index.cs.domain.d1).interpolate();
-        let r = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.r.0]).collect(), index.cs.domain.d1).interpolate();
-        let o = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(index.cs.gates.iter().map(|gate| witness[gate.wires.o.0]).collect(), index.cs.domain.d1).interpolate();
+        let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| Evaluations::<Fr<G>,
+            D<Fr<G>>>::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1).interpolate());
 
-        // commit to the l, r, o wire values
-        let (l_comm, omega_l) = index.srs.get_ref().commit(&l, None, rng);
-        let (r_comm, omega_r) = index.srs.get_ref().commit(&r, None, rng);
-        let (o_comm, omega_o) = index.srs.get_ref().commit(&o, None, rng);
+        // commit to the wire values
+        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| index.srs.get_ref().commit(&w[i], None, rng));
 
-        // absorb the public input, l, r, o polycommitments into the argument
-        let public_input_comm = &index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
-        // this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);
-        fq_sponge.absorb_g(&public_input_comm);
-        fq_sponge.absorb_g(&l_comm.unshifted);
-        fq_sponge.absorb_g(&r_comm.unshifted);
-        fq_sponge.absorb_g(&o_comm.unshifted);
+        // absorb the wire polycommitments into the argument
+        fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
+        w_comm.iter().for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
@@ -99,10 +88,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let mut z = vec![Fr::<G>::one(); n];
         (0..n-3).for_each
         (
-            |j| z[j+1] =
-                (witness[j] + &(index.cs.sigmal1[0][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+n] + &(index.cs.sigmal1[1][j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+2*n] + &(index.cs.sigmal1[2][j] * &oracles.beta) + &oracles.gamma)
+            |j| z[j+1] = witness.iter().zip(index.cs.sigmal1.iter()).map
+            (
+                |(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma
+            ).fold(Fr::<G>::one(), |x, y| x * y)
         );
         algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n-3]);
         (0..n-3).for_each
@@ -110,10 +99,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
             |j|
             {
                 let x = z[j];
-                z[j+1] *=
-                &(x * &(witness[j] + &(index.cs.sid[j] * &oracles.beta) + &oracles.gamma) *&
-                (witness[j+n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.r) + &oracles.gamma) *&
-                (witness[j+2*n] + &(index.cs.sid[j] * &oracles.beta * &index.cs.o) + &oracles.gamma))
+                z[j+1] *= witness.iter().zip(index.cs.shift.iter()).map
+                (
+                    |(w, s)| w[j] + &(index.cs.sid[j] * &oracles.beta * s) + &oracles.gamma
+                ).fold(x, |z, y| z * y)
             }
         );
 
@@ -123,73 +112,59 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let z = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
 
         // commit to z
-        let (z_comm, omega_z) = index.srs.get_ref().commit(&z, None, rng);
+        let z_comm = index.srs.get_ref().commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
-        fq_sponge.absorb_g(&z_comm.unshifted);
+        fq_sponge.absorb_g(&z_comm.0.unshifted);
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
-        let mut alpha = oracles.alpha;
-        let alpha = (0..17).map(|_| {alpha *= &oracles.alpha; alpha}).collect::<Vec<_>>();
+        let alpha = range::alpha_powers(oracles.alpha);
 
         // evaluate polynomials over domains
-        let lagrange = index.cs.evaluate(&l, &r, &o, &z);
+        let lagrange = index.cs.evaluate(&w, &z);
 
         // compute quotient polynomial
 
-        // generic constraints contribution
-        let (gen4, genp) = index.cs.gnrc_quot(&lagrange, &p);
-
-        // poseidon constraints contribution
+        // permutation
+        let (perm, bnd) = index.cs.perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
+        // generic
+        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &p);
+        // poseidon
         let (pos4, pos8, posp) = index.cs.psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
-
-        // variable base scalar multiplication constraints contribution
-        let (mul4, mul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
-
-        // group endomorphism optimised variable base scalar multiplication constraints contribution
-        let (emul4, emul8) = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
-
-        // EC addition constraints contribution
-        let eca = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
-
-        // permutation check contribution
-        let perm = index.cs.perm_quot(&lagrange, &oracles);
+        // EC addition
+        let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
+        // EC doubling
+        let double = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
+        // endoscaling
+        let emul4 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
+        // unpacking
+        let pack = index.cs.pack_quot(&lagrange, &alpha[range::PACK]);
+        // scalar multiplication
+        let mul4 = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
+        // unpacking scalar multiplication
+        let mul8 = index.cs.vbmulpck_quot(&lagrange, &alpha[range::MLPCK]);
 
         // collect contribution evaluations
-        let t4 = &(&gen4 + &pos4) + &(&eca + &(&mul4 + &emul4));
-        let t8 = &(&pos8 + &(&mul8 + &emul8)) + &perm;
+        let t4 = &add + &(&mul4 + &(&emul4 + &(&pack + &(&pos4 + &gen))));
+        let t8 = &perm + &(&mul8 + &(&pos8 + &double));
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        // permutation boundary condition check contribution
-        let (bnd1, res) =
-            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
-                &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into()).
-                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-
-        let (bnd2, res) =
-            DenseOrSparsePolynomial::divide_with_q_and_r(&(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
-                &DensePolynomial::from_coefficients_slice(&[-index.cs.sid[n-3], Fr::<G>::one()]).into()).
-                map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {return Err(ProofError::PolyDivision)}
-
-        t += &(&bnd1.scale(alpha[3]) + &bnd2.scale(alpha[4]));
-        t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
+        t += &bnd;
 
         // commit to t
-        let (t_comm, omega_t) = index.srs.get_ref().commit(&t, Some(index.max_quot_size), rng);
+        let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size), rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
-        fq_sponge.absorb_g(&t_comm.unshifted);
-        fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.unshifted.len()]);
+        fq_sponge.absorb_g(&t_comm.0.unshifted);
+        fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
         {
-            let s = t_comm.shifted.unwrap();
+            let s = t_comm.0.shifted.unwrap();
             if s.is_zero() {
                 fq_sponge.absorb_g(&[dummy])
             } else {
@@ -201,21 +176,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
 
         // evaluate the polynomials
-
         let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.d1.group_gen];
         let evals = evlp.iter().map
         (
             |e| ProofEvaluations::<Vec<Fr<G>>>
             {
-                l : l.eval(*e, index.max_poly_size),
-                r : r.eval(*e, index.max_poly_size),
-                o : o.eval(*e, index.max_poly_size),
-                z : z.eval(*e, index.max_poly_size),
-                t : t.eval(*e, index.max_poly_size),
-
-                sigma1: index.cs.sigmam[0].eval(*e, index.max_poly_size),
-                sigma2: index.cs.sigmam[1].eval(*e, index.max_poly_size),
-
+                s: array_init(|i| index.cs.sigmam[0..COLUMNS-1][i].eval(*e, index.max_poly_size)),
+                w: array_init(|i| w[i].eval(*e, index.max_poly_size)),
+                z: z.eval(*e, index.max_poly_size),
+                t: t.eval(*e, index.max_poly_size),
                 f: Vec::new(),
             }
         ).collect::<Vec<_>>();
@@ -226,15 +195,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         (
             |(es, &e1)| ProofEvaluations::<Fr<G>>
             {
-                l: DensePolynomial::eval_polynomial(&es.l, e1),
-                r: DensePolynomial::eval_polynomial(&es.r, e1),
-                o: DensePolynomial::eval_polynomial(&es.o, e1),
+                s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
                 t: DensePolynomial::eval_polynomial(&es.t, e1),
-
-                sigma1: DensePolynomial::eval_polynomial(&es.sigma1, e1),
-                sigma2: DensePolynomial::eval_polynomial(&es.sigma2, e1),
-
                 f: Fr::<G>::zero(),
             }
         ).collect::<Vec<_>>();
@@ -242,12 +206,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         // compute and evaluate linearization polynomial
 
         let f =
-            &(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
+            &(&(&(&(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN])) +
             &index.cs.ecad_lnrz(&e, &alpha[range::ADD])) +
-            &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
+            &index.cs.double_lnrz(&e, &alpha[range::DBL])) +
             &index.cs.endomul_lnrz(&e, &alpha[range::ENDML])) +
-            &index.cs.perm_lnrz(&e, &z, &oracles, &alpha[range::PERM]);
+            &index.cs.pack_lnrz(&e, &alpha[range::PACK])) +
+            &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
+            &index.cs.vbmulpck_lnrz(&e, &alpha[range::MLPCK])) +
+            &index.cs.perm_lnrz(&e, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -274,71 +241,40 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let polys = prev_challenges.iter().map(|(chals, comm)| {
             (DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)), comm.unshifted.len())
         }).collect::<Vec<_>>();
-
         let non_hiding = |n : usize| PolyComm { unshifted: vec![Fr::<G>::zero(); n], shifted: None };
 
-        // The verifier computes the commitment to f as
-        //
-        // perm_scalars[0] * z_comm + terms involving unblinded commitments
-        //
-        // Therefore, the coefficient of the blinding base in the f commitment is
-        // perm_scalars[0] * the coefficient in the z commitment.
-        let omega_f = {
-            let zkp = index.cs.zkpm.evaluate(oracles.zeta);
-            let evals = (0..2).map(|i| evals[i].combine(evlp[i])).collect::<Vec<_>>();
-            let perm_scalar0 = ConstraintSystem::perm_scalars
-            (
-                &evals,
-                &oracles,
-                (index.cs.r, index.cs.o),
-                &alpha[range::PERM],
-                n as u64,
-                zkp,
-                // TODO: This 3 is the zero knowledge padding offset. Should be pulled out into
-                // a variable.
-                index.cs.sid[n - 3],
-            )[0];
-            omega_z.map(|x| perm_scalar0 * x)
-        };
-
         let mut polynoms = polys.iter().map(|(p, n)| (p, None, non_hiding(*n) )).collect::<Vec<_>>();
-        polynoms.extend(
+        polynoms.extend(vec![(&p, None, non_hiding(1))]);
+        polynoms.extend(w.iter().zip(w_comm.iter()).map(|(w, c)| (w, None, c.1.clone())).collect::<Vec<_>>());
+        polynoms.extend
+        (
             vec!
             [
-                (&p, None, non_hiding(1)),
-                (&l, None, omega_l),
-                (&r, None, omega_r),
-                (&o, None, omega_o),
-                (&z, None, omega_z),
-                (&f, None, omega_f),
-                (&index.cs.sigmam[0], None, non_hiding(1)),
-                (&index.cs.sigmam[1], None, non_hiding(1)),
-                (&t, Some(index.max_quot_size), omega_t),
-            ]);
+                (&z, None, z_comm.1),
+                (&f, None, non_hiding(1)),
+            ]
+        );
+        polynoms.extend(index.cs.sigmam[0..COLUMNS-1].iter().map(|w| (w, None, non_hiding(1))).collect::<Vec<_>>());
+        polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
 
-        let proof =
-            Self
-            {
-                l_comm,
-                r_comm,
-                o_comm,
-                z_comm,
-                t_comm,
-                proof: index.srs.get_ref().open
-                (
-                    group_map,
-                    polynoms,
-                    &evlp.to_vec(),
-                    oracles.v,
-                    oracles.u,
-                    fq_sponge_before_evaluations,
-                    rng
-                ),
-                evals,
-                public,
-                prev_challenges,
-            };
-
-        Ok(proof)
+        Ok(Self
+        {
+            w_comm: array_init(|i| w_comm[i].0.clone()),
+            z_comm: z_comm.0,
+            t_comm: t_comm.0,
+            proof: index.srs.get_ref().open
+            (
+                group_map,
+                polynoms,
+                &evlp.to_vec(),
+                oracles.v,
+                oracles.u,
+                fq_sponge_before_evaluations,
+                rng
+            ),
+            evals,
+            public,
+            prev_challenges,
+        })
     }
 }
