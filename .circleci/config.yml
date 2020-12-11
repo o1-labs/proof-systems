@@ -1,0 +1,20 @@
+version: 2.1
+
+jobs:
+    run-tests:
+        docker:
+            - image: rust:1.44.1-buster
+        steps:
+            - checkout
+            - run:
+                  name: Update submodules
+                  command: git submodule sync && git submodule update --init --recursive
+            - run:
+                  name: Tests
+                  command: cargo test --release
+
+workflows:
+    version: 2
+    marlin_parallel:
+        jobs:
+        - run-tests
