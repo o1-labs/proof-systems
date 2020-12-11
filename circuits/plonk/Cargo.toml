@@ -10,6 +10,7 @@ path = "src/lib.rs"
 algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
 algebra-core = { path = "../../zexe/algebra-core", features = [ "parallel"] }
 ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
+ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }
 array-init = { version = "0.1.1" }
@@ -18,3 +19,7 @@ blake2 = "0.7"
 
 num-derive = "0.3"
 num-traits = "0.2"
+
+[features]
+
+ocaml_types = [ "ocaml", "oracle/ocaml_types" ]
