@@ -54,7 +54,7 @@ cargo_build_script(
         "cargo-raze",
         "manual",
     ],
-    version = "0.8.0",
+    version = "0.8.1",
     visibility = ["//visibility:private"],
     deps = [
         "@raze__autocfg__1_0_1//:autocfg",
@@ -74,9 +74,6 @@ rust_library(
     crate_root = "src/lib.rs",
     crate_type = "lib",
     edition = "2018",
-    proc_macro_deps = [
-        "@raze__const_fn__0_4_3//:const_fn",
-    ],
     rustc_flags = [
         "--cap-lints=allow",
     ],
@@ -84,7 +81,7 @@ rust_library(
         "cargo-raze",
         "manual",
     ],
-    version = "0.8.0",
+    version = "0.8.1",
     # buildifier: leave-alone
     deps = [
         ":crossbeam_utils_build_script",

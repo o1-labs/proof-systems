@@ -173,12 +173,12 @@ def marlin_fetch_remote_crates():
 
     maybe(
         http_archive,
-        name = "raze__crossbeam_epoch__0_9_0",
-        url = "https://crates.io/api/v1/crates/crossbeam-epoch/0.9.0/download",
+        name = "raze__crossbeam_epoch__0_9_1",
+        url = "https://crates.io/api/v1/crates/crossbeam-epoch/0.9.1/download",
         type = "tar.gz",
-        sha256 = "ec0f606a85340376eef0d6d8fec399e6d4a544d648386c6645eb6d0653b27d9f",
-        strip_prefix = "crossbeam-epoch-0.9.0",
-        build_file = Label("//bzl/cargo/remote:BUILD.crossbeam-epoch-0.9.0.bazel"),
+        sha256 = "a1aaa739f95311c2c7887a76863f500026092fb1dce0161dab577e559ef3569d",
+        strip_prefix = "crossbeam-epoch-0.9.1",
+        build_file = Label("//bzl/cargo/remote:BUILD.crossbeam-epoch-0.9.1.bazel"),
     )
 
     maybe(
@@ -193,12 +193,12 @@ def marlin_fetch_remote_crates():
 
     maybe(
         http_archive,
-        name = "raze__crossbeam_utils__0_8_0",
-        url = "https://crates.io/api/v1/crates/crossbeam-utils/0.8.0/download",
+        name = "raze__crossbeam_utils__0_8_1",
+        url = "https://crates.io/api/v1/crates/crossbeam-utils/0.8.1/download",
         type = "tar.gz",
-        sha256 = "ec91540d98355f690a86367e566ecad2e9e579f230230eb7c21398372be73ea5",
-        strip_prefix = "crossbeam-utils-0.8.0",
-        build_file = Label("//bzl/cargo/remote:BUILD.crossbeam-utils-0.8.0.bazel"),
+        sha256 = "02d96d1e189ef58269ebe5b97953da3274d83a93af647c2ddd6f9dab28cedb8d",
+        strip_prefix = "crossbeam-utils-0.8.1",
+        build_file = Label("//bzl/cargo/remote:BUILD.crossbeam-utils-0.8.1.bazel"),
     )
 
     maybe(
@@ -329,6 +329,16 @@ def marlin_fetch_remote_crates():
         sha256 = "043175f069eda7b85febe4a74abbaeff828d9f8b448515d3151a14a3542811aa",
         strip_prefix = "memoffset-0.5.6",
         build_file = Label("//bzl/cargo/remote:BUILD.memoffset-0.5.6.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "raze__memoffset__0_6_1",
+        url = "https://crates.io/api/v1/crates/memoffset/0.6.1/download",
+        type = "tar.gz",
+        sha256 = "157b4208e3059a8f9e78d559edc658e13df41410cb3ae03979c83130067fdd87",
+        strip_prefix = "memoffset-0.6.1",
+        build_file = Label("//bzl/cargo/remote:BUILD.memoffset-0.6.1.bazel"),
     )
 
     maybe(

@@ -1,32 +1,3 @@
-load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
-# load("@obazl_rules_ocaml//ocaml:rules.bzl", "ocaml_module")
-
 ## temporary:
 exports_files(["version.ml"])
 
-bool_flag( name = "verbose", build_setting_default = False,
-           visibility = ["//visibility:public"])
-
-# ocaml_module(
-#     name = "Version",
-#     src  = "version.ml",
-#     visibility = ["@mina//src/lib/zexe_backend/zexe_backend_common:__pkg__"]
-# )
-
-## FIXME: 
-
-## Generate an ml file with the git revision in a string.
-## Used by @mina//src/lib/zexe_backend_common
-# genrule(
-#     name = 'version_ml',
-#     srcs = glob(['.git/HEAD', '.git/refs/**']),
-#     outs = ['version.ml'],
-#     cmd = "\n".join([
-#         ## avoid using 'external/marlin'
-#         'pushd `dirname $(rootpath version.ml)`',
-#         'SHA=\\"$$(git rev-parse --short=8 HEAD)\\";',
-#         'popd',
-#         'echo let marlin_repo_sha = \"$$SHA\" > $@'
-#     ]),
-#     visibility = ["//visibility:public"],
-# )
