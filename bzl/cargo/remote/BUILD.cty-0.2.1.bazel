@@ -25,18 +25,14 @@ package(default_visibility = [
 ])
 
 licenses([
-    "notice",  # MIT from expression "MIT"
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
 ])
 
 # Generated Targets
 
-# Unsupported target "atty" with type "example" omitted
-
 rust_library(
-    name = "atty",
+    name = "cty",
     srcs = glob(["**/*.rs"]),
-    aliases = {
-    },
     crate_features = [
     ],
     crate_root = "src/lib.rs",
@@ -49,17 +45,8 @@ rust_library(
         "cargo-raze",
         "manual",
     ],
-    version = "0.2.14",
+    version = "0.2.1",
     # buildifier: leave-alone
     deps = [
-    ] + selects.with_or({
-        # cfg(unix)
-        (
-            "@io_bazel_rules_rust//rust/platform:x86_64-apple-darwin",
-            "@io_bazel_rules_rust//rust/platform:x86_64-unknown-linux-gnu",
-        ): [
-            "@raze__libc__0_2_81//:libc",
-        ],
-        "//conditions:default": [],
-    }),
+    ],
 )

@@ -11,7 +11,11 @@ rust_library(
     deps = [
         "@zexe//algebra",
         "@zexe//ff-fft",
+        "//bzl/cargo:ocaml",
         "//bzl/cargo:rand",
         "//bzl/cargo:rayon",
-    ]
+    ],
+    crate_features = [
+        "ocaml_types"
+    ],
 )

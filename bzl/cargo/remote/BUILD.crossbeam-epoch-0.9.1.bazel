@@ -52,7 +52,7 @@ rust_library(
     crate_type = "lib",
     edition = "2018",
     proc_macro_deps = [
-        "@raze__const_fn__0_4_3//:const_fn",
+        "@raze__const_fn__0_4_4//:const_fn",
     ],
     rustc_flags = [
         "--cap-lints=allow",

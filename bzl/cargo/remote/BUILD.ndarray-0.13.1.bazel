@@ -108,7 +108,7 @@ rust_library(
     # buildifier: leave-alone
     deps = [
         ":ndarray_build_script",
-        "@raze__matrixmultiply__0_2_3//:matrixmultiply",
+        "@raze__matrixmultiply__0_2_4//:matrixmultiply",
         "@raze__num_complex__0_2_4//:num_complex",
         "@raze__num_integer__0_1_43//:num_integer",
         "@raze__num_traits__0_2_14//:num_traits",

@@ -25,23 +25,25 @@ package(default_visibility = [
 ])
 
 licenses([
-    "notice",  # MIT from expression "MIT OR Apache-2.0"
+    "notice",  # ISC from expression "ISC"
 ])
 
 # Generated Targets
 
-# Unsupported target "benchmarks" with type "bench" omitted
-
-# Unsupported target "usegemm" with type "example" omitted
-
 rust_library(
-    name = "matrixmultiply",
+    name = "ocaml",
     srcs = glob(["**/*.rs"]),
     crate_features = [
+        "default",
+        "derive",
+        "ocaml-derive",
     ],
     crate_root = "src/lib.rs",
     crate_type = "lib",
-    edition = "2015",
+    edition = "2018",
+    proc_macro_deps = [
+        "@raze__ocaml_derive__0_19_0//:ocaml_derive",
+    ],
     rustc_flags = [
         "--cap-lints=allow",
     ],
@@ -49,11 +51,9 @@ rust_library(
         "cargo-raze",
         "manual",
     ],
-    version = "0.2.3",
+    version = "0.19.0",
     # buildifier: leave-alone
     deps = [
-        "@raze__rawpointer__0_2_1//:rawpointer",
+        "@raze__ocaml_sys__0_19_0//:ocaml_sys",
     ],
 )
-
-# Unsupported target "sgemm" with type "test" omitted

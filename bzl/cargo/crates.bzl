@@ -113,12 +113,12 @@ def marlin_fetch_remote_crates():
 
     maybe(
         http_archive,
-        name = "raze__const_fn__0_4_3",
-        url = "https://crates.io/api/v1/crates/const_fn/0.4.3/download",
+        name = "raze__const_fn__0_4_4",
+        url = "https://crates.io/api/v1/crates/const_fn/0.4.4/download",
         type = "tar.gz",
-        sha256 = "c478836e029dcef17fb47c89023448c64f781a046e0300e257ad8225ae59afab",
-        strip_prefix = "const_fn-0.4.3",
-        build_file = Label("//bzl/cargo/remote:BUILD.const_fn-0.4.3.bazel"),
+        sha256 = "cd51eab21ab4fd6a3bf889e2d0958c0a6e3a61ad04260325e919e652a2a62826",
+        strip_prefix = "const_fn-0.4.4",
+        build_file = Label("//bzl/cargo/remote:BUILD.const_fn-0.4.4.bazel"),
     )
 
     maybe(
@@ -213,6 +213,16 @@ def marlin_fetch_remote_crates():
 
     maybe(
         http_archive,
+        name = "raze__cty__0_2_1",
+        url = "https://crates.io/api/v1/crates/cty/0.2.1/download",
+        type = "tar.gz",
+        sha256 = "7313c0d620d0cb4dbd9d019e461a4beb501071ff46ec0ab933efb4daa76d73e3",
+        strip_prefix = "cty-0.2.1",
+        build_file = Label("//bzl/cargo/remote:BUILD.cty-0.2.1.bazel"),
+    )
+
+    maybe(
+        http_archive,
         name = "raze__digest__0_7_6",
         url = "https://crates.io/api/v1/crates/digest/0.7.6/download",
         type = "tar.gz",
@@ -283,12 +293,12 @@ def marlin_fetch_remote_crates():
 
     maybe(
         http_archive,
-        name = "raze__libc__0_2_80",
-        url = "https://crates.io/api/v1/crates/libc/0.2.80/download",
+        name = "raze__libc__0_2_81",
+        url = "https://crates.io/api/v1/crates/libc/0.2.81/download",
         type = "tar.gz",
-        sha256 = "4d58d1b70b004888f764dfbf6a26a3b0342a1632d33968e4a179d8011c760614",
-        strip_prefix = "libc-0.2.80",
-        build_file = Label("//bzl/cargo/remote:BUILD.libc-0.2.80.bazel"),
+        sha256 = "1482821306169ec4d07f6aca392a4681f66c75c9918aa49641a2595db64053cb",
+        strip_prefix = "libc-0.2.81",
+        build_file = Label("//bzl/cargo/remote:BUILD.libc-0.2.81.bazel"),
     )
 
     maybe(
@@ -303,12 +313,12 @@ def marlin_fetch_remote_crates():
 
     maybe(
         http_archive,
-        name = "raze__matrixmultiply__0_2_3",
-        url = "https://crates.io/api/v1/crates/matrixmultiply/0.2.3/download",
+        name = "raze__matrixmultiply__0_2_4",
+        url = "https://crates.io/api/v1/crates/matrixmultiply/0.2.4/download",
         type = "tar.gz",
-        sha256 = "d4f7ec66360130972f34830bfad9ef05c6610a43938a467bcc9ab9369ab3478f",
-        strip_prefix = "matrixmultiply-0.2.3",
-        build_file = Label("//bzl/cargo/remote:BUILD.matrixmultiply-0.2.3.bazel"),
+        sha256 = "916806ba0031cd542105d916a97c8572e1fa6dd79c9c51e7eb43a09ec2dd84c1",
+        strip_prefix = "matrixmultiply-0.2.4",
+        build_file = Label("//bzl/cargo/remote:BUILD.matrixmultiply-0.2.4.bazel"),
     )
 
     maybe(
@@ -409,6 +419,36 @@ def marlin_fetch_remote_crates():
         sha256 = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3",
         strip_prefix = "num_cpus-1.13.0",
         build_file = Label("//bzl/cargo/remote:BUILD.num_cpus-1.13.0.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "raze__ocaml__0_19_0",
+        url = "https://crates.io/api/v1/crates/ocaml/0.19.0/download",
+        type = "tar.gz",
+        sha256 = "98b213b94c86b14286c44c53cf952e3ba1a9f5c1fef50bbdf5e546a8dcaf11d4",
+        strip_prefix = "ocaml-0.19.0",
+        build_file = Label("//bzl/cargo/remote:BUILD.ocaml-0.19.0.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "raze__ocaml_derive__0_19_0",
+        url = "https://crates.io/api/v1/crates/ocaml-derive/0.19.0/download",
+        type = "tar.gz",
+        sha256 = "21e86bf321d7b2a9012f284a8fbc0f97244edc0e3a7c6402a368e595524504fd",
+        strip_prefix = "ocaml-derive-0.19.0",
+        build_file = Label("//bzl/cargo/remote:BUILD.ocaml-derive-0.19.0.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "raze__ocaml_sys__0_19_0",
+        url = "https://crates.io/api/v1/crates/ocaml-sys/0.19.0/download",
+        type = "tar.gz",
+        sha256 = "3ebcb40980dce73b49d0dcf5b3a2844a9a28cbe5fa17115fa09f0f7706463d1a",
+        strip_prefix = "ocaml-sys-0.19.0",
+        build_file = Label("//bzl/cargo/remote:BUILD.ocaml-sys-0.19.0.bazel"),
     )
 
     maybe(
@@ -539,6 +579,16 @@ def marlin_fetch_remote_crates():
         sha256 = "6690e3e9f692504b941dc6c3b188fd28df054f7fb8469ab40680df52fdcc842b",
         strip_prefix = "syn-1.0.41",
         build_file = Label("//bzl/cargo/remote:BUILD.syn-1.0.41.bazel"),
+    )
+
+    maybe(
+        http_archive,
+        name = "raze__synstructure__0_12_4",
+        url = "https://crates.io/api/v1/crates/synstructure/0.12.4/download",
+        type = "tar.gz",
+        sha256 = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701",
+        strip_prefix = "synstructure-0.12.4",
+        build_file = Label("//bzl/cargo/remote:BUILD.synstructure-0.12.4.bazel"),
     )
 
     maybe(
