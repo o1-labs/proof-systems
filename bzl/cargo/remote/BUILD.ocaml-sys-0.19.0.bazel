@@ -40,6 +40,7 @@ cargo_build_script(
     build_script_env = {
     },
     crate_features = [
+        "without-ocamlopt",
     ],
     crate_root = "build.rs",
     data = glob(["**"]),
@@ -61,6 +62,7 @@ rust_library(
     name = "ocaml_sys",
     srcs = glob(["**/*.rs"]),
     crate_features = [
+        "without-ocamlopt",
     ],
     crate_root = "src/lib.rs",
     crate_type = "lib",

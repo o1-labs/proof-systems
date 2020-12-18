@@ -277,6 +277,8 @@ dependencies = [
  "num-integer",
  "num-traits 0.2.14",
  "ocaml",
+ "ocaml-derive",
+ "ocaml-sys",
  "proc-macro2",
  "quote",
  "rand",

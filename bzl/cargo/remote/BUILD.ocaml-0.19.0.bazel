@@ -37,6 +37,7 @@ rust_library(
         "default",
         "derive",
         "ocaml-derive",
+        "without-ocamlopt",
     ],
     crate_root = "src/lib.rs",
     crate_type = "lib",

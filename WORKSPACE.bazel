@@ -20,16 +20,18 @@ rust_repositories(version = "1.47.0", edition="2018")
 load("@io_bazel_rules_rust//:workspace.bzl", "bazel_version")
 bazel_version(name = "bazel_version")
 
-###############
-git_repository(
-    name = "zexe",
-    remote = "https://github.com/o1-labs/zexe",
-    branch = "master",
-)
+############################################################
+load("//bzl/cargo:crates.bzl", marlin_fetch_remote_crates = "raze_fetch_remote_crates")
+marlin_fetch_remote_crates()
+
+############################################################
+local_repository( name = "zexe", path = "zexe" )
+# git_repository(
+#     name   = "zexe",
+#     remote = "https://github.com/o1-labs/zexe",
+#     tag    = "6699705" # should match pin
+#     # branch = "master",
+# )
 
 load("@zexe//bzl/cargo:crates.bzl", "zexe_fetch_remote_crates")
 zexe_fetch_remote_crates()
-
-############################################################
-load("//bzl/cargo:crates.bzl", "marlin_fetch_remote_crates")
-marlin_fetch_remote_crates()

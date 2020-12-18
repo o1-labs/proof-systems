@@ -1,1 +1,3 @@
 target
+# zexe is a workspace, ignoring it makes 'bazel build //...:*' work
+zexe
