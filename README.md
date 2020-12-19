@@ -11,8 +11,6 @@ If you change any dependencies in the `Cargo.toml` files:
 2. `cd bzl/cargo`
    a. `cargo generate-lockfile`
    b. `cargo raze`
-3. edit `bzl/cargo/crates.bzl`: change `raze_fetch_remote_crates` to
-   `marlin_fetch_remote_crates`.
 
 You may also have to changes the `deps` attribute of build targets in
 BUILD.bazel. For example, if you add a dependency on the `ocaml`
