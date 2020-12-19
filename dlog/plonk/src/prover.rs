@@ -17,14 +17,32 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
-pub struct ProverProof<G: AffineCurve>
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+pub struct ProverCommitments<G: AffineCurve>
 {
-    // polynomial commitments
     pub l_comm: PolyComm<G>,
     pub r_comm: PolyComm<G>,
     pub o_comm: PolyComm<G>,
     pub z_comm: PolyComm<G>,
     pub t_comm: PolyComm<G>,
+}
+
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+struct CamlProverProof<G: AffineCurve>
+{
+    pub commitments: ProverCommitments<G>,
+    pub proof: OpeningProof<G>,
+    // OCaml doesn't have sized arrays, so we have to convert to a tuple..
+    pub evals: (ProofEvaluations<Vec<Fr<G>>>, ProofEvaluations<Vec<Fr<G>>>),
+    pub public: Vec<Fr<G>>,
+    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+}
+
+#[derive(Clone)]
+pub struct ProverProof<G: AffineCurve>
+{
+    // polynomial commitments
+    pub commitments: ProverCommitments<G>,
 
     // batched commitment opening proof
     pub proof: OpeningProof<G>,
@@ -37,6 +55,42 @@ pub struct ProverProof<G: AffineCurve>
 
     // The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<G: AffineCurve + ocaml::ToValue> ocaml::ToValue for ProverProof<G> where
+    G::ScalarField: ocaml::ToValue {
+    fn to_value(self) -> ocaml::Value {
+        ocaml::ToValue::to_value(
+            CamlProverProof{
+                commitments: self.commitments,
+                proof: self.proof,
+                evals: {
+                    let [evals0, evals1] = self.evals;
+                    (evals0, evals1)
+                },
+                public: self.public,
+                prev_challenges: self.prev_challenges
+            })
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverProof<G> where
+    G::ScalarField: ocaml::FromValue {
+    fn from_value(v: ocaml::Value) -> Self {
+        let p: CamlProverProof<G> = ocaml::FromValue::from_value(v);
+        ProverProof {
+            commitments: p.commitments,
+            proof: p.proof,
+            evals: {
+                let (evals0, evals1) = p.evals;
+                [evals0, evals1]
+            },
+            public: p.public,
+            prev_challenges: p.prev_challenges
+        }
+    }
 }
 
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, G::BaseField : PrimeField
@@ -319,11 +373,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let proof =
             Self
             {
-                l_comm,
-                r_comm,
-                o_comm,
-                z_comm,
-                t_comm,
+                commitments: ProverCommitments {
+                    l_comm,
+                    r_comm,
+                    o_comm,
+                    z_comm,
+                    t_comm,
+                },
                 proof: index.srs.get_ref().open
                 (
                     group_map,

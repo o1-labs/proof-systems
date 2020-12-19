@@ -7,7 +7,12 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
-ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
+algebra = { path = "../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
+ff-fft = { path = "../zexe/ff-fft", features = [ "parallel"] }
+ocaml = { version = "0.18.1", optional = true }
 rand = "0.7.3"
 rayon = { version = "1" }
+
+[features]
+
+ocaml_types = [ "ocaml" ]
