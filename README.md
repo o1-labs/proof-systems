@@ -12,7 +12,7 @@ If you change any dependencies in the `Cargo.toml` files:
    a. `cargo generate-lockfile`
    b. `cargo raze`
 
-You may also have to changes the `deps` attribute of build targets in
+You may also have to change the `deps` attribute of build targets in
 BUILD.bazel. For example, if you add a dependency on the `ocaml`
 package to Cargo.toml, you would add `//bzl/cargo:ocaml` to the deps
 attribute.
