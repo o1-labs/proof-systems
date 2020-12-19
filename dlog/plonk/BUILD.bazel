@@ -26,6 +26,7 @@ rust_library(
         "parallel",
         "bn_382",
         "tweedle",
+        "pasta",
         "asm"
     ]
 )
