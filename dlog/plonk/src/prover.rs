@@ -56,6 +56,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
     {
         let n = index.cs.domain.d1.size as usize;
         for w in witness.iter() {if w.len() != n {return Err(ProofError::WitnessCsInconsistent)}};
+        if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
