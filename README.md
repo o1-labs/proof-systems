@@ -2,6 +2,9 @@ This repository contains various zk-SNARK protocol implementations for recursive
 
 Build all targets: `$ bazel build //...` (note: three dots)
 
+Note that the Zexe submodule is encoded as a Bazel workspace, so you
+cannot build it directly by e.g. `bazel build //zexe/algebra`. Instead
+you must use the Zexe workspace name: `baze build @zexe//algebra`.
 
 ## Bazel maintenance
 
