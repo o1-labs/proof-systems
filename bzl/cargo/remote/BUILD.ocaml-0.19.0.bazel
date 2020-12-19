@@ -25,23 +25,26 @@ package(default_visibility = [
 ])
 
 licenses([
-    "notice",  # MIT from expression "MIT OR Apache-2.0"
+    "notice",  # ISC from expression "ISC"
 ])
 
 # Generated Targets
 
 rust_library(
-    name = "crossbeam_deque",
+    name = "ocaml",
     srcs = glob(["**/*.rs"]),
     crate_features = [
-        "crossbeam-epoch",
-        "crossbeam-utils",
         "default",
-        "std",
+        "derive",
+        "ocaml-derive",
+        "without-ocamlopt",
     ],
     crate_root = "src/lib.rs",
     crate_type = "lib",
     edition = "2018",
+    proc_macro_deps = [
+        "@raze__ocaml_derive__0_19_0//:ocaml_derive",
+    ],
     rustc_flags = [
         "--cap-lints=allow",
     ],
@@ -49,19 +52,9 @@ rust_library(
         "cargo-raze",
         "manual",
     ],
-    version = "0.8.0",
+    version = "0.19.0",
     # buildifier: leave-alone
     deps = [
-        "@raze__cfg_if__1_0_0//:cfg_if",
-        "@raze__crossbeam_epoch__0_9_1//:crossbeam_epoch",
-        "@raze__crossbeam_utils__0_8_1//:crossbeam_utils",
+        "@raze__ocaml_sys__0_19_0//:ocaml_sys",
     ],
 )
-
-# Unsupported target "fifo" with type "test" omitted
-
-# Unsupported target "injector" with type "test" omitted
-
-# Unsupported target "lifo" with type "test" omitted
-
-# Unsupported target "steal" with type "test" omitted

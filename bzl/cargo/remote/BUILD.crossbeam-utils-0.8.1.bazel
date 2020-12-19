@@ -25,7 +25,7 @@ package(default_visibility = [
 ])
 
 licenses([
-    "notice",  # Apache-2.0 from expression "Apache-2.0 OR MIT"
+    "notice",  # MIT from expression "MIT OR Apache-2.0"
 ])
 
 # Generated Targets# buildifier: disable=load-on-top
@@ -35,11 +35,14 @@ load(
 )
 
 cargo_build_script(
-    name = "rayon_core_build_script",
+    name = "crossbeam_utils_build_script",
     srcs = glob(["**/*.rs"]),
     build_script_env = {
     },
     crate_features = [
+        "default",
+        "lazy_static",
+        "std",
     ],
     crate_root = "build.rs",
     data = glob(["**"]),
@@ -51,26 +54,22 @@ cargo_build_script(
         "cargo-raze",
         "manual",
     ],
-    version = "1.9.0",
+    version = "0.8.1",
     visibility = ["//visibility:private"],
     deps = [
-    ] + selects.with_or({
-        # cfg(unix)
-        (
-            "@io_bazel_rules_rust//rust/platform:x86_64-apple-darwin",
-            "@io_bazel_rules_rust//rust/platform:x86_64-unknown-linux-gnu",
-        ): [
-        ],
-        "//conditions:default": [],
-    }),
+        "@raze__autocfg__1_0_1//:autocfg",
+    ],
 )
 
+# Unsupported target "atomic_cell" with type "bench" omitted
+
 rust_library(
-    name = "rayon_core",
+    name = "crossbeam_utils",
     srcs = glob(["**/*.rs"]),
-    aliases = {
-    },
     crate_features = [
+        "default",
+        "lazy_static",
+        "std",
     ],
     crate_root = "src/lib.rs",
     crate_type = "lib",
@@ -82,34 +81,23 @@ rust_library(
         "cargo-raze",
         "manual",
     ],
-    version = "1.9.0",
+    version = "0.8.1",
     # buildifier: leave-alone
     deps = [
-        ":rayon_core_build_script",
-        "@raze__crossbeam_channel__0_5_0//:crossbeam_channel",
-        "@raze__crossbeam_deque__0_8_0//:crossbeam_deque",
-        "@raze__crossbeam_utils__0_8_1//:crossbeam_utils",
+        ":crossbeam_utils_build_script",
+        "@raze__cfg_if__1_0_0//:cfg_if",
         "@raze__lazy_static__1_4_0//:lazy_static",
-        "@raze__num_cpus__1_13_0//:num_cpus",
-    ] + selects.with_or({
-        # cfg(unix)
-        (
-            "@io_bazel_rules_rust//rust/platform:x86_64-apple-darwin",
-            "@io_bazel_rules_rust//rust/platform:x86_64-unknown-linux-gnu",
-        ): [
-        ],
-        "//conditions:default": [],
-    }),
+    ],
 )
 
-# Unsupported target "double_init_fail" with type "test" omitted
+# Unsupported target "atomic_cell" with type "test" omitted
 
-# Unsupported target "init_zero_threads" with type "test" omitted
+# Unsupported target "cache_padded" with type "test" omitted
 
-# Unsupported target "scope_join" with type "test" omitted
+# Unsupported target "parker" with type "test" omitted
 
-# Unsupported target "scoped_threadpool" with type "test" omitted
+# Unsupported target "sharded_lock" with type "test" omitted
 
-# Unsupported target "simple_panic" with type "test" omitted
+# Unsupported target "thread" with type "test" omitted
 
-# Unsupported target "stack_overflow_crash" with type "test" omitted
+# Unsupported target "wait_group" with type "test" omitted

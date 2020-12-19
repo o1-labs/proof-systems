@@ -25,19 +25,17 @@ package(default_visibility = [
 ])
 
 licenses([
-    "notice",  # MIT from expression "MIT OR Apache-2.0"
+    "notice",  # MIT from expression "MIT"
 ])
 
 # Generated Targets
 
 rust_library(
-    name = "crossbeam_deque",
+    name = "synstructure",
     srcs = glob(["**/*.rs"]),
     crate_features = [
-        "crossbeam-epoch",
-        "crossbeam-utils",
         "default",
-        "std",
+        "proc-macro",
     ],
     crate_root = "src/lib.rs",
     crate_type = "lib",
@@ -49,19 +47,12 @@ rust_library(
         "cargo-raze",
         "manual",
     ],
-    version = "0.8.0",
+    version = "0.12.4",
     # buildifier: leave-alone
     deps = [
-        "@raze__cfg_if__1_0_0//:cfg_if",
-        "@raze__crossbeam_epoch__0_9_1//:crossbeam_epoch",
-        "@raze__crossbeam_utils__0_8_1//:crossbeam_utils",
+        "@raze__proc_macro2__1_0_17//:proc_macro2",
+        "@raze__quote__1_0_6//:quote",
+        "@raze__syn__1_0_41//:syn",
+        "@raze__unicode_xid__0_2_1//:unicode_xid",
     ],
 )
-
-# Unsupported target "fifo" with type "test" omitted
-
-# Unsupported target "injector" with type "test" omitted
-
-# Unsupported target "lifo" with type "test" omitted
-
-# Unsupported target "steal" with type "test" omitted
