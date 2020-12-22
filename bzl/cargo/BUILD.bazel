@@ -76,6 +76,33 @@ alias(
 )
 
 alias(
+    name = "ocaml",
+    actual = "@raze__ocaml__0_19_0//:ocaml",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "ocaml_derive",
+    actual = "@raze__ocaml_derive__0_19_0//:ocaml_derive",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
+    name = "ocaml_sys",
+    actual = "@raze__ocaml_sys__0_19_0//:ocaml_sys",
+    tags = [
+        "cargo-raze",
+        "manual",
+    ],
+)
+
+alias(
     name = "proc_macro2",
     actual = "@raze__proc_macro2__1_0_17//:proc_macro2",
     tags = [

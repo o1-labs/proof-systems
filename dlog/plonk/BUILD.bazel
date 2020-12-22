@@ -17,6 +17,7 @@ rust_library(
 
         "//bzl/cargo:rand_core",
         "//bzl/cargo:colored",
+        "//bzl/cargo:ocaml",
         "//bzl/cargo:rand",
         "//bzl/cargo:sprs",
         "//bzl/cargo:rayon",
@@ -27,6 +28,7 @@ rust_library(
         "bn_382",
         "tweedle",
         "pasta",
-        "asm"
+        "asm",
+        "ocaml_types"
     ]
 )

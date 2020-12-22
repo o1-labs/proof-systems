@@ -12,8 +12,12 @@ rust_library(
         "//bzl/cargo:array_init",
         "//bzl/cargo:blake2",
         "//bzl/cargo:num_traits",
+        "//bzl/cargo:ocaml",
         "//bzl/cargo:rand_core",
         "//bzl/cargo:rayon",
+    ],
+    crate_features = [
+        "ocaml_types"
     ],
     proc_macro_deps = ["//bzl/cargo:num_derive"]
 )

@@ -19,6 +19,7 @@ rust_library(
         "//bzl/cargo:array_init",
         "//bzl/cargo:rand_core",
         "//bzl/cargo:colored",
+        "//bzl/cargo:ocaml",
         "//bzl/cargo:rand",
         "//bzl/cargo:rayon",
         "//bzl/cargo:blake2",
@@ -28,5 +29,6 @@ rust_library(
         "asm",
         "bn_382",
         "parallel",
+        "ocaml_types"
     ]
 )
