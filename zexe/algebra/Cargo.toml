@@ -1,0 +1,51 @@
+[package]
+name = "algebra"
+version = "0.1.0"
+authors = [
+    "Sean Bowe",
+    "Alessandro Chiesa",
+    "Matthew Green",
+    "Ian Miers",
+    "Pratyush Mishra",
+    "Howard Wu"
+]
+description = "A library for finite fields and elliptic curves"
+homepage = "https://libzexe.org"
+repository = "https://github.com/scipr/zexe"
+documentation = "https://docs.rs/algebra/"
+keywords = ["cryptography", "finite fields", "elliptic curves", "pairing"]
+categories = ["cryptography"]
+include = ["Cargo.toml", "src", "README.md", "LICENSE-APACHE", "LICENSE-MIT"]
+license = "MIT/Apache-2.0"
+edition = "2018"
+
+################################# Dependencies ################################
+
+[dependencies]
+algebra-core = { path = "../algebra-core", default-features = false }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+wasm-bindgen-test = "0.3.13"
+
+[dev-dependencies]
+rand = { version = "0.7", default-features = false }
+rand_xorshift = "0.2"
+
+[features]
+default = [ "std" ]
+
+full = [ "tweedle", "pasta", "bn_382" ]
+
+bn_382 = []
+tweedle = []
+pasta = []
+
+std = [ "algebra-core/std" ]
+parallel = [ "std", "algebra-core/parallel" ]
+derive = [ "algebra-core/derive" ]
+asm = [ "algebra-core/llvm_asm" ]
+
+ocaml_types = [ "algebra-core/ocaml_types" ]

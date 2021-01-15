@@ -48,7 +48,7 @@ pub struct ConstraintSystem<F: FftField>
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
-    pub qwl:    [E<F, D<F>>; COLUMNS],  // left input wire polynomial over domain.d4
+    pub qwl:    [E<F, D<F>>; COLUMNS],  // wire polynomial over domain.d4
     pub qml:    E<F, D<F>>,             // multiplication evaluations over domain.d4
 
     // permutation polynomials
@@ -148,6 +148,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         // compute poseidon constraint polynomials
         let psm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ps()).collect(), domain.d1).interpolate();
+        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         // compute packing constraint polynomials
         let packm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.pack()).collect(), domain.d1).interpolate();
@@ -179,8 +180,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             // poseidon constraint polynomials
             rcm: array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
                 map(|gate| if gate.typ == GateType::Poseidon {gate.rc()[i]} else {F::zero()}).collect(), domain.d1).interpolate()),
-            ps4: psm.evaluate_over_domain_by_ref(domain.d4),
-            ps8: psm.evaluate_over_domain_by_ref(domain.d8),
+            ps4: E::<F, D<F>>::from_vec_and_domain((0..domain.d4.size).map(|j| ps8.evals[2*j as usize]).collect(), domain.d4),
+            ps8,
             psm,
 
             // packing constraint polynomials

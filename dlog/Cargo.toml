@@ -4,17 +4,23 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
-groupmap = { path = "../../zexe/groupmap" }
-ff-fft = { path = "../../zexe/ff-fft" }
+algebra = { path = "../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
+groupmap = { path = "../zexe/groupmap" }
+ff-fft = { path = "../zexe/ff-fft" }
 commitment_dlog = { path = "commitment" }
 marlin_circuits = { path = "../circuits/marlin" }
 marlin_protocol_dlog = { path = "marlin" }
 plonk_circuits = { path = "../circuits/plonk" }
 plonk_protocol_dlog = { path = "plonk" }
 oracle = { path = "../oracle" }
-rand_core = { version = "0.5" }
-colored = "1.9.2"
-rand = "0.7.3"
+colored = "2.0.0"
+rand = { version = "0.7", default-features = false }
 sprs = "0.7.1"
-rayon = { version = "1" }
+array-init = "1.0.0"
+wasm-bindgen = "0.2.69"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.19"
+
+[target.wasm32-unknown-unknown]
+runner = 'wasm-bindgen-test-runner'

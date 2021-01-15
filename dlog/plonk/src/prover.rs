@@ -12,7 +12,6 @@ use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS}
 pub use super::{index::Index, range};
 use crate::plonk_sponge::{FrSponge};
 use array_init::array_init;
-use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -51,6 +50,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         witness: &[Vec::<Fr<G>>; COLUMNS],
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        rng: &mut rand::rngs::StdRng
     )
     -> Result<Self, ProofError>
     {
@@ -66,8 +66,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // compute public input polynomial
         let public = witness[0][0..index.cs.public].to_vec();
         let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(public.clone(), index.cs.domain.d1).interpolate();
-
-        let rng = &mut thread_rng();
 
         // compute witness polynomials
         let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| Evaluations::<Fr<G>,

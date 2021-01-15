@@ -21,7 +21,6 @@ use algebra::{
 use ff_fft::DensePolynomial;
 use oracle::{FqSponge, sponge::ScalarChallenge};
 use rand_core::RngCore;
-use rayon::prelude::*;
 use std::iter::Iterator;
 pub use crate::CommitmentField;
 
@@ -540,7 +539,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             chal_invs.push(u_inv);
 
             a = a_hi
-                .par_iter()
+                .iter()
                 .zip(a_lo)
                 .map(|(&hi, &lo)| {
                     // lo + u_inv * hi
@@ -552,7 +551,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 .collect();
 
             b = b_lo
-                .par_iter()
+                .iter()
                 .zip(b_hi)
                 .map(|(&lo, &hi)| {
                     // lo + u * hi
@@ -724,7 +723,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             //
             // to check correctness of the sg component.
             {
-                let terms: Vec<_> = s.par_iter().map(|s| sg_rand_base_i * s).collect();
+                let terms: Vec<_> = s.iter().map(|s| sg_rand_base_i * s).collect();
 
                 for (i, term) in terms.iter().enumerate() {
                     scalars[i + 1] += term;

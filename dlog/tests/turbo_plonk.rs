@@ -1,6 +1,6 @@
 /*********************************************************************************************************
 
-This source file tests constraints for the following computations:
+This section of the source file tests constraints for the following computations:
 
 1. Weierstrass curve group addition of non-special pairs of points
    via generic Plonk constraints
@@ -37,19 +37,26 @@ use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use std::{io, io::Write};
+use array_init::array_init;
 use groupmap::GroupMap;
-use std::time::Instant;
-use colored::Colorize;
-use rand_core::OsRng;
+use rand::SeedableRng;
+
+extern crate wasm_bindgen_test;
+use wasm_bindgen_test::*;
 
 const MAX_SIZE: usize = 2048; // max size of poly chunks
 const N: usize = 2048; // Plonk domain size
 const PUBLIC: usize = 6;
 
-#[test]
+#[cfg(test)]
+wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+
+#[wasm_bindgen_test]
 fn turbo_plonk()
 {
+    // this PRNG has to be replaced with a secure RNG in the production environment
+    let mut rng = rand::rngs::StdRng::from_seed(array_init(|i| [1; 32][i]*(i as u8)));
+
     let z = Fp::zero();
     let p = Fp::one();
     let n = -Fp::one();
@@ -285,13 +292,12 @@ fn turbo_plonk()
         SRSSpec::Use(&srs)
     );
 
-    positive(&index);
-    negative(&index);
+    positive(&index, &mut rng);
+    negative(&index, &mut rng);
 }
 
-fn positive(index: &Index<Affine>)
+fn positive(index: &Index<Affine>, rng: &mut rand::rngs::StdRng)
 {
-    let rng = &mut OsRng;
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
     let params = oracle::tweedle::fp5::params();
@@ -303,19 +309,16 @@ fn positive(index: &Index<Affine>)
             v, index.cs.domain.d1).interpolate();
         index.srs.get_ref().commit_non_hiding(&p, None)
     }).collect();
-    let mut w = || -> Fp {Fp::rand(rng)};
 
-    println!("{}", "Prover 10 zk-proofs computation".green());
     let verifier_index = index.verifier_index();
-    let mut start = Instant::now();
     
-    for test in 0..10
+    for _test in 0..1
     {
-        let (x1, y1) = sample_point::<Fp>();
-        let (mut x2, mut y2) = sample_point::<Fp>();
+        let (x1, y1) = sample_point::<Fp>(rng);
+        let (mut x2, mut y2) = sample_point::<Fp>(rng);
         while x1 == x2
         {
-            let (x, y) = sample_point::<Fp>();
+            let (x, y) = sample_point::<Fp>(rng);
             x2 = x;
             y2 = y;
         }
@@ -379,6 +382,7 @@ fn positive(index: &Index<Affine>)
             | x1 | y1 | x4 | y4 | r2 |
     */
 
+        let mut w = || -> Fp {Fp::rand(rng)};
         let mut witness =
         [
             vec![ x1, x2, x3, y1, y2, y3, x1, a1, s1, x1, a2,x1, x3, x1, y1, s2, s2, x4, x1],
@@ -542,37 +546,23 @@ fn positive(index: &Index<Affine>)
 
         // add the proof to the batch
         batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
-            &group_map, &witness, &index, vec![prev]).unwrap());
-
-        print!("{:?}\r", test);
-        io::stdout().flush().unwrap();
+            &group_map, &witness, &index, vec![prev], rng).unwrap());
     }
-    println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
-        &group_map, &vec![ (&verifier_index, &lgr_comms, &batch[0]) ])
-    {
-        Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
-        Ok(_) => {}
-    }
+    assert_eq!(ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
+        &group_map, &vec![ (&verifier_index, &lgr_comms, &batch[0]) ], rng).unwrap(), true);
 
     // verify the proofs in batch
-    println!("{}", "Verifier zk-proofs verification".green());
-    start = Instant::now();
     let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &batch)
-    {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
-    }
+    assert_eq!(ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &batch, rng).unwrap(), true);
 }
 
-fn negative(index: &Index<Affine>)
+fn negative(index: &Index<Affine>, rng: &mut rand::rngs::StdRng)
 {
     // non-satisfying witness
-    let (x1, y1) = sample_point::<Fp>();
-    let (x2, y2) = sample_point::<Fp>();
+    let (x1, y1) = sample_point::<Fp>(rng);
+    let (x2, y2) = sample_point::<Fp>(rng);
     let (mut x3, y3) = add_points((x1, y1), (x2, y2));
     x3 = x3 - Fp::one();
 
@@ -580,7 +570,6 @@ fn negative(index: &Index<Affine>)
     let a2 = x1 - &x3;
     let s = (y2 - &y1) / &(x2 - &x1);
 
-    let rng = &mut OsRng;
     let mut w = || -> Fp {Fp::rand(rng)};
 
     let mut l = vec![ x1, x2, x3, y1, y2, y3, x1, a1,  s, x1, a2];
@@ -621,9 +610,8 @@ fn add_points(a: (Fp, Fp), b: (Fp, Fp)) -> (Fp, Fp)
     }
 }
 
-fn sample_point<F: PrimeField + SquareRootField>() -> (F, F)
+fn sample_point<F: PrimeField + SquareRootField>(rng: &mut rand::rngs::StdRng) -> (F, F)
 {
-    let rng = &mut OsRng;
     let x = F::rand(rng);
     let mut y2 = x.square() * x + F::one().double().double() + F::one();
     while y2.legendre().is_qnr() == true
@@ -633,4 +621,159 @@ fn sample_point<F: PrimeField + SquareRootField>() -> (F, F)
     }
 
     (x, y2.sqrt().unwrap())
+}
+
+/*****************************************************************************************************************
+
+This section of the source file tests polynomial commitments, batched openings and
+verification of a batch of batched opening proofs of polynomial commitments
+
+*****************************************************************************************************************/
+
+const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
+const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
+const NP: usize = PERIOD * NUM_POS; // Plonk domain size
+const M: usize = PERIOD * (NUM_POS-1);
+const MAX_SIZEP: usize = NP; // max size of poly chunks
+const PUBLICP : usize = 0;
+
+#[wasm_bindgen_test]
+fn poseidon_tweedledee()
+{
+    // this PRNG has to be replaced with a secure RNG in the production environment
+    let mut rng = rand::rngs::StdRng::from_seed(array_init(|i| [1; 32][i]*(i as u8)));
+
+    let c = &oracle::tweedle::fp5::params().round_constants;
+
+    // circuit gates
+
+    let mut i = 0;
+    let mut gates: Vec<CircuitGate::<Fp>> = Vec::with_capacity(NP);
+
+    // custom constraints for Poseidon hash function permutation
+
+    for _ in 0..NUM_POS-1
+    {
+        // ROUNDS_FULL full rounds constraint gates
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL
+        {
+            let wires =
+            [
+                Wire{col:0, row:(i+PERIOD)%M},
+                Wire{col:1, row:(i+PERIOD)%M},
+                Wire{col:2, row:(i+PERIOD)%M},
+                Wire{col:3, row:(i+PERIOD)%M},
+                Wire{col:4, row:(i+PERIOD)%M},
+            ];
+            gates.push(CircuitGate::<Fp>::create_poseidon(i, wires, c[j].clone()));
+            i+=1;
+        }
+        let wires =
+        [
+            Wire{col:0, row:(i+PERIOD)%M},
+            Wire{col:1, row:(i+PERIOD)%M},
+            Wire{col:2, row:(i+PERIOD)%M},
+            Wire{col:3, row:(i+PERIOD)%M},
+            Wire{col:4, row:(i+PERIOD)%M},
+        ];
+        gates.push(CircuitGate::<Fp>::zero(i, wires));
+        i+=1;
+    }
+
+    for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+    {
+        gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
+        i+=1;
+    }
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i+=1;
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i+=1;
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    
+    let srs = SRS::create(MAX_SIZEP);
+
+    let (endo_q, _endo_r) = endos::<Other>();
+    let index = Index::<Affine>::create
+    (
+        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp5::params(), PUBLICP).unwrap(),
+        oracle::tweedle::fq5::params(),
+        endo_q,
+        SRSSpec::Use(&srs)
+    );
+
+    positivep(&index, &mut rng);
+}
+
+fn positivep(index: &Index<Affine>, rng: &mut rand::rngs::StdRng)
+{
+    let params = oracle::tweedle::fp5::params();
+    let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants>::new();
+
+    let mut batch = Vec::new();
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
+
+    for _test in 0..1
+    {
+        //  witness for Poseidon permutation custom constraints
+        let mut w =
+        [
+            Vec::<Fp>::with_capacity(NP),
+            Vec::<Fp>::with_capacity(NP),
+            Vec::<Fp>::with_capacity(NP),
+            Vec::<Fp>::with_capacity(NP),
+            Vec::<Fp>::with_capacity(NP),
+        ];
+
+        let init = vec![Fp::rand(rng), Fp::rand(rng), Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
+        for _ in 0..NUM_POS-1
+        {
+            sponge.state = init.clone();
+            w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+
+            // ROUNDS_FULL full rounds
+            for j in 0..PlonkSpongeConstants::ROUNDS_FULL
+            {
+                sponge.full_round(j, &params);
+                w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+            }
+        }
+
+        sponge.state = init.clone();
+        w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+
+        // ROUNDS_FULL full rounds
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
+        {
+            sponge.full_round(j, &params);
+            w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+        }
+
+        w.iter_mut().for_each(|w| {w.push(Fp::rand(rng)); w.push(Fp::rand(rng))});
+
+        // verify the circuit satisfiability by the computed witness
+        assert_eq!(index.cs.verify(&w), true);
+
+        let prev = {
+            let k = ceil_log2(index.srs.get_ref().g.len());
+            let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
+            let comm = {
+                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
+                index.srs.get_ref().commit_non_hiding(&b, None)
+            };
+            ( chals, comm )
+        };
+
+        // add the proof to the batch
+        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
+            &group_map, &w, &index, vec![prev], rng).unwrap());
+    }
+
+    let verifier_index = index.verifier_index();
+
+    let lgr_comms = vec![];
+    let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
+
+    // verify the proofs in batch
+    assert_eq!(ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &batch, rng).unwrap(), true);
 }

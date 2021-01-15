@@ -12,7 +12,6 @@ use plonk_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::Cons
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::EvaluationDomain;
-use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -181,6 +180,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
     (
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
+        rng: &mut rand::rngs::StdRng
     ) -> Result<bool, ProofError>
     {
         if proofs.len() == 0 {
@@ -313,7 +313,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 
-        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng())
+        match srs.verify::<EFqSponge>(group_map, &mut batch, rng)
         {
             false => Err(ProofError::OpenProof),
             true => Ok(true)

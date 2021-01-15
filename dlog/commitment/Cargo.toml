@@ -4,18 +4,21 @@ version = "0.1.0"
 edition = "2018"
 
 [lib]
-path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-algebra = { path = "../../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
+algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
 dlog_solver = { path = "../../dlog_solver" }
-groupmap = { path = "../../../zexe/groupmap" }
-ff-fft = { path = "../../../zexe/ff-fft", features = [ "parallel" ] }
+groupmap = { path = "../../zexe/groupmap" }
+ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel" ] }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }
-colored = "1.9.2"
+colored = "2.0.0"
 rand = "0.7.3"
-rayon = { version = "1" }
 blake2 = "0.7"
-itertools = "0.8.2"
-array-init = "0.1.1"
+itertools = "0.10.0"
+array-init = "1.0.0"
+wasm-bindgen = "0.2.69"
+
+#[dev-dependencies]
+wasm-bindgen-test = "0.3.19"
