@@ -18,7 +18,7 @@ BUILDING/RUNNING TEST WITHIN BROWSER
 2. wasm-pack test --release --firefox
       this builds wasm module for Firefox
    wasm-pack test --release --chrome
-      this builds wasm module for Firefox
+      this builds wasm module for Chrome
 3. Upon build completion and the cli prompt, open http://127.0.0.1:8000/ in Safari or Chrome browser
 4. After the test execution completion, browser should display the following:
 
