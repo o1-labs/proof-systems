@@ -1,4 +1,4 @@
-This branch contains Plonk protocol implementation that is adapted to run as WebAssembly within Safari (or Chrome) broser. This provides an example of building the Plonk setup/prove/verify protocol tests as wasm module running within the browser. The function excersised here consists of the following two tests:
+This branch contains Plonk protocol implementation which is adapted to run as WebAssembly within Safari (or Chrome) browser. This provides an example of building the Plonk setup/prove/verify protocol tests as wasm module running within the browser. The function exercised here consists of the following two tests:
 
 1. turbo_plonk
    This runs Plonk setup/prove/verify protocols for a circuit consisting of all the supported (generic and custom) constraints
@@ -20,7 +20,7 @@ BUILDING/RUNNING TEST WITHIN BROWSER
    wasm-pack test --release --chrome
       this builds wasm module for Firefox
 3. Upon build completion and the cli prompt, open http://127.0.0.1:8000/ in Safari or Chrome browser
-4. After the test execution completioin, browser should display the following:
+4. After the test execution completion, browser should display the following:
 
 running 2 tests
 test turbo_plonk::poseidon_tweedledee ... ok
