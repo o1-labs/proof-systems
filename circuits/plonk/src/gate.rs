@@ -19,12 +19,13 @@ pub enum GateType
     Zero,       // zero gate
     Generic,    // generic arithmetic gate
     Poseidon,   // Poseidon permutation gate
-    Add,        // Gate constraining EC addition in Affine form
-    Double,     // Gate constraining EC point doubling in Affine form
-    Vbmul1,     // Gate constraining EC variable base scalar multiplication 
-    Vbmul2,     // Gate constraining unpacking EC variable base scalar multiplication 
-    Endomul,    // Gate constraining EC variable base scalar multiplication with group endomorphim optimization
-    Pack,       // Gate constraining packing
+    Add,        // EC addition in Affine form
+    Double,     // EC point doubling in Affine form
+    Vbmul1,     // EC variable base scalar multiplication 
+    Vbmul2,     // unpacking EC variable base scalar multiplication 
+    Endomul,    // EC variable base scalar multiplication with group endomorphim optimization
+    Pack,       // packing
+    Lookup,     // lookup
 }
 
 #[derive(Clone)]
@@ -116,6 +117,7 @@ impl<F: FftField> CircuitGate<F>
             GateType::Vbmul2    => self.verify_vbmul2(witness),
             GateType::Endomul   => self.verify_endomul(witness, cs),
             GateType::Pack      => self.verify_pack(witness),
+            GateType::Lookup    => self.verify_lookup(witness),
         }
     }
 }

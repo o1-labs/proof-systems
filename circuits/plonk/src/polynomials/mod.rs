@@ -7,3 +7,4 @@ pub mod varbasemul;
 pub mod endosclmul;
 pub mod permutation;
 pub mod varbasemulpck;
+pub mod lookup;

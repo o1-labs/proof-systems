@@ -29,6 +29,8 @@ This source file tests constraints for the following computations:
 9. short Weierstrass curve group endomorphism optimised variable base
    scalar multiplication via custom Plonk constraints
 
+9. lookup of 8-bit XOR operations
+
 **********************************************************************************************************/
 
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
@@ -273,6 +275,12 @@ fn turbo_plonk()
     i += 1;
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
+    
+    // custom constraint gates for 8-bit XOR lookups
+
+    i += 1;
+    gates.push(CircuitGate::<Fp>::create_lookup
+        (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
 
     let srs = SRS::create(MAX_SIZE);
 
@@ -524,6 +532,15 @@ fn positive(index: &Index<Affine>)
             xp = xs;
             yp = ys;
         }
+    
+        // witness for for 8-bit XOR lookup
+
+        witness[0].push(Fp::one()); // operatopn opcode
+        witness[1].push(Fp::from(111 as u64));
+        witness[2].push(Fp::from(97 as u64));
+        witness[3].push(Fp::from(103 as u64));
+        witness[4].push(Fp::one() + &(Fp::from(111 as u64) * &Fp::from(16 as u64)) +
+            &(Fp::from(97 as u64) * &Fp::from(4096 as u64)) + &(Fp::from(103 as u64) * &Fp::from(1048576 as u64)));
 
         witness.iter_mut().for_each(|w| w.resize(N, Fp::zero()));
 

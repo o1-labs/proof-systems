@@ -37,6 +37,7 @@ pub struct ConstraintSystem<F: FftField>
     pub psm:    DP<F>,                  // poseidon constraint selector polynomial
 
     pub packm:  DP<F>,                  // packing constraint selector polynomial
+    pub lkpm:   DP<F>,                  // lookup constraint selector polynomial
 
     // ECC arithmetic selector polynomials
     pub addm:   DP<F>,                  // EC point addition constraint selector polynomial
@@ -61,6 +62,8 @@ pub struct ConstraintSystem<F: FftField>
     pub ps8:    E<F, D<F>>,             // poseidon selector over domain.d8
 
     pub packl:  E<F, D<F>>,             // packing constraint selector polynomial over domain.d4
+    pub lkpl4:  E<F, D<F>>,             // lookup constraint selector polynomial over domain.d4
+    pub lkpl8:  E<F, D<F>>,             // lookup constraint selector polynomial over domain.d8
 
     // ECC arithmetic selector polynomials
     pub addl:   E<F, D<F>>,             // EC point addition selector evaluations w over domain.d4
@@ -148,9 +151,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         // compute poseidon constraint polynomials
         let psm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ps()).collect(), domain.d1).interpolate();
+        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
-        // compute packing constraint polynomials
+        // compute packing and lookup constraint polynomials
         let packm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.pack()).collect(), domain.d1).interpolate();
+        let lkpm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.lookup()).collect(), domain.d1).interpolate();
+        let lkpl8 = lkpm.evaluate_over_domain_by_ref(domain.d8);
 
         // compute ECC arithmetic constraint polynomials
         let addm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add()).collect(), domain.d1).interpolate();
@@ -179,13 +185,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             // poseidon constraint polynomials
             rcm: array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
                 map(|gate| if gate.typ == GateType::Poseidon {gate.rc()[i]} else {F::zero()}).collect(), domain.d1).interpolate()),
-            ps4: psm.evaluate_over_domain_by_ref(domain.d4),
-            ps8: psm.evaluate_over_domain_by_ref(domain.d8),
+            ps4: E::<F, D<F>>::from_vec_and_domain((0..domain.d4.size).map(|j| ps8.evals[2*j as usize]).collect(), domain.d4),
+            ps8,
             psm,
 
-            // packing constraint polynomials
+            // packing and lookup constraint polynomials
             packl: packm.evaluate_over_domain_by_ref(domain.d4),
             packm,
+            lkpl4: E::<F, D<F>>::from_vec_and_domain((0..domain.d4.size).map(|j| lkpl8.evals[2*j as usize]).collect(), domain.d4),
+            lkpl8,
+            lkpm,
 
             // ECC arithmetic constraint polynomials
             addl: addm.evaluate_over_domain_by_ref(domain.d4),

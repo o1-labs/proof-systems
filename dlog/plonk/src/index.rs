@@ -6,8 +6,8 @@ This source file implements Plonk Protocol Index primitive.
 
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
-use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants};
 use plonk_circuits::{constraints::{zk_w, ConstraintSystem}, wires::COLUMNS};
+use oracle::poseidon::ArithmeticSpongeParams;
 use array_init::array_init;
 use algebra::AffineCurve;
 use algebra::PrimeField;
@@ -89,6 +89,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub mul2_comm:  PolyComm<G>,            // EC variable base scalar unpacking multiplication selector polynomial commitment
     pub emul_comm:  PolyComm<G>,            // endoscalar multiplication selector polynomial commitment
     pub pack_comm:  PolyComm<G>,            // packing selector polynomial commitment
+    pub lkp_comm:   PolyComm<G>,            // lookup selector polynomial commitment
 
     pub shift:      [Fr<G>; COLUMNS],       // wire coordinate shifts
     pub zkpm:       DensePolynomial<Fr<G>>, // zero-knowledge polynomial
@@ -127,6 +128,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             mul2_comm: srs.get_ref().commit_non_hiding(&self.cs.mul2m, None),
             emul_comm: srs.get_ref().commit_non_hiding(&self.cs.emulm, None),
             pack_comm: srs.get_ref().commit_non_hiding(&self.cs.packm, None),
+            lkp_comm: srs.get_ref().commit_non_hiding(&self.cs.lkpm, None),
 
             w: zk_w(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
@@ -158,7 +160,8 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = endo_q;
         Index
         {
-            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            max_quot_size: cs.domain.d8.size as usize - 7,
             fq_sponge_params,
             max_poly_size,
             srs,

@@ -144,10 +144,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let mul4 = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
         // unpacking scalar multiplication
         let mul8 = index.cs.vbmulpck_quot(&lagrange, &alpha[range::MLPCK]);
+        // lookup
+        let (lkp4, lkp8) = index.cs.lookup_quot(&lagrange, &alpha[range::LKP]);
 
         // collect contribution evaluations
-        let t4 = &add + &(&mul4 + &(&emul4 + &(&pack + &(&pos4 + &gen))));
-        let t8 = &perm + &(&mul8 + &(&pos8 + &double));
+        let t4 = &(&(&(&(&(&add + &mul4) + &emul4) + &pack) + &pos4) + &gen) + &lkp4;
+        let t8 = &(&(&(&perm + &mul8) + &pos8) + &double) + &lkp8;
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
@@ -207,7 +209,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // compute and evaluate linearization polynomial
 
         let f =
-            &(&(&(&(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
+            &(&(&(&(&(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN])) +
             &index.cs.ecad_lnrz(&e, &alpha[range::ADD])) +
             &index.cs.double_lnrz(&e, &alpha[range::DBL])) +
@@ -215,6 +217,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             &index.cs.pack_lnrz(&e, &alpha[range::PACK])) +
             &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
             &index.cs.vbmulpck_lnrz(&e, &alpha[range::MLPCK])) +
+            &index.cs.lookup_lnrz(&e, &alpha[range::LKP])) +
             &index.cs.perm_lnrz(&e, &oracles);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);

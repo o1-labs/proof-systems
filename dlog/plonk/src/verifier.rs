@@ -234,6 +234,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 s.push(ConstraintSystem::pack_scalars(&evals, &alpha[range::PACK]));
                 p.push(&index.pack_comm);
 
+                // lookup
+                s.push(ConstraintSystem::lookup_scalars(&evals, &alpha[range::LKP]));
+                p.push(&index.lkp_comm);
+
                 // EC variable base scalar multiplication
                 s.push(ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
                 s.push(ConstraintSystem::vbmulpck_scalars(&evals, &alpha[range::MLPCK]));

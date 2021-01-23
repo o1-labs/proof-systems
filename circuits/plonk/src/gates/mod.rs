@@ -6,3 +6,4 @@ pub mod addition;
 pub mod varbasemul;
 pub mod endosclmul;
 pub mod varbasemulpck;
+pub mod lookup;
