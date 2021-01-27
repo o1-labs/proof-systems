@@ -278,10 +278,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> WitnessOverDomains<F>
     {
         // compute shifted witness polynomials
-        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d4));
-        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
         let w8: [E<F, D<F>>; COLUMNS] = array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
         let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
+
+        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| E::<F, D<F>>::from_vec_and_domain((0..self.domain.d4.size).
+            map(|j| w8[i].evals[2*j as usize]).collect(), self.domain.d4));
+        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
 
         WitnessOverDomains
         {
