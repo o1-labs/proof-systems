@@ -1,4 +1,5 @@
 pub mod poseidon;
+pub mod poseidon_5_wires;
 pub mod rndoracle;
 pub mod pasta;
 pub mod tweedle;
