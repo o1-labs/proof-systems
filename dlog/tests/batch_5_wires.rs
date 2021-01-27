@@ -10,7 +10,7 @@ use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve}};
 use oracle::utils::PolyUtils;
 
 use oracle::FqSponge;
-use oracle::sponge::{DefaultFqSponge};
+use oracle::sponge_5_wires::{DefaultFqSponge};
 use oracle::poseidon_5_wires::{PlonkSpongeConstants as SC};
 
 use std::time::{Instant, Duration};

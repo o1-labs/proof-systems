@@ -2,8 +2,9 @@ use plonk_5_wires_circuits::scalars::ProofEvaluations;
 use algebra::{
     Field, PrimeField,
 };
-use oracle::poseidon_5_wires::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC};
-use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
+use oracle::poseidon_5_wires::{ArithmeticSponge, PlonkSpongeConstants as SC};
+use oracle::poseidon::{ArithmeticSpongeParams, Sponge};
+use oracle::sponge_5_wires::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
@@ -27,7 +28,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     }
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
-        ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+        ScalarChallenge(self.squeeze(oracle::sponge_5_wires::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>) {

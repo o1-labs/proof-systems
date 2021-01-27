@@ -7,7 +7,7 @@ This source file implements zk-proof batch verifier functionality.
 use crate::plonk_sponge::FrSponge;
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
-use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
+use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
 use plonk_5_wires_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};

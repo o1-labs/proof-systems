@@ -8,32 +8,8 @@ It implements Poseidon Hash Function primitive
 *****************************************************************************************************************/
 
 use algebra::Field;
-
-pub trait SpongeConstants {
-    const ROUNDS_FULL: usize;
-    const ROUNDS_PARTIAL: usize;
-    const HALF_ROUNDS_FULL: usize;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize;
-    const FULL_MDS: bool;
-}
-
-#[derive(Clone)]
-pub struct MarlinSpongeConstants {
-}
-
-impl SpongeConstants for MarlinSpongeConstants {
-    const ROUNDS_FULL: usize = 8;
-    const ROUNDS_PARTIAL: usize = 30;
-    const HALF_ROUNDS_FULL: usize = 4;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 17;
-    const FULL_MDS: bool = false;
-}
+use super::poseidon::{ArithmeticSpongeParams, Sponge, SpongeState,
+                      SpongeConstants};
 
 #[derive(Clone)]
 pub struct PlonkSpongeConstants {
@@ -50,27 +26,8 @@ impl SpongeConstants for PlonkSpongeConstants {
     const FULL_MDS: bool = true;
 }
 
-pub trait Sponge<Input, Digest> {
-    type Params;
-    fn new() -> Self;
-    fn absorb(&mut self, params: &Self::Params, x: &[Input]);
-    fn squeeze(&mut self, params: &Self::Params) -> Digest;
-}
-
 pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
     x.pow([SC::SPONGE_BOX as u64])
-}
-
-#[derive(Clone, Debug)]
-pub enum SpongeState {
-    Absorbed(usize),
-    Squeezed(usize),
-}
-
-#[derive(Clone)]
-pub struct ArithmeticSpongeParams<F: Field> {
-    pub round_constants: Vec<Vec<F>>,
-    pub mds: Vec<Vec<F>>,
 }
 
 #[derive(Clone)]

@@ -5,6 +5,7 @@ pub mod pasta;
 pub mod tweedle;
 pub mod bn_382;
 pub mod sponge;
+pub mod sponge_5_wires;
 pub mod utils;
 
 use algebra::Field;
