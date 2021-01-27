@@ -31,7 +31,7 @@ This source file tests constraints for the following computations:
 
 **********************************************************************************************************/
 
-use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon_5_wires::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};

@@ -11,7 +11,7 @@ use oracle::utils::PolyUtils;
 
 use oracle::FqSponge;
 use oracle::sponge::{DefaultFqSponge};
-use oracle::poseidon::{PlonkSpongeConstants as SC};
+use oracle::poseidon_5_wires::{PlonkSpongeConstants as SC};
 
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;

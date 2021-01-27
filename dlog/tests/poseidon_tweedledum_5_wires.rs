@@ -5,7 +5,7 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 **********************************************************************************************************/
 
 use plonk_circuits::wires::Wire;
-use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon_5_wires::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
