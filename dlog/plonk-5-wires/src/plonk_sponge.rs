@@ -2,7 +2,7 @@ use plonk_5_wires_circuits::scalars::ProofEvaluations;
 use algebra::{
     Field, PrimeField,
 };
-use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC};
+use oracle::poseidon_5_wires::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {

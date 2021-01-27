@@ -9,7 +9,7 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use oracle::poseidon::{PlonkSpongeConstants, sbox};
+use oracle::poseidon_5_wires::{PlonkSpongeConstants, sbox};
 use crate::{wires::GateWires, wires::{COLUMNS, WIRES}, constraints::ConstraintSystem};
 use crate::gate::{CircuitGate, GateType};
 use array_init::array_init;

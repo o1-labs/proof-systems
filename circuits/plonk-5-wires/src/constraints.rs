@@ -5,7 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::poseidon_5_wires::ArithmeticSpongeParams;
 use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType};
