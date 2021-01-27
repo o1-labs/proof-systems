@@ -8,7 +8,7 @@ use algebra::{Field, AffineCurve, Zero, One, UniformRand};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
-use plonk_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
+use plonk_5_wires_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
 pub use super::{index::Index, range};
 use crate::plonk_sponge::{FrSponge};
 use array_init::array_init;
@@ -314,9 +314,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         Ok(Self
         {
-            w_comm: array_init(|i| w_comm[i].0.clone()),
-            z_comm: z_comm.0,
-            t_comm: t_comm.0,
+            commitments: ProverCommitments {
+                w_comm: array_init(|i| w_comm[i].0.clone()),
+                z_comm: z_comm.0,
+                t_comm: t_comm.0,
+            },
             proof: index.srs.get_ref().open
             (
                 group_map,

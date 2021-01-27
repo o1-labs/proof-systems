@@ -1,4 +1,4 @@
-use plonk_circuits::scalars::ProofEvaluations;
+use plonk_5_wires_circuits::scalars::ProofEvaluations;
 use algebra::{
     Field, PrimeField,
 };

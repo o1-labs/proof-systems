@@ -8,7 +8,7 @@ use crate::plonk_sponge::FrSponge;
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
-use plonk_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::ConstraintSystem};
+use plonk_5_wires_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::EvaluationDomain;
@@ -74,7 +74,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_g(&p_comm.unshifted);
-        self.w_comm.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+        self.commitments.w_comm.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
@@ -280,19 +280,19 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 ).collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
                 polynoms.extend(vec![(p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None)]);
-                polynoms.extend(proof.w_comm.iter().zip((0..COLUMNS).map(|i| proof.evals.iter().map(|e| &e.w[i]).
+                polynoms.extend(proof.commitments.w_comm.iter().zip((0..COLUMNS).map(|i| proof.evals.iter().map(|e| &e.w[i]).
                     collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
                 polynoms.extend
                 (
                     vec!
                     [
-                        (&proof.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
+                        (&proof.commitments.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
                     ]
                 );
                 polynoms.extend(index.sigma_comm.iter().zip((0..COLUMNS-1).map(|i| proof.evals.iter().map(|e| &e.s[i]).
                     collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
-                polynoms.extend(vec![(&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size))]);
+                polynoms.extend(vec![(&proof.commitments.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size))]);
 
                 // prepare for the opening proof verification
                 (
