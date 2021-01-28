@@ -18,13 +18,50 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct ProverCommitments<G: AffineCurve>
 {
     // polynomial commitments
     pub w_comm: [PolyComm<G>; COLUMNS],
     pub z_comm: PolyComm<G>,
     pub t_comm: PolyComm<G>,
+}
+
+#[derive(Clone)]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+pub struct CamlProverCommitments<G: AffineCurve>
+{
+    // polynomial commitments
+    pub w_comm: (PolyComm<G>, PolyComm<G>, PolyComm<G>, PolyComm<G>, PolyComm<G>),
+    pub z_comm: PolyComm<G>,
+    pub t_comm: PolyComm<G>,
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<G: AffineCurve + ocaml::ToValue> ocaml::ToValue for ProverCommitments<G> where
+    G::ScalarField: ocaml::ToValue {
+    fn to_value(self) -> ocaml::Value {
+        let [w_comm0, w_comm1, w_comm2, w_comm3, w_comm4] = self.w_comm;
+        ocaml::ToValue::to_value(
+            CamlProverCommitments {
+                w_comm: (w_comm0, w_comm1, w_comm2, w_comm3, w_comm4),
+                z_comm: self.z_comm,
+                t_comm: self.t_comm,
+            })
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverCommitments<G> where
+    G::ScalarField: ocaml::FromValue {
+    fn from_value(v: ocaml::Value) -> Self {
+        let comms: CamlProverCommitments<G> = ocaml::FromValue::from_value(v);
+        let (w_comm0, w_comm1, w_comm2, w_comm3, w_comm4) = comms.w_comm;
+        ProverCommitments {
+            w_comm: [w_comm0, w_comm1, w_comm2, w_comm3, w_comm4],
+            z_comm: comms.z_comm,
+            t_comm: comms.t_comm,
+        }
+    }
 }
 
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]

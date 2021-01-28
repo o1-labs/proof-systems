@@ -11,7 +11,6 @@ use ff_fft::DensePolynomial;
 use array_init::array_init;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct ProofEvaluations<Fs> {
     pub w: [Fs; COLUMNS],
     pub z: Fs,
@@ -29,6 +28,56 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             t: DensePolynomial::eval_polynomial(&self.t, pt),
             f: DensePolynomial::eval_polynomial(&self.f, pt),
+        }
+    }
+}
+
+#[derive(Clone)]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+pub struct CamlProofEvaluations<Fs> {
+    pub w: (Fs, Fs, Fs, Fs, Fs),
+    pub z: Fs,
+    pub t: Fs,
+    pub f: Fs,
+    pub s: (Fs, Fs, Fs, Fs),
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
+    fn to_value(self) -> ocaml::Value {
+        ocaml::ToValue::to_value(
+            CamlProofEvaluations {
+                w: {
+                    let [w0, w1, w2, w3, w4] = self.w;
+                    (w0, w1, w2, w3, w4)
+                },
+                z: self.z,
+                t: self.t,
+                f: self.f,
+                s: {
+                    let [s0, s1, s2, s3] = self.s;
+                    (s0, s1, s2, s3)
+                },
+            })
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
+    fn from_value(v: ocaml::Value) -> Self {
+        let evals: CamlProofEvaluations<Fs> = ocaml::FromValue::from_value(v);
+        ProofEvaluations {
+            w: {
+                let (w0, w1, w2, w3, w4) = evals.w;
+                [w0, w1, w2, w3, w4]
+            },
+            z: evals.z,
+            t: evals.t,
+            f: evals.f,
+            s: {
+                let (s0, s1, s2, s3) = evals.s;
+                [s0, s1, s2, s3]
+            },
         }
     }
 }
