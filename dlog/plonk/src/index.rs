@@ -7,10 +7,9 @@ This source file implements Plonk Protocol Index primitive.
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
 use plonk_circuits::{constraints::{zk_w, ConstraintSystem}, wires::COLUMNS};
+use algebra::{AffineCurve, PrimeField, Field};
 use oracle::poseidon::ArithmeticSpongeParams;
 use array_init::array_init;
-use algebra::AffineCurve;
-use algebra::PrimeField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -73,6 +72,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub srs: SRSValue<'a, G>,               // polynomial commitment keys
 
     // index polynomial commitments
+    pub table_comm: PolyComm<G>,            // lookup table polynonial commitment
     pub sigma_comm: [PolyComm<G>; COLUMNS], // permutation commitment array
     pub qw_comm:    [PolyComm<G>; COLUMNS], // wire commitment array
     pub qm_comm:    PolyComm<G>,            // multiplication commitment
@@ -93,7 +93,8 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
 
     pub shift:      [Fr<G>; COLUMNS],       // wire coordinate shifts
     pub zkpm:       DensePolynomial<Fr<G>>, // zero-knowledge polynomial
-    pub w:          Fr<G>,                  // root of unity for zero-knowledge
+    pub w1:         Fr<G>,                  // root of unity for lookup
+    pub w3:         Fr<G>,                  // root of unity for zero-knowledge
     pub endo:       Fr<G>,                  // endoscalar coefficient
 
     // random oracle argument parameters
@@ -114,6 +115,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         {
             domain: self.cs.domain.d1,
 
+            table_comm: srs.get_ref().commit_non_hiding(&self.cs.tablem, None),
             sigma_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.sigmam[i], None)),
             qw_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.qwm[i], None)),
             qm_comm: srs.get_ref().commit_non_hiding(&self.cs.qmm, None),
@@ -130,7 +132,8 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             pack_comm: srs.get_ref().commit_non_hiding(&self.cs.packm, None),
             lkp_comm: srs.get_ref().commit_non_hiding(&self.cs.lkpm, None),
 
-            w: zk_w(self.cs.domain.d1),
+            w1: self.cs.sid[self.cs.domain.d1.size as usize -1],
+            w3: self.cs.sid[self.cs.domain.d1.size as usize -3],
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo: self.cs.endo,

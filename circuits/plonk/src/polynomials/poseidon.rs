@@ -15,7 +15,7 @@ use crate::wires::COLUMNS;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
 {
-    // poseidon quotient poly contribution computation f^5 + c(x) - f(wx)
+    // poseidon quotient poly contribution computation f^7 + c(x) - f(wx)
     pub fn psdn_quot
     (
         &self, polys: &WitnessOverDomains<F>,
@@ -61,7 +61,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         ]
     }
 
-    // poseidon linearization poly contribution computation f^5 + c(x) - f(wx)
+    // poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
     pub fn psdn_lnrz
     (
         &self,

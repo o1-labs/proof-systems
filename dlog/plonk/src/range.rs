@@ -10,9 +10,10 @@ pub const PACK  : Range<usize> = 19..24;
 pub const MUL   : Range<usize> = 24..29;
 pub const MLPCK : Range<usize> = 29..34;
 pub const LKP   : Range<usize> = 34..36;
+pub const TABLE : Range<usize> = 36..40;
 
 pub fn alpha_powers<F: Field>(x: F) -> Vec<F>
 {
     let mut y = x;
-    (PSDN.start..LKP.end).map(|_| {y *= x; y}).collect()
+    (PSDN.start..TABLE.end).map(|_| {y *= x; y}).collect()
 }

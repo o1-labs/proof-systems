@@ -50,8 +50,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         let ret = betaacc * &b_j;
                         betaacc *= & evaluation_points[i];
                         ret
-                    }).fold(Fr::<G>::zero(), |x, y| x + &y);
-                    vec![full - &(diff * &evlp[i]), diff]
+                    }).fold(Fr::<G>::zero(), |x, y| x + y);
+                    vec![full - (diff * evlp[i]), diff]
                 }
             ).collect()
         }).collect()
@@ -75,9 +75,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_g(&p_comm.unshifted);
         self.w_comm.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
-        // sample beta, gamma oracles
-        oracles.beta = fq_sponge.challenge();
-        oracles.gamma = fq_sponge.challenge();
+        // sample beta1, gamma1 oracles
+        oracles.beta1 = fq_sponge.challenge();
+        oracles.gamma1 = fq_sponge.challenge();
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.z_comm.unshifted);
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -108,7 +108,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // prepare some often used values
         let zeta1 = oracles.zeta.pow(&[n]);
-        let zetaw = oracles.zeta * &index.domain.group_gen;
+        let zetaw = oracles.zeta * index.domain.group_gen;
         let alpha = range::alpha_powers(oracles.alpha);
 
         // compute Lagrange base evaluation denominators
@@ -122,11 +122,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let p_eval = if self.public.len() > 0
         {[
             vec![(self.public.iter().zip(lagrange.iter()).
-                zip(index.domain.elements()).map(|((p, l), w)| -*l * p * &w).
-                fold(Fr::<G>::zero(), |x, y| x + &y)) * &(zeta1 - &Fr::<G>::one()) * &index.domain.size_inv],
+                zip(index.domain.elements()).map(|((p, l), w)| -*l * p * w).
+                fold(Fr::<G>::zero(), |x, y| x + y)) * (zeta1 - Fr::<G>::one()) * index.domain.size_inv],
             vec![(self.public.iter().zip(lagrange[self.public.len()..].iter()).
-                zip(index.domain.elements()).map(|((p, l), w)| -*l * p * &w).
-                fold(Fr::<G>::zero(), |x, y| x + &y)) * &index.domain.size_inv * &(zetaw.pow(&[n as u64]) - &Fr::<G>::one())]
+                zip(index.domain.elements()).map(|((p, l), w)| -*l * p * w).
+                fold(Fr::<G>::zero(), |x, y| x + y)) * index.domain.size_inv * (zetaw.pow(&[n as u64]) - Fr::<G>::one())]
         ]}
         else {[Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]};
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])}
@@ -246,26 +246,53 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
                 // check linearization polynomial evaluation consistency
-                let zeta1m1 = zeta1 - &Fr::<G>::one();
+                let zeta1m1 = zeta1 - Fr::<G>::one();
+                let beta1 = Fr::<G>::one() + oracles.beta2;
+                let gammabeta1 = beta1 * oracles.gamma2;
+
+                
+                
                 if
-                    (evals[0].f + &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()})
+                    if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()}
                     -
                     evals[0].w.iter().zip(evals[0].s.iter()).
-                        map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
-                        fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
+                        map(|(w, s)| (oracles.beta1 * s) + w + oracles.gamma1).
+                        fold((evals[0].w[COLUMNS-1] + oracles.gamma1) * evals[1].z * oracles.alpha * zkp, |x, y| x * y)
                     +
                     evals[0].w.iter().zip(index.shift.iter()).
-                        map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w).
-                        fold(oracles.alpha * &zkp * &evals[0].z, |x, y| x * y)
-                    -
-                    evals[0].t * &zeta1m1) * &(oracles.zeta - &index.w) * &(oracles.zeta - &Fr::<G>::one())
-                !=
-                    ((zeta1m1 * &alpha[range::PERM][0] * &(oracles.zeta - &index.w))
+                        map(|(w, s)| oracles.gamma1 + (oracles.beta1 * oracles.zeta * s) + w).
+                        fold(oracles.alpha * zkp * evals[0].z, |x, y| x * y)
                     +
-                    (zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one())))
+                    ((evals[0].z - Fr::<G>::one()) * zeta1m1 / (oracles.zeta - Fr::<G>::one()) * alpha[range::PERM][0])
+                    +
+                    ((evals[0].z - Fr::<G>::one()) * zeta1m1 / (oracles.zeta - index.w3) * alpha[range::PERM][1])
+
+
+                    +
+                    ((evals[0].l - Fr::<G>::one()) * zeta1m1 / (oracles.zeta - Fr::<G>::one()) * alpha[range::TABLE][1])
+                    +
+                    (((evals[0].l - Fr::<G>::one()) * alpha[range::TABLE][2] +
+                        ((evals[0].h1 - evals[1].h2) * alpha[range::TABLE][3])) * zeta1m1 / (oracles.zeta - index.w1))
+                    +
+                    ((((evals[0].l * beta1 *
+                    (oracles.gamma2 + evals[0].w[COLUMNS-1])) *
+                    (gammabeta1 + (evals[0].tb + evals[1].tb * oracles.beta2)))
+                    -
+                    ((evals[1].l *
+                        (gammabeta1 + (evals[0].h1 + evals[1].h1 * oracles.beta2))) *
+                        (gammabeta1 + (evals[0].h2 + evals[1].h2 * oracles.beta2))))
                     *
-                    &(Fr::<G>::one() - evals[0].z)
+                    (oracles.zeta - index.w1)) * alpha[range::TABLE][0]
+    
+                !=
+                    evals[0].t * zeta1m1
+                    -
+                    evals[0].f
                 {return Err(ProofError::ProofVerification)}
+
+
+
+
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }
@@ -297,6 +324,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 polynoms.extend(index.sigma_comm.iter().zip((0..COLUMNS-1).map(|i| proof.evals.iter().map(|e| &e.s[i]).
                     collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
                 polynoms.extend(vec![(&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size))]);
+                polynoms.extend(vec![(&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None)]);
+                polynoms.extend(vec![(&proof.h1_comm, proof.evals.iter().map(|e| &e.h1).collect::<Vec<_>>(), None)]);
+                polynoms.extend(vec![(&proof.h2_comm, proof.evals.iter().map(|e| &e.h2).collect::<Vec<_>>(), None)]);
+                polynoms.extend(vec![(&index.table_comm, proof.evals.iter().map(|e| &e.tb).collect::<Vec<_>>(), None)]);
 
                 // prepare for the opening proof verification
                 (

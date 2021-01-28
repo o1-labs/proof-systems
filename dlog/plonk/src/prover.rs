@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, UniformRand};
+use algebra::{Field, AffineCurve, Zero};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
@@ -21,9 +21,12 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 pub struct ProverProof<G: AffineCurve>
 {
     // polynomial commitments
-    pub w_comm: [PolyComm<G>; COLUMNS],
-    pub z_comm: PolyComm<G>,
-    pub t_comm: PolyComm<G>,
+    pub w_comm: [PolyComm<G>; COLUMNS], // wires
+    pub z_comm: PolyComm<G>,            // permutation aggregaion
+    pub t_comm: PolyComm<G>,            // quotient
+    pub l_comm: PolyComm<G>,            // lookup aggregaion
+    pub h1_comm: PolyComm<G>,           // lookup multiset
+    pub h2_comm: PolyComm<G>,           // lookup multiset
 
     // batched commitment opening proof
     pub proof: OpeningProof<G>,
@@ -80,43 +83,42 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
         w_comm.iter().for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
-        // sample beta, gamma oracles
-        oracles.beta = fq_sponge.challenge();
-        oracles.gamma = fq_sponge.challenge();
+        // sample beta1, gamma1 oracles
+        oracles.beta1 = fq_sponge.challenge();
+        oracles.gamma1 = fq_sponge.challenge();
 
-        // compute permutation polynomial
-
-        let mut z = vec![Fr::<G>::one(); n];
-        (0..n-3).for_each
-        (
-            |j| z[j+1] = witness.iter().zip(index.cs.sigmal1.iter()).map
-            (
-                |(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma
-            ).fold(Fr::<G>::one(), |x, y| x * y)
-        );
-        algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n-3]);
-        (0..n-3).for_each
-        (
-            |j|
-            {
-                let x = z[j];
-                z[j+1] *= witness.iter().zip(index.cs.shift.iter()).map
-                (
-                    |(w, s)| w[j] + &(index.cs.sid[j] * &oracles.beta * s) + &oracles.gamma
-                ).fold(x, |z, y| z * y)
-            }
-        );
-
-        if z[n-3] != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        z[n-2] = Fr::<G>::rand(rng);
-        z[n-1] = Fr::<G>::rand(rng);
-        let z = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
-
+        // compute permutation aggregation polynomial
+        let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None, rng);
-
-        // absorb the z commitment into the argument and query alpha
+        // absorb the z commitment into the argument
         fq_sponge.absorb_g(&z_comm.0.unshifted);
+
+        // compute lookup sorted set
+        let h = index.cs.tbllkp_sortedset(witness);
+        let (h1, h2) =
+        (
+            Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(h.0.clone(), index.cs.domain.d1).interpolate(),
+            Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(h.1.clone(), index.cs.domain.d1).interpolate(),
+        );
+
+        // commit to h1, h2
+        let h1_comm = index.srs.get_ref().commit(&h1, None, rng);
+        let h2_comm = index.srs.get_ref().commit(&h2, None, rng);
+
+        // absorb the h commitments into the argument and query beta2, gamma2 oracles
+        fq_sponge.absorb_g(&h1_comm.0.unshifted);
+        fq_sponge.absorb_g(&h2_comm.0.unshifted);
+        oracles.beta2 = fq_sponge.challenge();
+        oracles.gamma2 = fq_sponge.challenge();
+
+        // compute lookup aggregation polynomial
+        let l = index.cs.tbllkp_aggreg(h, witness, &oracles)?;
+        // commit to lookup aggregation polynomial
+        let l_comm = index.srs.get_ref().commit(&l, None, rng);
+        // absorb the lookup aggregation commitment into the argument and query alpha
+        fq_sponge.absorb_g(&z_comm.0.unshifted);
+
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         let alpha = range::alpha_powers(oracles.alpha);
@@ -188,23 +190,17 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 w: array_init(|i| w[i].eval(*e, index.max_poly_size)),
                 z: z.eval(*e, index.max_poly_size),
                 t: t.eval(*e, index.max_poly_size),
+                l: l.eval(*e, index.max_poly_size),
+                h1: h1.eval(*e, index.max_poly_size),
+                h2: h2.eval(*e, index.max_poly_size),
+                tb: index.cs.tablem.eval(*e, index.max_poly_size),
                 f: Vec::new(),
             }
         ).collect::<Vec<_>>();
         let mut evals = [evals[0].clone(), evals[1].clone()];
 
         let evlp1 = [evlp[0].pow(&[index.max_poly_size as u64]), evlp[1].pow(&[index.max_poly_size as u64])];
-        let e = &evals.iter().zip(evlp1.iter()).map
-        (
-            |(es, &e1)| ProofEvaluations::<Fr<G>>
-            {
-                s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
-                z: DensePolynomial::eval_polynomial(&es.z, e1),
-                t: DensePolynomial::eval_polynomial(&es.t, e1),
-                f: Fr::<G>::zero(),
-            }
-        ).collect::<Vec<_>>();
+        let e = (0..2).map(|i| evals[i].combine(evlp1[i])).collect::<Vec<_>>();
 
         // compute and evaluate linearization polynomial
 
@@ -260,12 +256,19 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         );
         polynoms.extend(index.cs.sigmam[0..COLUMNS-1].iter().map(|w| (w, None, non_hiding(1))).collect::<Vec<_>>());
         polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
+        polynoms.extend(vec![(&l, None, non_hiding(1))]);
+        polynoms.extend(vec![(&h1, None, non_hiding(1))]);
+        polynoms.extend(vec![(&h2, None, non_hiding(1))]);
+        polynoms.extend(vec![(&index.cs.tablem, None, non_hiding(1))]);
 
         Ok(Self
         {
             w_comm: array_init(|i| w_comm[i].0.clone()),
             z_comm: z_comm.0,
             t_comm: t_comm.0,
+            l_comm: l_comm.0,
+            h1_comm: h1_comm.0,
+            h2_comm: h2_comm.0,
             proof: index.srs.get_ref().open
             (
                 group_map,

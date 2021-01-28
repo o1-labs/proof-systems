@@ -80,7 +80,7 @@ fn poseidon_tweedledum()
     let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq5::params(), PUBLIC).unwrap(),
+        ConstraintSystem::<Fq>::create(gates, vec![], oracle::tweedle::fq5::params(), PUBLIC).unwrap(),
         oracle::tweedle::fp5::params(),
         endo_q,
         SRSSpec::Use(&srs)

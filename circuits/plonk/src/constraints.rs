@@ -46,6 +46,9 @@ pub struct ConstraintSystem<F: FftField>
     pub mul2m:  DP<F>,                  // mul2m constraint selector polynomial
     pub emulm:  DP<F>,                  // emul1m constraint selector polynomial
 
+    // lookup table
+    pub tablem: DP<F>,                  // lookup table polynomial
+
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
@@ -72,8 +75,14 @@ pub struct ConstraintSystem<F: FftField>
     pub mul2l:  E<F, D<F>>,             // scalar multiplication selector evaluations over domain.d8
     pub emull:  E<F, D<F>>,             // endoscalar multiplication selector evaluations over domain.d4
 
+    // lookup table
+    pub table4w:E<F, D<F>>,             // shifted lookup table polynomial over domain.d4
+    pub table4: E<F, D<F>>,             // lookup table polynomial over domain.d4
+    pub table1: E<F, D<F>>,             // lookup table polynomial over domain.d1
+
     // constant polynomials
-    pub l1:     E<F, D<F>>,             // 1-st Lagrange evaluated over domain.d8
+    pub l14:    E<F, D<F>>,             // 1-st Lagrange evaluated over domain.d4
+    pub l18:    E<F, D<F>>,             // 1-st Lagrange evaluated over domain.d8
     pub l04:    E<F, D<F>>,             // 0-th Lagrange evaluated over domain.d4
     pub l08:    E<F, D<F>>,             // 0-th Lagrange evaluated over domain.d8
     pub zero4:  E<F, D<F>>,             // zero evaluated over domain.d8
@@ -111,6 +120,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn create
     (
         mut gates: Vec<CircuitGate<F>>,
+        mut tbl: Vec<F>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self>
@@ -129,7 +139,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let s: [std::vec::Vec<F>; COLUMNS] = array_init(|i| domain.d1.elements().map(|elm| {shift[i] * &elm}).collect());
         let mut sigmal1 = s.clone();
 
-        // compute permutation polynomials
+        // permutation polynomials
         gates.iter().enumerate().for_each
         (
             |(i, _)| (0..COLUMNS).for_each(|j| {let wire = gates[i].wires[j]; sigmal1[j][i] = s[wire.col][wire.row]})
@@ -143,27 +153,37 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
         let zkpm = zk_polynomial(domain.d1);
 
-        // compute generic constraint polynomials
+        // generic constraint polynomials
         let qwm: [DP<F>; COLUMNS] = array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
             map(|gate| if gate.typ == GateType::Generic {gate.c[WIRES[i]]} else {F::zero()}).collect(), domain.d1).interpolate());
         let qmm = E::<F, D<F>>::from_vec_and_domain(gates.iter().
             map(|gate| if gate.typ == GateType::Generic {gate.c[COLUMNS]} else {F::zero()}).collect(), domain.d1).interpolate();
 
-        // compute poseidon constraint polynomials
+        // poseidon constraint polynomials
         let psm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ps()).collect(), domain.d1).interpolate();
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
-        // compute packing and lookup constraint polynomials
+        // packing and lookup constraint polynomials
         let packm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.pack()).collect(), domain.d1).interpolate();
         let lkpm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.lookup()).collect(), domain.d1).interpolate();
         let lkpl8 = lkpm.evaluate_over_domain_by_ref(domain.d8);
 
-        // compute ECC arithmetic constraint polynomials
+        // ECC arithmetic constraint polynomials
         let addm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.add()).collect(), domain.d1).interpolate();
         let doublem = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.double()).collect(), domain.d1).interpolate();
         let mul1m = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.vbmul1()).collect(), domain.d1).interpolate();
         let mul2m = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.vbmul2()).collect(), domain.d1).interpolate();
         let emulm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.endomul()).collect(), domain.d1).interpolate();
+
+        // lookup table polynonials
+        tbl.resize(n, F::zero());
+        let table1 = E::<F, D<F>>::from_vec_and_domain(tbl, domain.d1); 
+        let tablem = table1.clone().interpolate();
+        let table4 = tablem.evaluate_over_domain_by_ref(domain.d4);
+
+        // constant polynomials
+        let l18 = DP::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8);
+        let l08 = E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8);
 
         Some(ConstraintSystem
         {
@@ -208,10 +228,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             emull: emulm.evaluate_over_domain_by_ref(domain.d4),
             emulm,
 
+            // lookup table polynonial
+            table1,
+            table4w: table4.shift(4),
+            table4,
+            tablem,
+
             // constant polynomials
-            l1: DP::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8),
-            l04: E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4),
-            l08: E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8),
+            l14: E::<F, D<F>>::from_vec_and_domain((0..domain.d4.size).map(|j| l18.evals[2*j as usize]).collect(), domain.d4),
+            l18,
+            l04: E::<F, D<F>>::from_vec_and_domain((0..domain.d4.size).map(|j| l08.evals[2*j as usize]).collect(), domain.d4),
+            l08,
             zero4: E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4),
             zero8: E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8),
             zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
@@ -292,7 +319,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| E::<F, D<F>>::from_vec_and_domain((0..self.domain.d4.size).
             map(|j| w8[i].evals[2*j as usize]).collect(), self.domain.d4));
-        let z4 = DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap());
+        let z4 = E::<F, D<F>>::from_vec_and_domain((0..self.domain.d4.size).
+            map(|j| z8.evals[2*j as usize]).collect(), self.domain.d4);
 
         WitnessOverDomains
         {
@@ -301,12 +329,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 next: WitnessEvals
                 {
                     w: array_init(|i| w4[i].shift(4)),
-                    z: z4.clone() // dummy evaluation
+                    z: z4.shift(4)
                 },
                 this: WitnessEvals
                 {
                     w: w4,
-                    z: z4, // dummy evaluation
+                    z: z4,
                 },
             },
             d8: WitnessShifts

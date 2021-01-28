@@ -287,7 +287,7 @@ fn turbo_plonk()
     let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
+        ConstraintSystem::<Fp>::create(gates, vec![], oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
         oracle::tweedle::fq5::params(),
         endo_q,
         SRSSpec::Use(&srs)

@@ -16,3 +16,4 @@ array-init = { version = "0.1.1" }
 blake2 = "0.7"
 num-derive = "0.3"
 num-traits = "0.2"
+rand = "0.7.3"

@@ -12,11 +12,15 @@ use array_init::array_init;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
-    pub w: [Fs; COLUMNS],
-    pub z: Fs,
-    pub t: Fs,
-    pub f: Fs,
-    pub s: [Fs; COLUMNS-1],
+    pub w: [Fs; COLUMNS],   // wires
+    pub z: Fs,              // permutation aggregaion
+    pub t: Fs,              // quotient
+    pub f: Fs,              // linearization
+    pub s: [Fs; COLUMNS-1], // permutation
+    pub l: Fs,              // lookup aggregaion
+    pub h1: Fs,             // lookup multiset
+    pub h2: Fs,             // lookup multiset
+    pub tb: Fs,             // lookup table
 }
 
 impl<F : FftField> ProofEvaluations<Vec<F>> {
@@ -28,6 +32,10 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             t: DensePolynomial::eval_polynomial(&self.t, pt),
             f: DensePolynomial::eval_polynomial(&self.f, pt),
+            l: DensePolynomial::eval_polynomial(&self.l, pt),
+            h1: DensePolynomial::eval_polynomial(&self.h1, pt),
+            h2: DensePolynomial::eval_polynomial(&self.h2, pt),
+            tb: DensePolynomial::eval_polynomial(&self.tb, pt),
         }
     }
 }
@@ -35,8 +43,10 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
 #[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field>
 {
-    pub beta: F,
-    pub gamma: F,
+    pub beta1: F,
+    pub gamma1: F,
+    pub beta2: F,
+    pub gamma2: F,
     pub alpha_chal: ScalarChallenge<F>,
     pub alpha: F,
     pub zeta: F,
@@ -54,8 +64,10 @@ impl<F: Field> RandomOracles<F>
         let c = ScalarChallenge(F::zero());
         Self
         {
-            beta: F::zero(),
-            gamma: F::zero(),
+            beta1: F::zero(),
+            gamma1: F::zero(),
+            beta2: F::zero(),
+            gamma2: F::zero(),
             alpha: F::zero(),
             zeta: F::zero(),
             v: F::zero(),
