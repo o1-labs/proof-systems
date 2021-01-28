@@ -7,9 +7,8 @@ This source file implements table loopup polynomials.
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D, DenseOrSparsePolynomial};
 use oracle::{utils::{EvalUtils, PolyUtils}, rndoracle::ProofError};
-use crate::scalars::{ProofEvaluations, RandomOracles};
-use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
+use crate::scalars::RandomOracles;
 use crate::wires::COLUMNS;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
@@ -18,8 +17,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn tbllkp_quot
     (
         &self,
-        (h1, h2): (DensePolynomial<F>, DensePolynomial<F>),
-        lagrange: &WitnessOverDomains<F>,
+        (lw, h1, h2): (&DensePolynomial<F>, &DensePolynomial<F>, &DensePolynomial<F>),
         oracles: &RandomOracles<F>,
         l: &DensePolynomial<F>,
         alpha: &[F]
@@ -39,11 +37,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let (bnd2, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(
                 &(&(l - &DensePolynomial::from_coefficients_slice(&[F::one()])).scale(alpha[2]) +
-                    &(&h1 - &h2w).scale(alpha[3])).into(),
+                    &(h1 - &h2w).scale(alpha[3])).into(),
                 &DensePolynomial::from_coefficients_slice(&[-self.sid[n-1], F::one()]).into()).
                     map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
+        let lw = lw.evaluate_over_domain_by_ref(self.domain.d4);
         let ll = l.evaluate_over_domain_by_ref(self.domain.d4);
         let llw = ll.shift(4);
         let h1l = h1.evaluate_over_domain_by_ref(self.domain.d4);
@@ -56,7 +55,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         Ok((
             (&(&(&(&ll.scale(beta1) *
-                &(&self.l04.scale(oracles.gamma2) + &lagrange.d4.this.w[COLUMNS-1])) *
+                &(&self.l04.scale(oracles.gamma2) + &lw)) *
                 &(gammabeta1 + &(&self.table4 + &self.table4w.scale(oracles.beta2))))
             -
             &(&(&llw *
@@ -70,39 +69,18 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         ))
     }
 
-    // lookup linearization poly contribution computation
-    pub fn tbllkp_lnrz
-    (
-        &self, e: &Vec<ProofEvaluations<F>>,
-        oracles: &RandomOracles<F>,
-    ) -> DensePolynomial<F>
-    {
-        self.sigmam[COLUMNS-1].scale(Self::tbllkp_scalars(e, oracles, self.zkpm.evaluate(oracles.zeta)))
-    }
-
-    pub fn tbllkp_scalars
-    (
-        e: &Vec<ProofEvaluations<F>>,
-        oracles: &RandomOracles<F>,
-        z: F,
-    ) -> F
-    {
-        -e[0].w.iter().zip(e[0].s.iter()).
-            map(|(w, s)| oracles.gamma1 + &(oracles.beta1 * s) + w).
-            fold(e[1].z * &oracles.beta1 * &oracles.alpha * &z, |x, y| x * y)
-    }
-
     // lookup sorted set computation
     pub fn tbllkp_sortedset
     (
         &self,
         witness: &[Vec::<F>; COLUMNS],
-    ) -> (Vec<F>, Vec<F>)
+    ) -> (Vec<F>, Vec<F>, Vec<F>)
     {
         let n = self.domain.d1.size as usize;
         // get lookup values
-        let mut s = witness[COLUMNS-1].iter().take(n-1).zip(self.gates.iter()).
+        let lw = witness[COLUMNS-1].iter().take(n-1).zip(self.gates.iter()).
             map(|(w, g)| g.lookup() * w).collect::<Vec<_>>();
+        let mut s = lw.clone();
         s.extend(self.table1.evals.clone());
 
         // sort s by the table
@@ -111,15 +89,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let mut h = vec![s[n-1]];
         h.append(&mut s.drain(n..2*n-1).collect());
-        (s, h)
+        (lw, s, h)
     }
 
     // lookup aggregation polynomial computation
     pub fn tbllkp_aggreg
     (
         &self,
-        (h1, h2): (Vec<F>, Vec<F>),
-        witness: &[Vec::<F>; COLUMNS],
+        (lw, h1, h2): (Vec<F>, Vec<F>, Vec<F>),
         oracles: &RandomOracles<F>
     ) -> Result<DensePolynomial<F>, ProofError>
     {
@@ -130,8 +107,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         (0..n-1).for_each
         (
             |j| z[j+1] =
-                (gammabeta1 + h1[j] + &(oracles.beta2 * h1[j+1])) *
-                &(gammabeta1 + h2[j] + &(oracles.beta2 * h2[j+1]))
+                (gammabeta1 + h1[j] + (oracles.beta2 * h1[j+1])) *
+                (gammabeta1 + h2[j] + (oracles.beta2 * h2[j+1]))
         );
         algebra::fields::batch_inversion::<F>(&mut z[1..=n]);
         (0..n-1).for_each
@@ -139,8 +116,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             |j|
             {
                 let x = z[j];
-                z[j+1] *= &(x * &beta1 * &(oracles.gamma2 + &witness[COLUMNS-1][j]) *
-                    &(gammabeta1 + &self.table1.evals[j] + &(oracles.beta2 * &self.table1.evals[j+1])))
+                z[j+1] *= &(x * beta1 * (oracles.gamma2 + lw[j]) *
+                    (gammabeta1 + self.table1.evals[j] + (oracles.beta2 * self.table1.evals[j+1])))
             }
         );
 

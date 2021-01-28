@@ -12,12 +12,15 @@ use array_init::array_init;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
+    // Plonk evals
     pub w: [Fs; COLUMNS],   // wires
     pub z: Fs,              // permutation aggregaion
     pub t: Fs,              // quotient
     pub f: Fs,              // linearization
     pub s: [Fs; COLUMNS-1], // permutation
+    // Plookup evals
     pub l: Fs,              // lookup aggregaion
+    pub lw: Fs,             // lookup witness
     pub h1: Fs,             // lookup multiset
     pub h2: Fs,             // lookup multiset
     pub tb: Fs,             // lookup table
@@ -33,6 +36,7 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
             t: DensePolynomial::eval_polynomial(&self.t, pt),
             f: DensePolynomial::eval_polynomial(&self.f, pt),
             l: DensePolynomial::eval_polynomial(&self.l, pt),
+            lw: DensePolynomial::eval_polynomial(&self.lw, pt),
             h1: DensePolynomial::eval_polynomial(&self.h1, pt),
             h2: DensePolynomial::eval_polynomial(&self.h2, pt),
             tb: DensePolynomial::eval_polynomial(&self.tb, pt),

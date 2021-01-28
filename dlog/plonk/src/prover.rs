@@ -20,11 +20,13 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve>
 {
-    // polynomial commitments
+    // Plonk commitments
     pub w_comm: [PolyComm<G>; COLUMNS], // wires
     pub z_comm: PolyComm<G>,            // permutation aggregaion
     pub t_comm: PolyComm<G>,            // quotient
+    // Plookup commitments
     pub l_comm: PolyComm<G>,            // lookup aggregaion
+    pub lw_comm: PolyComm<G>,           // lookup witness
     pub h1_comm: PolyComm<G>,           // lookup multiset
     pub h2_comm: PolyComm<G>,           // lookup multiset
 
@@ -91,33 +93,35 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None, rng);
-        // absorb the z commitment into the argument
-        fq_sponge.absorb_g(&z_comm.0.unshifted);
 
         // compute lookup sorted set
         let h = index.cs.tbllkp_sortedset(witness);
-        let (h1, h2) =
+        let (lw, h1, h2) =
         (
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(h.0.clone(), index.cs.domain.d1).interpolate(),
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(h.1.clone(), index.cs.domain.d1).interpolate(),
+            Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(h.2.clone(), index.cs.domain.d1).interpolate(),
         );
 
-        // commit to h1, h2
+        // commit to lw, h1, h2
+        let lw_comm = index.srs.get_ref().commit(&lw, None, rng);
         let h1_comm = index.srs.get_ref().commit(&h1, None, rng);
         let h2_comm = index.srs.get_ref().commit(&h2, None, rng);
 
-        // absorb the h commitments into the argument and query beta2, gamma2 oracles
+        // absorb z & lookup commitments into the argument and query beta2, gamma2 oracles
+        fq_sponge.absorb_g(&z_comm.0.unshifted);
+        fq_sponge.absorb_g(&lw_comm.0.unshifted);
         fq_sponge.absorb_g(&h1_comm.0.unshifted);
         fq_sponge.absorb_g(&h2_comm.0.unshifted);
         oracles.beta2 = fq_sponge.challenge();
         oracles.gamma2 = fq_sponge.challenge();
 
         // compute lookup aggregation polynomial
-        let l = index.cs.tbllkp_aggreg(h, witness, &oracles)?;
+        let l = index.cs.tbllkp_aggreg(h, &oracles)?;
         // commit to lookup aggregation polynomial
         let l_comm = index.srs.get_ref().commit(&l, None, rng);
         // absorb the lookup aggregation commitment into the argument and query alpha
-        fq_sponge.absorb_g(&z_comm.0.unshifted);
+        fq_sponge.absorb_g(&l_comm.0.unshifted);
 
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
@@ -129,7 +133,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // compute quotient polynomial
 
         // permutation
-        let (perm, bnd) = index.cs.perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
+        let (perm, bnd1) = index.cs.perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
         // generic
         let (gen, genp) = index.cs.gnrc_quot(&lagrange, &p);
         // poseidon
@@ -147,10 +151,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // unpacking scalar multiplication
         let mul8 = index.cs.vbmulpck_quot(&lagrange, &alpha[range::MLPCK]);
         // lookup
-        let (lkp4, lkp8) = index.cs.lookup_quot(&lagrange, &alpha[range::LKP]);
+        let (lkp, lkp8) = index.cs.lookup_quot(&lagrange, &alpha[range::LKP]);
+        // lookup aggregation
+        let (lkpt, bnd2) = index.cs.tbllkp_quot((&lw, &h1, &h2), &oracles, &l, &alpha[range::TABLE])?;
 
         // collect contribution evaluations
-        let t4 = &(&(&(&(&(&add + &mul4) + &emul4) + &pack) + &pos4) + &gen) + &lkp4;
+        let t4 = &(&(&(&(&(&(&add + &mul4) + &emul4) + &pack) + &pos4) + &gen) + &lkp) + &lkpt;
         let t8 = &(&(&(&perm + &mul8) + &pos8) + &double) + &lkp8;
 
         // divide contributions with vanishing polynomial
@@ -158,7 +164,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        t += &bnd;
+        t += &(&bnd1 + &bnd2);
 
         // commit to t
         let t_comm = index.srs.get_ref().commit(&t, Some(index.max_quot_size), rng);
@@ -191,6 +197,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 z: z.eval(*e, index.max_poly_size),
                 t: t.eval(*e, index.max_poly_size),
                 l: l.eval(*e, index.max_poly_size),
+                lw: lw.eval(*e, index.max_poly_size),
                 h1: h1.eval(*e, index.max_poly_size),
                 h2: h2.eval(*e, index.max_poly_size),
                 tb: index.cs.tablem.eval(*e, index.max_poly_size),
@@ -257,6 +264,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         polynoms.extend(index.cs.sigmam[0..COLUMNS-1].iter().map(|w| (w, None, non_hiding(1))).collect::<Vec<_>>());
         polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
         polynoms.extend(vec![(&l, None, non_hiding(1))]);
+        polynoms.extend(vec![(&lw, None, non_hiding(1))]);
         polynoms.extend(vec![(&h1, None, non_hiding(1))]);
         polynoms.extend(vec![(&h2, None, non_hiding(1))]);
         polynoms.extend(vec![(&index.cs.tablem, None, non_hiding(1))]);
@@ -267,6 +275,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             z_comm: z_comm.0,
             t_comm: t_comm.0,
             l_comm: l_comm.0,
+            lw_comm: lw_comm.0,
             h1_comm: h1_comm.0,
             h2_comm: h2_comm.0,
             proof: index.srs.get_ref().open

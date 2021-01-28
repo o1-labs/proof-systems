@@ -78,8 +78,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // sample beta1, gamma1 oracles
         oracles.beta1 = fq_sponge.challenge();
         oracles.gamma1 = fq_sponge.challenge();
-        // absorb the z commitment into the argument and query alpha
+        // absorb the z commitment into the argument and query beta1, gamma1
         fq_sponge.absorb_g(&self.z_comm.unshifted);
+        fq_sponge.absorb_g(&self.lw_comm.unshifted);
+        fq_sponge.absorb_g(&self.h1_comm.unshifted);
+        fq_sponge.absorb_g(&self.h2_comm.unshifted);
+        oracles.beta2 = fq_sponge.challenge();
+        oracles.gamma2 = fq_sponge.challenge();
+        // absorb the lookup aggregation commitment into the argument and query alpha
+        fq_sponge.absorb_g(&self.l_comm.unshifted);
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         // absorb the polycommitments into the argument and sample zeta
@@ -275,7 +282,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         ((evals[0].h1 - evals[1].h2) * alpha[range::TABLE][3])) * zeta1m1 / (oracles.zeta - index.w1))
                     +
                     ((((evals[0].l * beta1 *
-                    (oracles.gamma2 + evals[0].w[COLUMNS-1])) *
+                    (oracles.gamma2 + evals[0].lw)) *
                     (gammabeta1 + (evals[0].tb + evals[1].tb * oracles.beta2)))
                     -
                     ((evals[1].l *
@@ -325,6 +332,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
                 polynoms.extend(vec![(&proof.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size))]);
                 polynoms.extend(vec![(&proof.l_comm, proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None)]);
+                polynoms.extend(vec![(&proof.lw_comm, proof.evals.iter().map(|e| &e.lw).collect::<Vec<_>>(), None)]);
                 polynoms.extend(vec![(&proof.h1_comm, proof.evals.iter().map(|e| &e.h1).collect::<Vec<_>>(), None)]);
                 polynoms.extend(vec![(&proof.h2_comm, proof.evals.iter().map(|e| &e.h2).collect::<Vec<_>>(), None)]);
                 polynoms.extend(vec![(&index.table_comm, proof.evals.iter().map(|e| &e.tb).collect::<Vec<_>>(), None)]);
