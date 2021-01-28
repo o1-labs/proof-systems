@@ -1,7 +1,7 @@
 import hashlib
 import sys
 
-# This script generates the round constants and MDS matrices for poseidon for the tweedle fields
+# This script generates the round constants and MDS matrices for poseidon for the pasta fields
 
 pasta_p = 28948022309329048855892746252171976963363056481941560715954676764349967630337
 pasta_q = 28948022309329048855892746252171976963363056481941647379679742748393362948097
@@ -65,10 +65,15 @@ def caml_rc_str(of_string_wrap, rows):
 def rust_rc_str(of_string_wrap, rows):
     return 'vec![' + ','.join('vec![' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
 
-print ("type 'a t = { mds: 'a array array; round_constants: 'a array array }")
-
 if len(sys.argv) > 1 and sys.argv[1] == 'caml':
-  for name, r in  [ ('Pasta_p', pasta_p), ('Pasta_q', pasta_q) ]:
+  if len(sys.argv) > 2:
+      m = int(sys.argv[2])
+      names_list = [ ('Pasta_p' + sys.argv[2], pasta_p), ('Pasta_q' + sys.argv[2], pasta_q) ]
+  else:
+      names_list = [ ('Pasta_p', pasta_p), ('Pasta_q', pasta_q) ]
+
+  print ("type 'a t = { mds: 'a array array; round_constants: 'a array array }")
+  for name, r in names_list:
       wrap = lambda x: x
       F = FiniteField(r)
       print ('let params_{} = '.format(name)
@@ -76,8 +81,13 @@ if len(sys.argv) > 1 and sys.argv[1] == 'caml':
               + 'round_constants= ' + caml_rc_str(wrap, round_constants(name, F))
               + '}' )
 else:
+  if len(sys.argv) > 1:
+      m = int(sys.argv[1])
+      suffix = sys.argv[1]
+  else:
+      suffix = ''
   for letter, r in  [ ('p', pasta_p), ('q', pasta_q) ]:
-      name = 'Pasta_' + letter
+      name = 'Pasta_' + letter + suffix
       wrap = lambda x: 'F{}::from_str({}).unwrap()'.format(letter, x)
       F = FiniteField(r)
       print ('let params_{} = '.format(name)
