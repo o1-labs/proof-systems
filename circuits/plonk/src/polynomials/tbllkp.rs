@@ -27,7 +27,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let (bnd1, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(
-                &(l - &DensePolynomial::from_coefficients_slice(&[F::one()]).scale(alpha[1])).into(),
+                &(l - &DensePolynomial::from_coefficients_slice(&[F::one()])).scale(alpha[1]).into(),
                 &DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]).into()).
                     map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
@@ -74,7 +74,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     (
         &self,
         witness: &[Vec::<F>; COLUMNS],
-    ) -> (Vec<F>, Vec<F>, Vec<F>)
+    ) ->(Vec<F>, Vec<F>, Vec<F>)
     {
         let n = self.domain.d1.size as usize;
         // get lookup values
@@ -84,8 +84,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         s.extend(self.table1.evals.clone());
 
         // sort s by the table
-        s.sort_unstable_by(|x, y| {self.table1.evals.iter().position(|t| x == t).unwrap().
-            cmp(&self.table1.evals.iter().position(|t| y == t).unwrap())});
+        s.sort_unstable_by
+        (
+            |x, y|
+            {
+                match (self.table1.evals.iter().position(|t| x == t), self.table1.evals.iter().position(|t| y == t))
+                {
+                    (Some(p1), Some(p2)) => p1.cmp(&p2),
+                    _ => panic!("table lookup failure")
+                }
+            }
+        );
 
         let mut h = vec![s[n-1]];
         h.append(&mut s.drain(n..2*n-1).collect());
@@ -110,7 +119,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 (gammabeta1 + h1[j] + (oracles.beta2 * h1[j+1])) *
                 (gammabeta1 + h2[j] + (oracles.beta2 * h2[j+1]))
         );
-        algebra::fields::batch_inversion::<F>(&mut z[1..=n]);
+        algebra::fields::batch_inversion::<F>(&mut z[1..n]);
         (0..n-1).for_each
         (
             |j|

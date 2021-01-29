@@ -263,10 +263,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         );
         polynoms.extend(index.cs.sigmam[0..COLUMNS-1].iter().map(|w| (w, None, non_hiding(1))).collect::<Vec<_>>());
         polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
-        polynoms.extend(vec![(&l, None, non_hiding(1))]);
-        polynoms.extend(vec![(&lw, None, non_hiding(1))]);
-        polynoms.extend(vec![(&h1, None, non_hiding(1))]);
-        polynoms.extend(vec![(&h2, None, non_hiding(1))]);
+        polynoms.extend(vec![(&l, None, l_comm.1)]);
+        polynoms.extend(vec![(&lw, None, lw_comm.1)]);
+        polynoms.extend(vec![(&h1, None, h1_comm.1)]);
+        polynoms.extend(vec![(&h2, None, h2_comm.1)]);
         polynoms.extend(vec![(&index.cs.tablem, None, non_hiding(1))]);
 
         Ok(Self
