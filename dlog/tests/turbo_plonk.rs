@@ -36,7 +36,7 @@ This source file tests constraints for the following computations:
 use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
-use algebra::{PrimeField, SquareRootField, Field, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
+use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
@@ -45,8 +45,8 @@ use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
-const MAX_SIZE: usize = 32; // max size of poly chunks
-const N: usize = 32; // Plonk domain size
+const MAX_SIZE: usize = 2048; // max size of poly chunks
+const N: usize = 2048; // Plonk domain size
 const PUBLIC: usize = 6;
 
 #[test]
@@ -172,30 +172,179 @@ fn turbo_plonk()
         [Wire{col:0, row:0}, Wire{col:0, row: 3}, Wire{col:3, row:15}, Wire{col:3, row:16}, Wire{col:4, row:18}]
     );
     gates.push(double);
-    
-    // custom constraint gates for 8-bit XOR lookups
 
-    let mut i = 19;
-    gates.push(CircuitGate::<Fp>::create_lookup
+    // custom constraints for Poseidon hash function permutation
+    
+    let c = &oracle::tweedle::fp5::params().round_constants;
+    for i in 0..PlonkSpongeConstants::ROUNDS_FULL
+    {
+        gates.push(CircuitGate::<Fp>::create_poseidon
+        (
+            i+19,
+            [
+                Wire{col:0, row:i+19},
+                Wire{col:1, row:i+19},
+                Wire{col:2, row:i+19},
+                Wire{col:3, row:i+19},
+                Wire{col:4, row:i+19},
+            ],
+            c[i].clone()
+        ));
+    }
+    let mut i = PlonkSpongeConstants::ROUNDS_FULL+19;
+    gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
-    i = i+1;
-    gates.push(CircuitGate::<Fp>::create_lookup
+    i += 1;
+
+    // custom constraints for packing
+    
+    for _ in 0..64
+    {
+        gates.push(CircuitGate::<Fp>::create_pack
+            (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+        i += 1;
+    }
+    gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i += 1;
+    
+    // custom constraint gates for short Weierstrass curve variable base scalar multiplication without packing
+    
+    gates.push(CircuitGate::<Fp>::create_vbmul
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i+512}, Wire{col:4, row:i}]));
+    i += 1;
+    for j in 0..254
+    {
+        gates.push(CircuitGate::<Fp>::create_vbmul
+            (i+2*j, [Wire{col:0, row:i+2*j+2}, Wire{col:1, row:i+2*j+2}, Wire{col:2, row:i+2*j+512}, Wire{col:3, row:i+2*j}, Wire{col:3, row:i+512+2*j}]));
+        gates.push(CircuitGate::<Fp>::zero
+            (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j}]));
+    }
+    i += 508;
+    gates.push(CircuitGate::<Fp>::create_vbmul
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i+512}, Wire{col:1, row:i+512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
+    i += 1;
+
+    // custom constraint gates for short Weierstrass curve variable base scalar multiplication with packing
+    
+    gates.push(CircuitGate::<Fp>::create_vbmul2
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i+3}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i-512}, Wire{col:3, row:i-512}, Wire{col:4, row:i}]));
+    i += 1;
+    for j in 0..254
+    {
+        gates.push(CircuitGate::<Fp>::create_vbmul2
+            (i+2*j, [Wire{col:0, row:i+2*j+2}, Wire{col:1, row:i+2*j+2}, Wire{col:2, row:i+2*j-512}, Wire{col:4, row:i+2*j-512}, Wire{col:4, row:i+2*j+3}]));
+        gates.push(CircuitGate::<Fp>::zero
+            (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j-3}]));
+    }
+    i += 508;
+    gates.push(CircuitGate::<Fp>::create_vbmul2
+        (i, [Wire{col:0, row:i-1022}, Wire{col:1, row:i-1022}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i-512}, Wire{col:1, row:i-512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i-3}]));
+    i += 1;
+    
+    // custom constraint gates for short Weierstrass curve variable base endoscalar multiplication
+    
+    gates.push(CircuitGate::<Fp>::create_endomul
+        (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i += 1;
+    for j in 0..126
+    {
+        gates.push(CircuitGate::<Fp>::create_endomul
+            (i+2*j, [Wire{col:0, row:i+2+2*j}, Wire{col:1, row:i+2+2*j}, Wire{col:2, row:i+2*j}, Wire{col:3, row:i+2*j}, Wire{col:4, row:i+2*j}]));
+        gates.push(CircuitGate::<Fp>::zero
+            (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j}]));
+    }
+    i += 252;
+    gates.push(CircuitGate::<Fp>::create_endomul
+        (i, [Wire{col:0, row:i-254}, Wire{col:1, row:i-254}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    i += 1;
+    gates.push(CircuitGate::<Fp>::zero
+        (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
+    
+    // custom constraint gates for 8-bit bitwise operation lookups
+    for _ in 0..256
+    {
+        i = i+1;
+        gates.push(CircuitGate::<Fp>::create_lookup
+            (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    }
+
+    // table for bitwise operation loookups
+    let mut table = Vec::with_capacity(N);
+    table.push(Fp::zero());
+    let mut table = Vec::with_capacity(N);
+    let mut opcode: u64 = 1;
+    for i in 1..9
+    {
+        for j in 1..9
+        {
+            let input1: u8 = i;
+            let input2: u8 = j;
+            let output: u8 = input1 ^ input2;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            table.push(Fp::from(lookup));
+        }
+    }
+    opcode = 2;
+    for i in 1..9
+    {
+        for j in 1..9
+        {
+            let input1: u8 = i;
+            let input2: u8 = j;
+            let output: u8 = input1 | input2;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            table.push(Fp::from(lookup));
+        }
+    }
+    opcode = 3;
+    for i in 1..9
+    {
+        for j in 1..9
+        {
+            let input1: u8 = i;
+            let input2: u8 = j;
+            let output: u8 = input1 & input2;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            table.push(Fp::from(lookup));
+        }
+    }
+    opcode = 4;
+    for i in 0..255
+    {
+        let input1: u8 = i;
+        let input2: u8 = 0;
+        let output: u8 = !input1;
+        let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+        table.push(Fp::from(lookup));
+    }
 
     let srs = SRS::create(MAX_SIZE);
-
     let (endo_q, _endo_r) = endos::<Other>();
-    let table = vec!
-    [
-        Fp::one() + (Fp::from(111 as u64) * Fp::from(16 as u64)) +
-            (Fp::from(97 as u64) * Fp::from(4096 as u64)) + (Fp::from(103 as u64) * Fp::from(1048576 as u64)),
-        Fp::one() + (Fp::from(107 as u64) * Fp::from(16 as u64)) +
-            (Fp::from(93 as u64) * Fp::from(4096 as u64)) + (Fp::from(107 as u64) * Fp::from(1048576 as u64)),
-    ];
-
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fp>::create(gates, table, oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
+        ConstraintSystem::<Fp>::create
+        (
+            gates,
+            table,
+            oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>,
+            PUBLIC
+        ).unwrap(),
         oracle::tweedle::fq5::params(),
         endo_q,
         SRSSpec::Use(&srs)
@@ -210,6 +359,7 @@ fn positive(index: &Index<Affine>)
     let rng = &mut OsRng;
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
+    let params = oracle::tweedle::fp5::params();
     let lgr_comms : Vec<_> = (0..PUBLIC).map(|i| {
         let mut v = vec![Fp::zero(); i + 1];
         v[i] = Fp::one();
@@ -302,22 +452,206 @@ fn positive(index: &Index<Affine>)
             vec![w(),w(),w(),w(),w(),w(),w(), y2, x2,w(), y3,y2,w(),w(),w(), x4, y4,w(), y4],
             vec![w(),w(),w(),w(),w(),w(),w(),w(), x3,w(),w(),r1,w(),w(),w(),w(),w(),w(), r2],
         ];
+
+        //  witness for Poseidon permutation custom constraints
+
+        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants>::new();
+        sponge.state = vec![w(), w(), w(), w(), w()];
+        witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+
+        // ROUNDS_FULL full rounds
+
+        for j in 0..PlonkSpongeConstants::ROUNDS_FULL
+        {
+            sponge.full_round(j, &params);
+            witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
+        }
+
+        // witness for packing
+
+        let mut pack = [Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new(), Vec::<Fp>::new()];
+
+        let scalar = w();
+        let bits = scalar.into_repr().to_bits().iter().
+            map(|b| match *b {true => Fp::one(), false => Fp::zero()}).collect::<Vec<_>>();
+        assert_eq!(bits.len(), 256);
+
+        pack.iter_mut().for_each(|w| w.push(Fp::zero()));
+        for k in 0..64
+        {
+            let w0 = bits[4*k];
+            pack[0].push(w0);
+            let w1 = bits[4*k+1];
+            pack[1].push(w1);
+            let w2 = bits[4*k+2];
+            pack[2].push(w2);
+            let w3 = bits[4*k+3];
+            pack[3].push(w3);
+
+            pack[4].push
+            (
+                w3 +
+                &w2.double() +
+                &w1.double().double() +
+                &w0.double().double().double() +
+                &pack[4][k].double().double().double().double()
+            );
+        }
     
-        // witness for for 8-bit XOR lookup
+        assert_eq!(scalar, pack[4][64]);
+        witness.iter_mut().zip(pack.iter_mut()).for_each(|(w, p)| w.append(p));
 
-        witness[0].push(Fp::one()); // operatopn opcode
-        witness[1].push(Fp::from(111 as u64));
-        witness[2].push(Fp::from(97 as u64));
-        witness[3].push(Fp::from(103 as u64));
-        witness[4].push(Fp::one() + (Fp::from(111 as u64) * Fp::from(16 as u64)) +
-            (Fp::from(97 as u64) * Fp::from(4096 as u64)) + (Fp::from(103 as u64) * Fp::from(1048576 as u64)));
+        // witness for short Weierstrass curve variable base scalar multiplication, no packing
 
-        witness[0].push(Fp::one()); // operatopn opcode
-        witness[1].push(Fp::from(107 as u64));
-        witness[2].push(Fp::from(93 as u64));
-        witness[3].push(Fp::from(107 as u64));
-        witness[4].push(Fp::one() + (Fp::from(107 as u64) * Fp::from(16 as u64)) +
-            (Fp::from(93 as u64) * Fp::from(4096 as u64)) + (Fp::from(107 as u64) * Fp::from(1048576 as u64)));
+        let (xt, yt) = (x1, y1);
+        let (mut xp, mut yp) = add_points (add_points ((xt, yt), (xt, yt)), (xt, yt));
+
+        for b in bits.iter()
+        {
+            let (xq, yq) = (xt, (b.double() - Fp::one())*yt);
+            let (xs, ys) = add_points (add_points ((xq, yq), (xp, yp)), (xp, yp));
+            // (xq - xp) * s1 = yq - yp
+            let s1 = (yq - &yp)/&(xq - &xp);
+            // (xp – xs) * s2 = ys + yp
+            let s2 = (ys + &yp)/&(xp - &xs);
+
+            witness[0].push(xt);
+            witness[0].push(xs);
+            witness[1].push(yt);
+            witness[1].push(ys);
+            witness[2].push(s1);
+            witness[2].push(xp);
+            witness[3].push(s2);
+            witness[3].push(yp);
+            witness[4].push(*b);
+            witness[4].push(w());
+
+            xp = xs;
+            yp = ys;
+        }
+
+        // witness for short Weierstrass curve variable base scalar multiplication, with packing
+
+        let (mut xp, mut yp) = add_points (add_points ((xt, yt), (xt, yt)), (xt, yt));
+        let mut n2 = Fp::zero();
+        let mut n1: Fp;
+
+        for b in bits.iter()
+        {
+            let (xq, yq) = (xt, (b.double() - Fp::one())*yt);
+            let (xs, ys) = add_points (add_points ((xq, yq), (xp, yp)), (xp, yp));
+            // (xq - xp) * s1 = yq - yp
+            let s1 = (yq - &yp)/&(xq - &xp);
+            n1 = n2.double() + b;
+
+            witness[0].push(xt);
+            witness[0].push(xs);
+            witness[1].push(yt);
+            witness[1].push(ys);
+            witness[2].push(s1);
+            witness[2].push(xp);
+            witness[3].push(*b);
+            witness[3].push(yp);
+            witness[4].push(n1);
+            witness[4].push(n2);
+
+            xp = xs;
+            yp = ys;
+            n2 = n1;
+        }
+        assert_eq!(scalar, n2);
+
+        // witness for short Weierstrass curve variable base endoscalar multiplication, no packing
+
+        let (xt, yt) = (x1, y1);
+        let (mut xp, mut yp) = add_points (add_points ((index.cs.endo * &xt, yt), (xt, yt)), (xt, yt));
+
+        for b in bits.chunks_exact(2)
+        {
+            let (xq, yq) = ((Fp::one() + (index.cs.endo - Fp::one()) * b[0]) * xt, (b[1].double() - Fp::one())*yt);
+            let (xs, ys) = add_points (add_points ((xp, yp), (xp, yp)), (xq, yq));
+            // (xq - xp) * s1 = yq - yp
+            let s1 = (yq - &yp)/&(xq - &xp);
+            // (xp – xs) * s2 = ys + yp
+            let s2 = (ys + &yp)/&(xp - &xs);
+
+            witness[0].push(xt);
+            witness[0].push(xs);
+            witness[1].push(yt);
+            witness[1].push(ys);
+            witness[2].push(s1);
+            witness[2].push(xp);
+            witness[3].push(s2);
+            witness[3].push(yp);
+            witness[4].push(b[1]);
+            witness[4].push(b[0]);
+
+            xp = xs;
+            yp = ys;
+        }
+    
+        // witness for for 8-bit bitwise operation lookups
+        let mut opcode: u64 = 1;
+        for i in 1..9
+        {
+            for j in 1..9
+            {
+                let input1: u8 = i;
+                let input2: u8 = j;
+                let output: u8 = input1 ^ input2;
+                let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+                witness[0].push(Fp::from(opcode));
+                witness[1].push(Fp::from(input1));
+                witness[2].push(Fp::from(input2));
+                witness[3].push(Fp::from(output));
+                witness[4].push(Fp::from(lookup));
+            }
+        }
+        opcode = 2;
+        for i in 1..9
+        {
+            for j in 1..9
+            {
+                let input1: u8 = i;
+                let input2: u8 = j;
+                let output: u8 = input1 | input2;
+                let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+                witness[0].push(Fp::from(opcode));
+                witness[1].push(Fp::from(input1));
+                witness[2].push(Fp::from(input2));
+                witness[3].push(Fp::from(output));
+                witness[4].push(Fp::from(lookup));
+            }
+        }
+        opcode = 3;
+        for i in 1..9
+        {
+            for j in 1..9
+            {
+                let input1: u8 = i;
+                let input2: u8 = j;
+                let output: u8 = input1 & input2;
+                let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+                witness[0].push(Fp::from(opcode));
+                witness[1].push(Fp::from(input1));
+                witness[2].push(Fp::from(input2));
+                witness[3].push(Fp::from(output));
+                witness[4].push(Fp::from(lookup));
+            }
+        }
+        opcode = 4;
+        for i in 1..65
+        {
+            let input1: u8 = i;
+            let input2: u8 = 0;
+            let output: u8 = !input1;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            witness[0].push(Fp::from(opcode));
+            witness[1].push(Fp::from(input1));
+            witness[2].push(Fp::from(input2));
+            witness[3].push(Fp::from(output));
+            witness[4].push(Fp::from(lookup));
+        }
 
         witness.iter_mut().for_each(|w| w.resize(N, Fp::zero()));
 
