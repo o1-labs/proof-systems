@@ -254,11 +254,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
                 // check linearization polynomial evaluation consistency
                 let zeta1m1 = zeta1 - Fr::<G>::one();
+                let zm1 = (evals[0].z - Fr::<G>::one()) * zeta1m1;
+                let lm1 = (evals[0].l - Fr::<G>::one()) * zeta1m1;
+                let zetam1 = oracles.zeta - Fr::<G>::one();
+                let zetamw1 = oracles.zeta - index.w1;
+                let zetamw3 = oracles.zeta - index.w3;
                 let beta1 = Fr::<G>::one() + oracles.beta2;
                 let gammabeta1 = beta1 * oracles.gamma2;
 
-                
-                
                 if
                     if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()}
                     -
@@ -270,17 +273,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         map(|(w, s)| oracles.gamma1 + (oracles.beta1 * oracles.zeta * s) + w).
                         fold(oracles.alpha * zkp * evals[0].z, |x, y| x * y)
                     +
-                    ((evals[0].z - Fr::<G>::one()) * zeta1m1 / (oracles.zeta - Fr::<G>::one()) * alpha[range::PERM][0])
-                    +
-                    ((evals[0].z - Fr::<G>::one()) * zeta1m1 / (oracles.zeta - index.w3) * alpha[range::PERM][1])
-
-
-                    +
-                    ((evals[0].l - Fr::<G>::one()) * zeta1m1 / (oracles.zeta - Fr::<G>::one()) * alpha[range::TABLE][1])
-                    +
-                    (((evals[0].l - Fr::<G>::one()) * alpha[range::TABLE][2] +
-                        ((evals[0].h1 - evals[1].h2) * alpha[range::TABLE][3])) * zeta1m1 / (oracles.zeta - index.w1))
-                    +
                     ((((evals[0].l * beta1 *
                     (oracles.gamma2 + evals[0].lw)) *
                     (gammabeta1 + (evals[0].tb + evals[1].tb * oracles.beta2)))
@@ -289,7 +281,16 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         (gammabeta1 + (evals[0].h1 + evals[1].h1 * oracles.beta2))) *
                         (gammabeta1 + (evals[0].h2 + evals[1].h2 * oracles.beta2))))
                     *
-                    (oracles.zeta - index.w1)) * alpha[range::TABLE][0]
+                    zetamw1) * alpha[range::TABLE][0]
+                    +
+                    (zm1 / zetam1 * alpha[range::PERM][0])
+                    +
+                    (zm1 / zetamw3 * alpha[range::PERM][1])
+                    +
+                    (lm1 / zetam1 * alpha[range::TABLE][1])
+                    +
+                    ((lm1 * alpha[range::TABLE][2] +
+                        ((evals[0].h1 - evals[1].h2) * alpha[range::TABLE][3]) * zeta1m1) / zetamw1)
     
                 !=
                     evals[0].t * zeta1m1

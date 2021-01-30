@@ -5,7 +5,8 @@ This source file implements table loopup polynomials.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D, DenseOrSparsePolynomial};
+use crate::polynomial::{LookupEvals, LookupPolys};
+use ff_fft::{Evaluations as E, DensePolynomial as DP, Radix2EvaluationDomain as D, DenseOrSparsePolynomial, EvaluationDomain};
 use oracle::{utils::{EvalUtils, PolyUtils}, rndoracle::ProofError};
 use crate::constraints::ConstraintSystem;
 use crate::scalars::RandomOracles;
@@ -17,50 +18,42 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn tbllkp_quot
     (
         &self,
-        (lw, h1, h2): (&DensePolynomial<F>, &DensePolynomial<F>, &DensePolynomial<F>),
+        lkppolys: &LookupPolys<F>,
         oracles: &RandomOracles<F>,
-        l: &DensePolynomial<F>,
         alpha: &[F]
-    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError>
+    ) -> Result<(E<F, D<F>>, DP<F>), ProofError>
     {
         let n = self.domain.d1.size as usize;
 
         let (bnd1, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(
-                &(l - &DensePolynomial::from_coefficients_slice(&[F::one()])).scale(alpha[1]).into(),
-                &DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]).into()).
+                &(&lkppolys.l - &DP::from_coefficients_slice(&[F::one()])).scale(alpha[1]).into(),
+                &DP::from_coefficients_slice(&[-F::one(), F::one()]).into()).
                     map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let h2w = DensePolynomial::from_coefficients_slice(&h2.coeffs.iter().
+        let h2w = DP::from_coefficients_slice(&lkppolys.h2.coeffs.iter().
             zip(self.sid.iter()).map(|(z, w)| *z * w).collect::<Vec<_>>());
         let (bnd2, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(
-                &(&(l - &DensePolynomial::from_coefficients_slice(&[F::one()])).scale(alpha[2]) +
-                    &(h1 - &h2w).scale(alpha[3])).into(),
-                &DensePolynomial::from_coefficients_slice(&[-self.sid[n-1], F::one()]).into()).
+                &(&(&lkppolys.l - &DP::from_coefficients_slice(&[F::one()])).scale(alpha[2]) +
+                    &(&lkppolys.h1 - &h2w).scale(alpha[3])).into(),
+                &DP::from_coefficients_slice(&[-self.sid[n-1], F::one()]).into()).
                     map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
-        let lw = lw.evaluate_over_domain_by_ref(self.domain.d4);
-        let ll = l.evaluate_over_domain_by_ref(self.domain.d4);
-        let llw = ll.shift(4);
-        let h1l = h1.evaluate_over_domain_by_ref(self.domain.d4);
-        let h1lw = h1l.shift(4);
-        let h2l = h2.evaluate_over_domain_by_ref(self.domain.d4);
-        let h2lw = h2l.shift(4);
-
+        let evals = self.evaluate2(lkppolys);
         let beta1 = F::one() + oracles.beta2;
         let gammabeta1 = &self.l04.scale(beta1 * oracles.gamma2);
 
         Ok((
-            (&(&(&(&ll.scale(beta1) *
-                &(&self.l04.scale(oracles.gamma2) + &lw)) *
+            (&(&(&(&evals.this.l.scale(beta1) *
+                &(&self.l04.scale(oracles.gamma2) + &evals.this.lw)) *
                 &(gammabeta1 + &(&self.table4 + &self.table4w.scale(oracles.beta2))))
             -
-            &(&(&llw *
-                &(gammabeta1 + &(&h1l + &h1lw.scale(oracles.beta2)))) *
-                &(gammabeta1 + &(&h2l + &h2lw.scale(oracles.beta2)))))
+            &(&(&evals.next.l *
+                &(gammabeta1 + &(&evals.this.h1 + &evals.next.h1.scale(oracles.beta2)))) *
+                &(gammabeta1 + &(&evals.this.h2 + &evals.next.h2.scale(oracles.beta2)))))
             *
             &(&self.l14 - &self.l04.scale(self.sid[n-1]))).
             scale(alpha[0])
@@ -74,7 +67,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     (
         &self,
         witness: &[Vec::<F>; COLUMNS],
-    ) ->(Vec<F>, Vec<F>, Vec<F>)
+    ) -> LookupEvals<F>
     {
         let n = self.domain.d1.size as usize;
         // get lookup values
@@ -98,16 +91,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let mut h = vec![s[n-1]];
         h.append(&mut s.drain(n..2*n-1).collect());
-        (lw, s, h)
+        LookupEvals
+        {
+            l: DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap()),
+            lw: E::<F, D<F>>::from_vec_and_domain(lw, self.domain.d1),
+            h1: E::<F, D<F>>::from_vec_and_domain(s, self.domain.d1),
+            h2: E::<F, D<F>>::from_vec_and_domain(h, self.domain.d1),
+        }
     }
 
     // lookup aggregation polynomial computation
     pub fn tbllkp_aggreg
     (
         &self,
-        (lw, h1, h2): (Vec<F>, Vec<F>, Vec<F>),
+        lkpevl: &mut LookupEvals<F>,
         oracles: &RandomOracles<F>
-    ) -> Result<DensePolynomial<F>, ProofError>
+    ) -> Result<DP<F>, ProofError>
     {
         let n = self.domain.d1.size as usize;
         let beta1 = F::one() + oracles.beta2;
@@ -116,8 +115,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         (0..n-1).for_each
         (
             |j| z[j+1] =
-                (gammabeta1 + h1[j] + (oracles.beta2 * h1[j+1])) *
-                (gammabeta1 + h2[j] + (oracles.beta2 * h2[j+1]))
+                (gammabeta1 + lkpevl.h1.evals[j] + (oracles.beta2 * lkpevl.h1.evals[j+1])) *
+                (gammabeta1 + lkpevl.h2.evals[j] + (oracles.beta2 * lkpevl.h2.evals[j+1]))
         );
         algebra::fields::batch_inversion::<F>(&mut z[1..n]);
         (0..n-1).for_each
@@ -125,12 +124,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             |j|
             {
                 let x = z[j];
-                z[j+1] *= &(x * beta1 * (oracles.gamma2 + lw[j]) *
+                z[j+1] *= &(x * beta1 * (oracles.gamma2 + lkpevl.lw.evals[j]) *
                     (gammabeta1 + self.table1.evals[j] + (oracles.beta2 * self.table1.evals[j+1])))
             }
         );
 
         if z[n-1] != F::one() {return Err(ProofError::ProofCreation)};
-        Ok(Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate())
+        lkpevl.l = E::<F, D<F>>::from_vec_and_domain(z, self.domain.d1);
+        Ok(lkpevl.l.interpolate_by_ref())
     }
 }

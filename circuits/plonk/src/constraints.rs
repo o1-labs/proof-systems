@@ -4,14 +4,14 @@ This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
+use blake2::{Blake2b, Digest};
 use algebra::{FftField, SquareRootField};
 use oracle::poseidon::ArithmeticSpongeParams;
 use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
-pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 pub use super::gate::{CircuitGate, GateType};
 pub use super::wires::{Wire, COLUMNS, WIRES};
 pub use super::domains::EvaluationDomains;
-use blake2::{Blake2b, Digest};
+pub use super::polynomial::*;
 use oracle::utils::EvalUtils;
 use array_init::array_init;
 
@@ -306,7 +306,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // evaluate witness polynomials over domains
-    pub fn evaluate
+    pub fn evaluate1
     (
         &self,
         w: &[DP<F>; COLUMNS],
@@ -350,6 +350,37 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                     z: z8
                 },
             },
+        }
+    }
+
+    // evaluate lookup polynomials over domains
+    pub fn evaluate2
+    (
+        &self,
+        polys: &LookupPolys<F>,
+    ) -> LookupShifts<F>
+    {
+        let l = polys.l.evaluate_over_domain_by_ref(self.domain.d4);
+        let lw = polys.lw.evaluate_over_domain_by_ref(self.domain.d4);
+        let h1 = polys.h1.evaluate_over_domain_by_ref(self.domain.d4);
+        let h2 = polys.h2.evaluate_over_domain_by_ref(self.domain.d4);
+
+        LookupShifts
+        {
+            next: LookupEvals
+            {
+                l: l.shift(4),
+                lw: DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap()), // dummy
+                h1: h1.shift(4),
+                h2: h2.shift(4)
+            },
+            this: LookupEvals
+            {
+                l,
+                lw,
+                h1,
+                h2
+            }
         }
     }
 }
