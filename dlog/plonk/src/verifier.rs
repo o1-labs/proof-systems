@@ -298,10 +298,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     evals[0].f
                 {return Err(ProofError::ProofVerification)}
 
-
-
-
-
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }
         ).collect::<Result<Vec<_>, _>>()?;

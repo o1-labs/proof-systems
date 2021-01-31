@@ -29,7 +29,7 @@ This source file tests constraints for the following computations:
 9. short Weierstrass curve group endomorphism optimised variable base
    scalar multiplication via custom Plonk constraints
 
-9. lookup of 8-bit XOR operations
+9. lookup of 8-bit bitwise operations
 
 **********************************************************************************************************/
 
@@ -45,8 +45,8 @@ use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
-const MAX_SIZE: usize = 2048; // max size of poly chunks
-const N: usize = 2048; // Plonk domain size
+const MAX_SIZE: usize = 4096; // max size of poly chunks
+const N: usize = 4096; // Plonk domain size
 const PUBLIC: usize = 6;
 
 #[test]
@@ -277,7 +277,7 @@ fn turbo_plonk()
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
     
     // custom constraint gates for 8-bit bitwise operation lookups
-    for _ in 0..256
+    for _ in 0..2607
     {
         i = i+1;
         gates.push(CircuitGate::<Fp>::create_lookup
@@ -289,9 +289,9 @@ fn turbo_plonk()
     table.push(Fp::zero());
     let mut table = Vec::with_capacity(N);
     let mut opcode: u64 = 1;
-    for i in 1..9
+    for i in 0..28
     {
-        for j in 1..9
+        for j in 0..28
         {
             let input1: u8 = i;
             let input2: u8 = j;
@@ -301,9 +301,9 @@ fn turbo_plonk()
         }
     }
     opcode = 2;
-    for i in 1..9
+    for i in 0..28
     {
-        for j in 1..9
+        for j in 0..28
         {
             let input1: u8 = i;
             let input2: u8 = j;
@@ -313,9 +313,9 @@ fn turbo_plonk()
         }
     }
     opcode = 3;
-    for i in 1..9
+    for i in 0..28
     {
-        for j in 1..9
+        for j in 0..28
         {
             let input1: u8 = i;
             let input2: u8 = j;
@@ -592,9 +592,9 @@ fn positive(index: &Index<Affine>)
     
         // witness for for 8-bit bitwise operation lookups
         let mut opcode: u64 = 1;
-        for i in 1..9
+        for i in 0..28
         {
-            for j in 1..9
+            for j in 0..28
             {
                 let input1: u8 = i;
                 let input2: u8 = j;
@@ -608,9 +608,9 @@ fn positive(index: &Index<Affine>)
             }
         }
         opcode = 2;
-        for i in 1..9
+        for i in 0..28
         {
-            for j in 1..9
+            for j in 0..28
             {
                 let input1: u8 = i;
                 let input2: u8 = j;
@@ -624,9 +624,9 @@ fn positive(index: &Index<Affine>)
             }
         }
         opcode = 3;
-        for i in 1..9
+        for i in 0..28
         {
-            for j in 1..9
+            for j in 0..28
             {
                 let input1: u8 = i;
                 let input2: u8 = j;
@@ -640,7 +640,7 @@ fn positive(index: &Index<Affine>)
             }
         }
         opcode = 4;
-        for i in 1..65
+        for i in 0..255
         {
             let input1: u8 = i;
             let input2: u8 = 0;
