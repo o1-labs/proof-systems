@@ -254,8 +254,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
                 // check linearization polynomial evaluation consistency
                 let zeta1m1 = zeta1 - Fr::<G>::one();
-                let zm1 = (evals[0].z - Fr::<G>::one()) * zeta1m1;
-                let lm1 = (evals[0].l - Fr::<G>::one()) * zeta1m1;
+                let zm1 = (Fr::<G>::one() - evals[0].z) * zeta1m1;
+                let lm1 = (Fr::<G>::one() - evals[0].l) * zeta1m1;
                 let zetam1 = oracles.zeta - Fr::<G>::one();
                 let zetamw1 = oracles.zeta - index.w1;
                 let zetamw3 = oracles.zeta - index.w3;
@@ -263,7 +263,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 let gammabeta1 = beta1 * oracles.gamma2;
 
                 if
-                    if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()}
+                    (if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()}
                     -
                     evals[0].w.iter().zip(evals[0].s.iter()).
                         map(|(w, s)| (oracles.beta1 * s) + w + oracles.gamma1).
@@ -282,20 +282,21 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         (gammabeta1 + (evals[0].h2 + evals[1].h2 * oracles.beta2))))
                     *
                     zetamw1) * alpha[range::TABLE][0]
+                    -
+                    evals[0].t * zeta1m1
                     +
-                    (zm1 / zetam1 * alpha[range::PERM][0])
+                    evals[0].f)
+                    *
+                    zetam1 * zetamw1 * zetamw3
+                !=
+                    (zm1 * zetamw1 * zetamw3 * alpha[range::PERM][0])
                     +
-                    (zm1 / zetamw3 * alpha[range::PERM][1])
+                    (zm1 * zetam1 * zetamw1 * alpha[range::PERM][1])
                     +
-                    (lm1 / zetam1 * alpha[range::TABLE][1])
+                    (lm1 * zetamw1 * zetamw3 * alpha[range::TABLE][1])
                     +
                     ((lm1 * alpha[range::TABLE][2] +
-                        ((evals[0].h1 - evals[1].h2) * alpha[range::TABLE][3]) * zeta1m1) / zetamw1)
-    
-                !=
-                    evals[0].t * zeta1m1
-                    -
-                    evals[0].f
+                        ((evals[1].h2 - evals[0].h1) * alpha[range::TABLE][3]) * zeta1m1) * zetam1 * zetamw3)
                 {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
