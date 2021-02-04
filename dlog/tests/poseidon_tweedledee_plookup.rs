@@ -4,11 +4,11 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
-use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
+use plonk_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
-use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
-use plonk_5_wires_circuits::{gate::CircuitGate, constraints::ConstraintSystem, wires::Wire};
-use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use algebra::{ tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
+use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
+use plonk_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -24,14 +24,14 @@ const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC : usize = 0;
 
 #[test]
-fn poseidon_tweedledum_5_wires()
+fn poseidon_tweedledee_plookup()
 {
-    let c = &oracle::tweedle::fq5::params().round_constants;
+    let c = &oracle::tweedle::fp5::params().round_constants;
 
     // circuit gates
 
     let mut i = 0;
-    let mut gates: Vec<CircuitGate::<Fq>> = Vec::with_capacity(N);
+    let mut gates: Vec<CircuitGate::<Fp>> = Vec::with_capacity(N);
 
     // custom constraints for Poseidon hash function permutation
 
@@ -48,7 +48,7 @@ fn poseidon_tweedledum_5_wires()
                 Wire{col:3, row:(i+PERIOD)%M},
                 Wire{col:4, row:(i+PERIOD)%M},
             ];
-            gates.push(CircuitGate::<Fq>::create_poseidon(i, wires, c[j].clone()));
+            gates.push(CircuitGate::<Fp>::create_poseidon(i, wires, c[j].clone()));
             i+=1;
         }
         let wires =
@@ -59,28 +59,28 @@ fn poseidon_tweedledum_5_wires()
             Wire{col:3, row:(i+PERIOD)%M},
             Wire{col:4, row:(i+PERIOD)%M},
         ];
-        gates.push(CircuitGate::<Fq>::zero(i, wires));
+        gates.push(CircuitGate::<Fp>::zero(i, wires));
         i+=1;
     }
 
     for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
     {
-        gates.push(CircuitGate::<Fq>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
+        gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
         i+=1;
     }
-    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     
     let srs = SRS::create(MAX_SIZE);
 
     let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq5::params(), PUBLIC).unwrap(),
-        oracle::tweedle::fp5::params(),
+        ConstraintSystem::<Fp>::create(gates, vec![], oracle::tweedle::fp5::params(), PUBLIC).unwrap(),
+        oracle::tweedle::fq5::params(),
         endo_q,
         SRSSpec::Use(&srs)
     );
@@ -92,8 +92,8 @@ fn positive(index: &Index<Affine>)
 {
     let rng = &mut OsRng;
 
-    let params = oracle::tweedle::fq5::params();
-    let mut sponge = ArithmeticSponge::<Fq, PlonkSpongeConstants>::new();
+    let params = oracle::tweedle::fp5::params();
+    let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants>::new();
 
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -103,7 +103,7 @@ fn positive(index: &Index<Affine>)
     println!("{}{:?}", "Number oh Poseidon hashes in the circuit: ".yellow(), NUM_POS);
     println!("{}{:?}", "Full rounds: ".yellow(), PlonkSpongeConstants::ROUNDS_FULL);
     println!("{}{:?}", "Sbox alpha: ".yellow(), PlonkSpongeConstants::SPONGE_BOX);
-    println!("{}", "Base curve: tweedledum".green());
+    println!("{}", "Base curve: tweedledee".green());
     println!();
     println!("{}", "Prover zk-proof computation".green());
     let mut start = Instant::now();
@@ -113,14 +113,14 @@ fn positive(index: &Index<Affine>)
         //  witness for Poseidon permutation custom constraints
         let mut w =
         [
-            Vec::<Fq>::with_capacity(N),
-            Vec::<Fq>::with_capacity(N),
-            Vec::<Fq>::with_capacity(N),
-            Vec::<Fq>::with_capacity(N),
-            Vec::<Fq>::with_capacity(N),
+            Vec::<Fp>::with_capacity(N),
+            Vec::<Fp>::with_capacity(N),
+            Vec::<Fp>::with_capacity(N),
+            Vec::<Fp>::with_capacity(N),
+            Vec::<Fp>::with_capacity(N),
         ];
 
-        let init = vec![Fq::rand(rng), Fq::rand(rng), Fq::rand(rng), Fq::rand(rng), Fq::rand(rng)];
+        let init = vec![Fp::rand(rng), Fp::rand(rng), Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
         for _ in 0..NUM_POS-1
         {
             sponge.state = init.clone();
@@ -144,14 +144,14 @@ fn positive(index: &Index<Affine>)
             w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
         }
 
-        w.iter_mut().for_each(|w| {w.push(Fq::rand(rng)); w.push(Fq::rand(rng))});
+        w.iter_mut().for_each(|w| {w.push(Fp::rand(rng)); w.push(Fp::rand(rng))});
 
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&w), true);
 
         let prev = {
             let k = ceil_log2(index.srs.get_ref().g.len());
-            let chals : Vec<_> = (0..k).map(|_| Fq::rand(rng)).collect();
+            let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit_non_hiding(&b, None)
@@ -160,7 +160,7 @@ fn positive(index: &Index<Affine>)
         };
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(
+        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
             &group_map, &w, &index, vec![prev]).unwrap());
 
         print!("{:?}\r", test);
@@ -176,7 +176,7 @@ fn positive(index: &Index<Affine>)
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(&group_map, &batch)
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

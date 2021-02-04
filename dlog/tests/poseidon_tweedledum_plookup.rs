@@ -4,11 +4,11 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
-use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
+use plonk_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
+use commitment_dlog::{srs::{endos, SRS}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
-use plonk_5_wires_circuits::{gate::CircuitGate, constraints::ConstraintSystem, wires::Wire};
-use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
+use plonk_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -24,7 +24,7 @@ const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC : usize = 0;
 
 #[test]
-fn poseidon_tweedledum_5_wires()
+fn poseidon_tweedledum_plookup()
 {
     let c = &oracle::tweedle::fq5::params().round_constants;
 
@@ -79,7 +79,7 @@ fn poseidon_tweedledum_5_wires()
     let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq5::params(), PUBLIC).unwrap(),
+        ConstraintSystem::<Fq>::create(gates, vec![], oracle::tweedle::fq5::params(), PUBLIC).unwrap(),
         oracle::tweedle::fp5::params(),
         endo_q,
         SRSSpec::Use(&srs)

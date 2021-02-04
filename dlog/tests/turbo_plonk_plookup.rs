@@ -29,13 +29,15 @@ This source file tests constraints for the following computations:
 9. short Weierstrass curve group endomorphism optimised variable base
    scalar multiplication via custom Plonk constraints
 
+9. lookup of 8-bit bitwise operations
+
 **********************************************************************************************************/
 
-use plonk_5_wires_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge, ArithmeticSpongeParams}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
-use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use plonk_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -43,12 +45,12 @@ use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
 
-const MAX_SIZE: usize = 2048; // max size of poly chunks
-const N: usize = 2048; // Plonk domain size
+const MAX_SIZE: usize = 4096; // max size of poly chunks
+const N: usize = 4096; // Plonk domain size
 const PUBLIC: usize = 6;
 
 #[test]
-fn turbo_plonk_5_wires()
+fn turbo_plonk_plookup()
 {
     let z = Fp::zero();
     let p = Fp::one();
@@ -273,13 +275,76 @@ fn turbo_plonk_5_wires()
     i += 1;
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
+    
+    // custom constraint gates for 8-bit bitwise operation lookups
+    for _ in 0..2607
+    {
+        i = i+1;
+        gates.push(CircuitGate::<Fp>::create_lookup
+            (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    }
+
+    // table for bitwise operation loookups
+    let mut table = Vec::with_capacity(N);
+    table.push(Fp::zero());
+    let mut table = Vec::with_capacity(N);
+    let mut opcode: u64 = 1;
+    for i in 0..28
+    {
+        for j in 0..28
+        {
+            let input1: u8 = i;
+            let input2: u8 = j;
+            let output: u8 = input1 ^ input2;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            table.push(Fp::from(lookup));
+        }
+    }
+    opcode = 2;
+    for i in 0..28
+    {
+        for j in 0..28
+        {
+            let input1: u8 = i;
+            let input2: u8 = j;
+            let output: u8 = input1 | input2;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            table.push(Fp::from(lookup));
+        }
+    }
+    opcode = 3;
+    for i in 0..28
+    {
+        for j in 0..28
+        {
+            let input1: u8 = i;
+            let input2: u8 = j;
+            let output: u8 = input1 & input2;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            table.push(Fp::from(lookup));
+        }
+    }
+    opcode = 4;
+    for i in 0..255
+    {
+        let input1: u8 = i;
+        let input2: u8 = 0;
+        let output: u8 = !input1;
+        let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+        table.push(Fp::from(lookup));
+    }
 
     let srs = SRS::create(MAX_SIZE);
-
     let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
+        ConstraintSystem::<Fp>::create
+        (
+            gates,
+            table,
+            oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>,
+            PUBLIC
+        ).unwrap(),
         oracle::tweedle::fq5::params(),
         endo_q,
         SRSSpec::Use(&srs)
@@ -523,6 +588,69 @@ fn positive(index: &Index<Affine>)
 
             xp = xs;
             yp = ys;
+        }
+    
+        // witness for for 8-bit bitwise operation lookups
+        let mut opcode: u64 = 1;
+        for i in 0..28
+        {
+            for j in 0..28
+            {
+                let input1: u8 = i;
+                let input2: u8 = j;
+                let output: u8 = input1 ^ input2;
+                let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+                witness[0].push(Fp::from(opcode));
+                witness[1].push(Fp::from(input1));
+                witness[2].push(Fp::from(input2));
+                witness[3].push(Fp::from(output));
+                witness[4].push(Fp::from(lookup));
+            }
+        }
+        opcode = 2;
+        for i in 0..28
+        {
+            for j in 0..28
+            {
+                let input1: u8 = i;
+                let input2: u8 = j;
+                let output: u8 = input1 | input2;
+                let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+                witness[0].push(Fp::from(opcode));
+                witness[1].push(Fp::from(input1));
+                witness[2].push(Fp::from(input2));
+                witness[3].push(Fp::from(output));
+                witness[4].push(Fp::from(lookup));
+            }
+        }
+        opcode = 3;
+        for i in 0..28
+        {
+            for j in 0..28
+            {
+                let input1: u8 = i;
+                let input2: u8 = j;
+                let output: u8 = input1 & input2;
+                let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+                witness[0].push(Fp::from(opcode));
+                witness[1].push(Fp::from(input1));
+                witness[2].push(Fp::from(input2));
+                witness[3].push(Fp::from(output));
+                witness[4].push(Fp::from(lookup));
+            }
+        }
+        opcode = 4;
+        for i in 0..255
+        {
+            let input1: u8 = i;
+            let input2: u8 = 0;
+            let output: u8 = !input1;
+            let lookup: u64 = opcode + ((input1 as u64) << 4) + ((input2 as u64) << 12) + ((output as u64) << 20);
+            witness[0].push(Fp::from(opcode));
+            witness[1].push(Fp::from(input1));
+            witness[2].push(Fp::from(input2));
+            witness[3].push(Fp::from(output));
+            witness[4].push(Fp::from(lookup));
         }
 
         witness.iter_mut().for_each(|w| w.resize(N, Fp::zero()));
