@@ -11,6 +11,7 @@ use oracle::{utils::{EvalUtils, PolyUtils}, rndoracle::ProofError};
 use crate::constraints::ConstraintSystem;
 use crate::scalars::RandomOracles;
 use crate::wires::COLUMNS;
+use rand::rngs::ThreadRng;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
@@ -44,18 +45,18 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         let evals = self.evaluate2(lkppolys);
         let beta1 = F::one() + oracles.beta2;
-        let gammabeta1 = &self.l04.scale(beta1 * oracles.gamma2);
+        let gammabeta1 = &self.l08.scale(beta1 * oracles.gamma2);
 
         Ok((
             (&(&(&(&evals.this.l.scale(beta1) *
-                &(&self.l04.scale(oracles.gamma2) + &evals.this.lw)) *
-                &(gammabeta1 + &(&self.table4 + &self.table4w.scale(oracles.beta2))))
+                &(&self.l08.scale(oracles.gamma2) + &evals.this.lw)) *
+                &(gammabeta1 + &(&self.table8 + &self.table8w.scale(oracles.beta2))))
             -
             &(&(&evals.next.l *
                 &(gammabeta1 + &(&evals.this.h1 + &evals.next.h1.scale(oracles.beta2)))) *
                 &(gammabeta1 + &(&evals.this.h2 + &evals.next.h2.scale(oracles.beta2)))))
             *
-            &(&self.l14 - &self.l04.scale(self.sid[n-1]))).
+            &(&self.l18 - &self.l08.scale(self.sid[n-1]))).
             scale(alpha[0])
             ,
             &bnd1 + &bnd2
@@ -105,7 +106,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     (
         &self,
         lkpevl: &mut LookupEvals<F>,
-        oracles: &RandomOracles<F>
+        oracles: &RandomOracles<F>,
+        rng: &mut ThreadRng
     ) -> Result<DP<F>, ProofError>
     {
         let n = self.domain.d1.size as usize;
@@ -131,6 +133,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         if z[n-1] != F::one() {return Err(ProofError::ProofCreation)};
         lkpevl.l = E::<F, D<F>>::from_vec_and_domain(z, self.domain.d1);
-        Ok(lkpevl.l.interpolate_by_ref())
+        Ok(&lkpevl.l.interpolate_by_ref() + &DP::rand(2, rng).mul_by_vanishing_poly(self.domain.d1))
     }
 }

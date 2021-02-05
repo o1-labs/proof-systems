@@ -76,8 +76,8 @@ pub struct ConstraintSystem<F: FftField>
     pub emull:  E<F, D<F>>,             // endoscalar multiplication selector evaluations over domain.d4
 
     // lookup table
-    pub table4w:E<F, D<F>>,             // shifted lookup table polynomial over domain.d4
-    pub table4: E<F, D<F>>,             // lookup table polynomial over domain.d4
+    pub table8w:E<F, D<F>>,             // shifted lookup table polynomial over domain.d8
+    pub table8: E<F, D<F>>,             // lookup table polynomial over domain.d8
     pub table1: E<F, D<F>>,             // lookup table polynomial over domain.d1
 
     // constant polynomials
@@ -179,7 +179,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         tbl.resize(n, F::zero());
         let table1 = E::<F, D<F>>::from_vec_and_domain(tbl, domain.d1); 
         let tablem = table1.clone().interpolate();
-        let table4 = tablem.evaluate_over_domain_by_ref(domain.d4);
+        let table8 = tablem.evaluate_over_domain_by_ref(domain.d8);
 
         // constant polynomials
         let l18 = DP::from_coefficients_slice(&[F::zero(), F::one()]).evaluate_over_domain_by_ref(domain.d8);
@@ -230,8 +230,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
             // lookup table polynonial
             table1,
-            table4w: table4.shift(4),
-            table4,
+            table8w: table8.shift(8),
+            table8,
             tablem,
 
             // constant polynomials
@@ -360,19 +360,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         polys: &LookupPolys<F>,
     ) -> LookupShifts<F>
     {
-        let l = polys.l.evaluate_over_domain_by_ref(self.domain.d4);
-        let lw = polys.lw.evaluate_over_domain_by_ref(self.domain.d4);
-        let h1 = polys.h1.evaluate_over_domain_by_ref(self.domain.d4);
-        let h2 = polys.h2.evaluate_over_domain_by_ref(self.domain.d4);
+        let l = polys.l.evaluate_over_domain_by_ref(self.domain.d8);
+        let lw = polys.lw.evaluate_over_domain_by_ref(self.domain.d8);
+        let h1 = polys.h1.evaluate_over_domain_by_ref(self.domain.d8);
+        let h2 = polys.h2.evaluate_over_domain_by_ref(self.domain.d8);
 
         LookupShifts
         {
             next: LookupEvals
             {
-                l: l.shift(4),
+                l: l.shift(8),
                 lw: DP::<F>::zero().evaluate_over_domain_by_ref(D::<F>::new(1).unwrap()), // dummy
-                h1: h1.shift(4),
-                h2: h2.shift(4)
+                h1: h1.shift(8),
+                h2: h2.shift(8)
             },
             this: LookupEvals
             {

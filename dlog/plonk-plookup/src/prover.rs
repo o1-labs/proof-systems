@@ -10,7 +10,7 @@ use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, Op
 use plonk_plookup_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS, polynomial::LookupPolys};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
 pub use super::{index::Index, range};
-use crate::plonk_sponge::{FrSponge};
+use crate::plonk_sponge::FrSponge;
 use array_init::array_init;
 use rand::thread_rng;
 
@@ -206,9 +206,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let mut lkppolys = LookupPolys::<Fr<G>>
         {
             l: DensePolynomial::<Fr<G>>::zero(),
-            lw: lkpevl.lw.interpolate_by_ref(),
-            h1: lkpevl.h1.interpolate_by_ref(),
-            h2: lkpevl.h2.interpolate_by_ref(),
+            lw: &lkpevl.lw.interpolate_by_ref() + &DensePolynomial::rand(1, rng).mul_by_vanishing_poly(index.cs.domain.d1),
+            h1: &lkpevl.h1.interpolate_by_ref() + &DensePolynomial::rand(1, rng).mul_by_vanishing_poly(index.cs.domain.d1),
+            h2: &lkpevl.h2.interpolate_by_ref() + &DensePolynomial::rand(1, rng).mul_by_vanishing_poly(index.cs.domain.d1),
         };
 
         // commit to lw, h1, h2
@@ -225,7 +225,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         oracles.gamma2 = fq_sponge.challenge();
 
         // compute lookup aggregation polynomial
-        lkppolys.l = index.cs.tbllkp_aggreg(&mut lkpevl, &oracles)?;
+        lkppolys.l = index.cs.tbllkp_aggreg(&mut lkpevl, &oracles, rng)?;
         // commit to lookup aggregation polynomial
         let l_comm = index.srs.get_ref().commit(&lkppolys.l, None, rng);
         // absorb the lookup aggregation commitment into the argument and query alpha
@@ -264,8 +264,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let (lkpt, bnd2) = index.cs.tbllkp_quot(&lkppolys, &oracles, &alpha[range::TABLE])?;
 
         // collect contribution evaluations
-        let t4 = &(&(&(&(&(&(&add + &mul4) + &emul4) + &pack) + &pos4) + &gen) + &lkp) + &lkpt;
-        let t8 = &(&(&(&perm + &mul8) + &pos8) + &double) + &lkp8;
+        let t4 = &(&(&(&(&(&add + &mul4) + &emul4) + &pack) + &pos4) + &gen) + &lkp;
+        let t8 = &(&(&(&(&perm + &mul8) + &pos8) + &double) + &lkp8) + &lkpt;
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
