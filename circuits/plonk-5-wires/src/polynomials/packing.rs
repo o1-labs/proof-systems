@@ -3,8 +3,8 @@
 This source file implements packing constraint polynomials Plonk primitive.
 
 PACK gate constraints
-    si = s1,i + 2*s2,i + 4*s3,i + 8*s4,i + 16*si+1
-    s1,i * (s1,i – 1) = 0
+    s = s_0 + 2*s_1 + 4*s_2 + 8*s_3 + 16*s_4
+    s_i * (s_i - 1) = 0
 
 *****************************************************************************************************************/
 
