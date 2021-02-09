@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements non-special point Weierstrass curve additionconstraint polynomials.
+This source file implements non-special point Weierstrass curve addition constraint polynomials.
 
     ADD gate constrains
 
