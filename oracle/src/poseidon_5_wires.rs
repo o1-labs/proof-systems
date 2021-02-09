@@ -1,9 +1,6 @@
 /*****************************************************************************************************************
 
-This source file has been copied from
-https://gist.githubusercontent.com/imeckler/590adbed68c22288136d2d7987ac364c/raw/915840119a0fdd545b707621026478edc99a3195/poseidon.rs
-
-It implements Poseidon Hash Function primitive
+This file implements Poseidon Hash Function primitive
 
 *****************************************************************************************************************/
 
