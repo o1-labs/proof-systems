@@ -13,7 +13,7 @@ One-bit round constraints:
 
 S = (P + (b ? T : −T)) + P
 
-VBSMPACK gate constrains
+VBSMPACK gate constraints
 
     b*(b-1) = 0
     (xp - xt) * s1 = yp – (2b-1)*yt
@@ -21,10 +21,10 @@ VBSMPACK gate constrains
     (ys + yp)^2 = (xp – xs)^2 * (s1^2 – xt + xs)
     n1 = 2*n2 + b
 
-GENERIC gate constrains
+GENERIC gate constraints
     n2 = 0
 
-Permutation constrains
+Permutation constraints
     n2(i+1) -> n1(i+2)
     -> xt(i) -> xt(i+2) -> … -> xt(509)
     -> yt(i) -> yt(i+2) -> … -> yt(509)
@@ -35,7 +35,7 @@ Permutation constrains
     xs(509) ->
     ys(509) ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     (xq - xp) * s1 = yq - yp
     s1 * s1 = xp + xq + x1

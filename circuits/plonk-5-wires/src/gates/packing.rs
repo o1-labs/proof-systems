@@ -2,7 +2,7 @@
 
 This source file implements packing constraint gate Plonk primitive.
 
-PACK gate constrains
+PACK gate constraints
     si = s1,i + 2*s2,i + 4*s3,i + 8*s4,i + 16*si+1
     s1,i * (s1,i – 1) = 0
 
