@@ -4,7 +4,9 @@ This source file implements packing constraint gate Plonk primitive.
 
 PACK gate constraints
     s = s_0 + 2*s_1 + 4*s_2 + 8*s_3 + 16*s_4
+
     s_i * (s_i - 1) = 0
+      for 0 <= i <= 3
 
 *****************************************************************************************************************/
 
