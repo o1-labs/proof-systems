@@ -127,26 +127,43 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // scalar multiplication with packing constraint linearization poly contribution computation
     pub fn vbmulpck_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        let ps = evals[1].w[2] - &evals[1].w[0];
+        let xt = evals[0][0];
+        let yt = evals[0][1];
+        let s1 = evals[0][2];
+        let b = evals[0][3];
+        let n1 = evals[0][4];
+        let xs = evals[1][0];
+        let ys = evals[1][1];
+        let xp = evals[1][2];
+        let yp = evals[1][3];
+        let n2 = evals[1][4];
 
-        // verify booleanity of the scalar bits
-        (evals[0].w[3] - &evals[0].w[3].square()) * &alpha[0]
-        +
+        let ps = xp - &xs;
+
+        let bin = b - &b.square();
+
         // (xp - xt) * s1 = yp – (2b-1)*yt
-        &(((((evals[1].w[2] - &evals[0].w[0]) * &evals[0].w[2]) - &evals[1].w[3]) +
-            &(evals[0].w[1] * &(evals[0].w[3].double() - &F::one()))) * &alpha[1])
-        +
+        let check_1 = (((xp - &xt) * &s1) - &yp) + &(yt * &(b.double() - &F::one()));
+
         // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
-        &(((((evals[1].w[2].double() - &evals[0].w[2].square()) + &evals[0].w[0]) *
-            &(((ps * &evals[0].w[2]) + &evals[1].w[1]) + &evals[1].w[3])) -
-            &(evals[1].w[3].double() * ps)) * &alpha[2])
-        +
+        let check_2 =
+          (((xp.double() - &s1.square()) + &xt) *
+            &(((ps * &s1) + &ys) + &yp)) -
+            &(yp.double() * ps);
+
         // (ys + yp)^2 - (xp – xs)^2 * (s1^2 – xt + xs)
-        &(((evals[1].w[1] + &evals[1].w[3]).square() - &(ps.square() *
-            &(evals[0].w[2].square() - &evals[0].w[0] + &evals[1].w[0]))) * &alpha[3])
-        +
+        let check_3 =
+          ((ys + &yp).square() - &(ps.square() *
+            &(s1.square() - &xt + &xs)));
+
         // n1 - 2*n2 - b
-        &(((evals[0].w[4] - &(evals[1].w[4].double())) - &evals[0].w[3]) * &alpha[4])
+        let check_4 = (n1 - &(n2.double())) - &b
+
+          bin * &alpha[0]
+        + &(check_1 * &alpha[1])
+        + &(check_2 * &alpha[2])
+        + &(check_3 * &alpha[3])
+        + &(check_4 * &alpha[4])
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation
