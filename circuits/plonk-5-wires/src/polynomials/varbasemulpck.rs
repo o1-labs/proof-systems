@@ -81,28 +81,47 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn vbmulpck_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
     {
         if self.mul2m.is_zero() {return self.zero8.clone()}
-        let ps = &(&polys.d8.next.w[2] - &polys.d8.next.w[0]);
 
-        // verify booleanity of the scalar bits
-        &(&(&(&(&(&polys.d8.this.w[3] - &polys.d8.this.w[3].pow(2)).scale(alpha[0])
-        +
+        let xt = &polys.d8.this.w[0];
+        let yt = &polys.d8.this.w[1];
+        let s1 = &polys.d8.this.w[2];
+        let b = &polys.d8.this.w[3];
+        let n1 = &polys.d8.this.w[4];
+        let xs = &polys.d8.next.w[0];
+        let ys = &polys.d8.next.w[1];
+        let xp = &polys.d8.next.w[2];
+        let yp = &polys.d8.next.w[3];
+        let n2 = &polys.d8.next.w[4];
+
+        let ps = &(xp - xs);
+
+        let bin = &(b - &b.pow(2));
+
         // (xp - xt) * s1 = yp – (2b-1)*yt
-        &(&(&(&(&polys.d8.next.w[2] - &polys.d8.this.w[0]) * &polys.d8.this.w[2]) - &polys.d8.next.w[3]) +
-            &(&polys.d8.this.w[1] * &(&polys.d8.this.w[3].scale(F::from(2 as u64)) - &self.l08))).scale(alpha[1]))
-        +
+        let check_1 =
+          &(  &(&(&(xp - xt) * s1)
+            - &yp)
+            + &(yt * &(&b.scale(F::from(2 as u64)) - &self.l08)));
+
         // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
-        &(&(&(&(&polys.d8.next.w[2].scale(F::from(2 as u64)) - &polys.d8.this.w[2].pow(2)) + &polys.d8.this.w[0]) *
-            &(&(&(ps * &polys.d8.this.w[2]) + &polys.d8.next.w[1]) + &polys.d8.next.w[3])) -
-            &(&polys.d8.next.w[3].scale(F::from(2 as u64)) * ps)).scale(alpha[2]))
-        +
+        let check_2 =
+          &(&(  &(&(&xp.scale(F::from(2 as u64)) - &s1.pow(2)) + xt)
+              * &(&(&(ps * s1) + ys) + yp))
+            - &(&yp.scale(F::from(2 as u64)) * ps));
+
         // (ys + yp)^2 - (xp – xs)^2 * (s1^2 – xt + xs)
-        &(&(&polys.d8.next.w[1] + &polys.d8.next.w[3]).pow(2) - &(&ps.pow(2) *
-            &(&(&polys.d8.this.w[2].pow(2) - &polys.d8.this.w[0]) + &polys.d8.next.w[0]))).scale(alpha[3]))
-        +
+        let check_3 = &(&(ys + yp).pow(2) - &(&ps.pow(2) * &(&(&s1.pow(2) - xt) + xs)));
+
         // n1 - 2*n2 - b
-        &(&(&polys.d8.this.w[4] - &polys.d8.next.w[4].scale(F::from(2 as u64))) - &polys.d8.this.w[3]).scale(alpha[4]))
-        *
-        &self.mul2l
+        let check_4 =  &(&(n1 - &n2.scale(F::from(2 as u64))) - &b);
+
+        &(&(&(&(
+            &bin.scale(alpha[0])
+          + &check_1.scale(alpha[1]))
+          + &check_2.scale(alpha[2]))
+          + &check_3.scale(alpha[3]))
+          + &check_4.scale(alpha[4]))
+        * &self.mul2l
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation
