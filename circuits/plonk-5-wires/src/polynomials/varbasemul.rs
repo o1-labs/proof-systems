@@ -107,7 +107,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             &bin.scale(alpha[0])
           + &check_1.scale(alpha[1]))
           + &check_2.scale(alpha[2]))
-          + &check_2.scale(alpha[3]))
+          + &check_3.scale(alpha[3]))
           + &check_4.scale(alpha[4]))
         * &self.mul1l
     }
