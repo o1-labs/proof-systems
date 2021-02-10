@@ -129,7 +129,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let bin_2 = evals[1].w[4] - &evals[1].w[4].square();
 
         // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
-        let check_1 = (xp - xq) * &s1.w[2] - &yp + &(yt * &(b1.double() - &F::one()));
+        let check_1 = (xp - xq) * &s1 - &yp + &(yt * &(b1.double() - &F::one()));
 
         // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
         let check_2 = ((s1.square() - &s2.square()) - xq) + &xs;
