@@ -65,29 +65,50 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
     {
         if self.emulm.is_zero() {return self.zero4.clone()}
-        let xq = &(&(&self.l04 + &polys.d4.next.w[4].scale(self.endo - F::one())) * &polys.d4.this.w[0]);
+
+        let xt = &polys.d4.this.w[0];
+        let yt = &polys.d4.this.w[1];
+        let s1 = &polys.d4.this.w[2];
+        let s2 = &polys.d4.this.w[3];
+        let b1 = &polys.d4.this.w[4];
+        let xs = &polys.d4.next.w[0];
+        let ys = &polys.d4.next.w[1];
+        let xp = &polys.d4.next.w[2];
+        let yp = &polys.d4.next.w[3];
+        let b2 = &polys.d4.next.w[4];
+
+        let xq = &(&(&self.l04 + &b2.scale(self.endo - F::one())) * xt);
+
+        let bin_1 = &(b1 - &b1.pow(2));
+        let bin_2 = &(b2 - &b2.pow(2));
+
+        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
+        let check_1 =
+          &(  &(&(xp - xq) * s1)
+            - yp)
+            + &(yt * &(&b1.scale(F::from(2 as u64)) - &self.l04));
+
+        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
+        let check_2 = &(&(&s1.pow(2) - &s2.pow(2)) - xq) + xs;
+
+        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
+        let check_3 =
+            &(  &(&(&xp.scale(F::from(2 as u64)) + xq) - &s1.pow(2))
+              * &(s1 + s2))
+          - &yp.scale(F::from(2 as u64));
+
+        // (xp – xs) * s2 = ys + yp
+        let check_4 = &(&(&(xp - xs) * s2) - ys) - yp;
 
         // verify booleanity of the scalar bits
-        &(&(&(&(&(&(&polys.d4.this.w[4] - &polys.d4.this.w[4].pow(2)).scale(alpha[0])
-        +
-        &(&polys.d4.next.w[4] - &polys.d4.next.w[4].pow(2)).scale(alpha[1]))
-        +
-        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
-        &(&(&(&(&polys.d4.next.w[2] - xq) * &polys.d4.this.w[2]) - &polys.d4.next.w[3]) +
-            &(&polys.d4.this.w[1] * &(&polys.d4.this.w[4].scale(F::from(2 as u64)) - &self.l04))).scale(alpha[2]))
-        +
-        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
-        &(&(&(&polys.d4.this.w[2].pow(2) - &polys.d4.this.w[3].pow(2)) - xq) + &polys.d4.next.w[0]).scale(alpha[3]))
-        +
-        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + xq) - &polys.d4.this.w[2].pow(2)) *
-            &(&polys.d4.this.w[2] + &polys.d4.this.w[3])) - &polys.d4.next.w[3].scale(F::from(2 as u64))).scale(alpha[4]))
-        +
-        // (xp – xs) * s2 = ys + yp
-        &(&(&(&(&polys.d4.next.w[2] - &polys.d4.next.w[0]) * &polys.d4.this.w[3]) -
-            &polys.d4.next.w[1]) - &polys.d4.next.w[3]).scale(alpha[5]))
-        *
-        &self.emull
+        &(&(&(&(&(
+            &bin_1.scale(alpha[0])
+          + &bin_2.scale(alpha[1]))
+          + &check_1.scale(alpha[2]))
+          + &check_2.scale(alpha[3]))
+          + &check_3.scale(alpha[4]))
+          + &check_4.scale(alpha[5]))
+        * &self.emull
     }
 
     pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F
