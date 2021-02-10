@@ -100,7 +100,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // (xp – xs) * s2 = ys + yp
         let check_4 = &(&(&(xp - xs) * s2) - ys) - yp;
 
-        // verify booleanity of the scalar bits
         &(&(&(&(&(
             &bin_1.scale(alpha[0])
           + &bin_2.scale(alpha[1]))
@@ -141,7 +140,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // (xp – xs) * s2 = ys + yp
         let check_4 = ((xp - &xs) * &s2) - &ys - &yp;
 
-        // verify booleanity of the scalar bits
           bin_1 * &alpha[0]
         + &(bin_2 * &alpha[1])
         + &(check_1 * &alpha[2])
