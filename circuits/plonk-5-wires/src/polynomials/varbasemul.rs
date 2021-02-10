@@ -115,23 +115,35 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // scalar multiplication constraint linearization poly contribution computation
     pub fn vbmul_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        // verify booleanity of the scalar bits
-        (evals[0].w[4] - &evals[0].w[4].square()) * &alpha[0]
-        +
+        let xt = evals[0].w[0];
+        let yt = evals[0].w[1];
+        let s1 = evals[0].w[2];
+        let s2 = evals[0].w[3];
+        let b = evals[0].w[4];
+        let xs = evals[1].w[0];
+        let ys = evals[1].w[1];
+        let xp = evals[1].w[2];
+        let yp = evals[1].w[3];
+
+        let bin = b - &b.square();
+
         // (xp - xt) * s1 = yp – (2b-1)*yt
-        &(((evals[1].w[2] - &evals[0].w[0]) * &evals[0].w[2] - &evals[1].w[3] +
-            &(evals[0].w[1] * &(evals[0].w[4].double() - &F::one()))) * &alpha[1])
-        +
+        let check_1 = (xp - &xt) * &s1 - &yp + &(yt * &(b.double() - &F::one()));
+
         // s1^2 - s2^2 = xt - xs
-        &((((evals[0].w[2].square() - &evals[0].w[3].square()) - &evals[0].w[0]) + &evals[1].w[0]) * &alpha[2])
-        +
+        let check_2 = ((s1.square() - &s2.square()) - &xt) + &xs;
+
         // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-        &((((evals[1].w[2].double() + &evals[0].w[0]) - &evals[0].w[2].square()) *
-            &(evals[0].w[2] + &evals[0].w[3]) - &evals[1].w[3].double()) * &alpha[3])
-        +
+        let check_3 = ((xp.double() + &xt) - &s1.square()) * &(s1 + &s2) - &yp.double();
+
         // (xp – xs) * s2 = ys + yp
-        &((((evals[1].w[2] - &evals[1].w[0]) * &evals[0].w[3]) -
-            &evals[1].w[1] - &evals[1].w[3]) * &alpha[4])
+        let check_4 = ((xp - &xs) * &s2) - &ys - &yp;
+
+          bin * &alpha[0]
+        + &(check_1 * &alpha[1])
+        + &(check_2 * &alpha[2])
+        + &(check_3 * &alpha[3])
+        + &(check_4 * &alpha[4])
     }
 
     // scalar multiplication constraint linearization poly contribution computation
