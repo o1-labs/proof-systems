@@ -113,27 +113,41 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
     pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F
     {
-        let xq = (F::one() + &(evals[1].w[4] * &(endo - F::one()))) * &evals[0].w[0];
+        let xt = evals[0].w[0];
+        let yt = evals[0].w[1];
+        let s1 = evals[0].w[2];
+        let s2 = evals[0].w[3];
+        let b1 = evals[0].w[4];
+        let xs = evals[1].w[0];
+        let ys = evals[1].w[1];
+        let xp = evals[1].w[2];
+        let yp = evals[1].w[3];
+        let b2 = evals[1].w[4];
+
+        let xq = (F::one() + &(b2 * &(endo - F::one()))) * &xt;
+
+        let bin_1 = evals[0].w[4] - &evals[0].w[4].square();
+        let bin_2 = evals[1].w[4] - &evals[1].w[4].square();
+
+        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
+        let check_1 = (xp - xq) * &s1.w[2] - &yp + &(yt * &(b1.double() - &F::one()));
+
+        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
+        let check_2 = ((s1.square() - &s2.square()) - xq) + &xs;
+
+        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
+        let check_3 = ((xp.double() + xq) - &s1.square()) * &(s1 + &s2) - &yp.double();
+
+        // (xp – xs) * s2 = ys + yp
+        let check_4 = ((xp - &xs) * &s2) - &ys - &yp;
 
         // verify booleanity of the scalar bits
-        (evals[0].w[4] - &evals[0].w[4].square()) * &alpha[0]
-        +
-        &((evals[1].w[4] - &evals[1].w[4].square()) * &alpha[1])
-        +
-        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
-        &(((evals[1].w[2] - xq) * &evals[0].w[2] - &evals[1].w[3] +
-            &(evals[0].w[1] * &(evals[0].w[4].double() - &F::one()))) * &alpha[2])
-        +
-        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
-        &((((evals[0].w[2].square() - &evals[0].w[3].square()) - xq) + &evals[1].w[0]) * &alpha[3])
-        +
-        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        &((((evals[1].w[2].double() + xq) - &evals[0].w[2].square()) *
-            &(evals[0].w[2] + &evals[0].w[3]) - &evals[1].w[3].double()) * &alpha[4])
-        +
-        // (xp – xs) * s2 = ys + yp
-        &((((evals[1].w[2] - &evals[1].w[0]) * &evals[0].w[3]) -
-            &evals[1].w[1] - &evals[1].w[3]) * &alpha[5])
+          bin_1 * &alpha[0]
+        + &(bin_2 * &alpha[1])
+        + &(check_1 * &alpha[2])
+        + &(check_2 * &alpha[3])
+        + &(check_3 * &alpha[4])
+        + &(check_4 * &alpha[5])
     }
 
     // endomorphism optimised scalar multiplication constraint linearization poly contribution computation
