@@ -19,18 +19,18 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
     2 * s * y1 = 3 * x1^2
     x2 = s^2 – 2*x1
-    y2 = y1 + s * (x2 – x1)
+    y2 = s * (x1 – x2) - y1
 
     =>
 
     2 * s * y1 = 3 * x1^2
     x2 = s^2 – 2*x1
-    2 * y1 * (y2 - y1) = 3 * x1^2 * (x2 – x1)
+    2 * y1 * (y2 + y1) = 3 * x1^2 * (x1 – x2)
 
     =>
 
     4 * y1^2 * (x2 + 2*x1) = 9 * x1^4
-    2 * y1 * (y2 - y1) = 3 * x1^2 * (x2 – x1)
+    2 * y1 * (y2 + y1) = 3 * x1^2 * (x1 – x2)
 
 *****************************************************************************************************************/
 
@@ -52,7 +52,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let y1 = &polys.d8.this.w[1];
         let x2 = &polys.d8.this.w[2];
         let y2 = &polys.d8.this.w[3];
-        let s  = &polys.d8.this.w[4];
+        let y1_inv  = &polys.d8.this.w[4];
 
         let check_1 =
             &(  &y1.pow(2).scale(F::from(4 as u64))
@@ -65,7 +65,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
           - &(  &(x1 - x2)
               * &x1.pow(2).scale(F::from(3 as u64)));
 
-        let check_3 = &(y1 * &s) - &self.l08;
+        let check_3 = &(y1 * &y1_inv) - &self.l08;
 
         &(&(  &check_1.scale(alpha[0])
             + &check_2.scale(alpha[1]))
@@ -79,7 +79,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let y1 = evals[0].w[1];
         let x2 = evals[0].w[2];
         let y2 = evals[0].w[3];
-        let s = evals[0].w[4];
+        let y1_inv = evals[0].w[4];
 
         let check_1 =
             (  y1.square() * &F::from(4 as u64)
@@ -90,7 +90,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             (y1.double() * &(y2 + &y1))
           - &((x1 - &x2) * &x1.square() * &F::from(3 as u64));
 
-        let check_3 = y1 * &s - &F::one();
+        let check_3 = y1 * &y1_inv - &F::one();
 
           (check_1 * &alpha[0])
         + &(check_2 * &alpha[1])
