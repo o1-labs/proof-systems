@@ -23,9 +23,9 @@ This source file tests constraints for the following computatios:
 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
+use commitment_dlog::{srs::{SRS, SRSSpec}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
-use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
 use oracle::poseidon::*;

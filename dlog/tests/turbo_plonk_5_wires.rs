@@ -33,9 +33,9 @@ This source file tests constraints for the following computations:
 
 use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge, ArithmeticSpongeParams}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_5_wires_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
-use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
+use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
-use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
 use groupmap::GroupMap;
