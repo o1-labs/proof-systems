@@ -127,16 +127,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // scalar multiplication with packing constraint linearization poly contribution computation
     pub fn vbmulpck_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        let xt = evals[0][0];
-        let yt = evals[0][1];
-        let s1 = evals[0][2];
-        let b = evals[0][3];
-        let n1 = evals[0][4];
-        let xs = evals[1][0];
-        let ys = evals[1][1];
-        let xp = evals[1][2];
-        let yp = evals[1][3];
-        let n2 = evals[1][4];
+        let xt = evals[0].w[0];
+        let yt = evals[0].w[1];
+        let s1 = evals[0].w[2];
+        let b = evals[0].w[3];
+        let n1 = evals[0].w[4];
+        let xs = evals[1].w[0];
+        let ys = evals[1].w[1];
+        let xp = evals[1].w[2];
+        let yp = evals[1].w[3];
+        let n2 = evals[1].w[4];
 
         let ps = xp - &xs;
 
