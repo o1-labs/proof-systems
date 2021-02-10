@@ -152,12 +152,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             &(yp.double() * ps);
 
         // (ys + yp)^2 - (xp – xs)^2 * (s1^2 – xt + xs)
-        let check_3 =
-          ((ys + &yp).square() - &(ps.square() *
-            &(s1.square() - &xt + &xs)));
+        let check_3 = (ys + &yp).square() - &(ps.square() * &(s1.square() - &xt + &xs));
 
         // n1 - 2*n2 - b
-        let check_4 = (n1 - &(n2.double())) - &b
+        let check_4 = (n1 - &(n2.double())) - &b;
 
           bin * &alpha[0]
         + &(check_1 * &alpha[1])
