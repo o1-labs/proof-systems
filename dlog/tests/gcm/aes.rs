@@ -11,6 +11,8 @@ This source file Rust-adapts the following optimized AES implementation:
 
 use rand::{thread_rng, Rng};
 use std::convert::TryInto;
+use std::time::Instant;
+use colored::Colorize;
 
 // forward s-box
 const Sbox: [u8; 256] =
@@ -183,7 +185,7 @@ const XtimeE: [u8; 256] =
 ]; 
 
 const Rcon: [u8; 11] = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
-static mut XOR: [u8; 0x10000] = [0; 0x10000];
+pub static mut XOR: [u8; 0x10000] = [0; 0x10000];
     
 // exchanges columns in each of 4 rows
 // row0 - unchanged, row1- shifted left 1, 
@@ -239,28 +241,28 @@ pub fn MixSubColumns (state: &mut [u8; 16])
     let mut tmp: [u8; 16] = [0; 16];
 
     // mixing column 0
-    tmp[0] = xor(Xtime2Sbox[state[0] as usize], Xtime3Sbox[state[5] as usize], Sbox[state[10] as usize], Sbox[state[15] as usize]);
-    tmp[1] = xor(Sbox[state[0] as usize], Xtime2Sbox[state[5] as usize], Xtime3Sbox[state[10] as usize], Sbox[state[15] as usize]);
-    tmp[2] = xor(Sbox[state[0] as usize], Sbox[state[5] as usize], Xtime2Sbox[state[10] as usize], Xtime3Sbox[state[15] as usize]);
-    tmp[3] = xor(Xtime3Sbox[state[0] as usize], Sbox[state[5] as usize], Sbox[state[10] as usize], Xtime2Sbox[state[15] as usize]);
+    tmp[0] = xor4(Xtime2Sbox[state[0] as usize], Xtime3Sbox[state[5] as usize], Sbox[state[10] as usize], Sbox[state[15] as usize]);
+    tmp[1] = xor4(Sbox[state[0] as usize], Xtime2Sbox[state[5] as usize], Xtime3Sbox[state[10] as usize], Sbox[state[15] as usize]);
+    tmp[2] = xor4(Sbox[state[0] as usize], Sbox[state[5] as usize], Xtime2Sbox[state[10] as usize], Xtime3Sbox[state[15] as usize]);
+    tmp[3] = xor4(Xtime3Sbox[state[0] as usize], Sbox[state[5] as usize], Sbox[state[10] as usize], Xtime2Sbox[state[15] as usize]);
 
     // mixing column 1
-    tmp[4] = xor(Xtime2Sbox[state[4] as usize], Xtime3Sbox[state[9] as usize], Sbox[state[14] as usize], Sbox[state[3] as usize]);
-    tmp[5] = xor(Sbox[state[4] as usize], Xtime2Sbox[state[9] as usize], Xtime3Sbox[state[14] as usize], Sbox[state[3] as usize]);
-    tmp[6] = xor(Sbox[state[4] as usize], Sbox[state[9] as usize], Xtime2Sbox[state[14] as usize], Xtime3Sbox[state[3] as usize]);
-    tmp[7] = xor(Xtime3Sbox[state[4] as usize], Sbox[state[9] as usize], Sbox[state[14] as usize], Xtime2Sbox[state[3] as usize]);
+    tmp[4] = xor4(Xtime2Sbox[state[4] as usize], Xtime3Sbox[state[9] as usize], Sbox[state[14] as usize], Sbox[state[3] as usize]);
+    tmp[5] = xor4(Sbox[state[4] as usize], Xtime2Sbox[state[9] as usize], Xtime3Sbox[state[14] as usize], Sbox[state[3] as usize]);
+    tmp[6] = xor4(Sbox[state[4] as usize], Sbox[state[9] as usize], Xtime2Sbox[state[14] as usize], Xtime3Sbox[state[3] as usize]);
+    tmp[7] = xor4(Xtime3Sbox[state[4] as usize], Sbox[state[9] as usize], Sbox[state[14] as usize], Xtime2Sbox[state[3] as usize]);
 
     // mixing column 2
-    tmp[8] = xor(Xtime2Sbox[state[8] as usize], Xtime3Sbox[state[13] as usize], Sbox[state[2] as usize], Sbox[state[7] as usize]);
-    tmp[9] = xor(Sbox[state[8] as usize], Xtime2Sbox[state[13] as usize], Xtime3Sbox[state[2] as usize], Sbox[state[7] as usize]);
-    tmp[10] = xor(Sbox[state[8] as usize], Sbox[state[13] as usize], Xtime2Sbox[state[2] as usize], Xtime3Sbox[state[7] as usize]);
-    tmp[11] = xor(Xtime3Sbox[state[8] as usize], Sbox[state[13] as usize], Sbox[state[2] as usize], Xtime2Sbox[state[7] as usize]);
+    tmp[8] = xor4(Xtime2Sbox[state[8] as usize], Xtime3Sbox[state[13] as usize], Sbox[state[2] as usize], Sbox[state[7] as usize]);
+    tmp[9] = xor4(Sbox[state[8] as usize], Xtime2Sbox[state[13] as usize], Xtime3Sbox[state[2] as usize], Sbox[state[7] as usize]);
+    tmp[10] = xor4(Sbox[state[8] as usize], Sbox[state[13] as usize], Xtime2Sbox[state[2] as usize], Xtime3Sbox[state[7] as usize]);
+    tmp[11] = xor4(Xtime3Sbox[state[8] as usize], Sbox[state[13] as usize], Sbox[state[2] as usize], Xtime2Sbox[state[7] as usize]);
 
     // mixing column 3
-    tmp[12] = xor(Xtime2Sbox[state[12] as usize], Xtime3Sbox[state[1] as usize], Sbox[state[6] as usize], Sbox[state[11] as usize]);
-    tmp[13] = xor(Sbox[state[12] as usize], Xtime2Sbox[state[1] as usize], Xtime3Sbox[state[6] as usize], Sbox[state[11] as usize]);
-    tmp[14] = xor(Sbox[state[12] as usize], Sbox[state[1] as usize], Xtime2Sbox[state[6] as usize], Xtime3Sbox[state[11] as usize]);
-    tmp[15] = xor(Xtime3Sbox[state[12] as usize], Sbox[state[1] as usize], Sbox[state[6] as usize], Xtime2Sbox[state[11] as usize]);
+    tmp[12] = xor4(Xtime2Sbox[state[12] as usize], Xtime3Sbox[state[1] as usize], Sbox[state[6] as usize], Sbox[state[11] as usize]);
+    tmp[13] = xor4(Sbox[state[12] as usize], Xtime2Sbox[state[1] as usize], Xtime3Sbox[state[6] as usize], Sbox[state[11] as usize]);
+    tmp[14] = xor4(Sbox[state[12] as usize], Sbox[state[1] as usize], Xtime2Sbox[state[6] as usize], Xtime3Sbox[state[11] as usize]);
+    tmp[15] = xor4(Xtime3Sbox[state[12] as usize], Sbox[state[1] as usize], Sbox[state[6] as usize], Xtime2Sbox[state[11] as usize]);
 
     state.iter_mut().zip(tmp.iter()).for_each(|(s, t)| *s = *t);
 }
@@ -271,28 +273,28 @@ pub fn InvMixSubColumns (state: &mut [u8; 16])
     let mut tmp: [u8; 16] = [0; 16];
 
     // restore column 0
-    tmp[0] = xor(XtimeE[state[0] as usize], XtimeB[state[1] as usize], XtimeD[state[2] as usize], Xtime9[state[3] as usize]);
-    tmp[5] = xor(Xtime9[state[0] as usize], XtimeE[state[1] as usize], XtimeB[state[2] as usize], XtimeD[state[3] as usize]);
-    tmp[10] = xor(XtimeD[state[0] as usize], Xtime9[state[1] as usize], XtimeE[state[2] as usize], XtimeB[state[3] as usize]);
-    tmp[15] = xor(XtimeB[state[0] as usize], XtimeD[state[1] as usize], Xtime9[state[2] as usize], XtimeE[state[3] as usize]);
+    tmp[0] = xor4(XtimeE[state[0] as usize], XtimeB[state[1] as usize], XtimeD[state[2] as usize], Xtime9[state[3] as usize]);
+    tmp[5] = xor4(Xtime9[state[0] as usize], XtimeE[state[1] as usize], XtimeB[state[2] as usize], XtimeD[state[3] as usize]);
+    tmp[10] = xor4(XtimeD[state[0] as usize], Xtime9[state[1] as usize], XtimeE[state[2] as usize], XtimeB[state[3] as usize]);
+    tmp[15] = xor4(XtimeB[state[0] as usize], XtimeD[state[1] as usize], Xtime9[state[2] as usize], XtimeE[state[3] as usize]);
 
     // restore column 1
-    tmp[4] = xor(XtimeE[state[4] as usize], XtimeB[state[5] as usize], XtimeD[state[6] as usize], Xtime9[state[7] as usize]);
-    tmp[9] = xor(Xtime9[state[4] as usize], XtimeE[state[5] as usize], XtimeB[state[6] as usize], XtimeD[state[7] as usize]);
-    tmp[14] = xor(XtimeD[state[4] as usize], Xtime9[state[5] as usize], XtimeE[state[6] as usize], XtimeB[state[7] as usize]);
-    tmp[3] = xor(XtimeB[state[4] as usize], XtimeD[state[5] as usize], Xtime9[state[6] as usize], XtimeE[state[7] as usize]);
+    tmp[4] = xor4(XtimeE[state[4] as usize], XtimeB[state[5] as usize], XtimeD[state[6] as usize], Xtime9[state[7] as usize]);
+    tmp[9] = xor4(Xtime9[state[4] as usize], XtimeE[state[5] as usize], XtimeB[state[6] as usize], XtimeD[state[7] as usize]);
+    tmp[14] = xor4(XtimeD[state[4] as usize], Xtime9[state[5] as usize], XtimeE[state[6] as usize], XtimeB[state[7] as usize]);
+    tmp[3] = xor4(XtimeB[state[4] as usize], XtimeD[state[5] as usize], Xtime9[state[6] as usize], XtimeE[state[7] as usize]);
 
     // restore column 2
-    tmp[8] = xor(XtimeE[state[8] as usize], XtimeB[state[9] as usize], XtimeD[state[10] as usize], Xtime9[state[11] as usize]);
-    tmp[13] = xor(Xtime9[state[8] as usize], XtimeE[state[9] as usize], XtimeB[state[10] as usize], XtimeD[state[11] as usize]);
-    tmp[2]  = xor(XtimeD[state[8] as usize], Xtime9[state[9] as usize], XtimeE[state[10] as usize], XtimeB[state[11] as usize]);
-    tmp[7]  = xor(XtimeB[state[8] as usize], XtimeD[state[9] as usize], Xtime9[state[10] as usize], XtimeE[state[11] as usize]);
+    tmp[8] = xor4(XtimeE[state[8] as usize], XtimeB[state[9] as usize], XtimeD[state[10] as usize], Xtime9[state[11] as usize]);
+    tmp[13] = xor4(Xtime9[state[8] as usize], XtimeE[state[9] as usize], XtimeB[state[10] as usize], XtimeD[state[11] as usize]);
+    tmp[2]  = xor4(XtimeD[state[8] as usize], Xtime9[state[9] as usize], XtimeE[state[10] as usize], XtimeB[state[11] as usize]);
+    tmp[7]  = xor4(XtimeB[state[8] as usize], XtimeD[state[9] as usize], Xtime9[state[10] as usize], XtimeE[state[11] as usize]);
 
     // restore column 3
-    tmp[12] = xor(XtimeE[state[12] as usize], XtimeB[state[13] as usize], XtimeD[state[14] as usize], Xtime9[state[15] as usize]);
-    tmp[1] = xor(Xtime9[state[12] as usize], XtimeE[state[13] as usize], XtimeB[state[14] as usize], XtimeD[state[15] as usize]);
-    tmp[6] = xor(XtimeD[state[12] as usize], Xtime9[state[13] as usize], XtimeE[state[14] as usize], XtimeB[state[15] as usize]);
-    tmp[11] = xor(XtimeB[state[12] as usize], XtimeD[state[13] as usize], Xtime9[state[14] as usize], XtimeE[state[15] as usize]);
+    tmp[12] = xor4(XtimeE[state[12] as usize], XtimeB[state[13] as usize], XtimeD[state[14] as usize], Xtime9[state[15] as usize]);
+    tmp[1] = xor4(Xtime9[state[12] as usize], XtimeE[state[13] as usize], XtimeB[state[14] as usize], XtimeD[state[15] as usize]);
+    tmp[6] = xor4(XtimeD[state[12] as usize], Xtime9[state[13] as usize], XtimeE[state[14] as usize], XtimeB[state[15] as usize]);
+    tmp[11] = xor4(XtimeB[state[12] as usize], XtimeD[state[13] as usize], Xtime9[state[14] as usize], XtimeE[state[15] as usize]);
 
     state.iter_mut().zip(tmp.iter()).for_each(|(s, t)| *s = InvSbox[*t as usize]);
 }
@@ -301,11 +303,11 @@ pub fn InvMixSubColumns (state: &mut [u8; 16])
 
 pub fn AddRoundKey (state: &mut [u8; 16], key: [u8; 16])
 {
-    state.iter_mut().zip(key.iter()).for_each(|(s, k)| *s = Xor(*s, *k));
+    state.iter_mut().zip(key.iter()).for_each(|(s, k)| *s = xor2(*s, *k));
 }
 
 // compute aes key schedule
-pub fn ExpandKey (key: [u8; 16]) -> [u8; 176]
+pub fn expandKey (key: [u8; 16]) -> [u8; 176]
 {
     let mut expkey: [u8; 176] = [0; 176];
     let mut tmp0: u8;
@@ -326,25 +328,25 @@ pub fn ExpandKey (key: [u8; 16]) -> [u8; 176]
         {
             tmp4 = tmp3;
             tmp3 = Sbox[tmp0 as usize];
-            tmp0 = Xor(Sbox[tmp1 as usize], Rcon[idx/4]);
+            tmp0 = xor2(Sbox[tmp1 as usize], Rcon[idx/4]);
             tmp1 = Sbox[tmp2 as usize];
             tmp2 = Sbox[tmp4 as usize];
         }
 
-        expkey[4*idx+0] = Xor(expkey[4*idx - 16 + 0], tmp0);
-        expkey[4*idx+1] = Xor(expkey[4*idx - 16 + 1], tmp1);
-        expkey[4*idx+2] = Xor(expkey[4*idx - 16 + 2], tmp2);
-        expkey[4*idx+3] = Xor(expkey[4*idx - 16 + 3], tmp3);
+        expkey[4*idx+0] = xor2(expkey[4*idx - 16 + 0], tmp0);
+        expkey[4*idx+1] = xor2(expkey[4*idx - 16 + 1], tmp1);
+        expkey[4*idx+2] = xor2(expkey[4*idx - 16 + 2], tmp2);
+        expkey[4*idx+3] = xor2(expkey[4*idx - 16 + 3], tmp3);
     }
     expkey
 }
 
-pub fn xor (x: u8, y: u8, z: u8, t: u8) -> u8
+pub fn xor4 (x: u8, y: u8, z: u8, t: u8) -> u8
 {
-    unsafe {Xor(XOR[y as usize | ((x as usize) << 8)], XOR[z as usize | ((t as usize) << 8)])}
+    unsafe {xor2(XOR[y as usize | ((x as usize) << 8)], XOR[z as usize | ((t as usize) << 8)])}
 }
 
-pub fn Xor (x: u8, y: u8) -> u8
+pub fn xor2 (x: u8, y: u8) -> u8
 {
     unsafe {XOR[y as usize | ((x as usize) << 8)]}
 }
@@ -361,12 +363,12 @@ impl AesCipher
         // compute the key schedule
         AesCipher
         {
-            expkey: ExpandKey (key)
+            expkey: expandKey (key)
         }
     }
 
     // encrypt one 128 bit block
-    pub fn EncryptBlock (&self, pt: [u8; 16]) -> [u8; 16]
+    pub fn encryptBlock (&self, pt: [u8; 16]) -> [u8; 16]
     {
         let mut state = pt.clone();
         AddRoundKey (&mut state, self.expkey[0..16].try_into().unwrap());
@@ -381,7 +383,7 @@ impl AesCipher
         state
     }
 
-    pub fn DecryptBlock (&self, ct: [u8; 16]) -> [u8; 16]
+    pub fn decryptBlock (&self, ct: [u8; 16]) -> [u8; 16]
     {
         let mut state = ct.clone();
         AddRoundKey (&mut state, self.expkey[160..176].try_into().unwrap());
@@ -396,7 +398,7 @@ impl AesCipher
         state
     }
 
-    pub fn Encrypt (&self, pt: &Vec<u8>) -> Vec<u8>
+    pub fn encrypt (&self, pt: &Vec<u8>) -> Vec<u8>
     {
         let mut state = pt.clone();
         let mut len =  pt.len();
@@ -409,47 +411,20 @@ impl AesCipher
 
         for i in (0..len).step_by(16)
         {
-            let out = self.EncryptBlock(state[i..i+16].try_into().unwrap());
+            let out = self.encryptBlock(state[i..i+16].try_into().unwrap());
             ct.append(&mut out.to_vec());
         }
         ct
     }
 
-    pub fn Decrypt (&self, ct: &Vec<u8>) -> Vec<u8>
+    pub fn decrypt (&self, ct: &Vec<u8>) -> Vec<u8>
     {
         let mut pt = Vec::<u8>::with_capacity(ct.len());
         for i in (0..ct.len()).step_by(16)
         {
-            let out = self.DecryptBlock(ct[i..i+16].try_into().unwrap());
+            let out = self.decryptBlock(ct[i..i+16].try_into().unwrap());
             pt.append(&mut out.to_vec());
         }
         pt
     }
-}
-
-#[test]
-fn aes()
-{
-    let rng = &mut thread_rng();
-    for x in 0..256
-    {
-        for y in 0..256
-        {
-            unsafe {XOR[y | (x << 8)] = (x as u8) ^ (y as u8)}
-        }
-    }
-
-    let key: u128 = rng.gen();
-    let cipher = AesCipher::create(key.to_ne_bytes());
-
-    let mut pt1 = (0..1000).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
-
-    let ct1 = cipher.Encrypt(&pt1);
-    let pt2 = cipher.Decrypt(&ct1);
-
-    let ct2 = cipher.Encrypt(&pt2);
-    pt1 = cipher.Decrypt(&ct2);
-
-    assert_eq!(pt1, pt2);
-    assert_eq!(ct1, ct2);
 }

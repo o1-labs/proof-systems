@@ -22,3 +22,5 @@ colored = "1.9.2"
 rand = "0.7.3"
 sprs = "0.7.1"
 rayon = { version = "1" }
+array-init = "1.0.0"
+aes-gcm = "0.8.0"
