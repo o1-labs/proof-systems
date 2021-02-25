@@ -1,5 +1,7 @@
 mod gcm;
 
+use aes_gcm::Aes128Gcm;
+use aes_gcm::aead::{Aead, NewAead, generic_array::GenericArray, Payload};
 use self::gcm::{aes::*, gcm::*};
 use rand::{thread_rng, Rng};
 use std::time::Instant;
@@ -18,7 +20,7 @@ fn aes()
     }
 
     let key: u128 = rng.gen();
-    let cipher = AesCipher::create(key.to_le_bytes());
+    let cipher = AesCipher::create(key.to_be_bytes());
 
     let start = Instant::now();
     for _ in 0..1000
@@ -50,59 +52,50 @@ fn gcm()
             {
                 let mut xx: [u8; 16] = [0; 16]; xx[0] = x as u8;
                 let mut yy: [u8; 16] = [0; 16]; yy[0] = y as u8;
-                u128::from_le_bytes(mul_helper(xx, yy))
+                u128::from_be_bytes(mul_helper(xx, yy))
             }}
         }
     }
 
     let rng = &mut thread_rng();
-    let iv: u128 = rng.gen();
-    let key: u128 = rng.gen();
-    let mut cipher = Gcm::create(key.to_le_bytes(), iv.to_le_bytes());
+
+    let iv: [u8; 16] = {let iv: u128 = rng.gen(); iv}.to_be_bytes();
+    let key: [u8; 16] = {let key: u128 = rng.gen(); key}.to_be_bytes();
+    let mut cipher = Gcm::create(key, iv);
+
+    let iv_rust = GenericArray::clone_from_slice(&iv[0..12]);
+    let key_rust = GenericArray::clone_from_slice(&key[0..16]);
+    let cipher_rust = Aes128Gcm::new(&key_rust);
 
     let start = Instant::now();
-    for _ in 0..1000
+    for _ in 0..100
     {
-        let aad1 = (0..3000).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
-        let aad2 = (0..3070).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
-        let mut pt1 = (0..10000).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
+        let aad1 = (0..357).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
+        let aad2 = (0..579).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
+        let mut pt1 = (0..1357).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
 
-        cipher.reset();
         let (ct1, at1) = cipher.encrypt(&aad1, &pt1);
-        cipher.reset();
         let pt2 = cipher.decrypt(&aad1, &ct1, at1).unwrap();
 
-        cipher.reset();
+        let ct1_rust = cipher_rust.encrypt(&iv_rust, Payload{aad: &aad1, msg: &pt1}).expect("encryption failure!");
+        let pt2_rust = cipher_rust.decrypt(&iv_rust, Payload{aad: &aad1, msg: &ct1_rust}).expect("decryption failure!");
+
+        assert_eq!(ct1, ct1_rust[0..ct1.len()].to_vec());
+        assert_eq!(at1.to_vec(), ct1_rust[ct1.len()..ct1_rust.len()].to_vec());
+        assert_eq!(pt2, pt2_rust);
+
         let (ct2, at2) = cipher.encrypt(&aad2, &pt2);
-        cipher.reset();
         pt1 = cipher.decrypt(&aad2, &ct2, at2).unwrap();
+
+        let ct2_rust = cipher_rust.encrypt(&iv_rust, Payload{aad: &aad2, msg: &pt2}).expect("encryption failure!");
+        let pt1_rust = cipher_rust.decrypt(&iv_rust, Payload{aad: &aad2, msg: &ct2_rust}).expect("decryption failure!");
+
+        assert_eq!(ct2, ct2_rust[0..ct2.len()].to_vec());
+        assert_eq!(at2.to_vec(), ct2_rust[ct2.len()..ct2_rust.len()].to_vec());
+        assert_eq!(pt1, pt1_rust);
 
         assert_eq!(pt1, pt2);
         assert_eq!(ct1, ct2);
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-}
-
-/* This uses aes-gcm Rust crate implementing GCM primitives */
-
-use aes_gcm::Aes256Gcm;
-use aes_gcm::aead::{Aead, NewAead, generic_array::GenericArray};
-
-#[test]
-fn cipher()
-{
-    let key = GenericArray::from_slice(b"an example very very secret key.");
-    let cipher = Aes256Gcm::new(key);
-
-    let nonce = GenericArray::from_slice(b"unique nonce"); // 96-bits; unique per message
-
-    let ciphertext = cipher.encrypt(nonce, b"plaintext message".as_ref())
-        .expect("encryption failure!"); // NOTE: handle this error to avoid panics!
-    
-    let plaintext = cipher.decrypt(nonce, ciphertext.as_ref())
-        .expect("decryption failure!"); // NOTE: handle this error to avoid panics!
-
-    if plaintext.len() < 3 {panic!("visla")}
-    
-    assert_eq!(&plaintext, b"plaintext message");
 }

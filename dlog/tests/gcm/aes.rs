@@ -9,10 +9,7 @@ This source file Rust-adapts the following optimized AES implementation:
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 
-use rand::{thread_rng, Rng};
 use std::convert::TryInto;
-use std::time::Instant;
-use colored::Colorize;
 
 // forward s-box
 const Sbox: [u8; 256] =
