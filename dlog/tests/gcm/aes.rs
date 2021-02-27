@@ -10,6 +10,7 @@ This source file Rust-adapts the following optimized AES implementation:
 #![allow(non_upper_case_globals)]
 
 use std::convert::TryInto;
+use array_init::array_init;
 
 // forward s-box
 const Sbox: [u8; 256] =
@@ -336,6 +337,16 @@ pub fn expandKey (key: [u8; 16]) -> [u8; 176]
         expkey[4*idx+3] = xor2(expkey[4*idx - 16 + 3], tmp3);
     }
     expkey
+}
+
+pub fn xor16v (x: &[u8; 16], y: &Vec<u8>) -> [u8; 16]
+{
+    array_init(|i| xor2(x[i], if i<y.len() {y[i]} else {0}))
+}
+
+pub fn xor16a (x: &[u8; 16], y: &[u8; 16]) -> [u8; 16]
+{
+    array_init(|i| xor2(x[i], y[i]))
 }
 
 pub fn xor4 (x: u8, y: u8, z: u8, t: u8) -> u8

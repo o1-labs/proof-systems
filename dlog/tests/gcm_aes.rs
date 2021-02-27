@@ -4,6 +4,7 @@ use aes_gcm::Aes128Gcm;
 use aes_gcm::aead::{Aead, NewAead, generic_array::GenericArray, Payload};
 use self::gcm::{aes::*, gcm::*};
 use rand::{thread_rng, Rng};
+use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
 
@@ -42,18 +43,12 @@ fn aes()
 #[test]
 fn gcm()
 {
-    // init GF(2^8) XOR and GF(2^128) multiplication tables
+    // init GF(2^8) XOR table
     for x in 0..256
     {
         for y in 0..256
         {
             unsafe {XOR[y | (x << 8)] = (x as u8) ^ (y as u8)}
-            unsafe {MUL[y | (x << 8)] =
-            {
-                let mut xx: [u8; 16] = [0; 16]; xx[0] = x as u8;
-                let mut yy: [u8; 16] = [0; 16]; yy[0] = y as u8;
-                u128::from_be_bytes(mul_helper(xx, yy))
-            }}
         }
     }
 
@@ -68,11 +63,11 @@ fn gcm()
     let cipher_rust = Aes128Gcm::new(&key_rust);
 
     let start = Instant::now();
-    for _ in 0..100
+    for test in 0..1000
     {
-        let aad1 = (0..357).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
-        let aad2 = (0..579).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
-        let mut pt1 = (0..1357).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
+        let aad1 = (0..rng.gen_range(1357, 3579)).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
+        let aad2 = (0..rng.gen_range(135, 357)).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
+        let mut pt1 = (0..rng.gen_range(13579, 35791)).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
 
         let (ct1, at1) = cipher.encrypt(&aad1, &pt1);
         let pt2 = cipher.decrypt(&aad1, &ct1, at1).unwrap();
@@ -96,6 +91,9 @@ fn gcm()
 
         assert_eq!(pt1, pt2);
         assert_eq!(ct1, ct2);
+
+        print!("{:?}\r", test);
+        io::stdout().flush().unwrap();
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 }
