@@ -70,7 +70,7 @@ fn gcm()
         let mut pt1 = (0..rng.gen_range(13579, 35791)).map(|_| {let x: u8 = rng.gen(); x}).collect::<Vec<u8>>();
 
         let (ct1, at1) = cipher.encrypt(&aad1, &pt1);
-        let pt2 = cipher.decrypt(&aad1, &ct1, at1).unwrap();
+        let pt2 = cipher.decrypt(&aad1, &ct1, at1).expect("authentication failure!");
 
         let ct1_rust = cipher_rust.encrypt(&iv_rust, Payload{aad: &aad1, msg: &pt1}).expect("encryption failure!");
         let pt2_rust = cipher_rust.decrypt(&iv_rust, Payload{aad: &aad1, msg: &ct1_rust}).expect("decryption failure!");
@@ -80,7 +80,7 @@ fn gcm()
         assert_eq!(pt2, pt2_rust);
 
         let (ct2, at2) = cipher.encrypt(&aad2, &pt2);
-        pt1 = cipher.decrypt(&aad2, &ct2, at2).unwrap();
+        pt1 = cipher.decrypt(&aad2, &ct2, at2).expect("authentication failure!");
 
         let ct2_rust = cipher_rust.encrypt(&iv_rust, Payload{aad: &aad2, msg: &pt2}).expect("encryption failure!");
         let pt1_rust = cipher_rust.decrypt(&iv_rust, Payload{aad: &aad2, msg: &ct2_rust}).expect("decryption failure!");

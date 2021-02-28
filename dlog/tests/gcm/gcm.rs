@@ -18,144 +18,6 @@ use std::convert::TryInto;
 use array_init::array_init;
 use super::aes::*;
 
-pub struct Gcm
-{
-    pub iv: [u8; 16],           // initialization vector
-    pub key: [u8; 16],          // encryption key
-    pub h: [u8; 16],            // hash key
-    pub counter: [u8; 16],      // [u8; 16] counter
-    pub cipher: AesCipher,      // symmetric cipher
-    pub mul: [[u8; 16]; 0x100], // multiplication table
-    pub r: [[u8; 16]; 0x100],   // static multiplication table
-}
-
-impl Gcm
-{
-    pub fn create(key: [u8; 16], iv: [u8; 16]) -> Gcm
-    {
-        let cipher = AesCipher::create(key);
-        let h = cipher.encryptBlock([0; 16]);
-        Gcm
-        {
-            h,
-            iv,
-            key,
-            cipher,
-            counter: iv,
-            mul: array_init(|i| mul_init(&h, &[i as u8, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])),
-            r: unsafe {array_init(|i| (MUL[i] << 112).to_be_bytes())}
-        }
-    }
-
-    pub fn encrypt (&mut self, aad: &Vec<u8>, pt: &Vec<u8>) -> (Vec<u8>, [u8; 16])
-    {
-        self.reset();
-        let mut ct = Vec::<u8>::with_capacity(pt.len());
-        let mut ht = [0u8; 16];
-
-        for i in (0..aad.len()).step_by(16)
-        {
-            let b = aad[i..if i+16 > aad.len() {aad.len()} else {i+16}].to_vec();
-            let x = xor16v(&ht, &b);
-            ht = self.mulh(&x);
-        }
-
-        let ec = self.cipher.encryptBlock(self.counter);
-
-        for i in (0..pt.len()).step_by(16)
-        {
-            self.incr();
-            let eic = self.cipher.encryptBlock(self.counter);
-
-            let mut et = pt[i .. if i+16 > pt.len() {pt.len()} else {i+16}].
-                iter().zip(eic.iter()).map(|(p, c)| super::aes::xor2(*p, *c)).collect::<Vec<_>>();
-            ht = self.mulh(&xor16v(&ht, &et));
-            ct.append(&mut et);
-        }
-
-        let sz: u128 = (((aad.len() * 8) as u128) << 64) | ((pt.len() * 8) as u128);
-        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes())), &ec);
-
-        (ct, ht)
-    }
-
-    pub fn decrypt (&mut self, aad: &Vec<u8>, ct: &Vec<u8>, at: [u8; 16]) -> Option<Vec<u8>>
-    {
-        self.reset();
-        let mut pt = Vec::<u8>::with_capacity(ct.len());
-        let mut ht: [u8; 16] = [0; 16];
-
-        for i in (0..aad.len()).step_by(16)
-        {
-            let b = aad[i..if i+16 > aad.len() {aad.len()} else {i+16}].to_vec();
-            let x = xor16v(&ht, &b);
-            ht = self.mulh(&x);
-        }
-
-        let ec = self.cipher.encryptBlock(self.counter);
-
-        for i in (0..ct.len()).step_by(16)
-        {
-            self.incr();
-            let ec = self.cipher.encryptBlock(self.counter);
-
-            let ctc = ct[i .. if i+16 > pt.len() {ct.len()} else {i+16}].to_vec();
-            let mut dt = ctc.iter().zip(ec.iter()).map(|(c, e)| super::aes::xor2(*c, *e)).collect::<Vec<_>>();
-            pt.append(&mut dt);
-            ht = self.mulh(&xor16v(&ht, &ctc));
-        }
-
-        let sz: u128 = (((aad.len() * 8) as u128) << 64) | ((pt.len() * 8) as u128);
-        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes())), &ec);
-
-        if ht == at {Some(pt)} else {None}
-    }
-
-    fn incr(&mut self)
-    {
-        let lower32: u32 = u32::from_be_bytes(self.counter[12..16].try_into().unwrap());
-        self.counter[12..16].clone_from_slice(&(if lower32 == u32::MAX {0} else {lower32+1}).to_be_bytes());
-    }
-
-    pub fn reset(&mut self)
-    {
-        self.counter[12..16].clone_from_slice(&(1 as u32).to_be_bytes());
-    }
-
-    pub fn mulh(&self, xb: &[u8; 16]) -> [u8; 16]
-    {
-        let x = *xb;
-        let mut z: [u8; 16] = [0; 16];
-        for i in (0..16).rev()
-        {
-            let a = z[15];
-            for j in (1..16).rev()
-            {
-                z[j] = z[j-1];
-            }
-            z[0] = 0;
-            z = xor16a(&xor16a(&z, &self.r[a as usize]), &self.mul[x[i] as usize])
-        }
-        z
-    }
-}
-
-pub fn mul_init(x: &[u8; 16], y: &[u8; 16]) -> [u8; 16]
-{
-    let x: u128 = u128::from_be_bytes(*x);
-    let y: u128 = u128::from_be_bytes(*y);
-    let r: u128 = 0xE1000000000000000000000000000000;
-    let mut z: u128 = 0;
-    let mut v = x;
-
-    for i in 0..128
-    {
-        if y & (1<<(127-i)) != 0 {z ^= v}
-        v = (v >> 1) ^ if v & 1 == 0 {0} else {r}
-    }
-    z.to_be_bytes()
-}
-
 pub static mut MUL: [u128; 0x100] =
 [
     0x0000, 0x01c2, 0x0384, 0x0246, 0x0708, 0x06ca, 0x048c, 0x054e,
@@ -191,3 +53,134 @@ pub static mut MUL: [u128; 0x100] =
     0xb5e0, 0xb422, 0xb664, 0xb7a6, 0xb2e8, 0xb32a, 0xb16c, 0xb0ae,
     0xbbf0, 0xba32, 0xb874, 0xb9b6, 0xbcf8, 0xbd3a, 0xbf7c, 0xbebe,
 ];
+
+pub struct Gcm
+{
+    pub iv: [u8; 16],           // initialization vector
+    pub key: [u8; 16],          // encryption key
+    pub h: [u8; 16],            // hash key
+    pub counter: [u8; 16],      // [u8; 16] counter
+    pub cipher: AesCipher,      // symmetric cipher
+    pub mul: [[u8; 16]; 0x100], // multiplication table
+    pub r: [[u8; 16]; 0x100],   // static multiplication table
+}
+
+impl Gcm
+{
+    pub fn create(key: [u8; 16], iv: [u8; 16]) -> Gcm
+    {
+        let cipher = AesCipher::create(key);
+        let h = cipher.encryptBlock([0; 16]);
+        Gcm
+        {
+            h,
+            iv,
+            key,
+            cipher,
+            counter: iv,
+            mul: array_init(|i| mul_init(&h, &[i as u8, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])),
+            r: unsafe {array_init(|i| (MUL[i] << 112).to_be_bytes())}
+        }
+    }
+
+    pub fn encrypt (&mut self, aad: &Vec<u8>, pt: &Vec<u8>) -> (Vec<u8>, [u8; 16])
+    {
+        self.counter[12..16].clone_from_slice(&(1 as u32).to_be_bytes());
+
+        let mut ct = Vec::<u8>::with_capacity(pt.len());
+        let mut ht = [0u8; 16];
+
+        for i in (0..aad.len()).step_by(16)
+        {
+            let b = aad[i..if i+16 > aad.len() {aad.len()} else {i+16}].to_vec();
+            let x = xor16v(&ht, &b);
+            ht = self.mulh(&x);
+        }
+
+        let ec = self.cipher.encryptBlock(self.counter);
+
+        for i in (0..pt.len()).step_by(16)
+        {
+            self.incr();
+            let eic = self.cipher.encryptBlock(self.counter);
+
+            let mut et = pt[i .. if i+16 > pt.len() {pt.len()} else {i+16}].
+                iter().zip(eic.iter()).map(|(p, c)| xor2(*p, *c)).collect();
+            ht = self.mulh(&xor16v(&ht, &et));
+            ct.append(&mut et);
+        }
+
+        let sz: u128 = (((aad.len() as u128) << 64) | (pt.len() as u128)) << 3;
+        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes())), &ec);
+
+        (ct, ht)
+    }
+
+    pub fn decrypt (&mut self, aad: &Vec<u8>, ct: &Vec<u8>, at: [u8; 16]) -> Option<Vec<u8>>
+    {
+        self.counter[12..16].clone_from_slice(&(1 as u32).to_be_bytes());
+
+        let mut pt = Vec::<u8>::with_capacity(ct.len());
+        let mut ht: [u8; 16] = [0; 16];
+
+        for i in (0..aad.len()).step_by(16)
+        {
+            let b = aad[i..if i+16 > aad.len() {aad.len()} else {i+16}].to_vec();
+            let x = xor16v(&ht, &b);
+            ht = self.mulh(&x);
+        }
+
+        let ec = self.cipher.encryptBlock(self.counter);
+
+        for i in (0..ct.len()).step_by(16)
+        {
+            self.incr();
+            let ec = self.cipher.encryptBlock(self.counter);
+
+            let ctc = ct[i .. if i+16 > pt.len() {ct.len()} else {i+16}].to_vec();
+            let mut dt = ctc.iter().zip(ec.iter()).map(|(c, e)| xor2(*c, *e)).collect();
+            pt.append(&mut dt);
+            ht = self.mulh(&xor16v(&ht, &ctc));
+        }
+
+        let sz: u128 = (((aad.len() as u128) << 64) | (pt.len() as u128)) << 3;
+        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes())), &ec);
+
+        if ht == at {Some(pt)} else {None}
+    }
+
+    fn incr(&mut self)
+    {
+        let lower32: u32 = u32::from_be_bytes(self.counter[12..16].try_into().unwrap());
+        self.counter[12..16].clone_from_slice(&(if lower32 == u32::MAX {0} else {lower32+1}).to_be_bytes());
+    }
+
+    pub fn mulh(&self, x: &[u8; 16]) -> [u8; 16]
+    {
+        let mut z = [0u8; 16];
+        for i in (0..16).rev()
+        {
+            z.rotate_right(1);
+            let a = z[0];
+            z[0] = 0;    
+            z = xor16a(&xor16a(&z, &self.r[a as usize]), &self.mul[x[i] as usize])
+        }
+        z
+    }
+}
+
+pub fn mul_init(x: &[u8; 16], y: &[u8; 16]) -> [u8; 16]
+{
+    let x: u128 = u128::from_be_bytes(*x);
+    let y: u128 = u128::from_be_bytes(*y);
+    let r: u128 = 0xE1000000000000000000000000000000;
+    let mut z: u128 = 0;
+    let mut v = x;
+
+    for i in 0..128
+    {
+        if y & (1<<(127-i)) != 0 {z ^= v}
+        v = (v >> 1) ^ if v & 1 == 0 {0} else {r}
+    }
+    z.to_be_bytes()
+}
