@@ -56,13 +56,13 @@ pub static mut MUL: [u128; 0x100] =
 
 pub struct Gcm
 {
+    pub h: [u8; 16],            // hash key
     pub iv: [u8; 16],           // initialization vector
     pub key: [u8; 16],          // encryption key
-    pub h: [u8; 16],            // hash key
-    pub counter: [u8; 16],      // [u8; 16] counter
     pub cipher: AesCipher,      // symmetric cipher
-    pub mul: [[u8; 16]; 0x100], // multiplication table
-    pub r: [[u8; 16]; 0x100],   // static multiplication table
+    pub counter: [u8; 16],      // counter
+    pub r: [[u8; 16]; 256],     // static multiplication table
+    pub mul: [[u8; 16]; 256],   // session multiplication table
 }
 
 impl Gcm
@@ -157,8 +157,8 @@ impl Gcm
 
     pub fn mulh(&self, x: &[u8; 16]) -> [u8; 16]
     {
-        let mut z = [0u8; 16];
-        for i in (0..16).rev()
+        let mut z = self.mul[x[15] as usize];
+        for i in (0..15).rev()
         {
             z.rotate_right(1);
             let a = z[0];
