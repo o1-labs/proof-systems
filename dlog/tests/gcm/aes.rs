@@ -185,10 +185,12 @@ const XtimeE: [u8; 256] =
 const Rcon: [u8; 11] = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
 pub static mut XOR: [u8; 0x10000] = [0; 0x10000];
     
+pub type Block = [u8; 16];
+
 // exchanges columns in each of 4 rows
 // row0 - unchanged, row1- shifted left 1, 
 // row2 - shifted left 2 and row3 - shifted left 3
-pub fn ShiftRows (state: &mut [u8; 16])
+pub fn ShiftRows (state: &mut Block)
 {
     let mut tmp: u8;
 
@@ -212,7 +214,7 @@ pub fn ShiftRows (state: &mut [u8; 16])
 // restores columns in each of 4 rows
 // row0 - unchanged, row1- shifted right 1, 
 // row2 - shifted right 2 and row3 - shifted right 3
-pub fn InvShiftRows (state: &mut [u8; 16])
+pub fn InvShiftRows (state: &mut Block)
 {
     let mut tmp: u8;
 
@@ -234,9 +236,9 @@ pub fn InvShiftRows (state: &mut [u8; 16])
 }
 
 // recombine and mix each row in a column
-pub fn MixSubColumns (state: &mut [u8; 16])
+pub fn MixSubColumns (state: &mut Block)
 {
-    let mut tmp: [u8; 16] = [0; 16];
+    let mut tmp: Block = [0; 16];
 
     // mixing column 0
     tmp[0] = xor4(Xtime2Sbox[state[0] as usize], Xtime3Sbox[state[5] as usize], Sbox[state[10] as usize], Sbox[state[15] as usize]);
@@ -266,9 +268,9 @@ pub fn MixSubColumns (state: &mut [u8; 16])
 }
 
 // restore and un-mix each row in a column
-pub fn InvMixSubColumns (state: &mut [u8; 16])
+pub fn InvMixSubColumns (state: &mut Block)
 {
-    let mut tmp: [u8; 16] = [0; 16];
+    let mut tmp: Block = [0; 16];
 
     // restore column 0
     tmp[0] = xor4(XtimeE[state[0] as usize], XtimeB[state[1] as usize], XtimeD[state[2] as usize], Xtime9[state[3] as usize]);
@@ -299,13 +301,13 @@ pub fn InvMixSubColumns (state: &mut [u8; 16])
 
 // encrypt/decrypt columns with the key
 
-pub fn AddRoundKey (state: &mut [u8; 16], key: [u8; 16])
+pub fn AddRoundKey (state: &mut Block, key: Block)
 {
-    state.iter_mut().zip(key.iter()).for_each(|(s, k)| *s = xor2(*s, *k));
+    state.iter_mut().zip(key.iter()).for_each(|(s, k)| *s = xor(*s, *k));
 }
 
 // compute aes key schedule
-pub fn expandKey (key: [u8; 16]) -> [u8; 176]
+pub fn expandKey (key: Block) -> [u8; 176]
 {
     let mut expkey: [u8; 176] = [0; 176];
     let mut tmp0: u8;
@@ -326,35 +328,35 @@ pub fn expandKey (key: [u8; 16]) -> [u8; 176]
         {
             tmp4 = tmp3;
             tmp3 = Sbox[tmp0 as usize];
-            tmp0 = xor2(Sbox[tmp1 as usize], Rcon[idx/4]);
+            tmp0 = xor(Sbox[tmp1 as usize], Rcon[idx/4]);
             tmp1 = Sbox[tmp2 as usize];
             tmp2 = Sbox[tmp4 as usize];
         }
 
-        expkey[4*idx+0] = xor2(expkey[4*idx - 16 + 0], tmp0);
-        expkey[4*idx+1] = xor2(expkey[4*idx - 16 + 1], tmp1);
-        expkey[4*idx+2] = xor2(expkey[4*idx - 16 + 2], tmp2);
-        expkey[4*idx+3] = xor2(expkey[4*idx - 16 + 3], tmp3);
+        expkey[4*idx+0] = xor(expkey[4*idx - 16 + 0], tmp0);
+        expkey[4*idx+1] = xor(expkey[4*idx - 16 + 1], tmp1);
+        expkey[4*idx+2] = xor(expkey[4*idx - 16 + 2], tmp2);
+        expkey[4*idx+3] = xor(expkey[4*idx - 16 + 3], tmp3);
     }
     expkey
 }
 
-pub fn xor16v (x: &[u8; 16], y: &Vec<u8>) -> [u8; 16]
+pub fn xor16v (x: &Block, y: &Vec<u8>) -> Block
 {
-    array_init(|i| xor2(x[i], if i<y.len() {y[i]} else {0}))
+    array_init(|i| xor(x[i], if i<y.len() {y[i]} else {0}))
 }
 
-pub fn xor16a (x: &[u8; 16], y: &[u8; 16]) -> [u8; 16]
+pub fn xor16a (x: &Block, y: &Block) -> Block
 {
-    array_init(|i| xor2(x[i], y[i]))
+    array_init(|i| xor(x[i], y[i]))
 }
 
 pub fn xor4 (x: u8, y: u8, z: u8, t: u8) -> u8
 {
-    unsafe {xor2(XOR[y as usize | ((x as usize) << 8)], XOR[z as usize | ((t as usize) << 8)])}
+    unsafe {xor(XOR[y as usize | ((x as usize) << 8)], XOR[z as usize | ((t as usize) << 8)])}
 }
 
-pub fn xor2 (x: u8, y: u8) -> u8
+pub fn xor (x: u8, y: u8) -> u8
 {
     unsafe {XOR[y as usize | ((x as usize) << 8)]}
 }
@@ -366,7 +368,7 @@ pub struct AesCipher
 
 impl AesCipher
 {
-    pub fn create(key: [u8; 16]) -> AesCipher
+    pub fn create(key: Block) -> AesCipher
     {
         // compute the key schedule
         AesCipher
@@ -376,7 +378,7 @@ impl AesCipher
     }
 
     // encrypt one 128 bit block
-    pub fn encryptBlock (&self, pt: [u8; 16]) -> [u8; 16]
+    pub fn encryptBlock (&self, pt: Block) -> Block
     {
         let mut state = pt.clone();
         AddRoundKey (&mut state, self.expkey[0..16].try_into().unwrap());
@@ -391,7 +393,7 @@ impl AesCipher
         state
     }
 
-    pub fn decryptBlock (&self, ct: [u8; 16]) -> [u8; 16]
+    pub fn decryptBlock (&self, ct: Block) -> Block
     {
         let mut state = ct.clone();
         AddRoundKey (&mut state, self.expkey[160..176].try_into().unwrap());

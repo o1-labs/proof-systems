@@ -4,11 +4,11 @@ This implements GCM primitives for TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 TLS-1.2
 
 Wikipedia quote (https://en.wikipedia.org/wiki/Galois/Counter_Mode):
 
-In cryptography, 0xGalois/Counter Mode (GCM) is a mode of operation for symmetric-key cryptographic [u8; 16] ciphers
-widely adopted for its performance. GCM throughput rates for state-of-the-art, 0xhigh-speed communication channels
+In cryptography, 0xGalois/Counter Mode (GCM) is a mode of operation for symmetric-key cryptographic block ciphers
+widely adopted for its performance. GCM throughput rates for state-of-the-art, high-speed communication channels
 can be achieved with inexpensive hardware resources.[1] The operation is an authenticated encryption algorithm
-designed to provide both data authenticity (integrity) and confidentiality. GCM is defined for [u8; 16] ciphers
-with a [u8; 16] size of 128 bits. Galois Message Authentication Code (GMAC) is an authentication-only variant of
+designed to provide both data authenticity (integrity) and confidentiality. GCM is defined for block ciphers
+with a block size of 128 bits. Galois Message Authentication Code (GMAC) is an authentication-only variant of
 the GCM which can form an incremental message authentication code. Both GCM and GMAC can accept initialization
 vectors of arbitrary length.
 
@@ -18,7 +18,7 @@ use std::convert::TryInto;
 use array_init::array_init;
 use super::aes::*;
 
-pub static mut MUL: [u128; 0x100] =
+pub static mut MUL: [u16; 0x100] =
 [
     0x0000, 0x01c2, 0x0384, 0x0246, 0x0708, 0x06ca, 0x048c, 0x054e,
     0x0e10, 0x0fd2, 0x0d94, 0x0c56, 0x0918, 0x08da, 0x0a9c, 0x0b5e,
@@ -54,20 +54,23 @@ pub static mut MUL: [u128; 0x100] =
     0xbbf0, 0xba32, 0xb874, 0xb9b6, 0xbcf8, 0xbd3a, 0xbf7c, 0xbebe,
 ];
 
+pub static mut R: [Block; 0x100] = [[0; 16]; 0x100];
+pub static mut MULT: [[u8; 2]; 0x10000] = [[0; 2]; 0x10000];
+
 pub struct Gcm
 {
-    pub h: [u8; 16],            // hash key
-    pub iv: [u8; 16],           // initialization vector
-    pub key: [u8; 16],          // encryption key
-    pub cipher: AesCipher,      // symmetric cipher
-    pub counter: [u8; 16],      // counter
-    pub r: [[u8; 16]; 256],     // static multiplication table
-    pub mul: [[u8; 16]; 256],   // session multiplication table
+    pub h: Block,           // hash key
+    pub iv: Block,          // initialization vector
+    pub key: Block,         // encryption key
+    pub cipher: AesCipher,  // symmetric cipher
+    pub counter: Block,     // counter
+    pub r: [Block; 256],    // static multiplication table
+    pub mul: [Block; 256],  // session multiplication table
 }
 
 impl Gcm
 {
-    pub fn create(key: [u8; 16], iv: [u8; 16]) -> Gcm
+    pub fn create(key: Block, iv: Block) -> Gcm
     {
         let cipher = AesCipher::create(key);
         let h = cipher.encryptBlock([0; 16]);
@@ -79,11 +82,11 @@ impl Gcm
             cipher,
             counter: iv,
             mul: array_init(|i| mul_init(&h, &[i as u8, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0])),
-            r: unsafe {array_init(|i| (MUL[i] << 112).to_be_bytes())}
+            r: unsafe {array_init(|i| ((MUL[i] as u128) << 112).to_be_bytes())}
         }
     }
 
-    pub fn encrypt (&mut self, aad: &Vec<u8>, pt: &Vec<u8>) -> (Vec<u8>, [u8; 16])
+    pub fn encrypt (&mut self, aad: &Vec<u8>, pt: &Vec<u8>) -> (Vec<u8>, Block)
     {
         self.counter[12..16].clone_from_slice(&(1 as u32).to_be_bytes());
 
@@ -105,7 +108,7 @@ impl Gcm
             let eic = self.cipher.encryptBlock(self.counter);
 
             let mut et = pt[i .. if i+16 > pt.len() {pt.len()} else {i+16}].
-                iter().zip(eic.iter()).map(|(p, c)| xor2(*p, *c)).collect();
+                iter().zip(eic.iter()).map(|(p, c)| xor(*p, *c)).collect();
             ht = self.mulh(&xor16v(&ht, &et));
             ct.append(&mut et);
         }
@@ -116,12 +119,12 @@ impl Gcm
         (ct, ht)
     }
 
-    pub fn decrypt (&mut self, aad: &Vec<u8>, ct: &Vec<u8>, at: [u8; 16]) -> Option<Vec<u8>>
+    pub fn decrypt (&mut self, aad: &Vec<u8>, ct: &Vec<u8>, at: Block) -> Option<Vec<u8>>
     {
         self.counter[12..16].clone_from_slice(&(1 as u32).to_be_bytes());
 
         let mut pt = Vec::<u8>::with_capacity(ct.len());
-        let mut ht: [u8; 16] = [0; 16];
+        let mut ht: Block = [0; 16];
 
         for i in (0..aad.len()).step_by(16)
         {
@@ -138,7 +141,7 @@ impl Gcm
             let ec = self.cipher.encryptBlock(self.counter);
 
             let ctc = ct[i .. if i+16 > pt.len() {ct.len()} else {i+16}].to_vec();
-            let mut dt = ctc.iter().zip(ec.iter()).map(|(c, e)| xor2(*c, *e)).collect();
+            let mut dt = ctc.iter().zip(ec.iter()).map(|(c, e)| xor(*c, *e)).collect();
             pt.append(&mut dt);
             ht = self.mulh(&xor16v(&ht, &ctc));
         }
@@ -151,11 +154,17 @@ impl Gcm
 
     fn incr(&mut self)
     {
-        let lower32: u32 = u32::from_be_bytes(self.counter[12..16].try_into().unwrap());
-        self.counter[12..16].clone_from_slice(&(if lower32 == u32::MAX {0} else {lower32+1}).to_be_bytes());
+        let counter = u32::from_be_bytes(self.counter[12..16].try_into().unwrap());
+        self.counter[12..16].clone_from_slice(&(if counter == u32::MAX {0} else {counter+1}).to_be_bytes());
     }
 
-    pub fn mulh(&self, x: &[u8; 16]) -> [u8; 16]
+    pub fn mulh(&self, x: &Block) -> Block
+    {
+        unsafe {mult(x, &self.h)}
+    }
+
+    #[allow(dead_code)]
+    pub fn mulh_table(&self, x: &Block) -> Block
     {
         let mut z = self.mul[x[15] as usize];
         for i in (0..15).rev()
@@ -169,7 +178,52 @@ impl Gcm
     }
 }
 
-pub fn mul_init(x: &[u8; 16], y: &[u8; 16]) -> [u8; 16]
+pub unsafe fn mult(x: &Block, y: &Block) -> Block
+{
+    let mut z = [0u8; 16];
+    for i in 0..16
+    {
+        for j in 0..16
+        {
+            let k = i + j;
+            let m = MULT[(x[i] as usize) | ((y[j] as usize) << 8)];
+
+            if k < 15
+            {
+                z[k] = xor(z[k], m[0]);
+                z[k+1] = xor(z[k+1], m[1]);
+            }
+            else if k == 15
+            {
+                let r = R[m[1] as usize];
+                z[0] = xor(z[0], r[0]);
+                z[1] = xor(z[1], r[1]);
+                z[15] = xor(z[15], m[0]);
+            }
+            else if k < 30
+            {
+                let r0 = R[m[0] as usize];
+                let r1 = R[m[1] as usize];
+                z[k-16] = xor(z[k-16], r0[0]);
+                z[k-15] = xor(z[k-15], xor(r0[1], r1[0]));
+                z[k-14] = xor(z[k-14], r1[1]);
+            }
+            else
+            {
+                let r0 = R[m[0] as usize];
+                let r1 = R[m[1] as usize];
+                let r2 = R[r1[1] as usize];
+                z[0] = xor(z[0], r2[0]);
+                z[1] = xor(z[1], r2[1]);
+                z[14] = xor(z[14], r0[0]);
+                z[15] = xor(z[15], xor(r0[1], r1[0]));
+            }
+        }
+    }
+    z
+}
+
+pub fn mul_init(x: &Block, y: &Block) -> Block
 {
     let x: u128 = u128::from_be_bytes(*x);
     let y: u128 = u128::from_be_bytes(*y);

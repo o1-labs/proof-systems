@@ -4,6 +4,7 @@ use aes_gcm::Aes128Gcm;
 use aes_gcm::aead::{Aead, NewAead, generic_array::GenericArray, Payload};
 use self::gcm::{aes::*, gcm::*};
 use rand::{thread_rng, Rng};
+use array_init::array_init;
 use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
@@ -43,19 +44,25 @@ fn aes()
 #[test]
 fn gcm()
 {
-    // init GF(2^8) XOR table
-    for x in 0..256
+    // init GF(2^8) XOR and GF(2^128) multiplication tables
+    unsafe {for x in 0..256 {for y in 0..256
     {
-        for y in 0..256
-        {
-            unsafe {XOR[y | (x << 8)] = (x as u8) ^ (y as u8)}
-        }
-    }
+        XOR[y | (x << 8)] = (x as u8) ^ (y as u8);
+        MULT[y | (x << 8)] =
+            {
+                let mut xx: Block = [0; 16]; xx[0] = x as u8;
+                let mut yy: Block = [0; 16]; yy[0] = y as u8;
+                let z = mul_init(&xx, &yy);
+                [z[0], z[1]]
+            }
+        };
+        R = array_init(|i| ((MUL[i] as u128) << 112).to_be_bytes())
+    }}
 
     let rng = &mut thread_rng();
 
-    let iv: [u8; 16] = {let iv: u128 = rng.gen(); iv}.to_be_bytes();
-    let key: [u8; 16] = {let key: u128 = rng.gen(); key}.to_be_bytes();
+    let iv: Block = {let iv: u128 = rng.gen(); iv}.to_be_bytes();
+    let key: Block = {let key: u128 = rng.gen(); key}.to_be_bytes();
     let mut cipher = Gcm::create(key, iv);
 
     let iv_rust = GenericArray::clone_from_slice(&iv[0..12]);
