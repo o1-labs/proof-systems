@@ -170,9 +170,10 @@ impl Gcm
         for i in (0..15).rev()
         {
             z.rotate_right(1);
-            let a = z[0];
-            z[0] = 0;    
-            z = xor16a(&xor16a(&z, &self.r[a as usize]), &self.mul[x[i] as usize])
+            let r = self.r[z[0] as usize];
+            z[0] = r[0];
+            z[1] = xor(z[1], r[1]);
+            z = xor16a(&z, &self.mul[x[i] as usize])
         }
         z
     }

@@ -184,7 +184,7 @@ const XtimeE: [u8; 256] =
 
 const Rcon: [u8; 11] = [0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36];
 pub static mut XOR: [u8; 0x10000] = [0; 0x10000];
-    
+
 pub type Block = [u8; 16];
 
 // exchanges columns in each of 4 rows
