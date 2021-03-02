@@ -273,7 +273,7 @@ impl<'a, E: PairingEngine> Index<'a, E>
         {
             for val in self.compiled[i].constraints.iter()
             {
-                gates[(val.1).0].wire[i] += &(witness[(val.1).1] * &val.0)
+                gates[(val.1).0].wire[i] += &(witness[(val.1).1] * val.0)
             }
         }
         for gate in gates.iter()
