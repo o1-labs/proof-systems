@@ -451,7 +451,7 @@ impl<E: PairingEngine> ProverProof<E>
                             {
                                 vanish * &index.compiled[i].val_eval_k[j] *
                                 // scale with eta's
-                                &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * &elm
+                                &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * elm
                             }
                         ).collect()
                     },
