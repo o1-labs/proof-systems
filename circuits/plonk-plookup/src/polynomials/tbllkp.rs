@@ -78,7 +78,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         s.extend(self.table1.evals.clone());
 
         // sort s by the table
-        s.sort();
+        s.sort_unstable();
 
         let mut h = vec![s[n-1]];
         h.append(&mut s.drain(n..2*n-1).collect());
