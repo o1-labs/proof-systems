@@ -180,8 +180,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let emulm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.endomul()).collect(), domain.d1).interpolate();
 
         // lookup table polynonials
-        tbl.resize(n, F::zero());
-        let table1 = E::<F, D<F>>::from_vec_and_domain(tbl, domain.d1); 
+        tbl.sort();
+        let mut table = vec![F::zero(); n - tbl.len()];
+        table.append(&mut tbl);
+        let table1 = E::<F, D<F>>::from_vec_and_domain(table, domain.d1); 
         let tablem = table1.clone().interpolate();
         let table8 = tablem.evaluate_over_domain_by_ref(domain.d8);
 
