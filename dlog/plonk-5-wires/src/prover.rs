@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use algebra::{Field, AffineCurve, Zero, One, UniformRand};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
+use commitment_dlog::commitment::{CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
 use plonk_5_wires_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
 pub use super::{index::Index, range};
@@ -130,7 +130,7 @@ unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverProof<
     }
 }
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> ProverProof<G>
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -143,12 +143,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         witness: &[Vec::<Fr<G>>; COLUMNS],
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        blinders: [Option<PolyComm<Fr<G>>>; COLUMNS]
     )
     -> Result<Self, ProofError>
     {
         let n = index.cs.domain.d1.size as usize;
         for w in witness.iter() {if w.len() != n {return Err(ProofError::WitnessCsInconsistent)}};
-        //if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
+        if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
@@ -165,8 +166,27 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| Evaluations::<Fr<G>,
             D<Fr<G>>>::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1).interpolate());
 
+        {
+            if witness[0].len() < 100 {
+                for (i, s) in witness[0].iter().enumerate() {
+                    println!("w_0[{}] = {}", i, s);
+                }
+            }
+        }
+
         // commit to the wire values
-        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| index.srs.get_ref().commit(&w[i], None, rng));
+        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] =
+            array_init(|i| {
+                let srs = index.srs.get_ref();
+
+                match &blinders[i] {
+                    None => srs.commit(&w[i], None, rng),
+                    Some(b) => {
+                        let c = srs.commit_non_hiding(&w[i], None);
+                        srs.mask(c, b)
+                    }
+                }
+            });
 
         // absorb the wire polycommitments into the argument
         fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
@@ -184,7 +204,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             |j| z[j+1] = witness.iter().zip(index.cs.sigmal1.iter()).map
             (
                 |(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma
-            ).fold(Fr::<G>::one(), |x, y| x * y)
+            ).fold(Fr::<G>::one(), |x, y| x * &y)
         );
         algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n-3]);
         (0..n-3).for_each
@@ -192,10 +212,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             |j|
             {
                 let x = z[j];
-                z[j+1] *= witness.iter().zip(index.cs.shift.iter()).map
+                z[j+1] *= &witness.iter().zip(index.cs.shift.iter()).map
                 (
                     |(w, s)| w[j] + &(index.cs.sid[j] * &oracles.beta * s) + &oracles.gamma
-                ).fold(x, |z, y| z * y)
+                ).fold(x, |z, y| z * &y)
             }
         );
 

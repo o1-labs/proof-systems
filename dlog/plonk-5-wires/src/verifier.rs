@@ -9,7 +9,7 @@ pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
 use plonk_5_wires_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::ConstraintSystem};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
+use commitment_dlog::commitment::{CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::EvaluationDomain;
 use rand::thread_rng;
@@ -17,7 +17,7 @@ use rand::thread_rng;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> ProverProof<G>
 {
     pub fn prev_chal_evals(&self, index: &Index<G>, evaluation_points: &[Fr<G>], evlp : &[Fr<G>]) -> Vec<Vec<Vec<Fr<G>>>> {
         self.prev_challenges.iter().map(|(chals, _poly)| {
@@ -246,21 +246,21 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 if
                     (evals[0].f + &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()})
                     -
-                    evals[0].w.iter().zip(evals[0].s.iter()).
-                        map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
-                        fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
+                    &evals[0].w.iter().zip(evals[0].s.iter()).
+                        map(|(w, s)| ((oracles.beta * s) + &w) + &oracles.gamma).
+                        fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x : Fr<G>, y| x * &y)
                     +
-                    evals[0].w.iter().zip(index.shift.iter()).
-                        map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w).
-                        fold(oracles.alpha * &zkp * &evals[0].z, |x, y| x * y)
+                    &evals[0].w.iter().zip(index.shift.iter()).
+                        map(|(w, s)| (oracles.gamma + &(oracles.beta * &oracles.zeta * s)) + w).
+                        fold(oracles.alpha * &zkp * &evals[0].z, |x, y| x * &y)
                     -
-                    evals[0].t * &zeta1m1) * &(oracles.zeta - &index.w) * &(oracles.zeta - &Fr::<G>::one())
+                    &(evals[0].t * &zeta1m1) ) * &(oracles.zeta - &index.w) * &(oracles.zeta - &Fr::<G>::one())
                 !=
                     ((zeta1m1 * &alpha[range::PERM][0] * &(oracles.zeta - &index.w))
                     +
-                    (zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one())))
+                    &(zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one())))
                     *
-                    &(Fr::<G>::one() - evals[0].z)
+                    &(Fr::<G>::one() - &evals[0].z)
                 {return Err(ProofError::ProofVerification)}
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))

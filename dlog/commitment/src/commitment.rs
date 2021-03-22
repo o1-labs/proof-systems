@@ -14,7 +14,7 @@ use crate::srs::SRS;
 use groupmap::{GroupMap, BWParameters};
 use algebra::{
     curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
-    AffineCurve, Field, PrimeField, ProjectiveCurve, SquareRootField,
+    AffineCurve, Field, PrimeField, ProjectiveCurve,
     UniformRand, VariableBaseMSM, SWModelParameters, One, Zero,
     FpParameters
 };
@@ -23,7 +23,6 @@ use oracle::{FqSponge, sponge::ScalarChallenge};
 use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
-pub use crate::CommitmentField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -41,6 +40,20 @@ impl<A: Copy> PolyComm<A> {
         let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
         let shifted = self.shifted.map(f);
         PolyComm { unshifted, shifted }
+    }
+
+    pub fn zip<B:Copy>(&self, other:&PolyComm<B>) -> Option<PolyComm<(A, B)>> {
+        if self.unshifted.len() != other.unshifted.len() {
+            return None;
+        }
+        let unshifted = self.unshifted.iter().zip(other.unshifted.iter()).map(|(x, y)| (*x, *y)).collect();
+        let shifted =
+            match (self.shifted, other.shifted) {
+                (Some(x), Some(y)) => Some((x, y)),
+                (None, None) => None,
+                (Some(_), None) | (None, Some(_)) => return None
+            };
+        Some(PolyComm { unshifted, shifted })
     }
 }
 
@@ -115,7 +128,7 @@ pub struct Challenges<F> {
     pub chal_inv : Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
+impl<G:AffineCurve> OpeningProof<G> {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
         let _t = sponge.challenge_fq();
         self.lr
@@ -208,13 +221,13 @@ fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
         .collect()
 }
 
-fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_prechallenge<Fq: Field, G, Fr, EFqSponge: FqSponge<Fq, G, Fr>>(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_challenge<Fq: Field, G, Fr: PrimeField, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -312,7 +325,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     res
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
+impl<G: CommitmentCurve> SRS<G> {
     pub fn commit(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
@@ -320,21 +333,22 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         rng: &mut dyn RngCore,
     ) -> (PolyComm<G>, PolyComm<Fr<G>>)
     {
-        self.mask(self.commit_non_hiding(plnm, max), rng)
+        let c = self.commit_non_hiding(plnm, max);
+        let w = c.map(|_| Fr::<G>::rand(rng));
+        self.mask(c, &w)
     }
 
-    fn mask(
+    pub fn mask(
         &self,
         c : PolyComm<G>,
-        rng: &mut dyn RngCore,
+        w: &PolyComm<G::ScalarField>,
     ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
-        c.map(|g : G| {
+        c.zip(w).unwrap().map(|(g, w) : (G, Fr<G>)| {
             if g.is_zero() {
                 // TODO: This leaks information when g is the identity!
                 // We should change this so that we still mask in this case
                 (g, Fr::<G>::zero())
             } else {
-                let w = Fr::<G>::rand(rng);
                 let mut g_masked = self.h.mul(w);
                 g_masked.add_assign_mixed(&g);
                 (g_masked.into_affine(), w)
@@ -439,14 +453,14 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                             (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
-                        omega += &(omegas.unshifted[j] * scale);
+                        omega += &(omegas.unshifted[j] * &scale);
                         j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
                             p += &(segment.shiftr(self.g.len() - m%self.g.len()).scale(scale));
-                            omega += &(omegas.shifted.unwrap() * scale);
+                            omega += &(omegas.shifted.unwrap() * &scale);
                             scale *= &polyscale;
                         }
                     }
@@ -458,7 +472,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                             (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
-                        omega += &(omegas.unshifted[j] * scale);
+                        omega += &(omegas.unshifted[j] * &scale);
                         j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
@@ -488,7 +502,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         let combined_inner_product = 
             p.coeffs.iter().zip(b_init.iter())
             .map(|(a, b)| *a * b)
-            .fold(Fr::<G>::zero(), |acc, x| acc + x);
+            .fold(Fr::<G>::zero(), |acc, x| acc + &x);
 
         sponge.absorb_fr(&[shift_scalar(combined_inner_product)]);
 
@@ -547,7 +561,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 .map(|(&hi, &lo)| {
                     // lo + u_inv * hi
                     let mut res = hi;
-                    res *= u_inv;
+                    res *= &u_inv;
                     res += &lo;
                     res
                 })
@@ -559,7 +573,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 .map(|(&lo, &hi)| {
                     // lo + u * hi
                     let mut res = hi;
-                    res *= u;
+                    res *= &u;
                     res += &lo;
                     res
                 })
@@ -703,7 +717,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 for &e in evaluation_points.iter() {
                     let term = b_poly(&chal, e);
                     res += &(scale * &term);
-                    scale *= *r;
+                    scale *= r;
                 }
                 res
             };
@@ -772,7 +786,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                     for comm_ch in comm.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
-                        xi_i *= *xi;
+                        xi_i *= xi;
                     }
 
                     if let Some(_m) = shifted {
@@ -781,7 +795,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 								// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
 								scalars.push(rand_base_i_c_i * &xi_i);
 								points.push(comm_ch);
-                                xi_i *= *xi;
+                                xi_i *= xi;
 							}
                         }
                     }

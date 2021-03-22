@@ -5,7 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
-use commitment_dlog::{srs::{SRSValue, SRSSpec}, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
+use commitment_dlog::{srs::{SRSValue, SRSSpec}, commitment::{CommitmentCurve, PolyComm}};
 use oracle::poseidon_5_wires::PlonkSpongeConstants;
 use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants};
 use plonk_5_wires_circuits::{constraints::{zk_w, ConstraintSystem}, wires::COLUMNS};
@@ -16,7 +16,7 @@ use algebra::PrimeField;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-pub struct Index<'a, G: CommitmentCurve> where G::ScalarField : CommitmentField
+pub struct Index<'a, G: CommitmentCurve>
 {
     // constraints system polynoms
     pub cs: ConstraintSystem<Fr<G>>,
@@ -69,9 +69,9 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::ScalarField : CommitmentField
+impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField
 {
-    pub fn verifier_index(&self) -> VerifierIndex<G> {
+    pub fn verifier_index(&self) -> VerifierIndex<'a, G> {
         let srs = match &self.srs
         {
             SRSValue::Value(s) => SRSValue::Value(s.clone()),

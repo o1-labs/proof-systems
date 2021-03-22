@@ -4,7 +4,7 @@ This source file implements the Marlin structured reference string primitive
 
 *****************************************************************************************************************/
 
-pub use crate::{QnrField, CommitmentField};
+pub use crate::{QnrField};
 use blake2::{Blake2b, Digest};
 use std::io::{Read, Result as IoResult, Write};
 use algebra::{FromBytes, PrimeField, ToBytes, BigInteger};
@@ -41,7 +41,7 @@ where G::BaseField : PrimeField {
 }
 
 fn point_of_random_bytes<G: CommitmentCurve>(m : &G::Map, random_bytes : &[u8])  -> G
-where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+where G::BaseField : PrimeField {
     const N : usize = 31;
     let mut bits = [false;8*N];
     for i in 0..N {
@@ -56,7 +56,7 @@ where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
@@ -132,7 +132,7 @@ pub enum SRSSpec <'a, G: CommitmentCurve>{
     Generate(usize)
 }
 
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField{
     pub fn generate(size: usize) -> SRS<G> {
         SRS::<G>::create(size)
     }
