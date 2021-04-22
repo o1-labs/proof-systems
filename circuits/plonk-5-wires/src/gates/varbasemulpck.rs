@@ -68,18 +68,23 @@ The constraints above are derived from the following EC Affine arithmetic equati
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use crate::wires::{GateWires, COLUMNS};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait VbmulpackGateType : PartialEq
+{
+    const VBMUL2: Self;
+}
+
+impl<F: FftField, GateType: VbmulpackGateType> CircuitGate<F, GateType>
 {
     pub fn create_vbmul2(row: usize, wires: GateWires) -> Self
     {
         CircuitGate
         {
             row,
-            typ: GateType::Vbmul2,
+            typ: GateType::VBMUL2,
             wires,
             c: vec![]
         }
@@ -90,7 +95,7 @@ impl<F: FftField> CircuitGate<F>
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
 
-        self.typ == GateType::Vbmul2
+        self.typ == GateType::VBMUL2
         &&
         // verify booleanity of the scalar bit
         this[3] == this[3].square()
@@ -110,5 +115,5 @@ impl<F: FftField> CircuitGate<F>
         this[4] == next[4].double() + &this[3]
     }
 
-    pub fn vbmul2(&self) -> F {if self.typ == GateType::Vbmul2 {F::one()} else {F::zero()}}
+    pub fn vbmul2(&self) -> F {if self.typ == GateType::VBMUL2 {F::one()} else {F::zero()}}
 }

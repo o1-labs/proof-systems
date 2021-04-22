@@ -5,11 +5,16 @@ This source file implements Plonk generic constraint gate primitive.
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use crate::wires::{COLUMNS, GateWires};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait GenericGateType : PartialEq
+{
+    const GENERIC: Self;
+}
+
+impl<F: FftField, GateType: GenericGateType> CircuitGate<F, GateType>
 {
     pub fn create_generic
     (
@@ -27,7 +32,7 @@ impl<F: FftField> CircuitGate<F>
         CircuitGate
         {
             row,
-            typ: GateType::Generic,
+            typ: GateType::GENERIC,
             wires,
             c
         }
@@ -37,7 +42,7 @@ impl<F: FftField> CircuitGate<F>
     {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
-        self.typ == GateType::Generic &&
+        self.typ == GateType::GENERIC &&
         (
             (0..COLUMNS).map(|i| self.c[i] * &this[i]).fold(F::zero(), |x, y| x + &y) +
             &(self.c[COLUMNS] * &this[0] * &this[1]) +

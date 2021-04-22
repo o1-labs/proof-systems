@@ -9,6 +9,7 @@ pub use super::{wires::{*}, constraints::ConstraintSystem};
 use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use algebra::bytes::{FromBytes, ToBytes};
+use crate::gates::{zero::ZeroGateType, generic::GenericGateType, poseidon::PoseidonGateType, addition::AddGateType, double::DoubleGateType, varbasemul::VbmulGateType, varbasemulpck::VbmulpackGateType, endosclmul::EndomulGateType, packing::PackGateType};
 
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -27,8 +28,44 @@ pub enum GateType
     Pack,       // Gate constraining packing
 }
 
+impl ZeroGateType for GateType {
+    const ZERO: Self = GateType::Zero;
+}
+
+impl GenericGateType for GateType {
+    const GENERIC: Self = GateType::Generic;
+}
+
+impl PoseidonGateType for GateType {
+    const POSEIDON: Self = GateType::Poseidon;
+}
+
+impl AddGateType for GateType {
+    const ADD: Self = GateType::Add;
+}
+
+impl DoubleGateType for GateType {
+    const DOUBLE: Self = GateType::Double;
+}
+
+impl VbmulGateType for GateType {
+    const VBMUL1: Self = GateType::Vbmul1;
+}
+
+impl VbmulpackGateType for GateType {
+    const VBMUL2: Self = GateType::Vbmul2;
+}
+
+impl EndomulGateType for GateType {
+    const ENDOMUL: Self = GateType::Endomul;
+}
+
+impl PackGateType for GateType {
+    const PACK: Self = GateType::Pack;
+}
+
 #[derive(Clone)]
-pub struct CircuitGate<F: FftField>
+pub struct CircuitGate<F: FftField, GateType>
 {
     pub row: usize,         // row position in the circuit
     pub typ: GateType,      // type of the gate
@@ -36,7 +73,7 @@ pub struct CircuitGate<F: FftField>
     pub c: Vec<F>,          // constraints vector
 }
 
-impl<F: FftField> ToBytes for CircuitGate<F> {
+impl<F: FftField, GateType: ToPrimitive> ToBytes for CircuitGate<F, GateType> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         (self.row as u32).write(&mut w)?;
@@ -52,7 +89,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> FromBytes for CircuitGate<F> {
+impl<F: FftField, GateType: FromPrimitive> FromBytes for CircuitGate<F, GateType> {
     #[inline]
     fn read<R: Read>(mut r: R) -> IoResult<Self> {
         let row = u32::read(&mut r)? as usize;
@@ -87,20 +124,8 @@ impl<F: FftField> FromBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> CircuitGate<F>
+impl<F: FftField> CircuitGate<F, GateType>
 {
-    // this function creates "empty" circuit gate
-    pub fn zero(row: usize, wires: GateWires) -> Self
-    {
-        CircuitGate
-        {
-            row,
-            typ: GateType::Zero,
-            c: Vec::new(),
-            wires,
-        }
-    }
-
     // This function verifies the consistency of the wire
     // assignements (witness) against the constraints
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool

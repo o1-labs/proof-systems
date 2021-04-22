@@ -30,11 +30,17 @@ This source file implements non-special point (with distinct abscissas) Weierstr
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use crate::wires::{GateWires, COLUMNS};
+use crate::gates::zero::{ZeroGateType};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait AddGateType : PartialEq
+{
+    const ADD: Self;
+}
+
+impl<F: FftField, GateType: ZeroGateType + AddGateType> CircuitGate<F, GateType>
 {
     pub fn create_add(row: usize, wires: &[GateWires; 2]) -> Vec<Self>
     {
@@ -42,14 +48,14 @@ impl<F: FftField> CircuitGate<F>
             CircuitGate
             {
                 row,
-                typ: GateType::Add,
+                typ: GateType::ADD,
                 wires: wires[0],
                 c: vec![]
             },
             CircuitGate
             {
                 row: row + 1,
-                typ: GateType::Zero,
+                typ: GateType::ZERO,
                 wires: wires[1],
                 c: vec![]
             },
@@ -61,7 +67,7 @@ impl<F: FftField> CircuitGate<F>
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
 
-        self.typ == GateType::Add
+        self.typ == GateType::ADD
         &&
         (this[2] - &this[0]) * &(next[1] + &this[1])
         ==
@@ -75,5 +81,5 @@ impl<F: FftField> CircuitGate<F>
         (this[2] - &this[0]) * &this[4] == F::one()
     }
 
-    pub fn add(&self) -> F {if self.typ == GateType::Add {F::one()} else {F::zero()}}
+    pub fn add(&self) -> F {if self.typ == GateType::ADD {F::one()} else {F::zero()}}
 }

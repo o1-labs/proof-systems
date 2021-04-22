@@ -11,10 +11,15 @@ Constraint vector format:
 use algebra::FftField;
 use oracle::poseidon_5_wires::{PlonkSpongeConstants, sbox};
 use crate::{wires::GateWires, wires::{COLUMNS, WIRES}, constraints::ConstraintSystem};
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait PoseidonGateType : PartialEq
+{
+    const POSEIDON: Self;
+}
+
+impl<F: FftField, GateType: PoseidonGateType> CircuitGate<F, GateType>
 {
     pub fn create_poseidon
     (
@@ -26,7 +31,7 @@ impl<F: FftField> CircuitGate<F>
         CircuitGate
         {
             row,
-            typ: GateType::Poseidon,
+            typ: GateType::POSEIDON,
             wires,
             c
         }
@@ -41,12 +46,12 @@ impl<F: FftField> CircuitGate<F>
         let perm = cs.fr_sponge_params.mds.iter().enumerate().
             map(|(i, m)| rc[i] + &this.iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).collect::<Vec<_>>();
 
-        self.typ == GateType::Poseidon && perm.iter().zip(next.iter()).all(|(p, n)| p == n)
+        self.typ == GateType::POSEIDON && perm.iter().zip(next.iter()).all(|(p, n)| p == n)
     }
 
-    pub fn ps(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}
+    pub fn ps(&self) -> F {if self.typ == GateType::POSEIDON {F::one()} else {F::zero()}}
     pub fn rc(&self) -> [F; COLUMNS]
     {
-        array_init(|i| if self.typ == GateType::Poseidon {self.c[WIRES[i]]} else {F::zero()})
+        array_init(|i| if self.typ == GateType::POSEIDON {self.c[WIRES[i]]} else {F::zero()})
     }
 }

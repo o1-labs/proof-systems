@@ -35,18 +35,23 @@ The constraints above are derived from the following EC Affine arithmetic equati
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use crate::wires::{GateWires, COLUMNS};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait DoubleGateType : PartialEq
+{
+    const DOUBLE: Self;
+}
+
+impl<F: FftField, GateType: DoubleGateType> CircuitGate<F, GateType>
 {
     pub fn create_double(row: usize, wires: GateWires) -> Self
     {
         CircuitGate
         {
             row,
-            typ: GateType::Double,
+            typ: GateType::DOUBLE,
             wires,
             c: vec![]
         }
@@ -56,7 +61,7 @@ impl<F: FftField> CircuitGate<F>
     {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
-        self.typ == GateType::Double
+        self.typ == GateType::DOUBLE
         &&
         F::from(4 as u64) * &this[1].square() * &(this[2] + &this[0].double())
         ==
@@ -69,5 +74,5 @@ impl<F: FftField> CircuitGate<F>
         this[1] * &this[4] == F::one()
     }
 
-    pub fn double(&self) -> F {if self.typ == GateType::Double {F::one()} else {F::zero()}}
+    pub fn double(&self) -> F {if self.typ == GateType::DOUBLE {F::one()} else {F::zero()}}
 }

@@ -12,17 +12,22 @@ PACK gate constraints
 
 use algebra::FftField;
 use crate::wires::{GateWires, COLUMNS};
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait PackGateType : PartialEq
+{
+    const PACK: Self;
+}
+
+impl<F: FftField, GateType: PackGateType> CircuitGate<F, GateType>
 {
     pub fn create_pack(row: usize, wires: GateWires) -> Self
     {
         CircuitGate
         {
             row,
-            typ: GateType::Pack,
+            typ: GateType::PACK,
             wires,
             c: vec![]
         }
@@ -33,7 +38,7 @@ impl<F: FftField> CircuitGate<F>
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
 
-        self.typ == GateType::Pack
+        self.typ == GateType::PACK
         &&
         next[4] ==
             next[3] +
@@ -46,5 +51,5 @@ impl<F: FftField> CircuitGate<F>
         !(0..COLUMNS-1).map(|i| next[i]).any(|b| b != b.square())
     }
 
-    pub fn pack(&self) -> F {if self.typ == GateType::Pack {F::one()} else {F::zero()}}
+    pub fn pack(&self) -> F {if self.typ == GateType::PACK {F::one()} else {F::zero()}}
 }

@@ -53,18 +53,23 @@ The constraints above are derived from the following EC Affine arithmetic equati
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{CircuitGate};
 use crate::{wires::{GateWires, COLUMNS}, constraints::ConstraintSystem};
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
+pub trait EndomulGateType : PartialEq
+{
+    const ENDOMUL: Self;
+}
+
+impl<F: FftField, GateType: EndomulGateType> CircuitGate<F, GateType>
 {
     pub fn create_endomul(row: usize, wires: GateWires) -> Self
     {
         CircuitGate
         {
             row,
-            typ: GateType::Endomul,
+            typ: GateType::ENDOMUL,
             wires,
             c: vec![]
         }
@@ -76,7 +81,7 @@ impl<F: FftField> CircuitGate<F>
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
         let xq = (F::one() + &((cs.endo - &F::one()) * &next[4])) * &this[0];
         
-        self.typ == GateType::Endomul
+        self.typ == GateType::ENDOMUL
         &&
         // verify booleanity of the scalar bits
         this[4] == this[4].square()
@@ -96,5 +101,5 @@ impl<F: FftField> CircuitGate<F>
         (next[2] - &next[0]) * &this[3] == next[1] + &next[3]
     }
 
-    pub fn endomul(&self) -> F {if self.typ == GateType::Endomul {F::one()} else {F::zero()}}
+    pub fn endomul(&self) -> F {if self.typ == GateType::ENDOMUL {F::one()} else {F::zero()}}
 }

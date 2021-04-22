@@ -20,7 +20,7 @@ pub struct ConstraintSystem<F: FftField>
 {
     pub public: usize,                  // number of public inputs
     pub domain: EvaluationDomains<F>,   // evaluation domains
-    pub gates:  Vec<CircuitGate<F>>,    // circuit gates
+    pub gates:  Vec<CircuitGate<F, GateType>>,    // circuit gates
 
     // POLYNOMIALS OVER THE MONOMIAL BASIS
 
@@ -107,7 +107,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     pub fn create
     (
-        mut gates: Vec<CircuitGate<F>>,
+        mut gates: Vec<CircuitGate<F, GateType>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self>
@@ -120,7 +120,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let shift = [F::one(), shift[0], shift[1], shift[2], shift[3]];
 
         let n = domain.d1.size();
-        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(i, array_init(|j| Wire{col:WIRES[j], row:i}))).collect();
+        let mut padding = (gates.len()..n).map(|i| CircuitGate::<F, GateType>::zero(i, array_init(|j| Wire{col:WIRES[j], row:i}))).collect();
         gates.append(&mut padding);
 
         let s: [std::vec::Vec<F>; COLUMNS] = array_init(|i| domain.d1.elements().map(|elm| {shift[i] * &elm}).collect());
