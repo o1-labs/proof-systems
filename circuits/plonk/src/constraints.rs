@@ -22,7 +22,7 @@ pub struct ConstraintSystem<F: FftField>
     pub domain: EvaluationDomains<F>,       // evaluation domains
     pub gates:  Vec<CircuitGate<F>>,        // circuit gates
 
-    // POLYNOMIALS OVER THE MONOMIAL BASE
+    // POLYNOMIALS OVER THE MONOMIAL BASIS
 
     pub sigmam: [DensePolynomial<F>; 3],    // permutation polynomial array
     pub zkpm:   DensePolynomial<F>,         // zero-knowledge polynomial
@@ -48,7 +48,7 @@ pub struct ConstraintSystem<F: FftField>
     pub emul2m: DensePolynomial<F>,         // emul2m constraint selector polynomial
     pub emul3m: DensePolynomial<F>,         // emul3m constraint selector polynomial
 
-    // POLYNOMIALS OVER LAGRANGE BASE
+    // POLYNOMIALS OVER LAGRANGE BASIS
 
     // generic constraint selector polynomials
     pub qll:    Evaluations<F, D<F>>,       // left input wire polynomial over domain.d4

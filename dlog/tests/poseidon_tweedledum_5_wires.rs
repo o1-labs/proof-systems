@@ -4,11 +4,12 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
-use oracle::{poseidon::*, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::{endos, SRS, SRSSpec}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
-use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_5_wires_circuits::wires::Wire;
+use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
+use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
-use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index}};
+use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index}};
+use plonk_5_wires_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -17,16 +18,16 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
-const MAX_SIZE: usize = 40000; // max size of poly chunks
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 const M: usize = PERIOD * (NUM_POS-1);
+const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC : usize = 0;
 
 #[test]
 fn poseidon_tweedledum()
 {
-    let c = &oracle::tweedle::fq::params().round_constants;
+    let c = &oracle::tweedle::fq5::params().round_constants;
 
     // circuit gates
 
@@ -40,31 +41,47 @@ fn poseidon_tweedledum()
         // ROUNDS_FULL full rounds constraint gates
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL
         {
-            gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
+            let wires =
+            [
+                Wire{col:0, row:(i+PERIOD)%M},
+                Wire{col:1, row:(i+PERIOD)%M},
+                Wire{col:2, row:(i+PERIOD)%M},
+                Wire{col:3, row:(i+PERIOD)%M},
+                Wire{col:4, row:(i+PERIOD)%M},
+            ];
+            gates.push(CircuitGate::<Fq>::create_poseidon(i, wires, c[j].clone()));
             i+=1;
         }
-        gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, (i+PERIOD)%M), (i+N, N+((i+PERIOD)%M)), (i+2*N, 2*N+((i+PERIOD)%M)))));
+        let wires =
+        [
+            Wire{col:0, row:(i+PERIOD)%M},
+            Wire{col:1, row:(i+PERIOD)%M},
+            Wire{col:2, row:(i+PERIOD)%M},
+            Wire{col:3, row:(i+PERIOD)%M},
+            Wire{col:4, row:(i+PERIOD)%M},
+        ];
+        gates.push(CircuitGate::<Fq>::zero(i, wires));
         i+=1;
     }
 
     for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
     {
-        gates.push(CircuitGate::<Fq>::create_poseidon(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i))), [c[j+1][0],c[j+1][1],c[j+1][2]]));
+        gates.push(CircuitGate::<Fq>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
         i+=1;
     }
-    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
+    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fq>::zero(GateWires::wires((i, i), (i+N, N+(i)), (i+2*N, 2*N+(i)))));
-
+    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    
     let srs = SRS::create(MAX_SIZE);
 
     let (endo_q, _endo_r) = endos::<Other>();
     let index = Index::<Affine>::create
     (
-        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq::params(), PUBLIC).unwrap(),
-        oracle::tweedle::fp::params(),
+        ConstraintSystem::<Fq>::create(gates, oracle::tweedle::fq5::params(), PUBLIC).unwrap(),
+        oracle::tweedle::fp5::params(),
         endo_q,
         SRSSpec::Use(&srs)
     );
@@ -76,7 +93,7 @@ fn positive(index: &Index<Affine>)
 {
     let rng = &mut OsRng;
 
-    let params = oracle::tweedle::fq::params();
+    let params = oracle::tweedle::fq5::params();
     let mut sponge = ArithmeticSponge::<Fq, PlonkSpongeConstants>::new();
 
     let mut batch = Vec::new();
@@ -94,57 +111,44 @@ fn positive(index: &Index<Affine>)
 
     for test in 0..1
     {
-        let mut l: Vec<Fq> = Vec::with_capacity(N);
-        let mut r: Vec<Fq> = Vec::with_capacity(N);
-        let mut o: Vec<Fq> = Vec::with_capacity(N);
-
-        let (x, y, z) = (Fq::rand(rng), Fq::rand(rng), Fq::rand(rng));
-
         //  witness for Poseidon permutation custom constraints
+        let mut w =
+        [
+            Vec::<Fq>::with_capacity(N),
+            Vec::<Fq>::with_capacity(N),
+            Vec::<Fq>::with_capacity(N),
+            Vec::<Fq>::with_capacity(N),
+            Vec::<Fq>::with_capacity(N),
+        ];
+
+        let init = vec![Fq::rand(rng), Fq::rand(rng), Fq::rand(rng), Fq::rand(rng), Fq::rand(rng)];
         for _ in 0..NUM_POS-1
         {
-            sponge.state = vec![x, y, z];
-            l.push(sponge.state[0]);
-            r.push(sponge.state[1]);
-            o.push(sponge.state[2]);
+            sponge.state = init.clone();
+            w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
 
-            // HALF_ROUNDS_FULL full rounds
+            // ROUNDS_FULL full rounds
             for j in 0..PlonkSpongeConstants::ROUNDS_FULL
             {
                 sponge.full_round(j, &params);
-                l.push(sponge.state[0]);
-                r.push(sponge.state[1]);
-                o.push(sponge.state[2]);
+                w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
             }
         }
 
-        sponge.state = vec![x, y, z];
-        l.push(sponge.state[0]);
-        r.push(sponge.state[1]);
-        o.push(sponge.state[2]);
+        sponge.state = init.clone();
+        w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
 
-        // HALF_ROUNDS_FULL full rounds
+        // ROUNDS_FULL full rounds
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
         {
             sponge.full_round(j, &params);
-            l.push(sponge.state[0]);
-            r.push(sponge.state[1]);
-            o.push(sponge.state[2]);
+            w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
         }
 
-        l.push(Fq::rand(rng));
-        r.push(Fq::rand(rng));
-        o.push(Fq::rand(rng));
-        l.push(Fq::rand(rng));
-        r.push(Fq::rand(rng));
-        o.push(Fq::rand(rng));
-
-        let mut witness = l;
-        witness.append(&mut r);
-        witness.append(&mut o);
+        w.iter_mut().for_each(|w| {w.push(Fq::rand(rng)); w.push(Fq::rand(rng))});
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&witness), true);
+        assert_eq!(index.cs.verify(&w), true);
 
         let prev = {
             let k = ceil_log2(index.srs.get_ref().g.len());
@@ -158,7 +162,7 @@ fn positive(index: &Index<Affine>)
 
         // add the proof to the batch
         batch.push(ProverProof::create::<DefaultFqSponge<TweedledumParameters, PlonkSpongeConstants>, DefaultFrSponge<Fq, PlonkSpongeConstants>>(
-            &group_map, &witness, &index, vec![prev]).unwrap());
+            &group_map, &w, &index, vec![prev]).unwrap());
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();

@@ -5,73 +5,26 @@ This file implements Poseidon Hash Function primitive
 *****************************************************************************************************************/
 
 use algebra::Field;
-
-pub trait SpongeConstants {
-    const ROUNDS_FULL: usize;
-    const ROUNDS_PARTIAL: usize;
-    const HALF_ROUNDS_FULL: usize;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize;
-    const FULL_MDS: bool;
-}
-
-#[derive(Clone)]
-pub struct MarlinSpongeConstants {
-}
-
-impl SpongeConstants for MarlinSpongeConstants {
-    const ROUNDS_FULL: usize = 8;
-    const ROUNDS_PARTIAL: usize = 30;
-    const HALF_ROUNDS_FULL: usize = 4;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 17;
-    const FULL_MDS: bool = false;
-}
+use super::poseidon::{ArithmeticSpongeParams, Sponge, SpongeState,
+                      SpongeConstants};
 
 #[derive(Clone)]
 pub struct PlonkSpongeConstants {
 }
 
 impl SpongeConstants for PlonkSpongeConstants {
-    const ROUNDS_FULL: usize = 63;
+    const ROUNDS_FULL: usize = 31;
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 5;
+    const SPONGE_WIDTH: usize = 5;
+    const SPONGE_RATE: usize = 4;
+    const SPONGE_BOX: usize = 7;
     const FULL_MDS: bool = true;
 }
 
-pub trait Sponge<Input, Digest> {
-    type Params;
-    fn new() -> Self;
-    fn absorb(&mut self, params: &Self::Params, x: &[Input]);
-    fn squeeze(&mut self, params: &Self::Params) -> Digest;
-}
-
 pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
-    let mut res = x;
-    res.square_in_place();
-    res.square_in_place();
-    res *= x;
-    res
-}
-
-#[derive(Clone, Debug)]
-pub enum SpongeState {
-    Absorbed(usize),
-    Squeezed(usize),
-}
-
-#[derive(Clone)]
-pub struct ArithmeticSpongeParams<F: Field> {
-    pub round_constants: Vec<Vec<F>>,
-    pub mds: Vec<Vec<F>>,
+    x.pow([SC::SPONGE_BOX as u64])
 }
 
 #[derive(Clone)]
@@ -105,7 +58,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
         self.apply_mds_matrix(params);
-        for (i, x) in params.round_constants[r + 1].iter().enumerate() {
+        for (i, x) in params.round_constants[r].iter().enumerate() {
             self.state[i].add_assign(x);
         }
     }
@@ -148,9 +101,6 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
 
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
         if SC::HALF_ROUNDS_FULL == 0 {
-            for (i, x) in params.round_constants[0].iter().enumerate() {
-                self.state[i].add_assign(x);
-            }
             for r in 0..SC::ROUNDS_FULL {
                 self.full_round(r, params);
             }
