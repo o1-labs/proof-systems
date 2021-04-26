@@ -52,19 +52,23 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
     *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
+use crate::constraints::CSConstants;
 use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
-use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+pub trait CSEndomulGate<F: FftField + SquareRootField>: CSConstants<F> {
+    fn emulm(&self) -> &DensePolynomial<F>; // constraint selector polynomial
+    fn emull(&self) -> &Evaluations<F, D<F>>; // selector evaluations over domain.d4
+    fn endo(&self) -> &F; // coefficient for the group endomorphism
+
     // endomorphism optimised scalar multiplication constraint quotient poly contribution computation
-    pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.emulm.is_zero() {return self.zero4.clone()}
+    fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
+        if self.emulm().is_zero() {
+            return self.zero4().clone();
+        }
 
         let xt = &polys.d4.this.w[0];
         let yt = &polys.d4.this.w[1];
@@ -77,41 +81,33 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let yp = &polys.d4.next.w[3];
         let b2 = &polys.d4.next.w[4];
 
-        let xq = &(&(&self.l04 + &b2.scale(self.endo - F::one())) * xt);
+        let xq = &(&(self.l04() + &b2.scale(*self.endo() - F::one())) * xt);
 
         let bin_1 = &(b1 - &b1.pow(2));
         let bin_2 = &(b2 - &b2.pow(2));
 
         // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
         let check_1 =
-          &(  &(&(xp - xq) * s1)
-            - yp)
-            + &(yt * &(&b1.scale(F::from(2 as u64)) - &self.l04));
+            &(&(&(xp - xq) * s1) - yp) + &(yt * &(&b1.scale(F::from(2 as u64)) - &self.l04()));
 
         // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
         let check_2 = &(&(&s1.pow(2) - &s2.pow(2)) - xq) + xs;
 
         // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        let check_3 =
-            &(  &(&(&xp.scale(F::from(2 as u64)) + xq) - &s1.pow(2))
-              * &(s1 + s2))
-          - &yp.scale(F::from(2 as u64));
+        let check_3 = &(&(&(&xp.scale(F::from(2 as u64)) + xq) - &s1.pow(2)) * &(s1 + s2))
+            - &yp.scale(F::from(2 as u64));
 
         // (xp – xs) * s2 = ys + yp
         let check_4 = &(&(&(xp - xs) * s2) - ys) - yp;
 
-        &(&(&(&(&(
-            &bin_1.scale(alpha[0])
-          + &bin_2.scale(alpha[1]))
-          + &check_1.scale(alpha[2]))
-          + &check_2.scale(alpha[3]))
-          + &check_3.scale(alpha[4]))
-          + &check_4.scale(alpha[5]))
-        * &self.emull
+        &(&(&(&(&(&bin_1.scale(alpha[0]) + &bin_2.scale(alpha[1])) + &check_1.scale(alpha[2]))
+            + &check_2.scale(alpha[3]))
+            + &check_3.scale(alpha[4]))
+            + &check_4.scale(alpha[5]))
+            * &self.emull()
     }
 
-    pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F
-    {
+    fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: &F, alpha: &[F]) -> F {
         let xt = evals[0].w[0];
         let yt = evals[0].w[1];
         let s1 = evals[0].w[2];
@@ -123,7 +119,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let yp = evals[1].w[3];
         let b2 = evals[1].w[4];
 
-        let xq = (F::one() + &(b2 * &(endo - F::one()))) * &xt;
+        let xq = (F::one() + &(b2 * &(*endo - F::one()))) * &xt;
 
         let bin_1 = evals[0].w[4] - &evals[0].w[4].square();
         let bin_2 = evals[1].w[4] - &evals[1].w[4].square();
@@ -140,17 +136,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // (xp – xs) * s2 = ys + yp
         let check_4 = ((xp - &xs) * &s2) - &ys - &yp;
 
-          bin_1 * &alpha[0]
-        + &(bin_2 * &alpha[1])
-        + &(check_1 * &alpha[2])
-        + &(check_2 * &alpha[3])
-        + &(check_3 * &alpha[4])
-        + &(check_4 * &alpha[5])
+        bin_1 * &alpha[0]
+            + &(bin_2 * &alpha[1])
+            + &(check_1 * &alpha[2])
+            + &(check_2 * &alpha[3])
+            + &(check_3 * &alpha[4])
+            + &(check_4 * &alpha[5])
     }
 
     // endomorphism optimised scalar multiplication constraint linearization poly contribution computation
-    pub fn endomul_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
-        self.emulm.scale(Self::endomul_scalars(evals, self.endo, alpha))
+    fn endomul_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F> {
+        self.emulm()
+            .scale(Self::endomul_scalars(evals, self.endo(), alpha))
     }
 }

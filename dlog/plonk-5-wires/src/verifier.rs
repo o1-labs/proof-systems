@@ -4,14 +4,25 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-use crate::plonk_sponge::FrSponge;
-pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
-use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
-use plonk_5_wires_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::ConstraintSystem};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
-use algebra::{Field, AffineCurve, Zero, One};
+pub use super::prover::{range, ProverProof};
+use crate::plonk_sponge::FrSponge;
+use algebra::{AffineCurve, Field, One, Zero};
+use commitment_dlog::commitment::{
+    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
+};
 use ff_fft::EvaluationDomain;
+use oracle::{rndoracle::ProofError, sponge_5_wires::ScalarChallenge, FqSponge};
+use plonk_5_wires_circuits::{
+    constraints::ConstraintSystem,
+    polynomials::{
+        addition::CSAddGate, double::CSDoubleGate, endosclmul::CSEndomulGate,
+        generic::CSGenericGate, packing::CSPackGate, poseidon::CSPoseidonGate,
+        varbasemul::CSVbmulGate, varbasemulpck::CSVbmulpackGate,
+    },
+    scalars::RandomOracles,
+    wires::COLUMNS,
+};
 use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -227,7 +238,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 p.push(&index.double_comm);
 
                 // variable base endoscalar multiplication
-                s.push(ConstraintSystem::endomul_scalars(&evals, index.endo, &alpha[range::ENDML]));
+                s.push(ConstraintSystem::endomul_scalars(&evals, &index.endo, &alpha[range::ENDML]));
                 p.push(&index.emul_comm);
 
                 // packing

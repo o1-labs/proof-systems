@@ -32,7 +32,7 @@ This source file tests constraints for the following computations:
 **********************************************************************************************************/
 
 use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge, ArithmeticSpongeParams}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
-use plonk_5_wires_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_5_wires_circuits::{wires::Wire, gate::{CircuitGate, GateType}, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index}};
@@ -74,12 +74,12 @@ fn turbo_plonk()
             | y3 | .. | .. | .. | .. |
         */
 
-        CircuitGate::<Fp>::create_generic(0, [Wire{col:0, row: 6}, Wire{col:1, row:0}, Wire{col:2, row:0}, Wire{col:3, row:0}, Wire{col:4, row:0}], [p, z, z, z, z], z, z),
-        CircuitGate::<Fp>::create_generic(1, [Wire{col:1, row: 6}, Wire{col:1, row:1}, Wire{col:2, row:1}, Wire{col:3, row:1}, Wire{col:4, row:1}], [p, z, z, z, z], z, z),
-        CircuitGate::<Fp>::create_generic(2, [Wire{col:4, row: 8}, Wire{col:1, row:2}, Wire{col:2, row:2}, Wire{col:3, row:2}, Wire{col:4, row:2}], [p, z, z, z, z], z, z),
-        CircuitGate::<Fp>::create_generic(3, [Wire{col:2, row: 7}, Wire{col:1, row:3}, Wire{col:2, row:3}, Wire{col:3, row:3}, Wire{col:4, row:3}], [p, z, z, z, z], z, z),
-        CircuitGate::<Fp>::create_generic(4, [Wire{col:3, row: 7}, Wire{col:1, row:4}, Wire{col:2, row:4}, Wire{col:3, row:4}, Wire{col:4, row:4}], [p, z, z, z, z], z, z),
-        CircuitGate::<Fp>::create_generic(5, [Wire{col:3, row:10}, Wire{col:1, row:5}, Wire{col:2, row:5}, Wire{col:3, row:5}, Wire{col:4, row:5}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(0, [Wire{col:0, row: 6}, Wire{col:1, row:0}, Wire{col:2, row:0}, Wire{col:3, row:0}, Wire{col:4, row:0}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(1, [Wire{col:1, row: 6}, Wire{col:1, row:1}, Wire{col:2, row:1}, Wire{col:3, row:1}, Wire{col:4, row:1}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(2, [Wire{col:4, row: 8}, Wire{col:1, row:2}, Wire{col:2, row:2}, Wire{col:3, row:2}, Wire{col:4, row:2}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(3, [Wire{col:2, row: 7}, Wire{col:1, row:3}, Wire{col:2, row:3}, Wire{col:3, row:3}, Wire{col:4, row:3}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(4, [Wire{col:3, row: 7}, Wire{col:1, row:4}, Wire{col:2, row:4}, Wire{col:3, row:4}, Wire{col:4, row:4}], [p, z, z, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(5, [Wire{col:3, row:10}, Wire{col:1, row:5}, Wire{col:2, row:5}, Wire{col:3, row:5}, Wire{col:4, row:5}], [p, z, z, z, z], z, z),
 
         /* generic constraint gates for Weierstrass curve group addition
 
@@ -104,11 +104,11 @@ fn turbo_plonk()
             | a2 | s  | y1 | y3 | .. |
         */
 
-        CircuitGate::<Fp>::create_generic( 6, [Wire{col:2, row: 8}, Wire{col:3, row: 8}, Wire{col:0, row: 7}, Wire{col:3, row: 6}, Wire{col:4, row: 6}], [p, n, p, z, z], z, z),
-        CircuitGate::<Fp>::create_generic( 7, [Wire{col:2, row: 6}, Wire{col:0, row: 8}, Wire{col:2, row:10}, Wire{col:3, row:11}, Wire{col:4, row: 7}], [z, z, p, n, z], p, z),
-        CircuitGate::<Fp>::create_generic( 8, [Wire{col:1, row: 8}, Wire{col:1, row:10}, Wire{col:0, row: 9}, Wire{col:2, row:11}, Wire{col:1, row: 9}], [z, z, p, p, p], n, z),
-        CircuitGate::<Fp>::create_generic( 9, [Wire{col:0, row:11}, Wire{col:0, row:12}, Wire{col:0, row:10}, Wire{col:3, row: 9}, Wire{col:4, row: 9}], [p, n, n, z, z], z, z),
-        CircuitGate::<Fp>::create_generic(10, [Wire{col:2, row: 9}, Wire{col:1, row: 7}, Wire{col:1, row:11}, Wire{col:1, row:12}, Wire{col:4, row:10}], [z, z, p, p, z], n, z),
+        CircuitGate::<Fp, GateType>::create_generic( 6, [Wire{col:2, row: 8}, Wire{col:3, row: 8}, Wire{col:0, row: 7}, Wire{col:3, row: 6}, Wire{col:4, row: 6}], [p, n, p, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic( 7, [Wire{col:2, row: 6}, Wire{col:0, row: 8}, Wire{col:2, row:10}, Wire{col:3, row:11}, Wire{col:4, row: 7}], [z, z, p, n, z], p, z),
+        CircuitGate::<Fp, GateType>::create_generic( 8, [Wire{col:1, row: 8}, Wire{col:1, row:10}, Wire{col:0, row: 9}, Wire{col:2, row:11}, Wire{col:1, row: 9}], [z, z, p, p, p], n, z),
+        CircuitGate::<Fp, GateType>::create_generic( 9, [Wire{col:0, row:11}, Wire{col:0, row:12}, Wire{col:0, row:10}, Wire{col:3, row: 9}, Wire{col:4, row: 9}], [p, n, n, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(10, [Wire{col:2, row: 9}, Wire{col:1, row: 7}, Wire{col:1, row:11}, Wire{col:1, row:12}, Wire{col:4, row:10}], [z, z, p, p, z], n, z),
     ];
 
     /* custom constraint gates for Weierstrass curve group addition
@@ -117,7 +117,7 @@ fn turbo_plonk()
         | x3 | y3 | .. | .. | .. |
     */
 
-    let mut add = CircuitGate::<Fp>::create_add
+    let mut add = CircuitGate::<Fp, GateType>::create_add
     (
         11,
         &[
@@ -152,11 +152,11 @@ fn turbo_plonk()
 
     let mut double = vec!
     [
-        CircuitGate::<Fp>::create_generic(13, [Wire{col:1, row:13}, Wire{col:2, row:15}, Wire{col:2, row:14}, Wire{col:3, row:13}, Wire{col:4, row:13}], [z, z, n, z, z], p, z),
-        CircuitGate::<Fp>::create_generic(14, [Wire{col:2, row:16}, Wire{col:0, row:15}, Wire{col:2, row:13}, Wire{col:3, row:14}, Wire{col:4, row:14}], [z, z, (n.double() + &n), z, z], p.double(), z),
-        CircuitGate::<Fp>::create_generic(15, [Wire{col:1, row:15}, Wire{col:0, row:16}, Wire{col:1, row:17}, Wire{col:0, row:17}, Wire{col:4, row:15}], [z, z, n.double(), n, z], p, z),
-        CircuitGate::<Fp>::create_generic(16, [Wire{col:1, row:14}, Wire{col:2, row:17}, Wire{col:1, row:18}, Wire{col:3, row:18}, Wire{col:4, row:16}], [z, z, p, p, z], p, z),
-        CircuitGate::<Fp>::create_generic(17, [Wire{col:2, row:18}, Wire{col:0, row:18}, Wire{col:1, row:16}, Wire{col:3, row:17}, Wire{col:4, row:17}], [p, n, n, z, z], z, z),
+        CircuitGate::<Fp, GateType>::create_generic(13, [Wire{col:1, row:13}, Wire{col:2, row:15}, Wire{col:2, row:14}, Wire{col:3, row:13}, Wire{col:4, row:13}], [z, z, n, z, z], p, z),
+        CircuitGate::<Fp, GateType>::create_generic(14, [Wire{col:2, row:16}, Wire{col:0, row:15}, Wire{col:2, row:13}, Wire{col:3, row:14}, Wire{col:4, row:14}], [z, z, (n.double() + &n), z, z], p.double(), z),
+        CircuitGate::<Fp, GateType>::create_generic(15, [Wire{col:1, row:15}, Wire{col:0, row:16}, Wire{col:1, row:17}, Wire{col:0, row:17}, Wire{col:4, row:15}], [z, z, n.double(), n, z], p, z),
+        CircuitGate::<Fp, GateType>::create_generic(16, [Wire{col:1, row:14}, Wire{col:2, row:17}, Wire{col:1, row:18}, Wire{col:3, row:18}, Wire{col:4, row:16}], [z, z, p, p, z], p, z),
+        CircuitGate::<Fp, GateType>::create_generic(17, [Wire{col:2, row:18}, Wire{col:0, row:18}, Wire{col:1, row:16}, Wire{col:3, row:17}, Wire{col:4, row:17}], [p, n, n, z, z], z, z),
     ];
     gates.append(&mut double);
 
@@ -164,7 +164,7 @@ fn turbo_plonk()
         | x1 | y1 | x2 | y2 | r  |
     */
 
-    let double = CircuitGate::<Fp>::create_double
+    let double = CircuitGate::<Fp, GateType>::create_double
     (
         18,
         [Wire{col:0, row:0}, Wire{col:0, row: 3}, Wire{col:3, row:15}, Wire{col:3, row:16}, Wire{col:4, row:18}]
@@ -176,7 +176,7 @@ fn turbo_plonk()
     let c = &oracle::tweedle::fp5::params().round_constants;
     for i in 0..PlonkSpongeConstants::ROUNDS_FULL
     {
-        gates.push(CircuitGate::<Fp>::create_poseidon
+        gates.push(CircuitGate::<Fp, GateType>::create_poseidon
         (
             i+19,
             [
@@ -190,7 +190,7 @@ fn turbo_plonk()
         ));
     }
     let mut i = PlonkSpongeConstants::ROUNDS_FULL+19;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
 
@@ -198,80 +198,80 @@ fn turbo_plonk()
     
     for _ in 0..64
     {
-        gates.push(CircuitGate::<Fp>::create_pack
+        gates.push(CircuitGate::<Fp, GateType>::create_pack
             (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
         i += 1;
     }
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
     
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication without packing
     
-    gates.push(CircuitGate::<Fp>::create_vbmul
+    gates.push(CircuitGate::<Fp, GateType>::create_vbmul
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
     i += 1;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i+512}, Wire{col:4, row:i}]));
     i += 1;
     for j in 0..254
     {
-        gates.push(CircuitGate::<Fp>::create_vbmul
+        gates.push(CircuitGate::<Fp, GateType>::create_vbmul
             (i+2*j, [Wire{col:0, row:i+2*j+2}, Wire{col:1, row:i+2*j+2}, Wire{col:2, row:i+2*j+512}, Wire{col:3, row:i+2*j}, Wire{col:3, row:i+512+2*j}]));
-        gates.push(CircuitGate::<Fp>::zero
+        gates.push(CircuitGate::<Fp, GateType>::zero
             (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j}]));
     }
     i += 508;
-    gates.push(CircuitGate::<Fp>::create_vbmul
+    gates.push(CircuitGate::<Fp, GateType>::create_vbmul
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
     i += 1;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:0, row:i+512}, Wire{col:1, row:i+512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
     i += 1;
 
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication with packing
     
-    gates.push(CircuitGate::<Fp>::create_vbmul2
+    gates.push(CircuitGate::<Fp, GateType>::create_vbmul2
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i+3}]));
     i += 1;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i-512}, Wire{col:3, row:i-512}, Wire{col:4, row:i}]));
     i += 1;
     for j in 0..254
     {
-        gates.push(CircuitGate::<Fp>::create_vbmul2
+        gates.push(CircuitGate::<Fp, GateType>::create_vbmul2
             (i+2*j, [Wire{col:0, row:i+2*j+2}, Wire{col:1, row:i+2*j+2}, Wire{col:2, row:i+2*j-512}, Wire{col:4, row:i+2*j-512}, Wire{col:4, row:i+2*j+3}]));
-        gates.push(CircuitGate::<Fp>::zero
+        gates.push(CircuitGate::<Fp, GateType>::zero
             (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j-3}]));
     }
     i += 508;
-    gates.push(CircuitGate::<Fp>::create_vbmul2
+    gates.push(CircuitGate::<Fp, GateType>::create_vbmul2
         (i, [Wire{col:0, row:i-1022}, Wire{col:1, row:i-1022}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i}]));
     i += 1;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:0, row:i-512}, Wire{col:1, row:i-512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i-3}]));
     i += 1;
     
     // custom constraint gates for short Weierstrass curve variable base endoscalar multiplication
     
-    gates.push(CircuitGate::<Fp>::create_endomul
+    gates.push(CircuitGate::<Fp, GateType>::create_endomul
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:2, row:i+2}, Wire{col:3, row:i+2}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
     for j in 0..126
     {
-        gates.push(CircuitGate::<Fp>::create_endomul
+        gates.push(CircuitGate::<Fp, GateType>::create_endomul
             (i+2*j, [Wire{col:0, row:i+2+2*j}, Wire{col:1, row:i+2+2*j}, Wire{col:2, row:i+2*j}, Wire{col:3, row:i+2*j}, Wire{col:4, row:i+2*j}]));
-        gates.push(CircuitGate::<Fp>::zero
+        gates.push(CircuitGate::<Fp, GateType>::zero
             (i+1+2*j, [Wire{col:2, row:i+3+2*j}, Wire{col:3, row:i+3+2*j}, Wire{col:0, row:i-1+2*j}, Wire{col:1, row:i-1+2*j}, Wire{col:4, row:i+1+2*j}]));
     }
     i += 252;
-    gates.push(CircuitGate::<Fp>::create_endomul
+    gates.push(CircuitGate::<Fp, GateType>::create_endomul
         (i, [Wire{col:0, row:i-254}, Wire{col:1, row:i-254}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
-    gates.push(CircuitGate::<Fp>::zero
+    gates.push(CircuitGate::<Fp, GateType>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i}]));
 
     let srs = SRS::create(MAX_SIZE);

@@ -27,9 +27,9 @@ pub struct ProverCommitments<G: AffineCurve>
     pub t_comm: PolyComm<G>,
 }
 
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-struct CamlProverProof<G: AffineCurve>
-{
+#[cfg(feature = "ocaml_types")]
+#[derive(ocaml::ToValue, ocaml::FromValue)]
+struct CamlProverProof<G: AffineCurve> {
     pub commitments: ProverCommitments<G>,
     pub proof: OpeningProof<G>,
     // OCaml doesn't have sized arrays, so we have to convert to a tuple..

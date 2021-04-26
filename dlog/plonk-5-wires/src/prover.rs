@@ -4,14 +4,24 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, UniformRand};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
-use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
-use plonk_5_wires_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
 pub use super::{index::Index, range};
-use crate::plonk_sponge::{FrSponge};
+use crate::plonk_sponge::FrSponge;
+use algebra::{AffineCurve, Field, One, UniformRand, Zero};
 use array_init::array_init;
+use commitment_dlog::commitment::{
+    b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
+};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::{rndoracle::ProofError, sponge_5_wires::ScalarChallenge, utils::PolyUtils, FqSponge};
+use plonk_5_wires_circuits::{
+    polynomials::{
+        addition::CSAddGate, double::CSDoubleGate, endosclmul::CSEndomulGate,
+        generic::CSGenericGate, packing::CSPackGate, poseidon::CSPoseidonGate,
+        varbasemul::CSVbmulGate, varbasemulpck::CSVbmulpackGate,
+    },
+    scalars::{ProofEvaluations, RandomOracles},
+    wires::COLUMNS,
+};
 use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -64,9 +74,9 @@ unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverCommit
     }
 }
 
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-struct CamlProverProof<G: AffineCurve>
-{
+#[cfg(feature = "ocaml_types")]
+#[derive(ocaml::ToValue, ocaml::FromValue)]
+struct CamlProverProof<G: AffineCurve> {
     pub commitments: ProverCommitments<G>,
     pub proof: OpeningProof<G>,
     // OCaml doesn't have sized arrays, so we have to convert to a tuple..

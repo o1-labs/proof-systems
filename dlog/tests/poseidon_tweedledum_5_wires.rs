@@ -9,7 +9,7 @@ use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_
 use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{tweedle::{dee::{Affine as Other}, dum::{Affine, TweedledumParameters}, fq::Fq}, UniformRand};
 use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index}};
-use plonk_5_wires_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_5_wires_circuits::{gate::{CircuitGate, GateType}, constraints::ConstraintSystem};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -32,7 +32,7 @@ fn poseidon_tweedledum()
     // circuit gates
 
     let mut i = 0;
-    let mut gates: Vec<CircuitGate::<Fq>> = Vec::with_capacity(N);
+    let mut gates: Vec<CircuitGate::<Fq, GateType>> = Vec::with_capacity(N);
 
     // custom constraints for Poseidon hash function permutation
 
@@ -49,7 +49,7 @@ fn poseidon_tweedledum()
                 Wire{col:3, row:(i+PERIOD)%M},
                 Wire{col:4, row:(i+PERIOD)%M},
             ];
-            gates.push(CircuitGate::<Fq>::create_poseidon(i, wires, c[j].clone()));
+            gates.push(CircuitGate::<Fq, GateType>::create_poseidon(i, wires, c[j].clone()));
             i+=1;
         }
         let wires =
@@ -60,20 +60,20 @@ fn poseidon_tweedledum()
             Wire{col:3, row:(i+PERIOD)%M},
             Wire{col:4, row:(i+PERIOD)%M},
         ];
-        gates.push(CircuitGate::<Fq>::zero(i, wires));
+        gates.push(CircuitGate::<Fq, GateType>::zero(i, wires));
         i+=1;
     }
 
     for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
     {
-        gates.push(CircuitGate::<Fq>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
+        gates.push(CircuitGate::<Fq, GateType>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
         i+=1;
     }
-    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    gates.push(CircuitGate::<Fq, GateType>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    gates.push(CircuitGate::<Fq, GateType>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
-    gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
+    gates.push(CircuitGate::<Fq, GateType>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     
     let srs = SRS::create(MAX_SIZE);
 

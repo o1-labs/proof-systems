@@ -4,16 +4,31 @@ This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use oracle::poseidon::ArithmeticSpongeParams;
-use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
-pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
-pub use super::gate::{CircuitGate, GateType};
-pub use super::wires::{Wire, COLUMNS, WIRES};
 pub use super::domains::EvaluationDomains;
-use blake2::{Blake2b, Digest};
-use oracle::utils::EvalUtils;
+pub use super::gate::{CircuitGate, GateType};
+pub use super::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
+pub use super::polynomials::{
+    addition::CSAddGate, double::CSDoubleGate, endosclmul::CSEndomulGate, generic::CSGenericGate,
+    packing::CSPackGate, poseidon::CSPoseidonGate, varbasemul::CSVbmulGate,
+    varbasemulpck::CSVbmulpackGate,
+};
+pub use super::wires::{Wire, COLUMNS, WIRES};
+use algebra::{FftField, SquareRootField};
 use array_init::array_init;
+use blake2::{Blake2b, Digest};
+use ff_fft::{
+    DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
+};
+use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::utils::EvalUtils;
+
+pub trait CSConstants<F: FftField> {
+    fn l1(&self) -> &E<F, D<F>>; // 1-st Lagrange evaluated over domain.d8
+    fn l04(&self) -> &E<F, D<F>>; // 0-th Lagrange evaluated over domain.d4
+    fn l08(&self) -> &E<F, D<F>>; // 0-th Lagrange evaluated over domain.d8
+    fn zero4(&self) -> &E<F, D<F>>; // zero evaluated over domain.d8
+    fn zero8(&self) -> &E<F, D<F>>; // zero evaluated over domain.d8
+}
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField>
@@ -314,5 +329,113 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 },
             },
         }
+    }
+}
+
+impl<F: FftField + SquareRootField> CSConstants<F> for ConstraintSystem<F> {
+    fn l1(&self) -> &E<F, D<F>> {
+        &self.l1
+    }
+    fn l04(&self) -> &E<F, D<F>> {
+        &self.l04
+    }
+    fn l08(&self) -> &E<F, D<F>> {
+        &self.l08
+    }
+    fn zero4(&self) -> &E<F, D<F>> {
+        &self.zero4
+    }
+    fn zero8(&self) -> &E<F, D<F>> {
+        &self.zero8
+    }
+}
+
+impl<F: FftField + SquareRootField> CSAddGate<F> for ConstraintSystem<F> {
+    fn addm(&self) -> &DP<F> {
+        &self.addm
+    }
+    fn addl(&self) -> &E<F, D<F>> {
+        &self.addl
+    }
+}
+
+impl<F: FftField + SquareRootField> CSDoubleGate<F> for ConstraintSystem<F> {
+    fn doublem(&self) -> &DP<F> {
+        &self.doublem
+    }
+    fn doublel(&self) -> &E<F, D<F>> {
+        &self.doublel
+    }
+}
+
+impl<F: FftField + SquareRootField> CSEndomulGate<F> for ConstraintSystem<F> {
+    fn emulm(&self) -> &DP<F> {
+        &self.emulm
+    }
+    fn emull(&self) -> &E<F, D<F>> {
+        &self.emull
+    }
+    fn endo(&self) -> &F {
+        &self.endo
+    }
+}
+
+impl<F: FftField + SquareRootField> CSGenericGate<F> for ConstraintSystem<F> {
+    fn qwm(&self) -> &[DP<F>; COLUMNS] {
+        &self.qwm
+    }
+    fn qmm(&self) -> &DP<F> {
+        &self.qmm
+    }
+    fn qc(&self) -> &DP<F> {
+        &self.qc
+    }
+    fn qwl(&self) -> &[E<F, D<F>>; COLUMNS] {
+        &self.qwl
+    }
+    fn qml(&self) -> &E<F, D<F>> {
+        &self.qml
+    }
+}
+
+impl<F: FftField + SquareRootField> CSPackGate<F> for ConstraintSystem<F> {
+    fn packm(&self) -> &DP<F> {
+        &self.packm
+    }
+    fn packl(&self) -> &E<F, D<F>> {
+        &self.packl
+    }
+}
+
+impl<F: FftField + SquareRootField> CSPoseidonGate<F> for ConstraintSystem<F> {
+    fn rcm(&self) -> &[DP<F>; COLUMNS] {
+        &self.rcm
+    }
+    fn psm(&self) -> &DP<F> {
+        &self.psm
+    }
+    fn ps4(&self) -> &E<F, D<F>> {
+        &self.ps4
+    }
+    fn ps8(&self) -> &E<F, D<F>> {
+        &self.ps8
+    }
+}
+
+impl<F: FftField + SquareRootField> CSVbmulGate<F> for ConstraintSystem<F> {
+    fn mul1m(&self) -> &DP<F> {
+        &self.mul1m
+    }
+    fn mul1l(&self) -> &E<F, D<F>> {
+        &self.mul1l
+    }
+}
+
+impl<F: FftField + SquareRootField> CSVbmulpackGate<F> for ConstraintSystem<F> {
+    fn mul2m(&self) -> &DP<F> {
+        &self.mul2m
+    }
+    fn mul2l(&self) -> &E<F, D<F>> {
+        &self.mul2l
     }
 }

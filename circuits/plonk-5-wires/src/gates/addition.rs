@@ -8,7 +8,7 @@ This source file implements non-special point (with distinct abscissas) Weierstr
         (x2 - x1) * r = 1
 
     Permutation constraints
-    
+
         -> x1
         -> y1
         -> x2
