@@ -16,12 +16,13 @@ use groupmap::GroupMap;
 use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
+use ff_fft::domain::EvaluationDomain;
 
 const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 const M: usize = PERIOD * (NUM_POS-1);
-const MAX_SIZE: usize = N; // max size of poly chunks
+const MAX_SIZE: usize = 2*N; // max size of poly chunks (max witness padding)
 const PUBLIC : usize = 0;
 
 #[test]
@@ -74,7 +75,7 @@ fn poseidon_tweedledum()
     gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i+=1;
     gates.push(CircuitGate::<Fq>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
-    
+
     let srs = SRS::create(MAX_SIZE);
 
     let (endo_q, _endo_r) = endos::<Other>();
@@ -101,7 +102,7 @@ fn positive(index: &Index<Affine>)
 
     println!("{}{:?}", "Circuit size: ".yellow(), N);
     println!("{}{:?}", "Polycommitment chunk size: ".yellow(), MAX_SIZE);
-    println!("{}{:?}", "Number oh Poseidon hashes in the circuit: ".yellow(), NUM_POS);
+    println!("{}{:?}", "Number of Poseidon hashes in the circuit: ".yellow(), NUM_POS);
     println!("{}{:?}", "Full rounds: ".yellow(), PlonkSpongeConstants::ROUNDS_FULL);
     println!("{}{:?}", "Sbox alpha: ".yellow(), PlonkSpongeConstants::SPONGE_BOX);
     println!("{}", "Base curve: tweedledum".green());
@@ -145,7 +146,9 @@ fn positive(index: &Index<Affine>)
             w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
         }
 
-        w.iter_mut().for_each(|w| {w.push(Fq::rand(rng)); w.push(Fq::rand(rng))});
+        // Pad the witness
+        let padding_count = index.cs.domain.d1.size() - w[0].len();
+        w.iter_mut().for_each(|x| { x.extend(vec![Fq::rand(rng); padding_count]); });
 
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&w), true);
