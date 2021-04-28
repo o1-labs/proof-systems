@@ -85,7 +85,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     println!("{}{:?}", "Circuit size: ".yellow(), N);
     println!("{}{:?}", "Polycommitment chunk size: ".yellow(), MAX_SIZE);
-    println!("{}{:?}", "Number oh Poseidon hashes in the circuit: ".yellow(), NUM_POS);
+    println!("{}{:?}", "Number of Poseidon hashes in the circuit: ".yellow(), NUM_POS);
     println!("{}{:?}", "Full rounds: ".yellow(), PlonkSpongeConstants::ROUNDS_FULL);
     println!("{}{:?}", "Sbox alpha: ".yellow(), PlonkSpongeConstants::SPONGE_BOX);
     println!("{}", "Base curve: tweedledee".green());
