@@ -13,7 +13,7 @@ ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
 ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }
-array-init = { version = "0.1.1" }
+array-init = { version = "1.0.0" }
 rayon = { version = "1" }
 blake2 = "0.7"
 

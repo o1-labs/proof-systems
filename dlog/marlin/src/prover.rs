@@ -309,7 +309,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         fn index_poly_comm<F:Field>(n: usize, p : &DensePolynomial<F>) -> (&DensePolynomial<F>, Option<usize>, PolyComm<F>) {
             let k = (p.coeffs.len() + n - 1) / n;
             (p, None, non_hiding(k))
-        };
+        }
         let n = index.srs.get_ref().g.len();
 
         polynoms.extend(

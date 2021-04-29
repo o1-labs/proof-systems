@@ -129,7 +129,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         public: usize,
     ) -> Option<Self>
     {
-        let domain = EvaluationDomains::<F>::create(gates.len())?;
+        let domain = EvaluationDomains::<F>::create(if gates.len() > tbl.len() {gates.len()} else {tbl.len()})?;
         let mut sid = domain.d1.elements().map(|elm| {elm}).collect::<Vec<_>>();
 
         // sample the coordinate shifts

@@ -42,12 +42,6 @@ dependencies = [
 
 [[package]]
 name = "array-init"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f30bbe2f5e3d117f55bd8c7a1f9191e4a5deba9f15f595bbea4f670c59c765db"
-
-[[package]]
-name = "array-init"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a51c983d65b6691893a791e55aa8bda43bbd9b11f947e5a9581710362277cc95"
@@ -119,7 +113,7 @@ name = "commitment_dlog"
 version = "0.1.0"
 dependencies = [
  "algebra",
- "array-init 0.1.1",
+ "array-init",
  "blake2",
  "colored 1.9.3",
  "dlog_solver",
@@ -557,7 +551,7 @@ version = "0.1.0"
 dependencies = [
  "algebra",
  "algebra-core",
- "array-init 0.1.1",
+ "array-init",
  "blake2",
  "ff-fft",
  "num-derive",
@@ -573,7 +567,7 @@ name = "plonk_5_wires_protocol_dlog"
 version = "0.1.0"
 dependencies = [
  "algebra",
- "array-init 1.0.0",
+ "array-init",
  "colored 2.0.0",
  "commitment_dlog",
  "ff-fft",
@@ -592,7 +586,7 @@ version = "0.1.0"
 dependencies = [
  "algebra",
  "algebra-core",
- "array-init 0.1.1",
+ "array-init",
  "blake2",
  "ff-fft",
  "num-derive",
@@ -609,7 +603,7 @@ version = "0.1.0"
 dependencies = [
  "algebra",
  "algebra-core",
- "array-init 0.1.1",
+ "array-init",
  "blake2",
  "ff-fft",
  "num-derive",
@@ -625,7 +619,7 @@ name = "plonk_plookup_protocol_dlog"
 version = "0.1.0"
 dependencies = [
  "algebra",
- "array-init 1.0.0",
+ "array-init",
  "colored 2.0.0",
  "commitment_dlog",
  "ff-fft",
@@ -643,7 +637,7 @@ name = "plonk_protocol_dlog"
 version = "0.1.0"
 dependencies = [
  "algebra",
- "array-init 0.1.1",
+ "array-init",
  "colored 1.9.3",
  "commitment_dlog",
  "ff-fft",
@@ -661,7 +655,7 @@ name = "plonk_protocol_pairing"
 version = "0.1.0"
 dependencies = [
  "algebra",
- "array-init 0.1.1",
+ "array-init",
  "colored 1.9.3",
  "commitment_pairing",
  "ff-fft",
