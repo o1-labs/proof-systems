@@ -13,7 +13,7 @@ pub struct PlonkSpongeConstants {
 }
 
 impl SpongeConstants for PlonkSpongeConstants {
-    const ROUNDS_FULL: usize = 31;
+    const ROUNDS_FULL: usize = 53;
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_CAPACITY: usize = 1;
