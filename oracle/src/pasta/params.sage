@@ -6,8 +6,8 @@
 # the name argument is set to '' and the width is either 3 or 5.  These were the parameter sets
 # used for the first 3-wire and 5-wire poseidon instances.  These parameters are generated with:
 #
-#     ./params.sage rust 3 ''
-#     ./params.sage rust 5 ''
+#   ./params.sage rust 3 ''
+#   ./params.sage rust 5 ''
 #
 # The language parameter can be either "rust" or "ocaml"
 #
@@ -15,10 +15,14 @@
 # set to be given a unique name so that completely unique parameters are created for each
 # definition of a cryptographic hash function.  The latest 3-wire poseidon can be generated with
 #
-#     ./params.sage rust 3 r54a7w3 --rounds 54
+#   ./params.sage rust 3 3 --rounds 54
 #
-# Note: the name r54a7w3 is completely arbitrary, but selected to reflect the precise parameters
-#       for the new poseidon configuration. Use the format: r<round>a<alpha>w<width>
+# Currently used names
+#
+#   Name | Parameters
+#   -----------------
+#   ''   | Reserved for legacy
+#   3    | rounds=54, width=3, rate=2, alpha=7
 
 import hashlib
 import sys
@@ -106,10 +110,10 @@ def mds(prefix, F):
       return mds
 
 def caml_rc_str(of_string_wrap, rows):
-    return '[|' + ';'.join('[|' + ';'.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + '|]' for row in rows) + '|]'
+  return '[|' + ';'.join('[|' + ';'.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + '|]' for row in rows) + '|]'
 
 def rust_rc_str(of_string_wrap, rows):
-    return 'vec![' + ','.join('vec![' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
+  return 'vec![' + ','.join('vec![' + ','.join(of_string_wrap('"{}"'.format(str(x))) for x in row) + ']' for row in rows) + ']'
 
 if args.language == 'ocaml':
   print ("type 'a t = { mds: 'a array array; round_constants: 'a array array }")
