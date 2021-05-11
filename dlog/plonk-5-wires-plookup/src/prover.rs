@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve, Zero};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
-use plonk_plookup_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS, polynomial::LookupPolys};
+use plonk_5_wires_plookup_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS, polynomial::LookupPolys};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;

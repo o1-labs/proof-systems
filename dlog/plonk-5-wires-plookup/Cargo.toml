@@ -1,5 +1,5 @@
 [package]
-name = "plonk_plookup_protocol_dlog"
+name = "plonk_5_wires_plookup_protocol_dlog"
 version = "0.1.0"
 edition = "2018"
 
@@ -10,7 +10,7 @@ path = "src/lib.rs"
 algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
 ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
 commitment_dlog = { path = "../commitment" }
-plonk_plookup_circuits = { path = "../../circuits/plonk-plookup" }
+plonk_5_wires_plookup_circuits = { path = "../../circuits/plonk-5-wires-plookup" }
 oracle = { path = "../../oracle" }
 ocaml = { version = "0.18.1", optional = true }
 rand_core = { version = "0.5" }

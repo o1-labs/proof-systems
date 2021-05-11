@@ -4,11 +4,11 @@ This source file benchmarks the constraints for the Poseidon hash permutations
 
 **********************************************************************************************************/
 
-use plonk_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_5_wires_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{ tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
 use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
-use plonk_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use plonk_5_wires_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;

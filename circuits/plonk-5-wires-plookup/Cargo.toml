@@ -1,0 +1,24 @@
+[package]
+name = "plonk_5_wires_plookup_circuits"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
+algebra-core = { path = "../../zexe/algebra-core", features = [ "parallel"] }
+ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
+ocaml = { version = "0.18.1", optional = true }
+oracle = { path = "../../oracle" }
+rand_core = { version = "0.5" }
+array-init = { version = "1.0.0" }
+blake2 = "0.7"
+num-derive = "0.3"
+num-traits = "0.2"
+rand = "0.7.3"
+
+[features]
+
+ocaml_types = [ "ocaml", "oracle/ocaml_types" ]

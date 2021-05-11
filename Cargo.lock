@@ -238,11 +238,14 @@ dependencies = [
  "marlin_circuits",
  "marlin_protocol_dlog",
  "oracle",
+ "plonk_15_wires_circuits",
+ "plonk_15_wires_plookup_protocol_dlog",
+ "plonk_15_wires_protocol_dlog",
  "plonk_5_wires_circuits",
+ "plonk_5_wires_plookup_circuits",
+ "plonk_5_wires_plookup_protocol_dlog",
  "plonk_5_wires_protocol_dlog",
  "plonk_circuits",
- "plonk_plookup_circuits",
- "plonk_plookup_protocol_dlog",
  "plonk_protocol_dlog",
  "rand",
  "rand_core",
@@ -546,6 +549,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "plonk_15_wires_circuits"
+version = "0.1.0"
+dependencies = [
+ "algebra",
+ "algebra-core",
+ "array-init",
+ "blake2",
+ "ff-fft",
+ "num-derive",
+ "num-traits 0.2.14",
+ "ocaml",
+ "oracle",
+ "rand",
+ "rand_core",
+ "rayon",
+]
+
+[[package]]
+name = "plonk_15_wires_plookup_protocol_dlog"
+version = "0.1.0"
+dependencies = [
+ "algebra",
+ "array-init",
+ "colored 2.0.0",
+ "commitment_dlog",
+ "ff-fft",
+ "ocaml",
+ "oracle",
+ "plonk_15_wires_circuits",
+ "rand",
+ "rand_core",
+ "rayon",
+ "sprs 0.9.3",
+]
+
+[[package]]
+name = "plonk_15_wires_protocol_dlog"
+version = "0.1.0"
+dependencies = [
+ "algebra",
+ "array-init",
+ "colored 2.0.0",
+ "commitment_dlog",
+ "ff-fft",
+ "ocaml",
+ "oracle",
+ "plonk_15_wires_circuits",
+ "rand",
+ "rand_core",
+ "rayon",
+ "sprs 0.9.3",
+]
+
+[[package]]
 name = "plonk_5_wires_circuits"
 version = "0.1.0"
 dependencies = [
@@ -560,6 +617,41 @@ dependencies = [
  "oracle",
  "rand_core",
  "rayon",
+]
+
+[[package]]
+name = "plonk_5_wires_plookup_circuits"
+version = "0.1.0"
+dependencies = [
+ "algebra",
+ "algebra-core",
+ "array-init",
+ "blake2",
+ "ff-fft",
+ "num-derive",
+ "num-traits 0.2.14",
+ "ocaml",
+ "oracle",
+ "rand",
+ "rand_core",
+]
+
+[[package]]
+name = "plonk_5_wires_plookup_protocol_dlog"
+version = "0.1.0"
+dependencies = [
+ "algebra",
+ "array-init",
+ "colored 2.0.0",
+ "commitment_dlog",
+ "ff-fft",
+ "ocaml",
+ "oracle",
+ "plonk_5_wires_plookup_circuits",
+ "rand",
+ "rand_core",
+ "rayon",
+ "sprs 0.9.3",
 ]
 
 [[package]]
@@ -595,41 +687,6 @@ dependencies = [
  "oracle",
  "rand_core",
  "rayon",
-]
-
-[[package]]
-name = "plonk_plookup_circuits"
-version = "0.1.0"
-dependencies = [
- "algebra",
- "algebra-core",
- "array-init",
- "blake2",
- "ff-fft",
- "num-derive",
- "num-traits 0.2.14",
- "ocaml",
- "oracle",
- "rand",
- "rand_core",
-]
-
-[[package]]
-name = "plonk_plookup_protocol_dlog"
-version = "0.1.0"
-dependencies = [
- "algebra",
- "array-init",
- "colored 2.0.0",
- "commitment_dlog",
- "ff-fft",
- "ocaml",
- "oracle",
- "plonk_plookup_circuits",
- "rand",
- "rand_core",
- "rayon",
- "sprs 0.9.3",
 ]
 
 [[package]]

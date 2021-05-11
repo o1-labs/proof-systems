@@ -1,4 +1,4 @@
-use plonk_plookup_circuits::scalars::ProofEvaluations;
+use plonk_15_wires_circuits::lookup::scalars::ProofEvaluations;
 use algebra::{
     Field, PrimeField,
 };
@@ -36,18 +36,18 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.sponge.absorb(&self.params, p);
 
         let points = [
-            &e.w[0],
-            &e.w[1],
-            &e.w[2],
-            &e.w[3],
-            &e.w[4],
-            &e.z,
-            &e.t,
-            &e.f,
-            &e.s[0],
-            &e.s[1],
-            &e.s[2],
-            &e.s[3],
+            &e.pe.w[0],
+            &e.pe.w[1],
+            &e.pe.w[2],
+            &e.pe.w[3],
+            &e.pe.w[4],
+            &e.pe.z,
+            &e.pe.t,
+            &e.pe.f,
+            &e.pe.s[0],
+            &e.pe.s[1],
+            &e.pe.s[2],
+            &e.pe.s[3],
             &e.l,
             &e.lw,
             &e.h1,

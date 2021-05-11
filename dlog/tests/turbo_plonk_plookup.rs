@@ -33,11 +33,11 @@ This source file tests constraints for the following computations:
 
 **********************************************************************************************************/
 
-use plonk_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
+use plonk_5_wires_plookup_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge, ArithmeticSpongeParams}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
-use plonk_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
+use plonk_5_wires_plookup_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
 use groupmap::GroupMap;
@@ -50,7 +50,7 @@ const N: usize = 4096; // Plonk domain size
 const PUBLIC: usize = 6;
 
 #[test]
-fn turbo_plonk_plookup()
+fn turbo_plonk_5_wires_plookup()
 {
     let z = Fp::zero();
     let p = Fp::one();

@@ -75,7 +75,7 @@ impl<E: PairingEngine> Compiled<E>
         algebra::fields::batch_inversion::<E::Fr>(&mut val_eval_k);
         for (c, val) in constraints.iter().zip(val_eval_k.iter_mut())
         {
-            *val = *c.0 * *val;
+            *val = *c.0 * val;
         }
 
         let k_group = GeneralEvaluationDomain::Radix2(k_group);
@@ -129,7 +129,7 @@ impl<E: PairingEngine> Compiled<E>
         (
             |((row, col), rc)|
             {
-                oracle2 * oracle1 - oracle1 * row - oracle2 * col + rc
+                oracle2 * &oracle1 - &(oracle1 * &row) - &(oracle2 * &col) + &rc
             }
         ).collect()
     }

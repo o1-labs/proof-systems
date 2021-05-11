@@ -50,6 +50,21 @@ impl SpongeConstants for PlonkSpongeConstants {
     const FULL_MDS: bool = true;
 }
 
+#[derive(Clone)]
+pub struct Plonk15SpongeConstants {
+}
+
+impl SpongeConstants for Plonk15SpongeConstants {
+    const ROUNDS_FULL: usize = 55;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
+    const SPONGE_RATE: usize = 2;
+    const SPONGE_BOX: usize = 7;
+    const FULL_MDS: bool = true;
+}
+
 pub trait Sponge<Input, Digest> {
     type Params;
     fn new() -> Self;
