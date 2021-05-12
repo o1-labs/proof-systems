@@ -6,9 +6,9 @@ This source file implements Plonk Protocol Index primitive.
 
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
-use plonk_15_wires_circuits::{lookup::constraints::{ConstraintSystem}, wires::COLUMNS};
+use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, Plonk15SpongeConstants};
+use plonk_15_wires_circuits::{lookup::constraints::{ConstraintSystem}, wires::*};
 use algebra::{AffineCurve, PrimeField};
-use oracle::poseidon::ArithmeticSpongeParams;
 use array_init::array_init;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -73,13 +73,13 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
 
     // index polynomial commitments
     pub table_comm: PolyComm<G>,            // lookup table polynonial commitment
-    pub sigma_comm: [PolyComm<G>; COLUMNS], // permutation commitment array
-    pub qw_comm:    [PolyComm<G>; COLUMNS], // wire commitment array
+    pub sigma_comm: [PolyComm<G>; PERMUTS], // permutation commitment array
+    pub qw_comm:    [PolyComm<G>; GENERICS],// wire commitment array
     pub qm_comm:    PolyComm<G>,            // multiplication commitment
     pub qc_comm:    PolyComm<G>,            // constant wire commitment
 
     // poseidon polynomial commitments
-    pub rcm_comm:   [PolyComm<G>; COLUMNS], // round constant polynomial commitment array
+    pub rcm_comm:   [PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH], // round constant polynomial commitment array
     pub psm_comm:   PolyComm<G>,            // poseidon constraint selector polynomial commitment
 
     // ECC arithmetic polynomial commitments
@@ -89,7 +89,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub emul_comm:  PolyComm<G>,            // endoscalar multiplication selector polynomial commitment
     pub lkp_comm:   PolyComm<G>,            // lookup selector polynomial commitment
 
-    pub shift:      [Fr<G>; COLUMNS],       // wire coordinate shifts
+    pub shift:      [Fr<G>; PERMUTS],       // wire coordinate shifts
     pub zkpm:       DensePolynomial<Fr<G>>, // zero-knowledge polynomial
     pub w1:         Fr<G>,                  // root of unity for lookup
     pub w3:         Fr<G>,                  // root of unity for zero-knowledge

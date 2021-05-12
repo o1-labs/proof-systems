@@ -8,7 +8,7 @@ use crate::plonk_sponge::FrSponge;
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
-use plonk_15_wires_circuits::{wires::COLUMNS, nolookup::{scalars::RandomOracles, constraints::ConstraintSystem}};
+use plonk_15_wires_circuits::{wires::*, nolookup::{scalars::RandomOracles, constraints::ConstraintSystem}};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};
 use ff_fft::EvaluationDomain;
@@ -161,7 +161,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     (self.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
                 ]
             );
-            es.extend((0..COLUMNS-1).map(|c| (self.evals.iter().map(|e| &e.s[c]).collect::<Vec<_>>(), None)).collect::<Vec<_>>());
+            es.extend((0..PERMUTS-1).map(|c| (self.evals.iter().map(|e| &e.s[c]).collect::<Vec<_>>(), None)).collect::<Vec<_>>());
             es.extend(vec![(self.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size))]);
 
             combined_inner_product::<G>(&ep, &oracles.v, &oracles.u, &es, index.srs.get_ref().g.len())
@@ -204,7 +204,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
                 // permutation
                 let zkp = index.zkpm.evaluate(oracles.zeta);
-                let mut p = vec![&index.sigma_comm[COLUMNS-1]];
+                let mut p = vec![&index.sigma_comm[PERMUTS-1]];
                 let mut s = vec![ConstraintSystem::perm_scalars(&evals, &oracles, zkp)];
 
                 // generic
@@ -243,7 +243,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     -
                     evals[0].w.iter().zip(evals[0].s.iter()).
                         map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
-                        fold((evals[0].w[COLUMNS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
+                        fold((evals[0].w[PERMUTS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
                     +
                     evals[0].w.iter().zip(index.shift.iter()).
                         map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w).
@@ -285,7 +285,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
                     ]
                 );
-                polynoms.extend(index.sigma_comm.iter().zip((0..COLUMNS-1).map(|i| proof.evals.iter().map(|e| &e.s[i]).
+                polynoms.extend(index.sigma_comm.iter().zip((0..PERMUTS-1).map(|i| proof.evals.iter().map(|e| &e.s[i]).
                     collect::<Vec<_>>()).collect::<Vec<_>>().iter()).map(|(c, e)| (c, e.clone(), None)).collect::<Vec<_>>());
                 polynoms.extend(vec![(&proof.commitments.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size))]);
 

@@ -6,9 +6,8 @@ This source file implements Plonk Protocol Index primitive.
 
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
-use oracle::poseidon_5_wires::PlonkSpongeConstants;
-use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants};
-use plonk_15_wires_circuits::{nolookup::constraints::{zk_w3, ConstraintSystem}, wires::COLUMNS};
+use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, Plonk15SpongeConstants};
+use plonk_15_wires_circuits::{nolookup::constraints::{zk_w3, ConstraintSystem}, wires::*};
 use array_init::array_init;
 use algebra::AffineCurve;
 use algebra::PrimeField;
@@ -74,13 +73,13 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub srs: SRSValue<'a, G>,               // polynomial commitment keys
 
     // index polynomial commitments
-    pub sigma_comm: [PolyComm<G>; COLUMNS], // permutation commitment array
-    pub qw_comm:    [PolyComm<G>; COLUMNS], // wire commitment array
+    pub sigma_comm: [PolyComm<G>; PERMUTS], // permutation commitment array
+    pub qw_comm:    [PolyComm<G>; GENERICS],// wire commitment array
     pub qm_comm:    PolyComm<G>,            // multiplication commitment
     pub qc_comm:    PolyComm<G>,            // constant wire commitment
 
     // poseidon polynomial commitments
-    pub rcm_comm:   [PolyComm<G>; COLUMNS], // round constant polynomial commitment array
+    pub rcm_comm:   [PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH], // round constant polynomial commitment array
     pub psm_comm:   PolyComm<G>,            // poseidon constraint selector polynomial commitment
 
     // ECC arithmetic polynomial commitments
@@ -89,7 +88,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub mul_comm:   PolyComm<G>,            // EC variable base scalar multiplication selector polynomial commitment
     pub emul_comm:  PolyComm<G>,            // endoscalar multiplication selector polynomial commitment
 
-    pub shift:      [Fr<G>; COLUMNS],       // wire coordinate shifts
+    pub shift:      [Fr<G>; PERMUTS],       // wire coordinate shifts
     pub zkpm:       DensePolynomial<Fr<G>>, // zero-knowledge polynomial
     pub w:          Fr<G>,                  // root of unity for zero-knowledge
     pub endo:       Fr<G>,                  // endoscalar coefficient
@@ -155,7 +154,8 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = endo_q;
         Index
         {
-            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),
+            max_quot_size: cs.domain.d8.size as usize - 7,
             fq_sponge_params,
             max_poly_size,
             srs,

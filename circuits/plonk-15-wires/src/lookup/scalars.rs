@@ -41,11 +41,11 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
 #[derive(Clone)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct CamlProofEvaluations<Fs> {
-    pub w: (Fs, Fs, Fs, Fs, Fs),
+    pub w: (Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs),
     pub z: Fs,
     pub t: Fs,
     pub f: Fs,
-    pub s: (Fs, Fs, Fs, Fs),
+    pub s: (Fs, Fs, Fs, Fs, Fs),
     pub l: Fs,
     pub lw: Fs,
     pub h1: Fs,
@@ -59,15 +59,15 @@ unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
         ocaml::ToValue::to_value(
             CamlProofEvaluations {
                 w: {
-                    let [w0, w1, w2, w3, w4] = self.w;
-                    (w0, w1, w2, w3, w4)
+                    let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = self.w;
+                    (w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14)
                 },
                 z: self.z,
                 t: self.t,
                 f: self.f,
                 s: {
-                    let [s0, s1, s2, s3] = self.s;
-                    (s0, s1, s2, s3)
+                    let [s0, s1, s2, s3, s4] = self.s;
+                    (s0, s1, s2, s3, s4)
                 },
                 l: self.l,
                 lw: self.lw,
@@ -84,15 +84,15 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
         let evals: CamlProofEvaluations<Fs> = ocaml::FromValue::from_value(v);
         ProofEvaluations {
             w: {
-                let (w0, w1, w2, w3, w4) = evals.w;
-                [w0, w1, w2, w3, w4]
+                let (w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14) = evals.w;
+                [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14]
             },
             z: evals.z,
             t: evals.t,
             f: evals.f,
             s: {
-                let (s0, s1, s2, s3) = evals.s;
-                [s0, s1, s2, s3]
+                let (s0, s1, s2, s3, s4) = evals.s;
+                [s0, s1, s2, s3, s4]
             },
             l: evals.l,
             lw: evals.lw,

@@ -7,8 +7,11 @@ This source file implements Plonk circuit gate wires primitive.
 use algebra::bytes::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
-pub const COLUMNS: usize = 5;
-pub const WIRES: [usize; COLUMNS] = [0,1,2,3,4];
+pub const GENERICS: usize = 3;
+pub const COLUMNS: usize = 15;
+pub const ADVICES: usize = 9;
+pub const PERMUTS: usize = COLUMNS - ADVICES;
+pub const WIRES: [usize; COLUMNS] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
 
 #[derive(Clone, Copy)]
 pub struct Wire

@@ -11,7 +11,7 @@ use oracle::{utils::{EvalUtils, PolyUtils}, rndoracle::ProofError};
 use crate::nolookup::scalars::{ProofEvaluations, RandomOracles};
 use crate::polynomial::WitnessOverDomains;
 use crate::nolookup::constraints::ConstraintSystem;
-use crate::wires::COLUMNS;
+use crate::wires::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
@@ -62,7 +62,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         oracles: &RandomOracles<F>,
     ) -> DensePolynomial<F>
     {
-        self.sigmam[COLUMNS-1].scale(Self::perm_scalars(e, oracles, self.zkpm.evaluate(oracles.zeta)))
+        self.sigmam[PERMUTS-1].scale(Self::perm_scalars(e, oracles, self.zkpm.evaluate(oracles.zeta)))
     }
 
     pub fn perm_scalars

@@ -69,6 +69,16 @@ impl<F: FftField> FromBytes for CircuitGate<F> {
             Wire::read(&mut r)?,
             Wire::read(&mut r)?,
             Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
+            Wire::read(&mut r)?,
         ];
 
         let c_len = u8::read(&mut r)?;

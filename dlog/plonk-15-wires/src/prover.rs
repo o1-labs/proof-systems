@@ -176,34 +176,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
 
-        // compute permutation polynomial
-
-        let mut z = vec![Fr::<G>::one(); n];
-        (0..n-3).for_each
-        (
-            |j| z[j+1] = witness.iter().zip(index.cs.sigmal1.iter()).map
-            (
-                |(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma
-            ).fold(Fr::<G>::one(), |x, y| x * y)
-        );
-        algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n-3]);
-        (0..n-3).for_each
-        (
-            |j|
-            {
-                let x = z[j];
-                z[j+1] *= witness.iter().zip(index.cs.shift.iter()).map
-                (
-                    |(w, s)| w[j] + &(index.cs.sid[j] * &oracles.beta * s) + &oracles.gamma
-                ).fold(x, |z, y| z * y)
-            }
-        );
-
-        if z[n-3] != Fr::<G>::one() {return Err(ProofError::ProofCreation)};
-        z[n-2] = Fr::<G>::rand(rng);
-        z[n-1] = Fr::<G>::rand(rng);
-        let z = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1).interpolate();
-
+        // compute permutation aggregation polynomial
+        let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None, rng);
 

@@ -5,15 +5,15 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use oracle::poseidon::ArithmeticSpongeParams;
+use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, Plonk15SpongeConstants};
 use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 use crate::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 use crate::gate::{CircuitGate, GateType};
-use crate::wires::{Wire, COLUMNS, WIRES};
 use crate::domains::EvaluationDomains;
 use blake2::{Blake2b, Digest};
 use oracle::utils::EvalUtils;
 use array_init::array_init;
+use crate::wires::*;
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField>
@@ -24,33 +24,33 @@ pub struct ConstraintSystem<F: FftField>
 
     // POLYNOMIALS OVER THE MONOMIAL BASE
 
-    pub sigmam: [DP<F>; COLUMNS],       // permutation polynomial array
+    pub sigmam: [DP<F>; PERMUTS],       // permutation polynomial array
     pub zkpm:   DP<F>,                  // zero-knowledge polynomial
 
     // generic constraint selector polynomials
-    pub qwm:    [DP<F>; COLUMNS],       // linear wire constraint polynomial
+    pub qwm:    [DP<F>; GENERICS],      // linear wire constraint polynomial
     pub qmm:    DP<F>,                  // multiplication polynomial
     pub qc:     DP<F>,                  // constant wire polynomial
 
     // poseidon selector polynomials
-    pub rcm:    [DP<F>; COLUMNS],       // round constant polynomials
+    pub rcm:    [DP<F>; Plonk15SpongeConstants::SPONGE_WIDTH],  // round constant polynomials
     pub psm:    DP<F>,                  // poseidon constraint selector polynomial
 
     // ECC arithmetic selector polynomials
     pub addm:   DP<F>,                  // EC point addition constraint selector polynomial
     pub doublem:DP<F>,                  // EC point doubling constraint selector polynomial
-    pub mulm:  DP<F>,                   // mulm constraint selector polynomial
+    pub mulm:   DP<F>,                  // mulm constraint selector polynomial
     pub emulm:  DP<F>,                  // emulm constraint selector polynomial
 
     // POLYNOMIALS OVER LAGRANGE BASE
 
     // generic constraint selector polynomials
-    pub qwl:    [E<F, D<F>>; COLUMNS],  // left input wire polynomial over domain.d4
+    pub qwl:    [E<F, D<F>>; GENERICS], // left input wire polynomial over domain.d4
     pub qml:    E<F, D<F>>,             // multiplication evaluations over domain.d4
 
     // permutation polynomials
-    pub sigmal1:[Vec<F>; COLUMNS],      // permutation polynomial array evaluations over domain d1
-    pub sigmal8:[E<F, D<F>>; COLUMNS],  // permutation polynomial array evaluations over domain d8
+    pub sigmal1:[Vec<F>; PERMUTS],      // permutation polynomial array evaluations over domain d1
+    pub sigmal8:[E<F, D<F>>; PERMUTS],  // permutation polynomial array evaluations over domain d8
     pub sid:    Vec<F>,                 // SID polynomial
 
     // poseidon selector polynomials
@@ -71,7 +71,7 @@ pub struct ConstraintSystem<F: FftField>
     pub zero8:  E<F, D<F>>,             // zero evaluated over domain.d8
     pub zkpl:   E<F, D<F>>,             // zero-knowledge polynomial over domain.d8
 
-    pub shift: [F; COLUMNS],            // wire coordinate shifts
+    pub shift: [F; PERMUTS],            // wire coordinate shifts
     pub endo:   F,                      // coefficient for the group endomorphism
 
     // random oracle argument parameters
@@ -110,22 +110,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let mut sid = domain.d1.elements().map(|elm| {elm}).collect::<Vec<_>>();
 
         // sample the coordinate shifts
-        let shift = Self::sample_shifts(&domain.d1, COLUMNS - 1);
-        let shift = [F::one(), shift[0], shift[1], shift[2], shift[3]];
+        let shift = Self::sample_shifts(&domain.d1, PERMUTS - 1);
+        let shift: [F; PERMUTS] = array_init(|i| if i==0 {F::one()} else {shift[i-1]});
 
         let n = domain.d1.size();
         let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(i, array_init(|j| Wire{col:WIRES[j], row:i}))).collect();
         gates.append(&mut padding);
 
-        let s: [std::vec::Vec<F>; COLUMNS] = array_init(|i| domain.d1.elements().map(|elm| {shift[i] * &elm}).collect());
+        let s: [std::vec::Vec<F>; PERMUTS] = array_init(|i| domain.d1.elements().map(|elm| {shift[i] * &elm}).collect());
         let mut sigmal1 = s.clone();
 
         // compute permutation polynomials
         gates.iter().enumerate().for_each
         (
-            |(i, _)| (0..COLUMNS).for_each(|j| {let wire = gates[i].wires[j]; sigmal1[j][i] = s[wire.col][wire.row]})
+            |(i, _)| (0..PERMUTS).for_each(|j| {let wire = gates[i].wires[j]; sigmal1[j][i] = s[wire.col][wire.row]})
         );
-        let sigmam: [DP<F>; COLUMNS] = array_init
+        let sigmam: [DP<F>; PERMUTS] = array_init
             (|i| E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate());
 
         let mut s = sid[0..2].to_vec();
@@ -135,10 +135,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let zkpm = zk_polynomial(domain.d1);
 
         // compute generic constraint polynomials
-        let qwm: [DP<F>; COLUMNS] = array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
+        let qwm: [DP<F>; GENERICS] = array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
             map(|gate| if gate.typ == GateType::Generic {gate.c[WIRES[i]]} else {F::zero()}).collect(), domain.d1).interpolate());
         let qmm = E::<F, D<F>>::from_vec_and_domain(gates.iter().
-            map(|gate| if gate.typ == GateType::Generic {gate.c[COLUMNS]} else {F::zero()}).collect(), domain.d1).interpolate();
+            map(|gate| if gate.typ == GateType::Generic {gate.c[GENERICS]} else {F::zero()}).collect(), domain.d1).interpolate();
 
         // compute poseidon constraint polynomials
         let psm = E::<F, D<F>>::from_vec_and_domain(gates.iter().map(|gate| gate.ps()).collect(), domain.d1).interpolate();
@@ -209,7 +209,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         witness: &[Vec<F>; COLUMNS]
     ) -> bool
     {
-        let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero(), F::zero(), F::zero()];
+        let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
         (0..self.gates.len()).all
         (
             |j|
