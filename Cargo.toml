@@ -5,7 +5,6 @@ members = [
     "oracle",
     "dlog_solver",
 ]
-exclude = [ "./zexe" ]
 
 [profile.release]
 lto = true
