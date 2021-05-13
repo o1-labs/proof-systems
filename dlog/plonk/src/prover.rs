@@ -28,6 +28,7 @@ pub struct ProverCommitments<G: AffineCurve>
 }
 
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg(feature = "ocaml_types")]
 struct CamlProverProof<G: AffineCurve>
 {
     pub commitments: ProverCommitments<G>,

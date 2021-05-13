@@ -4,12 +4,10 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 *****************************************************************************************************************/
 
-use crate::wires::COLUMNS;
 use algebra::{FftField, Field};
 use crate::nolookup::scalars::{ProofEvaluations as PE, RandomOracles as RO};
-use oracle::{sponge_5_wires::ScalarChallenge, utils::PolyUtils};
+use oracle::utils::PolyUtils;
 use ff_fft::DensePolynomial;
-use array_init::array_init;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {

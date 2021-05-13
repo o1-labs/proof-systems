@@ -4,17 +4,16 @@ This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
-use blake2::{Blake2b, Digest};
 use algebra::{FftField, SquareRootField};
 use oracle::poseidon::ArithmeticSpongeParams;
 use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
 use crate::nolookup::constraints::ConstraintSystem as CS;
-use crate::gate::{CircuitGate, GateType};
-use crate::wires::{Wire, COLUMNS, WIRES};
 use crate::domains::EvaluationDomains;
+use crate::gate::CircuitGate;
 use oracle::utils::EvalUtils;
 use array_init::array_init;
 use crate::polynomial::*;
+use crate::wires::*;
 
 pub struct ConstraintSystem<F: FftField>
 {
@@ -53,7 +52,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     ) -> Option<Self>
     {
         let domain = EvaluationDomains::<F>::create(if gates.len() > tbl.len() {gates.len()} else {tbl.len()})?;
-        let mut sid = domain.d1.elements().map(|elm| {elm}).collect::<Vec<_>>();
 
         let n = domain.d1.size();
         let mut padding = (gates.len()..n).map(|i| CircuitGate::<F>::zero(i, array_init(|j| Wire{col:WIRES[j], row:i}))).collect();

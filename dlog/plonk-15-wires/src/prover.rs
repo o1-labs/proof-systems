@@ -4,7 +4,7 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use algebra::{Field, AffineCurve, Zero, One, UniformRand};
+use algebra::{Field, AffineCurve, Zero};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
@@ -28,6 +28,7 @@ pub struct ProverCommitments<G: AffineCurve>
 
 #[derive(Clone)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg(feature = "ocaml_types")]
 pub struct CamlProverCommitments<G: AffineCurve>
 {
     // polynomial commitments
@@ -64,6 +65,7 @@ unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverCommit
     }
 }
 
+#[cfg(feature = "ocaml_types")]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 struct CamlProverProof<G: AffineCurve>
 {

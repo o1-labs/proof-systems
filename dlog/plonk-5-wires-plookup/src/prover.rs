@@ -83,6 +83,7 @@ unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverCommit
 }
 
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg(feature = "ocaml_types")]
 struct CamlProverProof<G: AffineCurve>
 {
     pub commitments: ProverCommitments<G>,
