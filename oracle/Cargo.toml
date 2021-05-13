@@ -14,6 +14,22 @@ ocaml = { version = "0.22.0", optional = true }
 rand = "0.7.3"
 rayon = { version = "1" }
 
-[features]
+# for test vectors
+serde = { version = "1.0", features = ["derive"]}
+serde_json = "1.0"
+hex = "0.4"
 
+[features]
 ocaml_types = [ "ocaml" ]
+
+# for test vectors
+default = ["fp_3"]
+three_wire = []
+five_wire = []
+fp_3 = []
+
+[[bin]]
+name = "export_test_vectors"
+test = false
+bench = false
+path = "tests/export_test_vectors/main.rs"
