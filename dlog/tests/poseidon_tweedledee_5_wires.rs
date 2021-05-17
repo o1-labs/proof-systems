@@ -18,14 +18,14 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
-const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
+const NUM_POS: usize = 1024; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 const M: usize = PERIOD * (NUM_POS-1);
 const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC : usize = 0;
 
 #[test]
-fn poseidon_tweedledee()
+fn poseidon_tweedledee_5_wires()
 {
     let c = &oracle::tweedle::fp5::params().round_constants;
 

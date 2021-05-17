@@ -69,7 +69,6 @@ pub struct ConstraintSystem<F: FftField>
     pub l08:    E<F, D<F>>,             // 0-th Lagrange evaluated over domain.d8
     pub zero4:  E<F, D<F>>,             // zero evaluated over domain.d8
     pub zero8:  E<F, D<F>>,             // zero evaluated over domain.d8
-    pub zkpl:   E<F, D<F>>,             // zero-knowledge polynomial over domain.d8
 
     pub shift: [F; PERMUTS],            // wire coordinate shifts
     pub endo:   F,                      // coefficient for the group endomorphism
@@ -189,7 +188,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             l08: E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8),
             zero4: E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4),
             zero8: E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8),
-            zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
             zkpm,
 
             gates,

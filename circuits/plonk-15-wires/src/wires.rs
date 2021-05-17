@@ -9,7 +9,7 @@ use std::io::{Read, Result as IoResult, Write};
 
 pub const GENERICS: usize = 3;
 pub const COLUMNS: usize = 15;
-pub const ADVICES: usize = 9;
+pub const ADVICES: usize = 8;
 pub const PERMUTS: usize = COLUMNS - ADVICES;
 pub const WIRES: [usize; COLUMNS] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
 

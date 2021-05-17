@@ -23,7 +23,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         oracles: &RandomOracles<F>,
         z: &DensePolynomial<F>,
         alpha: &[F]
-    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError>
+    ) -> Result<(DensePolynomial<F>, DensePolynomial<F>), ProofError>
     {
         let l0 = &self.l08.scale(oracles.gamma);
 
@@ -40,16 +40,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
         Ok((
-            &(&lagrange.d8.this.w.iter().zip(self.shift.iter()).
+            (&lagrange.d8.this.w.iter().zip(self.shift.iter()).
             map(|(p, s)| p + &(l0 + &self.l1.scale(oracles.beta * s))).
             fold(lagrange.d8.this.z.clone(), |x, y| &x * &y)
             -
             &lagrange.d8.this.w.iter().zip(self.sigmal8.iter()).
                 map(|(p, s)| p + &(l0 + &s.scale(oracles.beta))).
                 fold(lagrange.d8.next.z.clone(), |x, y| &x * &y)).
-            scale(oracles.alpha)
-            *
-            &self.zkpl
+            scale(oracles.alpha).interpolate().naive_mul(&self.zkpm)
             ,
             &bnd1.scale(alpha[0]) + &bnd2.scale(alpha[1])
         ))
