@@ -9,7 +9,7 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use oracle::poseidon_5_wires::{PlonkSpongeConstants, sbox};
+use oracle::poseidon::{PlonkSpongeConstants5W, sbox};
 use crate::{wires::GateWires, wires::{COLUMNS, WIRES}, constraints::ConstraintSystem};
 use crate::gate::{CircuitGate, GateType};
 use array_init::array_init;
@@ -34,7 +34,7 @@ impl<F: FftField> CircuitGate<F>
 
     pub fn verify_poseidon(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
     {
-        let this: [F; COLUMNS] = array_init(|i| sbox::<F, PlonkSpongeConstants>(witness[i][self.row]));
+        let this: [F; COLUMNS] = array_init(|i| sbox::<F, PlonkSpongeConstants5W>(witness[i][self.row]));
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
         let rc = self.rc();
 

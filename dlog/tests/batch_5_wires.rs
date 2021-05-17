@@ -10,8 +10,8 @@ use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve}};
 use oracle::utils::PolyUtils;
 
 use oracle::FqSponge;
-use oracle::sponge_5_wires::{DefaultFqSponge};
-use oracle::poseidon_5_wires::{PlonkSpongeConstants as SC};
+use oracle::sponge::{DefaultFqSponge};
+use oracle::poseidon::{PlonkSpongeConstants5W as SC};
 
 use std::time::{Instant, Duration};
 use ff_fft::DensePolynomial;
@@ -34,7 +34,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);
-    
+
     let prfs = (0..7).map
     (
         |_|

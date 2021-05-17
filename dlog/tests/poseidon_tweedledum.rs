@@ -111,7 +111,7 @@ fn positive(index: &Index<Affine>)
             // HALF_ROUNDS_FULL full rounds
             for j in 0..PlonkSpongeConstants::ROUNDS_FULL
             {
-                sponge.full_round(j, &params);
+                sponge.full_round(j + 1, &params);
                 l.push(sponge.state[0]);
                 r.push(sponge.state[1]);
                 o.push(sponge.state[2]);
@@ -126,7 +126,7 @@ fn positive(index: &Index<Affine>)
         // HALF_ROUNDS_FULL full rounds
         for j in 0..PlonkSpongeConstants::ROUNDS_FULL-2
         {
-            sponge.full_round(j, &params);
+            sponge.full_round(j + 1, &params);
             l.push(sponge.state[0]);
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);

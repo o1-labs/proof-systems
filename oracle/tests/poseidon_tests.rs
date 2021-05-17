@@ -4,16 +4,15 @@ mod tests {
     use oracle::poseidon::Sponge; // needed for ::new() sponge
 
     use oracle::poseidon::ArithmeticSponge as Poseidon;
-    use oracle::poseidon::PlonkSpongeConstants as Constants;
+
+    use oracle::poseidon::PlonkSpongeConstants;
     use oracle::pasta::fp as Parameters;
 
-    use oracle::poseidon_5_wires::ArithmeticSponge as Poseidon5Wires;
-    use oracle::poseidon_5_wires::PlonkSpongeConstants as Constants5Wires;
-    use oracle::pasta::fp5 as Parameters5Wires;
+    use oracle::poseidon::PlonkSpongeConstants5W;
+    use oracle::pasta::fp5 as Parameters5W;
 
-    use oracle::poseidon_3::ArithmeticSponge as Poseidon3;
-    use oracle::poseidon_3::PlonkSpongeConstants as Constants3;
-    use oracle::pasta::fp5 as Parameters3;
+    use oracle::poseidon::PlonkSpongeConstants3;
+    use oracle::pasta::fp_3 as Parameters3;
 
     fn _rand_fields(n: u8) {
         let rng = &mut rand::thread_rng();
@@ -27,7 +26,7 @@ mod tests {
     fn poseidon() {
         macro_rules! assert_poseidon_eq {
             ($input:expr, $target:expr) => {
-                let mut s = Poseidon::<Fp, Constants>::new();
+                let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new();
                 s.absorb(&Parameters::params(), $input);
                 let output = s.squeeze(&Parameters::params());
                 assert_eq!(output, $target, "\n output: {:?}\n target: {:?}", output.into_repr(), $target.into_repr());
@@ -86,9 +85,9 @@ mod tests {
     fn poseidon_5_wires() {
         macro_rules! assert_poseidon_5_wires_eq {
             ($input:expr, $target:expr) => {
-                let mut s = Poseidon5Wires::<Fp, Constants5Wires>::new();
-                s.absorb(&Parameters5Wires::params(), $input);
-                let output = s.squeeze(&Parameters5Wires::params());
+                let mut s = Poseidon::<Fp, PlonkSpongeConstants5W>::new();
+                s.absorb(&Parameters5W::params(), $input);
+                let output = s.squeeze(&Parameters5W::params());
                 assert_eq!(output, $target, "\n output: {:?}\n target: {:?}", output.into_repr(), $target.into_repr());
             };
         }
@@ -158,7 +157,7 @@ mod tests {
     fn poseidon_3() {
         macro_rules! assert_poseidon_3_eq {
             ($input:expr, $target:expr) => {
-                let mut s = Poseidon3::<Fp, Constants3>::new();
+                let mut s = Poseidon::<Fp, PlonkSpongeConstants3>::new();
                 s.absorb(&Parameters3::params(), $input);
                 let output = s.squeeze(&Parameters3::params());
                 assert_eq!(output, $target, "\n output: {:?}\n target: {:?}", output.into_repr(), $target.into_repr());
@@ -169,7 +168,7 @@ mod tests {
         assert_poseidon_3_eq!(
             &[
             ],
-            Fp::from_repr(BigInteger256([15449015445789340742, 8188265220607939614, 14255528068821191610, 3263398758375185362]))
+            Fp::from_repr(BigInteger256([12625032309730357895, 3881775963142723428, 1948451027071626224, 400220142328418896]))
         );
 
         // _rand_fields(1);
@@ -177,7 +176,7 @@ mod tests {
             &[
                 Fp::from_repr(BigInteger256([7268460211608788188, 10132480989041334579, 2339874299280274918, 194293202993774285]))
             ],
-            Fp::from_repr(BigInteger256([2558090059455896147, 7307347974437946425, 4536174362957322879, 2630632011732286938]))
+            Fp::from_repr(BigInteger256([13319422177750956895, 2619256142820001370, 15974443115283230879, 4444502174303366803]))
         );
 
         // _rand_fields(2);
@@ -186,7 +185,7 @@ mod tests {
                 Fp::from_repr(BigInteger256([9917828826452988051, 15189182483242825728, 17783867389905310625, 3096233339466922731])),
                 Fp::from_repr(BigInteger256([11112469648615694507, 1349483555912170531, 5132274865255624365, 291635065414725798]))
             ],
-            Fp::from_repr(BigInteger256([8379552536522502903, 12394062870321263370, 1732109214237199200, 1189670113580531968]))
+            Fp::from_repr(BigInteger256([8899203031135722773, 16362655810520084016, 4138942464075294076, 3369640260295132563]))
         );
 
         // _rand_fields(3);
@@ -196,7 +195,7 @@ mod tests {
                 Fp::from_repr(BigInteger256([2734205406253254786, 17095706724646389267, 5933659775356387652, 3721674824441362406])),
                 Fp::from_repr(BigInteger256([4947525329177827161, 2645489287737017668, 9857560748408218200, 1227757243736002830]))
             ],
-            Fp::from_repr(BigInteger256([1325431644610243984, 7526369527749934923, 12039861643291311194, 368685106794101856]))
+            Fp::from_repr(BigInteger256([3994882120963907648, 16872604210008740744, 16804570819156007307, 1861001323535343521]))
         );
 
         // _rand_fields(6);
@@ -209,7 +208,7 @@ mod tests {
                 Fp::from_repr(BigInteger256([10973288036385879140, 15163372292438207457, 8171725748546728133, 4039739380933749593])),
                 Fp::from_repr(BigInteger256([14659358909991100974, 4969649262916868094, 16870234378475169070, 2694211618115933100]))
             ],
-            Fp::from_repr(BigInteger256([4866823284634240780, 13596820755913603173, 1589815242261644762, 1228434131579452506]))
+            Fp::from_repr(BigInteger256([5634255577245254270, 14395092878371292826, 16978463518186927900, 178730575833426237]))
         );
     }
 }
