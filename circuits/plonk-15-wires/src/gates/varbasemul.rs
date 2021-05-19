@@ -174,7 +174,7 @@ impl<F: FftField> CircuitGate<F>
         (this[0] - &next[4]) * &next[11] == (next[12].double() - F::one()) * &this[1] - &next[5]
         &&
         // (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-        (next[4].double() - &next[11].square() + &this[0]) * &((next[4] - &next[9]) * &next[11] + &next[8] + &next[5])
+        (next[4].double() - &next[11].square() + &this[0]) * &((next[4] - &next[7]) * &next[11] + &next[8] + &next[5])
         ==
         (next[4] - &next[7]) * &next[5].double()
         &&
@@ -206,7 +206,7 @@ impl<F: FftField> CircuitGate<F>
         (next[3] + &next[10]).square() == (next[9] - &next[2]).square() * &(next[0].square() - &this[0] + &next[2])
         &&
 
-        this[7] == (((next[7].double() + &this[14].double() + &this[11]).double() + &next[12]).double() + &next[14]).double() + &next[2]
+        next[7] == ((((this[7].double() + &this[11]).double() + &this[14]).double() + &next[12]).double() + &next[14]).double() + &next[2]
     }
 
     pub fn vbmul(&self) -> F {if self.typ == GateType::Vbmul {F::one()} else {F::zero()}}

@@ -60,8 +60,9 @@ pub struct ConstraintSystem<F: FftField>
     // ECC arithmetic selector polynomials
     pub addl:   E<F, D<F>>,             // EC point addition selector evaluations w over domain.d4
     pub doublel:E<F, D<F>>,             // EC point doubling selector evaluations w over domain.d8
-    pub mull:   E<F, D<F>>,             // scalar multiplication selector evaluations over domain.d4
-    pub emull:  E<F, D<F>>,             // endoscalar multiplication selector evaluations over domain.d4
+    pub mull4:  E<F, D<F>>,             // scalar multiplication selector evaluations over domain.d4
+    pub mull8:  E<F, D<F>>,             // scalar multiplication selector evaluations over domain.d8
+    pub emull:  E<F, D<F>>,             // endoscalar multiplication selector evaluations over domain.d8
 
     // constant polynomials
     pub l1:     E<F, D<F>>,             // 1-st Lagrange evaluated over domain.d8
@@ -69,6 +70,7 @@ pub struct ConstraintSystem<F: FftField>
     pub l08:    E<F, D<F>>,             // 0-th Lagrange evaluated over domain.d8
     pub zero4:  E<F, D<F>>,             // zero evaluated over domain.d8
     pub zero8:  E<F, D<F>>,             // zero evaluated over domain.d8
+    pub zkpl:   E<F, D<F>>,             // zero-knowledge polynomial over domain.d8
 
     pub shift: [F; PERMUTS],            // wire coordinate shifts
     pub endo:   F,                      // coefficient for the group endomorphism
@@ -177,9 +179,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             addm,
             doublel: doublem.evaluate_over_domain_by_ref(domain.d8),
             doublem,
-            mull: mulm.evaluate_over_domain_by_ref(domain.d8),
+            mull4: mulm.evaluate_over_domain_by_ref(domain.d4),
+            mull8: mulm.evaluate_over_domain_by_ref(domain.d8),
             mulm,
-            emull: emulm.evaluate_over_domain_by_ref(domain.d4),
+            emull: emulm.evaluate_over_domain_by_ref(domain.d8),
             emulm,
 
             // constant polynomials
@@ -188,6 +191,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             l08: E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8),
             zero4: E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4),
             zero8: E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8),
+            zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
             zkpm,
 
             gates,

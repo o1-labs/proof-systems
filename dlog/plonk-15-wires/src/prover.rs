@@ -205,16 +205,16 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // EC doubling
         let double = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
         // endoscaling
-        let emul4 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
+        let mul8 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
         // scalar multiplication
-        let mul4 = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
+        let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
 
         // collect contribution evaluations
-        let t4 = &add + &(&mul4 + &(&emul4 + &(&pos4 + &gen)));
-        let t8 = &pos8 + &double;
+        let t4 = &(&add + &mul4) + &(&pos4 + &gen);
+        let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &double)));
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&perm + &(&genp + &posp))).
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
             divide_by_vanishing_poly(index.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 

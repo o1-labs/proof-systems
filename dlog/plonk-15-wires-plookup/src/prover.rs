@@ -256,20 +256,20 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // EC doubling
         let double = index.pcs.cs.double_quot(&lagrange, &alpha[range::DBL]);
         // endoscaling
-        let emul4 = index.pcs.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
+        let emul8 = index.pcs.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
         // scalar multiplication
-        let mul4 = index.pcs.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
+        let (mul4, mul8) = index.pcs.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
         // lookup
         let lkp = index.pcs.lookup_quot(&lagrange, &alpha[range::LKP]);
         // lookup aggregation
         let (lkpt, bnd2) = index.pcs.tbllkp_quot(&lkppolys, &oracles, &alpha[range::TABLE])?;
 
         // collect contribution evaluations
-        let t4 = &(&(&(&(&add + &mul4) + &emul4) + &pos4) + &gen) + &lkp;
-        let t8 = &(&pos8 + &double) + &lkpt;
+        let t4 = &(&(&(&add + &pos4) + &gen) + &lkp) + &mul4;
+        let t8 = &(&(&(&(&perm + &pos8) + &emul8) + &mul8) + &double) + &lkpt;
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&perm + &(&genp + &posp))).
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
             divide_by_vanishing_poly(index.pcs.cs.domain.d1).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {return Err(ProofError::PolyDivision)}
 
