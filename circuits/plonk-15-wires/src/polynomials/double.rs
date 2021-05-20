@@ -1,23 +1,18 @@
 /*****************************************************************************************************************
+This source file implements constraint polynomials for non-special point doubling and tripling on Weierstrass curve
 
-This source file implements constraint polynomials for non-special point doubling on Weierstrass curve
+DOUBLE gate constraints
+•	4 * y1^2 * (x2 + 2*x1) = 9 * x1^4
+•	2 * y1 * (y2 + y1) = (3 * x1^2) * (x1 – x2)
+•	y1 * r1 = 1
+•	
+•	(x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
+•	(x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
+•	(x2 - x1) * r2 = 1
 
-DOUBLE gate constrains
+The constraints above are derived from the following EC Affine arithmetic equations:
 
-	4 * y1^2 * (x2 + 2*x1) = 9 * x1^4
-	2 * y1 * (y2 + y1) = (3 * x1^2) * (x1 – x2)
-	y1 * r1 = 1
-	4 * y2^2 * (x4 + 2*x2) = 9 * x2^4
-	2 * y2 * (y4 + y2) = (3 * x2^2) * (x2 – x4)
-	y2 * r2 = 1
-	4 * y4^2 * (x8 + 2*x4) = 9 * x4^4
-	2 * y4 * (y8 + y4) = (3 * x4^2) * (x4 – x8)
-	y4 * r3 = 1
-	4 * y8^2 * (x16 + 2*x8) = 9 * x8^4
-	2 * y8 * (y16 + y8) = (3 * x8^2) * (x8 – x16)
-	y8 * r4 = 1
-
-The constrains above are derived from the following EC Affine arithmetic equations:
+Doubling
 
     2 * s * y1 = 3 * x1^2
     x2 = s^2 – 2*x1
@@ -32,7 +27,19 @@ The constrains above are derived from the following EC Affine arithmetic equatio
     =>
 
     4 * y1^2 * (x2 + 2*x1) = 9 * x1^4
-    2 * y1 * (y2 - y1) = 3 * x1^2 * (x2 – x1)
+    2 * y1 * (y2 + y1) = 3 * x1^2 * (x1 – x2)
+
+Addition
+
+
+    (x2 - x1) * s = y2 - y1
+    s * s = x1 + x2 + x3
+    (x1 - x3) * s = y3 + y1
+
+    =>
+
+    (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
+    (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
 
 *****************************************************************************************************************/
 
@@ -46,73 +53,66 @@ use crate::nolookup::scalars::ProofEvaluations;
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // EC Affine doubling constraint quotient poly contribution computation
-    pub fn double_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
+    pub fn double_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>)
     {
-        if self.doublem.is_zero() {return self.zero8.clone()}
+        if self.doublem.is_zero() {return (self.zero4.clone(), self.zero8.clone())}
 
-        let p = &polys.d8.this;
-        let p =
+        let p4 = &polys.d4.this.w;
+        let p8 = &polys.d8.this.w;
+ 
+        let p8 =
         [
-            &(&p.w[1].pow(2).scale(F::from(4 as u64)) * &(&p.w[2] +
-                &p.w[0].scale(F::from(2 as u64)))) - &p.w[0].pow(4).scale(F::from(9 as u64)),
-            &(&p.w[1].scale(F::from(2 as u64)) * &(&p.w[3] + &p.w[1])) -
-                &(&(&p.w[0] - &p.w[2]) * &p.w[0].pow(2).scale(F::from(3 as u64))),
-            &(&p.w[1] * &p.w[10]) - &self.l08,
+            &(&p8[1].pow(2).scale(F::from(4 as u64)) * &(&p8[2] +
+                &p8[0].scale(F::from(2 as u64)))) - &p8[0].pow(4).scale(F::from(9 as u64)),
+            &(&p8[1].scale(F::from(2 as u64)) * &(&p8[3] + &p8[1])) -
+                &(&(&p8[0] - &p8[2]) * &p8[0].pow(2).scale(F::from(3 as u64))),
+            &(&p8[1] * &p8[6]) - &self.l08,
+        ];
+ 
+        let y31 = &(&p4[5] + &p4[1]);
+        let x13 = &(&p4[0] - &p4[4]);
+        let x21 = &(&p4[2] - &p4[0]);
 
-            &(&p.w[3].pow(2).scale(F::from(4 as u64)) * &(&p.w[6] +
-                &p.w[2].scale(F::from(2 as u64)))) - &p.w[2].pow(4).scale(F::from(9 as u64)),
-            &(&p.w[3].scale(F::from(2 as u64)) * &(&p.w[7] + &p.w[3])) -
-                &(&(&p.w[2] - &p.w[6]) * &p.w[2].pow(2).scale(F::from(3 as u64))),
-            &(&p.w[3] * &p.w[11]) - &self.l08,
-
-            &(&p.w[7].pow(2).scale(F::from(4 as u64)) * &(&p.w[8] +
-                &p.w[6].scale(F::from(2 as u64)))) - &p.w[6].pow(4).scale(F::from(9 as u64)),
-            &(&p.w[7].scale(F::from(2 as u64)) * &(&p.w[9] + &p.w[7])) -
-                &(&(&p.w[6] - &p.w[8]) * &p.w[6].pow(2).scale(F::from(3 as u64))),
-            &(&p.w[7] * &p.w[12]) - &self.l08,
-
-            &(&p.w[9].pow(2).scale(F::from(4 as u64)) * &(&p.w[4] +
-                &p.w[8].scale(F::from(2 as u64)))) - &p.w[8].pow(4).scale(F::from(9 as u64)),
-            &(&p.w[9].scale(F::from(2 as u64)) * &(&p.w[5] + &p.w[9])) -
-                &(&(&p.w[8] - &p.w[4]) * &p.w[8].pow(2).scale(F::from(3 as u64))),
-            &(&p.w[9] * &p.w[13]) - &self.l08,
+        let p4 =
+        [
+            &(x21 * y31) - &(&(&p4[3] - &p4[1]) * x13),
+            &(&(&(&p4[0] + &p4[2]) + &p4[4]) * &x13.pow(2)) - &y31.pow(2),
+            (&(x21 * &p4[7]) - &self.l04),
         ];
 
-        &p.iter().skip(1).zip(alpha.iter().skip(1)).map(|(p, a)| p.scale(*a)).
-            fold(p[0].scale(alpha[0]), |x, y| &x + &y) * &self.doublel
+        (
+            &p4.iter().skip(1).zip(alpha.iter().skip(1)).map(|(p, a)| p.scale(*a)).
+                fold(p4[0].scale(alpha[0]), |x, y| &x + &y) * &self.doubl4,
+            &p8.iter().skip(1).zip(alpha[p4.len()+1..].iter()).map(|(p, a)| p.scale(*a)).
+                fold(p8[0].scale(alpha[p4.len()]), |x, y| &x + &y) * &self.doubl8
+        )
     }
 
     pub fn double_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        let s = &evals[0];
-        let s =
+        let w = &evals[0].w;
+        let d =
         [
-            (s.w[1].square() * &F::from(4 as u64) * &(s.w[2] +
-                &s.w[0].double())) - &(s.w[0].square().square() * &F::from(9 as u64)),
-            (s.w[1].double() * &(s.w[3] + &s.w[1])) -
-                &((s.w[0] - &s.w[2]) * &s.w[0].square() * &F::from(3 as u64)),
-            s.w[1] * &s.w[10] - &F::one(),
-            
-            (s.w[3].square() * &F::from(4 as u64) * &(s.w[6] +
-                &s.w[2].double())) - &(s.w[2].square().square() * &F::from(9 as u64)),
-            (s.w[3].double() * &(s.w[7] + &s.w[3])) -
-                &((s.w[2] - &s.w[6]) * &s.w[2].square() * &F::from(3 as u64)),
-            s.w[3] * &s.w[11] - &F::one(),
-            
-            (s.w[7].square() * &F::from(4 as u64) * &(s.w[8] +
-                &s.w[6].double())) - &(s.w[0].square().square() * &F::from(9 as u64)),
-            (s.w[7].double() * &(s.w[9] + &s.w[7])) -
-                &((s.w[6] - &s.w[8]) * &s.w[6].square() * &F::from(3 as u64)),
-            s.w[7] * &s.w[13] - &F::one(),
-            
-            (s.w[9].square() * &F::from(4 as u64) * &(s.w[4] +
-                &s.w[8].double())) - &(s.w[8].square().square() * &F::from(9 as u64)),
-            (s.w[9].double() * &(s.w[5] + &s.w[9])) -
-                &((s.w[8] - &s.w[4]) * &s.w[8].square() * &F::from(3 as u64)),
-            s.w[9] * &s.w[14] - &F::one(),            
+            (w[1].square() * &F::from(4 as u64) * &(w[2] +
+                &w[0].double())) - &(w[0].square().square() * &F::from(9 as u64)),
+            (w[1].double() * &(w[3] + &w[1])) -
+                &((w[0] - &w[2]) * &w[0].square() * &F::from(3 as u64)),
+            w[1] * &w[6] - &F::one(),
         ];
 
-        s.iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::one(), |x, y| x + &y)
+        let y31 = w[5] + &w[1];
+        let x13 = w[0] - &w[4];
+        let x21 = w[2] - &w[0];
+
+        let a =
+        [
+            (x21 * y31) - &((w[3] - &w[1]) * x13),
+            (w[0] + &w[2] + &w[4]) * &x13.square() - &y31.square(),
+            x21 * &w[7] - &F::one(),
+        ];
+    
+        a.iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y) +
+        &d.iter().zip(alpha[a.len()..].iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y)
     }
 
     // EC Affine doubling constraint linearization poly contribution computation

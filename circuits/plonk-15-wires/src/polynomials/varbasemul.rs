@@ -188,7 +188,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             &p4.iter().skip(1).zip(alpha.iter().skip(1)).map(|(p, a)| p.scale(*a)).
                 fold(p4[0].scale(alpha[0]), |x, y| &x + &y) * &self.mull4,
             &p8.iter().skip(1).zip(alpha[p4.len()+1 ..].iter()).map(|(p, a)| p.scale(*a)).
-                fold(p4[0].scale(alpha[p4.len()]), |x, y| &x + &y) * &self.mull8
+                fold(p8[0].scale(alpha[p4.len()]), |x, y| &x + &y) * &self.mull8
         )
     }
     

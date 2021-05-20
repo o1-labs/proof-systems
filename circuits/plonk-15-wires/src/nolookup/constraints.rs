@@ -59,7 +59,8 @@ pub struct ConstraintSystem<F: FftField>
 
     // ECC arithmetic selector polynomials
     pub addl:   E<F, D<F>>,             // EC point addition selector evaluations w over domain.d4
-    pub doublel:E<F, D<F>>,             // EC point doubling selector evaluations w over domain.d8
+    pub doubl8: E<F, D<F>>,             // EC point doubling selector evaluations w over domain.d8
+    pub doubl4: E<F, D<F>>,             // EC point doubling selector evaluations w over domain.d4
     pub mull4:  E<F, D<F>>,             // scalar multiplication selector evaluations over domain.d4
     pub mull8:  E<F, D<F>>,             // scalar multiplication selector evaluations over domain.d8
     pub emull:  E<F, D<F>>,             // endoscalar multiplication selector evaluations over domain.d8
@@ -177,7 +178,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             // ECC arithmetic constraint polynomials
             addl: addm.evaluate_over_domain_by_ref(domain.d4),
             addm,
-            doublel: doublem.evaluate_over_domain_by_ref(domain.d8),
+            doubl8: doublem.evaluate_over_domain_by_ref(domain.d8),
+            doubl4: doublem.evaluate_over_domain_by_ref(domain.d4),
             doublem,
             mull4: mulm.evaluate_over_domain_by_ref(domain.d4),
             mull8: mulm.evaluate_over_domain_by_ref(domain.d8),

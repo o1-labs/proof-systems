@@ -203,15 +203,15 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // EC addition
         let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
         // EC doubling
-        let double = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
+        let (doub4, doub8) = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
         // endoscaling
         let mul8 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
         // scalar multiplication
         let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
 
         // collect contribution evaluations
-        let t4 = &(&add + &mul4) + &(&pos4 + &gen);
-        let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &double)));
+        let t4 = &(&add + &mul4) + &(&pos4 + &(&gen + &doub4));
+        let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &doub8)));
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).

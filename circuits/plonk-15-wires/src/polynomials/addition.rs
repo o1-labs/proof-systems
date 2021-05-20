@@ -39,28 +39,36 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
             (x2 - x1) * r = 1
         */
-        let y31 = &(&polys.d4.this.w[5] + &polys.d4.this.w[1]);
-        let x13 = &(&polys.d4.this.w[0] - &polys.d4.this.w[4]);
-        let x21 = &(&polys.d4.this.w[2] - &polys.d4.this.w[0]);
+        let w = &polys.d4.this.w;
+        let y31 = &(&w[5] + &w[1]);
+        let x13 = &(&w[0] - &w[4]);
+        let x21 = &(&w[2] - &w[0]);
 
-        &(&(&(&(x21 * y31) - &(&(&polys.d4.this.w[3] - &polys.d4.this.w[1]) * x13)).scale(alpha[0])
-        +
-        &(&(&(&(&polys.d4.this.w[0] + &polys.d4.this.w[2]) + &polys.d4.this.w[4]) * &x13.pow(2)) - &y31.pow(2)).scale(alpha[1]))
-        +
-        &(&(x21 * &polys.d4.this.w[6]) - &self.l04).scale(alpha[2]))
-        *
-        &self.addl
+        let p =
+        [
+            &(x21 * y31) - &(&(&w[3] - &w[1]) * x13),
+            &(&(&(&w[0] + &w[2]) + &w[4]) * &x13.pow(2)) - &y31.pow(2),
+            (&(x21 * &w[6]) - &self.l04),
+        ];
+
+        &p.iter().skip(1).zip(alpha.iter().skip(1)).map(|(p, a)| p.scale(*a)).fold(p[0].scale(alpha[0]), |x, y| &x + &y) * &self.addl
     }
 
     pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
     {
-        let y31 = evals[0].w[5] + &evals[0].w[1];
-        let x13 = evals[0].w[0] - &evals[0].w[4];
-        let x21 = evals[0].w[2] - &evals[0].w[0];
+        let w = evals[0].w;
+        let y31 = w[5] + &w[1];
+        let x13 = w[0] - &w[4];
+        let x21 = w[2] - &w[0];
 
-        ((x21 * y31) - &((evals[0].w[3] - &evals[0].w[1]) * x13)) * &alpha[0] +
-        &(((evals[0].w[0] + &evals[0].w[2] + &evals[0].w[4]) * &x13.square() - &y31.square()) * &alpha[1]) +
-        &((x21 * &evals[0].w[6] - &F::one()) * &alpha[2])
+        let s =
+        [
+            (x21 * y31) - &((w[3] - &w[1]) * x13),
+            (w[0] + &w[2] + &w[4]) * &x13.square() - &y31.square(),
+            x21 * &w[6] - &F::one(),
+        ];
+    
+        s.iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y)
     }
 
     // EC Affine addition constraint linearization poly contribution computation

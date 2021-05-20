@@ -254,7 +254,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         // EC addition
         let add = index.pcs.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
         // EC doubling
-        let double = index.pcs.cs.double_quot(&lagrange, &alpha[range::DBL]);
+        let (doub4, doub8) = index.pcs.cs.double_quot(&lagrange, &alpha[range::DBL]);
         // endoscaling
         let emul8 = index.pcs.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
         // scalar multiplication
@@ -265,8 +265,8 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let (lkpt, bnd2) = index.pcs.tbllkp_quot(&lkppolys, &oracles, &alpha[range::TABLE])?;
 
         // collect contribution evaluations
-        let t4 = &(&(&(&add + &pos4) + &gen) + &lkp) + &mul4;
-        let t8 = &(&(&(&(&perm + &pos8) + &emul8) + &mul8) + &double) + &lkpt;
+        let t4 = &(&(&(&(&add + &pos4) + &gen) + &lkp) + &mul4) + &doub4;
+        let t8 = &(&(&(&(&perm + &pos8) + &emul8) + &mul8) + &doub8) + &lkpt;
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp)).
