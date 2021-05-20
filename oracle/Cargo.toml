@@ -13,6 +13,9 @@ ff-fft = { path = "../zexe/ff-fft", features = [ "parallel"] }
 ocaml = { version = "0.22.0", optional = true }
 rand = "0.7.3"
 rayon = { version = "1" }
+num-bigint = "0.3"
+custom_derive = ""
+enum_derive = "0.1.7"
 
 # for test vectors
 serde = { version = "1.0", features = ["derive"]}

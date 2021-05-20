@@ -1,7 +1,10 @@
 use oracle::poseidon::Sponge as _;
 use rand::prelude::*;
 use rand::Rng;
+use num_bigint::BigUint;
 use serde::Serialize;
+
+use super::Mode;
 
 //
 // generate different test vectors depending on features
@@ -53,7 +56,7 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
 }
 
 // creates a set of test vectors
-pub fn generate() -> Vec<TestVector> {
+pub fn generate(mode: Mode) -> Vec<TestVector> {
     let mut rng = &mut rand::rngs::StdRng::from_seed([0u8; 32]);
     let mut test_vectors = vec![];
 
@@ -71,7 +74,10 @@ pub fn generate() -> Vec<TestVector> {
                 elem.into_repr()
                     .serialize(&mut input_bytes)
                     .expect("canonical serialiation should work");
-                hex::encode(&input_bytes)
+                match mode {
+                    Mode::Hex => hex::encode(&input_bytes),
+                    Mode::B10 => BigUint::from_bytes_le(&input_bytes).to_string()
+                }
             })
             .collect();
         let mut output_bytes = vec![];
