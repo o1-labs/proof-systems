@@ -131,82 +131,58 @@ impl<F: FftField> CircuitGate<F>
 
         self.typ == GateType::Vbmul
         &&
+        [
+            // verify booleanity of the scalar bits
+            this[11] - this[11].square(),
+            this[14] - this[14].square(),
+            next[12] - next[12].square(),
+            next[14] - next[14].square(),
+            next[1] - next[1].square(),
 
-        // verify booleanity of the scalar bits
-        this[11] == this[11].square()
-        &&
-        this[14] == this[14].square()
-        &&
-        next[12] == next[12].square()
-        &&
-        next[14] == next[14].square()
-        &&
-        next[1] == next[1].square()
-        &&
+            // (xp - xt) * s1 = yp – (2*b1-1)*yt
+            (this[4] - &this[0]) * &this[9] - &this[5] + &(this[1] * &(this[11].double() - &F::one())),
+            // s1^2 - s2^2 = xt - xr
+            this[9].square() - &this[10].square() - &this[0] + &this[7],
+            // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
+            (this[4].double() + &this[0] - &this[9].square()) * &(this[9] + &this[10]) - &this[5].double(),
+            // (xp – xr) * s2 = yr + yp
+            (this[4] - &this[7]) * &this[10] - &this[8] - &this[5],
 
-        // (xp - xt) * s1 = yp – (2*b1-1)*yt
-        (this[4] - &this[0]) * &this[9] == this[5] - &(this[1] * &(this[11].double() - F::one()))
-        &&
-        // s1^2 - s2^2 = xt - xr
-        this[9].square() - &this[10].square() == this[0] - &this[7]
-        &&
-        // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-        (this[4].double() + &this[0] - &this[9].square()) * &(this[9] + &this[10]) == this[5].double()
-        &&
-        // (xp – xr) * s2 = yr + yp
-        (this[4] - &this[7]) * &this[10] == this[8] + &this[5]
-        &&
+            // (xr - xt) * s3 = yr – (2b2-1)*yt
+            (this[7] - &this[0]) * &this[12] - &this[8] + &(this[1] * &(this[14].double() - &F::one())),
+            // S3^2 – s4^2 = xt - xs
+            this[12].square() - &this[13].square() - &this[0] + &this[2],
+            // (2*xr + xt – s3^2) * (s3 + s4) = 2*yr
+            (this[7].double() + &this[0] - &this[12].square()) * &(this[12] + &this[13]) - &this[8].double(),
+            // (xr – xs) * s4 = ys + yr
+            (this[7] - &this[2]) * &this[13] - &this[3] - &this[8],
 
-        // (xr - xt) * s3 = yr – (2b2-1)*yt
-        (this[7] - &this[0]) * &this[12] == this[8] - &(this[1] * &(this[14].double() - F::one()))
-        &&
-        // S3^2 – s4^2 = xt - xs
-        this[12].square() - &this[13].square() == this[0] - &this[2]
-        &&
-        // (2*xr + xt – s3^2) * (s3 + s4) = 2*yr
-        (this[7].double() + &this[0] - &this[12].square()) * &(this[12] + &this[13]) == this[8].double()
-        &&
-        // (xr – xs) * s4 = ys + yr
-        (this[7] - &this[2]) * &this[13] == this[3] + &this[8]
-        &&
+            // (xt - xp) * s1 = (2b1-1)*yt - yp
+            (this[0] - &next[4]) * &next[11] - (next[12].double() - &F::one()) * &this[1] + &next[5],
+            // (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+            (next[4].double() - &next[11].square() + &this[0]) * &((next[4] - &next[7]) * &next[11] + &next[8] + &next[5]) -
+                (next[4] - &next[7]) * &next[5].double(),
+            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xt + xr)
+            (next[8] + &next[5]).square() - (next[4] - &next[7]).square() * &(next[11].square() - &this[0] + &next[7]),
 
-        // (xt - xp) * s1 = (2b1-1)*yt - yp
-        (this[0] - &next[4]) * &next[11] == (next[12].double() - F::one()) * &this[1] - &next[5]
-        &&
-        // (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-        (next[4].double() - &next[11].square() + &this[0]) * &((next[4] - &next[7]) * &next[11] + &next[8] + &next[5])
-        ==
-        (next[4] - &next[7]) * &next[5].double()
-        &&
-        // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xt + xr)
-        (next[8] + &next[5]).square() == (next[4] - &next[7]).square() * &(next[11].square() - &this[0] + &next[7])
-        &&
+            // (xt - xr) * s3 = (2b2-1)*yt - yr
+            (this[0] - &next[7]) * &next[13] - (next[14].double() - &F::one()) * &this[1] - &next[8],
+            // (2*xr – s3^2 + xt) * ((xr – xv) * s3 + yv + yr) = (xr – xv) * 2*yr
+            (next[7].double() - &next[13].square() + &this[0]) * &((next[7] - &next[9]) * &next[13] + &next[10] + &next[8]) -
+                (next[7] - &next[9]) * &next[8].double(),
+            // (yv + yr)^2 = (xr – xv)^2 * (s3^2 – xt + xv)
+            (next[10] + &next[8]).square() - (next[7] - &next[9]).square() * &(next[13].square() - &this[0] + &next[9]),
 
-        // (xt - xr) * s3 = (2b2-1)*yt - yr
-        (this[0] - &next[7]) * &next[13] == (next[14].double() - F::one()) * &this[1] - &next[8]
-        &&
-        // (2*xr – s3^2 + xt) * ((xr – xv) * s3 + yv + yr) = (xr – xv) * 2*yr
-        (next[7].double() - &next[13].square() + &this[0]) * &((next[7] - &next[9]) * &next[13] + &next[10] + &next[8])
-        ==
-        (next[7] - &next[9]) * &next[8].double()
-        &&
-        // (yv + yr)^2 = (xr – xv)^2 * (s3^2 – xt + xv)
-        (next[10] + &next[8]).square() == (next[7] - &next[9]).square() * &(next[13].square() - &this[0] + &next[9])
-        &&
+            // (xt - xv) * s5 = (2b3-1)*yt - yv
+            (this[0] - &next[9]) * &next[0] - (next[1].double() - &F::one()) * &this[1] + &next[10],
+            // (2*xv – s5^2 + xt) * ((xv – xs) * s5 + ys + yv) = (xv – xs) * 2*yv
+            (next[9].double() - &next[0].square() + &this[0]) * &((next[9] - &next[2]) * &next[0] + &next[3] + &next[10]) -
+                (next[9] - &next[2]) * &next[10].double(),
+            // (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xt + xs)
+            (next[3] + &next[10]).square() - (next[9] - &next[2]).square() * &(next[0].square() - &this[0] + &next[2]),
 
-        // (xt - xv) * s5 = (2b3-1)*yt - yv
-        (this[0] - &next[9]) * &next[0] == (next[1].double() - F::one()) * &this[1] - &next[10]
-        &&
-        // (2*xv – s5^2 + xt) * ((xv – xs) * s5 + ys + yv) = (xv – xs) * 2*yv
-        (next[9].double() - &next[0].square() + &this[0]) * &((next[9] - &next[2]) * &next[0] + &next[3] + &next[10])
-        ==
-        (next[9] - &next[2]) * &next[10].double()
-        &&
-        // (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xt + xs)
-        (next[3] + &next[10]).square() == (next[9] - &next[2]).square() * &(next[0].square() - &this[0] + &next[2])
-        &&
-
-        next[7] == ((((this[7].double() + &this[11]).double() + &this[14]).double() + &next[12]).double() + &next[14]).double() + &next[2]
+            ((((this[7].double() + &this[11]).double() + &this[14]).double() + &next[12]).double() + &next[14]).double() + &next[2] - &next[7],
+        ].iter().all(|p| *p == F::zero())
     }
 
     pub fn vbmul(&self) -> F {if self.typ == GateType::Vbmul {F::one()} else {F::zero()}}

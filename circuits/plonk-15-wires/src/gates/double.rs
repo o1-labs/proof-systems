@@ -68,26 +68,15 @@ impl<F: FftField> CircuitGate<F>
 
         self.typ == GateType::Double
         &&
-        F::from(4 as u64) * &this[1].square() * &(this[2] + &this[0].double())
-        ==
-        F::from(9 as u64) * &this[0].square().square()
-        &&
-        this[1].double() * &(this[3] + &this[1])
-        ==
-        F::from(3 as u64) * &this[0].square() * &(this[0] - &this[2])
-        &&
-        this[1] * &this[6] == F::one()
-        &&
+        [
+            F::from(4 as u64) * &this[1].square() * &(this[2] + &this[0].double()) - F::from(9 as u64) * &this[0].square().square(),
+            this[1].double() * &(this[3] + &this[1]) - F::from(3 as u64) * &this[0].square() * &(this[0] - &this[2]),
+            this[1] * &this[6] - F::one(),
 
-        (this[2] - &this[0]) * &(this[5] + &this[1])
-        ==
-        (this[1] - &this[3]) * &(this[0] - &this[4])
-        &&
-        (this[0] + &this[2] + &this[4]) * &(this[0] - &this[4]).square()
-        ==
-        (this[5] + &this[1]).square()
-        &&
-        (this[2] - &this[0]) * &this[7] == F::one()
+            (this[2] - &this[0]) * &(this[5] + &this[1]) - (this[1] - &this[3]) * &(this[0] - &this[4]),
+            (this[0] + &this[2] + &this[4]) * &(this[0] - &this[4]).square() - (this[5] + &this[1]).square(),
+            (this[2] - &this[0]) * &this[7] - F::one(),
+        ].iter().all(|p| *p == F::zero())
     }
 
     pub fn double(&self) -> F {if self.typ == GateType::Double {F::one()} else {F::zero()}}

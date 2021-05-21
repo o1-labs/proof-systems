@@ -3,54 +3,30 @@
 This source file implements short Weierstrass curve endomorphism optimised variable base
 scalar multiplication custom Plonk polynomials.
 
-EVBSM gate constrains
+EVBSM gate constraints
+	b1*(b1-1) = 0
+	b2*(b2-1) = 0
+	b3*(b3-1) = 0
+	b4*(b4-1) = 0
+	((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
+	(2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+	(yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
+	((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
+	(2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+	(ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
+	n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
 
-    b1*(b1-1) = 0
-    b2*(b2-1) = 0
-    (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
-    s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
-    (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-    (xp – xs) * s2 = ys + yp
+The constraints above are derived from the following EC Affine arithmetic equations:
 
-Permutation constrains
+    (xq1 - xp) * s1 = yq1 - yp
+    (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+    (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
 
-    -> b1(i)
-    -> b2(i+1)
-    -> xt(i) -> xt(i+2) -> … -> xt(255)
-    -> yt(i) -> yt(i+2) -> … -> yt(255)
-    -> xp(i)
-    -> xp(i+2) -> xs(i) ->
-    -> yp(i)
-    -> yp(i+2) -> ys(i) ->
-    xs(255) ->
-    ys(255) ->
+    (xq2 - xr) * s3 = yq2 - yr
+    (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+    (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 
-The constrains above are derived from the following EC Affine arithmetic equations:
-
-    (xq - xp) * s1 = yq - yp
-    s1 * s1 = xp + xq + x1
-    (xp – x1) * s1 = y1 + yp
-
-    (x1 – xp) * s2 = y1 – yp
-    s2 * s2 = xp + x1 + xs
-    (xp – xs) * s2 = ys + yp
-
-    =>
-
-    (xq - xp) * s1 = yq - yp
-    s1^2 = xp + xq + x1
-    (xp – x1) * (s1 + s2) = 2*yp
-    s2^2 = xp + x1 + xs
-    (xp – xs) * s2 = ys + yp
-
-    =>
-
-    (xq - xp) * s1 = yq - yp
-    s1^2 - s2^2 = xq - xs
-    (2*xp + xq – s1^2) * (s1 + s2) = 2*yp
-    (xp – xs) * s2 = ys + yp
-
-    *****************************************************************************************************************/
+*****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};

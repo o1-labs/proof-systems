@@ -61,14 +61,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let x13 = w[0] - &w[4];
         let x21 = w[2] - &w[0];
 
-        let s =
         [
             (x21 * y31) - &((w[3] - &w[1]) * x13),
             (w[0] + &w[2] + &w[4]) * &x13.square() - &y31.square(),
             x21 * &w[6] - &F::one(),
-        ];
-    
-        s.iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y)
+        ].iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y)
     }
 
     // EC Affine addition constraint linearization poly contribution computation

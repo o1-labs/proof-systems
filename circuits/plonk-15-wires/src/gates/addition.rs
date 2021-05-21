@@ -45,16 +45,11 @@ impl<F: FftField> CircuitGate<F>
 
         self.typ == GateType::Add
         &&
-        (this[2] - &this[0]) * &(this[5] + &this[1])
-        ==
-        (this[1] - &this[3]) * &(this[0] - &this[4])
-        &&
-        (this[0] + &this[2] + &this[4]) *
-            &(this[0] - &this[4]).square()
-        ==
-        (this[5] + &this[1]).square()
-        &&
-        (this[2] - &this[0]) * &this[6] == F::one()
+        [
+            (this[2] - &this[0]) * &(this[5] + &this[1]) - (this[1] - &this[3]) * &(this[0] - &this[4]),
+            (this[0] + &this[2] + &this[4]) * &(this[0] - &this[4]).square() - (this[5] + &this[1]).square(),
+            (this[2] - &this[0]) * &this[6] - F::one(),
+        ].iter().all(|p| *p == F::zero())
     }
 
     pub fn add(&self) -> F {if self.typ == GateType::Add {F::one()} else {F::zero()}}
