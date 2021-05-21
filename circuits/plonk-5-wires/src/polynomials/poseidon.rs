@@ -7,13 +7,13 @@ This source file implements Posedon constraint polynomials.
 use array_init::array_init;
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::{utils::{PolyUtils, EvalUtils}, poseidon_5_wires::{PlonkSpongeConstants,sbox}, poseidon::{ArithmeticSpongeParams}};
+use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{PlonkSpongeConstants5W,sbox}, poseidon::{ArithmeticSpongeParams}};
 use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;
 use crate::wires::COLUMNS;
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
+impl<F: FftField + SquareRootField> ConstraintSystem<F>
 {
     // poseidon quotient poly contribution computation f^5 + c(x) - f(wx)
     pub fn psdn_quot
@@ -26,7 +26,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         if self.psm.is_zero() {return (self.zero4.clone(), self.zero8.clone(), DensePolynomial::<F>::zero())}
 
         let mut lro: [Evaluations<F, D<F>>; COLUMNS] = array_init(|i| polys.d8.this.w[i].clone());
-        lro.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p)));
+        lro.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox::<F, PlonkSpongeConstants5W>(*p)));
 
         let scalers = (0..COLUMNS).
             map(|i| (0..COLUMNS).fold(F::zero(), |x, j| alpha[j] * params.mds[j][i] + x)).
@@ -48,7 +48,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         alpha: &[F]
     ) -> Vec<F>
     {
-        let sbox = evals[0].w.iter().map(|&w| sbox::<F, PlonkSpongeConstants>(w)).collect::<Vec<_>>();
+        let sbox = evals[0].w.iter().map(|&w| sbox::<F, PlonkSpongeConstants5W>(w)).collect::<Vec<_>>();
         let lro = params.mds.iter().map
         (
             |m| sbox.iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)

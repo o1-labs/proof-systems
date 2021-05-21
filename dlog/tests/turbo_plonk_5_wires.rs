@@ -31,7 +31,7 @@ This source file tests constraints for the following computations:
 
 **********************************************************************************************************/
 
-use oracle::{poseidon_5_wires::*, poseidon::{SpongeConstants, Sponge, ArithmeticSpongeParams}, sponge_5_wires::{DefaultFqSponge, DefaultFrSponge}};
+use oracle::{poseidon::{ArithmeticSponge, SpongeConstants, Sponge, ArithmeticSpongeParams, PlonkSpongeConstants5W}, sponge::{DefaultFqSponge, DefaultFrSponge}};
 use plonk_5_wires_circuits::{wires::Wire, gate::CircuitGate, constraints::ConstraintSystem};
 use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{PrimeField, SquareRootField, Field, BigInteger, tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
@@ -172,9 +172,9 @@ fn turbo_plonk()
     gates.push(double);
 
     // custom constraints for Poseidon hash function permutation
-    
+
     let c = &oracle::tweedle::fp5::params().round_constants;
-    for i in 0..PlonkSpongeConstants::ROUNDS_FULL
+    for i in 0..PlonkSpongeConstants5W::ROUNDS_FULL
     {
         gates.push(CircuitGate::<Fp>::create_poseidon
         (
@@ -189,13 +189,13 @@ fn turbo_plonk()
             c[i].clone()
         ));
     }
-    let mut i = PlonkSpongeConstants::ROUNDS_FULL+19;
+    let mut i = PlonkSpongeConstants5W::ROUNDS_FULL+19;
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
 
     // custom constraints for packing
-    
+
     for _ in 0..64
     {
         gates.push(CircuitGate::<Fp>::create_pack
@@ -205,9 +205,9 @@ fn turbo_plonk()
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
-    
+
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication without packing
-    
+
     gates.push(CircuitGate::<Fp>::create_vbmul
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i+512}, Wire{col:3, row:i}, Wire{col:3, row:i+512}]));
     i += 1;
@@ -230,7 +230,7 @@ fn turbo_plonk()
     i += 1;
 
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication with packing
-    
+
     gates.push(CircuitGate::<Fp>::create_vbmul2
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i-512}, Wire{col:4, row:i-512}, Wire{col:4, row:i+3}]));
     i += 1;
@@ -251,9 +251,9 @@ fn turbo_plonk()
     gates.push(CircuitGate::<Fp>::zero
         (i, [Wire{col:0, row:i-512}, Wire{col:1, row:i-512}, Wire{col:0, row:i-2}, Wire{col:1, row:i-2}, Wire{col:4, row:i-3}]));
     i += 1;
-    
+
     // custom constraint gates for short Weierstrass curve variable base endoscalar multiplication
-    
+
     gates.push(CircuitGate::<Fp>::create_endomul
         (i, [Wire{col:0, row:i+2}, Wire{col:1, row:i+2}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     i += 1;
@@ -308,7 +308,7 @@ fn positive(index: &Index<Affine>)
     println!("{}", "Prover 10 zk-proofs computation".green());
     let verifier_index = index.verifier_index();
     let mut start = Instant::now();
-    
+
     for test in 0..10
     {
         let (x1, y1) = sample_point::<Fp>();
@@ -355,7 +355,7 @@ fn positive(index: &Index<Affine>)
             | x1 | x3 | a2 | .. | .. |
             --------------------------
             | a2 | s1 | y1 | y3 | .. |
-        
+
         witness for custom gates for Weierstrass curve group addition
 
             | x1 | y1 | x2 | y2 | r1 |
@@ -390,13 +390,13 @@ fn positive(index: &Index<Affine>)
 
         //  witness for Poseidon permutation custom constraints
 
-        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants>::new();
+        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants5W>::new();
         sponge.state = vec![w(), w(), w(), w(), w()];
         witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
 
         // ROUNDS_FULL full rounds
 
-        for j in 0..PlonkSpongeConstants::ROUNDS_FULL
+        for j in 0..PlonkSpongeConstants5W::ROUNDS_FULL
         {
             sponge.full_round(j, &params);
             witness.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
@@ -432,7 +432,7 @@ fn positive(index: &Index<Affine>)
                 &pack[4][k].double().double().double().double()
             );
         }
-    
+
         assert_eq!(scalar, pack[4][64]);
         witness.iter_mut().zip(pack.iter_mut()).for_each(|(w, p)| w.append(p));
 
@@ -541,7 +541,7 @@ fn positive(index: &Index<Affine>)
         };
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
+        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants5W>, DefaultFrSponge<Fp, PlonkSpongeConstants5W>>(
             &group_map, &witness, &index, vec![prev]).unwrap());
 
         print!("{:?}\r", test);
@@ -550,7 +550,7 @@ fn positive(index: &Index<Affine>)
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants5W>, DefaultFrSponge<Fp, PlonkSpongeConstants5W>>(
         &group_map, &vec![ (&verifier_index, &lgr_comms, &batch[0]) ])
     {
         Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
@@ -561,7 +561,7 @@ fn positive(index: &Index<Affine>)
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
     let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>, DefaultFrSponge<Fp, PlonkSpongeConstants>>(&group_map, &batch)
+    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants5W>, DefaultFrSponge<Fp, PlonkSpongeConstants5W>>(&group_map, &batch)
     {
         Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
         Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}

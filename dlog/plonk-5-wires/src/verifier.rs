@@ -7,7 +7,7 @@ This source file implements zk-proof batch verifier functionality.
 use crate::plonk_sponge::FrSponge;
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
-use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
+use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_5_wires_circuits::{wires::COLUMNS, scalars::{RandomOracles}, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};
@@ -118,7 +118,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
-        // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain 
+        // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
         let p_eval = if self.public.len() > 0
         {[
             vec![(self.public.iter().zip(lagrange.iter()).
@@ -266,7 +266,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }
         ).collect::<Result<Vec<_>, _>>()?;
-        
+
         let mut batch = proofs.iter().zip(params.iter()).map
         (
             |((index, _lgr_comm, proof), (p_eval, p_comm, f_comm, fq_sponge, oracles, polys))|

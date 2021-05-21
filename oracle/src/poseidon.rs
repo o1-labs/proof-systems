@@ -15,6 +15,7 @@ pub trait SpongeConstants {
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize;
     const FULL_MDS: bool;
+    const INITIAL_ARK: bool;
 }
 
 #[derive(Clone)]
@@ -30,6 +31,7 @@ impl SpongeConstants for MarlinSpongeConstants {
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize = 17;
     const FULL_MDS: bool = false;
+    const INITIAL_ARK: bool = true;
 }
 
 #[derive(Clone)]
@@ -45,6 +47,39 @@ impl SpongeConstants for PlonkSpongeConstants {
     const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: usize = 5;
     const FULL_MDS: bool = true;
+    const INITIAL_ARK: bool = true;
+}
+
+#[derive(Clone)]
+pub struct PlonkSpongeConstants5W {
+}
+
+impl SpongeConstants for PlonkSpongeConstants5W {
+    const ROUNDS_FULL: usize = 53;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 5;
+    const SPONGE_RATE: usize = 4;
+    const SPONGE_BOX: usize = 7;
+    const FULL_MDS: bool = true;
+    const INITIAL_ARK: bool = false;
+}
+
+#[derive(Clone)]
+pub struct PlonkSpongeConstants3 {
+}
+
+impl SpongeConstants for PlonkSpongeConstants3 {
+    const ROUNDS_FULL: usize = 54;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
+    const SPONGE_RATE: usize = 2;
+    const SPONGE_BOX: usize = 7;
+    const FULL_MDS: bool = true;
+    const INITIAL_ARK: bool = false;
 }
 
 pub trait Sponge<Input, Digest> {
@@ -55,11 +90,7 @@ pub trait Sponge<Input, Digest> {
 }
 
 pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
-    let mut res = x;
-    res.square_in_place();
-    res.square_in_place();
-    res *= x;
-    res
+    x.pow([SC::SPONGE_BOX as u64])
 }
 
 #[derive(Clone, Debug)]
@@ -105,7 +136,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
         self.apply_mds_matrix(params);
-        for (i, x) in params.round_constants[r + 1].iter().enumerate() {
+        for (i, x) in params.round_constants[r].iter().enumerate() {
             self.state[i].add_assign(x);
         }
     }
@@ -148,11 +179,18 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
 
     fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
         if SC::HALF_ROUNDS_FULL == 0 {
-            for (i, x) in params.round_constants[0].iter().enumerate() {
-                self.state[i].add_assign(x);
+            if SC::INITIAL_ARK == true {
+                for (i, x) in params.round_constants[0].iter().enumerate() {
+                    self.state[i].add_assign(x);
+                }
+                for r in 0..SC::ROUNDS_FULL {
+                    self.full_round(r + 1, params);
+                }
             }
-            for r in 0..SC::ROUNDS_FULL {
-                self.full_round(r, params);
+            else {
+                for r in 0..SC::ROUNDS_FULL {
+                    self.full_round(r, params);
+                }
             }
         } else {
             self.half_rounds(params);

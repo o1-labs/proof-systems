@@ -6,8 +6,7 @@ This source file implements Plonk Protocol Index primitive.
 
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::{SRSValue, SRSSpec}, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
-use oracle::poseidon_5_wires::PlonkSpongeConstants;
-use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants};
+use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants5W};
 use plonk_5_wires_circuits::{constraints::{zk_w, ConstraintSystem}, wires::COLUMNS};
 use array_init::array_init;
 use algebra::AffineCurve;
@@ -127,7 +126,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
         cs.endo = endo_q;
         Index
         {
-            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            max_quot_size: PlonkSpongeConstants5W::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
             fq_sponge_params,
             max_poly_size,
             srs,
