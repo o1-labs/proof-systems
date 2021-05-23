@@ -40,55 +40,78 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     // endomorphism optimised scalar multiplication constraint quotient poly contribution computation
     pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
     {
-        if self.emulm.is_zero() {return self.zero4.clone()}
-        let xq = &(&(&self.l04 + &polys.d4.next.w[4].scale(self.endo - F::one())) * &polys.d4.this.w[0]);
+        if self.emulm.is_zero() {return self.zero8.clone()}
 
-        // verify booleanity of the scalar bits
-        &(&(&(&(&(&(&polys.d4.this.w[4] - &polys.d4.this.w[4].pow(2)).scale(alpha[0])
-        +
-        &(&polys.d4.next.w[4] - &polys.d4.next.w[4].pow(2)).scale(alpha[1]))
-        +
-        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
-        &(&(&(&(&polys.d4.next.w[2] - xq) * &polys.d4.this.w[2]) - &polys.d4.next.w[3]) +
-            &(&polys.d4.this.w[1] * &(&polys.d4.this.w[4].scale(F::from(2 as u64)) - &self.l04))).scale(alpha[2]))
-        +
-        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
-        &(&(&(&polys.d4.this.w[2].pow(2) - &polys.d4.this.w[3].pow(2)) - xq) + &polys.d4.next.w[0]).scale(alpha[3]))
-        +
-        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        &(&(&(&(&polys.d4.next.w[2].scale(F::from(2 as u64)) + xq) - &polys.d4.this.w[2].pow(2)) *
-            &(&polys.d4.this.w[2] + &polys.d4.this.w[3])) - &polys.d4.next.w[3].scale(F::from(2 as u64))).scale(alpha[4]))
-        +
-        // (xp – xs) * s2 = ys + yp
-        &(&(&(&(&polys.d4.next.w[2] - &polys.d4.next.w[0]) * &polys.d4.this.w[3]) -
-            &polys.d4.next.w[1]) - &polys.d4.next.w[3]).scale(alpha[5]))
-        *
-        &self.emull
+        let this = &polys.d8.this.w;
+        let next = &polys.d8.next.w;
+
+        let xq1 = &(&(&self.l08 + &next[0].scale(self.endo - F::one())) * &this[12]);
+        let xq2 = &(&(&self.l08 + &next[0].scale(self.endo - F::one())) * &this[14]);
+
+        let p =
+        [
+            // verify booleanity of the scalar bits
+            &this[11] - &this[11].pow(2),
+            &this[12] - &this[12].pow(2),
+            &this[13] - &this[13].pow(2),
+            &this[14] - &this[14].pow(2),
+
+            // ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
+            &(&(xq1 - &this[4]) * &this[9]) - &(&(&(&this[11].scale(F::from(2 as u64)) - &self.l08) * &this[2]) + &this[5]),
+            // (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+            &(&(&(&(&this[4].scale(F::from(2 as u64)) - &this[9].pow(2)) + xq1) * &(&(&this[4] - &this[7]) * &this[9])) + &(&this[8] + &this[5])) -
+                &(&(&this[4] - &this[7]) * &this[5].scale(F::from(2 as u64))),
+            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
+            &(&this[8] + &this[5]).pow(2) - &(&(&this[4] - &this[7]).pow(2) * &(&this[9].pow(2) - &(xq1 + &this[7]))),
+
+            // ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
+            &(&(xq2 - &this[7]) * &this[10]) - &(&(&(&this[13].scale(F::from(2 as u64)) - &self.l08) * &this[2]) + &this[8]),
+            // (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+            &(&(&(&(&this[7].scale(F::from(2 as u64)) - &this[10].pow(2)) + xq2) * &(&(&this[7] - &this[2]) * &this[10])) + &(&this[3] + &this[8])) -
+                &(&(&this[7] - &this[2]) * &this[8].scale(F::from(2 as u64))),
+            // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
+            &(&this[3] + &this[8]).pow(2) - &(&(&this[7] - &this[2]).pow(2) * &(&this[10].pow(2) - &(xq2 + &this[2]))),
+            
+            // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+            &(&(&(&(&next[6].scale(F::from(2 as u64)) + &this[11]).scale(F::from(2 as u64)) + &this[12]).scale(F::from(2 as u64)) +
+                &this[13]).scale(F::from(2 as u64)) + &this[14]) - &this[6],
+        ];
+        &p.iter().skip(1).zip(alpha.iter().skip(1)).map(|(p, a)| p.scale(*a)).fold(p[0].scale(alpha[0]), |x, y| &x + &y) * &self.emull
     }
 
     pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F
     {
-        let xq = (F::one() + &(evals[1].w[4] * &(endo - F::one()))) * &evals[0].w[0];
+        let this = &evals[0].w;
+        let xq1 = (F::one() + &(this[12] * &(endo - &F::one()))) * &this[0];
+        let xq2 = (F::one() + &(this[14] * &(endo - &F::one()))) * &this[0];
 
-        // verify booleanity of the scalar bits
-        (evals[0].w[4] - &evals[0].w[4].square()) * &alpha[0]
-        +
-        &((evals[1].w[4] - &evals[1].w[4].square()) * &alpha[1])
-        +
-        // (xp - (1 + (endo - 1) * b2) * xt) * s1 = yp – (2*b1-1)*yt
-        &(((evals[1].w[2] - xq) * &evals[0].w[2] - &evals[1].w[3] +
-            &(evals[0].w[1] * &(evals[0].w[4].double() - &F::one()))) * &alpha[2])
-        +
-        // s1^2 - s2^2 = (1 + (endo - 1) * b2) * xt - xs
-        &((((evals[0].w[2].square() - &evals[0].w[3].square()) - xq) + &evals[1].w[0]) * &alpha[3])
-        +
-        // (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
-        &((((evals[1].w[2].double() + xq) - &evals[0].w[2].square()) *
-            &(evals[0].w[2] + &evals[0].w[3]) - &evals[1].w[3].double()) * &alpha[4])
-        +
-        // (xp – xs) * s2 = ys + yp
-        &((((evals[1].w[2] - &evals[1].w[0]) * &evals[0].w[3]) -
-            &evals[1].w[1] - &evals[1].w[3]) * &alpha[5])
+        [
+            // verify booleanity of the scalar bits
+            this[11] - &this[11].square(),
+            this[12] - &this[12].square(),
+            this[13] - &this[13].square(),
+            this[14] - &this[14].square(),
+
+            // ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
+            ((xq1 - &this[4]) * &this[9]) - &(((this[11].double() - &F::one()) * &this[2]) + &this[5]),
+            // (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+            ((((this[4].double() - &this[9].square()) + xq1) * &((this[4] - &this[7]) * &this[9])) + &(this[8] + &this[5])) -
+                ((this[4] - &this[7]) * &this[5].double()),
+            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
+            (this[8] + &this[5]).square() - ((this[4] - &this[7]).square() * &(this[9].square() - &(xq1 + &this[7]))),
+
+            // ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
+            ((xq2 - &this[7]) * &this[10]) - &(((this[13].double() - &F::one()) * &this[2]) + &this[8]),
+            // (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+            ((((this[7].double() - &this[10].square()) + xq2) * &((this[7] - &this[2]) * &this[10])) + &(this[3] + &this[8])) -
+                ((this[7] - &this[2]) * &this[8].double()),
+            // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
+            (this[3] + &this[8]).square() - &((this[7] - &this[2]).square() * &(this[10].square() - &(xq2 + &this[2]))),
+            
+            // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+            ((((evals[1].w[6].double() + &this[11]).double() + &this[12]).double() +
+                &this[13]).double() + &this[14]) - &this[6],
+        ].iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y)
     }
 
     // endomorphism optimised scalar multiplication constraint linearization poly contribution computation

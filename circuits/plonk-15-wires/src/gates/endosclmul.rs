@@ -58,9 +58,9 @@ impl<F: FftField> CircuitGate<F>
         [
             // verify booleanity of the scalar bits
             this[11] - this[11].square(),
-            next[12] - next[12].square(),
+            this[12] - this[12].square(),
             this[13] - this[13].square(),
-            next[14] - next[14].square(),
+            this[14] - this[14].square(),
 
             (xq1 - this[4]) * this[9] - (this[11].double()-F::one())*this[2] + this[5],
             (this[4].double() - this[9].square() + xq1) * ((this[4] - this[7]) * this[9] + this[8] + this[5]) - (this[4] - this[7]) * this[5].double(),
@@ -70,7 +70,7 @@ impl<F: FftField> CircuitGate<F>
             (this[7].double() - this[10].square() + xq2) * ((this[7] - this[2]) * this[10] + this[3] + this[8]) - (this[7] - this[2]) * this[8].double(),
             (this[3] + this[8]).square() - (this[7] - this[2]).square() * (this[10].square() - xq2 + this[2]),
             
-            (((next[6].double() + this[11]).double() + this[12]).double() + this[13]).double() + this[14] - this[6],
+            (((witness[6][self.row+1].double() + this[11]).double() + this[12]).double() + this[13]).double() + this[14] - this[6],
         ].iter().all(|p| *p == F::zero())
     }
 
