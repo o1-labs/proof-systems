@@ -23,7 +23,13 @@ use oracle::poseidon::PlonkSpongeConstants3;
 //
 
 #[derive(Debug, Deserialize)]
-pub struct TestVector {
+struct TestVectors {
+    name: String,
+    test_vectors: Vec<TestVector>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TestVector {
     input: Vec<String>,
     output: String,
 }
@@ -44,11 +50,11 @@ where
     path.push("tests/test_vectors");
     path.push(&test_vector_file);
     let file = File::open(&path).expect("couldn't open test vector file");
-    let test_vectors: Vec<TestVector> =
+    let test_vectors: TestVectors =
         serde_json::from_reader(file).expect("couldn't deserialize test vector file");
 
     // execute test vectors
-    for test_vector in test_vectors {
+    for test_vector in test_vectors.test_vectors {
         // deserialize input & ouptut
         let input: Vec<Fp> = test_vector
             .input

@@ -28,6 +28,12 @@ use oracle::{pasta::fp5 as Parameters, poseidon::PlonkSpongeConstants5W as Plonk
 //
 
 #[derive(Debug, Serialize)]
+pub struct TestVectors {
+    name: String,
+    test_vectors: Vec<TestVector>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct TestVector {
     input: Vec<String>,
     output: String,
@@ -56,7 +62,7 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
 }
 
 // creates a set of test vectors
-pub fn generate(mode: Mode) -> Vec<TestVector> {
+pub fn generate(mode: Mode) -> TestVectors {
     let mut rng = &mut rand::rngs::StdRng::from_seed([0u8; 32]);
     let mut test_vectors = vec![];
 
@@ -93,6 +99,19 @@ pub fn generate(mode: Mode) -> Vec<TestVector> {
         })
     }
 
+    let name = if cfg!(feature = "three_wire") {
+        "three_wire".to_string()
+    } else if cfg!(feature = "fp_3") {
+        "fp_3".to_string()
+    } else if cfg!(feature = "five_wire") {
+        "five_wire".to_string()
+    } else {
+        panic!("test vector feature not recognized");
+    };
+
     //
-    test_vectors
+    TestVectors {
+        name,
+        test_vectors,
+    }
 }
