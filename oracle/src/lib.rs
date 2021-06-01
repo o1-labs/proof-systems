@@ -1,8 +1,6 @@
+pub mod pasta;
 pub mod poseidon;
 pub mod rndoracle;
-pub mod pasta;
-pub mod tweedle;
-pub mod bn_382;
 pub mod sponge;
 pub mod utils;
 
