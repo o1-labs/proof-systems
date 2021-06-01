@@ -1,0 +1,12 @@
+load("@io_bazel_rules_rust//rust:rust.bzl", "rust_library")
+
+rust_library(
+    name = "groupmap",
+    edition = "2018",
+    visibility = ["//visibility:public"],
+    srcs = glob(["src/**/*.rs"]),
+    deps = [
+        "//algebra",
+        "//bzl/cargo:rand",
+    ],
+)
