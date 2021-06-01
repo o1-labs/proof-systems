@@ -20,7 +20,7 @@ use oracle::rndoracle::ProofError;
 use algebra::{AffineCurve, ProjectiveCurve, Field, PrimeField, PairingEngine, UniformRand, VariableBaseMSM, One, Zero};
 use std::collections::HashMap;
 use oracle::utils::PolyUtils;
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 pub use super::urs::URS;
 use rand_core::RngCore;
 

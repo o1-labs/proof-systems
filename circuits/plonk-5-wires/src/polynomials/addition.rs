@@ -31,7 +31,7 @@ This source file implements non-special point Weierstrass curve addition constra
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use crate::polynomial::WitnessOverDomains;
 use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;

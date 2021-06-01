@@ -35,7 +35,7 @@ The constraints above are derived from the following EC Affine arithmetic equati
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use crate::polynomial::WitnessOverDomains;
 use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;

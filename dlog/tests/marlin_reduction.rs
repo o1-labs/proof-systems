@@ -29,7 +29,7 @@ use marlin_protocol_dlog::{prover::{ProverProof}};
 use oracle::{sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}};
 use commitment_dlog::{commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use rand_core::OsRng;
-use ff_fft::{DensePolynomial};
+use ark_poly::{DensePolynomial};
 use std::time::Instant;
 use colored::Colorize;
 pub use core::time::Duration;

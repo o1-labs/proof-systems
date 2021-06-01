@@ -8,7 +8,7 @@ use sprs::CsMat;
 use commitment_dlog::{srs::SRS, commitment::{CommitmentField, PolyComm, CommitmentCurve}};
 use oracle::rndoracle::ProofError;
 use algebra::{Field, AffineCurve, Zero};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D, GeneralEvaluationDomain};
+use ark_poly::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D, GeneralEvaluationDomain};
 pub use super::index::Index;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;

@@ -26,7 +26,7 @@ use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkS
 use commitment_dlog::{srs::{SRS, SRSSpec}, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
 use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index}};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use std::{io, io::Write};
 use oracle::poseidon::*;
 use groupmap::GroupMap;

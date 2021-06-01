@@ -5,7 +5,7 @@ This source file implements generic constraint polynomials.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;
 use crate::scalars::ProofEvaluations;

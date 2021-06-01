@@ -5,7 +5,7 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 use algebra::{Field, AffineCurve, Zero, One, UniformRand};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
 use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_5_wires_circuits::{scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};

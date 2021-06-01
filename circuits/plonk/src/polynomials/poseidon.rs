@@ -5,7 +5,7 @@ This source file implements Posedon constraint polynomials.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{PlonkSpongeConstants,sbox, ArithmeticSpongeParams}};
 use crate::polynomial::WitnessOverDomains;
 use crate::constraints::ConstraintSystem;

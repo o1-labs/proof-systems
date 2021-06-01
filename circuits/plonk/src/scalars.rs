@@ -6,7 +6,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 use algebra::{FftField, Field};
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 
 #[derive(Clone)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]

@@ -7,7 +7,7 @@ This source file tests batch verificaion of batched polynomial commitment openin
 use commitment_pairing::urs::URS;
 use algebra::{PairingEngine, bn_382::Bn_382, UniformRand};
 use std::time::{Instant, Duration};
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 use rand_core::OsRng;
 use colored::Colorize;
 use rand::Rng;

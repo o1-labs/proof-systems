@@ -9,7 +9,7 @@ pub use super::index::{VerifierIndex as Index};
 use oracle::rndoracle::{ProofError};
 pub use super::prover::{ProverProof, RandomOracles};
 use algebra::{Field, PairingEngine, Zero};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use oracle::sponge::{FqSponge, ScalarChallenge};
 use crate::marlin_sponge::{FrSponge};
 

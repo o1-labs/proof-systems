@@ -9,7 +9,7 @@ use algebra::{Field, AffineCurve, Zero, One};
 pub use super::index::{VerifierIndex as Index};
 pub use super::prover::{ProverProof, RandomOracles};
 use oracle::{FqSponge, utils::PolyUtils, sponge::ScalarChallenge};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients};
 use crate::marlin_sponge::{FrSponge};
 

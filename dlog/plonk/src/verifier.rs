@@ -9,7 +9,7 @@ pub use super::index::VerifierIndex as Index;
 use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::RandomOracles, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
-use ff_fft::{EvaluationDomain};
+use ark_poly::{EvaluationDomain};
 use algebra::{Field, AffineCurve, Zero, One};
 use crate::plonk_sponge::FrSponge;
 use rand::thread_rng;

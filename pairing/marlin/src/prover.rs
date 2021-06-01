@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 use oracle::rndoracle::{ProofError};
 use algebra::{Field, PairingEngine, Zero, One};
-use ff_fft::{DensePolynomial, EvaluationDomain};
+use ark_poly::{DensePolynomial, EvaluationDomain};
 use oracle::sponge::{FqSponge, ScalarChallenge};
 use marlin_circuits::domains::EvaluationDomains;
 use crate::marlin_sponge::{FrSponge};

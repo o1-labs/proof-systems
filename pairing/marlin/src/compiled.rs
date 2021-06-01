@@ -8,7 +8,7 @@ use sprs::CsMat;
 use commitment_pairing::urs::URS;
 use oracle::rndoracle::ProofError;
 use algebra::{Field, PairingEngine, Zero};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D, EvaluationDomain, GeneralEvaluationDomain};
+use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D, EvaluationDomain, GeneralEvaluationDomain};
 pub use super::index::Index;
 
 pub struct Compiled<E: PairingEngine>

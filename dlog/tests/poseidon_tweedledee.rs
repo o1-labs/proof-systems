@@ -9,7 +9,7 @@ use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, 
 use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
 use algebra::{ tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
 use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index}};
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
 use std::time::Instant;

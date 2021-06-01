@@ -12,7 +12,7 @@ use plonk_circuits::scalars::RandomOracles;
 use algebra::{Field, PrimeField, PairingEngine, ProjectiveCurve, VariableBaseMSM, Zero, One};
 use crate::plonk_sponge::FrSponge;
 use oracle::sponge::FqSponge;
-use ff_fft::EvaluationDomain;
+use ark_poly::EvaluationDomain;
 
 impl<E: PairingEngine> ProverProof<E>
 {

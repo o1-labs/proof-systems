@@ -31,7 +31,7 @@ use rand_core::{RngCore, OsRng};
 use std::{io, io::Write};
 use std::time::Instant;
 use colored::Colorize;
-use ff_fft::{DensePolynomial};
+use ark_poly::{DensePolynomial};
 use groupmap::GroupMap;
 
 type Fr = <Affine as AffineCurve>::ScalarField;

@@ -5,7 +5,7 @@ This source file implements permutation constraint polynomial.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use crate::scalars::{ProofEvaluations, RandomOracles};
 use crate::polynomial::WitnessOverDomains;
 use oracle::utils::{EvalUtils, PolyUtils};

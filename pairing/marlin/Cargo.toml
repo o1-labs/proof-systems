@@ -8,7 +8,7 @@ path = "src/lib.rs"
 
 [dependencies]
 algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
-ff-fft = { path = "../../zexe/ff-fft" }
+ark-poly = "0.2.0"
 commitment_pairing = { path = "../commitment" }
 marlin_circuits = { path = "../../circuits/marlin" }
 oracle = { path = "../../oracle" }

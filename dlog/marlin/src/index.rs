@@ -11,7 +11,7 @@ use oracle::{rndoracle::ProofError, poseidon::ArithmeticSpongeParams};
 use marlin_circuits::{gate::CircuitGate, domains::EvaluationDomains};
 pub use super::compiled::Compiled;
 use algebra::PrimeField;
-use ff_fft::EvaluationDomain;
+use ark_poly::EvaluationDomain;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;

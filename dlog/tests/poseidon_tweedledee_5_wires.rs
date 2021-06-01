@@ -10,13 +10,13 @@ use commitment_dlog::{srs::{SRS, SRSSpec, endos}, commitment::{CommitmentCurve, 
 use algebra::{tweedle::{dum::{Affine as Other}, dee::{Affine, TweedledeeParameters}, fp::Fp}, UniformRand};
 use plonk_5_wires_protocol_dlog::{prover::{ProverProof}, index::{Index}};
 use plonk_5_wires_circuits::{gate::CircuitGate, constraints::ConstraintSystem};
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 use std::{io, io::Write};
 use groupmap::GroupMap;
 use std::time::Instant;
 use colored::Colorize;
 use rand_core::OsRng;
-use ff_fft::domain::EvaluationDomain;
+use ark_poly::domain::EvaluationDomain;
 
 const PERIOD: usize = PlonkSpongeConstants5W::ROUNDS_FULL + 1;
 const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit

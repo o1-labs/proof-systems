@@ -5,7 +5,7 @@ This source file implements Plonk prover polynomials primitive.
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use ff_fft::{Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 pub use super::wires::COLUMNS;
 
 #[derive(Clone)]

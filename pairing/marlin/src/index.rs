@@ -13,7 +13,7 @@ use algebra::{AffineCurve, PairingEngine, curves::models::short_weierstrass_jaco
 use oracle::rndoracle::ProofError;
 use oracle::poseidon::ArithmeticSpongeParams;
 pub use super::compiled::Compiled;
-use ff_fft::EvaluationDomain;
+use ark_poly::EvaluationDomain;
 
 pub trait CoordinatesCurve: AffineCurve {
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
