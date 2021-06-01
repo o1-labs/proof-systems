@@ -5,7 +5,7 @@ edition = "2018"
 
 [dependencies]
 algebra = { path = "../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
-groupmap = { path = "../zexe/groupmap" }
+groupmap = { path = "../groupmap" }
 ark-poly = { version = "0.2.0", features = ["parallel"] }
 commitment_dlog = { path = "commitment" }
 marlin_circuits = { path = "../circuits/marlin" }

@@ -1,7 +1,5 @@
-use algebra::{
-    curves::models::SWModelParameters,
-    fields::{SquareRootField, Field}, Zero, One,
-};
+use ark_ec::models::SWModelParameters;
+use ark_ff::{fields::{SquareRootField, Field}, Zero, One};
 
 pub trait GroupMap<F> {
     fn setup() -> Self;

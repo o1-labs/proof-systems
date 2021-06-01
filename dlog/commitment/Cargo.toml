@@ -9,7 +9,7 @@ path = "src/lib.rs"
 [dependencies]
 algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
 dlog_solver = { path = "../../dlog_solver" }
-groupmap = { path = "../../zexe/groupmap" }
+groupmap = { path = "../../groupmap" }
 ark-poly = { version = "0.2.0", features = ["parallel"] }
 ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }

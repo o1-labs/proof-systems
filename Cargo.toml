@@ -9,6 +9,7 @@ members = [
     "dlog/plonk",
     "dlog/plonk-5-wires",
     "dlog_solver",
+    "groupmap",
     "oracle",
     "pairing",
     "pairing/commitment",
