@@ -39,7 +39,7 @@ Gate 1
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::GateWires;
 

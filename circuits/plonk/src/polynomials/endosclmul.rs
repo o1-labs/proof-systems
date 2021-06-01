@@ -5,7 +5,7 @@ scalar multiplication custom Plonk polynomials.
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField};
 use ark_poly::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use crate::polynomial::WitnessOverDomains;
 use oracle::utils::{EvalUtils, PolyUtils};

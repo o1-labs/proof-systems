@@ -4,7 +4,7 @@ This source file implements Plonk generic constraint gate primitive.
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{COLUMNS, GateWires};
 use array_init::array_init;

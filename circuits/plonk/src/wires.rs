@@ -4,7 +4,7 @@ This source file implements Plonk circuit gate wires primitive.
 
 *****************************************************************************************************************/
 
-use algebra::bytes::{FromBytes, ToBytes};
+use ark_ff::bytes::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone, Copy, Debug)]

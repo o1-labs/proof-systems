@@ -24,7 +24,7 @@ l=y1, r=y2, o=y3, l_next=x1, r_next=x2, o_next=x3:
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::GateWires;
 

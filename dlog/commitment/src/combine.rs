@@ -1,7 +1,5 @@
-use algebra::{
-    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, BitIterator,
-    Field, PrimeField, ProjectiveCurve, SWModelParameters, One, Zero,
-};
+use ark_ff::{BitIterator, Field, PrimeField, One, Zero};
+use ark_ec::{AffineCurve, ProjectiveCurve, SWModelParameters, curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine};
 use itertools::Itertools;
 use rayon::prelude::*;
 

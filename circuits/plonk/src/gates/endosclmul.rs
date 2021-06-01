@@ -8,7 +8,7 @@ https://github.com/o1-labs/marlin/issues/41
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::{wires::GateWires, constraints::ConstraintSystem};
 

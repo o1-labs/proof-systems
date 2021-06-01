@@ -4,10 +4,10 @@ This source file implements Plonk constraint gate primitive.
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 pub use super::{wires::{*}, constraints::ConstraintSystem};
 use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
-use algebra::bytes::{FromBytes, ToBytes};
+use ark_ff::bytes::{FromBytes, ToBytes};
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 #[repr(C)]

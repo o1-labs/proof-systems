@@ -4,7 +4,7 @@ This source file implements Plonk constraint gate primitive.
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 pub use super::{wires::{*}, constraints::ConstraintSystem};
 use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
 use num_traits::cast::{FromPrimitive, ToPrimitive};

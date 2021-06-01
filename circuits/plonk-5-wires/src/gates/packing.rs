@@ -10,7 +10,7 @@ PACK gate constraints
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::wires::{GateWires, COLUMNS};
 use crate::gate::{CircuitGate, GateType};
 use array_init::array_init;

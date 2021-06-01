@@ -52,7 +52,7 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::{wires::{GateWires, COLUMNS}, constraints::ConstraintSystem};
 use array_init::array_init;

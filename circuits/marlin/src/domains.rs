@@ -1,4 +1,4 @@
-use algebra::FftField;
+use ark_ff::FftField;
 use ark_poly::{
     EvaluationDomain, Evaluations, GeneralEvaluationDomain, Radix2EvaluationDomain as D,
 };

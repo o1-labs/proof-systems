@@ -4,7 +4,7 @@ This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{SpongeConstants, PlonkSpongeConstants, ArithmeticSpongeParams};
 use ark_poly::{EvaluationDomain, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 pub use super::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};

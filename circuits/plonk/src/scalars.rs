@@ -4,7 +4,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, Field};
+use arkf_ff::{FftField, Field};
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 use ark_poly::DensePolynomial;
 

@@ -12,7 +12,7 @@ Constraint vector format:
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
+use ark_ff::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::GateWires;
 

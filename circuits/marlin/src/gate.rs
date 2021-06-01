@@ -12,7 +12,7 @@ Output C
 
 *****************************************************************************************************************/
 
-use algebra::{Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 
 #[derive(Clone)]
 pub struct CircuitGate<F: Field>
