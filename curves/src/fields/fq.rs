@@ -1,7 +1,4 @@
-use algebra_core::{
-    biginteger::BigInteger256 as BigInteger,
-    fields::{FftParameters, Fp256, Fp256Parameters, FpParameters},
-};
+use ark_ff::{Zero, biginteger::BigInteger256 as BigInteger, fields::{FftParameters, Fp256, Fp256Parameters, FpParameters}};
 
 pub struct FqParameters;
 
