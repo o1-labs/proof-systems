@@ -1,10 +1,11 @@
-use crate::{
+use crate::pasta::*;
+use algebra::{
     biginteger::BigInteger256,
     curves::{
         models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
-        ModelParameters, SWModelParameters},
+        ModelParameters, SWModelParameters,
+    },
     field_new, Zero,
-    pasta::*
 };
 
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
@@ -26,7 +27,10 @@ impl SWModelParameters for VestaParameters {
     const COEFF_B: Fq = field_new!(
         Fq,
         BigInteger256([
-            0x96bc8c8cffffffed, 0x74c2a54b49f7778e, 0xfffffffffffffffd, 0x3fffffffffffffff
+            0x96bc8c8cffffffed,
+            0x74c2a54b49f7778e,
+            0xfffffffffffffffd,
+            0x3fffffffffffffff
         ])
     );
 
@@ -37,7 +41,10 @@ impl SWModelParameters for VestaParameters {
     const COFACTOR_INV: Fp = field_new!(
         Fp,
         BigInteger256([
-            0x34786d38fffffffd, 0x992c350be41914ad, 0xffffffffffffffff, 0x3fffffffffffffff
+            0x34786d38fffffffd,
+            0x992c350be41914ad,
+            0xffffffffffffffff,
+            0x3fffffffffffffff
         ])
     );
 
@@ -56,7 +63,10 @@ impl SWModelParameters for VestaParameters {
 pub const G_GENERATOR_X: Fq = field_new!(
     Fq,
     BigInteger256([
-        0x5b2b3e9cfffffffd, 0x992c350be3420567, 0xffffffffffffffff, 0x3fffffffffffffff
+        0x5b2b3e9cfffffffd,
+        0x992c350be3420567,
+        0xffffffffffffffff,
+        0x3fffffffffffffff
     ])
 );
 
@@ -65,6 +75,9 @@ pub const G_GENERATOR_X: Fq = field_new!(
 pub const G_GENERATOR_Y: Fq = field_new!(
     Fq,
     BigInteger256([
-        0x9aae9ab8f909fe12, 0x4ef425ddfec978ab, 0x80532e1caba65bb9, 0x1104486c25ae2958
+        0x9aae9ab8f909fe12,
+        0x4ef425ddfec978ab,
+        0x80532e1caba65bb9,
+        0x1104486c25ae2958
     ])
 );

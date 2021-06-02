@@ -21,19 +21,31 @@ impl FftParameters for FqParameters {
 impl FpParameters for FqParameters {
     // 28948022309329048855892746252171976963363056481941647379679742748393362948097
     const MODULUS: BigInteger = BigInteger([
-        0x8c46eb2100000001, 0x224698fc0994a8dd, 0x0, 0x4000000000000000
+        0x8c46eb2100000001,
+        0x224698fc0994a8dd,
+        0x0,
+        0x4000000000000000,
     ]);
 
     const R: BigInteger = BigInteger([
-        0x5b2b3e9cfffffffd, 0x992c350be3420567, 0xffffffffffffffff, 0x3fffffffffffffff
+        0x5b2b3e9cfffffffd,
+        0x992c350be3420567,
+        0xffffffffffffffff,
+        0x3fffffffffffffff,
     ]);
 
     const R2: BigInteger = BigInteger([
-        0xfc9678ff0000000f, 0x67bb433d891a16e3, 0x7fae231004ccf590, 0x96d41af7ccfdaa9
+        0xfc9678ff0000000f,
+        0x67bb433d891a16e3,
+        0x7fae231004ccf590,
+        0x96d41af7ccfdaa9,
     ]);
 
     const MODULUS_MINUS_ONE_DIV_TWO: BigInteger = BigInteger([
-        0xc623759080000000, 0x11234c7e04ca546e, 0x0, 0x2000000000000000
+        0xc623759080000000,
+        0x11234c7e04ca546e,
+        0x0,
+        0x2000000000000000,
     ]);
 
     // T and T_MINUS_ONE_DIV_TWO, where MODULUS - 1 = 2^S * T
@@ -45,7 +57,10 @@ impl FpParameters for FqParameters {
 
     // GENERATOR = 5
     const GENERATOR: BigInteger = BigInteger([
-        0x96bc8c8cffffffed, 0x74c2a54b49f7778e, 0xfffffffffffffffd, 0x3fffffffffffffff
+        0x96bc8c8cffffffed,
+        0x74c2a54b49f7778e,
+        0xfffffffffffffffd,
+        0x3fffffffffffffff,
     ]);
 
     const MODULUS_BITS: u32 = 255;

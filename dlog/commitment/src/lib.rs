@@ -3,7 +3,9 @@ mod qnr_field;
 pub use qnr_field::*;
 pub mod commitment;
 pub mod srs;
-use algebra::{bn_382, pasta, tweedle};
+use algebra::{bn_382, tweedle};
+
+use curves::pasta;
 
 pub trait CommitmentField: QnrField {}
 

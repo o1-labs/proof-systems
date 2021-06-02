@@ -1,10 +1,11 @@
-use crate::{
+use crate::pasta::*;
+use algebra::{
     biginteger::BigInteger256,
     curves::{
         models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
-        ModelParameters, SWModelParameters},
+        ModelParameters, SWModelParameters,
+    },
     field_new, Zero,
-    pasta::*
 };
 
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
@@ -26,7 +27,10 @@ impl SWModelParameters for PallasParameters {
     const COEFF_B: Fp = field_new!(
         Fp,
         BigInteger256([
-            0xa1a55e68ffffffed, 0x74c2a54b4f4982f3, 0xfffffffffffffffd, 0x3fffffffffffffff
+            0xa1a55e68ffffffed,
+            0x74c2a54b4f4982f3,
+            0xfffffffffffffffd,
+            0x3fffffffffffffff
         ])
     );
 
@@ -37,7 +41,10 @@ impl SWModelParameters for PallasParameters {
     const COFACTOR_INV: Fq = field_new!(
         Fq,
         BigInteger256([
-            0x5b2b3e9cfffffffd, 0x992c350be3420567, 0xffffffffffffffff, 0x3fffffffffffffff
+            0x5b2b3e9cfffffffd,
+            0x992c350be3420567,
+            0xffffffffffffffff,
+            0x3fffffffffffffff
         ])
     );
 
@@ -56,7 +63,10 @@ impl SWModelParameters for PallasParameters {
 pub const G_GENERATOR_X: Fp = field_new!(
     Fp,
     BigInteger256([
-        0x34786d38fffffffd, 0x992c350be41914ad, 0xffffffffffffffff, 0x3fffffffffffffff
+        0x34786d38fffffffd,
+        0x992c350be41914ad,
+        0xffffffffffffffff,
+        0x3fffffffffffffff
     ])
 );
 
@@ -65,6 +75,9 @@ pub const G_GENERATOR_X: Fp = field_new!(
 pub const G_GENERATOR_Y: Fp = field_new!(
     Fp,
     BigInteger256([
-        0x2f474795455d409d, 0xb443b9b74b8255d9, 0x270c412f2c9a5d66, 0x8e00f71ba43dd6b
+        0x2f474795455d409d,
+        0xb443b9b74b8255d9,
+        0x270c412f2c9a5d66,
+        0x8e00f71ba43dd6b
     ])
 );
