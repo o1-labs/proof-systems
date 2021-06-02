@@ -5,7 +5,7 @@ pub mod commitment;
 pub mod srs;
 use algebra::{bn_382, tweedle};
 
-use curves::pasta;
+use mina_curves::pasta;
 
 pub trait CommitmentField: QnrField {}
 

@@ -1,5 +1,5 @@
 use algebra::{bn_382, field_new, tweedle, BigInteger256, BigInteger384, SquareRootField};
-use curves::pasta;
+use mina_curves::pasta;
 
 pub trait QnrField: SquareRootField {
     const QNR: Self;

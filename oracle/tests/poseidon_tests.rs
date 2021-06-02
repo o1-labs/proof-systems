@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use algebra::{fields::PrimeField, BigInteger256, UniformRand};
-    use curves::pasta::Fp;
+    use mina_curves::pasta::Fp;
     use oracle::poseidon::Sponge; // needed for ::new() sponge
 
     use oracle::poseidon::ArithmeticSponge as Poseidon;
