@@ -4,19 +4,18 @@ This source file implements the Marlin structured reference string primitive
 
 *****************************************************************************************************************/
 
-pub use crate::{QnrField, CommitmentField};
-use blake2::{Blake2b, Digest};
-use std::io::{Read, Result as IoResult, Write};
-use algebra::{FromBytes, PrimeField, ToBytes, BigInteger};
 use crate::commitment::CommitmentCurve;
-use groupmap::GroupMap;
+pub use crate::{CommitmentField, QnrField};
+use algebra::{BigInteger, FromBytes, PrimeField, ToBytes};
 use array_init::array_init;
+use blake2::{Blake2b, Digest};
+use groupmap::GroupMap;
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Debug, Clone)]
-pub struct SRS<G: CommitmentCurve>
-{
-    pub g: Vec<G>,    // for committing polynomials
-    pub h: G,         // blinding
+pub struct SRS<G: CommitmentCurve> {
+    pub g: Vec<G>, // for committing polynomials
+    pub h: G,      // blinding
 
     // Coefficients for the curve endomorphism
     pub endo_r: G::ScalarField,
@@ -24,10 +23,12 @@ pub struct SRS<G: CommitmentCurve>
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
-where G::BaseField : PrimeField {
-    let endo_q : G::BaseField = oracle::sponge::endo_coefficient();
+where
+    G::BaseField: PrimeField,
+{
+    let endo_q: G::BaseField = oracle::sponge::endo_coefficient();
     let endo_r = {
-        let potential_endo_r : G::ScalarField = oracle::sponge::endo_coefficient();
+        let potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
         let t = G::prime_subgroup_generator();
         let (x, y) = t.to_coordinates().unwrap();
         let phi_t = G::of_coordinates(x * &endo_q, y);
@@ -40,13 +41,16 @@ where G::BaseField : PrimeField {
     (endo_q, endo_r)
 }
 
-fn point_of_random_bytes<G: CommitmentCurve>(m : &G::Map, random_bytes : &[u8])  -> G
-where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
-    const N : usize = 31;
-    let mut bits = [false;8*N];
+fn point_of_random_bytes<G: CommitmentCurve>(m: &G::Map, random_bytes: &[u8]) -> G
+where
+    G::BaseField: PrimeField,
+    G::ScalarField: CommitmentField,
+{
+    const N: usize = 31;
+    let mut bits = [false; 8 * N];
     for i in 0..N {
         for j in 0..8 {
-            bits[8*i + j] = (random_bytes[i] >> j) & 1 == 1;
+            bits[8 * i + j] = (random_bytes[i] >> j) & 1 == 1;
         }
     }
 
@@ -56,7 +60,11 @@ where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<G: CommitmentCurve> SRS<G>
+where
+    G::BaseField: PrimeField,
+    G::ScalarField: CommitmentField,
+{
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
@@ -67,27 +75,29 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
-        let g : Vec<_> = (0..depth).map(|i| {
-            let mut h = Blake2b::new();
-            h.input(&(i as u32).to_be_bytes());
-            point_of_random_bytes(&m, &h.result())
-        }).collect();
+        let g: Vec<_> = (0..depth)
+            .map(|i| {
+                let mut h = Blake2b::new();
+                h.input(&(i as u32).to_be_bytes());
+                point_of_random_bytes(&m, &h.result())
+            })
+            .collect();
 
         let (endo_q, endo_r) = endos::<G>();
 
-        const MISC : usize = 1;
-        let [h] : [G;MISC] = array_init(|i| {
+        const MISC: usize = 1;
+        let [h]: [G; MISC] = array_init(|i| {
             let mut h = Blake2b::new();
             h.input("srs_misc".as_bytes());
             h.input(&(i as u32).to_be_bytes());
             point_of_random_bytes(&m, &h.result())
         });
 
-        SRS
-        {
+        SRS {
             g,
             h,
-            endo_r, endo_q
+            endo_r,
+            endo_q,
         }
     }
 
@@ -109,38 +119,47 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
 
         let h = G::read(&mut reader)?;
         let (endo_q, endo_r) = endos::<G>();
-        Ok(SRS { g, h, endo_r, endo_q })
+        Ok(SRS {
+            g,
+            h,
+            endo_r,
+            endo_q,
+        })
     }
 }
 
-pub enum SRSValue<'a, G : CommitmentCurve> {
+pub enum SRSValue<'a, G: CommitmentCurve> {
     Value(SRS<G>),
-    Ref(&'a SRS<G>)
+    Ref(&'a SRS<G>),
 }
 
-impl<'a, G : CommitmentCurve> SRSValue<'a, G> {
-    pub fn get_ref(&self) -> & SRS<G> {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G> {
+    pub fn get_ref(&self) -> &SRS<G> {
         match self {
             SRSValue::Value(x) => &x,
-            SRSValue::Ref(x) => x
+            SRSValue::Ref(x) => x,
         }
     }
 }
 
-pub enum SRSSpec <'a, G: CommitmentCurve>{
+pub enum SRSSpec<'a, G: CommitmentCurve> {
     Use(&'a SRS<G>),
-    Generate(usize)
+    Generate(usize),
 }
 
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> where G::BaseField : PrimeField, G::ScalarField : CommitmentField {
+impl<'a, G: CommitmentCurve> SRSValue<'a, G>
+where
+    G::BaseField: PrimeField,
+    G::ScalarField: CommitmentField,
+{
     pub fn generate(size: usize) -> SRS<G> {
         SRS::<G>::create(size)
     }
 
-    pub fn create<'b>(spec : SRSSpec<'a, G>) -> SRSValue<'a, G>{
+    pub fn create<'b>(spec: SRSSpec<'a, G>) -> SRSValue<'a, G> {
         match spec {
             SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size))
+            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size)),
         }
     }
 }

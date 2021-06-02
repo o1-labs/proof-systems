@@ -4,41 +4,32 @@ This source file tests batch verificaion of batched polynomial commitment openin
 
 *****************************************************************************************************************/
 
-use commitment_pairing::urs::URS;
-use algebra::{PairingEngine, bn_382::Bn_382, UniformRand};
-use std::time::{Instant, Duration};
-use ff_fft::DensePolynomial;
-use rand_core::OsRng;
+use algebra::{bn_382::Bn_382, PairingEngine, UniformRand};
 use colored::Colorize;
+use commitment_pairing::urs::URS;
+use ff_fft::DensePolynomial;
 use rand::Rng;
+use rand_core::OsRng;
+use std::time::{Duration, Instant};
 
 #[test]
-fn batch_commitment_test()
-{
+fn batch_commitment_test() {
     test::<Bn_382>();
 }
 
-fn test<E: PairingEngine>()
-{
+fn test<E: PairingEngine>() {
     let rng = &mut OsRng;
     let depth = 500;
 
     // generate sample URS
-    let urs = URS::<E>::create
-    (
-        depth,
-        vec![depth-1, depth-2, depth-3],
-        rng
-    );
+    let urs = URS::<E>::create(depth, vec![depth - 1, depth - 2, depth - 3], rng);
 
     let mut random = rand::thread_rng();
 
-    for i in 0..1
-    {
+    for i in 0..1 {
         println!("{}{:?}", "test # ".bright_cyan(), i);
 
-        let mut proofs = Vec::
-        <(
+        let mut proofs = Vec::<(
             E::Fr,
             E::Fr,
             Vec<(E::G1Affine, E::Fr, Option<(E::G1Affine, usize)>)>,
@@ -47,37 +38,43 @@ fn test<E: PairingEngine>()
 
         let mut commit = Duration::new(0, 0);
         let mut open = Duration::new(0, 0);
-        
-        for _ in 0..7
-        {
-            let size = (0..11).map
-            (
-                |_|
-                {
+
+        for _ in 0..7 {
+            let size = (0..11)
+                .map(|_| {
                     let len: usize = random.gen();
-                    (len % (depth-2))+1
-                }
-            ).collect::<Vec<_>>();
+                    (len % (depth - 2)) + 1
+                })
+                .collect::<Vec<_>>();
             println!("{}{:?}", "sizes: ".bright_cyan(), size);
 
-            let aa = size.iter().map(|s| DensePolynomial::<E::Fr>::rand(s-1,rng)).collect::<Vec<_>>();
+            let aa = size
+                .iter()
+                .map(|s| DensePolynomial::<E::Fr>::rand(s - 1, rng))
+                .collect::<Vec<_>>();
             let a = aa.iter().map(|s| s).collect::<Vec<_>>();
             let x = E::Fr::rand(rng);
 
             let mut start = Instant::now();
-            let comm = a.iter().map(|a| urs.commit(&a.clone()).unwrap()).collect::<Vec<_>>();
+            let comm = a
+                .iter()
+                .map(|a| urs.commit(&a.clone()).unwrap())
+                .collect::<Vec<_>>();
             commit += start.elapsed();
 
             let mask = E::Fr::rand(rng);
             start = Instant::now();
-            let proof = urs.open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x).unwrap();
+            let proof = urs
+                .open(aa.iter().map(|s| s).collect::<Vec<_>>(), mask, x)
+                .unwrap();
             open += start.elapsed();
 
-            proofs.push
-            ((
+            proofs.push((
                 x,
                 mask,
-                (0..a.len()).map(|i| (comm[i], a[i].evaluate(x), None)).collect::<Vec<_>>(),
+                (0..a.len())
+                    .map(|i| (comm[i], a[i].evaluate(x), None))
+                    .collect::<Vec<_>>(),
                 proof,
             ));
         }
@@ -86,11 +83,7 @@ fn test<E: PairingEngine>()
         println!("{}{:?}", "open time: ".magenta(), open);
 
         let start = Instant::now();
-        assert_eq!(urs.verify
-        (
-            &proofs,
-            rng
-        ), true);
+        assert_eq!(urs.verify(&proofs, rng), true);
         println!("{}{:?}", "verification time: ".green(), start.elapsed());
     }
 }

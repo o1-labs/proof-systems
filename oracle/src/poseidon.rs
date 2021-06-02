@@ -19,8 +19,7 @@ pub trait SpongeConstants {
 }
 
 #[derive(Clone)]
-pub struct MarlinSpongeConstants {
-}
+pub struct MarlinSpongeConstants {}
 
 impl SpongeConstants for MarlinSpongeConstants {
     const ROUNDS_FULL: usize = 8;
@@ -35,8 +34,7 @@ impl SpongeConstants for MarlinSpongeConstants {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstants {
-}
+pub struct PlonkSpongeConstants {}
 
 impl SpongeConstants for PlonkSpongeConstants {
     const ROUNDS_FULL: usize = 63;
@@ -51,8 +49,7 @@ impl SpongeConstants for PlonkSpongeConstants {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstants5W {
-}
+pub struct PlonkSpongeConstants5W {}
 
 impl SpongeConstants for PlonkSpongeConstants5W {
     const ROUNDS_FULL: usize = 53;
@@ -67,8 +64,7 @@ impl SpongeConstants for PlonkSpongeConstants5W {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstants3 {
-}
+pub struct PlonkSpongeConstants3 {}
 
 impl SpongeConstants for PlonkSpongeConstants3 {
     const ROUNDS_FULL: usize = 54;
@@ -89,7 +85,7 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
-pub fn sbox<F : Field, SC: SpongeConstants>(x: F) -> F {
+pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
     x.pow([SC::SPONGE_BOX as u64])
 }
 
@@ -115,18 +111,22 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     fn apply_mds_matrix(&mut self, params: &ArithmeticSpongeParams<F>) {
-        self.state = if SC::FULL_MDS
-        {
-            params.mds.iter().
-                map(|m| self.state.iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * s + x)).collect()
-        }
-        else
-        {
-            vec!
-            [
+        self.state = if SC::FULL_MDS {
+            params
+                .mds
+                .iter()
+                .map(|m| {
+                    self.state
+                        .iter()
+                        .zip(m.iter())
+                        .fold(F::zero(), |x, (s, &m)| m * s + x)
+                })
+                .collect()
+        } else {
+            vec![
                 self.state[0] + &self.state[2],
                 self.state[0] + &self.state[1],
-                self.state[1] + &self.state[2]
+                self.state[1] + &self.state[2],
             ]
         };
     }
@@ -186,8 +186,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
                 for r in 0..SC::ROUNDS_FULL {
                     self.full_round(r + 1, params);
                 }
-            }
-            else {
+            } else {
                 for r in 0..SC::ROUNDS_FULL {
                     self.full_round(r, params);
                 }
@@ -220,8 +219,7 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
     }
 
     fn absorb(&mut self, params: &ArithmeticSpongeParams<F>, x: &[F]) {
-        for x in x.iter()
-        {
+        for x in x.iter() {
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {

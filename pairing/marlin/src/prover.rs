@@ -4,14 +4,14 @@ This source file implements prover's zk-proof primitive.
 
 *********************************************************************************************/
 
-use oracle::rndoracle::{ProofError};
-use algebra::{Field, PairingEngine, Zero, One};
-use ff_fft::{DensePolynomial, EvaluationDomain};
-use oracle::sponge::{FqSponge, ScalarChallenge};
-use marlin_circuits::domains::EvaluationDomains;
-use crate::marlin_sponge::{FrSponge};
-use oracle::utils::PolyUtils;
 pub use super::index::Index;
+use crate::marlin_sponge::FrSponge;
+use algebra::{Field, One, PairingEngine, Zero};
+use ff_fft::{DensePolynomial, EvaluationDomain};
+use marlin_circuits::domains::EvaluationDomains;
+use oracle::rndoracle::ProofError;
+use oracle::sponge::{FqSponge, ScalarChallenge};
+use oracle::utils::PolyUtils;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fr> {
@@ -31,8 +31,7 @@ pub struct ProofEvaluations<Fr> {
 }
 
 #[derive(Clone)]
-pub struct ProverProof<E: PairingEngine>
-{
+pub struct ProverProof<E: PairingEngine> {
     // polynomial commitments
     pub w_comm: E::G1Affine,
     pub za_comm: E::G1Affine,
@@ -50,83 +49,83 @@ pub struct ProverProof<E: PairingEngine>
     pub proof3: E::G1Affine,
 
     // polynomial evaluations
-    pub evals : ProofEvaluations<E::Fr>,
+    pub evals: ProofEvaluations<E::Fr>,
 
     // prover's scalars
     pub sigma2: E::Fr,
     pub sigma3: E::Fr,
 
     // public part of the witness
-    pub public: Vec<E::Fr>
+    pub public: Vec<E::Fr>,
 }
 
-impl<E: PairingEngine> ProverProof<E>
-{
+impl<E: PairingEngine> ProverProof<E> {
     // This function constructs prover's zk-proof from the witness & the Index against URS instance
     //     witness: computation witness
     //     index: Index
     //     RETURN: prover's zk-proof
-    pub fn create
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
-         EFrSponge: FrSponge<E::Fr>,
-        >
-    (
-        witness: &Vec::<E::Fr>,
-        index: &Index<E>
-    ) -> Result<Self, ProofError>
-    {
+    pub fn create<EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>, EFrSponge: FrSponge<E::Fr>>(
+        witness: &Vec<E::Fr>,
+        index: &Index<E>,
+    ) -> Result<Self, ProofError> {
         // random oracles have to be retrieved from the non-interactive argument
         // context sequentually with adding argument-specific payload to the context
 
         let mut oracles = RandomOracles::<E::Fr>::zero();
 
         // prover computes z polynomial
-        let z = EvaluationDomains::evals_from_coeffs(witness.clone(), index.domains.h).interpolate();
+        let z =
+            EvaluationDomains::evals_from_coeffs(witness.clone(), index.domains.h).interpolate();
 
         // extract/save public part of the padded witness
         let mut witness = witness.clone();
         witness.extend(vec![E::Fr::zero(); index.domains.h.size() - witness.len()]);
         let ratio = index.domains.h.size() / index.domains.x.size();
-        let public: Vec<E::Fr> = (0..index.public_inputs).map(|i| {witness[i * ratio]}).collect();
+        let public: Vec<E::Fr> = (0..index.public_inputs)
+            .map(|i| witness[i * ratio])
+            .collect();
 
         // evaluate public input polynomial over domains.h
-        let public_evals = index.domains.h.fft
-        (
-            &EvaluationDomains::evals_from_coeffs(public.clone(),
-            index.domains.x
-        ).interpolate());
+        let public_evals = index.domains.h.fft(
+            &EvaluationDomains::evals_from_coeffs(public.clone(), index.domains.x).interpolate(),
+        );
 
         // prover computes w polynomial from the witness by subtracting the public polynomial evaluations
-        let (w, r) = EvaluationDomains::evals_from_coeffs
-        (
-            witness.iter().enumerate().map
-            (
-                |elm| {*elm.1 - &public_evals[elm.0]}
-            ).collect(),
-            index.domains.h
-        ).interpolate().divide_by_vanishing_poly(index.domains.x).map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if !r.is_zero() {return Err(ProofError::PolyDivision)}
+        let (w, r) = EvaluationDomains::evals_from_coeffs(
+            witness
+                .iter()
+                .enumerate()
+                .map(|elm| *elm.1 - &public_evals[elm.0])
+                .collect(),
+            index.domains.h,
+        )
+        .interpolate()
+        .divide_by_vanishing_poly(index.domains.x)
+        .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        if !r.is_zero() {
+            return Err(ProofError::PolyDivision);
+        }
 
         // prover computes za, zb polynomials
         let mut zv = vec![vec![E::Fr::zero(); index.domains.h.size()]; 2];
 
-        for i in 0..2
-        {
-            for constraint in index.compiled[i].constraints.iter()
-            {
+        for i in 0..2 {
+            for constraint in index.compiled[i].constraints.iter() {
                 zv[i][(constraint.1).0] += &(*constraint.0 * &witness[(constraint.1).1]);
             }
         }
 
         let urs = index.urs.get_ref();
 
-        let x_hat = 
+        let x_hat =
             EvaluationDomains::evals_from_coeffs(public.clone(), index.domains.x).interpolate();
         let x_hat_comm = urs.commit(&x_hat)?;
 
         // prover interpolates the vectors and computes the evaluation polynomial
-        let za = EvaluationDomains::evals_from_coeffs(zv[0].to_vec(), index.domains.h).interpolate();
-        let zb = EvaluationDomains::evals_from_coeffs(zv[1].to_vec(), index.domains.h).interpolate();
+        let za =
+            EvaluationDomains::evals_from_coeffs(zv[0].to_vec(), index.domains.h).interpolate();
+        let zb =
+            EvaluationDomains::evals_from_coeffs(zv[1].to_vec(), index.domains.h).interpolate();
 
         // substitute ZC with ZA*ZB
         let zv = [za.clone(), zb.clone(), &za * &zb];
@@ -140,7 +139,7 @@ impl<E: PairingEngine> ProverProof<E>
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
         // absorb the public input iand W, ZA, ZB polycommitments nto the argument
-        fq_sponge.absorb_g(& [x_hat_comm, w_comm, za_comm, zb_comm]);
+        fq_sponge.absorb_g(&[x_hat_comm, w_comm, za_comm, zb_comm]);
 
         // sample alpha, eta oracles
         oracles.alpha = fq_sponge.challenge();
@@ -149,27 +148,29 @@ impl<E: PairingEngine> ProverProof<E>
         oracles.eta_c = fq_sponge.challenge();
 
         let mut apow = E::Fr::one();
-        let mut r: Vec<E::Fr> = (0..index.domains.h.size()).map
-        (
-            |i|
-            {
-                if i > 0 {apow *= &oracles.alpha}
+        let mut r: Vec<E::Fr> = (0..index.domains.h.size())
+            .map(|i| {
+                if i > 0 {
+                    apow *= &oracles.alpha
+                }
                 apow
-            }
-        ).collect();
+            })
+            .collect();
         r.reverse();
         let ra = DensePolynomial::<E::Fr>::from_coefficients_vec(r);
 
         // compute first sumcheck argument polynomials
         // --------------------------------------------------------------------
 
-        let (h1, mut g1) = Self::sumcheck_1_compute (index, &ra, &zv, &z, &oracles)?;
-        if !g1.coeffs[0].is_zero() {return Err(ProofError::SumCheck)}
+        let (h1, mut g1) = Self::sumcheck_1_compute(index, &ra, &zv, &z, &oracles)?;
+        if !g1.coeffs[0].is_zero() {
+            return Err(ProofError::SumCheck);
+        }
         g1.coeffs.remove(0);
 
         // commit to H1 & G1 polynomials and
         let h1_comm = urs.commit(&h1)?;
-        let g1_comm = urs.commit_with_degree_bound(&g1, index.domains.h.size()-1)?;
+        let g1_comm = urs.commit_with_degree_bound(&g1, index.domains.h.size() - 1)?;
 
         // absorb H1, G1 polycommitments
         fq_sponge.absorb_g(&[g1_comm.0, g1_comm.1, h1_comm]);
@@ -179,11 +180,11 @@ impl<E: PairingEngine> ProverProof<E>
         // compute second sumcheck argument polynomials
         // --------------------------------------------------------------------
 
-        let (h2, mut g2) = Self::sumcheck_2_compute (index, &ra, &oracles)?;
+        let (h2, mut g2) = Self::sumcheck_2_compute(index, &ra, &oracles)?;
         let sigma2 = g2.coeffs[0];
         g2.coeffs.remove(0);
         let h2_comm = urs.commit(&h2)?;
-        let g2_comm = urs.commit_with_degree_bound(&g2, index.domains.h.size()-1)?;
+        let g2_comm = urs.commit_with_degree_bound(&g2, index.domains.h.size() - 1)?;
 
         // absorb sigma2, g2, h2
         fq_sponge.absorb_fr(&[sigma2]);
@@ -194,11 +195,11 @@ impl<E: PairingEngine> ProverProof<E>
         // compute third sumcheck argument polynomials
         // --------------------------------------------------------------------
 
-        let (h3, mut g3) = Self::sumcheck_3_compute (index, &oracles)?;
+        let (h3, mut g3) = Self::sumcheck_3_compute(index, &oracles)?;
         let sigma3 = g3.coeffs[0];
         g3.coeffs.remove(0);
         let h3_comm = urs.commit(&h3)?;
-        let g3_comm = urs.commit_with_degree_bound(&g3, index.domains.k.size()-1)?;
+        let g3_comm = urs.commit_with_degree_bound(&g3, index.domains.k.size() - 1)?;
 
         // absorb sigma3, g3, h3
         fq_sponge.absorb_fr(&[sigma3]);
@@ -217,38 +218,34 @@ impl<E: PairingEngine> ProverProof<E>
         };
 
         let endo = &index.endo_r;
-        let beta : Vec<_> = oracles.beta.iter().map(|x| x.to_field(endo)).collect();
+        let beta: Vec<_> = oracles.beta.iter().map(|x| x.to_field(endo)).collect();
 
         let evals = ProofEvaluations {
-            w  : w.evaluate(beta[0]),
-            za : za.evaluate(beta[0]),
-            zb : zb.evaluate(beta[0]),
-            h1 : h1.evaluate(beta[0]),
-            g1 : g1.evaluate(beta[0]),
-            h2 : h2.evaluate(beta[1]),
-            g2 : g2.evaluate(beta[1]),
-            h3 : h3.evaluate(beta[2]),
-            g3 : g3.evaluate(beta[2]),
-            row:
-            [
+            w: w.evaluate(beta[0]),
+            za: za.evaluate(beta[0]),
+            zb: zb.evaluate(beta[0]),
+            h1: h1.evaluate(beta[0]),
+            g1: g1.evaluate(beta[0]),
+            h2: h2.evaluate(beta[1]),
+            g2: g2.evaluate(beta[1]),
+            h3: h3.evaluate(beta[2]),
+            g3: g3.evaluate(beta[2]),
+            row: [
                 index.compiled[0].row.evaluate(beta[2]),
                 index.compiled[1].row.evaluate(beta[2]),
                 index.compiled[2].row.evaluate(beta[2]),
             ],
-            col:
-            [
+            col: [
                 index.compiled[0].col.evaluate(beta[2]),
                 index.compiled[1].col.evaluate(beta[2]),
                 index.compiled[2].col.evaluate(beta[2]),
             ],
-            val:
-            [
+            val: [
                 index.compiled[0].val.evaluate(beta[2]),
                 index.compiled[1].val.evaluate(beta[2]),
                 index.compiled[2].val.evaluate(beta[2]),
             ],
-            rc:
-            [
+            rc: [
                 index.compiled[0].rc.evaluate(beta[2]),
                 index.compiled[1].rc.evaluate(beta[2]),
                 index.compiled[2].rc.evaluate(beta[2]),
@@ -268,8 +265,7 @@ impl<E: PairingEngine> ProverProof<E>
 
         let batch_chal = oracles.batch.to_field(endo);
 
-        Ok(ProverProof
-        {
+        Ok(ProverProof {
             // polynomial commitments
             w_comm,
             za_comm,
@@ -282,34 +278,10 @@ impl<E: PairingEngine> ProverProof<E>
             g3_comm,
 
             // polynomial commitment batched opening proofs
-            proof1: urs.open
-            (
-                vec!
-                [
-                    &x_hat,
-                    &w,
-                    &za,
-                    &zb,
-                    &g1,
-                    &h1,
-                ],
-                batch_chal,
-                beta[0]
-            )?,
-            proof2: urs.open
-            (
-                vec!
-                [
-                    &g2,
-                    &h2,
-                ],
-                batch_chal,
-                beta[1]
-            )?,
-            proof3: urs.open
-            (
-                vec!
-                [
+            proof1: urs.open(vec![&x_hat, &w, &za, &zb, &g1, &h1], batch_chal, beta[0])?,
+            proof2: urs.open(vec![&g2, &h2], batch_chal, beta[1])?,
+            proof3: urs.open(
+                vec![
                     &g3,
                     &h3,
                     &index.compiled[0].row,
@@ -326,7 +298,7 @@ impl<E: PairingEngine> ProverProof<E>
                     &index.compiled[2].rc,
                 ],
                 batch_chal,
-                beta[2]
+                beta[2],
             )?,
 
             // polynomial evaluations
@@ -337,189 +309,200 @@ impl<E: PairingEngine> ProverProof<E>
             sigma3,
 
             // public part of the witness
-            public
+            public,
         })
     }
 
     // This function computes polynomials for the first sumchek protocol
     //     RETURN: prover's H1 & G1 polynomials
-    pub fn sumcheck_1_compute
-    (
+    pub fn sumcheck_1_compute(
         index: &Index<E>,
         ra: &DensePolynomial<E::Fr>,
         zm: &[DensePolynomial<E::Fr>; 3],
         z: &DensePolynomial<E::Fr>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
-    {
+        oracles: &RandomOracles<E::Fr>,
+    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError> {
         // precompute Lagrange polynomial denominators
-        let mut lagrng: Vec<E::Fr> = index.domains.h.elements().map(|elm| {oracles.alpha - &elm}).collect();
+        let mut lagrng: Vec<E::Fr> = index
+            .domains
+            .h
+            .elements()
+            .map(|elm| oracles.alpha - &elm)
+            .collect();
         algebra::fields::batch_inversion::<E::Fr>(&mut lagrng);
         let vanish = index.domains.h.evaluate_vanishing_polynomial(oracles.alpha);
 
         // compute and return H1 & G1 polynomials
-        (0..3).map
-        (
-            |i|
-            {
-                let mut ram = EvaluationDomains::evals_from_coeffs(vec![E::Fr::zero(); index.domains.h.size()], index.domains.h);
-                for val in index.compiled[i].constraints.iter()
-                {
+        (0..3)
+            .map(|i| {
+                let mut ram = EvaluationDomains::evals_from_coeffs(
+                    vec![E::Fr::zero(); index.domains.h.size()],
+                    index.domains.h,
+                );
+                for val in index.compiled[i].constraints.iter() {
                     ram.evals[(val.1).1] += &(vanish * val.0 * &lagrng[(val.1).0]);
                 }
                 (i, ram)
-            }
-        ).fold
-        (
-            DensePolynomial::<E::Fr>::zero(),
-            |x, (i, y)|
+            })
+            .fold(
+                DensePolynomial::<E::Fr>::zero(),
+                |x, (i, y)|
             // scale with eta's and add up
-            &x + &(&(ra * &zm[i]) - &(&y.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])
-        // compute quotient and remainder
-        ).divide_by_vanishing_poly(index.domains.h).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
+            &x + &(&(ra * &zm[i]) - &(&y.interpolate() * &z)).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i]), // compute quotient and remainder
+            )
+            .divide_by_vanishing_poly(index.domains.h)
+            .map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
 
     // This function computes polynomials for the second sumchek protocol
     //     RETURN: prover's H2 & G2 polynomials
-    pub fn sumcheck_2_compute
-    (
+    pub fn sumcheck_2_compute(
         index: &Index<E>,
         ra: &DensePolynomial<E::Fr>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
-    {
+        oracles: &RandomOracles<E::Fr>,
+    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError> {
         // precompute Lagrange polynomial evaluations
-        let lagrng = index.domains.h.evaluate_all_lagrange_coefficients(oracles.beta[0].to_field(&index.endo_r));
+        let lagrng = index
+            .domains
+            .h
+            .evaluate_all_lagrange_coefficients(oracles.beta[0].to_field(&index.endo_r));
 
         // compute and return H2 & G2 polynomials
         // use the precomputed normalized Lagrange evaluations for interpolation evaluations
-        (0..3).map
-        (
-            |i|
-            {
-                let mut ramxbval = EvaluationDomains::evals_from_coeffs(vec![E::Fr::zero(); index.domains.h.size()], index.domains.h);
-                for val in index.compiled[i].constraints.iter()
-                {
+        (0..3)
+            .map(|i| {
+                let mut ramxbval = EvaluationDomains::evals_from_coeffs(
+                    vec![E::Fr::zero(); index.domains.h.size()],
+                    index.domains.h,
+                );
+                for val in index.compiled[i].constraints.iter() {
                     ramxbval.evals[(val.1).0] += &(*val.0 * &lagrng[(val.1).1]);
                 }
                 (i, ramxbval)
-            }
-        ).fold
-        (
-            DensePolynomial::<E::Fr>::zero(),
-            |x, (i, y)|
+            })
+            .fold(
+                DensePolynomial::<E::Fr>::zero(),
+                |x, (i, y)|
             // scale with eta's and add up
-            &x + &(&(ra * &y.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i]))
-        // compute quotient and remainder
-        ).divide_by_vanishing_poly(index.domains.h).map_or(Err(ProofError::PolyDivision), |s| Ok(s))
+            &x + &(&(ra * &y.interpolate()).scale([oracles.eta_a, oracles.eta_b, oracles.eta_c][i])), // compute quotient and remainder
+            )
+            .divide_by_vanishing_poly(index.domains.h)
+            .map_or(Err(ProofError::PolyDivision), |s| Ok(s))
     }
 
     // This function computes polynomials for the third sumchek protocol
     //     RETURN: prover's H3 & G3 polynomials
-    pub fn sumcheck_3_compute
-    (
+    pub fn sumcheck_3_compute(
         index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError>
-    {
+        oracles: &RandomOracles<E::Fr>,
+    ) -> Result<(DensePolynomial<E::Fr>, DensePolynomial<E::Fr>), ProofError> {
         let beta0 = oracles.beta[0].to_field(&index.endo_r);
         let beta1 = oracles.beta[1].to_field(&index.endo_r);
 
-        let vanish = index.domains.h.evaluate_vanishing_polynomial(beta0) *
-            &index.domains.h.evaluate_vanishing_polynomial(beta1);
+        let vanish = index.domains.h.evaluate_vanishing_polynomial(beta0)
+            * &index.domains.h.evaluate_vanishing_polynomial(beta1);
 
         // compute polynomial f3
-        let f3 = (0..3).map
-        (
-            |i|
-            {
-                EvaluationDomains::evals_from_coeffs
-                (
+        let f3 = (0..3)
+            .map(|i| {
+                EvaluationDomains::evals_from_coeffs(
                     {
-                        let mut fractions: Vec<E::Fr> = (0..index.domains.k.size()).map
-                        (
-                            |j|
-                            {
-                                (beta0 - &index.compiled[i].col_eval_k[j]) *
-                                &(beta1 - &index.compiled[i].row_eval_k[j])
-                            }
-                        ).collect();
+                        let mut fractions: Vec<E::Fr> = (0..index.domains.k.size())
+                            .map(|j| {
+                                (beta0 - &index.compiled[i].col_eval_k[j])
+                                    * &(beta1 - &index.compiled[i].row_eval_k[j])
+                            })
+                            .collect();
                         algebra::fields::batch_inversion::<E::Fr>(&mut fractions);
-                        fractions.iter().enumerate().map
-                        (
-                            |(j, elm)|
-                            {
+                        fractions
+                            .iter()
+                            .enumerate()
+                            .map(|(j, elm)| {
                                 vanish * &index.compiled[i].val_eval_k[j] *
                                 // scale with eta's
                                 &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * &elm
-                            }
-                        ).collect()
+                            })
+                            .collect()
                     },
-                    index.domains.k
+                    index.domains.k,
                 )
-            }
-        ).fold
-        (
-            EvaluationDomains::evals_from_coeffs(vec![E::Fr::zero(); index.domains.k.size()], index.domains.k),
-            |x, y| &x + &y
-        ).interpolate();
+            })
+            .fold(
+                EvaluationDomains::evals_from_coeffs(
+                    vec![E::Fr::zero(); index.domains.k.size()],
+                    index.domains.k,
+                ),
+                |x, y| &x + &y,
+            )
+            .interpolate();
 
         // precompute polynomials (row(X)-oracle1)*(col(X)-oracle2) in evaluation form over domains.b
-        let crb: Vec<Vec<E::Fr>> =
-            (0..3).map(|i| index.compiled[i].compute_row_2_col_1(beta0, beta1)).collect();
+        let crb: Vec<Vec<E::Fr>> = (0..3)
+            .map(|i| index.compiled[i].compute_row_2_col_1(beta0, beta1))
+            .collect();
 
         // compute polynomial a
-        let a = (0..3).map
-        (
-            |i|
-            {
-                EvaluationDomains::evals_from_coeffs
-                (
-                    index.compiled[i].val_eval_b.evals.iter().enumerate().map
-                    (
-                        |(k, val)|
-                        {
-                            let mut eval = [oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * val * &vanish;
-                            for j in 0..3 {if i != j {eval *= &crb[j][k]}}
+        let a = (0..3)
+            .map(|i| {
+                EvaluationDomains::evals_from_coeffs(
+                    index.compiled[i]
+                        .val_eval_b
+                        .evals
+                        .iter()
+                        .enumerate()
+                        .map(|(k, val)| {
+                            let mut eval =
+                                [oracles.eta_a, oracles.eta_b, oracles.eta_c][i] * val * &vanish;
+                            for j in 0..3 {
+                                if i != j {
+                                    eval *= &crb[j][k]
+                                }
+                            }
                             eval
-                        }
-                    ).collect(),
-                    index.domains.b
+                        })
+                        .collect(),
+                    index.domains.b,
                 )
-            }
-        ).fold
-        (
-            EvaluationDomains::evals_from_coeffs(vec![E::Fr::zero(); index.domains.b.size()], index.domains.b),
-            |x, y| &x + &y
-        ).interpolate();
+            })
+            .fold(
+                EvaluationDomains::evals_from_coeffs(
+                    vec![E::Fr::zero(); index.domains.b.size()],
+                    index.domains.b,
+                ),
+                |x, y| &x + &y,
+            )
+            .interpolate();
 
         // compute polynomial b
-        let b = EvaluationDomains::evals_from_coeffs
-        (
-            (0..index.domains.b.size()).map
-            (
-                |i| crb[0][i] * &crb[1][i] * &crb[2][i]
-            ).collect(),
-            index.domains.b
-        ).interpolate();
+        let b = EvaluationDomains::evals_from_coeffs(
+            (0..index.domains.b.size())
+                .map(|i| crb[0][i] * &crb[1][i] * &crb[2][i])
+                .collect(),
+            index.domains.b,
+        )
+        .interpolate();
 
         // compute quotient and remainder
-        match (&a - &(&b * &f3)).divide_by_vanishing_poly(index.domains.k)
-        {
-            Some((q, r)) => {if r.coeffs.len() > 0 {return Err(ProofError::PolyDivision)} else {return Ok((q, f3))}}
-            _ => return Err(ProofError::PolyDivision)
+        match (&a - &(&b * &f3)).divide_by_vanishing_poly(index.domains.k) {
+            Some((q, r)) => {
+                if r.coeffs.len() > 0 {
+                    return Err(ProofError::PolyDivision);
+                } else {
+                    return Ok((q, f3));
+                }
+            }
+            _ => return Err(ProofError::PolyDivision),
         }
     }
 }
 
-pub struct RandomOracles<F: Field>
-{
+pub struct RandomOracles<F: Field> {
     pub alpha: F,
     pub eta_a: F,
     pub eta_b: F,
     pub eta_c: F,
     pub beta: [ScalarChallenge<F>; 3],
-    pub r_k : ScalarChallenge<F>,
+    pub r_k: ScalarChallenge<F>,
 
     pub x_hat_beta1: F,
     pub digest_before_evaluations: F,
@@ -529,13 +512,10 @@ pub struct RandomOracles<F: Field>
     pub r: ScalarChallenge<F>,
 }
 
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
+impl<F: Field> RandomOracles<F> {
+    pub fn zero() -> Self {
         let c = ScalarChallenge(F::zero());
-        Self
-        {
+        Self {
             alpha: F::zero(),
             eta_a: F::zero(),
             eta_b: F::zero(),
