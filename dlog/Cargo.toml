@@ -8,8 +8,6 @@ algebra = { path = "../zexe/algebra", features = [ "parallel", "bn_382", "tweedl
 groupmap = { path = "../zexe/groupmap" }
 ff-fft = { path = "../zexe/ff-fft", features = [ "parallel" ] }
 commitment_dlog = { path = "commitment" }
-marlin_circuits = { path = "../circuits/marlin" }
-marlin_protocol_dlog = { path = "marlin" }
 plonk_circuits = { path = "../circuits/plonk" }
 plonk_protocol_dlog = { path = "plonk" }
 plonk_5_wires_circuits = { path = "../circuits/plonk-5-wires" }
