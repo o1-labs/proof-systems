@@ -1,4 +1,3 @@
-pub mod bn_382;
 pub mod pasta;
 pub mod poseidon;
 pub mod rndoracle;
