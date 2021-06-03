@@ -7,7 +7,6 @@ members = [
     "dlog/commitment",
     "dlog/plonk",
     "dlog/plonk-5-wires",
-    "dlog_solver",
     "oracle"
 ]
 exclude = [ "./zexe" ]
