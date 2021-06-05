@@ -79,7 +79,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub qc_comm:    PolyComm<G>,            // constant wire commitment
 
     // poseidon polynomial commitments
-    pub rcm_comm:   [PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH], // round constant polynomial commitment array
+    pub rcm_comm:   [COLUMNS],              // round constant polynomial commitment array
     pub psm_comm:   PolyComm<G>,            // poseidon constraint selector polynomial commitment
 
     // ECC arithmetic polynomial commitments

@@ -125,13 +125,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             &next4[14] - &next4[14].pow(2),
             &next4[1] - &next4[1].pow(2),
             // accumulate packing
-            &(&(&(&(&(&this4[7].scale(F::from(2 as u64)) +
+            &(&(&(&(&(&next4[7].scale(F::from(2 as u64)) +
                 &this4[11]).scale(F::from(2 as u64)) +
                     &this4[14]).scale(F::from(2 as u64)) +
                         &next4[12]).scale(F::from(2 as u64)) +
                             &next4[14]).scale(F::from(2 as u64)) +
                                 &next4[2]) - 
-                                    &next4[7],
+                                    &this4[7],
 
             // (xp - xt) * s1 = yp – (2*b1-1)*yt
             &(&(&(&this4[4] - &this4[0]) * &this4[9]) - &this4[5]) + &(&this4[1] * &(&this4[11].scale(F::from(2 as u64)) - &self.l04)),
@@ -209,13 +209,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             next[14] - &next[14].square(),
             next[1] - &next[1].square(),
             // accumulate packing
-            (((((this[7].double() +
+            (((((next[7].double() +
                 &this[11]).double() +
                     &this[14]).double() +
                         &next[12]).double() +
                             &next[14]).double() +
                                 &next[2]) - 
-                                    &next[7],
+                                    &this[7],
 
             // (xp - xt) * s1 = yp – (2*b1-1)*yt
             (((this[4] - &this[0]) * &this[9]) - &this[5]) + &(this[1] * &(this[11].double() - &F::one())),

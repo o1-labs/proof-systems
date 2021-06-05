@@ -5,11 +5,12 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use algebra::{FftField, SquareRootField};
-use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, Plonk15SpongeConstants};
+pub use crate::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
+use oracle::poseidon::{ArithmeticSpongeParams, Plonk15SpongeConstants};
 use ff_fft::{EvaluationDomain, DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
-use crate::polynomial::{WitnessOverDomains, WitnessShifts, WitnessEvals};
 use crate::gate::{CircuitGate, GateType};
 use crate::domains::EvaluationDomains;
+use crate::gates::poseidon::*;
 use blake2::{Blake2b, Digest};
 use oracle::utils::EvalUtils;
 use array_init::array_init;
@@ -33,7 +34,7 @@ pub struct ConstraintSystem<F: FftField>
     pub qc:     DP<F>,                  // constant wire polynomial
 
     // poseidon selector polynomials
-    pub rcm:    [DP<F>; Plonk15SpongeConstants::SPONGE_WIDTH],  // round constant polynomials
+    pub rcm:    [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW], // round constant polynomials
     pub psm:    DP<F>,                  // poseidon constraint selector polynomial
 
     // ECC arithmetic selector polynomials
@@ -169,8 +170,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 map(|gate| if gate.typ == GateType::Generic {gate.c[COLUMNS+1]} else {F::zero()}).collect(), domain.d1).interpolate(),
 
             // poseidon constraint polynomials
-            rcm: array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
-                map(|gate| if gate.typ == GateType::Poseidon {gate.rc()[i]} else {F::zero()}).collect(), domain.d1).interpolate()),
+            rcm: array_init(|j| {array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
+                map(|gate| if gate.typ == GateType::Poseidon {gate.rc()[i][j]} else {F::zero()}).collect(), domain.d1).interpolate())}),
+
+
             ps4: psm.evaluate_over_domain_by_ref(domain.d4),
             ps8: psm.evaluate_over_domain_by_ref(domain.d8),
             psm,

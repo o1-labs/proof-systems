@@ -7,10 +7,11 @@ This source file implements Posedon constraint polynomials.
 use array_init::array_init;
 use algebra::{FftField, SquareRootField};
 use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{Plonk15SpongeConstants,sbox}, poseidon::{ArithmeticSpongeParams}};
+use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{Plonk15SpongeConstants, PlonkSpongeConstants, sbox, ArithmeticSpongeParams}};
 use crate::polynomial::WitnessOverDomains;
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
+use crate::gates::poseidon::*;
 use crate::wires::COLUMNS;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> 
@@ -25,12 +26,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     {
         if self.psm.is_zero() {return (self.zero4.clone(), self.zero8.clone(), DensePolynomial::<F>::zero())}
 
-        let mut lro: [Evaluations<F, D<F>>; COLUMNS] = array_init(|i| polys.d8.this.w[i].clone());
-        lro.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox::<F, Plonk15SpongeConstants>(*p)));
+        // segregate into prtmutation section
+        let mut alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|j| {array_init(|i| alpha[j*ROUNDS_PER_ROW+i])});
+        let mut state: [[Evaluations<F, D<F>>; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|i| {array_init(|j| polys.d8.this.w[i*ROUNDS_PER_ROW+j].clone())});
 
-        let scalers = (0..COLUMNS).
-            map(|i| (0..COLUMNS).fold(F::zero(), |x, j| alpha[j] * params.mds[j][i] + x)).
-            collect::<Vec<_>>();
+        // this is the current state
+        let mut perm = state.clone();
+
+        // permute the cuccent state
+        perm.iter_mut().for_each(|p| p.iter_mut().for_each(|r| *r = sbox::<F, Plonk15SpongeConstants>(*r)));
+
+        let p4: [Evaluations<F, D<F>>; ROUNDS_PER_ROW] = array_init(|i| {polys.d4.next.w.iter().zip(alpha[i][0..COLUMNS].iter()).map(|(p, a)| p.scale(-*a)).
+            fold(self.zero4.clone(), |x, y| &x + &y)});
+        let p8: [Evaluations<F, D<F>>; ROUNDS_PER_ROW] = array_init(|i| {});
+
+
+
         (
             &self.ps4 * &polys.d4.next.w.iter().zip(alpha[0..COLUMNS].iter()).map(|(p, a)| p.scale(-*a)).
                 fold(self.zero4.clone(), |x, y| &x + &y),
@@ -39,7 +50,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             self.rcm.iter().zip(alpha[0..COLUMNS].iter()).map(|(p, a)| p.scale(*a)).
                 fold(DensePolynomial::<F>::zero(), |x, y| &x + &y),
         )
-    }
+      }
 
     pub fn psdn_scalars
     (
@@ -70,7 +81,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         alpha: &[F]
     ) -> DensePolynomial<F>
     {
-        self.rcm.iter().zip(alpha[0..COLUMNS].iter()).map(|(r, a)| r.scale(*a)).
-            fold(self.psm.scale(Self::psdn_scalars(evals, params, alpha)[0]), |x, y| &x + &y)
+        DensePolynomial::<F>::zero()
     }
 }

@@ -181,7 +181,7 @@ impl<F: FftField> CircuitGate<F>
             // (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xt + xs)
             (next[3] + &next[10]).square() - (next[9] - &next[2]).square() * &(next[0].square() - &this[0] + &next[2]),
 
-            ((((this[7].double() + &this[11]).double() + &this[14]).double() + &next[12]).double() + &next[14]).double() + &next[2] - &next[7],
+            ((((next[7].double() + &this[11]).double() + &this[14]).double() + &next[12]).double() + &next[14]).double() + &next[2] - &this[7],
         ].iter().all(|p| *p == F::zero())
     }
 
