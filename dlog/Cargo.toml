@@ -5,7 +5,7 @@ edition = "2018"
 
 [dependencies]
 algebra = { path = "../zexe/algebra", features = [ "parallel", "asm" ] }
-groupmap = { path = "../zexe/groupmap" }
+groupmap = { path = "../groupmap" }
 mina-curves = { path = "../curves" }
 ff-fft = { path = "../zexe/ff-fft", features = [ "parallel" ] }
 commitment_dlog = { path = "commitment" }
