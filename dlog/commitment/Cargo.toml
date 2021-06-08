@@ -11,7 +11,7 @@ algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "twe
 dlog_solver = { path = "../../dlog_solver" }
 groupmap = { path = "../../zexe/groupmap" }
 ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel" ] }
-ocaml = { version = "0.18.1", optional = true }
+ocaml = { version = "0.22.0", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.2"

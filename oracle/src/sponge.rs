@@ -13,7 +13,7 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 
 // A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {

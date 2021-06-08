@@ -17,7 +17,7 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ProverCommitments<G: AffineCurve>
 {
     pub l_comm: PolyComm<G>,
@@ -27,7 +27,7 @@ pub struct ProverCommitments<G: AffineCurve>
     pub t_comm: PolyComm<G>,
 }
 
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 struct CamlProverProof<G: AffineCurve>
 {
     pub commitments: ProverCommitments<G>,
@@ -58,10 +58,10 @@ pub struct ProverProof<G: AffineCurve>
 }
 
 #[cfg(feature = "ocaml_types")]
-unsafe impl<G: AffineCurve + ocaml::ToValue> ocaml::ToValue for ProverProof<G> where
-    G::ScalarField: ocaml::ToValue {
-    fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(
+unsafe impl<G: AffineCurve + ocaml::IntoValue> ocaml::IntoValue for ProverProof<G> where
+    G::ScalarField: ocaml::IntoValue {
+    fn into_value(self, runtime: &ocaml::Runtime) -> ocaml::Value {
+        ocaml::IntoValue::into_value(
             CamlProverProof{
                 commitments: self.commitments,
                 proof: self.proof,
@@ -71,13 +71,13 @@ unsafe impl<G: AffineCurve + ocaml::ToValue> ocaml::ToValue for ProverProof<G> w
                 },
                 public: self.public,
                 prev_challenges: self.prev_challenges
-            })
+            }, runtime)
     }
 }
 
 #[cfg(feature = "ocaml_types")]
-unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverProof<G> where
-    G::ScalarField: ocaml::FromValue {
+unsafe impl<'a, G: AffineCurve + ocaml::FromValue<'a>> ocaml::FromValue<'a> for ProverProof<G> where
+    G::ScalarField: ocaml::FromValue<'a> {
     fn from_value(v: ocaml::Value) -> Self {
         let p: CamlProverProof<G> = ocaml::FromValue::from_value(v);
         ProverProof {
