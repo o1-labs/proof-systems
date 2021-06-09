@@ -6,11 +6,11 @@ use algebra::{
 pub trait DetSquareRootField: FftField + SquareRootField {
     type DetSquareRootParams: DetSquareRootParameters;
 
-// Given
-// - an order p field F with p - 1 = t * 2^k, t odd, g an element of order 2^k in F,
-// - h : F
-// output (c, d) such that
-// h = c * g^d, where c is in the orthogonal complement of < g >
+    // Given
+    // - an order p field F with p - 1 = t * 2^k, t odd, g an element of order 2^k in F,
+    // - h : F
+    // output (c, d) such that
+    // h = c * g^d, where c is in the orthogonal complement of < g >
     fn pre_decompose(&self) -> (Self, u64) {
         let t_component: Self = pow2_pow(self.clone(), Self::FftParams::TWO_ADICITY as usize);
         let c = t_component.pow(Self::DetSquareRootParams::TWO_TO_TWO_ADICITY_INV.as_ref());
@@ -21,14 +21,14 @@ pub trait DetSquareRootField: FftField + SquareRootField {
 
     fn det_sqrt(&self) -> Option<Self> {
         self.sqrt().map(|x| {
-                let (_, d1) = x.pre_decompose();
-                let top_bit = d1 >> (Self::FftParams::TWO_ADICITY - 1);
-                if top_bit == 0 {
-                    x
-                } else {
-                    -x
-                }
-            })
+            let (_, d1) = x.pre_decompose();
+            let top_bit = d1 >> (Self::FftParams::TWO_ADICITY - 1);
+            if top_bit == 0 {
+                x
+            } else {
+                -x
+            }
+        })
     }
 }
 
@@ -36,11 +36,12 @@ pub trait DetSquareRootParameters: FftParameters {
     const TWO_TO_TWO_ADICITY_INV: Self::BigInt;
 }
 
-pub fn decompose<F : DetSquareRootField>(
-    h: &F,
-) -> (F, u64) {
+pub fn decompose<F: DetSquareRootField>(h: &F) -> (F, u64) {
     let (c, d) = h.pre_decompose();
-    (c.pow(F::DetSquareRootParams::TWO_TO_TWO_ADICITY_INV.as_ref()), d)
+    (
+        c.pow(F::DetSquareRootParams::TWO_TO_TWO_ADICITY_INV.as_ref()),
+        d,
+    )
 }
 
 pub fn in_orthogonal_complement<P: FftParameters + Fp256Parameters + DetSquareRootParameters>(
@@ -117,11 +118,9 @@ impl DetSquareRootParameters for FqParameters {
 }
 
 impl DetSquareRootParameters for algebra::bn_382::FpParameters {
-    const TWO_TO_TWO_ADICITY_INV: Self::BigInt =
-        BigInteger384([0, 0, 0, 0, 0, 0]);
+    const TWO_TO_TWO_ADICITY_INV: Self::BigInt = BigInteger384([0, 0, 0, 0, 0, 0]);
 }
 
 impl DetSquareRootParameters for algebra::bn_382::FqParameters {
-    const TWO_TO_TWO_ADICITY_INV: Self::BigInt =
-        BigInteger384([0, 0, 0, 0, 0, 0]);
+    const TWO_TO_TWO_ADICITY_INV: Self::BigInt = BigInteger384([0, 0, 0, 0, 0, 0]);
 }

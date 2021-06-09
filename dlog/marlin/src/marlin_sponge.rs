@@ -1,8 +1,6 @@
 use crate::prover::ProofEvaluations;
-use algebra::{
-    Field, PrimeField,
-};
-use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, MarlinSpongeConstants};
+use algebra::{Field, PrimeField};
+use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, MarlinSpongeConstants, Sponge};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {
@@ -35,27 +33,9 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, MarlinSpongeConstants>
         self.sponge.absorb(&self.params, x_hat);
 
         let points = [
-            &e.w,
-            &e.za,
-            &e.zb,
-            &e.h1,
-            &e.h2,
-            &e.h3,
-            &e.row[0],
-            &e.row[1],
-            &e.row[2],
-            &e.col[0],
-            &e.col[1],
-            &e.col[2],
-            &e.val[0],
-            &e.val[1],
-            &e.val[2],
-            &e.rc[0],
-            &e.rc[1],
-            &e.rc[2],
-            &e.g1,
-            &e.g2,
-            &e.g3,
+            &e.w, &e.za, &e.zb, &e.h1, &e.h2, &e.h3, &e.row[0], &e.row[1], &e.row[2], &e.col[0],
+            &e.col[1], &e.col[2], &e.val[0], &e.val[1], &e.val[2], &e.rc[0], &e.rc[1], &e.rc[2],
+            &e.g1, &e.g2, &e.g3,
         ];
 
         for p in &points {

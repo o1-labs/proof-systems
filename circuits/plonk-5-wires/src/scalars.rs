@@ -6,9 +6,9 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 pub use super::wires::COLUMNS;
 use algebra::{FftField, Field};
-use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
-use ff_fft::DensePolynomial;
 use array_init::array_init;
+use ff_fft::DensePolynomial;
+use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
@@ -16,13 +16,12 @@ pub struct ProofEvaluations<Fs> {
     pub z: Fs,
     pub t: Fs,
     pub f: Fs,
-    pub s: [Fs; COLUMNS-1],
+    pub s: [Fs; COLUMNS - 1],
 }
 
-impl<F : FftField> ProofEvaluations<Vec<F>> {
-    pub fn combine(&self, pt : F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F>
-        {
+impl<F: FftField> ProofEvaluations<Vec<F>> {
+    pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
+        ProofEvaluations::<F> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
@@ -45,20 +44,19 @@ pub struct CamlProofEvaluations<Fs> {
 #[cfg(feature = "ocaml_types")]
 unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
     fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(
-            CamlProofEvaluations {
-                w: {
-                    let [w0, w1, w2, w3, w4] = self.w;
-                    (w0, w1, w2, w3, w4)
-                },
-                z: self.z,
-                t: self.t,
-                f: self.f,
-                s: {
-                    let [s0, s1, s2, s3] = self.s;
-                    (s0, s1, s2, s3)
-                },
-            })
+        ocaml::ToValue::to_value(CamlProofEvaluations {
+            w: {
+                let [w0, w1, w2, w3, w4] = self.w;
+                (w0, w1, w2, w3, w4)
+            },
+            z: self.z,
+            t: self.t,
+            f: self.f,
+            s: {
+                let [s0, s1, s2, s3] = self.s;
+                (s0, s1, s2, s3)
+            },
+        })
     }
 }
 
@@ -84,8 +82,7 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct RandomOracles<F: Field>
-{
+pub struct RandomOracles<F: Field> {
     pub beta: F,
     pub gamma: F,
     pub alpha_chal: ScalarChallenge<F>,
@@ -98,13 +95,10 @@ pub struct RandomOracles<F: Field>
     pub u_chal: ScalarChallenge<F>,
 }
 
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
+impl<F: Field> RandomOracles<F> {
+    pub fn zero() -> Self {
         let c = ScalarChallenge(F::zero());
-        Self
-        {
+        Self {
             beta: F::zero(),
             gamma: F::zero(),
             alpha: F::zero(),

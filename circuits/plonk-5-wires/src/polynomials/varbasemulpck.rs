@@ -68,19 +68,23 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
+use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // scalar multiplication with packing constraint quotient poly contribution computation
-    pub fn vbmulpck_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.mul2m.is_zero() {return self.zero8.clone()}
+    pub fn vbmulpck_quot(
+        &self,
+        polys: &WitnessOverDomains<F>,
+        alpha: &[F],
+    ) -> Evaluations<F, D<F>> {
+        if self.mul2m.is_zero() {
+            return self.zero8.clone();
+        }
 
         let xt = &polys.d8.this.w[0];
         let yt = &polys.d8.this.w[1];
@@ -99,34 +103,27 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         // (xp - xt) * s1 = yp – (2b-1)*yt
         let check_1 =
-          &(  &(&(&(xp - xt) * s1)
-            - &yp)
-            + &(yt * &(&b.scale(F::from(2 as u64)) - &self.l08)));
+            &(&(&(&(xp - xt) * s1) - &yp) + &(yt * &(&b.scale(F::from(2 as u64)) - &self.l08)));
 
         // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
-        let check_2 =
-          &(&(  &(&(&xp.scale(F::from(2 as u64)) - &s1.pow(2)) + xt)
-              * &(&(&(ps * s1) + ys) + yp))
+        let check_2 = &(&(&(&(&xp.scale(F::from(2 as u64)) - &s1.pow(2)) + xt)
+            * &(&(&(ps * s1) + ys) + yp))
             - &(&yp.scale(F::from(2 as u64)) * ps));
 
         // (ys + yp)^2 - (xp – xs)^2 * (s1^2 – xt + xs)
         let check_3 = &(&(ys + yp).pow(2) - &(&ps.pow(2) * &(&(&s1.pow(2) - xt) + xs)));
 
         // n1 - 2*n2 - b
-        let check_4 =  &(&(n1 - &n2.scale(F::from(2 as u64))) - &b);
+        let check_4 = &(&(n1 - &n2.scale(F::from(2 as u64))) - &b);
 
-        &(&(&(&(
-            &bin.scale(alpha[0])
-          + &check_1.scale(alpha[1]))
-          + &check_2.scale(alpha[2]))
-          + &check_3.scale(alpha[3]))
-          + &check_4.scale(alpha[4]))
-        * &self.mul2l
+        &(&(&(&(&bin.scale(alpha[0]) + &check_1.scale(alpha[1])) + &check_2.scale(alpha[2]))
+            + &check_3.scale(alpha[3]))
+            + &check_4.scale(alpha[4]))
+            * &self.mul2l
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation
-    pub fn vbmulpck_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
-    {
+    pub fn vbmulpck_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F {
         let xt = evals[0].w[0];
         let yt = evals[0].w[1];
         let s1 = evals[0].w[2];
@@ -146,10 +143,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let check_1 = (((xp - &xt) * &s1) - &yp) + &(yt * &(b.double() - &F::one()));
 
         // (2*xp – s1^2 + xt) * ((xp – xs) * s1 + ys + yp) = (xp – xs) * 2*yp
-        let check_2 =
-          (((xp.double() - &s1.square()) + &xt) *
-            &(((ps * &s1) + &ys) + &yp)) -
-            &(yp.double() * ps);
+        let check_2 = (((xp.double() - &s1.square()) + &xt) * &(((ps * &s1) + &ys) + &yp))
+            - &(yp.double() * ps);
 
         // (ys + yp)^2 - (xp – xs)^2 * (s1^2 – xt + xs)
         let check_3 = (ys + &yp).square() - &(ps.square() * &(s1.square() - &xt + &xs));
@@ -157,16 +152,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // n1 - 2*n2 - b
         let check_4 = (n1 - &(n2.double())) - &b;
 
-          bin * &alpha[0]
-        + &(check_1 * &alpha[1])
-        + &(check_2 * &alpha[2])
-        + &(check_3 * &alpha[3])
-        + &(check_4 * &alpha[4])
+        bin * &alpha[0]
+            + &(check_1 * &alpha[1])
+            + &(check_2 * &alpha[2])
+            + &(check_3 * &alpha[3])
+            + &(check_4 * &alpha[4])
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation
-    pub fn vbmulpck_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
+    pub fn vbmulpck_lnrz(
+        &self,
+        evals: &Vec<ProofEvaluations<F>>,
+        alpha: &[F],
+    ) -> DensePolynomial<F> {
         self.mul2m.scale(Self::vbmulpck_scalars(evals, alpha))
     }
 }

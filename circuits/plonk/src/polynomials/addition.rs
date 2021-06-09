@@ -22,19 +22,19 @@ Constraint equations on wires l, r, o, l_next, r_next, o_next where
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
+use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // EC Affine addition constraint quotient poly contribution computation
-    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.addm.is_zero() {return self.addl4.clone()}
+    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
+        if self.addm.is_zero() {
+            return self.addl4.clone();
+        }
         /*
             (r_next - l_next) * (o + l) - (l - r) * (l_next - o_next) = 0
             (l_next + r_next + o_next) * (l_next - o_next) * (l_next - o_next) - (o + l) * (o + l) = 0
@@ -42,29 +42,30 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let ylo = &(&polys.d4.this.l + &polys.d4.this.o);
         let xlo = &(&polys.d4.next.l - &polys.d4.next.o);
 
-            &(&(&(&(&polys.d4.next.r - &polys.d4.next.l) * ylo)
-            -
-            &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l))).scale(alpha[0])
-            -
-            &(&(ylo * ylo) - &(&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)) * &(xlo * xlo))).scale(alpha[1]))
-            *
-            &self.addl4
+        &(&(&(&(&polys.d4.next.r - &polys.d4.next.l) * ylo)
+            - &(&(&polys.d4.next.l - &polys.d4.next.o) * &(&polys.d4.this.r - &polys.d4.this.l)))
+            .scale(alpha[0])
+            - &(&(ylo * ylo)
+                - &(&(&polys.d4.next.l + &(&polys.d4.next.r + &polys.d4.next.o)) * &(xlo * xlo)))
+                .scale(alpha[1]))
+            * &self.addl4
     }
 
-    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> Vec<F>
-    {
-        vec!
-        [
-            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l) -
-            &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l))) * &alpha[0] +
-            &(((evals[1].l + &evals[1].r + &evals[1].o) * &(evals[1].l - &evals[1].o) * &(evals[1].l - &evals[1].o) -
-            &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l))) * &alpha[1])
+    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> Vec<F> {
+        vec![
+            ((evals[1].r - &evals[1].l) * &(evals[0].o + &evals[0].l)
+                - &((evals[1].l - &evals[1].o) * &(evals[0].r - &evals[0].l)))
+                * &alpha[0]
+                + &(((evals[1].l + &evals[1].r + &evals[1].o)
+                    * &(evals[1].l - &evals[1].o)
+                    * &(evals[1].l - &evals[1].o)
+                    - &((evals[0].o + &evals[0].l) * &(evals[0].o + &evals[0].l)))
+                    * &alpha[1]),
         ]
     }
 
     // EC Affine addition constraint linearization poly contribution computation
-    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
+    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F> {
         self.addm.scale(Self::ecad_scalars(evals, alpha)[0])
     }
 }

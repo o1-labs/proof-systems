@@ -21,25 +21,33 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use marlin_protocol_dlog::index::{SRSSpec, Index};
-use sprs::{CsMat, CsVecView};
-use algebra::{UniformRand, bn_382::g::{Affine, Bn_382GParameters}, AffineCurve, One, Zero};
-use marlin_protocol_dlog::{prover::{ProverProof}};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
-use oracle::{sponge::{DefaultFrSponge, DefaultFqSponge}, poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}};
-use rand_core::{RngCore, OsRng};
-use std::{io, io::Write};
-use std::time::Instant;
+use algebra::{
+    bn_382::g::{Affine, Bn_382GParameters},
+    AffineCurve, One, UniformRand, Zero,
+};
 use colored::Colorize;
-use ff_fft::{DensePolynomial};
+use commitment_dlog::{
+    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
+    srs::SRS,
+};
+use ff_fft::DensePolynomial;
 use groupmap::GroupMap;
+use marlin_protocol_dlog::index::{Index, SRSSpec};
+use marlin_protocol_dlog::prover::ProverProof;
+use oracle::{
+    poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use rand_core::{OsRng, RngCore};
+use sprs::{CsMat, CsVecView};
+use std::time::Instant;
+use std::{io, io::Write};
 
 type Fr = <Affine as AffineCurve>::ScalarField;
 const MAX_SIZE: usize = 8;
 
 #[test]
-fn dlog_marlin_group_addition()
-{
+fn dlog_marlin_group_addition() {
     let rng = &mut OsRng;
 
     // field unity element
@@ -54,24 +62,23 @@ fn dlog_marlin_group_addition()
     let mut c = CsMat::<Fr>::zero((5, 8));
 
     a = a
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2], &[neg1, one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 3], &[one, neg1]).unwrap());
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2], &[neg1, one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 3], &[one, neg1]).unwrap());
 
     b = b
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap());
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[7], &[one]).unwrap());
 
     c = c
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 5], &[neg1, one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 5], &[neg1, one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fr>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
     let srs = SRS::create(MAX_SIZE);
 
-    let index = Index::<Affine>::create
-    (
+    let index = Index::<Affine>::create(
         a,
         b,
         c,
@@ -79,15 +86,17 @@ fn dlog_marlin_group_addition()
         MAX_SIZE,
         oracle::bn_382::fq::params() as ArithmeticSpongeParams<Fr>,
         oracle::bn_382::fp::params(),
-        SRSSpec::Use(&srs)
-    ).unwrap();
+        SRSSpec::Use(&srs),
+    )
+    .unwrap();
 
     positive(&index, rng);
     negative(&index);
 }
 
 fn positive(index: &Index<Affine>, rng: &mut dyn RngCore)
-where <Fr as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fr as std::str::FromStr>::Err: std::fmt::Debug,
 {
     let mut points = Vec::<(Fr, Fr, Fr, Fr, Fr, Fr)>::new();
     points.push
@@ -189,8 +198,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let tests = 0..1000;
     let mut batch = Vec::new();
-    for test in tests.clone()
-    {
+    for test in tests.clone() {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
 
@@ -209,18 +217,26 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
         let prev = {
             let k = ceil_log2(index.srs.get_ref().g.len());
-            let chals : Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
+            let chals: Vec<_> = (0..k).map(|_| Fr::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit_non_hiding(&b, None)
             };
-            ( chals, comm )
+            (chals, comm)
         };
 
         // add the proof to the batch
-        batch.push((&verifier_index,
+        batch.push((
+            &verifier_index,
             ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
-                &group_map, &witness, &index, vec![prev], rng).unwrap()));
+                &group_map,
+                &witness,
+                &index,
+                vec![prev],
+                rng,
+            )
+            .unwrap(),
+        ));
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -228,24 +244,31 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &vec![batch[0].clone()], rng)
-    {
-        false => {panic!("Failure verifying the prover's proof")},
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
+        &group_map,
+        &vec![batch[0].clone()],
+        rng,
+    ) {
+        false => panic!("Failure verifying the prover's proof"),
         true => {}
     }
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &batch, rng)
-    {
-        false => {panic!("Failure verifying the prover's proofs in batch")},
-        true => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+    match ProverProof::verify::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
+        &group_map, &batch, rng,
+    ) {
+        false => panic!("Failure verifying the prover's proofs in batch"),
+        true => {
+            println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
+        }
     }
 }
 
 fn negative(index: &Index<Affine>)
-where <Fr as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fr as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // build non-satisfying witness
     let x1 = <Fr as std::str::FromStr>::from_str("5745565249002583850854246415085554015514779048799444283584466894422344259771098642674937363180389190528028396479257").unwrap();
@@ -256,7 +279,7 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
     let y3 = <Fr as std::str::FromStr>::from_str("547170016748527041421767087930546910879995562217027082548816642186645397743855029110891827292852193105112126622067").unwrap();
 
     let s = (y2 - &y1) / &(x2 - &x1);
-    
+
     let mut witness = vec![Fr::zero(); 8];
     witness[0] = Fr::one();
     witness[1] = x1;
@@ -274,9 +297,14 @@ where <Fr as std::str::FromStr>::Err : std::fmt::Debug
 
     let rng = &mut OsRng;
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(&group_map, &witness, &index, vec![], rng)
-    {
-        Ok(_) => {panic!("Failure invalidating the witness")}
+    match ProverProof::create::<DefaultFqSponge<Bn_382GParameters, SC>, DefaultFrSponge<Fr, SC>>(
+        &group_map,
+        &witness,
+        &index,
+        vec![],
+        rng,
+    ) {
+        Ok(_) => panic!("Failure invalidating the witness"),
         _ => {}
     }
 }

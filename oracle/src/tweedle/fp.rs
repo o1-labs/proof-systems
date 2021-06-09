@@ -49,7 +49,7 @@ pub fn params() -> ArithmeticSpongeParams<Fp> {
                     "4204784055784266414484460653790149892220936342148543538356735100428170988226",
                 )
                 .unwrap(),
-            ]
+            ],
         ],
         round_constants: vec![
             vec![

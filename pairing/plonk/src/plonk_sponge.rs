@@ -1,9 +1,10 @@
+use algebra::{Field, PairingEngine, PrimeField};
 use plonk_circuits::scalars::ProofEvaluations;
-use algebra::{
-    Field, PairingEngine, PrimeField,
-};
 
-use oracle::{sponge::{DefaultFrSponge, FqSponge, ScalarChallenge}, poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}};
+use oracle::{
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants as SC, Sponge},
+    sponge::{DefaultFrSponge, FqSponge, ScalarChallenge},
+};
 
 pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
@@ -38,15 +39,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     fn absorb_evaluations(&mut self, e: &ProofEvaluations<Fr>) {
         self.last_squeezed = vec![];
 
-        let points = [
-            e.l,
-            e.r,
-            e.o,
-            e.sigma1,
-            e.sigma2,
-            e.r,
-            e.z,
-        ];
+        let points = [e.l, e.r, e.o, e.sigma1, e.sigma2, e.r, e.z];
 
         for p in &points {
             self.sponge.absorb(&self.params, &[*p]);
