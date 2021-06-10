@@ -1,6 +1,7 @@
 use algebra::{
     curves::models::SWModelParameters,
-    fields::{SquareRootField, Field}, Zero, One,
+    fields::{Field, SquareRootField},
+    One, Zero,
 };
 
 pub trait GroupMap<F> {
@@ -17,16 +18,18 @@ pub struct BWParameters<G: SWModelParameters> {
     inv_three_u_squared: G::BaseField,
 }
 
-fn curve_eqn<G : SWModelParameters>(x : G::BaseField) -> G::BaseField {
+/// returns the right-hand side of the Short Weierstrass curve equation for a given x
+fn curve_eqn<G: SWModelParameters>(x: G::BaseField) -> G::BaseField {
     let mut res = x;
-    res *= & x; // x^2
-    res += & G::COEFF_A; // x^2 + A
-    res *= & x; // x^3 + A x
-    res += & G::COEFF_B; // x^3 + A x + B
+    res *= &x; // x^2
+    res += &G::COEFF_A; // x^2 + A
+    res *= &x; // x^3 + A x
+    res += &G::COEFF_B; // x^3 + A x + B
     res
 }
 
-fn find_first<A, K: Field, F: Fn(K) -> Option<A>>(start: K, f : F) -> A {
+/// finds i for i=start, start+1, ... s.t. f(i) is a valid field
+fn find_first<A, K: Field, F: Fn(K) -> Option<A>>(start: K, f: F) -> A {
     let mut i = start;
     loop {
         match f(i) {
@@ -38,6 +41,7 @@ fn find_first<A, K: Field, F: Fn(K) -> Option<A>>(start: K, f : F) -> A {
     }
 }
 
+/// ?
 fn potential_xs_helper<G: SWModelParameters>(
     params: &BWParameters<G>,
     t2: G::BaseField,
@@ -45,17 +49,17 @@ fn potential_xs_helper<G: SWModelParameters>(
 ) -> [G::BaseField; 3] {
     let x1 = {
         let mut temp = t2;
-        temp.square_in_place();
-        temp *= &alpha;
-        temp *= &params.sqrt_neg_three_u_squared;
-        params.sqrt_neg_three_u_squared_minus_u_over_2 - &temp
+        temp.square_in_place(); // t2^2
+        temp *= &alpha; // t2^2 * alpha
+        temp *= &params.sqrt_neg_three_u_squared; // t2^2 * alpha * sqrt(-3u^2)
+        params.sqrt_neg_three_u_squared_minus_u_over_2 - &temp // sqrt(-3u^2-u/2) - t2^2 * alpha * sqrt(-3u^2)
     };
 
-    let x2 = -params.u - & x1;
+    let x2 = -params.u - &x1;
 
     let x3 = {
         let t2_plus_fu = t2 + &params.fu;
-        let t2_inv = alpha * & t2_plus_fu ;
+        let t2_inv = alpha * &t2_plus_fu;
         let mut temp = t2_plus_fu.square();
         temp *= &t2_inv;
         temp *= &params.inv_three_u_squared;
@@ -65,6 +69,7 @@ fn potential_xs_helper<G: SWModelParameters>(
     [x1, x2, x3]
 }
 
+/// ?
 fn potential_xs<G: SWModelParameters>(
     params: &BWParameters<G>,
     t: G::BaseField,
@@ -76,13 +81,15 @@ fn potential_xs<G: SWModelParameters>(
 
     let alpha = match alpha_inv.inverse() {
         Some(x) => x,
-        None => G::BaseField::zero()
+        None => G::BaseField::zero(),
     };
 
     potential_xs_helper(params, t2, alpha)
 }
 
-pub fn get_y<G:SWModelParameters>(x: G::BaseField) -> Option<G::BaseField> {
+/// returns the y-coordinate if x is a valid point on the curve, otherwise None
+/// TODO: what about sign?
+pub fn get_y<G: SWModelParameters>(x: G::BaseField) -> Option<G::BaseField> {
     let fx = curve_eqn::<G>(x);
     if let Some(y) = fx.sqrt() {
         Some(y)
@@ -91,12 +98,15 @@ pub fn get_y<G:SWModelParameters>(x: G::BaseField) -> Option<G::BaseField> {
     }
 }
 
-fn get_xy<G:SWModelParameters>(params: &BWParameters<G>, t: G::BaseField) -> (G::BaseField, G::BaseField) {
+fn get_xy<G: SWModelParameters>(
+    params: &BWParameters<G>,
+    t: G::BaseField,
+) -> (G::BaseField, G::BaseField) {
     let xvec = potential_xs(&params, t);
     for x in xvec.iter() {
         match get_y::<G>(*x) {
             Some(y) => return (*x, y),
-            None => ()
+            None => (),
         }
     }
     panic!("get_xy")
@@ -106,10 +116,11 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
     fn setup() -> Self {
         assert!(G::COEFF_A.is_zero());
 
+        // is Field(1) a valid x-coordinate? no? is Field(2) a valid x-coordinate? etc.
         let (u, fu) = find_first(G::BaseField::one(), |u| {
-            let fu : G::BaseField = curve_eqn::<G>(u);
+            let fu: G::BaseField = curve_eqn::<G>(u);
             if fu.is_zero() {
-                return None
+                return None;
             } else {
                 Some((u, fu))
             }
@@ -118,12 +129,11 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
         let two = G::BaseField::one() + &G::BaseField::one();
         let three = two + &G::BaseField::one();
 
-        let three_u_squared = u.square() * & three;
-        let inv_three_u_squared = three_u_squared.inverse().unwrap();
+        let three_u_squared = u.square() * &three; // 3 * u^2
+        let inv_three_u_squared = three_u_squared.inverse().unwrap(); // (3 * u^2)^-1
         let sqrt_neg_three_u_squared = (-three_u_squared).sqrt().unwrap();
         let two_inv = two.inverse().unwrap();
-        let sqrt_neg_three_u_squared_minus_u_over_2 =
-            (sqrt_neg_three_u_squared - & u) * &two_inv;
+        let sqrt_neg_three_u_squared_minus_u_over_2 = (sqrt_neg_three_u_squared - &u) * &two_inv;
 
         BWParameters::<G> {
             u,
@@ -135,20 +145,24 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
     }
 
     fn batch_to_group_x(&self, ts: Vec<G::BaseField>) -> Vec<[G::BaseField; 3]> {
-        let t2_alpha_invs : Vec<_> = ts.iter().map(|t| {
-            let t2 = t.square();
-            let mut alpha_inv = t2;
-            alpha_inv += &self.fu;
-            alpha_inv *= &t2;
-            (t2, alpha_inv)
-        }).collect();
+        let t2_alpha_invs: Vec<_> = ts
+            .iter()
+            .map(|t| {
+                let t2 = t.square();
+                let mut alpha_inv = t2;
+                alpha_inv += &self.fu;
+                alpha_inv *= &t2;
+                (t2, alpha_inv)
+            })
+            .collect();
 
-        let mut alphas : Vec<G::BaseField> = t2_alpha_invs.iter().map(|(_, a)| a.clone()).collect();
+        let mut alphas: Vec<G::BaseField> = t2_alpha_invs.iter().map(|(_, a)| a.clone()).collect();
         algebra::fields::batch_inversion::<G::BaseField>(&mut alphas);
 
-        let potential_xs = t2_alpha_invs.iter().zip(alphas).map(|((t2,_), alpha)| {
-            potential_xs_helper(self, t2.clone(), alpha.clone())
-        });
+        let potential_xs = t2_alpha_invs
+            .iter()
+            .zip(alphas)
+            .map(|((t2, _), alpha)| potential_xs_helper(self, t2.clone(), alpha.clone()));
         potential_xs.collect()
     }
 
