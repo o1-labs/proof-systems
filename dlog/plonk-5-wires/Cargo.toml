@@ -9,6 +9,7 @@ path = "src/lib.rs"
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 mina-curves = { path = "../../curves" }
 commitment_dlog = { path = "../commitment" }
 plonk_5_wires_circuits = { path = "../../circuits/plonk-5-wires" }
