@@ -12,12 +12,12 @@ The folowing functionality is implemented
 
 use crate::srs::SRS;
 pub use crate::CommitmentField;
-use algebra::{
-    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, Field,
-    FpParameters, One, PrimeField, ProjectiveCurve, SWModelParameters, SquareRootField,
+use ark_ec::{curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve};
+use ark_ff::{
+    Field, FpParameters, One, PrimeField, ProjectiveCurve, SWModelParameters, SquareRootField,
     UniformRand, VariableBaseMSM, Zero,
 };
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::RngCore;

@@ -6,7 +6,7 @@ This source file implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
-use algebra::{BigInteger, FromBytes, PrimeField, ToBytes};
+use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;

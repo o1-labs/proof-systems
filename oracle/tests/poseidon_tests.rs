@@ -1,12 +1,10 @@
+use ark_ff::{BigInteger256, PrimeField, UniformRand};
+use ark_serialize::CanonicalDeserialize as _;
+use mina_curves::pasta::Fp;
+use oracle::poseidon::Sponge as _;
 use serde::Deserialize;
 use std::fs::File;
-use std::path::PathBuf;
-
-use mina_curves::pasta::Fp;
-use algebra::{
-    fields::PrimeField, BigInteger256, CanonicalDeserialize as _,
-};
-use oracle::poseidon::Sponge as _; // needed for ::new() sponge
+use std::path::PathBuf; // needed for ::new() sponge
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 

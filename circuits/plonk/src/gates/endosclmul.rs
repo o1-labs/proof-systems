@@ -10,7 +10,7 @@ https://github.com/o1-labs/marlin/issues/41
 
 use crate::gate::{CircuitGate, GateType};
 use crate::{constraints::ConstraintSystem, wires::GateWires};
-use algebra::FftField;
+use ark_ff::FftField;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_endomul(wires: &[GateWires; 4]) -> Vec<Self> {

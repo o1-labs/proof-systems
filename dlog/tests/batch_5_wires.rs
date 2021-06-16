@@ -5,7 +5,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 
 *****************************************************************************************************************/
 
-use algebra::UniformRand;
+use ark_ff::UniformRand;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
@@ -18,7 +18,7 @@ use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
 
 use colored::Colorize;
-use ff_fft::DensePolynomial;
+use ark_poly::DensePolynomial;
 use groupmap::GroupMap;
 use rand::Rng;
 use std::time::{Duration, Instant};

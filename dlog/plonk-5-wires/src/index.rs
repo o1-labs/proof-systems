@@ -4,15 +4,15 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use algebra::AffineCurve;
-use algebra::PrimeField;
+use ark_ec::AffineCurve;
+use ark_ff::PrimeField;
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::{SRSSpec, SRSValue},
     CommitmentField,
 };
-use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
+use ark_poly::{DensePolynomial, Radix2EvaluationDomain as D};
 use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants5W, SpongeConstants};
 use plonk_5_wires_circuits::{
     constraints::{zk_w, ConstraintSystem},
