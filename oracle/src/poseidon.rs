@@ -4,7 +4,7 @@ This file implements Poseidon Hash Function primitive
 
 *****************************************************************************************************************/
 
-use algebra::Field;
+use ark_ff::Field;
 
 pub trait SpongeConstants {
     const ROUNDS_FULL: usize;

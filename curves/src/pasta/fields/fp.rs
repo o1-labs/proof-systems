@@ -1,7 +1,4 @@
-use algebra_core::{
-    biginteger::BigInteger256 as BigInteger,
-    fields::{FftParameters, Fp256, Fp256Parameters},
-};
+use ark_ff::{biginteger::BigInteger256 as BigInteger, FftParameters, Fp256, Fp256Parameters};
 
 pub type Fp = Fp256<FpParameters>;
 
@@ -19,7 +16,7 @@ impl FftParameters for FpParameters {
     ]);
 }
 
-impl algebra_core::fields::FpParameters for FpParameters {
+impl ark_ff::FpParameters for FpParameters {
     // 28948022309329048855892746252171976963363056481941560715954676764349967630337
     const MODULUS: BigInteger = BigInteger([
         0x992d30ed00000001,

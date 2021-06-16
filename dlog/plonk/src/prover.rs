@@ -6,11 +6,12 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, One, PrimeField, UniformRand, Zero};
+use ark_ec::AFfineCurve;
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_circuits::{
     constraints::ConstraintSystem,

@@ -7,10 +7,10 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel", "asm" ] }
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 mina-curves = { path = "../../curves" }
 groupmap = { path = "../../groupmap" }
-ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel" ] }
 ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }

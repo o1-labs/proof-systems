@@ -1,8 +1,6 @@
 use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeConstants};
-use algebra::{
-    curves::{short_weierstrass_jacobian::GroupAffine, SWModelParameters},
-    BigInteger, Field, FpParameters, One, PrimeField, Zero,
-};
+use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
+use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
 pub use crate::FqSponge;
 

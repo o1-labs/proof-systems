@@ -14,7 +14,7 @@ Constraint vector format:
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::GateWires;
-use algebra::FftField;
+use ark_ff::FftField;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_generic(wires: GateWires, ql: F, qr: F, qo: F, qm: F, qc: F) -> Self {
