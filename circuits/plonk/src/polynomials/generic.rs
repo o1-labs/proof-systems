@@ -22,7 +22,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             &(&(&polys.d4.this.l * &polys.d4.this.r) * &self.qml)
                 + &(&(&(&polys.d4.this.l * &self.qll) + &(&polys.d4.this.r * &self.qrl))
                     + &(&polys.d4.this.o * &self.qol)),
-            &self.qc + &p,
+            &self.qc + p,
         )
     }
 
