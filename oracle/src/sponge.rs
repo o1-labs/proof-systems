@@ -159,8 +159,8 @@ where
 
         x.iter().for_each(|x| {
             // Padding
-            let mut bits: Vec<bool> = x.into_repr().to_bits_be();
-            let mut bits: Vec<_> = (0..total_length)
+            let bits: Vec<bool> = x.into_repr().to_bits_be();
+            let bits: Vec<_> = (0..total_length)
                 .map(|i| if i < bits.len() { bits[i] } else { false })
                 .collect();
 

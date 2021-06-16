@@ -28,7 +28,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                     .zip(self.qwl.iter())
                     .map(|(w, q)| w * q)
                     .fold(self.zero4.clone(), |x, y| &x + &y),
-            &self.qc + &p,
+            &self.qc + p,
         )
     }
 

@@ -9,7 +9,7 @@ pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, Zero};
-use ark_poly::EvaluationDomain;
+use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
 };
@@ -320,7 +320,7 @@ where
                 ];
 
                 // permutation linearization scalars
-                let zkp = index.zkpm.evaluate(oracles.zeta);
+                let zkp = index.zkpm.evaluate(&oracles.zeta);
                 let mut s = ConstraintSystem::perm_scalars(
                     &evals,
                     &oracles,
@@ -456,7 +456,7 @@ where
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 
-        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng()) {
+        match srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
             false => Err(ProofError::OpenProof),
             true => Ok(true),
         }

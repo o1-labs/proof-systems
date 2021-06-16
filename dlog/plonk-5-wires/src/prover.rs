@@ -9,7 +9,7 @@ use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
+    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
 use commitment_dlog::commitment::{
@@ -365,7 +365,7 @@ where
         let p_eval = if p.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]
+            [vec![p.evaluate(&evlp[0])], vec![p.evaluate(&evlp[1])]]
         };
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])

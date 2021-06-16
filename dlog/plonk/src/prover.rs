@@ -10,7 +10,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
+    Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
@@ -379,7 +379,7 @@ where
         let p_eval = if p.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]
+            [vec![p.evaluate(&evlp[0])], vec![p.evaluate(&evlp[1])]]
         };
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
@@ -415,7 +415,7 @@ where
         // Therefore, the coefficient of the blinding base in the f commitment is
         // perm_scalars[0] * the coefficient in the z commitment.
         let omega_f = {
-            let zkp = index.cs.zkpm.evaluate(oracles.zeta);
+            let zkp = index.cs.zkpm.evaluate(&oracles.zeta);
             let evals = (0..2)
                 .map(|i| evals[i].combine(evlp[i]))
                 .collect::<Vec<_>>();
