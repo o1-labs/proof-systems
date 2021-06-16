@@ -46,6 +46,7 @@ where
     G::BaseField: PrimeField,
     G::ScalarField: CommitmentField,
 {
+    // packing in bit-representation
     const N: usize = 31;
     let mut bits = [false; 8 * N];
     for i in 0..N {
@@ -54,8 +55,8 @@ where
         }
     }
 
-    let n = <G::BaseField as PrimeField>::BigInt::from_bits(&bits);
-    let t = G::BaseField::from_repr(n);
+    let n = <G::BaseField as PrimeField>::BigInt::from_bits_be(&bits);
+    let t = G::BaseField::from_repr(n).expect("packing code has a bug");
     let (x, y) = m.to_group(t);
     G::of_coordinates(x, y)
 }
