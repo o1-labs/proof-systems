@@ -8,8 +8,8 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::{ProofEvaluations, RandomOracles};
 use crate::wires::COLUMNS;
-use algebra::{FftField, SquareRootField};
-use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::{FftField, SquareRootField};
+use ark_poly::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{
     rndoracle::ProofError,
     utils::{EvalUtils, PolyUtils},

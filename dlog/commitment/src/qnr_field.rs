@@ -1,4 +1,4 @@
-use algebra::{field_new, BigInteger256, SquareRootField};
+use ark_ff::{field_new, BigInteger256, SquareRootField};
 use mina_curves::pasta;
 
 pub trait QnrField: SquareRootField {

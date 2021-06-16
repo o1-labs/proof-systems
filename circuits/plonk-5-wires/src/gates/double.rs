@@ -36,7 +36,7 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {

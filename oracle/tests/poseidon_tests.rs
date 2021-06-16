@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use algebra::{fields::PrimeField, BigInteger256, UniformRand};
+    use ark_ff::{BigInteger256, PrimeField, UniformRand};
     use mina_curves::pasta::Fp;
     use oracle::poseidon::Sponge; // needed for ::new() sponge
 

@@ -1,5 +1,5 @@
-use algebra::FftField;
-use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as D};
+use ark_ff::FftField;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvaluationDomains<F: FftField> {

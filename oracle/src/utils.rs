@@ -1,5 +1,5 @@
-use algebra::FftField;
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::FftField;
+use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use rayon::prelude::*;
 
 pub trait PolyUtils<F: FftField> {
