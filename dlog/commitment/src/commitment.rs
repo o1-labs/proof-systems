@@ -12,12 +12,12 @@ The folowing functionality is implemented
 
 use crate::srs::SRS;
 pub use crate::CommitmentField;
-use ark_ec::{curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve};
-use ark_ff::{
-    Field, FpParameters, One, PrimeField, ProjectiveCurve, SWModelParameters, SquareRootField,
-    UniformRand, VariableBaseMSM, Zero,
+use ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
+    AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ark_poly::DensePolynomial;
+use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::RngCore;
@@ -152,7 +152,7 @@ where
 
         let chal_inv = {
             let mut cs = chal.clone();
-            algebra::fields::batch_inversion(&mut cs);
+            ark_ff::batch_inversion(&mut cs);
             cs
         };
 

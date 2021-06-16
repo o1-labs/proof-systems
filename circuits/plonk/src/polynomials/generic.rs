@@ -8,7 +8,7 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
 use ark_ff::{FftField, SquareRootField};
-use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::PolyUtils;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {

@@ -17,8 +17,8 @@ use oracle::poseidon::PlonkSpongeConstants5W as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
 
+use ark_poly::univariate::DensePolynomial;
 use colored::Colorize;
-use ark_poly::DensePolynomial;
 use groupmap::GroupMap;
 use rand::Rng;
 use std::time::{Duration, Instant};
