@@ -14,7 +14,7 @@ plonk_5_wires_protocol_dlog = { path = "plonk-5-wires" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.2"
-rand = "0.7.3"
+rand = { version = "0.8.0", features = ["getrandom"] }
 sprs = "0.7.1"
 rayon = { version = "1" }
 

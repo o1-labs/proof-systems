@@ -8,5 +8,5 @@ ark-ec = "0.3.0"
 ark-ff = "0.3.0"
 
 [dev-dependencies]
-rand = { version = "0.7", default-features = false }
+rand = { version = "0.8.0", default-features = false }
 rand_xorshift = "0.2"
