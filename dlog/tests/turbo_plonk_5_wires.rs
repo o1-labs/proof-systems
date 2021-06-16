@@ -54,7 +54,7 @@ use oracle::{
 };
 use plonk_5_wires_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::Wire};
 use plonk_5_wires_protocol_dlog::{index::Index, prover::ProverProof};
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use std::time::Instant;
 use std::{io, io::Write};
 
@@ -1047,7 +1047,7 @@ fn positive(index: &Index<Affine>) {
         let scalar = w();
         let bits = scalar
             .into_repr()
-            .to_bits()
+            .to_bits_be()
             .iter()
             .map(|b| match *b {
                 true => Fp::one(),
