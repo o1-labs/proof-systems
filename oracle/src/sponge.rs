@@ -85,6 +85,7 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
             let (limbs, remaining) = last_squeezed.split_at(num_limbs);
             self.last_squeezed = remaining.to_vec();
             Fr::from_repr(pack::<Fr::BigInt>(&limbs))
+                .expect("internal representation was not a valid field element")
         } else {
             let x = self.sponge.squeeze().into_repr();
             self.last_squeezed
@@ -120,6 +121,7 @@ where
 
     pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
         P::ScalarField::from_repr(pack(&self.squeeze_limbs(num_limbs)))
+            .expect("internal representation was not a valid field element")
     }
 }
 
@@ -153,28 +155,24 @@ where
         let total_length = P::ScalarField::size_in_bits();
 
         x.iter().for_each(|x| {
-            // Big endian
-            let mut bits: Vec<bool> = x.into_repr().to_bits();
-            // Little endian
-            bits.reverse();
+            // Padding
+            let mut bits: Vec<bool> = x.into_repr().to_bits_be();
             let mut bits: Vec<_> = (0..total_length)
                 .map(|i| if i < bits.len() { bits[i] } else { false })
                 .collect();
-            // Big endian
-            bits.reverse();
 
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
-                self.sponge.absorb(
-                    &[P::BaseField::from_repr(
-                        <P::BaseField as PrimeField>::BigInt::from_bits(&bits),
-                    )],
-                );
+                self.sponge.absorb(&[P::BaseField::from_repr(
+                    <P::BaseField as PrimeField>::BigInt::from_bits_be(&bits),
+                )
+                .expect("padding code has a bug")]);
             } else {
                 let low_bits = P::BaseField::from_repr(
-                    <P::BaseField as PrimeField>::BigInt::from_bits(&bits[1..]),
-                );
+                    <P::BaseField as PrimeField>::BigInt::from_bits_be(&bits[1..]),
+                )
+                .expect("padding code has a bug");
 
                 let high_bit = if bits[0] {
                     P::BaseField::one()
@@ -190,7 +188,7 @@ where
 
     fn digest(mut self) -> P::ScalarField {
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
-        P::ScalarField::from_repr(x.into())
+        P::ScalarField::from_repr(x.into()).expect("the sponge code has a bug")
     }
 
     fn challenge(&mut self) -> P::ScalarField {
