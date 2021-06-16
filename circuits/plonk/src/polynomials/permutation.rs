@@ -45,7 +45,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             (self.r, self.o),
             alpha,
             self.domain.d1.size,
-            self.zkpm.evaluate(oracles.zeta),
+            self.zkpm.evaluate(&oracles.zeta),
             self.sid[self.domain.d1.size as usize - 3],
         );
         &z.scale(scalars[0]) + &self.sigmam[2].scale(scalars[1])
