@@ -9,3 +9,6 @@ edition = "2018"
 [dependencies]
 algebra = { path = "../zexe/algebra", features = [ "parallel" ] }
 rand = { version = "0.7" }
+
+[dev-dependencies]
+mina-curves = { path = "../curves" }
