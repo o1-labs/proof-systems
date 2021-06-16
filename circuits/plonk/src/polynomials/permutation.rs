@@ -7,8 +7,8 @@ This source file implements permutation constraint polynomial.
 use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::{ProofEvaluations, RandomOracles};
-use algebra::{FftField, SquareRootField};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::{FftField, SquareRootField};
+use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::{EvalUtils, PolyUtils};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {

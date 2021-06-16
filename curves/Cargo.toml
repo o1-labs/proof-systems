@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { path = "../zexe/algebra", features = ["std", "parallel"] }
-algebra-core = { path = "../zexe/algebra-core", features = ["std"] }
+ark-ec = "0.3.0"
+ark-ff = "0.3.0"
 
 [dev-dependencies]
 rand = { version = "0.7", default-features = false }
