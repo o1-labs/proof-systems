@@ -43,7 +43,7 @@ use oracle::{
 };
 use plonk_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::GateWires};
 use plonk_protocol_dlog::{index::Index, prover::ProverProof};
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use std::time::Instant;
 use std::{io, io::Write};
 

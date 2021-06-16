@@ -434,7 +434,7 @@ where
     //     evalscale: eval scaling factor for opening commitments in batch
     //     oracle_params: parameters for the random oracle argument
     //     RETURN: commitment opening proof
-    pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
@@ -442,8 +442,12 @@ where
         polyscale: Fr<G>,      // scaling factor for polynoms
         evalscale: Fr<G>,      // scaling factor for evaluation point powers
         mut sponge: EFqSponge, // sponge
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> OpeningProof<G> {
+        rng: &mut RNG,
+    ) -> OpeningProof<G>
+    where
+        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
