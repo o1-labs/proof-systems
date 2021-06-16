@@ -20,3 +20,4 @@ rayon = { version = "1" }
 
 [dev-dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }

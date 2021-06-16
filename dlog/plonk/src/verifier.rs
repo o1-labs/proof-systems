@@ -9,10 +9,10 @@ pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, Zero};
+use ark_poly::EvaluationDomain;
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
 };
-use ark_poly::EvaluationDomain;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_circuits::{constraints::ConstraintSystem, scalars::RandomOracles};
 use rand::thread_rng;
@@ -154,7 +154,7 @@ where
         (0..self.public.len())
             .zip(w.iter())
             .for_each(|(_, w)| lagrange.push(zetaw - w));
-        algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
+        ark_ff::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
         // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain

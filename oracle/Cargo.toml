@@ -9,6 +9,7 @@ path = "src/lib.rs"
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 mina-curves = { path = "../curves" }
 ocaml = { version = "0.18.1", optional = true }
 rand = "0.7.3"

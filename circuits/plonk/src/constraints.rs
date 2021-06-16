@@ -9,7 +9,9 @@ pub use super::gate::{CircuitGate, GateType};
 pub use super::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 pub use super::wires::GateWires;
 use ark_ff::{FftField, SquareRootField};
-use ark_poly::{DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants, SpongeConstants};

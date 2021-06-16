@@ -22,12 +22,14 @@ This source file tests constraints for the following computatios:
 **********************************************************************************************************/
 
 use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{SRSSpec, SRS},
 };
-use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     pallas::Affine as Other,

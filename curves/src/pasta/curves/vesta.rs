@@ -3,7 +3,7 @@ use ark_ec::{
     models::short_weierstrass_jacobian::{GroupAffine, GroupProjective},
     ModelParameters, SWModelParameters,
 };
-use ark_ff::{biginteger::BigInteger256, field_new, Zero};
+use ark_ff::{field_new, Zero};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct VestaParameters;

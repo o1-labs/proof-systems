@@ -8,11 +8,13 @@ pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use ark_poly::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_5_wires_circuits::{
     scalars::{ProofEvaluations, RandomOracles},
@@ -214,7 +216,7 @@ where
                 .map(|(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma)
                 .fold(Fr::<G>::one(), |x, y| x * y)
         });
-        algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n - 3]);
+        ark_ff::batch_inversion::<Fr<G>>(&mut z[1..=n - 3]);
         (0..n - 3).for_each(|j| {
             let x = z[j];
             z[j + 1] *= witness
