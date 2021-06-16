@@ -1,5 +1,8 @@
-use ark_ec::{models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve};
-use ark_ff::{BitIteratorBE, Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero};
+use ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, ProjectiveCurve,
+    SWModelParameters,
+};
+use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use rayon::prelude::*;
 
@@ -24,7 +27,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
         })
         .collect::<Vec<_>>();
 
-    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..len).step_by(2).zip(denominators.iter()) {
         let j = i / 2;
@@ -81,7 +84,7 @@ fn batch_add_assign<P: SWModelParameters>(
         denominators[i] = d;
     }
 
-    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..n).zip(denominators.iter()) {
         let p0 = v0[i];
@@ -147,7 +150,7 @@ fn affine_combine_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -211,7 +214,7 @@ fn affine_window_combine_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -271,7 +274,7 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {

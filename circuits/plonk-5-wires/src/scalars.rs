@@ -6,8 +6,8 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 pub use super::wires::COLUMNS;
 use ark_ff::{FftField, Field};
+use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
-use ark_poly::DensePolynomial;
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
