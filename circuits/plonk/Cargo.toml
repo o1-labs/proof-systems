@@ -7,7 +7,8 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
+algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "asm" ] }
+mina-curves = { path = "../../curves" }
 ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
 ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }
