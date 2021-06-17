@@ -10,7 +10,7 @@ tmp/
 
 target
 .DS_Store
-Cargo.lock.
+Cargo.lock
 idea
 *.iml
 *.ipynb_checkpoints

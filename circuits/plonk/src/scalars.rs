@@ -5,8 +5,8 @@ This source file implements Plonk prover polynomial evaluations primitive.
 *****************************************************************************************************************/
 
 use algebra::{FftField, Field};
-use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 use ff_fft::DensePolynomial;
+use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
@@ -21,10 +21,9 @@ pub struct ProofEvaluations<Fs> {
     pub sigma2: Fs,
 }
 
-impl<F : FftField> ProofEvaluations<Vec<F>> {
-    pub fn combine(&self, pt : F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F>
-        {
+impl<F: FftField> ProofEvaluations<Vec<F>> {
+    pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
+        ProofEvaluations::<F> {
             l: DensePolynomial::eval_polynomial(&self.l, pt),
             r: DensePolynomial::eval_polynomial(&self.r, pt),
             o: DensePolynomial::eval_polynomial(&self.o, pt),
@@ -39,8 +38,7 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct RandomOracles<F: Field>
-{
+pub struct RandomOracles<F: Field> {
     pub beta: F,
     pub gamma: F,
     pub alpha_chal: ScalarChallenge<F>,
@@ -53,13 +51,10 @@ pub struct RandomOracles<F: Field>
     pub u_chal: ScalarChallenge<F>,
 }
 
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
+impl<F: Field> RandomOracles<F> {
+    pub fn zero() -> Self {
         let c = ScalarChallenge(F::zero());
-        Self
-        {
+        Self {
             beta: F::zero(),
             gamma: F::zero(),
             alpha: F::zero(),

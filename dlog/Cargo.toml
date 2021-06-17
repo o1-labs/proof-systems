@@ -4,14 +4,15 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-algebra = { path = "../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
-groupmap = { path = "../zexe/groupmap" }
+algebra = { path = "../zexe/algebra", features = [ "parallel", "asm" ] }
+groupmap = { path = "../groupmap" }
+mina-curves = { path = "../curves" }
 ff-fft = { path = "../zexe/ff-fft", features = [ "parallel" ] }
 commitment_dlog = { path = "commitment" }
-marlin_circuits = { path = "../circuits/marlin" }
-marlin_protocol_dlog = { path = "marlin" }
 plonk_circuits = { path = "../circuits/plonk" }
 plonk_protocol_dlog = { path = "plonk" }
+plonk_5_wires_circuits = { path = "../circuits/plonk-5-wires" }
+plonk_5_wires_protocol_dlog = { path = "plonk-5-wires" }
 oracle = { path = "../oracle" }
 rand_core = { version = "0.5" }
 colored = "1.9.2"
