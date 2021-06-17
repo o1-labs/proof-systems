@@ -5,14 +5,12 @@ verification of a batch of batched opening proofs of polynomial commitments
 
 *****************************************************************************************************************/
 
-use algebra::{
-    tweedle::{
-        dee::{Affine, TweedledeeParameters},
-        Fp,
-    },
-    UniformRand,
-};
+use algebra::UniformRand;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use mina_curves::pasta::{
+    vesta::{Affine, VestaParameters},
+    Fp,
+};
 use oracle::utils::PolyUtils;
 
 use oracle::poseidon::PlonkSpongeConstants5W as SC;
@@ -37,7 +35,7 @@ where
     let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<TweedledeeParameters, SC>::new(oracle::tweedle::fq5::params());
+    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq5::params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);
@@ -92,7 +90,7 @@ where
             commit += start.elapsed();
 
             start = Instant::now();
-            let proof = srs.open::<DefaultFqSponge<TweedledeeParameters, SC>>(
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>>(
                 &group_map,
                 (0..a.len())
                     .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
@@ -138,6 +136,6 @@ where
     println!("{}{:?}", "open time: ".magenta(), open);
 
     let start = Instant::now();
-    assert!(srs.verify::<DefaultFqSponge<TweedledeeParameters, SC>>(&group_map, &mut proofs, rng));
+    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>>(&group_map, &mut proofs, rng));
     println!("{}{:?}", "verification time: ".green(), start.elapsed());
 }

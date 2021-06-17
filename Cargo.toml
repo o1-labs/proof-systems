@@ -1,20 +1,13 @@
 [workspace]
 members = [
-    "circuits/marlin",
     "circuits/plonk",
     "circuits/plonk-5-wires",
     "curves",
     "dlog",
     "dlog/commitment",
-    "dlog/marlin",
     "dlog/plonk",
     "dlog/plonk-5-wires",
-    "dlog_solver",
-    "oracle",
-    "pairing",
-    "pairing/commitment",
-    "pairing/marlin",
-    "pairing/plonk",
+    "oracle"
 ]
 exclude = [ "./zexe" ]
 

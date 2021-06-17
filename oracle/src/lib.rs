@@ -1,9 +1,7 @@
-pub mod bn_382;
 pub mod pasta;
 pub mod poseidon;
 pub mod rndoracle;
 pub mod sponge;
-pub mod tweedle;
 pub mod utils;
 
 use algebra::Field;
