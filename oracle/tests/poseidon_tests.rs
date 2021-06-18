@@ -27,9 +27,9 @@ mod tests {
     fn poseidon() {
         macro_rules! assert_poseidon_eq {
             ($input:expr, $target:expr) => {
-                let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new();
-                s.absorb(&Parameters::params(), $input);
-                let output = s.squeeze(&Parameters::params());
+                let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new(Parameters::params());
+                s.absorb($input);
+                let output = s.squeeze();
                 assert_eq!(
                     output,
                     $target,
@@ -174,9 +174,9 @@ mod tests {
     fn poseidon_5_wires() {
         macro_rules! assert_poseidon_5_wires_eq {
             ($input:expr, $target:expr) => {
-                let mut s = Poseidon::<Fp, PlonkSpongeConstants5W>::new();
-                s.absorb(&Parameters5W::params(), $input);
-                let output = s.squeeze(&Parameters5W::params());
+                let mut s = Poseidon::<Fp, PlonkSpongeConstants5W>::new(Parameters5W::params());
+                s.absorb($input);
+                let output = s.squeeze();
                 assert_eq!(
                     output,
                     $target,
@@ -369,9 +369,9 @@ mod tests {
     fn poseidon_3() {
         macro_rules! assert_poseidon_3_eq {
             ($input:expr, $target:expr) => {
-                let mut s = Poseidon::<Fp, PlonkSpongeConstants3>::new();
-                s.absorb(&Parameters3::params(), $input);
-                let output = s.squeeze(&Parameters3::params());
+                let mut s = Poseidon::<Fp, PlonkSpongeConstants3>::new(Parameters3::params());
+                s.absorb($input);
+                let output = s.squeeze();
                 assert_eq!(
                     output,
                     $target,
