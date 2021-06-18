@@ -62,13 +62,11 @@ impl<F: PrimeField> ScalarChallenge<F> {
 
 #[derive(Clone)]
 pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
-    pub params: ArithmeticSpongeParams<P::BaseField>,
     pub sponge: ArithmeticSponge<P::BaseField, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
 pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
-    pub params: ArithmeticSpongeParams<Fr>,
     pub sponge: ArithmeticSponge<Fr, SC>,
     pub last_squeezed: Vec<u64>,
 }
@@ -90,7 +88,7 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
             self.last_squeezed = remaining.to_vec();
             Fr::from_repr(pack::<Fr::BigInt>(&limbs))
         } else {
-            let x = self.sponge.squeeze(&self.params).into_repr();
+            let x = self.sponge.squeeze().into_repr();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze(num_limbs)
@@ -110,7 +108,7 @@ where
             self.last_squeezed = remaining.to_vec();
             limbs.to_vec()
         } else {
-            let x = self.sponge.squeeze(&self.params).into_repr();
+            let x = self.sponge.squeeze().into_repr();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze_limbs(num_limbs)
@@ -119,7 +117,7 @@ where
 
     pub fn squeeze_field(&mut self) -> P::BaseField {
         self.last_squeezed = vec![];
-        self.sponge.squeeze(&self.params)
+        self.sponge.squeeze()
     }
 
     pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
@@ -135,8 +133,7 @@ where
 {
     fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         DefaultFqSponge {
-            params,
-            sponge: ArithmeticSponge::new(),
+            sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],
         }
     }
@@ -147,8 +144,8 @@ where
             if g.infinity {
                 panic!("sponge got zero curve point");
             } else {
-                self.sponge.absorb(&self.params, &[g.x]);
-                self.sponge.absorb(&self.params, &[g.y]);
+                self.sponge.absorb(&[g.x]);
+                self.sponge.absorb(&[g.y]);
             }
         }
     }
@@ -172,7 +169,6 @@ where
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
                 self.sponge.absorb(
-                    &self.params,
                     &[P::BaseField::from_repr(
                         <P::BaseField as PrimeField>::BigInt::from_bits(&bits),
                     )],
@@ -188,8 +184,8 @@ where
                     P::BaseField::zero()
                 };
 
-                self.sponge.absorb(&self.params, &[low_bits]);
-                self.sponge.absorb(&self.params, &[high_bit]);
+                self.sponge.absorb(&[low_bits]);
+                self.sponge.absorb(&[high_bit]);
             }
         });
     }
