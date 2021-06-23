@@ -4,9 +4,9 @@ This implements GCM primitives for TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 TLS-1.2
 
 Wikipedia quote (https://en.wikipedia.org/wiki/Galois/Counter_Mode):
 
-In cryptography, 0xGalois/Counter Mode (GCM) is a mode of operation for symmetric-key cryptographic block ciphers
+In cryptography, Galois/Counter Mode (GCM) is a mode of operation for symmetric-key cryptographic block ciphers
 widely adopted for its performance. GCM throughput rates for state-of-the-art, high-speed communication channels
-can be achieved with inexpensive hardware resources.[1] The operation is an authenticated encryption algorithm
+can be achieved with inexpensive hardware resources. The operation is an authenticated encryption algorithm
 designed to provide both data authenticity (integrity) and confidentiality. GCM is defined for block ciphers
 with a block size of 128 bits. Galois Message Authentication Code (GMAC) is an authentication-only variant of
 the GCM which can form an incremental message authentication code. Both GCM and GMAC can accept initialization
@@ -74,6 +74,9 @@ impl Gcm
     {
         let cipher = AesCipher::create(key);
         let h = cipher.encryptBlock([0; 16]);
+        println!("h");
+        h.iter().for_each(|h| print!("{:#04x?}; ", h));
+        println!();
         Gcm
         {
             h,
@@ -101,20 +104,26 @@ impl Gcm
         }
 
         let ec = self.cipher.encryptBlock(self.counter);
+        println!("ec0");
+        ec.iter().for_each(|h| print!("{:#04x?}; ", h));
+        println!();
 
         for i in (0..pt.len()).step_by(16)
         {
             self.incr();
             let eic = self.cipher.encryptBlock(self.counter);
+            println!("ec");
+            eic.iter().for_each(|h| print!("{:#04x?}; ", h));
+            println!();
 
             let mut et = pt[i .. if i+16 > pt.len() {pt.len()} else {i+16}].
-                iter().zip(eic.iter()).map(|(p, c)| xor(*p, *c)).collect();
+                iter().zip(eic.iter()).map(|(p, c)| xor(*p, *c, true)).collect();
             ht = self.mulh(&xor16v(&ht, &et));
             ct.append(&mut et);
         }
 
         let sz: u128 = (((aad.len() as u128) << 64) | (pt.len() as u128)) << 3;
-        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes())), &ec);
+        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes(), true)), &ec, true);
 
         (ct, ht)
     }
@@ -141,13 +150,13 @@ impl Gcm
             let ec = self.cipher.encryptBlock(self.counter);
 
             let ctc = ct[i .. if i+16 > pt.len() {ct.len()} else {i+16}].to_vec();
-            let mut dt = ctc.iter().zip(ec.iter()).map(|(c, e)| xor(*c, *e)).collect();
+            let mut dt = ctc.iter().zip(ec.iter()).map(|(c, e)| xor(*c, *e, true)).collect();
             pt.append(&mut dt);
             ht = self.mulh(&xor16v(&ht, &ctc));
         }
 
         let sz: u128 = (((aad.len() as u128) << 64) | (pt.len() as u128)) << 3;
-        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes())), &ec);
+        ht = xor16a(&self.mulh(&xor16a(&ht, &sz.to_be_bytes(), true)), &ec, true);
 
         if ht == at {Some(pt)} else {None}
     }
@@ -172,8 +181,8 @@ impl Gcm
             z.rotate_right(1);
             let r = self.r[z[0] as usize];
             z[0] = r[0];
-            z[1] = xor(z[1], r[1]);
-            z = xor16a(&z, &self.mul[x[i] as usize])
+            z[1] = xor(z[1], r[1], false);
+            z = xor16a(&z, &self.mul[x[i] as usize], false)
         }
         z
     }
@@ -191,33 +200,33 @@ pub unsafe fn mult(x: &Block, y: &Block) -> Block
 
             if k < 15
             {
-                z[k] = xor(z[k], m[0]);
-                z[k+1] = xor(z[k+1], m[1]);
+                z[k] = xor(z[k], m[0], false);
+                z[k+1] = xor(z[k+1], m[1], false);
             }
             else if k == 15
             {
                 let r = R[m[1] as usize];
-                z[0] = xor(z[0], r[0]);
-                z[1] = xor(z[1], r[1]);
-                z[15] = xor(z[15], m[0]);
+                z[0] = xor(z[0], r[0], false);
+                z[1] = xor(z[1], r[1], false);
+                z[15] = xor(z[15], m[0], false);
             }
             else if k < 30
             {
                 let r0 = R[m[0] as usize];
                 let r1 = R[m[1] as usize];
-                z[k-16] = xor(z[k-16], r0[0]);
-                z[k-15] = xor(z[k-15], xor(r0[1], r1[0]));
-                z[k-14] = xor(z[k-14], r1[1]);
+                z[k-16] = xor(z[k-16], r0[0], false);
+                z[k-15] = xor(z[k-15], xor(r0[1], r1[0], false), false);
+                z[k-14] = xor(z[k-14], r1[1], false);
             }
             else
             {
                 let r0 = R[m[0] as usize];
                 let r1 = R[m[1] as usize];
                 let r2 = R[r1[1] as usize];
-                z[0] = xor(z[0], r2[0]);
-                z[1] = xor(z[1], r2[1]);
-                z[14] = xor(z[14], r0[0]);
-                z[15] = xor(z[15], xor(r0[1], r1[0]));
+                z[0] = xor(z[0], r2[0], false);
+                z[1] = xor(z[1], r2[1], false);
+                z[14] = xor(z[14], r0[0], false);
+                z[15] = xor(z[15], xor(r0[1], r1[0], false), false);
             }
         }
     }

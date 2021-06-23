@@ -303,7 +303,7 @@ pub fn InvMixSubColumns (state: &mut Block)
 
 pub fn AddRoundKey (state: &mut Block, key: Block)
 {
-    state.iter_mut().zip(key.iter()).for_each(|(s, k)| *s = xor(*s, *k));
+    state.iter_mut().zip(key.iter()).for_each(|(s, k)| *s = xor(*s, *k, true));
 }
 
 // compute aes key schedule
@@ -328,35 +328,38 @@ pub fn expandKey (key: Block) -> [u8; 176]
         {
             tmp4 = tmp3;
             tmp3 = Sbox[tmp0 as usize];
-            tmp0 = xor(Sbox[tmp1 as usize], Rcon[idx/4]);
+            tmp0 = xor(Sbox[tmp1 as usize], Rcon[idx/4], true);
             tmp1 = Sbox[tmp2 as usize];
             tmp2 = Sbox[tmp4 as usize];
         }
 
-        expkey[4*idx+0] = xor(expkey[4*idx - 16 + 0], tmp0);
-        expkey[4*idx+1] = xor(expkey[4*idx - 16 + 1], tmp1);
-        expkey[4*idx+2] = xor(expkey[4*idx - 16 + 2], tmp2);
-        expkey[4*idx+3] = xor(expkey[4*idx - 16 + 3], tmp3);
+        expkey[4*idx+0] = xor(expkey[4*idx - 16 + 0], tmp0, true);
+        expkey[4*idx+1] = xor(expkey[4*idx - 16 + 1], tmp1, true);
+        expkey[4*idx+2] = xor(expkey[4*idx - 16 + 2], tmp2, true);
+        expkey[4*idx+3] = xor(expkey[4*idx - 16 + 3], tmp3, true);
     }
+        println!("expkey");
+        expkey.iter().for_each(|h| print!("{:#04x?}; ", h));
+        println!();
     expkey
 }
 
 pub fn xor16v (x: &Block, y: &Vec<u8>) -> Block
 {
-    array_init(|i| xor(x[i], if i<y.len() {y[i]} else {0}))
+    array_init(|i| xor(x[i], if i<y.len() {y[i]} else {0}, true))
 }
 
-pub fn xor16a (x: &Block, y: &Block) -> Block
+pub fn xor16a (x: &Block, y: &Block, t: bool) -> Block
 {
-    array_init(|i| xor(x[i], y[i]))
+    array_init(|i| xor(x[i], y[i], t))
 }
 
 pub fn xor4 (x: u8, y: u8, z: u8, t: u8) -> u8
 {
-    unsafe {xor(XOR[y as usize | ((x as usize) << 8)], XOR[z as usize | ((t as usize) << 8)])}
+    unsafe {xor(XOR[y as usize | ((x as usize) << 8)], XOR[z as usize | ((t as usize) << 8)], true)}
 }
 
-pub fn xor (x: u8, y: u8) -> u8
+pub fn xor (x: u8, y: u8, t: bool) -> u8
 {
     unsafe {XOR[y as usize | ((x as usize) << 8)]}
 }
