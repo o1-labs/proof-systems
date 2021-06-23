@@ -22,5 +22,17 @@ colored = "1.9.2"
 rand = "0.7.3"
 sprs = "0.7.1"
 rayon = { version = "1" }
-array-init = "1.0.0"
-aes-gcm = "0.7.0"
+
+# aes-gcm-tool
+array-init = { version = "1.0.0", optional = true }
+aes-gcm = { version = "0.7.0", optional = true }
+
+[features]
+aes-gcm-tool = [ "array-init", "aes-gcm" ]
+
+[[bin]]
+name = "aes-gcm-tool"
+test = true
+bench = false
+path = "tests/aes_gcm_tool/aes_gcm_tool.rs"
+required-features = [ "aes-gcm-tool" ]

@@ -104,3 +104,8 @@ fn gcm()
     }
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 }
+
+fn main()
+{
+    println!("aes-gcm-tool");
+}
