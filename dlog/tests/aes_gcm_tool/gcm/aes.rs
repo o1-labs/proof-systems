@@ -338,9 +338,6 @@ pub fn expandKey (key: Block) -> [u8; 176]
         expkey[4*idx+2] = xor(expkey[4*idx - 16 + 2], tmp2, true);
         expkey[4*idx+3] = xor(expkey[4*idx - 16 + 3], tmp3, true);
     }
-        println!("expkey");
-        expkey.iter().for_each(|h| print!("{:#04x?}; ", h));
-        println!();
     expkey
 }
 

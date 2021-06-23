@@ -74,9 +74,6 @@ impl Gcm
     {
         let cipher = AesCipher::create(key);
         let h = cipher.encryptBlock([0; 16]);
-        println!("h");
-        h.iter().for_each(|h| print!("{:#04x?}; ", h));
-        println!();
         Gcm
         {
             h,
@@ -104,17 +101,11 @@ impl Gcm
         }
 
         let ec = self.cipher.encryptBlock(self.counter);
-        println!("ec0");
-        ec.iter().for_each(|h| print!("{:#04x?}; ", h));
-        println!();
 
         for i in (0..pt.len()).step_by(16)
         {
             self.incr();
             let eic = self.cipher.encryptBlock(self.counter);
-            println!("ec");
-            eic.iter().for_each(|h| print!("{:#04x?}; ", h));
-            println!();
 
             let mut et = pt[i .. if i+16 > pt.len() {pt.len()} else {i+16}].
                 iter().zip(eic.iter()).map(|(p, c)| xor(*p, *c, true)).collect();
