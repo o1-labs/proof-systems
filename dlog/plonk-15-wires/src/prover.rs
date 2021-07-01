@@ -7,8 +7,8 @@ This source file implements prover's zk-proof primitive.
 use algebra::{Field, AffineCurve, Zero};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, OpeningProof, b_poly_coefficients};
-use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
-use plonk_15_wires_circuits::{nolookup::scalars::{ProofEvaluations, RandomOracles}, wires::COLUMNS};
+use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
+use plonk_15_wires_circuits::{nolookup::scalars::{ProofEvaluations, RandomOracles}, wires::{COLUMNS, PERMUTS}};
 pub use super::{index::Index, range};
 use crate::plonk_sponge::{FrSponge};
 use array_init::array_init;
@@ -246,7 +246,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         (
             |e| ProofEvaluations::<Vec<Fr<G>>>
             {
-                s: array_init(|i| index.cs.sigmam[0..COLUMNS-1][i].eval(*e, index.max_poly_size)),
+                s: array_init(|i| index.cs.sigmam[0..PERMUTS-1][i].eval(*e, index.max_poly_size)),
                 w: array_init(|i| w[i].eval(*e, index.max_poly_size)),
                 z: z.eval(*e, index.max_poly_size),
                 t: t.eval(*e, index.max_poly_size),
@@ -270,6 +270,25 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
         // compute and evaluate linearization polynomial
 
+        /*
+        {
+            let f = index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+            let f = &f + &index.cs.gnrc_lnrz(&e[0]);
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+            let f = &f + &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
+            println!("p{} psm_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&index.cs.psm, None));
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+            let f = &f + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]);
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+            let f = &f + &index.cs.double_lnrz(&e, &alpha[range::DBL]);
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+            let f = &f + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]);
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+            let f = &f + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]);
+            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
+        } */
+
         let f =
             &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
             &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN])) +
@@ -277,7 +296,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             &index.cs.double_lnrz(&e, &alpha[range::DBL])) +
             &index.cs.endomul_lnrz(&e, &alpha[range::ENDML])) +
             &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
-            &index.cs.perm_lnrz(&e, &oracles);
+            &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -317,7 +336,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 (&f, None, non_hiding(1)),
             ]
         );
-        polynoms.extend(index.cs.sigmam[0..COLUMNS-1].iter().map(|w| (w, None, non_hiding(1))).collect::<Vec<_>>());
+        polynoms.extend(index.cs.sigmam[0..PERMUTS-1].iter().map(|w| (w, None, non_hiding(1))).collect::<Vec<_>>());
         polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
 
         Ok(Self

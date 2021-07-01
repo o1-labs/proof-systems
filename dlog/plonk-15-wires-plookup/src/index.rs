@@ -7,7 +7,7 @@ This source file implements Plonk Protocol Index primitive.
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
 use commitment_dlog::{srs::SRS, CommitmentField, commitment::{CommitmentCurve, PolyComm}};
 use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants, Plonk15SpongeConstants};
-use plonk_15_wires_circuits::{lookup::constraints::{ConstraintSystem}, wires::*};
+use plonk_15_wires_circuits::{gates::poseidon::{ROUNDS_PER_ROW}, lookup::constraints::{ConstraintSystem}, wires::*};
 use algebra::{AffineCurve, PrimeField};
 use array_init::array_init;
 
@@ -79,7 +79,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve>
     pub qc_comm:    PolyComm<G>,            // constant wire commitment
 
     // poseidon polynomial commitments
-    pub rcm_comm:   [PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH], // round constant polynomial commitment array
+    pub rcm_comm:   [[PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH]; ROUNDS_PER_ROW], // round constant polynomial commitment array
     pub psm_comm:   PolyComm<G>,            // poseidon constraint selector polynomial commitment
 
     // ECC arithmetic polynomial commitments
@@ -119,7 +119,7 @@ impl<'a, G: CommitmentCurve> Index<'a, G> where G::BaseField: PrimeField, G::Sca
             qm_comm: srs.get_ref().commit_non_hiding(&self.pcs.cs.qmm, None),
             qc_comm: srs.get_ref().commit_non_hiding(&self.pcs.cs.qc, None),
 
-            rcm_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.pcs.cs.rcm[i], None)),
+            rcm_comm: array_init(|i| array_init(|j| srs.get_ref().commit_non_hiding(&self.pcs.cs.rcm[i][j], None))),
             psm_comm: srs.get_ref().commit_non_hiding(&self.pcs.cs.psm, None),
 
             add_comm: srs.get_ref().commit_non_hiding(&self.pcs.cs.addm, None),

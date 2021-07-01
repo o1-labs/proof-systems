@@ -6,7 +6,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 use crate::wires::*;
 use algebra::{FftField, Field};
-use oracle::{sponge_5_wires::ScalarChallenge, utils::PolyUtils};
+use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 use ff_fft::DensePolynomial;
 use array_init::array_init;
 

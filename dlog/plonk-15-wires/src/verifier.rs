@@ -7,7 +7,7 @@ This source file implements zk-proof batch verifier functionality.
 use crate::plonk_sponge::FrSponge;
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
-use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
+use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_15_wires_circuits::{wires::*, nolookup::{scalars::RandomOracles, constraints::ConstraintSystem}};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use algebra::{Field, AffineCurve, Zero, One};
@@ -205,7 +205,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // permutation
                 let zkp = index.zkpm.evaluate(oracles.zeta);
                 let mut p = vec![&index.sigma_comm[PERMUTS-1]];
-                let mut s = vec![ConstraintSystem::perm_scalars(&evals, &oracles, zkp)];
+                let mut s = vec![ConstraintSystem::perm_scalars(&evals, &oracles, &alpha[range::PERM], zkp)];
 
                 // generic
                 p.push(&index.qm_comm);
@@ -216,7 +216,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // poseidon
                 s.extend(&ConstraintSystem::psdn_scalars(&evals, &index.fr_sponge_params, &alpha[range::PSDN]));
                 p.push(&index.psm_comm);
-                p.extend(index.rcm_comm.iter().map(|c| c).collect::<Vec<_>>());
+                p.extend(index.rcm_comm.iter().flatten().map(|c| c).collect::<Vec<_>>());
 
                 // EC addition
                 s.push(ConstraintSystem::ecad_scalars(&evals, &alpha[range::ADD]));
@@ -243,20 +243,23 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     -
                     evals[0].w.iter().zip(evals[0].s.iter()).
                         map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma).
-                        fold((evals[0].w[PERMUTS-1] + &oracles.gamma) * &evals[1].z * &oracles.alpha * &zkp, |x, y| x * y)
+                        fold((evals[0].w[PERMUTS-1] + &oracles.gamma) * &evals[1].z * &alpha[range::PERM][0] * &zkp, |x, y| x * y)
                     +
                     evals[0].w.iter().zip(index.shift.iter()).
                         map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w).
-                        fold(oracles.alpha * &zkp * &evals[0].z, |x, y| x * y)
+                        fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y)
                     -
-                    evals[0].t * &zeta1m1) * &(oracles.zeta - &index.w) * &(oracles.zeta - &Fr::<G>::one())
+                    evals[0].t * &zeta1m1) 
+                        * &(oracles.zeta - &index.w) * &(oracles.zeta - &Fr::<G>::one())
                 !=
-                    ((zeta1m1 * &alpha[range::PERM][0] * &(oracles.zeta - &index.w))
+                    ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
                     +
-                    (zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &Fr::<G>::one())))
+                    (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
                     *
                     &(Fr::<G>::one() - evals[0].z)
-                {return Err(ProofError::ProofVerification)}
+                {
+                    return Err(ProofError::ProofVerification)
+                }
 
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             }

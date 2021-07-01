@@ -7,7 +7,7 @@ This source file implements zk-proof batch verifier functionality.
 use crate::plonk_sponge::FrSponge;
 pub use super::prover::{ProverProof, range};
 pub use super::index::VerifierIndex as Index;
-use oracle::{FqSponge, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
+use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_15_wires_circuits::
 {
     wires::*,
@@ -218,7 +218,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // permutation
                 let zkp = index.zkpm.evaluate(oracles.po.zeta);
                 let mut p = vec![&index.sigma_comm[PERMUTS-1]];
-                let mut s = vec![CS::perm_scalars(&pevals, &oracles.po, zkp)];
+                let mut s = vec![CS::perm_scalars(&pevals, &oracles.po, &alpha[range::PERM], zkp)];
 
                 // generic
                 p.push(&index.qm_comm);
@@ -229,7 +229,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 // poseidon
                 s.extend(&CS::psdn_scalars(&pevals, &index.fr_sponge_params, &alpha[range::PSDN]));
                 p.push(&index.psm_comm);
-                p.extend(index.rcm_comm.iter().map(|c| c).collect::<Vec<_>>());
+                p.extend(index.rcm_comm.iter().flatten().map(|c| c).collect::<Vec<_>>());
 
                 // EC addition
                 s.push(CS::ecad_scalars(&pevals, &alpha[range::ADD]));
@@ -268,11 +268,11 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     -
                     pevals[0].w.iter().zip(pevals[0].s.iter()).
                         map(|(w, s)| (oracles.po.beta * s) + w + oracles.po.gamma).
-                        fold((pevals[0].w[PERMUTS-1] + oracles.po.gamma) * pevals[1].z * oracles.po.alpha * zkp, |x, y| x * y)
+                        fold((pevals[0].w[PERMUTS-1] + oracles.po.gamma) * pevals[1].z * alpha[range::PERM][0] * zkp, |x, y| x * y)
                     +
                     pevals[0].w.iter().zip(index.shift.iter()).
                         map(|(w, s)| oracles.po.gamma + (oracles.po.beta * oracles.po.zeta * s) + w).
-                        fold(oracles.po.alpha * zkp * pevals[0].z, |x, y| x * y)
+                        fold(alpha[range::PERM][0] * zkp * pevals[0].z, |x, y| x * y)
                     +
                     ((((evals[0].l * beta1 * (oracles.gamma + evals[0].lw)) *
                         (gammabeta1 + (evals[0].tb + evals[1].tb * oracles.beta)))
@@ -289,9 +289,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     *
                     zetam1 * zetamw1 * zetamw3
                 !=
-                    (zm1 * zetamw1 * zetamw3 * alpha[range::PERM][0])
+                    (zm1 * zetamw1 * zetamw3 * alpha[range::PERM][1])
                     +
-                    (zm1 * zetam1 * zetamw1 * alpha[range::PERM][1])
+                    (zm1 * zetam1 * zetamw1 * alpha[range::PERM][2])
                     +
                     (lm1 * zetamw1 * zetamw3 * alpha[range::TABLE][1])
                     +

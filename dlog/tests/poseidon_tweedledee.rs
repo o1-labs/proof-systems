@@ -17,10 +17,10 @@ use colored::Colorize;
 use rand_core::OsRng;
 
 const PERIOD: usize = PlonkSpongeConstants::ROUNDS_FULL + 1;
-const MAX_SIZE: usize = 40000; // max size of poly chunks
-const NUM_POS: usize = 256; // number of Poseidon hashes in the circuit
+const NUM_POS: usize = 1024; // number of Poseidon hashes in the circuit
 const N: usize = PERIOD * NUM_POS; // Plonk domain size
 const M: usize = PERIOD * (NUM_POS-1);
+const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC : usize = 0;
 
 #[test]

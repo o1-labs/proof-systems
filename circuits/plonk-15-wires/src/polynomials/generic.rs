@@ -9,6 +9,7 @@ use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
 use crate::polynomial::WitnessOverDomains;
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
+use crate::wires::GENERICS;
 use oracle::utils::PolyUtils;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F>
@@ -26,7 +27,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
     pub fn gnrc_scalars(evals: &ProofEvaluations<F>) -> Vec<F>
     {
-        vec![evals.w[0] * &evals.w[1], evals.w[0], evals.w[1], evals.w[2], evals.w[3], evals.w[4], F::one()]
+        let mut res = vec![evals.w[0] * &evals.w[1]];
+        for i in 0..GENERICS {
+            res.push(evals.w[i]);
+        }
+        res.push(F::one());
+        return res;
     }
 
     // generic constraint linearization poly contribution computation

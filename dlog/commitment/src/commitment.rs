@@ -61,15 +61,22 @@ impl<C: AffineCurve> PolyComm<C>
 {
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self
     {
+        assert_eq!(com.len(), elm.len());
         PolyComm::<C>
         {
             shifted:
             {
-                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {None}
+                let pairs = com.iter().zip(elm.iter()).filter_map(|(c, s)| {
+                    match c.shifted {
+                        Some(c) => Some((c, s)),
+                        None => None,
+                    }
+                }).collect::<Vec<_>>();
+                if pairs.len() == 0 { None }
                 else
                 {
-                    let points = com.iter().map(|c| {assert!(c.shifted.is_some()); c.shifted.unwrap()}).collect::<Vec<_>>();
-                    let scalars = elm.iter().map(|s| {s.into_repr()}).collect::<Vec<_>>();
+                    let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
+                    let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
                     Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
                 }
             },

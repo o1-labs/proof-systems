@@ -170,9 +170,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
                 map(|gate| if gate.typ == GateType::Generic {gate.c[COLUMNS+1]} else {F::zero()}).collect(), domain.d1).interpolate(),
 
             // poseidon constraint polynomials
-            rcm: array_init(|j| {array_init(|i| E::<F, D<F>>::from_vec_and_domain(gates.iter().
-                map(|gate| if gate.typ == GateType::Poseidon {gate.rc()[i][j]} else {F::zero()}).collect(), domain.d1).interpolate())}),
-
+            rcm: array_init(|round| {array_init(|col| E::<F, D<F>>::from_vec_and_domain(gates.iter().
+                map(|gate| if gate.typ == GateType::Poseidon {gate.rc()[round][col]} else {F::zero()}).collect(), domain.d1).interpolate())}),
 
             ps4: psm.evaluate_over_domain_by_ref(domain.d4),
             ps8: psm.evaluate_over_domain_by_ref(domain.d8),

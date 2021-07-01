@@ -47,11 +47,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             &lagrange.d8.this.w.iter().zip(self.sigmal8.iter()).
                 map(|(p, s)| p + &(l0 + &s.scale(oracles.beta))).
                 fold(lagrange.d8.next.z.clone(), |x, y| &x * &y)).
-            scale(oracles.alpha)
+            scale(alpha[0])
             *
             &self.zkpl
             ,
-            &bnd1.scale(alpha[0]) + &bnd2.scale(alpha[1])
+            &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2])
         ))
     }
 
@@ -60,21 +60,23 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     (
         &self, e: &Vec<ProofEvaluations<F>>,
         oracles: &RandomOracles<F>,
+        alpha: &[F],
     ) -> DensePolynomial<F>
     {
-        self.sigmam[PERMUTS-1].scale(Self::perm_scalars(e, oracles, self.zkpm.evaluate(oracles.zeta)))
+        self.sigmam[PERMUTS-1].scale(Self::perm_scalars(e, oracles, alpha, self.zkpm.evaluate(oracles.zeta)))
     }
 
     pub fn perm_scalars
     (
         e: &Vec<ProofEvaluations<F>>,
         oracles: &RandomOracles<F>,
+        alpha: &[F],
         z: F,
     ) -> F
     {
         -e[0].w.iter().zip(e[0].s.iter()).
             map(|(w, s)| oracles.gamma + &(oracles.beta * s) + w).
-            fold(e[1].z * &oracles.beta * &oracles.alpha * &z, |x, y| x * y)
+            fold(e[1].z * &oracles.beta * alpha[0] * &z, |x, y| x * y)
     }
 
     // permutation aggregation polynomial computation

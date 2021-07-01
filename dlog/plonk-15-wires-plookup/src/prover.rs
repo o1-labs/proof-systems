@@ -14,7 +14,7 @@ use plonk_15_wires_circuits::
     wires::COLUMNS,
     polynomial::LookupPolys
 };
-use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge_5_wires::ScalarChallenge};
+use oracle::{FqSponge, utils::PolyUtils, rndoracle::ProofError, sponge::ScalarChallenge};
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use array_init::array_init;
@@ -332,7 +332,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             &index.pcs.cs.endomul_lnrz(&pe, &alpha[range::ENDML])) +
             &index.pcs.cs.vbmul_lnrz(&pe, &alpha[range::MUL])) +
             &index.pcs.lookup_lnrz(&pe, &alpha[range::LKP])) +
-            &index.pcs.cs.perm_lnrz(&pe, &oracles.po);
+            &index.pcs.cs.perm_lnrz(&pe, &oracles.po, &alpha[range::PERM]);
 
         evals[0].pe.f = f.eval(evlp[0], index.max_poly_size);
         evals[1].pe.f = f.eval(evlp[1], index.max_poly_size);

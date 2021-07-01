@@ -33,9 +33,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             collect::<Vec<_>>();
         (
             &self.ps4 * &polys.d4.next.w.iter().zip(alpha[0..COLUMNS].iter()).map(|(p, a)| p.scale(-*a)).
-                fold(self.zero4.clone(), |x, y| &x + &y),
+                fold(self.zero4.clone(), |x, y| &x + &y), // next row on other side of equality
             &self.ps8 * &lro.iter().zip(scalers.iter()).map(|(p, s)| p.scale(*s)).
-                fold(self.zero8.clone(), |x, y| &x + &y),
+                fold(self.zero8.clone(), |x, y| &x + &y), // 
             self.rcm.iter().zip(alpha[0..COLUMNS].iter()).map(|(p, a)| p.scale(*a)).
                 fold(DensePolynomial::<F>::zero(), |x, y| &x + &y),
         )

@@ -9,13 +9,24 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use algebra::FftField;
-use oracle::poseidon::{ArithmeticSpongeParams, Plonk15SpongeConstants, sbox};
-use crate::{wires::GateWires, wires::{COLUMNS, WIRES}, nolookup::constraints::ConstraintSystem};
+use oracle::poseidon::{SpongeConstants, Plonk15SpongeConstants, sbox};
+use crate::{wires::GateWires, wires::{COLUMNS}, nolookup::constraints::ConstraintSystem};
 use crate::gate::{CircuitGate, GateType};
 use array_init::array_init;
+use std::ops::Range;
 
-pub const SPONGE_WIDTH: usize = SPONGE_WIDTH;
+pub const SPONGE_WIDTH: usize = Plonk15SpongeConstants::SPONGE_WIDTH;
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
+
+// There are 5 round states per row. We put the first state first, followed by the last state
+// so that they are both accessible by the permutation argument.
+pub const STATE_ORDER : [usize; ROUNDS_PER_ROW] = [0, 2, 3, 4, 1];
+
+pub fn round_range(i : usize) -> Range<usize> {
+    let slot = STATE_ORDER[i];
+    let start = slot * SPONGE_WIDTH;
+    start..(start + SPONGE_WIDTH)
+}
 
 impl<F: FftField> CircuitGate<F>
 {
@@ -23,7 +34,8 @@ impl<F: FftField> CircuitGate<F>
     (
         row: usize,
         wires: GateWires,
-        c: Vec<F>
+        // Coefficients are passed in in the logical order
+        c: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW]
     ) -> Self
     {
         CircuitGate
@@ -31,21 +43,27 @@ impl<F: FftField> CircuitGate<F>
             row,
             typ: GateType::Poseidon,
             wires,
-            c
+            c: c.iter().flatten().map(|x| *x).collect()
         }
     }
 
     pub fn verify_poseidon(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
     {
-        let this: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|i| array_init(|j| witness[ROUNDS_PER_ROW*i+j][self.row]));
-        let next: [F; SPONGE_WIDTH] = array_init(|i| witness[i][self.row+1]);
+        // TODO: Needs to be fixed
+
+        let this: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
+            let wire = STATE_ORDER[round];
+            array_init(|col| witness[col + wire * SPONGE_WIDTH][self.row])
+        });
+        let next: [F; SPONGE_WIDTH] = array_init(|i| witness[i + STATE_ORDER[0] * SPONGE_WIDTH][self.row+1]);
+
         let rc = self.rc();
 
         let perm: [Vec<F>; ROUNDS_PER_ROW] = array_init
         (
-            |j|
+            |round|
                 cs.fr_sponge_params.mds.iter().enumerate().
-                map(|(i, m)| rc[j][i] + &this[j].iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * sbox::<F, Plonk15SpongeConstants>(*s) + x)).collect::<Vec<_>>()
+                map(|(i, m)| rc[round][i] + &this[round].iter().zip(m.iter()).fold(F::zero(), |x, (s, &m)| m * sbox::<F, Plonk15SpongeConstants>(*s) + x)).collect::<Vec<_>>()
         );
 
         self.typ == GateType::Poseidon
@@ -56,8 +74,18 @@ impl<F: FftField> CircuitGate<F>
     }
 
     pub fn ps(&self) -> F {if self.typ == GateType::Poseidon {F::one()} else {F::zero()}}
+
+    // Coefficients are output here in the logical order
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW]
     {
-        array_init(|i| array_init(|j| if self.typ == GateType::Poseidon {self.c[WIRES[ROUNDS_PER_ROW*i+j]]} else {F::zero()}))
+        array_init(|round| { 
+            array_init(|col| {
+                if self.typ == GateType::Poseidon {
+                    self.c[SPONGE_WIDTH*round+col]
+                } else {
+                    F::zero()
+                }
+            })
+        })
     }
 }
