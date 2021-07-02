@@ -10,7 +10,6 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 
 // A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {
@@ -198,5 +197,39 @@ where
 
     fn challenge_fq(&mut self) -> P::BaseField {
         self.squeeze_field()
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    //
+    // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
+    //
+
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue)]
+    pub struct CamlScalarChallenge<CamlF>(pub CamlF);
+
+    impl<F, CamlF> From<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
+    where
+        CamlF: From<F>,
+    {
+        fn from(sc: ScalarChallenge<F>) -> Self {
+            Self(sc.0.into())
+        }
+    }
+
+    impl<F, CamlF> Into<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
+    where
+        CamlF: Into<F>,
+    {
+        fn into(self) -> ScalarChallenge<F> {
+            ScalarChallenge(self.0.into())
+        }
     }
 }

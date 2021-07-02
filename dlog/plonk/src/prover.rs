@@ -26,25 +26,12 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
-pub struct ProverCommitments<G: AffineCurve>
-{
+pub struct ProverCommitments<G: AffineCurve> {
     pub l_comm: PolyComm<G>,
     pub r_comm: PolyComm<G>,
     pub o_comm: PolyComm<G>,
     pub z_comm: PolyComm<G>,
     pub t_comm: PolyComm<G>,
-}
-
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
-struct CamlProverProof<G: AffineCurve>
-{
-    pub commitments: ProverCommitments<G>,
-    pub proof: OpeningProof<G>,
-    // OCaml doesn't have sized arrays, so we have to convert to a tuple..
-    pub evals: (ProofEvaluations<Vec<Fr<G>>>, ProofEvaluations<Vec<Fr<G>>>),
-    pub public: Vec<Fr<G>>,
-    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
 #[derive(Clone)]
@@ -63,42 +50,6 @@ pub struct ProverProof<G: AffineCurve> {
 
     // The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
-}
-
-#[cfg(feature = "ocaml_types")]
-unsafe impl<G: AffineCurve + ocaml::IntoValue> ocaml::IntoValue for ProverProof<G> where
-    G::ScalarField: ocaml::IntoValue {
-    fn into_value(self, runtime: &ocaml::Runtime) -> ocaml::Value {
-        ocaml::IntoValue::into_value(
-            CamlProverProof{
-                commitments: self.commitments,
-                proof: self.proof,
-                evals: {
-                    let [evals0, evals1] = self.evals;
-                    (evals0, evals1)
-                },
-                public: self.public,
-                prev_challenges: self.prev_challenges
-            }, runtime)
-    }
-}
-
-#[cfg(feature = "ocaml_types")]
-unsafe impl<'a, G: AffineCurve + ocaml::FromValue<'a>> ocaml::FromValue<'a> for ProverProof<G> where
-    G::ScalarField: ocaml::FromValue<'a> {
-    fn from_value(v: ocaml::Value) -> Self {
-        let p: CamlProverProof<G> = ocaml::FromValue::from_value(v);
-        ProverProof {
-            commitments: p.commitments,
-            proof: p.proof,
-            evals: {
-                let (evals0, evals1) = p.evals;
-                [evals0, evals1]
-            },
-            public: p.public,
-            prev_challenges: p.prev_challenges,
-        }
-    }
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -471,5 +422,124 @@ where
         };
 
         Ok(proof)
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    use plonk_circuits::scalars::caml::CamlProofEvaluations;
+
+    //
+    // CamlProverCommitments<CamlG> <-> ProverCommitments<G>
+    //
+
+    /// The ocaml type for ProverCommitments
+    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    pub struct CamlProverCommitments<CamlG> {
+        pub l_comm: CamlPolyComm<CamlG>,
+        pub r_comm: CamlPolyComm<CamlG>,
+        pub o_comm: CamlPolyComm<CamlG>,
+        pub z_comm: CamlPolyComm<CamlG>,
+        pub t_comm: CamlPolyComm<CamlG>,
+    }
+
+    impl<G, CamlG> From<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    where
+        G: AffineCurve,
+        CamlPolyComm<CamlG>: From<PolyComm<G>>,
+    {
+        fn from(prover_comm: ProverCommitments<G>) -> Self {
+            Self {
+                l_comm: prover_comm.l_comm.into(),
+                r_comm: prover_comm.r_comm.into(),
+                o_comm: prover_comm.o_comm.into(),
+                z_comm: prover_comm.z_comm.into(),
+                t_comm: prover_comm.t_comm.into(),
+            }
+        }
+    }
+
+    impl<G, CamlG> Into<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    where
+        G: AffineCurve,
+        CamlPolyComm<CamlG>: Into<PolyComm<G>>,
+    {
+        fn into(self) -> ProverCommitments<G> {
+            ProverCommitments {
+                l_comm: self.l_comm.into(),
+                r_comm: self.r_comm.into(),
+                o_comm: self.o_comm.into(),
+                z_comm: self.z_comm.into(),
+                t_comm: self.t_comm.into(),
+            }
+        }
+    }
+
+    //
+    // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
+    //
+
+    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    pub struct CamlProverProof<CamlG, CamlF> {
+        pub commitments: CamlProverCommitments<CamlG>,
+        pub proof: CamlOpeningProof<CamlG, CamlF>,
+        // OCaml doesn't have sized arrays, so we have to convert to a tuple..
+        pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
+        pub public: Vec<CamlF>,
+        pub prev_challenges: Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
+    }
+
+    impl<G, CamlG, CamlF> From<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(pp: ProverProof<G>) -> Self {
+            Self {
+                commitments: pp.commitments.into(),
+                proof: pp.proof.into(),
+                evals: (pp.evals[0].clone().into(), pp.evals[1].clone().into()),
+                public: pp.public.into_iter().map(Into::into).collect(),
+                prev_challenges: pp
+                    .prev_challenges
+                    .into_iter()
+                    .map(|(v, c)| {
+                        let v = v.into_iter().map(Into::into).collect();
+                        (v, c.into())
+                    })
+                    .collect(),
+            }
+        }
+    }
+
+    impl<G, CamlG, CamlF> Into<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+        CamlF: Into<G::ScalarField>,
+    {
+        fn into(self) -> ProverProof<G> {
+            ProverProof {
+                commitments: self.commitments.into(),
+                proof: self.proof.into(),
+                evals: [self.evals.0.into(), self.evals.1.into()],
+                public: self.public.into_iter().map(Into::into).collect(),
+                prev_challenges: self
+                    .prev_challenges
+                    .into_iter()
+                    .map(|(v, c)| {
+                        let v = v.into_iter().map(Into::into).collect();
+                        (v, c.into())
+                    })
+                    .collect(),
+            }
+        }
     }
 }
