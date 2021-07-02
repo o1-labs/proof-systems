@@ -24,4 +24,4 @@ array-init = "0.1.1"
 
 [features]
 
-ocaml_types = [ "ocaml" ]
+ocaml_types = [ "ocaml", "plonk_circuits/ocaml_types", "commitment_dlog/ocaml_types" ]
