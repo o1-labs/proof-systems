@@ -1,0 +1,12 @@
+[package]
+name = "mina-curves"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+algebra = { path = "../zexe/algebra", features = ["std", "parallel"] }
+algebra-core = { path = "../zexe/algebra-core", features = ["std"] }
+
+[dev-dependencies]
+rand = { version = "0.7", default-features = false }
+rand_xorshift = "0.2"

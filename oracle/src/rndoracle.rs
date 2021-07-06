@@ -4,12 +4,11 @@ This source file implements the random oracle argument API.
 
 *****************************************************************************************************************/
 
+pub use super::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use std::fmt;
-pub use super::poseidon::{ArithmeticSpongeParams, ArithmeticSponge, Sponge};
 
 #[derive(Debug, Clone, Copy)]
-pub enum ProofError
-{
+pub enum ProofError {
     WitnessCsInconsistent,
     DomainCreation,
     PolyDivision,
@@ -23,14 +22,12 @@ pub enum ProofError
     ConstraintInconsist,
     EvaluationGroup,
     OracleCommit,
-    RuntimeEnv
+    RuntimeEnv,
 }
 
 // Implement `Display` for ProofError
-impl fmt::Display for ProofError
-{
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
-    {
+impl fmt::Display for ProofError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({})", self)
     }
 }
