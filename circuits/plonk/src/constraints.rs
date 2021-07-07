@@ -387,3 +387,25 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
     }
 }
+
+
+#[cfg(test)]
+mod testslocal {
+    use super::*;
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn shift_output() {
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(18) as usize);
+        let result = match domain{
+            Some(domain) => {
+                let (r, o) = ConstraintSystem::sample_shifts(&domain.d1);
+                println!("r is {:?} and o is {:?}", r, o)
+
+            },
+            None => println!("there are no animals :("),
+        };
+        
+
+    }
+}
