@@ -355,7 +355,7 @@ pub mod caml {
     // ProverCommitments<G> <-> CamlProverCommitments<CamlG>
     //
 
-    #[derive(Clone, ocaml::ToValue, ocaml::FromValue)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlProverCommitments<CamlG> {
         // polynomial commitments
         pub w_comm: (
@@ -415,7 +415,7 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG>
     //
 
-    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,

@@ -440,7 +440,7 @@ pub mod caml {
     //
 
     /// The ocaml type for ProverCommitments
-    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlProverCommitments<CamlG> {
         pub l_comm: CamlPolyComm<CamlG>,
         pub r_comm: CamlPolyComm<CamlG>,
@@ -485,7 +485,7 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
