@@ -159,11 +159,13 @@ where
 
         x.iter().for_each(|x| {
             // Padding
-            let bits: Vec<bool> = x.into_repr().to_bits_be();
-            let bits: Vec<_> = (0..total_length)
-                .map(|i| if i < bits.len() { bits[i] } else { false })
-                .collect();
+            let unpadded_bits: Vec<bool> = x.into_repr().to_bits_be();
+            let mut bits = vec![];
+            bits.resize(total_length, false);
+            let padding = total_length - unpadded_bits.len();
+            bits[padding..].copy_from_slice(&unpadded_bits);
 
+            // Absorb
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
