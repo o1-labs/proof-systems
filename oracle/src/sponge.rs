@@ -155,12 +155,13 @@ where
         let total_length = P::ScalarField::size_in_bits();
 
         x.iter().for_each(|x| {
-            // Padding
-            let bits: Vec<bool> = x.into_repr().to_bits_be();
-            let bits: Vec<_> = (0..total_length)
-                .map(|i| if i < bits.len() { bits[i] } else { false })
-                .collect();
+            // padding (since unpadded_bits is a BigInt, it can be larger than the total_length)
+            let unpadded_bits = x.into_repr().to_bits_be();
+            let padding = total_length.saturating_sub(unpadded_bits.len());
+            let mut bits = vec![false; padding];
+            bits.extend_from_slice(&unpadded_bits);
 
+            // absorb
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
