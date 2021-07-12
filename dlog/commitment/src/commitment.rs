@@ -934,7 +934,7 @@ pub mod caml {
 
     // polynomial commitment
 
-    #[derive(Clone, ocaml::ToValue, ocaml::FromValue)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
         pub shifted: Option<CamlG>,
@@ -970,7 +970,7 @@ pub mod caml {
 
     // opening proof
 
-    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlOpeningProof<G, F> {
         pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
         pub delta: G,

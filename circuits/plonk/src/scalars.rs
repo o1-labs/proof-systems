@@ -80,7 +80,7 @@ pub mod caml {
     // ProofEvaluations<F> <-> CamlProofEvaluations<CamlF>
     //
 
-    #[derive(Clone, ocaml::ToValue, ocaml::FromValue)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlProofEvaluations<F> {
         pub l: Vec<F>,
         pub r: Vec<F>,
@@ -132,7 +132,7 @@ pub mod caml {
     // RandomOracles<F> <-> CamlRandomOracles<CamlF>
     //
 
-    #[derive(ocaml::ToValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
     pub struct CamlRandomOracles<CamlF> {
         pub beta: CamlF,
         pub gamma: CamlF,
