@@ -38,7 +38,7 @@ fn main() {
         },
         _ => {
             println!(
-                "usage: cargo run --bin export_test_vectors --no-default-features --features [three_wire|five_wire] -- [{:?}|{:?}] <OUTPUT_FILE>",
+                "usage: cargo run --bin export_test_vectors --no-default-features --features [3w|5w|3] -- [{:?}|{:?}] <OUTPUT_FILE>",
                 Mode::Hex,
                 Mode::B10
             );

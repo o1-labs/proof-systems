@@ -3,13 +3,13 @@ use std::fs::File;
 use std::path::PathBuf;
 
 use algebra::{
-    fields::PrimeField, pasta::Fp, BigInteger256, CanonicalDeserialize as _, UniformRand,
+    fields::PrimeField, BigInteger256, CanonicalDeserialize as _,
 };
 use oracle::poseidon::Sponge as _; // needed for ::new() sponge
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
-use oracle::pasta::fp as Parameters;
+use oracle::pasta::fp as Parameters3W;
 use oracle::poseidon::PlonkSpongeConstants;
 
 use oracle::pasta::fp5 as Parameters5W;
@@ -76,29 +76,29 @@ where
 #[test]
 fn poseidon_test_vectors_3_wires() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstants>::new();
-        hash.absorb(&Parameters::params(), input);
-        hash.squeeze(&Parameters::params())
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstants>::new(Parameters3W::params());
+        hash.absorb(input);
+        hash.squeeze()
     }
-    test_vectors("three_wire.json", hash);
+    test_vectors("3w.json", hash);
 }
 
 #[test]
 fn poseidon_test_vectors_5_wires() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstants5W>::new();
-        hash.absorb(&Parameters5W::params(), input);
-        hash.squeeze(&Parameters5W::params())
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstants5W>::new(Parameters5W::params());
+        hash.absorb(input);
+        hash.squeeze()
     }
-    test_vectors("five_wire.json", hash);
+    test_vectors("5w.json", hash);
 }
 
 #[test]
 fn poseidon_test_vectors_fp_3() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstants3>::new();
-        hash.absorb(&Parameters3::params(), input);
-        hash.squeeze(&Parameters3::params())
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstants3>::new(Parameters3::params());
+        hash.absorb(input);
+        hash.squeeze()
     }
-    test_vectors("fp_3.json", hash);
+    test_vectors("3.json", hash);
 }
