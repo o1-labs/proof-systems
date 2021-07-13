@@ -15,14 +15,14 @@ use algebra::{fields::PrimeField as _, CanonicalSerialize as _, UniformRand as _
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
-#[cfg(feature = "three_wire")]
+#[cfg(feature = "3w")]
 use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstants};
 
-#[cfg(feature = "fp_3")]
-use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3 as PlonkSpongeConstants};
-
-#[cfg(feature = "five_wire")]
+#[cfg(feature = "5w")]
 use oracle::{pasta::fp5 as Parameters, poseidon::PlonkSpongeConstants5W as PlonkSpongeConstants};
+
+#[cfg(feature = "3")]
+use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3 as PlonkSpongeConstants};
 
 //
 // structs
@@ -100,12 +100,12 @@ pub fn generate(mode: Mode) -> TestVectors {
         })
     }
 
-    let name = if cfg!(feature = "three_wire") {
-        "three_wire".to_string()
-    } else if cfg!(feature = "fp_3") {
-        "fp_3".to_string()
-    } else if cfg!(feature = "five_wire") {
-        "five_wire".to_string()
+    let name = if cfg!(feature = "3w") {
+        "3w".to_string()
+    } else if cfg!(feature = "3") {
+        "3".to_string()
+    } else if cfg!(feature = "5w") {
+        "5w".to_string()
     } else {
         panic!("test vector feature not recognized");
     };

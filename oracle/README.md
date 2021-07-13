@@ -7,5 +7,13 @@ Tests are ran against our own test vectors in `tests/test_vectors`.
 You can re-generate the test vectors by using:
 
 ```
-cargo run --bin export_test_vectors --no-default-features --features [five_wire|three_wire] -- test_vectors.json
+usage: cargo run --bin export_test_vectors --no-default-features --features [3w|5w|3] -- [Hex|B10] <OUTPUT_FILE>
+```
+
+For example,
+```
+cargo run --bin export_test_vectors --no-default-features --features 3w -- Hex 3w.json
+cargo run --bin export_test_vectors --no-default-features --features 5w -- Hex 5w.json
+cargo run --bin export_test_vectors --no-default-features --features 3 -- Hex 3.json
+
 ```

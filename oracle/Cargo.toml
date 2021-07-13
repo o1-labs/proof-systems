@@ -26,10 +26,10 @@ hex = "0.4"
 ocaml_types = [ "ocaml" ]
 
 # for test vectors
-default = ["fp_3"]
-three_wire = []
-five_wire = []
-fp_3 = []
+default = ["3"]
+3w = []
+5w = []
+3 = []
 
 [[bin]]
 name = "export_test_vectors"
