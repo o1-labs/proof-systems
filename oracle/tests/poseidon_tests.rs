@@ -2,6 +2,7 @@ use serde::Deserialize;
 use std::fs::File;
 use std::path::PathBuf;
 
+use mina_curves::pasta::Fp;
 use algebra::{
     fields::PrimeField, BigInteger256, CanonicalDeserialize as _,
 };
@@ -74,7 +75,7 @@ where
 //
 
 #[test]
-fn poseidon_test_vectors_3_wires() {
+fn poseidon_test_vectors_3w() {
     fn hash(input: &[Fp]) -> Fp {
         let mut hash = Poseidon::<Fp, PlonkSpongeConstants>::new(Parameters3W::params());
         hash.absorb(input);
@@ -84,7 +85,7 @@ fn poseidon_test_vectors_3_wires() {
 }
 
 #[test]
-fn poseidon_test_vectors_5_wires() {
+fn poseidon_test_vectors_5w() {
     fn hash(input: &[Fp]) -> Fp {
         let mut hash = Poseidon::<Fp, PlonkSpongeConstants5W>::new(Parameters5W::params());
         hash.absorb(input);
@@ -94,7 +95,7 @@ fn poseidon_test_vectors_5_wires() {
 }
 
 #[test]
-fn poseidon_test_vectors_fp_3() {
+fn poseidon_test_vectors_3() {
     fn hash(input: &[Fp]) -> Fp {
         let mut hash = Poseidon::<Fp, PlonkSpongeConstants3>::new(Parameters3::params());
         hash.absorb(input);

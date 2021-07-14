@@ -10,7 +10,8 @@ use super::Mode;
 // generate different test vectors depending on features
 //
 
-use algebra::{fields::PrimeField as _, pasta::Fp, CanonicalSerialize as _, UniformRand as _};
+use mina_curves::pasta::Fp;
+use algebra::{fields::PrimeField as _, CanonicalSerialize as _, UniformRand as _};
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
@@ -45,9 +46,9 @@ pub struct TestVector {
 
 // calls the poseidon hash function with the `input` and returns a digest
 fn poseidon(input: &[Fp]) -> Fp {
-    let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new();
-    s.absorb(&Parameters::params(), input);
-    let output = s.squeeze(&Parameters::params());
+    let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new(Parameters::params());
+    s.absorb(input);
+    let output = s.squeeze();
     output
 }
 
