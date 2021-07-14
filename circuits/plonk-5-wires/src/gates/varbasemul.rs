@@ -12,7 +12,7 @@ One-bit round constraints:
 
 S = (P + (b ? T : −T)) + P
 
-VBSM gate constrains
+VBSM gate constraints
 
     b*(b-1) = 0
     (xp - xt) * s1 = yp – (2b-1)*yt
@@ -20,7 +20,7 @@ VBSM gate constrains
     (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
     (xp – xs) * s2 = ys + yp
 
-Permutation constrains
+Permutation constraints
 
     -> b(i)
     -> xt(i) -> xt(i+2) -> … -> xt(509)
@@ -32,7 +32,7 @@ Permutation constrains
     xs(509) ->
     ys(509) ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     (xq - xp) * s1 = yq - yp
     s1 * s1 = xp + xq + x1
@@ -59,28 +59,24 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
+use ark_ff::FftField;
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
-{
-    pub fn create_vbmul(row: usize, wires: GateWires) -> Self
-    {
-        CircuitGate
-        {
+impl<F: FftField> CircuitGate<F> {
+    pub fn create_vbmul(row: usize, wires: GateWires) -> Self {
+        CircuitGate {
             row,
             typ: GateType::Vbmul1,
             wires,
-            c: vec![]
+            c: vec![],
         }
     }
 
-    pub fn verify_vbmul1(&self, witness: &[Vec<F>; COLUMNS]) -> bool
-    {
+    pub fn verify_vbmul1(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
 
         self.typ == GateType::Vbmul1
         &&
@@ -100,5 +96,11 @@ impl<F: FftField> CircuitGate<F>
         (next[2] - &next[0]) * &this[3] == next[1] + &next[3]
     }
 
-    pub fn vbmul1(&self) -> F {if self.typ == GateType::Vbmul1 {F::one()} else {F::zero()}}
+    pub fn vbmul1(&self) -> F {
+        if self.typ == GateType::Vbmul1 {
+            F::one()
+        } else {
+            F::zero()
+        }
+    }
 }

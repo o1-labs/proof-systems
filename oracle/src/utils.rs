@@ -1,5 +1,7 @@
-use algebra::FftField;
-use ff_fft::{Evaluations, Radix2EvaluationDomain as D, DensePolynomial};
+use ark_ff::FftField;
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use rayon::prelude::*;
 
 pub trait PolyUtils<F: FftField> {
@@ -19,15 +21,13 @@ pub trait EvalUtils<F: FftField> {
 impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
     // This function "scales" (multiplies) polynomaial with a scalar
     // It is implemented to have the desired functionality for DensePolynomial
-    fn scale(&self, elm: F) -> Self
-    {
+    fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
         result.evals.par_iter_mut().for_each(|coeff| *coeff *= &elm);
         result
     }
 
-    fn square(&self) -> Self
-    {
+    fn square(&self) -> Self {
         let mut result = self.clone();
         result.evals.par_iter_mut().for_each(|e| {
             let _ = e.square_in_place();
@@ -35,16 +35,17 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
         result
     }
 
-    fn pow(&self, pow: usize) -> Self
-    {
+    fn pow(&self, pow: usize) -> Self {
         let mut result = self.clone();
-        result.evals.par_iter_mut().for_each(|e| *e = e.pow([pow as u64]));
+        result
+            .evals
+            .par_iter_mut()
+            .for_each(|e| *e = e.pow([pow as u64]));
         result
     }
 
     // utility function for shifting poly along domain coordinate
-    fn shift(&self, len: usize) -> Self
-    {
+    fn shift(&self, len: usize) -> Self {
         let len = len % self.evals.len();
         let mut result = self.clone();
         result.evals.clear();
@@ -69,7 +70,10 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     // It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
-        result.coeffs.par_iter_mut().for_each(|coeff| *coeff *= &elm);
+        result
+            .coeffs
+            .par_iter_mut()
+            .for_each(|coeff| *coeff *= &elm);
         result
     }
 
@@ -80,12 +84,19 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     }
 
     // This function evaluates polynomial in chunks
-    fn eval(&self, elm: F, size: usize) -> Vec<F>
-    {
-        (0..self.coeffs.len()).step_by(size).map
-        (
-            |i| Self::from_coefficients_slice
-                (&self.coeffs[i..if i+size > self.coeffs.len() {self.coeffs.len()} else {i+size}]).evaluate(elm)
-        ).collect()
+    fn eval(&self, elm: F, size: usize) -> Vec<F> {
+        (0..self.coeffs.len())
+            .step_by(size)
+            .map(|i| {
+                Self::from_coefficients_slice(
+                    &self.coeffs[i..if i + size > self.coeffs.len() {
+                        self.coeffs.len()
+                    } else {
+                        i + size
+                    }],
+                )
+                .evaluate(&elm)
+            })
+            .collect()
     }
 }

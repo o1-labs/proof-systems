@@ -11,40 +11,40 @@ The folowing functionality is implemented
 *****************************************************************************************************************/
 
 use crate::srs::SRS;
-use groupmap::{GroupMap, BWParameters};
-use algebra::{
-    curves::models::short_weierstrass_jacobian::{GroupAffine as SWJAffine},
-    AffineCurve, Field, PrimeField, ProjectiveCurve, SquareRootField,
-    UniformRand, VariableBaseMSM, SWModelParameters, One, Zero,
-    FpParameters
+pub use crate::CommitmentField;
+use ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
+    AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ff_fft::DensePolynomial;
-use oracle::{FqSponge, sponge::ScalarChallenge};
-use rand_core::RngCore;
+use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use groupmap::{BWParameters, GroupMap};
+use oracle::{sponge::ScalarChallenge, FqSponge};
+use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::iter::Iterator;
-pub use crate::CommitmentField;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct PolyComm<C>
-{
+pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
 }
 
 impl<A: Copy> PolyComm<A> {
-    pub fn map<B, F>(&self, mut f: F) -> PolyComm<B> where F: FnMut(A) -> B {
+    pub fn map<B, F>(&self, mut f: F) -> PolyComm<B>
+    where
+        F: FnMut(A) -> B,
+    {
         let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
         let shifted = self.shifted.map(f);
         PolyComm { unshifted, shifted }
     }
 }
 
-impl<A:Copy, B:Copy> PolyComm<(A, B)> {
+impl<A: Copy, B: Copy> PolyComm<(A, B)> {
     fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
         let a = self.map(|(x, _)| x);
         let b = self.map(|(_, y)| y);
@@ -52,37 +52,36 @@ impl<A:Copy, B:Copy> PolyComm<(A, B)> {
     }
 }
 
-pub fn shift_scalar<F:PrimeField>(x : F) -> F {
-    let two : F = (2 as u64).into();
+pub fn shift_scalar<F: PrimeField>(x: F) -> F {
+    let two: F = (2 as u64).into();
     x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
 
-impl<C: AffineCurve> PolyComm<C>
-{
-    pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self
-    {
-        PolyComm::<C>
-        {
-            shifted:
-            {
-                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {None}
-                else
-                {
-                    let points = com.iter().map(|c| {assert!(c.shifted.is_some()); c.shifted.unwrap()}).collect::<Vec<_>>();
-                    let scalars = elm.iter().map(|s| {s.into_repr()}).collect::<Vec<_>>();
+impl<C: AffineCurve> PolyComm<C> {
+    pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
+        PolyComm::<C> {
+            shifted: {
+                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {
+                    None
+                } else {
+                    let points = com
+                        .iter()
+                        .map(|c| {
+                            assert!(c.shifted.is_some());
+                            c.shifted.unwrap()
+                        })
+                        .collect::<Vec<_>>();
+                    let scalars = elm.iter().map(|s| s.into_repr()).collect::<Vec<_>>();
                     Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
                 }
             },
-            unshifted:
-            {
-                if com.len() == 0 || elm.len() == 0 {Vec::new()}
-                else
-                {
+            unshifted: {
+                if com.len() == 0 || elm.len() == 0 {
+                    Vec::new()
+                } else {
                     let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
-                    (0..n).map
-                    (
-                        |i|
-                        {
+                    (0..n)
+                        .map(|i| {
                             let mut points = Vec::new();
                             let mut scalars = Vec::new();
                             com.iter().zip(elm.iter()).for_each(|(p, s)| {
@@ -92,16 +91,15 @@ impl<C: AffineCurve> PolyComm<C>
                                 }
                             });
                             VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
-                        }
-                    ).collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>()
                 }
-            }
+            },
         }
     }
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -111,24 +109,34 @@ pub struct OpeningProof<G: AffineCurve> {
 }
 
 pub struct Challenges<F> {
-    pub chal : Vec<F>,
-    pub chal_inv : Vec<F>,
+    pub chal: Vec<F>,
+    pub chal_inv: Vec<F>,
 }
 
-impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
-    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, sponge : &mut EFqSponge) -> Vec<ScalarChallenge<Fr<G>>> {
+impl<G: AffineCurve> OpeningProof<G>
+where
+    G::ScalarField: CommitmentField,
+{
+    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+        &self,
+        sponge: &mut EFqSponge,
+    ) -> Vec<ScalarChallenge<Fr<G>>> {
         let _t = sponge.challenge_fq();
         self.lr
-        .iter()
-        .map(|(l, r)| {
-            sponge.absorb_g(&[*l]);
-            sponge.absorb_g(&[*r]);
-            squeeze_prechallenge(sponge)
-        })
-        .collect()
+            .iter()
+            .map(|(l, r)| {
+                sponge.absorb_g(&[*l]);
+                sponge.absorb_g(&[*r]);
+                squeeze_prechallenge(sponge)
+            })
+            .collect()
     }
 
-    pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(&self, endo_r: &Fr<G>, sponge : &mut EFqSponge) -> Challenges<Fr<G>> {
+    pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+        &self,
+        endo_r: &Fr<G>,
+        sponge: &mut EFqSponge,
+    ) -> Challenges<Fr<G>> {
         let chal: Vec<_> = self
             .lr
             .iter()
@@ -141,14 +149,11 @@ impl<G:AffineCurve> OpeningProof<G> where G::ScalarField : CommitmentField {
 
         let chal_inv = {
             let mut cs = chal.clone();
-            algebra::fields::batch_inversion(&mut cs);
+            ark_ff::batch_inversion(&mut cs);
             cs
         };
 
-        Challenges {
-            chal,
-            chal_inv,
-        }
+        Challenges { chal, chal_inv }
     }
 }
 
@@ -214,35 +219,48 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
     ScalarChallenge(sponge.challenge())
 }
 
-fn squeeze_challenge<Fq: Field, G, Fr: PrimeField+CommitmentField, EFqSponge: FqSponge<Fq, G, Fr>>(
+fn squeeze_challenge<
+    Fq: Field,
+    G,
+    Fr: PrimeField + CommitmentField,
+    EFqSponge: FqSponge<Fq, G, Fr>,
+>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-pub trait CommitmentCurve : AffineCurve {
-    type Params : SWModelParameters;
-    type Map : GroupMap<Self::BaseField>;
+pub trait CommitmentCurve: AffineCurve {
+    type Params: SWModelParameters;
+    type Map: GroupMap<Self::BaseField>;
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
-    fn of_coordinates(x : Self::BaseField, y : Self::BaseField) -> Self;
+    fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
 
     // Combine where x1 = one
-    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2:Self::ScalarField) -> Vec<Self> {
+    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2)
     }
 
-    fn combine(g1: &Vec<Self>, g2: &Vec<Self>, x1:Self::ScalarField, x2:Self::ScalarField) -> Vec<Self> {
+    fn combine(
+        g1: &Vec<Self>,
+        g2: &Vec<Self>,
+        x1: Self::ScalarField,
+        x2: Self::ScalarField,
+    ) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, x1, x2)
     }
 }
 
-impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField : PrimeField {
+impl<P: SWModelParameters> CommitmentCurve for SWJAffine<P>
+where
+    P::BaseField: PrimeField,
+{
     type Params = P;
     type Map = BWParameters<P>;
 
-    fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>{
+    fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)> {
         if self.infinity {
             None
         } else {
@@ -250,22 +268,25 @@ impl<P : SWModelParameters> CommitmentCurve for SWJAffine<P> where P::BaseField 
         }
     }
 
-    fn of_coordinates(x : P::BaseField, y : P::BaseField) -> SWJAffine<P> {
+    fn of_coordinates(x: P::BaseField, y: P::BaseField) -> SWJAffine<P> {
         SWJAffine::<P>::new(x, y, false)
     }
 
-    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2:Self::ScalarField) -> Vec<Self> {
+    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::affine_window_combine_one(g1, g2, x2)
     }
 
-    fn combine(g1: &Vec<Self>, g2: &Vec<Self>, x1:Self::ScalarField, x2:Self::ScalarField) -> Vec<Self> {
+    fn combine(
+        g1: &Vec<Self>,
+        g2: &Vec<Self>,
+        x1: Self::ScalarField,
+        x2: Self::ScalarField,
+    ) -> Vec<Self> {
         crate::combine::affine_window_combine(g1, g2, x1, x2)
     }
 }
 
-fn to_group<G : CommitmentCurve>(
-    m: &G::Map,
-    t: <G as AffineCurve>::BaseField) -> G {
+fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) -> G {
     let (x, y) = m.to_group(t);
     G::of_coordinates(x, y)
 }
@@ -274,21 +295,21 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     evaluation_points: &[Fr<G>],
     xi: &Fr<G>,
     r: &Fr<G>,
-    polys: &Vec<( Vec<&Vec<Fr<G>>>, Option<usize>)>,
-    srs_length: usize) -> Fr<G> {
+    polys: &Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)>,
+    srs_length: usize,
+) -> Fr<G> {
     let mut res = Fr::<G>::zero();
     let mut xi_i = Fr::<G>::one();
 
     for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| evals_tr[0].len() > 0) {
         // transpose the evaluations
-        let evals = (0..evals_tr[0].len()).map
-        (
-            |i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>()
-        ).collect::<Vec<_>>();
+        let evals = (0..evals_tr[0].len())
+            .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
+            .collect::<Vec<_>>();
 
         // iterating over the polynomial segments
         for eval in evals.iter() {
-            let term = DensePolynomial::<Fr::<G>>::eval_polynomial(eval, *r);
+            let term = DensePolynomial::<Fr<G>>::eval_polynomial(eval, *r);
 
             res += &(xi_i * &term);
             xi_i *= xi;
@@ -296,39 +317,43 @@ pub fn combined_inner_product<G: CommitmentCurve>(
 
         if let Some(m) = shifted {
             // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
-            let last_evals = if *m > evals.len()* srs_length {vec![Fr::<G>::zero(); evaluation_points.len()]} else {evals[evals.len()-1].clone()};
+            let last_evals = if *m > evals.len() * srs_length {
+                vec![Fr::<G>::zero(); evaluation_points.len()]
+            } else {
+                evals[evals.len() - 1].clone()
+            };
             let shifted_evals: Vec<_> = evaluation_points
                 .iter()
                 .zip(last_evals.iter())
-                .map(|(elm, f_elm)| {
-                    elm.pow(&[( srs_length - (*m) % srs_length ) as u64]) * f_elm
-                })
+                .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
-            res += &(xi_i * &DensePolynomial::<Fr::<G>>::eval_polynomial(&shifted_evals, *r));
+            res += &(xi_i * &DensePolynomial::<Fr<G>>::eval_polynomial(&shifted_evals, *r));
             xi_i *= xi;
         }
     }
     res
 }
 
-impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
+impl<G: CommitmentCurve> SRS<G>
+where
+    G::ScalarField: CommitmentField,
+{
     pub fn commit(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
-        rng: &mut dyn RngCore,
-    ) -> (PolyComm<G>, PolyComm<Fr<G>>)
-    {
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
     fn mask(
         &self,
-        c : PolyComm<G>,
-        rng: &mut dyn RngCore,
+        c: PolyComm<G>,
+        rng: &mut (impl RngCore + CryptoRng),
     ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
-        c.map(|g : G| {
+        c.map(|g: G| {
             if g.is_zero() {
                 // TODO: This leaks information when g is the identity!
                 // We should change this so that we still mask in this case
@@ -339,7 +364,8 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 g_masked.add_assign_mixed(&g);
                 (g_masked.into_affine(), w)
             }
-        }).unzip()
+        })
+        .unzip()
     }
 
     // This function commits a polynomial against URS instance
@@ -350,48 +376,53 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
-    ) -> PolyComm<G>
-    {
+    ) -> PolyComm<G> {
         let n = self.g.len();
         let p = plnm.coeffs.len();
 
         // committing all the segments without shifting
-        let unshifted = if plnm.is_zero() {Vec::new()}
-        else
-        {
-            (0..p/n + if p%n != 0 {1} else {0}).map
-            (
-                |i|
-                {
-                    VariableBaseMSM::multi_scalar_mul
-                    (
-                        &self.g, &plnm.coeffs[i*n..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-                    ).into_affine()
-                }
-            ).collect()
+        let unshifted = if plnm.is_zero() {
+            Vec::new()
+        } else {
+            (0..p / n + if p % n != 0 { 1 } else { 0 })
+                .map(|i| {
+                    VariableBaseMSM::multi_scalar_mul(
+                        &self.g,
+                        &plnm.coeffs[i * n..p]
+                            .iter()
+                            .map(|s| s.into_repr())
+                            .collect::<Vec<_>>(),
+                    )
+                    .into_affine()
+                })
+                .collect()
         };
 
         // committing only last segment shifted to the right edge of SRS
-        let shifted = match max
-        {
+        let shifted = match max {
             None => None,
-            Some(max) =>
-            {
+            Some(max) => {
                 let start = max - (max % n);
-                if plnm.is_zero() || start >= p {Some(G::zero())}
-                else if max % n == 0 {None}
-                else
-                {
-                    Some(VariableBaseMSM::multi_scalar_mul
-                    (
-                        &self.g[n - (max%n)..],
-                        &plnm.coeffs[start..p].iter().map(|s| s.into_repr()).collect::<Vec<_>>()
-                    ).into_affine())
+                if plnm.is_zero() || start >= p {
+                    Some(G::zero())
+                } else if max % n == 0 {
+                    None
+                } else {
+                    Some(
+                        VariableBaseMSM::multi_scalar_mul(
+                            &self.g[n - (max % n)..],
+                            &plnm.coeffs[start..p]
+                                .iter()
+                                .map(|s| s.into_repr())
+                                .collect::<Vec<_>>(),
+                        )
+                        .into_affine(),
+                    )
                 }
             }
         };
 
-        PolyComm::<G>{unshifted, shifted}
+        PolyComm::<G> { unshifted, shifted }
     }
 
     // This function opens polynomial commitments in batch
@@ -401,16 +432,20 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
     //     evalscale: eval scaling factor for opening commitments in batch
     //     oracle_params: parameters for the random oracle argument
     //     RETURN: commitment opening proof
-    pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
-        elm: &Vec<Fr<G>>,                                     // vector of evaluation points
-        polyscale: Fr<G>,                                     // scaling factor for polynoms
-        evalscale: Fr<G>, // scaling factor for evaluation point powers
+        elm: &Vec<Fr<G>>,      // vector of evaluation points
+        polyscale: Fr<G>,      // scaling factor for polynoms
+        evalscale: Fr<G>,      // scaling factor for evaluation point powers
         mut sponge: EFqSponge, // sponge
-        rng: &mut dyn RngCore,
-    ) -> OpeningProof<G> {
+        rng: &mut RNG,
+    ) -> OpeningProof<G>
+    where
+        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
@@ -435,8 +470,13 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
                     while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
-                            (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
+                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
+                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                                p_i.coeffs.len()
+                            } else {
+                                offset + self.g.len()
+                            }],
+                        );
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
                         omega += &(omegas.unshifted[j] * scale);
@@ -445,17 +485,21 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            p += &(segment.shiftr(self.g.len() - m%self.g.len()).scale(scale));
+                            p += &(segment.shiftr(self.g.len() - m % self.g.len()).scale(scale));
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
                     }
-                }
-                else {
+                } else {
                     assert!(omegas.shifted.is_none());
                     while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice
-                            (&p_i.coeffs[offset..if offset+self.g.len() > p_i.coeffs.len() {p_i.coeffs.len()} else {offset+self.g.len()}]);
+                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
+                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                                p_i.coeffs.len()
+                            } else {
+                                offset + self.g.len()
+                            }],
+                        );
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
                         omega += &(omegas.unshifted[j] * scale);
@@ -485,8 +529,10 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             res
         };
 
-        let combined_inner_product = 
-            p.coeffs.iter().zip(b_init.iter())
+        let combined_inner_product = p
+            .coeffs
+            .iter()
+            .zip(b_init.iter())
             .map(|(a, b)| *a * b)
             .fold(Fr::<G>::zero(), |acc, x| acc + x);
 
@@ -519,15 +565,23 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
             let l = VariableBaseMSM::multi_scalar_mul(
                 &[&g[0..n], &[self.h, u]].concat(),
-                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]].concat()
-                    .iter().map(|x| x.into_repr()).collect::<Vec<_>>()
-            ).into_affine();
+                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
+                    .concat()
+                    .iter()
+                    .map(|x| x.into_repr())
+                    .collect::<Vec<_>>(),
+            )
+            .into_affine();
 
             let r = VariableBaseMSM::multi_scalar_mul(
                 &[&g[n..], &[self.h, u]].concat(),
-                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]].concat()
-                    .iter().map(|x| x.into_repr()).collect::<Vec<_>>()
-            ).into_affine();
+                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]]
+                    .concat()
+                    .iter()
+                    .map(|x| x.into_repr())
+                    .collect::<Vec<_>>(),
+            )
+            .into_affine();
 
             lr.push((l, r));
             blinders.push((rand_l, rand_r));
@@ -611,7 +665,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
     //     oracle_params: parameters for the random oracle argument
     //     randomness source context
     //     RETURN: verification status
-    pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         batch: &mut Vec<(
@@ -620,14 +674,18 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             Fr<G>,      // scaling factor for polynoms
             Fr<G>,      // scaling factor for evaluation point powers
             Vec<(
-                &PolyComm<G>,       // polycommitment
-                Vec<&Vec<Fr<G>>>,   // vector of evaluations
-                Option<usize>,      // optional degree bound
+                &PolyComm<G>,     // polycommitment
+                Vec<&Vec<Fr<G>>>, // vector of evaluations
+                Option<usize>,    // optional degree bound
             )>,
             &OpeningProof<G>, // batched opening proof
         )>,
-        rng: &mut dyn RngCore,
-    ) -> bool {
+        rng: &mut RNG,
+    ) -> bool
+    where
+        EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
         //
@@ -673,14 +731,21 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
         for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             // TODO: This computation is repeated in ProverProof::oracles
             let combined_inner_product0 = {
-                let es : Vec<_> = polys.iter().map(|(comm, evals, bound)| {
-                    let bound : Option<usize> = (|| {
-                        let b = (*bound)?;
-                        let x = comm.shifted?;
-                        if x.is_zero() { None } else { Some(b) }
-                    })();
-                    (evals.clone(), bound)
-                }).collect();
+                let es: Vec<_> = polys
+                    .iter()
+                    .map(|(comm, evals, bound)| {
+                        let bound: Option<usize> = (|| {
+                            let b = (*bound)?;
+                            let x = comm.shifted?;
+                            if x.is_zero() {
+                                None
+                            } else {
+                                Some(b)
+                            }
+                        })();
+                        (evals.clone(), bound)
+                    })
+                    .collect();
                 combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
             };
 
@@ -689,7 +754,8 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
-            let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&self.endo_r, sponge);
+            let Challenges { chal, chal_inv } =
+                opening.challenges::<EFqSponge>(&self.endo_r, sponge);
 
             sponge.absorb_g(&[opening.delta]);
             let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
@@ -748,11 +814,7 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
             //   (sum_j (chal_invs[j] L_j + chals[j] R_j) + P_prime)
             // where P_prime = combined commitment + combined_inner_product * U
             let rand_base_i_c_i = c * &rand_base_i;
-            for ((l, r), (u_inv, u)) in opening
-                .lr
-                .iter()
-                .zip(chal_inv.iter().zip(chal.iter()))
-            {
+            for ((l, r), (u_inv, u)) in opening.lr.iter().zip(chal_inv.iter().zip(chal.iter())) {
                 points.push(*l);
                 scalars.push(rand_base_i_c_i * u_inv);
 
@@ -777,12 +839,12 @@ impl<G: CommitmentCurve> SRS<G> where G::ScalarField : CommitmentField {
 
                     if let Some(_m) = shifted {
                         if let Some(comm_ch) = comm.shifted {
-							if comm_ch.is_zero() == false {
-								// xi^i sum_j r^j elm_j^{N - m} f(elm_j)
-								scalars.push(rand_base_i_c_i * &xi_i);
-								points.push(comm_ch);
+                            if comm_ch.is_zero() == false {
+                                // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
+                                scalars.push(rand_base_i_c_i * &xi_i);
+                                points.push(comm_ch);
                                 xi_i *= *xi;
-							}
+                            }
                         }
                     }
                 }
@@ -845,12 +907,117 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
     }
 
     // This function evaluates polynomial in chunks
-    fn eval(&self, elm: F, size: usize) -> Vec<F>
+    fn eval(&self, elm: F, size: usize) -> Vec<F> {
+        (0..self.coeffs.len())
+            .step_by(size)
+            .map(|i| {
+                Self::from_coefficients_slice(
+                    &self.coeffs[i..if i + size > self.coeffs.len() {
+                        self.coeffs.len()
+                    } else {
+                        i + size
+                    }],
+                )
+                .evaluate(&elm)
+            })
+            .collect()
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    // polynomial commitment
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
+    pub struct CamlPolyComm<CamlG> {
+        pub unshifted: Vec<CamlG>,
+        pub shifted: Option<CamlG>,
+    }
+
+    //
+
+    impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
     {
-        (0..self.coeffs.len()).step_by(size).map
-        (
-            |i| Self::from_coefficients_slice
-                (&self.coeffs[i..if i+size > self.coeffs.len() {self.coeffs.len()} else {i+size}]).evaluate(elm)
-        ).collect()
+        fn from(polycomm: PolyComm<G>) -> Self {
+            Self {
+                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
+                shifted: polycomm.shifted.map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> Into<PolyComm<G>> for CamlPolyComm<CamlG>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+    {
+        fn into(self) -> PolyComm<G> {
+            PolyComm {
+                unshifted: self.unshifted.into_iter().map(Into::into).collect(),
+                shifted: self.shifted.map(Into::into),
+            }
+        }
+    }
+
+    // opening proof
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
+    pub struct CamlOpeningProof<G, F> {
+        pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
+        pub delta: G,
+        pub z1: F,
+        pub z2: F,
+        pub sg: G,
+    }
+
+    impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(xxx: OpeningProof<G>) -> Self {
+            Self {
+                lr: xxx
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: xxx.delta.into(),
+                z1: xxx.z1.into(),
+                z2: xxx.z2.into(),
+                sg: xxx.sg.into(),
+            }
+        }
+    }
+
+    impl<G, CamlF, CamlG> Into<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+        CamlF: Into<G::ScalarField>,
+    {
+        fn into(self) -> OpeningProof<G> {
+            OpeningProof {
+                lr: self
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: self.delta.into(),
+                z1: self.z1.into(),
+                z2: self.z2.into(),
+                sg: self.sg.into(),
+            }
+        }
     }
 }

@@ -21,27 +21,39 @@ This source file tests constraints for the following computatios:
 
 **********************************************************************************************************/
 
-use plonk_circuits::{wires::GateWires, gate::CircuitGate, constraints::ConstraintSystem};
-use oracle::{poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, PlonkSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use commitment_dlog::{srs::SRS, commitment::{CommitmentCurve, ceil_log2, b_poly_coefficients}};
-use algebra::{Field, tweedle::{dee::{Affine, TweedledeeParameters}, fp::Fp}, One, Zero, UniformRand};
-use plonk_protocol_dlog::{prover::{ProverProof}, index::{Index, SRSSpec}};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use std::{io, io::Write};
-use oracle::poseidon::*;
-use groupmap::GroupMap;
-use std::time::Instant;
+use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use colored::Colorize;
-use rand_core::OsRng;
+use commitment_dlog::{
+    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
+    srs::{SRSSpec, SRS},
+};
+use groupmap::GroupMap;
+use mina_curves::pasta::{
+    pallas::Affine as Other,
+    vesta::{Affine, VestaParameters},
+    Fp,
+};
+use oracle::poseidon::*;
+use oracle::{
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants as SC, Sponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use plonk_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::GateWires};
+use plonk_protocol_dlog::{index::Index, prover::ProverProof};
+use rand::rngs::OsRng;
+use std::time::Instant;
+use std::{io, io::Write};
 
 const MAX_SIZE: usize = 128; // max size of poly chunks
 const N: usize = 128; // Plonk domain size
 const PUBLIC: usize = 6;
 
 #[test]
-fn turbo_plonk()
-{
-    let c = &oracle::tweedle::fp::params().round_constants;
+fn turbo_plonk() {
+    let c = &oracle::pasta::fp::params().round_constants;
 
     let z = Fp::zero();
     let p = Fp::one();
@@ -73,63 +85,369 @@ fn turbo_plonk()
     // circuit gates
 
     let mut i = 0;
-    let mut gates = vec!
-    [
+    let mut gates = vec![
         // public input constraints
-
-        CircuitGate::<Fp>::create_generic(GateWires::wires((i,             16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 0  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 1  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i}, 2*N+16),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 2  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 3  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 4  c
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i}, 2*N+15),  (i+N,    i+N), (i+2*N,  i+2*N)), p, z, z, z, z), // 5  c
-
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires((i, 16), (i + N, i + N), (i + 2 * N, i + 2 * N)),
+            p,
+            z,
+            z,
+            z,
+            z,
+        ), // 0  c
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 16,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            p,
+            z,
+            z,
+            z,
+            z,
+        ), // 1  c
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    2 * N + 16,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            p,
+            z,
+            z,
+            z,
+            z,
+        ), // 2  c
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    15,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            p,
+            z,
+            z,
+            z,
+            z,
+        ), // 3  c
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 15,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            p,
+            z,
+            z,
+            z,
+            z,
+        ), // 4  c
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    2 * N + 15,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            p,
+            z,
+            z,
+            z,
+            z,
+        ), // 5  c
         // generic constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
-
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      1),  (i+N,      0), (i+2*N,      7)), p, n, n, z, z), // 6  -
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},  2*N+6),  (i+N,     13), (i+2*N,  2*N+8)), z, z, n, p, z), // 7  *
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},      4),  (i+N,      3), (i+2*N,  2*N+7)), p, n, n, z, z), // 8  -
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+7),  (i+N,      9), (i+2*N, 2*N+11)), z, z, n, p, z), // 9  *
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+6),  (i+N,      6), (i+2*N,   N+11)), p, p, n, z, z), // 10 +
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},   N+12),  (i+N, 2*N+10), (i+2*N,  2*N+9)), p, p, n, z, z), // 11 +
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},     10),  (i+N,      2), (i+2*N,   N+13)), p, n, n, z, z), // 12 -
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+9),  (i+N, 2*N+12), (i+2*N, 2*N+14)), z, z, n, p, z), // 13 *
-        CircuitGate::<Fp>::create_generic(GateWires::wires(({i+=1; i},    N+8),  (i+N,      5), (i+2*N, 2*N+13)), p, p, n, z, z), // 14 +
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    1,
+                ),
+                (i + N, 0),
+                (i + 2 * N, 7),
+            ),
+            p,
+            n,
+            n,
+            z,
+            z,
+        ), // 6  -
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    2 * N + 6,
+                ),
+                (i + N, 13),
+                (i + 2 * N, 2 * N + 8),
+            ),
+            z,
+            z,
+            n,
+            p,
+            z,
+        ), // 7  *
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    4,
+                ),
+                (i + N, 3),
+                (i + 2 * N, 2 * N + 7),
+            ),
+            p,
+            n,
+            n,
+            z,
+            z,
+        ), // 8  -
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 7,
+                ),
+                (i + N, 9),
+                (i + 2 * N, 2 * N + 11),
+            ),
+            z,
+            z,
+            n,
+            p,
+            z,
+        ), // 9  *
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 6,
+                ),
+                (i + N, 6),
+                (i + 2 * N, N + 11),
+            ),
+            p,
+            p,
+            n,
+            z,
+            z,
+        ), // 10 +
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 12,
+                ),
+                (i + N, 2 * N + 10),
+                (i + 2 * N, 2 * N + 9),
+            ),
+            p,
+            p,
+            n,
+            z,
+            z,
+        ), // 11 +
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    10,
+                ),
+                (i + N, 2),
+                (i + 2 * N, N + 13),
+            ),
+            p,
+            n,
+            n,
+            z,
+            z,
+        ), // 12 -
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 9,
+                ),
+                (i + N, 2 * N + 12),
+                (i + 2 * N, 2 * N + 14),
+            ),
+            z,
+            z,
+            n,
+            p,
+            z,
+        ), // 13 *
+        CircuitGate::<Fp>::create_generic(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    N + 8,
+                ),
+                (i + N, 5),
+                (i + 2 * N, 2 * N + 13),
+            ),
+            p,
+            p,
+            n,
+            z,
+            z,
+        ), // 14 +
     ];
 
     // custom constraint gates for Weierstrass curve y^2 = x^3 + 7 group addition
 
-    let mut eca = CircuitGate::<Fp>::create_add
-    (
-        &[
-            GateWires::wires(({i+=1; i}, 14), (i+N, 8), (i+2*N, N+14)),
-            GateWires::wires(({i+=1; i}, 12), (i+N, N+10), (i+2*N, 11)),
-        ]
-    );
+    let mut eca = CircuitGate::<Fp>::create_add(&[
+        GateWires::wires(
+            (
+                {
+                    i += 1;
+                    i
+                },
+                14,
+            ),
+            (i + N, 8),
+            (i + 2 * N, N + 14),
+        ),
+        GateWires::wires(
+            (
+                {
+                    i += 1;
+                    i
+                },
+                12,
+            ),
+            (i + N, N + 10),
+            (i + 2 * N, 11),
+        ),
+    ]);
     gates.append(&mut eca);
 
     // custom constraints for Poseidon hash function permutation
 
     // ROUNDS_FULL full rounds constraint gates
-    for j in 0..SC::ROUNDS_FULL
-    {
-        gates.push(CircuitGate::<Fp>::create_poseidon(GateWires::wires(({i+=1; i}, i), (i+N, N+i), (i+2*N, 2*N+i)), [c[j+1][0],c[j+1][1],c[j+1][2]]));
+    for j in 0..SC::ROUNDS_FULL {
+        gates.push(CircuitGate::<Fp>::create_poseidon(
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, N + i),
+                (i + 2 * N, 2 * N + i),
+            ),
+            [c[j + 1][0], c[j + 1][1], c[j + 1][2]],
+        ));
     }
-    gates.push(CircuitGate::<Fp>::zero(GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))));
+    gates.push(CircuitGate::<Fp>::zero(GateWires::wires(
+        (
+            {
+                i += 1;
+                i
+            },
+            i,
+        ),
+        (i + N, i + N),
+        (i + 2 * N, i + 2 * N),
+    )));
 
     // custom constraint gates for short Weierstrass curve variable base scalar multiplication
     // test with 2-bit scalar
 
-    for _ in 0..2
-    {
-        let mut vbm = CircuitGate::<Fp>::create_vbmul
-        (
-            &[
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))
-            ]
-        );
+    for _ in 0..2 {
+        let mut vbm = CircuitGate::<Fp>::create_vbmul(&[
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+        ]);
         gates.append(&mut vbm);
     }
 
@@ -137,29 +455,69 @@ fn turbo_plonk()
     // scalar multiplication with group endomorphism optimization
     // test with 8-bit scalar
 
-    for _ in 0..4
-    {
-        let mut endomul = CircuitGate::<Fp>::create_endomul
-        (
-            &[
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N)),
-                GateWires::wires(({i+=1; i}, i), (i+N, i+N), (i+2*N, i+2*N))
-            ]
-        );
+    for _ in 0..4 {
+        let mut endomul = CircuitGate::<Fp>::create_endomul(&[
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+            GateWires::wires(
+                (
+                    {
+                        i += 1;
+                        i
+                    },
+                    i,
+                ),
+                (i + N, i + N),
+                (i + 2 * N, i + 2 * N),
+            ),
+        ]);
         gates.append(&mut endomul);
     }
 
-    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dum::Affine>();
+    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<Other>();
     let srs = SRS::create(MAX_SIZE);
 
-    let index = Index::<Affine>::create
-    (
-        ConstraintSystem::<Fp>::create(gates, oracle::tweedle::fp::params() as ArithmeticSpongeParams<Fp>, PUBLIC).unwrap(),
-        oracle::tweedle::fq::params(),
+    let index = Index::<Affine>::create(
+        ConstraintSystem::<Fp>::create(
+            gates,
+            oracle::pasta::fp::params() as ArithmeticSpongeParams<Fp>,
+            PUBLIC,
+        )
+        .unwrap(),
+        oracle::pasta::fq::params(),
         endo_q,
-        SRSSpec::Use(&srs)
+        SRSSpec::Use(&srs),
     );
 
     positive(&index);
@@ -167,43 +525,92 @@ fn turbo_plonk()
 }
 
 fn positive(index: &Index<Affine>)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     let rng = &mut OsRng;
 
-    let params: ArithmeticSpongeParams<Fp> = oracle::tweedle::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
+    let mut sponge = ArithmeticSponge::<Fp, SC>::new(oracle::pasta::fp::params());
 
     let z = Fp::zero();
     let mut batch = Vec::new();
     let points = sample_points();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let lgr_comms : Vec<_> = (0..PUBLIC).map(|i| {
-        let mut v = vec![Fp::zero(); i + 1];
-        v[i] = Fp::one();
+    let lgr_comms: Vec<_> = (0..PUBLIC)
+        .map(|i| {
+            let mut v = vec![Fp::zero(); i + 1];
+            v[i] = Fp::one();
 
-        let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(
-            v, index.cs.domain.d1).interpolate();
-        index.srs.get_ref().commit_non_hiding(&p, None)
-    }).collect();
+            let p =
+                Evaluations::<Fp, D<Fp>>::from_vec_and_domain(v, index.cs.domain.d1).interpolate();
+            index.srs.get_ref().commit_non_hiding(&p, None)
+        })
+        .collect();
 
     println!("{}", "Prover 100 zk-proofs computation".green());
     let mut start = Instant::now();
 
     let verifier_index = index.verifier_index();
 
-    for test in 0..100
-    {
+    for test in 0..100 {
         let (x1, y1, x2, y2, _, _) = points[test % 10];
         let (x3, y3) = add_points((x1, y1), (x2, y2));
         let s = (y2 - &y1) / &(x2 - &x1);
 
         // public input and EC addition witness for generic constraints
 
-        let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
-        let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
-        let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
+        let mut l = vec![
+            x1,
+            x2,
+            x3,
+            y1,
+            y2,
+            y3,
+            x2,
+            x2 - &x1,
+            y2,
+            s,
+            x1,
+            x3,
+            x1,
+            s,
+            y1,
+        ];
+        let mut r = vec![
+            z,
+            z,
+            z,
+            z,
+            z,
+            z,
+            x1,
+            s,
+            y1,
+            s,
+            x2,
+            x1 + &x2,
+            x3,
+            x1 - &x3,
+            y3,
+        ];
+        let mut o = vec![
+            z,
+            z,
+            z,
+            z,
+            z,
+            z,
+            x2 - &x1,
+            (x2 - &x1) * &s,
+            y2 - &y1,
+            s.square(),
+            x1 + &x2,
+            x1 + &x2 + &x3,
+            x1 - &x3,
+            (x1 - &x3) * &s,
+            y1 + &y3,
+        ];
 
         // EC addition witness for custom constraints
 
@@ -222,9 +629,8 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         o.push(sponge.state[2]);
 
         // HALF_ROUNDS_FULL full rounds constraint gates
-        for j in 0..SC::ROUNDS_FULL
-        {
-            sponge.full_round(j, &params);
+        for j in 0..SC::ROUNDS_FULL {
+            sponge.full_round(j + 1);
             l.push(sponge.state[0]);
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
@@ -264,7 +670,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let b2i = Fp::one();
         let b2i1 = Fp::one();
         let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
+        let yq = if b2i == Fp::one() { y1 } else { -y1 };
         let (s1x, s1y) = add_points((x2, y2), add_points((x2, y2), (xq, yq)));
         let s = (y2 - &yq) / &(x2 - &xq);
 
@@ -284,7 +690,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let b2i = Fp::zero();
         let b2i1 = Fp::zero();
         let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
+        let yq = if b2i == Fp::one() { y1 } else { -y1 };
         let (s2x, s2y) = add_points((s1x, s1y), add_points((s1x, s1y), (xq, yq)));
         let s = (s1y - &yq) / &(s1x - &xq);
 
@@ -304,7 +710,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let b2i = Fp::one();
         let b2i1 = Fp::zero();
         let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
+        let yq = if b2i == Fp::one() { y1 } else { -y1 };
         let (s3x, s3y) = add_points((s2x, s2y), add_points((s2x, s2y), (xq, yq)));
         let s = (s2y - &yq) / &(s2x - &xq);
 
@@ -324,7 +730,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
         let b2i = Fp::zero();
         let b2i1 = Fp::one();
         let xq = (Fp::one() + &((index.cs.endo - &Fp::one()) * &b2i1)) * &x1;
-        let yq = if b2i == Fp::one() {y1} else {-y1};
+        let yq = if b2i == Fp::one() { y1 } else { -y1 };
         let (s4x, s4y) = add_points((s3x, s3y), add_points((s3x, s3y), (xq, yq)));
         let s = (s3y - &yq) / &(s3x - &xq);
 
@@ -354,17 +760,24 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
         let prev = {
             let k = ceil_log2(index.srs.get_ref().g.len());
-            let chals : Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
+            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
                 index.srs.get_ref().commit_non_hiding(&b, None)
             };
-            ( chals, comm )
+            (chals, comm)
         };
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
-            &group_map, &witness, &index, vec![prev]).unwrap());
+        batch.push(
+            ProverProof::create::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
+                &group_map,
+                &witness,
+                &index,
+                vec![prev],
+            )
+            .unwrap(),
+        );
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -372,27 +785,34 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
-        &group_map, &vec![ (&verifier_index, &lgr_comms, &batch[0]) ])
-    {
-        Err(error) => {panic!("Failure verifying the prover's proof: {}", error)},
+    match ProverProof::verify::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &group_map,
+        &vec![(&verifier_index, &lgr_comms, &batch[0])],
+    ) {
+        Err(error) => panic!("Failure verifying the prover's proof: {}", error),
         Ok(_) => {}
     }
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    let batch : Vec<_> = batch.iter().map(|p| (&verifier_index, &lgr_comms, p)).collect();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
-        &group_map, &batch)
-    {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+    let batch: Vec<_> = batch
+        .iter()
+        .map(|p| (&verifier_index, &lgr_comms, p))
+        .collect();
+    match ProverProof::verify::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &group_map, &batch,
+    ) {
+        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
+        Ok(_) => {
+            println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
+        }
     }
 }
 
 fn negative(index: &Index<Affine>)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // non-satisfying witness
     let x1 = <Fp as std::str::FromStr>::from_str("7502226838017077786426654731704772400845471875650491266565363420906771040750427824367287841412217114884691397809929").unwrap();
@@ -404,19 +824,65 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let s = (y2 - &y1) / &(x2 - &x1);
 
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
-    let params: ArithmeticSpongeParams<Fp> = oracle::tweedle::fp::params();
+    let mut sponge = ArithmeticSponge::<Fp, SC>::new(oracle::pasta::fp::params());
     sponge.state = vec![x1, x2, x3];
     let z = Fp::zero();
 
-    let mut l = vec![x1,x2,x3,y1,y2,y3,x2,x2-&x1,y2,s,x1,x3,x1,s,y1];
-    let mut r = vec![z,z,z,z,z,z,x1,s,y1,s,x2,x1+&x2,x3,x1-&x3,y3];
-    let mut o = vec![z,z,z,z,z,z,x2-&x1,(x2-&x1)*&s,y2-&y1,s.square(),x1+&x2,x1+&x2+&x3,x1-&x3,(x1-&x3)*&s,y1+&y3];
+    let mut l = vec![
+        x1,
+        x2,
+        x3,
+        y1,
+        y2,
+        y3,
+        x2,
+        x2 - &x1,
+        y2,
+        s,
+        x1,
+        x3,
+        x1,
+        s,
+        y1,
+    ];
+    let mut r = vec![
+        z,
+        z,
+        z,
+        z,
+        z,
+        z,
+        x1,
+        s,
+        y1,
+        s,
+        x2,
+        x1 + &x2,
+        x3,
+        x1 - &x3,
+        y3,
+    ];
+    let mut o = vec![
+        z,
+        z,
+        z,
+        z,
+        z,
+        z,
+        x2 - &x1,
+        (x2 - &x1) * &s,
+        y2 - &y1,
+        s.square(),
+        x1 + &x2,
+        x1 + &x2 + &x3,
+        x1 - &x3,
+        (x1 - &x3) * &s,
+        y1 + &y3,
+    ];
 
     // ROUNDS_FULL full rounds constraint gates
-    for j in 0..SC::ROUNDS_FULL
-    {
-        sponge.full_round(j, &params);
+    for j in 0..SC::ROUNDS_FULL {
+        sponge.full_round(j + 1);
         l.push(sponge.state[0]);
         r.push(sponge.state[1]);
         o.push(sponge.state[2]);
@@ -434,21 +900,20 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     assert_eq!(index.cs.verify(&witness), false);
 }
 
-fn add_points(a: (Fp, Fp), b: (Fp, Fp)) -> (Fp, Fp)
-{
-    if a == (Fp::zero(), Fp::zero()) {b}
-    else if b == (Fp::zero(), Fp::zero()) {a}
-    else if a.0 == b.0 && (a.1 != b.1 || b.1 == Fp::zero()) {(Fp::zero(), Fp::zero())}
-    else if a.0 == b.0 && a.1 == b.1
-    {
+fn add_points(a: (Fp, Fp), b: (Fp, Fp)) -> (Fp, Fp) {
+    if a == (Fp::zero(), Fp::zero()) {
+        b
+    } else if b == (Fp::zero(), Fp::zero()) {
+        a
+    } else if a.0 == b.0 && (a.1 != b.1 || b.1 == Fp::zero()) {
+        (Fp::zero(), Fp::zero())
+    } else if a.0 == b.0 && a.1 == b.1 {
         let sq = a.0.square();
         let s = (sq.double() + &sq) / &a.1.double();
         let x = s.square() - &a.0.double();
         let y = -a.1 - &(s * &(x - &a.0));
         (x, y)
-    }
-    else
-    {
+    } else {
         let s = (a.1 - &b.1) / &(a.0 - &b.0);
         let x = s.square() - &a.0 - &b.0;
         let y = -a.1 - &(s * &(x - &a.0));
@@ -456,8 +921,7 @@ fn add_points(a: (Fp, Fp), b: (Fp, Fp)) -> (Fp, Fp)
     }
 }
 
-fn sample_points() -> [(Fp, Fp, Fp, Fp, Fp, Fp); 10]
-{
+fn sample_points() -> [(Fp, Fp, Fp, Fp, Fp, Fp); 10] {
     [((
         <Fp as std::str::FromStr>::from_str("1580733493061982224102642506998085489258052950031005050616926032148684443068721819617638109822422025817760865738650").unwrap(),
         <Fp as std::str::FromStr>::from_str("2120085809980346347658418912345228674556840189092324973615155047510076539377582421094477427199660756057892003266260").unwrap(),

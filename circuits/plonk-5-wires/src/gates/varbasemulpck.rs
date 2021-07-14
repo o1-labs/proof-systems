@@ -12,7 +12,7 @@ One-bit round constraints:
 
 S = (P + (b ? T : −T)) + P
 
-VBSMPACK gate constrains
+VBSMPACK gate constraints
 
     b*(b-1) = 0
     (xp - xt) * s1 = yp – (2b-1)*yt
@@ -20,10 +20,10 @@ VBSMPACK gate constrains
     (ys + yp)^2 = (xp – xs)^2 * (s1^2 – xt + xs)
     n1 = 2*n2 + b
 
-GENERIC gate constrains
+GENERIC gate constraints
     n2 = 0
 
-Permutation constrains
+Permutation constraints
     n2(i+1) -> n1(i+2)
     -> xt(i) -> xt(i+2) -> … -> xt(509)
     -> yt(i) -> yt(i+2) -> … -> yt(509)
@@ -34,7 +34,7 @@ Permutation constrains
     xs(509) ->
     ys(509) ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     (xq - xp) * s1 = yq - yp
     s1 * s1 = xp + xq + x1
@@ -67,28 +67,24 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
+use ark_ff::FftField;
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
-{
-    pub fn create_vbmul2(row: usize, wires: GateWires) -> Self
-    {
-        CircuitGate
-        {
+impl<F: FftField> CircuitGate<F> {
+    pub fn create_vbmul2(row: usize, wires: GateWires) -> Self {
+        CircuitGate {
             row,
             typ: GateType::Vbmul2,
             wires,
-            c: vec![]
+            c: vec![],
         }
     }
 
-    pub fn verify_vbmul2(&self, witness: &[Vec<F>; COLUMNS]) -> bool
-    {
+    pub fn verify_vbmul2(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
 
         self.typ == GateType::Vbmul2
         &&
@@ -110,5 +106,11 @@ impl<F: FftField> CircuitGate<F>
         this[4] == next[4].double() + &this[3]
     }
 
-    pub fn vbmul2(&self) -> F {if self.typ == GateType::Vbmul2 {F::one()} else {F::zero()}}
+    pub fn vbmul2(&self) -> F {
+        if self.typ == GateType::Vbmul2 {
+            F::one()
+        } else {
+            F::zero()
+        }
+    }
 }

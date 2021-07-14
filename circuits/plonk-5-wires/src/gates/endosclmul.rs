@@ -3,7 +3,7 @@
 This source file implements group endomorphism optimised
 variable base scalar multiplication custom Plonk constraints.
 
-EVBSM gate constrains
+EVBSM gate constraints
 
     b1*(b1-1) = 0
     b2*(b2-1) = 0
@@ -12,7 +12,7 @@ EVBSM gate constrains
     (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
     (xp – xs) * s2 = ys + yp
 
-Permutation constrains
+Permutation constraints
 
     -> b1(i)
     -> b2(i+1)
@@ -25,7 +25,7 @@ Permutation constrains
     xs(255) ->
     ys(255) ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     (xq - xp) * s1 = yq - yp
     s1 * s1 = xp + xq + x1
@@ -52,30 +52,29 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
 use crate::gate::{CircuitGate, GateType};
-use crate::{wires::{GateWires, COLUMNS}, constraints::ConstraintSystem};
+use crate::{
+    constraints::ConstraintSystem,
+    wires::{GateWires, COLUMNS},
+};
+use ark_ff::FftField;
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
-{
-    pub fn create_endomul(row: usize, wires: GateWires) -> Self
-    {
-        CircuitGate
-        {
+impl<F: FftField> CircuitGate<F> {
+    pub fn create_endomul(row: usize, wires: GateWires) -> Self {
+        CircuitGate {
             row,
             typ: GateType::Endomul,
             wires,
-            c: vec![]
+            c: vec![],
         }
     }
 
-    pub fn verify_endomul(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
-    {
+    pub fn verify_endomul(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
         let xq = (F::one() + &((cs.endo - &F::one()) * &next[4])) * &this[0];
-        
+
         self.typ == GateType::Endomul
         &&
         // verify booleanity of the scalar bits
@@ -96,5 +95,11 @@ impl<F: FftField> CircuitGate<F>
         (next[2] - &next[0]) * &this[3] == next[1] + &next[3]
     }
 
-    pub fn endomul(&self) -> F {if self.typ == GateType::Endomul {F::one()} else {F::zero()}}
+    pub fn endomul(&self) -> F {
+        if self.typ == GateType::Endomul {
+            F::one()
+        } else {
+            F::zero()
+        }
+    }
 }
