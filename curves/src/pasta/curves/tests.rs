@@ -1,11 +1,8 @@
-/*
-TODO(mimoo): find a way to get access to algebra::tests
-use algebra_core::{test_rng, AffineCurve};
-use rand::Rng;
-
 use crate::pasta::*;
-
-use algebra::tests::{curves::*, groups::*};
+use ark_algebra_test_templates::{curves::*, groups::*};
+use ark_ec::AffineCurve;
+use ark_std::test_rng;
+use rand::Rng;
 
 #[test]
 fn test_pallas_projective_curve() {
@@ -28,4 +25,3 @@ fn test_pallas_generator() {
     assert!(generator.is_on_curve());
     assert!(generator.is_in_correct_subgroup_assuming_on_curve());
 }
-*/
