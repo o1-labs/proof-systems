@@ -1,11 +1,7 @@
-/*
-TODO(mimoo): find a way to get access to algebra::tests
-use algebra_core::test_rng;
-use rand::Rng;
-
 use crate::pasta::*;
-
-use algebra::tests::fields::{field_test, primefield_test, sqrt_field_test};
+use ark_algebra_test_templates::fields::{field_test, primefield_test, sqrt_field_test};
+use ark_std::test_rng;
+use rand::Rng;
 
 #[test]
 fn test_fp() {
@@ -26,4 +22,3 @@ fn test_fq() {
     sqrt_field_test(a);
     primefield_test::<Fq>();
 }
-*/
