@@ -5,31 +5,30 @@ This source file implements Plonk prover polynomial evaluations primitive.
 *****************************************************************************************************************/
 
 pub use super::wires::COLUMNS;
-use algebra::{FftField, Field};
-use oracle::{sponge_5_wires::ScalarChallenge, utils::PolyUtils};
-use ff_fft::DensePolynomial;
+use ark_ff::{FftField, Field};
+use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
+use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
     // Plonk evals
-    pub w: [Fs; COLUMNS],   // wires
-    pub z: Fs,              // permutation aggregaion
-    pub t: Fs,              // quotient
-    pub f: Fs,              // linearization
-    pub s: [Fs; COLUMNS-1], // permutation
+    pub w: [Fs; COLUMNS],     // wires
+    pub z: Fs,                // permutation aggregaion
+    pub t: Fs,                // quotient
+    pub f: Fs,                // linearization
+    pub s: [Fs; COLUMNS - 1], // permutation
     // Plookup evals
-    pub l: Fs,              // lookup aggregaion
-    pub lw: Fs,             // lookup witness
-    pub h1: Fs,             // lookup multiset
-    pub h2: Fs,             // lookup multiset
-    pub tb: Fs,             // lookup table
+    pub l: Fs,  // lookup aggregaion
+    pub lw: Fs, // lookup witness
+    pub h1: Fs, // lookup multiset
+    pub h2: Fs, // lookup multiset
+    pub tb: Fs, // lookup table
 }
 
-impl<F : FftField> ProofEvaluations<Vec<F>> {
-    pub fn combine(&self, pt : F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F>
-        {
+impl<F: FftField> ProofEvaluations<Vec<F>> {
+    pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
+        ProofEvaluations::<F> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
@@ -62,25 +61,24 @@ pub struct CamlProofEvaluations<Fs> {
 #[cfg(feature = "ocaml_types")]
 unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
     fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(
-            CamlProofEvaluations {
-                w: {
-                    let [w0, w1, w2, w3, w4] = self.w;
-                    (w0, w1, w2, w3, w4)
-                },
-                z: self.z,
-                t: self.t,
-                f: self.f,
-                s: {
-                    let [s0, s1, s2, s3] = self.s;
-                    (s0, s1, s2, s3)
-                },
-                l: self.l,
-                lw: self.lw,
-                h1: self.h1,
-                h2: self.h2,
-                tb: self.tb,
-            })
+        ocaml::ToValue::to_value(CamlProofEvaluations {
+            w: {
+                let [w0, w1, w2, w3, w4] = self.w;
+                (w0, w1, w2, w3, w4)
+            },
+            z: self.z,
+            t: self.t,
+            f: self.f,
+            s: {
+                let [s0, s1, s2, s3] = self.s;
+                (s0, s1, s2, s3)
+            },
+            l: self.l,
+            lw: self.lw,
+            h1: self.h1,
+            h2: self.h2,
+            tb: self.tb,
+        })
     }
 }
 
@@ -105,14 +103,13 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
             h1: evals.h1,
             h2: evals.h2,
             tb: evals.tb,
-    }
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct RandomOracles<F: Field>
-{
+pub struct RandomOracles<F: Field> {
     pub beta1: F,
     pub gamma1: F,
     pub beta2: F,
@@ -127,13 +124,10 @@ pub struct RandomOracles<F: Field>
     pub u_chal: ScalarChallenge<F>,
 }
 
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
+impl<F: Field> RandomOracles<F> {
+    pub fn zero() -> Self {
         let c = ScalarChallenge(F::zero());
-        Self
-        {
+        Self {
             beta1: F::zero(),
             gamma1: F::zero(),
             beta2: F::zero(),

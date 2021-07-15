@@ -59,20 +59,20 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
     *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
+use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // scalar multiplication constraint quotient poly contribution computation
-    pub fn vbmul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.mul1m.is_zero() {return self.zero4.clone()}
-    
+    pub fn vbmul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
+        if self.mul1m.is_zero() {
+            return self.zero4.clone();
+        }
+
         // verify booleanity of the scalar bits
         &(&(&(&(&(&polys.d4.this.w[4] - &polys.d4.this.w[4].pow(2)).scale(alpha[0])
         +
@@ -91,13 +91,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // (xp – xs) * s2 = ys + yp
         &(&(&(&(&polys.d4.next.w[2] - &polys.d4.next.w[0]) * &polys.d4.this.w[3]) -
             &polys.d4.next.w[1]) - &polys.d4.next.w[3]).scale(alpha[4]))
-        *
-        &self.mul1l
+            * &self.mul1l
     }
 
     // scalar multiplication constraint linearization poly contribution computation
-    pub fn vbmul_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
-    {
+    pub fn vbmul_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F {
         // verify booleanity of the scalar bits
         (evals[0].w[4] - &evals[0].w[4].square()) * &alpha[0]
         +
@@ -118,8 +116,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // scalar multiplication constraint linearization poly contribution computation
-    pub fn vbmul_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
+    pub fn vbmul_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F> {
         self.mul1m.scale(Self::vbmul_scalars(evals, alpha))
     }
 }

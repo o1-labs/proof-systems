@@ -68,19 +68,23 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
+use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // scalar multiplication with packing constraint quotient poly contribution computation
-    pub fn vbmulpck_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.mul2m.is_zero() {return self.zero8.clone()}
+    pub fn vbmulpck_quot(
+        &self,
+        polys: &WitnessOverDomains<F>,
+        alpha: &[F],
+    ) -> Evaluations<F, D<F>> {
+        if self.mul2m.is_zero() {
+            return self.zero8.clone();
+        }
         let ps = &(&polys.d8.next.w[2] - &polys.d8.next.w[0]);
 
         // verify booleanity of the scalar bits
@@ -101,13 +105,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         +
         // n1 - 2*n2 - b
         &(&(&polys.d8.this.w[4] - &polys.d8.next.w[4].scale(F::from(2 as u64))) - &polys.d8.this.w[3]).scale(alpha[4]))
-        *
-        &self.mul2l
+            * &self.mul2l
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation
-    pub fn vbmulpck_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
-    {
+    pub fn vbmulpck_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F {
         let ps = evals[1].w[2] - &evals[1].w[0];
 
         // verify booleanity of the scalar bits
@@ -131,8 +133,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // scalar multiplication with packing constraint linearization poly contribution computation
-    pub fn vbmulpck_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
+    pub fn vbmulpck_lnrz(
+        &self,
+        evals: &Vec<ProofEvaluations<F>>,
+        alpha: &[F],
+    ) -> DensePolynomial<F> {
         self.mul2m.scale(Self::vbmulpck_scalars(evals, alpha))
     }
 }

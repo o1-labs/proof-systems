@@ -1017,7 +1017,8 @@ fn positive(index: &Index<Affine>) {
 
         //  witness for Poseidon permutation custom constraints
 
-        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants5W>::new(oracle::pasta::fp5::params());
+        let mut sponge =
+            ArithmeticSponge::<Fp, PlonkSpongeConstants5W>::new(oracle::pasta::fp5::params());
         sponge.state = vec![w(), w(), w(), w(), w()];
         witness
             .iter_mut()

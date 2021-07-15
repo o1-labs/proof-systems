@@ -4,44 +4,58 @@ This source file implements Plonk constraint gate primitive.
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
-use crate::{wires::{*}, nolookup::constraints::ConstraintSystem};
-use std::io::{Read, Result as IoResult, Write, Error, ErrorKind};
+use crate::{nolookup::constraints::ConstraintSystem, wires::*};
+use ark_ff::{
+    bytes::{FromBytes, ToBytes},
+    FftField,
+};
 use num_traits::cast::{FromPrimitive, ToPrimitive};
-use algebra::bytes::{FromBytes, ToBytes};
+use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
+// TODO(mimoo): is repr(C) required here?
 #[repr(C)]
-#[derive(Clone, Debug)]
-#[derive(PartialEq)]
-#[derive(FromPrimitive, ToPrimitive)]
-pub enum GateType
-{
-    Zero,       // zero gate
-    Generic,    // generic arithmetic gate
-    Poseidon,   // Poseidon permutation gate
-    Add,        // EC addition in Affine form
-    Double,     // EC point doubling in Affine form
-    Vbmul,      // EC variable base scalar multiplication 
-    Endomul,    // EC variable base scalar multiplication with group endomorphim optimization
-    Lookup,     // lookup
+#[derive(Clone, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum GateType {
+    /// zero gate
+    Zero,
+    /// generic arithmetic gate
+    Generic,
+    /// Poseidon permutation gate
+    Poseidon,
+    /// EC addition in Affine form
+    Add,
+    /// EC point doubling in Affine form
+    Double,
+    /// EC variable base scalar multiplication
+    Vbmul,
+    /// EC variable base scalar multiplication with group endomorphim optimization
+    Endomul,
+    /// lookup
+    Lookup,
 }
 
 #[derive(Clone)]
-pub struct CircuitGate<F: FftField>
-{
-    pub row: usize,         // row position in the circuit
-    pub typ: GateType,      // type of the gate
-    pub wires: GateWires,   // gate wires
-    pub c: Vec<F>,          // constraints vector
+pub struct CircuitGate<F: FftField> {
+    /// row position in the circuit
+    // TODO(mimoo): shouldn't this be u32 since we serialize it as a u32?
+    pub row: usize,
+    /// type of the gate
+    pub typ: GateType,
+    /// gate wires
+    pub wires: GateWires,
+    /// constraints vector
+    pub c: Vec<F>,
 }
 
 impl<F: FftField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         (self.row as u32).write(&mut w)?;
-        let typ : u8 = ToPrimitive::to_u8(&self.typ).unwrap();
+        let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
         typ.write(&mut w)?;
-        for i in 0..COLUMNS {self.wires[i].write(&mut w)?};
+        for i in 0..COLUMNS {
+            self.wires[i].write(&mut w)?
+        }
 
         (self.c.len() as u8).write(&mut w)?;
         for x in self.c.iter() {
@@ -56,14 +70,12 @@ impl<F: FftField> FromBytes for CircuitGate<F> {
     fn read<R: Read>(mut r: R) -> IoResult<Self> {
         let row = u32::read(&mut r)? as usize;
         let code = u8::read(&mut r)?;
-        let typ =
-            match FromPrimitive::from_u8(code) {
-                Some(x) => Ok(x),
-                None => Err(Error::new(ErrorKind::Other, "Invalid gate type"))
-            }?;
+        let typ = match FromPrimitive::from_u8(code) {
+            Some(x) => Ok(x),
+            None => Err(Error::new(ErrorKind::Other, "Invalid gate type")),
+        }?;
 
-        let wires =
-        [
+        let wires = [
             Wire::read(&mut r)?,
             Wire::read(&mut r)?,
             Wire::read(&mut r)?,
@@ -87,22 +99,14 @@ impl<F: FftField> FromBytes for CircuitGate<F> {
             c.push(F::read(&mut r)?);
         }
 
-        Ok(CircuitGate {
-            row,
-            typ,
-            wires,
-            c
-        })
+        Ok(CircuitGate { row, typ, wires, c })
     }
 }
 
-impl<F: FftField> CircuitGate<F>
-{
+impl<F: FftField> CircuitGate<F> {
     // this function creates "empty" circuit gate
-    pub fn zero(row: usize, wires: GateWires) -> Self
-    {
-        CircuitGate
-        {
+    pub fn zero(row: usize, wires: GateWires) -> Self {
+        CircuitGate {
             row,
             typ: GateType::Zero,
             c: Vec::new(),
@@ -112,18 +116,16 @@ impl<F: FftField> CircuitGate<F>
 
     // This function verifies the consistency of the wire
     // assignements (witness) against the constraints
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool
-    {
-        match self.typ
-        {
-            GateType::Zero      => true,
-            GateType::Generic   => self.verify_generic(witness),
-            GateType::Poseidon  => self.verify_poseidon(witness, cs),
-            GateType::Add       => self.verify_add(witness),
-            GateType::Double    => self.verify_double(witness),
-            GateType::Vbmul     => self.verify_vbmul(witness),
-            GateType::Endomul   => self.verify_endomul(witness, cs),
-            GateType::Lookup    => self.verify_lookup(witness),
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
+        match self.typ {
+            GateType::Zero => true,
+            GateType::Generic => self.verify_generic(witness),
+            GateType::Poseidon => self.verify_poseidon(witness, cs),
+            GateType::Add => self.verify_add(witness),
+            GateType::Double => self.verify_double(witness),
+            GateType::Vbmul => self.verify_vbmul(witness),
+            GateType::Endomul => self.verify_endomul(witness, cs),
+            GateType::Lookup => self.verify_lookup(witness),
         }
     }
 }

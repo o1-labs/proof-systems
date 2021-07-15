@@ -20,7 +20,7 @@ use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand,
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand_core::{CryptoRng, RngCore};
+use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::iter::Iterator;
 

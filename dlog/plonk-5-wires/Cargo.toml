@@ -14,7 +14,6 @@ mina-curves = { path = "../../curves" }
 commitment_dlog = { path = "../commitment" }
 plonk_5_wires_circuits = { path = "../../circuits/plonk-5-wires" }
 oracle = { path = "../../oracle" }
-rand_core = "0.6.0"
 colored = "2.0.0"
 rand = "0.8.0"
 sprs = "0.9.2"

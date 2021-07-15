@@ -4,15 +4,14 @@ This source file implements Plonk circuit gate wires primitive.
 
 *****************************************************************************************************************/
 
-use algebra::bytes::{FromBytes, ToBytes};
+use ark_ff::bytes::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 pub const COLUMNS: usize = 5;
-pub const WIRES: [usize; COLUMNS] = [0,1,2,3,4];
+pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4];
 
 #[derive(Clone, Copy)]
-pub struct Wire
-{
+pub struct Wire {
     pub row: usize,
     pub col: usize,
 }
@@ -33,6 +32,6 @@ impl FromBytes for Wire {
     fn read<R: Read>(mut r: R) -> IoResult<Self> {
         let row = u32::read(&mut r)? as usize;
         let col = u32::read(&mut r)? as usize;
-        Ok(Wire {row, col})
+        Ok(Wire { row, col })
     }
 }

@@ -59,28 +59,24 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 *****************************************************************************************************************/
 
-use algebra::FftField;
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
+use ark_ff::FftField;
 use array_init::array_init;
 
-impl<F: FftField> CircuitGate<F>
-{
-    pub fn create_vbmul(row: usize, wires: GateWires) -> Self
-    {
-        CircuitGate
-        {
+impl<F: FftField> CircuitGate<F> {
+    pub fn create_vbmul(row: usize, wires: GateWires) -> Self {
+        CircuitGate {
             row,
             typ: GateType::Vbmul1,
             wires,
-            c: vec![]
+            c: vec![],
         }
     }
 
-    pub fn verify_vbmul1(&self, witness: &[Vec<F>; COLUMNS]) -> bool
-    {
+    pub fn verify_vbmul1(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row+1]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
 
         self.typ == GateType::Vbmul1
         &&
@@ -100,5 +96,11 @@ impl<F: FftField> CircuitGate<F>
         (next[2] - &next[0]) * &this[3] == next[1] + &next[3]
     }
 
-    pub fn vbmul1(&self) -> F {if self.typ == GateType::Vbmul1 {F::one()} else {F::zero()}}
+    pub fn vbmul1(&self) -> F {
+        if self.typ == GateType::Vbmul1 {
+            F::one()
+        } else {
+            F::zero()
+        }
+    }
 }

@@ -17,7 +17,6 @@ plonk_15_wires_circuits = { path = "../circuits/plonk-15-wires" }
 plonk_15_wires_protocol_dlog = { path = "plonk-15-wires" }
 plonk_15_wires_plookup_protocol_dlog = { path = "plonk-15-wires-plookup" }
 oracle = { path = "../oracle" }
-rand_core = { version = "0.5" }
 colored = "1.9.2"
 rand = { version = "0.8.0", features = ["getrandom"] }
 sprs = "0.7.1"
