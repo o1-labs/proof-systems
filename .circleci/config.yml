@@ -3,7 +3,7 @@ version: 2.1
 jobs:
     run-tests:
         docker:
-            - image: rust:1.52.0-buster
+            - image: rust:1.52.1-buster
         steps:
             - checkout
             - run:

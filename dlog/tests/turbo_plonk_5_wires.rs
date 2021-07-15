@@ -841,7 +841,6 @@ fn positive(index: &Index<Affine>) {
     let rng = &mut OsRng;
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let params = oracle::pasta::fp5::params();
     let lgr_comms: Vec<_> = (0..PUBLIC)
         .map(|i| {
             let mut v = vec![Fp::zero(); i + 1];
@@ -1018,7 +1017,7 @@ fn positive(index: &Index<Affine>) {
 
         //  witness for Poseidon permutation custom constraints
 
-        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants5W>::new();
+        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants5W>::new(oracle::pasta::fp5::params());
         sponge.state = vec![w(), w(), w(), w(), w()];
         witness
             .iter_mut()
@@ -1028,7 +1027,7 @@ fn positive(index: &Index<Affine>) {
         // ROUNDS_FULL full rounds
 
         for j in 0..PlonkSpongeConstants5W::ROUNDS_FULL {
-            sponge.full_round(j, &params);
+            sponge.full_round(j);
             witness
                 .iter_mut()
                 .zip(sponge.state.iter())

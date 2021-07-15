@@ -530,8 +530,7 @@ where
 {
     let rng = &mut OsRng;
 
-    let params: ArithmeticSpongeParams<Fp> = oracle::pasta::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
+    let mut sponge = ArithmeticSponge::<Fp, SC>::new(oracle::pasta::fp::params());
 
     let z = Fp::zero();
     let mut batch = Vec::new();
@@ -631,7 +630,7 @@ where
 
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in 0..SC::ROUNDS_FULL {
-            sponge.full_round(j + 1, &params);
+            sponge.full_round(j + 1);
             l.push(sponge.state[0]);
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
@@ -825,8 +824,7 @@ where
 
     let s = (y2 - &y1) / &(x2 - &x1);
 
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
-    let params: ArithmeticSpongeParams<Fp> = oracle::pasta::fp::params();
+    let mut sponge = ArithmeticSponge::<Fp, SC>::new(oracle::pasta::fp::params());
     sponge.state = vec![x1, x2, x3];
     let z = Fp::zero();
 
@@ -884,7 +882,7 @@ where
 
     // ROUNDS_FULL full rounds constraint gates
     for j in 0..SC::ROUNDS_FULL {
-        sponge.full_round(j + 1, &params);
+        sponge.full_round(j + 1);
         l.push(sponge.state[0]);
         r.push(sponge.state[1]);
         o.push(sponge.state[2]);

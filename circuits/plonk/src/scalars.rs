@@ -9,7 +9,7 @@ use ark_poly::univariate::DensePolynomial;
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ProofEvaluations<Fs> {
     pub l: Fs,
     pub r: Fs,
@@ -37,8 +37,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct RandomOracles<F: Field> {
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
+pub struct RandomOracles<F: Field>
+{
     pub beta: F,
     pub gamma: F,
     pub alpha_chal: ScalarChallenge<F>,

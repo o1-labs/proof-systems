@@ -78,11 +78,10 @@ impl SpongeConstants for PlonkSpongeConstants3 {
     const INITIAL_ARK: bool = false;
 }
 
-pub trait Sponge<Input, Digest> {
-    type Params;
-    fn new() -> Self;
-    fn absorb(&mut self, params: &Self::Params, x: &[Input]);
-    fn squeeze(&mut self, params: &Self::Params) -> Digest;
+pub trait Sponge<Input: Field, Digest> {
+    fn new(params: ArithmeticSpongeParams<Input>) -> Self;
+    fn absorb(&mut self, x: &[Input]);
+    fn squeeze(&mut self) -> Digest;
 }
 
 pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
@@ -106,13 +105,14 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,
     pub state: Vec<F>,
+    params: ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
-    fn apply_mds_matrix(&mut self, params: &ArithmeticSpongeParams<F>) {
+    fn apply_mds_matrix(&mut self) {
         self.state = if SC::FULL_MDS {
-            params
+            self.params
                 .mds
                 .iter()
                 .map(|m| {
@@ -131,40 +131,40 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
         };
     }
 
-    pub fn full_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
+    pub fn full_round(&mut self, r: usize) {
         for i in 0..self.state.len() {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
-        self.apply_mds_matrix(params);
-        for (i, x) in params.round_constants[r].iter().enumerate() {
+        self.apply_mds_matrix();
+        for (i, x) in self.params.round_constants[r].iter().enumerate() {
             self.state[i].add_assign(x);
         }
     }
 
-    fn half_rounds(&mut self, params: &ArithmeticSpongeParams<F>) {
+    fn half_rounds(&mut self) {
         for r in 0..SC::HALF_ROUNDS_FULL {
-            for (i, x) in params.round_constants[r].iter().enumerate() {
+            for (i, x) in self.params.round_constants[r].iter().enumerate() {
                 self.state[i].add_assign(x);
             }
             for i in 0..self.state.len() {
                 self.state[i] = sbox::<F, SC>(self.state[i]);
             }
-            self.apply_mds_matrix(params);
+            self.apply_mds_matrix();
         }
 
         for r in 0..SC::ROUNDS_PARTIAL {
-            for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + r]
+            for (i, x) in self.params.round_constants[SC::HALF_ROUNDS_FULL + r]
                 .iter()
                 .enumerate()
             {
                 self.state[i].add_assign(x);
             }
             self.state[0] = sbox::<F, SC>(self.state[0]);
-            self.apply_mds_matrix(params);
+            self.apply_mds_matrix();
         }
 
         for r in 0..SC::HALF_ROUNDS_FULL {
-            for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
+            for (i, x) in self.params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
                 .iter()
                 .enumerate()
             {
@@ -173,34 +173,32 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
             for i in 0..self.state.len() {
                 self.state[i] = sbox::<F, SC>(self.state[i]);
             }
-            self.apply_mds_matrix(params);
+            self.apply_mds_matrix();
         }
     }
 
-    fn poseidon_block_cipher(&mut self, params: &ArithmeticSpongeParams<F>) {
+    fn poseidon_block_cipher(&mut self) {
         if SC::HALF_ROUNDS_FULL == 0 {
             if SC::INITIAL_ARK == true {
-                for (i, x) in params.round_constants[0].iter().enumerate() {
+                for (i, x) in self.params.round_constants[0].iter().enumerate() {
                     self.state[i].add_assign(x);
                 }
                 for r in 0..SC::ROUNDS_FULL {
-                    self.full_round(r + 1, params);
+                    self.full_round(r + 1);
                 }
             } else {
                 for r in 0..SC::ROUNDS_FULL {
-                    self.full_round(r, params);
+                    self.full_round(r);
                 }
             }
         } else {
-            self.half_rounds(params);
+            self.half_rounds();
         }
     }
 }
 
 impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
-    type Params = ArithmeticSpongeParams<F>;
-
-    fn new() -> ArithmeticSponge<F, SC> {
+    fn new(params: ArithmeticSpongeParams<F>) -> ArithmeticSponge<F, SC> {
         let capacity = SC::SPONGE_CAPACITY;
         let rate = SC::SPONGE_RATE;
 
@@ -214,16 +212,17 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
             state,
             rate,
             sponge_state: SpongeState::Absorbed(0),
+            params,
             constants: std::marker::PhantomData,
         }
     }
 
-    fn absorb(&mut self, params: &ArithmeticSpongeParams<F>, x: &[F]) {
+    fn absorb(&mut self, x: &[F]) {
         for x in x.iter() {
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {
-                        self.poseidon_block_cipher(params);
+                        self.poseidon_block_cipher();
                         self.sponge_state = SpongeState::Absorbed(1);
                         self.state[0].add_assign(x);
                     } else {
@@ -239,11 +238,11 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
         }
     }
 
-    fn squeeze(&mut self, params: &ArithmeticSpongeParams<F>) -> F {
+    fn squeeze(&mut self) -> F {
         match self.sponge_state {
             SpongeState::Squeezed(n) => {
                 if n == self.rate {
-                    self.poseidon_block_cipher(params);
+                    self.poseidon_block_cipher();
                     self.sponge_state = SpongeState::Squeezed(1);
                     self.state[0]
                 } else {
@@ -252,7 +251,7 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                 }
             }
             SpongeState::Absorbed(_n) => {
-                self.poseidon_block_cipher(params);
+                self.poseidon_block_cipher();
                 self.sponge_state = SpongeState::Squeezed(1);
                 self.state[0]
             }

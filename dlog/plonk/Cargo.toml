@@ -13,7 +13,7 @@ ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 mina-curves = { path = "../../curves" }
 commitment_dlog = { path = "../commitment" }
 plonk_circuits = { path = "../../circuits/plonk" }
-ocaml = { version = "0.18.1", optional = true }
+ocaml = { version = "0.22.0", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = "0.6.0"
 colored = "1.9.3"
