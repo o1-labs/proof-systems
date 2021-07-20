@@ -10,11 +10,10 @@ use std::io::{Read, Result as IoResult, Write};
 pub const GENERICS: usize = 3;
 pub const COLUMNS: usize = 15;
 pub const PERMUTS: usize = 7;
-pub const WIRES: [usize; COLUMNS] = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 #[derive(Clone, Copy)]
-pub struct Wire
-{
+pub struct Wire {
     pub row: usize,
     pub col: usize,
 }
@@ -35,6 +34,6 @@ impl FromBytes for Wire {
     fn read<R: Read>(mut r: R) -> IoResult<Self> {
         let row = u32::read(&mut r)? as usize;
         let col = u32::read(&mut r)? as usize;
-        Ok(Wire {row, col})
+        Ok(Wire { row, col })
     }
 }

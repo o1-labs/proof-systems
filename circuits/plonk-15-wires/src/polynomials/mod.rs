@@ -1,9 +1,9 @@
-pub mod double;
-pub mod generic;
-pub mod poseidon;
 pub mod addition;
-pub mod varbasemul;
+pub mod double;
 pub mod endosclmul;
-pub mod permutation;
+pub mod generic;
 pub mod lookup;
+pub mod permutation;
+pub mod poseidon;
 pub mod tbllkp;
+pub mod varbasemul;

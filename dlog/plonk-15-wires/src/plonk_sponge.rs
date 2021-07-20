@@ -1,9 +1,9 @@
+use algebra::{Field, PrimeField};
 use plonk_15_wires_circuits::nolookup::scalars::ProofEvaluations;
-use algebra::{
-    Field, PrimeField,
-};
 // use oracle::poseidon_5_wires::{ArithmeticSponge, PlonkSpongeConstants as SC};
-use oracle::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, Plonk15SpongeConstants as SC};
+use oracle::poseidon::{
+    ArithmeticSponge, ArithmeticSpongeParams, Plonk15SpongeConstants as SC, Sponge,
+};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {
@@ -36,18 +36,8 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.sponge.absorb(&self.params, p);
 
         let points = [
-            &e.w[0],
-            &e.w[1],
-            &e.w[2],
-            &e.w[3],
-            &e.w[4],
-            &e.z,
-            &e.t,
-            &e.f,
-            &e.s[0],
-            &e.s[1],
-            &e.s[2],
-            &e.s[3],
+            &e.w[0], &e.w[1], &e.w[2], &e.w[3], &e.w[4], &e.z, &e.t, &e.f, &e.s[0], &e.s[1],
+            &e.s[2], &e.s[3],
         ];
 
         for p in &points {

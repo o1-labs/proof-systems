@@ -52,20 +52,21 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
     *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::constraints::ConstraintSystem;
+use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // endomorphism optimised scalar multiplication constraint quotient poly contribution computation
-    pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.emulm.is_zero() {return self.zero4.clone()}
-        let xq = &(&(&self.l04 + &polys.d4.next.w[4].scale(self.endo - F::one())) * &polys.d4.this.w[0]);
+    pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
+        if self.emulm.is_zero() {
+            return self.zero4.clone();
+        }
+        let xq =
+            &(&(&self.l04 + &polys.d4.next.w[4].scale(self.endo - F::one())) * &polys.d4.this.w[0]);
 
         // verify booleanity of the scalar bits
         &(&(&(&(&(&(&polys.d4.this.w[4] - &polys.d4.this.w[4].pow(2)).scale(alpha[0])
@@ -86,12 +87,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         // (xp – xs) * s2 = ys + yp
         &(&(&(&(&polys.d4.next.w[2] - &polys.d4.next.w[0]) * &polys.d4.this.w[3]) -
             &polys.d4.next.w[1]) - &polys.d4.next.w[3]).scale(alpha[5]))
-        *
-        &self.emull
+            * &self.emull
     }
 
-    pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F
-    {
+    pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F {
         let xq = (F::one() + &(evals[1].w[4] * &(endo - F::one()))) * &evals[0].w[0];
 
         // verify booleanity of the scalar bits
@@ -116,8 +115,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // endomorphism optimised scalar multiplication constraint linearization poly contribution computation
-    pub fn endomul_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
-        self.emulm.scale(Self::endomul_scalars(evals, self.endo, alpha))
+    pub fn endomul_lnrz(
+        &self,
+        evals: &Vec<ProofEvaluations<F>>,
+        alpha: &[F],
+    ) -> DensePolynomial<F> {
+        self.emulm
+            .scale(Self::endomul_scalars(evals, self.endo, alpha))
     }
 }

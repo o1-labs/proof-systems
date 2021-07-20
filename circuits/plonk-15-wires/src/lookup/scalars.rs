@@ -4,10 +4,10 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, Field};
 use crate::nolookup::scalars::{ProofEvaluations as PE, RandomOracles as RO};
-use oracle::utils::PolyUtils;
+use algebra::{FftField, Field};
 use ff_fft::DensePolynomial;
+use oracle::utils::PolyUtils;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
@@ -15,17 +15,16 @@ pub struct ProofEvaluations<Fs> {
     pub pe: PE<Fs>,
 
     // Plookup evals
-    pub l: Fs,              // lookup aggregaion
-    pub lw: Fs,             // lookup witness
-    pub h1: Fs,             // lookup multiset
-    pub h2: Fs,             // lookup multiset
-    pub tb: Fs,             // lookup table
+    pub l: Fs,  // lookup aggregaion
+    pub lw: Fs, // lookup witness
+    pub h1: Fs, // lookup multiset
+    pub h2: Fs, // lookup multiset
+    pub tb: Fs, // lookup table
 }
 
-impl<F : FftField> ProofEvaluations<Vec<F>> {
+impl<F: FftField> ProofEvaluations<Vec<F>> {
     pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F>
-        {
+        ProofEvaluations::<F> {
             pe: PE::<Vec<F>>::combine(&self.pe, pt),
             l: DensePolynomial::eval_polynomial(&self.l, pt),
             lw: DensePolynomial::eval_polynomial(&self.lw, pt),
@@ -54,25 +53,26 @@ pub struct CamlProofEvaluations<Fs> {
 #[cfg(feature = "ocaml_types")]
 unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
     fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(
-            CamlProofEvaluations {
-                w: {
-                    let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = self.w;
-                    (w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14)
-                },
-                z: self.z,
-                t: self.t,
-                f: self.f,
-                s: {
-                    let [s0, s1, s2, s3, s4] = self.s;
-                    (s0, s1, s2, s3, s4)
-                },
-                l: self.l,
-                lw: self.lw,
-                h1: self.h1,
-                h2: self.h2,
-                tb: self.tb,
-            })
+        ocaml::ToValue::to_value(CamlProofEvaluations {
+            w: {
+                let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = self.w;
+                (
+                    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
+                )
+            },
+            z: self.z,
+            t: self.t,
+            f: self.f,
+            s: {
+                let [s0, s1, s2, s3, s4] = self.s;
+                (s0, s1, s2, s3, s4)
+            },
+            l: self.l,
+            lw: self.lw,
+            h1: self.h1,
+            h2: self.h2,
+            tb: self.tb,
+        })
     }
 }
 
@@ -83,7 +83,9 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
         ProofEvaluations {
             w: {
                 let (w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14) = evals.w;
-                [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14]
+                [
+                    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
+                ]
             },
             z: evals.z,
             t: evals.t,
@@ -97,14 +99,13 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
             h1: evals.h1,
             h2: evals.h2,
             tb: evals.tb,
-    }
+        }
     }
 }
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct RandomOracles<F: Field>
-{
+pub struct RandomOracles<F: Field> {
     // Plonk oracles
     pub po: RO<F>,
 
@@ -113,12 +114,9 @@ pub struct RandomOracles<F: Field>
     pub gamma: F,
 }
 
-impl<F: Field> RandomOracles<F>
-{
-    pub fn zero () -> Self
-    {
-        Self
-        {
+impl<F: Field> RandomOracles<F> {
+    pub fn zero() -> Self {
+        Self {
             po: RO::<F>::zero(),
             beta: F::zero(),
             gamma: F::zero(),

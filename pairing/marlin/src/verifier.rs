@@ -4,117 +4,89 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-use rand_core::RngCore;
-pub use super::index::{VerifierIndex as Index};
-use oracle::rndoracle::{ProofError};
+pub use super::index::VerifierIndex as Index;
 pub use super::prover::{ProverProof, RandomOracles};
+use crate::marlin_sponge::FrSponge;
 use algebra::{Field, PairingEngine, Zero};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, GeneralEvaluationDomain};
+use ff_fft::{DensePolynomial, EvaluationDomain, Evaluations, GeneralEvaluationDomain};
+use oracle::rndoracle::ProofError;
 use oracle::sponge::{FqSponge, ScalarChallenge};
-use crate::marlin_sponge::{FrSponge};
+use rand_core::RngCore;
 
-impl<E: PairingEngine> ProverProof<E>
-{
+impl<E: PairingEngine> ProverProof<E> {
     // This function verifies the prover's first sumcheck argument values
     //     index: Index
     //     oracles: random oracles of the argument
     //     RETURN: verification status
-    pub fn sumcheck_1_verify
-    (
-        &self,
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>,
-    ) -> bool
-    {
+    pub fn sumcheck_1_verify(&self, index: &Index<E>, oracles: &RandomOracles<E::Fr>) -> bool {
         let beta0 = oracles.beta[0].to_field(&index.endo_r);
         // compute ra*zm - ram*z ?= h*v + b*g to verify the first sumcheck argument
-        (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size])) *
-            &(0..3).map
-            (
-                |i|
-                {
-                    match i
-                    {
-                        0 => {self.evals.za * &oracles.eta_a}
-                        1 => {self.evals.zb * &oracles.eta_b}
-                        2 => {self.evals.za * &self.evals.zb * &oracles.eta_c}
-                        _ => {E::Fr::zero()}
-                    }
-                }
-            ).fold(E::Fr::zero(), |x, y| x + &y)
-        ==
-        (oracles.alpha - &beta0) *
-        &(
-            self.evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(beta0) +
-            &(beta0 * &self.evals.g1) +
-            &(self.sigma2 * &index.domains.h.size_as_field_element *
-            &(self.evals.w * &index.domains.x.evaluate_vanishing_polynomial(beta0) +
-            &oracles.x_hat_beta1))
-        )
+        (oracles.alpha.pow([index.domains.h.size]) - &beta0.pow([index.domains.h.size]))
+            * &(0..3)
+                .map(|i| match i {
+                    0 => self.evals.za * &oracles.eta_a,
+                    1 => self.evals.zb * &oracles.eta_b,
+                    2 => self.evals.za * &self.evals.zb * &oracles.eta_c,
+                    _ => E::Fr::zero(),
+                })
+                .fold(E::Fr::zero(), |x, y| x + &y)
+            == (oracles.alpha - &beta0)
+                * &(self.evals.h1 * &index.domains.h.evaluate_vanishing_polynomial(beta0)
+                    + &(beta0 * &self.evals.g1)
+                    + &(self.sigma2
+                        * &index.domains.h.size_as_field_element
+                        * &(self.evals.w * &index.domains.x.evaluate_vanishing_polynomial(beta0)
+                            + &oracles.x_hat_beta1)))
     }
 
     // This function verifies the prover's second sumcheck argument values
     //     index: Index
     //     oracles: random oracles of the argument
     //     RETURN: verification status
-    pub fn sumcheck_2_verify
-    (
-        &self,
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>,
-    ) -> bool
-    {
+    pub fn sumcheck_2_verify(&self, index: &Index<E>, oracles: &RandomOracles<E::Fr>) -> bool {
         let beta1 = oracles.beta[1].to_field(&index.endo_r);
-        self.sigma3 * &index.domains.k.size_as_field_element *
-            &((oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size])))
-        ==
-        (oracles.alpha - &beta1) * &(self.evals.h2 *
-            &index.domains.h.evaluate_vanishing_polynomial(beta1) +
-            &self.sigma2 + &(self.evals.g2 * &beta1))
+        self.sigma3
+            * &index.domains.k.size_as_field_element
+            * &(oracles.alpha.pow([index.domains.h.size]) - &beta1.pow([index.domains.h.size]))
+            == (oracles.alpha - &beta1)
+                * &(self.evals.h2 * &index.domains.h.evaluate_vanishing_polynomial(beta1)
+                    + &self.sigma2
+                    + &(self.evals.g2 * &beta1))
     }
 
     // This function verifies the prover's third sumcheck argument values
     //     index: Index
     //     oracles: random oracles of the argument
     //     RETURN: verification status
-    pub fn sumcheck_3_verify
-    (
-        &self,
-        index: &Index<E>,
-        oracles: &RandomOracles<E::Fr>
-    ) -> bool
-    {
+    pub fn sumcheck_3_verify(&self, index: &Index<E>, oracles: &RandomOracles<E::Fr>) -> bool {
         let beta0 = oracles.beta[0].to_field(&index.endo_r);
         let beta1 = oracles.beta[1].to_field(&index.endo_r);
         let beta2 = oracles.beta[2].to_field(&index.endo_r);
 
-        let crb: Vec<E::Fr> = (0..3).map
-        (
-            |i|
-            {
-                beta1 * &beta0 -
-                &(beta0 * &self.evals.row[i]) -
-                &(beta1 * &self.evals.col[i]) +
-                &self.evals.rc[i]
-            }
-        ).collect();
+        let crb: Vec<E::Fr> = (0..3)
+            .map(|i| {
+                beta1 * &beta0 - &(beta0 * &self.evals.row[i]) - &(beta1 * &self.evals.col[i])
+                    + &self.evals.rc[i]
+            })
+            .collect();
 
-        let acc = (0..3).map
-        (
-            |i|
-            {
+        let acc = (0..3)
+            .map(|i| {
                 let mut x = self.evals.val[i] * &[oracles.eta_a, oracles.eta_b, oracles.eta_c][i];
-                for j in 0..3 {if i != j {x *= &crb[j]}}
+                for j in 0..3 {
+                    if i != j {
+                        x *= &crb[j]
+                    }
+                }
                 x
-            }
-        ).fold(E::Fr::zero(), |x, y| x + &y);
+            })
+            .fold(E::Fr::zero(), |x, y| x + &y);
 
         index.domains.k.evaluate_vanishing_polynomial(beta2) * &self.evals.h3
-        ==
-        index.domains.h.evaluate_vanishing_polynomial(beta0) *
-            &(index.domains.h.evaluate_vanishing_polynomial(beta1)) *
-            &acc - &((beta2 * &self.evals.g3 + &self.sigma3) *
-            &crb[0] * &crb[1] * &crb[2])
+            == index.domains.h.evaluate_vanishing_polynomial(beta0)
+                * &(index.domains.h.evaluate_vanishing_polynomial(beta1))
+                * &acc
+                - &((beta2 * &self.evals.g3 + &self.sigma3) * &crb[0] * &crb[1] * &crb[2])
     }
 
     // This function verifies the batch of zk-proofs
@@ -122,72 +94,73 @@ impl<E: PairingEngine> ProverProof<E>
     //     index: Index
     //     rng: randomness source context
     //     RETURN: verification status
-    pub fn verify
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
-         EFrSponge: FrSponge<E::Fr>,
-        >
-    (
+    pub fn verify<EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>, EFrSponge: FrSponge<E::Fr>>(
         proofs: &Vec<ProverProof<E>>,
         index: &Index<E>,
-        rng: &mut dyn RngCore
-    ) -> Result<bool, ProofError>
-    {
+        rng: &mut dyn RngCore,
+    ) -> Result<bool, ProofError> {
         let mut batch = Vec::new();
-        for proof in proofs.iter()
-        {
+        for proof in proofs.iter() {
             let proof = proof.clone();
             // TODO: Cache this interpolated polynomial.
             let x_hat = Evaluations::<E::Fr>::from_vec_and_domain(
-                proof.public.clone(), GeneralEvaluationDomain::Radix2(index.domains.x)
-            ).interpolate();
+                proof.public.clone(),
+                GeneralEvaluationDomain::Radix2(index.domains.x),
+            )
+            .interpolate();
             let x_hat_comm = index.urs.commit(&x_hat)?;
 
             let oracles = proof.oracles::<EFqSponge, EFrSponge>(index, x_hat_comm, &x_hat)?;
 
             // first, verify the sumcheck argument values
-            if 
-                !proof.sumcheck_1_verify (index, &oracles) ||
-                !proof.sumcheck_2_verify (index, &oracles) ||
-                !proof.sumcheck_3_verify (index, &oracles)
+            if !proof.sumcheck_1_verify(index, &oracles)
+                || !proof.sumcheck_2_verify(index, &oracles)
+                || !proof.sumcheck_3_verify(index, &oracles)
             {
-                return Err(ProofError::ProofVerification)
+                return Err(ProofError::ProofVerification);
             }
 
             let batch_chal = oracles.batch.to_field(&index.endo_r);
 
-            batch.push
-            ((
+            batch.push((
                 oracles.beta[0].to_field(&index.endo_r),
                 batch_chal,
-                vec!
-                [
-                    (x_hat_comm,        oracles.x_hat_beta1, None),
-                    (proof.w_comm,      proof.evals.w,  None),
-                    (proof.za_comm,     proof.evals.za, None),
-                    (proof.zb_comm,     proof.evals.zb, None),
-                    (proof.g1_comm.0,   proof.evals.g1, Some((proof.g1_comm.1, index.domains.h.size()-1))),
-                    (proof.h1_comm,     proof.evals.h1, None),
+                vec![
+                    (x_hat_comm, oracles.x_hat_beta1, None),
+                    (proof.w_comm, proof.evals.w, None),
+                    (proof.za_comm, proof.evals.za, None),
+                    (proof.zb_comm, proof.evals.zb, None),
+                    (
+                        proof.g1_comm.0,
+                        proof.evals.g1,
+                        Some((proof.g1_comm.1, index.domains.h.size() - 1)),
+                    ),
+                    (proof.h1_comm, proof.evals.h1, None),
                 ],
-                proof.proof1
+                proof.proof1,
             ));
-            batch.push
-            ((
+            batch.push((
                 oracles.beta[1].to_field(&index.endo_r),
                 batch_chal,
-                vec!
-                [
-                    (proof.g2_comm.0,   proof.evals.g2, Some((proof.g2_comm.1, index.domains.h.size()-1))),
-                    (proof.h2_comm,     proof.evals.h2, None),
+                vec![
+                    (
+                        proof.g2_comm.0,
+                        proof.evals.g2,
+                        Some((proof.g2_comm.1, index.domains.h.size() - 1)),
+                    ),
+                    (proof.h2_comm, proof.evals.h2, None),
                 ],
-                proof.proof2
+                proof.proof2,
             ));
-            batch.push
-            ((
+            batch.push((
                 oracles.beta[2].to_field(&index.endo_r),
                 batch_chal,
-                vec!
-                [
-                    (proof.g3_comm.0, proof.evals.g3, Some((proof.g3_comm.1, index.domains.k.size()-1))),
+                vec![
+                    (
+                        proof.g3_comm.0,
+                        proof.evals.g3,
+                        Some((proof.g3_comm.1, index.domains.k.size() - 1)),
+                    ),
                     (proof.h3_comm, proof.evals.h3, None),
                     (index.matrix_commitments[0].row, proof.evals.row[0], None),
                     (index.matrix_commitments[1].row, proof.evals.row[1], None),
@@ -201,31 +174,25 @@ impl<E: PairingEngine> ProverProof<E>
                     (index.matrix_commitments[0].rc, proof.evals.rc[0], None),
                     (index.matrix_commitments[1].rc, proof.evals.rc[1], None),
                     (index.matrix_commitments[2].rc, proof.evals.rc[2], None),
-        ],
-                proof.proof3
+                ],
+                proof.proof3,
             ));
         }
         // second, verify the commitment opening proofs
-        match index.urs.verify(&batch, rng)
-        {
+        match index.urs.verify(&batch, rng) {
             false => Err(ProofError::OpenProof),
-            true => Ok(true)
+            true => Ok(true),
         }
     }
 
     // This function queries random oracle values from non-interactive
     // argument context by verifier
-    pub fn oracles
-        <EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>,
-         EFrSponge: FrSponge<E::Fr>,
-        >
-    (
+    pub fn oracles<EFqSponge: FqSponge<E::Fq, E::G1Affine, E::Fr>, EFrSponge: FrSponge<E::Fr>>(
         &self,
         index: &Index<E>,
         x_hat_comm: E::G1Affine,
-        x_hat: &DensePolynomial<E::Fr>
-    ) -> Result<RandomOracles<E::Fr>, ProofError>
-    {
+        x_hat: &DensePolynomial<E::Fr>,
+    ) -> Result<RandomOracles<E::Fr>, ProofError> {
         let mut oracles = RandomOracles::<E::Fr>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
@@ -265,7 +232,7 @@ impl<E: PairingEngine> ProverProof<E>
         let x_hat_beta1 = x_hat.evaluate(oracles.beta[0].to_field(&index.endo_r));
         oracles.x_hat_beta1 = x_hat_beta1;
 
-        fr_sponge.absorb_evaluations(&x_hat_beta1,&self.evals);
+        fr_sponge.absorb_evaluations(&x_hat_beta1, &self.evals);
 
         oracles.batch = fr_sponge.challenge();
         oracles.r = fr_sponge.challenge();

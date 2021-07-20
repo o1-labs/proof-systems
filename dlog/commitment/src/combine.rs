@@ -1,6 +1,6 @@
 use algebra::{
     curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, BitIterator,
-    Field, PrimeField, ProjectiveCurve, SWModelParameters, One, Zero,
+    Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero,
 };
 use itertools::Itertools;
 use rayon::prelude::*;
@@ -34,9 +34,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
             p[j] = p[i];
         } else if p[i].is_zero() == true {
             p[j] = p[i + 1];
-        } else if p[i + 1].x == p[i].x
-            && (p[i + 1].y != p[i].y || p[i + 1].y.is_zero())
-        {
+        } else if p[i + 1].x == p[i].x && (p[i + 1].y != p[i].y || p[i + 1].y.is_zero()) {
             p[j] = SWJAffine::<P>::zero();
         } else if p[i + 1].x == p[i].x && p[i + 1].y == p[i].y {
             let sq = p[i].x.square();
@@ -834,7 +832,11 @@ fn bench_combine() {
 
 #[test]
 fn shamir_equivalence() {
-    use algebra::{bn_382::g::{Affine, Projective}, bn_382::Fq as Fr, UniformRand};
+    use algebra::{
+        bn_382::g::{Affine, Projective},
+        bn_382::Fq as Fr,
+        UniformRand,
+    };
     use rand_core::OsRng;
     let rng = &mut OsRng;
 

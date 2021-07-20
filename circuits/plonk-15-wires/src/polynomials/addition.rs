@@ -21,19 +21,19 @@ This source file implements non-special point Weierstrass curve additionconstrai
 
 *****************************************************************************************************************/
 
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use crate::polynomial::WitnessOverDomains;
-use oracle::utils::{EvalUtils, PolyUtils};
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
+use crate::polynomial::WitnessOverDomains;
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F>
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // EC Affine addition constraint quotient poly contribution computation
-    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>>
-    {
-        if self.addm.is_zero() {return self.zero4.clone()}
+    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
+        if self.addm.is_zero() {
+            return self.zero4.clone();
+        }
         /*
             (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3)
             (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
@@ -44,18 +44,21 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         let x13 = &(&w[0] - &w[4]);
         let x21 = &(&w[2] - &w[0]);
 
-        let p =
-        [
+        let p = [
             &(x21 * y31) - &(&(&w[3] - &w[1]) * x13),
             &(&(&(&w[0] + &w[2]) + &w[4]) * &x13.pow(2)) - &y31.pow(2),
             (&(x21 * &w[6]) - &self.l04),
         ];
 
-        &p.iter().skip(1).zip(alpha.iter().skip(1)).map(|(p, a)| p.scale(*a)).fold(p[0].scale(alpha[0]), |x, y| &x + &y) * &self.addl
+        &p.iter()
+            .skip(1)
+            .zip(alpha.iter().skip(1))
+            .map(|(p, a)| p.scale(*a))
+            .fold(p[0].scale(alpha[0]), |x, y| &x + &y)
+            * &self.addl
     }
 
-    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F
-    {
+    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F {
         let w = evals[0].w;
         let y31 = w[5] + &w[1];
         let x13 = w[0] - &w[4];
@@ -65,12 +68,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
             (x21 * y31) - &((w[3] - &w[1]) * x13),
             (w[0] + &w[2] + &w[4]) * &x13.square() - &y31.square(),
             x21 * &w[6] - &F::one(),
-        ].iter().zip(alpha.iter()).map(|(p, a)| *p * a).fold(F::zero(), |x, y| x + &y)
+        ]
+        .iter()
+        .zip(alpha.iter())
+        .map(|(p, a)| *p * a)
+        .fold(F::zero(), |x, y| x + &y)
     }
 
     // EC Affine addition constraint linearization poly contribution computation
-    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F>
-    {
+    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F> {
         self.addm.scale(Self::ecad_scalars(evals, alpha))
     }
 }

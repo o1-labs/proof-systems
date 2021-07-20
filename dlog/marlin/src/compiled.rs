@@ -4,16 +4,24 @@ This source file implements the compiled constraints primitive.
 
 *****************************************************************************************************************/
 
-use sprs::CsMat;
-use commitment_dlog::{srs::SRS, commitment::{CommitmentField, PolyComm, CommitmentCurve}};
-use oracle::rndoracle::ProofError;
-use algebra::{Field, AffineCurve, Zero};
-use ff_fft::{DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D, GeneralEvaluationDomain};
 pub use super::index::Index;
+use algebra::{AffineCurve, Field, Zero};
+use commitment_dlog::{
+    commitment::{CommitmentCurve, CommitmentField, PolyComm},
+    srs::SRS,
+};
+use ff_fft::{
+    DensePolynomial, EvaluationDomain, Evaluations, GeneralEvaluationDomain,
+    Radix2EvaluationDomain as D,
+};
+use oracle::rndoracle::ProofError;
+use sprs::CsMat;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 
-pub struct Compiled<G: CommitmentCurve> where G::ScalarField : CommitmentField
+pub struct Compiled<G: CommitmentCurve>
+where
+    G::ScalarField: CommitmentField,
 {
     // constraint system coefficients in dense form
     pub constraints: CsMat<Fr<G>>,
@@ -25,20 +33,22 @@ pub struct Compiled<G: CommitmentCurve> where G::ScalarField : CommitmentField
     pub rc_comm: PolyComm<G>,
 
     // compiled polynomials and evaluations
-    pub rc      : DensePolynomial<Fr<G>>,
-    pub row     : DensePolynomial<Fr<G>>,
-    pub col     : DensePolynomial<Fr<G>>,
-    pub val     : DensePolynomial<Fr<G>>,
+    pub rc: DensePolynomial<Fr<G>>,
+    pub row: DensePolynomial<Fr<G>>,
+    pub col: DensePolynomial<Fr<G>>,
+    pub val: DensePolynomial<Fr<G>>,
     pub row_eval_k: Evaluations<Fr<G>>,
     pub col_eval_k: Evaluations<Fr<G>>,
     pub val_eval_k: Evaluations<Fr<G>>,
     pub row_eval_b: Evaluations<Fr<G>>,
     pub col_eval_b: Evaluations<Fr<G>>,
     pub val_eval_b: Evaluations<Fr<G>>,
-    pub rc_eval_b : Evaluations<Fr<G>>,
+    pub rc_eval_b: Evaluations<Fr<G>>,
 }
 
-impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
+impl<G: CommitmentCurve> Compiled<G>
+where
+    G::ScalarField: CommitmentField,
 {
     // this function compiles the constraints
     //  srs: universal reference string
@@ -46,27 +56,24 @@ impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
     //  k_group: evaluation domain for degere k (constrtraint matrix number of non-zero elements)
     //  b_group: evaluation domain for degere b (h_group*6-6)
     //  constraints: constraint matrix in dense form
-    pub fn compile
-    (
+    pub fn compile(
         srs: &SRS<G>,
         h_group: D<Fr<G>>,
         k_group: D<Fr<G>>,
         b_group: D<Fr<G>>,
         constraints: CsMat<Fr<G>>,
-    ) -> Result<Self, ProofError>
-    {
+    ) -> Result<Self, ProofError> {
         let mut col_eval_k = vec![Fr::<G>::zero(); k_group.size as usize];
         let mut row_eval_k = vec![Fr::<G>::zero(); k_group.size as usize];
         let mut val_eval_k = vec![Fr::<G>::zero(); k_group.size as usize];
 
-        let h_elems: Vec<Fr<G>> = h_group.elements().map(|elm| {elm}).collect();
+        let h_elems: Vec<Fr<G>> = h_group.elements().map(|elm| elm).collect();
 
-        for (c, (val, (row, col))) in
-        constraints.iter().zip(
-            val_eval_k.iter_mut().zip(
-                row_eval_k.iter_mut().zip(
-                    col_eval_k.iter_mut())))
-        {
+        for (c, (val, (row, col))) in constraints.iter().zip(
+            val_eval_k
+                .iter_mut()
+                .zip(row_eval_k.iter_mut().zip(col_eval_k.iter_mut())),
+        ) {
             *row = h_elems[(c.1).0];
             *col = h_elems[(c.1).1];
             *val = h_group.size_as_field_element.square() *
@@ -75,8 +82,7 @@ impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
                 &h_elems[if (c.1).1 == 0 {0} else {h_group.size() - (c.1).1}];
         }
         algebra::fields::batch_inversion::<Fr<G>>(&mut val_eval_k);
-        for (c, val) in constraints.iter().zip(val_eval_k.iter_mut())
-        {
+        for (c, val) in constraints.iter().zip(val_eval_k.iter_mut()) {
             *val = *c.0 * *val;
         }
 
@@ -86,7 +92,7 @@ impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
         let row_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(row_eval_k, k_group);
         let col_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(col_eval_k, k_group);
         let val_eval_k = Evaluations::<Fr<G>>::from_vec_and_domain(val_eval_k, k_group);
-        
+
         // interpolate the evaluations
         let row = row_eval_k.clone().interpolate();
         let col = col_eval_k.clone().interpolate();
@@ -94,8 +100,7 @@ impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
         let rc = (&row_eval_k * &col_eval_k).interpolate();
 
         // commit to the index polynomials
-        Ok(Compiled::<G>
-        {
+        Ok(Compiled::<G> {
             constraints,
             rc_comm: srs.commit_non_hiding(&rc, None),
             row_comm: srs.commit_non_hiding(&row, None),
@@ -111,28 +116,19 @@ impl<G: CommitmentCurve> Compiled<G> where G::ScalarField : CommitmentField
             row,
             col,
             val,
-            rc
+            rc,
         })
     }
 
     // this function computes (row(X)-oracle1)*(col(X)-oracle2)
     // evaluations over b_group for this compilation of constraints
-    pub fn compute_row_2_col_1
-    (
-        &self,
-        oracle1: Fr<G>,
-        oracle2: Fr<G>,
-    ) -> Vec<Fr<G>>
-    {
-        self.row_eval_b.evals.iter().
-            zip(self.col_eval_b.evals.iter()).
-            zip(self.rc_eval_b.evals.iter()).
-            map
-        (
-            |((row, col), rc)|
-            {
-                oracle2 * &oracle1 - &(oracle1 * row) - &(oracle2 * col) + rc
-            }
-        ).collect()
+    pub fn compute_row_2_col_1(&self, oracle1: Fr<G>, oracle2: Fr<G>) -> Vec<Fr<G>> {
+        self.row_eval_b
+            .evals
+            .iter()
+            .zip(self.col_eval_b.evals.iter())
+            .zip(self.rc_eval_b.evals.iter())
+            .map(|((row, col), rc)| oracle2 * &oracle1 - &(oracle1 * row) - &(oracle2 * col) + rc)
+            .collect()
     }
 }

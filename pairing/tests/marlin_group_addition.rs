@@ -20,23 +20,32 @@ of non-special pairs of points
 
 **********************************************************************************************************/
 
-use sprs::{CsMat, CsVecView};
-use oracle::{poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC}, sponge::{DefaultFqSponge, DefaultFrSponge}};
-use marlin_protocol_pairing::{prover::{ProverProof}, index::{Index, URSSpec}};
-use algebra::{bn_382::{Fp, Bn_382, g1::Bn_382G1Parameters}, One, Zero};
-use rand_core::{RngCore, OsRng};
-use std::{io, io::Write};
-use std::time::Instant;
+use algebra::{
+    bn_382::{g1::Bn_382G1Parameters, Bn_382, Fp},
+    One, Zero,
+};
 use colored::Colorize;
+use marlin_protocol_pairing::{
+    index::{Index, URSSpec},
+    prover::ProverProof,
+};
+use oracle::{
+    poseidon::{ArithmeticSpongeParams, MarlinSpongeConstants as SC},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use rand_core::{OsRng, RngCore};
+use sprs::{CsMat, CsVecView};
+use std::time::Instant;
+use std::{io, io::Write};
 
 #[test]
-fn pairing_marlin_group_addition()
-{
+fn pairing_marlin_group_addition() {
     test();
 }
 
 fn test()
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     let rng = &mut OsRng;
 
@@ -50,39 +59,40 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let mut a = CsMat::<Fp>::zero((5, 8));
     let mut b = CsMat::<Fp>::zero((5, 8));
     let mut c = CsMat::<Fp>::zero((5, 8));
-    
+
     a = a
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[1, 2], &[neg1, one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[1, 3], &[one, neg1]).unwrap());
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[1, 2], &[neg1, one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[1, 3], &[one, neg1]).unwrap());
 
     b = b
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap());
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[7], &[one]).unwrap());
 
     c = c
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[4, 5], &[neg1, one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
-    .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[4, 6], &[one, one]).unwrap());
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[4, 5], &[neg1, one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[1, 2, 3], &[one, one, one]).unwrap())
+        .append_outer_csvec(CsVecView::<Fp>::new_view(8, &[4, 6], &[one, one]).unwrap());
 
-    let index = Index::<Bn_382>::create
-    (
+    let index = Index::<Bn_382>::create(
         a,
         b,
         c,
         4,
         oracle::bn_382::fp::params() as ArithmeticSpongeParams<Fp>,
         oracle::bn_382::fq::params(),
-        URSSpec::Generate(rng)
-    ).unwrap();
+        URSSpec::Generate(rng),
+    )
+    .unwrap();
 
     positive(&index, rng);
     negative(&index);
 }
 
 fn positive(index: &Index<Bn_382>, rng: &mut dyn RngCore)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // We have the Index. Choose examples of satisfying witness for Jubjub
     let mut points = Vec::<(Fp, Fp, Fp, Fp, Fp, Fp)>::new();
@@ -183,11 +193,10 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let tests = 0..1000;
     let mut batch = Vec::new();
-    for test in tests.clone()
-    {
+    for test in tests.clone() {
         let (x1, y1, x2, y2, x3, y3) = points[test % 10];
         let s = (y2 - &y1) / &(x2 - &x1);
-        
+
         let mut witness = vec![Fp::zero(); 8];
         witness[0] = Fp::one();
         witness[1] = x1;
@@ -211,24 +220,33 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
 
     let verifier_index = index.verifier_index();
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&vec![batch[0].clone()], &verifier_index, rng)
-    {
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &vec![batch[0].clone()],
+        &verifier_index,
+        rng,
+    ) {
         Ok(_) => {}
-        _ => {panic!("Failure verifying the prover's proof")}
+        _ => panic!("Failure verifying the prover's proof"),
     }
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&batch, &verifier_index, rng)
-    {
-        Err(error) => {panic!("Failure verifying the prover's proofs in batch: {}", error)},
-        Ok(_) => {println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());}
+    match ProverProof::verify::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &batch,
+        &verifier_index,
+        rng,
+    ) {
+        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
+        Ok(_) => {
+            println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
+        }
     }
 }
 
 fn negative(index: &Index<Bn_382>)
-where <Fp as std::str::FromStr>::Err : std::fmt::Debug
+where
+    <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
     // build non-satisfying witness
     let x1 = <Fp as std::str::FromStr>::from_str("7502226838017077786426654731704772400845471875650491266565363420906771040750427824367287841412217114884691397809929").unwrap();
@@ -239,7 +257,7 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     let y3 = <Fp as std::str::FromStr>::from_str("2773782014032351532784325670003998192667953688555790212612755975320369406749808761658203420299756946851710956379722").unwrap();
 
     let s = (y2 - &y1) / &(x2 - &x1);
-    
+
     let mut witness = vec![Fp::zero(); 8];
     witness[0] = Fp::one();
     witness[1] = x1;
@@ -254,9 +272,10 @@ where <Fp as std::str::FromStr>::Err : std::fmt::Debug
     assert_eq!(index.verify(&witness), false);
 
     // create proof
-    match ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(&witness, &index)
-    {
-        Ok(_) => {panic!("Failure invalidating the witness")}
+    match ProverProof::create::<DefaultFqSponge<Bn_382G1Parameters, SC>, DefaultFrSponge<Fp, SC>>(
+        &witness, &index,
+    ) {
+        Ok(_) => panic!("Failure invalidating the witness"),
         _ => {}
     }
 }

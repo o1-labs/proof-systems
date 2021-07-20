@@ -1,9 +1,9 @@
-pub mod double;
-pub mod packing;
-pub mod generic;
-pub mod poseidon;
 pub mod addition;
-pub mod varbasemul;
+pub mod double;
 pub mod endosclmul;
-pub mod varbasemulpck;
+pub mod generic;
 pub mod lookup;
+pub mod packing;
+pub mod poseidon;
+pub mod varbasemul;
+pub mod varbasemulpck;

@@ -4,49 +4,76 @@ This source file implements Posedon constraint polynomials.
 
 *****************************************************************************************************************/
 
-use array_init::array_init;
-use algebra::{FftField, SquareRootField};
-use ff_fft::{Evaluations, DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::{utils::{PolyUtils, EvalUtils}, poseidon::{Plonk15SpongeConstants, PlonkSpongeConstants, sbox, ArithmeticSpongeParams}};
-use crate::polynomial::WitnessOverDomains;
+use crate::gates::poseidon::*;
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
-use crate::gates::poseidon::*;
+use crate::polynomial::WitnessOverDomains;
 use crate::wires::COLUMNS;
+use algebra::{FftField, SquareRootField};
+use array_init::array_init;
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use oracle::{
+    poseidon::{sbox, ArithmeticSpongeParams, Plonk15SpongeConstants, PlonkSpongeConstants},
+    utils::{EvalUtils, PolyUtils},
+};
 
 enum CurrOrNext {
-    Curr, Next
+    Curr,
+    Next,
 }
 
 // An equation of the form:
 // (curr | next)[i] = round(curr[j])
 struct RoundEquation {
     source: usize,
-    target: (CurrOrNext, usize)
+    target: (CurrOrNext, usize),
 }
 
-const ROUND_EQUATIONS : [RoundEquation; ROUNDS_PER_ROW] = 
-    [ RoundEquation { source: 0, target: (CurrOrNext::Curr, 1)  }
-    , RoundEquation { source: 1, target: (CurrOrNext::Curr, 2)  }
-    , RoundEquation { source: 2, target: (CurrOrNext::Curr, 3)  }
-    , RoundEquation { source: 3, target: (CurrOrNext::Curr, 4)  }
-    , RoundEquation { source: 4, target: (CurrOrNext::Next, 0)  }
-    ];
+const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
+    RoundEquation {
+        source: 0,
+        target: (CurrOrNext::Curr, 1),
+    },
+    RoundEquation {
+        source: 1,
+        target: (CurrOrNext::Curr, 2),
+    },
+    RoundEquation {
+        source: 2,
+        target: (CurrOrNext::Curr, 3),
+    },
+    RoundEquation {
+        source: 3,
+        target: (CurrOrNext::Curr, 4),
+    },
+    RoundEquation {
+        source: 4,
+        target: (CurrOrNext::Next, 0),
+    },
+];
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> 
-{
+impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // poseidon quotient poly contribution computation f^7 + c(x) - f(wx)
     //
     // optimization: shuffle the intra-row rounds so that the final state is in one of the
     // permutation columns
-    pub fn psdn_quot
-    (
-        &self, polys: &WitnessOverDomains<F>,
+    pub fn psdn_quot(
+        &self,
+        polys: &WitnessOverDomains<F>,
         params: &ArithmeticSpongeParams<F>,
-        alpha: &[F]
-    ) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>, DensePolynomial<F>)
-    {
-        if self.psm.is_zero() {return (self.zero4.clone(), self.zero8.clone(), DensePolynomial::<F>::zero())}
+        alpha: &[F],
+    ) -> (
+        Evaluations<F, D<F>>,
+        Evaluations<F, D<F>>,
+        DensePolynomial<F>,
+    ) {
+        if self.psm.is_zero() {
+            return (
+                self.zero4.clone(),
+                self.zero8.clone(),
+                DensePolynomial::<F>::zero(),
+            );
+        }
 
         // Conjunction of:
         // curr[round_range(1)] = round(curr[round_range(0)])
@@ -57,13 +84,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         //
         // which expands e.g., to
         // curr[round_range(1)][0] =
-        //      mds[0][0] * curr[round_range(0)][0] 
-        //    + mds[0][1] * curr[round_range(0)][1] 
+        //      mds[0][0] * curr[round_range(0)][0]
+        //    + mds[0][1] * curr[round_range(0)][1]
         //    + mds[0][2] * curr[round_range(0)][2]
         //    + rcm[round_range(1)][0]
         // curr[round_range(1)][1] =
-        //      mds[1][0] * curr[round_range(0)][0] 
-        //    + mds[1][1] * curr[round_range(0)][1] 
+        //      mds[1][0] * curr[round_range(0)][0]
+        //    + mds[1][1] * curr[round_range(0)][1]
         //    + mds[1][2] * curr[round_range(0)][2]
         //    + rcm[round_range(1)][1]
         // ....
@@ -80,8 +107,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
 
         // In the logical order
         let sboxed: [[Evaluations<F, D<F>>; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| {
-            let mut x : [_; SPONGE_WIDTH] = array_init(|i| polys.d8.this.w[round_range(r)][i].clone());
-            x.iter_mut().for_each(|p| p.evals.iter_mut().for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p)));
+            let mut x: [_; SPONGE_WIDTH] =
+                array_init(|i| polys.d8.this.w[round_range(r)][i].clone());
+            x.iter_mut().for_each(|p| {
+                p.evals
+                    .iter_mut()
+                    .for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p))
+            });
             x
         });
 
@@ -93,23 +125,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         });
 
         let sboxed_scalars : [F; COLUMNS] = array_init(|i| {
-            // find out what round i corresponds to, then look at 
+            // find out what round i corresponds to, then look at
             round_range
         }); */
 
         // Each round equation has SPONGE_WIDTH many equations within it.
         // This ordering of alphas is somewhat arbitrary and maybe should be
         // changed depending on circuit efficiency.
-        let alp : [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
+        let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =
+            array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
 
         let lhs = ROUND_EQUATIONS.iter().fold(self.zero4.clone(), |acc, eq| {
             let (target_row, target_round) = &eq.target;
-            let cols =
-                match target_row {
-                    CurrOrNext::Curr => &polys.d4.this.w,
-                    CurrOrNext::Next => &polys.d4.next.w,
-                };
-            cols[round_range(*target_round)].iter()
+            let cols = match target_row {
+                CurrOrNext::Curr => &polys.d4.this.w,
+                CurrOrNext::Next => &polys.d4.next.w,
+            };
+            cols[round_range(*target_round)]
+                .iter()
                 .zip(alp[eq.source].iter())
                 .map(|(p, a)| p.scale(-*a))
                 .fold(acc, |x, y| &x + &y)
@@ -119,20 +152,23 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         for eq in ROUND_EQUATIONS.iter() {
             for (i, p) in sboxed[eq.source].iter().enumerate() {
                 // Each of these contributes to the right hand side of SPONGE_WIDTH cell equations
-                let coeff = (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| acc + alp[eq.source][j] * params.mds[j][i]);
+                let coeff = (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| {
+                    acc + alp[eq.source][j] * params.mds[j][i]
+                });
                 rhs += &p.scale(coeff);
             }
         }
 
-        let rc = alp.iter().enumerate().fold(DensePolynomial::<F>::zero(), |acc0, (round, als)| {
-            als.iter().enumerate().fold(acc0, |acc, (col, a)| &acc + &self.rcm[round][col].scale(*a))
-        });
+        let rc = alp
+            .iter()
+            .enumerate()
+            .fold(DensePolynomial::<F>::zero(), |acc0, (round, als)| {
+                als.iter()
+                    .enumerate()
+                    .fold(acc0, |acc, (col, a)| &acc + &self.rcm[round][col].scale(*a))
+            });
 
-        ( 
-            &self.ps4 * &lhs,
-            &self.ps8 * &rhs,
-            rc
-        )
+        (&self.ps4 * &lhs, &self.ps8 * &rhs, rc)
         /*
         (
             &self.ps4 * &polys.d4.next.w.iter().zip(alpha[0..COLUMNS].iter()).map(|(p, a)| p.scale(-*a)).
@@ -145,20 +181,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         */
     }
 
-    pub fn psdn_scalars
-    (
+    pub fn psdn_scalars(
         evals: &Vec<ProofEvaluations<F>>,
         params: &ArithmeticSpongeParams<F>,
-        alpha: &[F]
-    ) -> Vec<F>
-    {
+        alpha: &[F],
+    ) -> Vec<F> {
         let sboxed: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| {
-            array_init(|i| {
-                sbox::<F, Plonk15SpongeConstants>(
-                    evals[0].w[round_range(r)][i])
-            })
+            array_init(|i| sbox::<F, Plonk15SpongeConstants>(evals[0].w[round_range(r)][i]))
         });
-        let alp : [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
+        let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =
+            array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
 
         /*
         let lhs = ROUND_EQUATIONS.iter().fold(F::zero(), |acc, eq| {
@@ -178,11 +210,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
         for eq in ROUND_EQUATIONS.iter() {
             for (i, p) in sboxed[eq.source].iter().enumerate() {
                 // Each of these contributes to the right hand side of SPONGE_WIDTH cell equations
-                let coeff = (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| acc + alp[eq.source][j] * params.mds[j][i]);
+                let coeff = (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| {
+                    acc + alp[eq.source][j] * params.mds[j][i]
+                });
                 rhs += coeff * p;
             }
         }
-
 
         let mut res = vec![rhs];
         for i in 0..COLUMNS {
@@ -193,17 +226,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     }
 
     // poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
-    pub fn psdn_lnrz
-    (
+    pub fn psdn_lnrz(
         &self,
         evals: &Vec<ProofEvaluations<F>>,
         params: &ArithmeticSpongeParams<F>,
-        alpha: &[F]
-    ) -> DensePolynomial<F>
-    {
+        alpha: &[F],
+    ) -> DensePolynomial<F> {
         println!("psdn_lnrz");
         let scalars = Self::psdn_scalars(evals, params, alpha);
-        self.rcm.iter().flatten().zip(alpha[0..COLUMNS].iter()).map(|(r, a)| r.scale(*a)).
-            fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
+        self.rcm
+            .iter()
+            .flatten()
+            .zip(alpha[0..COLUMNS].iter())
+            .map(|(r, a)| r.scale(*a))
+            .fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
     }
 }
