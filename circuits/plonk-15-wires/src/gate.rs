@@ -13,25 +13,38 @@ use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, FromPrimitive, ToPrimitive)]
 pub enum GateType {
-    Zero,     // zero gate
-    Generic,  // generic arithmetic gate
-    Poseidon, // Poseidon permutation gate
-    Add,      // EC addition in Affine form
-    Double,   // EC point doubling in Affine form
-    Vbmul,    // EC variable base scalar multiplication
-    Endomul,  // EC variable base scalar multiplication with group endomorphim optimization
-    Lookup,   // lookup
+    /// zero gate
+    Zero,
+    /// generic arithmetic gate
+    Generic,
+    /// Poseidon permutation gate
+    Poseidon,
+    /// EC addition in Affine form
+    Add,
+    /// EC point doubling in Affine form
+    Double,
+    /// EC variable base scalar multiplication
+    Vbmul,
+    /// EC variable base scalar multiplication with group endomorphim optimization
+    Endomul,
+    /// lookup
+    Lookup,
 }
 
 #[derive(Clone)]
-pub struct CircuitGate<F: FftField> {
-    pub row: usize,       // row position in the circuit
-    pub typ: GateType,    // type of the gate
-    pub wires: GateWires, // gate wires
-    pub c: Vec<F>,        // constraints vector
+pub struct CircuitGate<Field: FftField> {
+    /// row position in the circuit
+    // TODO(mimoo): shouldn't this be u32 since we serialize it as a u32?
+    pub row: usize,
+    /// type of the gate
+    pub typ: GateType,
+    /// gate wires
+    pub wires: GateWires,
+    /// constraints vector
+    pub c: Vec<Field>,
 }
 
-impl<F: FftField> ToBytes for CircuitGate<F> {
+impl<Field: FftField> ToBytes for CircuitGate<Field> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         (self.row as u32).write(&mut w)?;
@@ -49,7 +62,7 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> FromBytes for CircuitGate<F> {
+impl<Field: FftField> FromBytes for CircuitGate<Field> {
     #[inline]
     fn read<R: Read>(mut r: R) -> IoResult<Self> {
         let row = u32::read(&mut r)? as usize;
@@ -80,15 +93,15 @@ impl<F: FftField> FromBytes for CircuitGate<F> {
         let c_len = u8::read(&mut r)?;
         let mut c = vec![];
         for _ in 0..c_len {
-            c.push(F::read(&mut r)?);
+            c.push(Field::read(&mut r)?);
         }
 
         Ok(CircuitGate { row, typ, wires, c })
     }
 }
 
-impl<F: FftField> CircuitGate<F> {
-    // this function creates "empty" circuit gate
+impl<Field: FftField> CircuitGate<Field> {
+    /// this function creates "empty" circuit gate
     pub fn zero(row: usize, wires: GateWires) -> Self {
         CircuitGate {
             row,
@@ -98,9 +111,9 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    // This function verifies the consistency of the wire
-    // assignements (witness) against the constraints
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
+    /// This function verifies the consistency of the wire
+    /// assignements (witness) against the constraints
+    pub fn verify(&self, witness: &[Vec<Field>; COLUMNS], cs: &ConstraintSystem<Field>) -> bool {
         match self.typ {
             GateType::Zero => true,
             GateType::Generic => self.verify_generic(witness),

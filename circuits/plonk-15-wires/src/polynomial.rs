@@ -6,48 +6,65 @@ This source file implements Plonk prover polynomials primitive.
 
 pub use super::wires::COLUMNS;
 use algebra::FftField;
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as EvaluationDomain};
 
 // PLONK
 
+/// Evaluations of the wires and permutation
 #[derive(Clone)]
-pub struct WitnessEvals<F: FftField> {
-    pub w: [Evaluations<F, D<F>>; COLUMNS], // wire evaluations
-    pub z: Evaluations<F, D<F>>,            // permutation evaluations
+pub struct WitnessEvals<Field: FftField> {
+    /// wire evaluations
+    pub w: [Evaluations<Field, EvaluationDomain<Field>>; COLUMNS],
+    /// permutation evaluations
+    pub z: Evaluations<Field, EvaluationDomain<Field>>,
 }
 
 #[derive(Clone)]
-pub struct WitnessShifts<F: FftField> {
-    pub this: WitnessEvals<F>, // this wire evaluations
-    pub next: WitnessEvals<F>, // next wire evaluations
+pub struct WitnessShifts<Field: FftField> {
+    /// this wire evaluations
+    pub this: WitnessEvals<Field>,
+    /// next wire evaluations
+    pub next: WitnessEvals<Field>,
 }
 
 #[derive(Clone)]
-pub struct WitnessOverDomains<F: FftField> {
-    pub d4: WitnessShifts<F>, // evaluations over domain d4
-    pub d8: WitnessShifts<F>, // evaluations over domain d8
+pub struct WitnessOverDomains<Field: FftField> {
+    /// evaluations over domain d4
+    pub d4: WitnessShifts<Field>,
+    /// evaluations over domain d8
+    pub d8: WitnessShifts<Field>,
 }
 
 // PLOOKUP
 
 #[derive(Clone)]
-pub struct LookupEvals<F: FftField> {
-    pub l: Evaluations<F, D<F>>,  // aggregation
-    pub lw: Evaluations<F, D<F>>, // lookup witness
-    pub h1: Evaluations<F, D<F>>, // lookup multiset
-    pub h2: Evaluations<F, D<F>>, // lookup multiset
+pub struct LookupEvals<Field: FftField> {
+    /// aggregation
+    pub l: Evaluations<Field, EvaluationDomain<Field>>,
+    /// lookup witness
+    pub lw: Evaluations<Field, EvaluationDomain<Field>>,
+    /// lookup multiset
+    pub h1: Evaluations<Field, EvaluationDomain<Field>>,
+    /// lookup multiset
+    pub h2: Evaluations<Field, EvaluationDomain<Field>>,
 }
 
 #[derive(Clone)]
-pub struct LookupShifts<F: FftField> {
-    pub this: LookupEvals<F>, // this wire evaluations
-    pub next: LookupEvals<F>, // next wire evaluations
+pub struct LookupShifts<Field: FftField> {
+    /// this wire evaluations
+    pub this: LookupEvals<Field>,
+    /// next wire evaluations
+    pub next: LookupEvals<Field>,
 }
 
 #[derive(Clone)]
-pub struct LookupPolys<F: FftField> {
-    pub l: DensePolynomial<F>,  // aggregation
-    pub lw: DensePolynomial<F>, // lookup witness
-    pub h1: DensePolynomial<F>, // lookup multiset
-    pub h2: DensePolynomial<F>, // lookup multiset
+pub struct LookupPolys<Field: FftField> {
+    /// aggregation
+    pub l: DensePolynomial<Field>,
+    /// lookup witness
+    pub lw: DensePolynomial<Field>,
+    /// lookup multiset
+    pub h1: DensePolynomial<Field>,
+    /// lookup multiset
+    pub h2: DensePolynomial<Field>,
 }

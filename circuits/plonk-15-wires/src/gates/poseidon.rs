@@ -28,12 +28,12 @@ pub fn round_range(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<Field: FftField> CircuitGate<Field> {
     pub fn create_poseidon(
         row: usize,
         wires: GateWires,
         // Coefficients are passed in in the logical order
-        c: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+        c: [[Field; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         CircuitGate {
             row,
@@ -43,19 +43,23 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    pub fn verify_poseidon(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
+    pub fn verify_poseidon(
+        &self,
+        witness: &[Vec<Field>; COLUMNS],
+        cs: &ConstraintSystem<Field>,
+    ) -> bool {
         // TODO: Needs to be fixed
 
-        let this: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
+        let this: [[Field; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
             let wire = STATE_ORDER[round];
             array_init(|col| witness[col + wire * SPONGE_WIDTH][self.row])
         });
-        let next: [F; SPONGE_WIDTH] =
+        let next: [Field; SPONGE_WIDTH] =
             array_init(|i| witness[i + STATE_ORDER[0] * SPONGE_WIDTH][self.row + 1]);
 
         let rc = self.rc();
 
-        let perm: [Vec<F>; ROUNDS_PER_ROW] = array_init(|round| {
+        let perm: [Vec<Field>; ROUNDS_PER_ROW] = array_init(|round| {
             cs.fr_sponge_params
                 .mds
                 .iter()
@@ -65,8 +69,8 @@ impl<F: FftField> CircuitGate<F> {
                         + &this[round]
                             .iter()
                             .zip(m.iter())
-                            .fold(F::zero(), |x, (s, &m)| {
-                                m * sbox::<F, Plonk15SpongeConstants>(*s) + x
+                            .fold(Field::zero(), |x, (s, &m)| {
+                                m * sbox::<Field, Plonk15SpongeConstants>(*s) + x
                             })
                 })
                 .collect::<Vec<_>>()
@@ -77,22 +81,22 @@ impl<F: FftField> CircuitGate<F> {
             && perm[ROUNDS_PER_ROW - 1] == next
     }
 
-    pub fn ps(&self) -> F {
+    pub fn ps(&self) -> Field {
         if self.typ == GateType::Poseidon {
-            F::one()
+            Field::one()
         } else {
-            F::zero()
+            Field::zero()
         }
     }
 
     // Coefficients are output here in the logical order
-    pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
+    pub fn rc(&self) -> [[Field; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         array_init(|round| {
             array_init(|col| {
                 if self.typ == GateType::Poseidon {
                     self.c[SPONGE_WIDTH * round + col]
                 } else {
-                    F::zero()
+                    Field::zero()
                 }
             })
         })

@@ -15,7 +15,7 @@ use blake2::{Blake2b, Digest};
 use ff_fft::{
     DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
 };
-use oracle::poseidon::{ArithmeticSpongeParams, Plonk15SpongeConstants};
+use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::utils::EvalUtils;
 
 #[derive(Clone)]

@@ -28,9 +28,13 @@ use algebra::{FftField, SquareRootField};
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::{EvalUtils, PolyUtils};
 
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+impl<Field: FftField + SquareRootField> ConstraintSystem<Field> {
     // EC Affine addition constraint quotient poly contribution computation
-    pub fn ecad_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
+    pub fn ecad_quot(
+        &self,
+        polys: &WitnessOverDomains<Field>,
+        alpha: &[Field],
+    ) -> Evaluations<Field, D<Field>> {
         if self.addm.is_zero() {
             return self.zero4.clone();
         }
@@ -58,7 +62,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             * &self.addl
     }
 
-    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F {
+    pub fn ecad_scalars(evals: &Vec<ProofEvaluations<Field>>, alpha: &[Field]) -> Field {
         let w = evals[0].w;
         let y31 = w[5] + &w[1];
         let x13 = w[0] - &w[4];
@@ -67,16 +71,20 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         [
             (x21 * y31) - &((w[3] - &w[1]) * x13),
             (w[0] + &w[2] + &w[4]) * &x13.square() - &y31.square(),
-            x21 * &w[6] - &F::one(),
+            x21 * &w[6] - &Field::one(),
         ]
         .iter()
         .zip(alpha.iter())
         .map(|(p, a)| *p * a)
-        .fold(F::zero(), |x, y| x + &y)
+        .fold(Field::zero(), |x, y| x + &y)
     }
 
     // EC Affine addition constraint linearization poly contribution computation
-    pub fn ecad_lnrz(&self, evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> DensePolynomial<F> {
+    pub fn ecad_lnrz(
+        &self,
+        evals: &Vec<ProofEvaluations<Field>>,
+        alpha: &[Field],
+    ) -> DensePolynomial<Field> {
         self.addm.scale(Self::ecad_scalars(evals, alpha))
     }
 }

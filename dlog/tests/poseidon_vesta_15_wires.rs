@@ -44,40 +44,49 @@ const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain 
 
 #[test]
 fn poseidon_vesta_15_wires() {
-    let N = 1 << ceil_log2(N_LOWER_BOUND);
-    println!("N = {}", N);
-    println!("{} {}", ROUNDS_PER_HASH, ROUNDS_PER_ROW);
+    let max_size = 1 << ceil_log2(N_LOWER_BOUND);
+    println!("max_size = {}", max_size);
+    println!("rounds per hash = {}", ROUNDS_PER_HASH);
+    println!("rounds per row = {}", ROUNDS_PER_ROW);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    let c = &oracle::pasta::fp::params().round_constants;
+    let round_constants = &oracle::pasta::fp::params().round_constants;
+
+    // we keep track of an absolute row, and relative row within a gadget
+    let mut abs_row = 0;
 
     // circuit gates
-
-    let mut i = 0;
-    let mut gates: Vec<CircuitGate<Fp>> = Vec::with_capacity(N);
+    let mut gates: Vec<CircuitGate<Fp>> = Vec::with_capacity(max_size);
 
     // custom constraints for Poseidon hash function permutation
-
+    // ROUNDS_FULL full rounds constraint gates
     for _ in 0..NUM_POS {
-        // ROUNDS_FULL full rounds constraint gates
-        for j in 0..POS_ROWS_PER_HASH {
-            let wires = array_init(|col| Wire { col, row: i });
-            let coeffs = array_init(|r| {
-                let round = j * ROUNDS_PER_ROW + r + 1;
-                array_init(|k| c[round][k])
+        // create a poseidon gadget manully
+        for rel_row in 0..POS_ROWS_PER_HASH {
+            // the 15 wires for this row
+            let wires = array_init(|col| Wire { col, row: abs_row });
+
+            // round constant for this row
+            let coeffs = array_init(|offset| {
+                let round = rel_row * ROUNDS_PER_ROW + offset + 1;
+                array_init(|field_el| round_constants[round][field_el])
             });
-            gates.push(CircuitGate::<Fp>::create_poseidon(i, wires, coeffs));
-            i += 1;
+
+            // create poseidon gate for this row
+            gates.push(CircuitGate::<Fp>::create_poseidon(abs_row, wires, coeffs));
+            abs_row += 1;
         }
-        let wires = array_init(|col| Wire { col, row: i });
-        gates.push(CircuitGate::<Fp>::zero(i, wires));
-        i += 1;
+
+        // final (zero) gate that contains the output of poseidon
+        let wires = array_init(|col| Wire { col, row: abs_row });
+        gates.push(CircuitGate::<Fp>::zero(abs_row, wires));
+        abs_row += 1;
     }
 
     /*
     for j in 0..Plonk15SpongeConstants::ROUNDS_FULL-2
     {
-        gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], c[j].clone()));
+        gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], round_constants[j].clone()));
         i+=1;
     }
     gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
@@ -87,16 +96,15 @@ fn poseidon_vesta_15_wires() {
     gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
     */
 
-    let MAX_SIZE = N;
-    let srs = SRS::create(MAX_SIZE);
-
+    // create the index
+    let fp_sponge_params = oracle::pasta::fp::params();
+    let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, PUBLIC).unwrap();
+    let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let index = Index::<Affine>::create(
-        ConstraintSystem::<Fp>::create(gates, oracle::pasta::fp::params(), PUBLIC).unwrap(),
-        oracle::pasta::fq::params(),
-        endo_q,
-        SRSSpec::Use(&srs),
-    );
+    let srs = SRS::create(max_size);
+    let srs = SRSSpec::Use(&srs);
+
+    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
     positive(&index);
 }
@@ -110,11 +118,10 @@ fn positive(index: &Index<Affine>) {
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let N = 1 << ceil_log2(N_LOWER_BOUND);
-    let MAX_SIZE = N;
+    let max_size = 1 << ceil_log2(N_LOWER_BOUND);
 
-    println!("{}{:?}", "Circuit size: ".yellow(), N);
-    println!("{}{:?}", "Polycommitment chunk size: ".yellow(), MAX_SIZE);
+    println!("{}{:?}", "Circuit size: ".yellow(), max_size);
+    println!("{}{:?}", "Polycommitment chunk size: ".yellow(), max_size);
     println!(
         "{}{:?}",
         "Number oh Poseidon hashes in the circuit: ".yellow(),
@@ -138,21 +145,21 @@ fn positive(index: &Index<Affine>) {
     for test in 0..1 {
         //  witness for Poseidon permutation custom constraints
         let mut w = [
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
-            vec![Fp::zero(); N],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
+            vec![Fp::zero(); max_size],
         ];
 
         let init = vec![
@@ -214,7 +221,7 @@ fn positive(index: &Index<Affine>) {
             (chals, comm)
         };
 
-        println!("n vs domain{} {}", N, index.cs.domain.d1.size);
+        println!("n vs domain{} {}", max_size, index.cs.domain.d1.size);
 
         // add the proof to the batch
         batch.push(
