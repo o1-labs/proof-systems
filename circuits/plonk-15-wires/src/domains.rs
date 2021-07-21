@@ -2,21 +2,21 @@ use algebra::FftField;
 use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 
 #[derive(Debug, Clone, Copy)]
-pub struct EvaluationDomains<Field: FftField> {
-    pub d1: Domain<Field>, // size n
-    pub d4: Domain<Field>, // size 4n
-    pub d8: Domain<Field>, // size 8n
+pub struct EvaluationDomains<F: FftField> {
+    pub d1: Domain<F>, // size n
+    pub d4: Domain<F>, // size 4n
+    pub d8: Domain<F>, // size 8n
 }
 
-impl<Field: FftField> EvaluationDomains<Field> {
+impl<F: FftField> EvaluationDomains<F> {
     pub fn create(n: usize) -> Option<Self> {
         // TODO(mimoo): should we instead panic if any of these return None?
-        let n = Domain::<Field>::compute_size_of_domain(n)?;
+        let n = Domain::<F>::compute_size_of_domain(n)?;
 
         Some(EvaluationDomains {
-            d1: Domain::<Field>::new(n)?,
-            d4: Domain::<Field>::new(4 * n)?,
-            d8: Domain::<Field>::new(8 * n)?,
+            d1: Domain::<F>::new(n)?,
+            d4: Domain::<F>::new(4 * n)?,
+            d8: Domain::<F>::new(8 * n)?,
         })
     }
 }

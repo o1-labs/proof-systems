@@ -20,64 +20,112 @@ use oracle::utils::EvalUtils;
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField> {
-    pub public: usize,                // number of public inputs
-    pub domain: EvaluationDomains<F>, // evaluation domains
-    pub gates: Vec<CircuitGate<F>>,   // circuit gates
+    // Basics
+    // ------
+    /// number of public inputs
+    pub public: usize,
+    /// evaluation domains
+    pub domain: EvaluationDomains<F>,
+    /// circuit gates
+    pub gates: Vec<CircuitGate<F>>,
 
-    // POLYNOMIALS OVER THE MONOMIAL BASE
-    pub sigmam: [DP<F>; PERMUTS], // permutation polynomial array
-    pub zkpm: DP<F>,              // zero-knowledge polynomial
+    // Polynomials over the monomial base
+    // ----------------------------------
+    /// permutation polynomial array
+    pub sigmam: [DP<F>; PERMUTS],
+    /// zero-knowledge polynomial
+    pub zkpm: DP<F>,
 
-    // generic constraint selector polynomials
-    pub qwm: [DP<F>; GENERICS], // linear wire constraint polynomial
-    pub qmm: DP<F>,             // multiplication polynomial
-    pub qc: DP<F>,              // constant wire polynomial
+    // Generic constraint selector polynomials
+    // ---------------------------------------
+    /// linear wire constraint polynomial
+    pub qwm: [DP<F>; GENERICS],
+    /// multiplication polynomial
+    pub qmm: DP<F>,
+    /// constant wire polynomial
+    pub qc: DP<F>,
 
-    // poseidon selector polynomials
-    pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW], // round constant polynomials
-    pub psm: DP<F>,                                   // poseidon constraint selector polynomial
+    // Poseidon selector polynomials
+    // -----------------------------
+    /// round constant polynomials
+    pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+    /// poseidon constraint selector polynomial
+    pub psm: DP<F>,
 
     // ECC arithmetic selector polynomials
-    pub addm: DP<F>,    // EC point addition constraint selector polynomial
-    pub doublem: DP<F>, // EC point doubling constraint selector polynomial
-    pub mulm: DP<F>,    // mulm constraint selector polynomial
-    pub emulm: DP<F>,   // emulm constraint selector polynomial
+    // -----------------------------------
+    /// EC point addition constraint selector polynomial
+    pub addm: DP<F>,
+    /// EC point doubling constraint selector polynomial
+    pub doublem: DP<F>,
+    /// mulm constraint selector polynomial
+    pub mulm: DP<F>,
+    /// emulm constraint selector polynomial
+    pub emulm: DP<F>,
 
-    // POLYNOMIALS OVER LAGRANGE BASE
+    //
+    // Polynomials over lagrange base
+    //
 
-    // generic constraint selector polynomials
-    pub qwl: [E<F, D<F>>; GENERICS], // left input wire polynomial over domain.d4
-    pub qml: E<F, D<F>>,             // multiplication evaluations over domain.d4
+    // Generic constraint selector polynomials
+    // ---------------------------------------
+    /// left input wire polynomial over domain.d4
+    pub qwl: [E<F, D<F>>; GENERICS],
+    /// multiplication evaluations over domain.d4
+    pub qml: E<F, D<F>>,
 
     // permutation polynomials
-    pub sigmal1: [Vec<F>; PERMUTS], // permutation polynomial array evaluations over domain d1
-    pub sigmal8: [E<F, D<F>>; PERMUTS], // permutation polynomial array evaluations over domain d8
-    pub sid: Vec<F>,                // SID polynomial
+    // -----------------------
+    /// permutation polynomial array evaluations over domain d1
+    pub sigmal1: [Vec<F>; PERMUTS],
+    /// permutation polynomial array evaluations over domain d8
+    pub sigmal8: [E<F, D<F>>; PERMUTS],
+    /// SID polynomial
+    pub sid: Vec<F>,
 
-    // poseidon selector polynomials
-    pub ps4: E<F, D<F>>, // poseidon selector over domain.d4
-    pub ps8: E<F, D<F>>, // poseidon selector over domain.d8
+    // Poseidon selector polynomials
+    // -----------------------------
+    /// poseidon selector over domain.d4
+    pub ps4: E<F, D<F>>,
+    /// poseidon selector over domain.d8
+    pub ps8: E<F, D<F>>,
 
     // ECC arithmetic selector polynomials
-    pub addl: E<F, D<F>>, // EC point addition selector evaluations w over domain.d4
-    pub doubl8: E<F, D<F>>, // EC point doubling selector evaluations w over domain.d8
-    pub doubl4: E<F, D<F>>, // EC point doubling selector evaluations w over domain.d4
-    pub mull4: E<F, D<F>>, // scalar multiplication selector evaluations over domain.d4
-    pub mull8: E<F, D<F>>, // scalar multiplication selector evaluations over domain.d8
-    pub emull: E<F, D<F>>, // endoscalar multiplication selector evaluations over domain.d8
+    // -----------------------------------
+    /// EC point addition selector evaluations w over domain.d4
+    pub addl: E<F, D<F>>,
+    /// EC point doubling selector evaluations w over domain.d8
+    pub doubl8: E<F, D<F>>,
+    /// EC point doubling selector evaluations w over domain.d4
+    pub doubl4: E<F, D<F>>,
+    /// scalar multiplication selector evaluations over domain.d4
+    pub mull4: E<F, D<F>>,
+    /// scalar multiplication selector evaluations over domain.d8
+    pub mull8: E<F, D<F>>,
+    /// endoscalar multiplication selector evaluations over domain.d8
+    pub emull: E<F, D<F>>,
 
-    // constant polynomials
-    pub l1: E<F, D<F>>,    // 1-st Lagrange evaluated over domain.d8
-    pub l04: E<F, D<F>>,   // 0-th Lagrange evaluated over domain.d4
-    pub l08: E<F, D<F>>,   // 0-th Lagrange evaluated over domain.d8
-    pub zero4: E<F, D<F>>, // zero evaluated over domain.d8
-    pub zero8: E<F, D<F>>, // zero evaluated over domain.d8
-    pub zkpl: E<F, D<F>>,  // zero-knowledge polynomial over domain.d8
+    // Constant polynomials
+    // --------------------
+    /// 1-st Lagrange evaluated over domain.d8
+    pub l1: E<F, D<F>>,
+    /// 0-th Lagrange evaluated over domain.d4
+    pub l04: E<F, D<F>>,
+    /// 0-th Lagrange evaluated over domain.d8
+    pub l08: E<F, D<F>>,
+    /// zero evaluated over domain.d8
+    pub zero4: E<F, D<F>>,
+    /// zero evaluated over domain.d8
+    pub zero8: E<F, D<F>>,
+    /// zero-knowledge polynomial over domain.d8
+    pub zkpl: E<F, D<F>>,
 
-    pub shift: [F; PERMUTS], // wire coordinate shifts
-    pub endo: F,             // coefficient for the group endomorphism
+    /// wire coordinate shifts
+    pub shift: [F; PERMUTS],
+    /// coefficient for the group endomorphism
+    pub endo: F,
 
-    // random oracle argument parameters
+    /// random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
@@ -362,6 +410,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
     // evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
+        println!("evaluate(w, z) -> WitnessOverDomains");
         // compute shifted witness polynomials
         let w8: [E<F, D<F>>; COLUMNS] =
             array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));

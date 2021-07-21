@@ -104,13 +104,13 @@ use array_init::array_init;
 
 macro_rules! zero {
     ($eq:expr) => {
-        if $eq != F::zero() {
+        if $eq != Field::zero() {
             return false;
         }
     };
 }
 
-impl<F: FftField> CircuitGate<F> {
+impl<Field: FftField> CircuitGate<Field> {
     // TODO(mimoo): why is `wires` of size 3 if we only use 2?
     // I think it's because we used to use 2
     pub fn create_vbmul(row: usize, wires: &[GateWires; 3]) -> Vec<Self> {
@@ -130,9 +130,9 @@ impl<F: FftField> CircuitGate<F> {
         ]
     }
 
-    pub fn verify_vbmul(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
-        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
+    pub fn verify_vbmul(&self, witness: &[Vec<Field>; COLUMNS]) -> bool {
+        let this: [Field; COLUMNS] = array_init(|i| witness[i][self.row]);
+        let next: [Field; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
 
         //    0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	Type
         //   xT	yT	xS	yS	xP	yP	n	xr	yr	s1	s2	b1	s3	s4	b2	VBSM
@@ -176,6 +176,8 @@ impl<F: FftField> CircuitGate<F> {
         let next_s3 = next[13];
         let next_b2 = next[14];
 
+        let one = Field::one();
+
         //
         // checks
         //
@@ -192,7 +194,7 @@ impl<F: FftField> CircuitGate<F> {
         zero!(next_b3 - next_b3.square());
 
         // (xp - xt) * s1 = yp – (2*b1-1)*yt
-        zero!((xp - &xt) * &s1 - &yp + &(yt * &(b1.double() - &F::one())));
+        zero!((xp - &xt) * &s1 - &yp + &(yt * &(b1.double() - &one)));
 
         // s1^2 - s2^2 = xt - xr
         zero!(s1.square() - &s2.square() - &xt + &xr);
@@ -204,7 +206,7 @@ impl<F: FftField> CircuitGate<F> {
         zero!((xp - &xr) * &s2 - &yr - &yp);
 
         // (xr - xt) * s3 = yr – (2b2-1)*yt
-        zero!((xr - &xt) * &s3 - &yr + &(yt * &(b2.double() - &F::one())));
+        zero!((xr - &xt) * &s3 - &yr + &(yt * &(b2.double() - &one)));
 
         // S3^2 – s4^2 = xt - xs
         zero!(s3.square() - &s4.square() - &xt + &xs);
@@ -216,7 +218,7 @@ impl<F: FftField> CircuitGate<F> {
         zero!((xr - &xs) * &s4 - &ys - &yr);
 
         // (xt - xp) * s1 = (2b1-1)*yt - yp
-        zero!((xt - &next_xp) * &next_s1 - (next_b1.double() - &F::one()) * &yt + &next_yp);
+        zero!((xt - &next_xp) * &next_s1 - (next_b1.double() - &one) * &yt + &next_yp);
 
         // (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
         zero!(
@@ -232,7 +234,7 @@ impl<F: FftField> CircuitGate<F> {
         );
 
         // (xt - xr) * s3 = (2b2-1)*yt - yr
-        zero!((xt - &next_xr) * &next_s3 - (next_b2.double() - &F::one()) * &yt - &next_yr);
+        zero!((xt - &next_xr) * &next_s3 - (next_b2.double() - &one) * &yt - &next_yr);
 
         // (2*xr – s3^2 + xt) * ((xr – xv) * s3 + yv + yr) = (xr – xv) * 2*yr
         zero!(
@@ -248,7 +250,7 @@ impl<F: FftField> CircuitGate<F> {
         );
 
         // (xt - xv) * s5 = (2b3-1)*yt - yv
-        zero!((xt - &next_xv) * &next_s5 - (next_b3.double() - &F::one()) * &yt + &next_yv);
+        zero!((xt - &next_xv) * &next_s5 - (next_b3.double() - &one) * &yt + &next_yv);
 
         // (2*xv – s5^2 + xt) * ((xv – xs) * s5 + ys + yv) = (xv – xs) * 2*yv
         zero!(
@@ -263,6 +265,7 @@ impl<F: FftField> CircuitGate<F> {
                 - (next_xv - &next_xs).square() * &(next_s5.square() - &xt + &next_xs)
         );
 
+        // TODO(mimoo): this constraint is not in the PDF
         zero!(
             ((((next_xr.double() + &b1).double() + &b2).double() + &next_b1).double() + &next_b2)
                 .double()
@@ -270,15 +273,63 @@ impl<F: FftField> CircuitGate<F> {
                 - &xr
         );
 
-        //
+        // all good!
         true
     }
 
-    pub fn vbmul(&self) -> F {
+    pub fn vbmul(&self) -> Field {
         if self.typ == GateType::Vbmul {
-            F::one()
+            Field::one()
         } else {
-            F::zero()
+            Field::zero()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::gate::CircuitGate;
+    use crate::nolookup::constraints::ConstraintSystem;
+    use crate::wires::{GateWires, Wire};
+    use algebra::pasta::fp::Fp;
+    use algebra::pasta::pallas::{self, Affine};
+    use algebra::Zero;
+    use algebra_core::curves::AffineCurve;
+    use array_init::array_init;
+
+    #[test]
+    fn test_gate_vbmul() {
+        let wires: GateWires = array_init(|i| Wire { row: 0, col: i });
+        let gw = [wires.clone(), wires.clone(), wires.clone()];
+        let cg = CircuitGate::<Fp>::create_vbmul(0, &gw);
+
+        // simple example:
+        // u = 2^4 + 5 (10101)
+        // so k = 0101
+        let b1 = 0;
+        let b2 = 0;
+        let next_b1 = 1;
+        let next_b2 = 0;
+        let next_b3 = 1;
+
+        // we use pallas because its basefield is Fp, which is what we're doing the calculations with
+        let P = Affine::prime_subgroup_generator();
+
+        // init
+        let _2P = P + P;
+        let xp = _2P.x;
+        let yp = _2P.y;
+
+        let witness: [_; COLUMNS] = array_init(|_| vec![Fp::zero(); COLUMNS]);
+
+        let fp_sponge_params = oracle::pasta::fp::params();
+        let mut gates = cg.clone();
+        gates.extend_from_slice(&cg.clone());
+        let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, 0).unwrap();
+
+        for g in cg {
+            println!("gate: {:?}", g.verify(&witness, &cs));
         }
     }
 }

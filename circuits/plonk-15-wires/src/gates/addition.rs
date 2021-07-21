@@ -27,6 +27,10 @@ use algebra::FftField;
 use array_init::array_init;
 
 impl<Field: FftField> CircuitGate<Field> {
+    /// Creates an ECC add gate. Warning: this assumes that the two points are:
+    /// - on the curve
+    /// - not mutual inverses (e.g. P and -P)
+    /// - not the same point (e.g. P and P)
     pub fn create_add(row: usize, wires: GateWires) -> Self {
         CircuitGate {
             row,
