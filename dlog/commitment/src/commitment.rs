@@ -27,6 +27,15 @@ use std::iter::Iterator;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+// What's shifted/unshifted? this is an artifact of how we do degree bound check of the polynomial. 
+// Say srs size is n and you want to commit to a polynomial P and prove that it has degree at most d where d < n. 
+// Then, you will do two things:
+// - commit to P (unshifted)
+// - commit to X^{n-d}P (shifted)
+// To convince someone of the degree bound, you just need to show the relationship between these two committed polys 
+// (that second is X^{n-d}P); since the room within the commitment scheme is anyway max n, you know that P is at most of degree d.
+// If d > n, you will chunk up P into n-size polys perhaps except the last one (eg say d = 3n/2, then you have P1 of deg n and P2 of deg n/2) and then show that the last one has some degree bound where the bound will be less than n.
+
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct PolyComm<C> {
@@ -57,6 +66,11 @@ pub fn shift_scalar<F: PrimeField>(x: F) -> F {
     let two: F = (2 as u64).into();
     x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
+
+// since polynomial commitments are scalars, the following fn implements linear combination of commitments as 
+// linear combination of the scalars. 
+// Also, for any commitment, there can be multiple unshifted elements and only one shifted element, 
+// since only the last chunk of a large polynomial is shifted to check the degree bound.
 
 impl<C: AffineCurve> PolyComm<C> {
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
@@ -378,7 +392,9 @@ where
         let n = self.g.len();
         let p = plnm.coeffs.len();
 
-        // committing all the segments without shifting
+        // if n > srs size, then the coefficient vector is divided into chunks 
+        // where all but 1 is of length n and the remaining is of length <=n. 
+        // Committing all the chunks without shifting. 
         let unshifted = if plnm.is_zero() {
             Vec::new()
         } else {
@@ -397,6 +413,7 @@ where
         };
 
         // committing only last segment shifted to the right edge of SRS
+        // starting the srs from n - (max % n) corresponds to multiplying the polynomial chunk with X^{n - (max % n)}
         let shifted = match max {
             None => None,
             Some(max) => {
@@ -449,7 +466,9 @@ where
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
 
-        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
+
+        //for the list of polynomials that need to be opened, the following piece of code combines the segments (both shifted and unshifted) with the scaling factors 
+        // together with combining the randomness with the corresponding scaling factors 
         let (p, blinding_factor) = {
             let mut p = DensePolynomial::<Fr<G>>::zero();
 

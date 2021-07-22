@@ -121,10 +121,10 @@ where
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
-        // the transcript of the random oracle non-interactive argument
+        // absorb the common pre-processed input 
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // compute public input polynomial
+        // compute public input polynomial with a negative sign
         let public = witness[0..index.cs.public].to_vec();
         let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
             public.clone(),
@@ -171,9 +171,12 @@ where
         let (r_comm, omega_r) = index.srs.get_ref().commit(&r, None, rng);
         let (o_comm, omega_o) = index.srs.get_ref().commit(&o, None, rng);
 
-        // absorb the public input, l, r, o polycommitments into the argument
-        let public_input_comm = &index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
         // this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);
+        
+        let public_input_comm = &index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
+        
+        // absorb the public input, l, r, o polycommitments into the argument
+        
         fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
