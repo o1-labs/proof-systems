@@ -17,7 +17,7 @@ rand_core = { version = "0.5" }
 colored = "1.9.2"
 rand = "0.7.3"
 rayon = { version = "1" }
-blake2 = "0.7"
+blake2 = "0.9.1"
 itertools = "0.8.2"
 array-init = "0.1.1"
 
