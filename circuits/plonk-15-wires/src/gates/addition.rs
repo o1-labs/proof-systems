@@ -26,7 +26,7 @@ use crate::wires::{GateWires, COLUMNS};
 use algebra::FftField;
 use array_init::array_init;
 
-impl<Field: FftField> CircuitGate<Field> {
+impl<F: FftField> CircuitGate<F> {
     /// Creates an ECC add gate. Warning: this assumes that the two points are:
     /// - on the curve
     /// - not mutual inverses (e.g. P and -P)
@@ -41,8 +41,8 @@ impl<Field: FftField> CircuitGate<Field> {
     }
 
     /// Given a set of [witness] over an Add gate, verify that the constraints checks out.
-    pub fn verify_add(&self, witness: &[Vec<Field>; COLUMNS]) -> bool {
-        let this: [Field; COLUMNS] = array_init(|i| witness[i][self.row]);
+    pub fn verify_add(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
         let x1 = this[0];
         let y1 = this[1];
@@ -52,31 +52,29 @@ impl<Field: FftField> CircuitGate<Field> {
         let y3 = this[5];
         let r = this[6];
 
-        let zero = Field::zero();
-        let one = Field::one();
+        let one = F::one();
+        let zero = F::zero();
 
-        if self.typ != GateType::Add {
-            return false;
-        }
-        if (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3) != zero {
-            return false;
-        }
-        if (x1 + x2 + x3) * (x1 - x3).square() - (y3 + y1).square() != zero {
-            return false;
-        }
-        if (x2 - x1) * r - one != zero {
-            return false;
-        }
+        ensure_eq!(self.typ, GateType::Add);
+
+        ensure_eq!(zero, (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3));
+
+        ensure_eq!(
+            zero,
+            (x1 + x2 + x3) * (x1 - x3).square() - (y3 + y1).square()
+        );
+
+        ensure_eq!(zero, (x2 - x1) * r - one);
 
         return true;
     }
 
     /// Returns 1 if [self] is an [GateType::Add] gate, 0 otherwise.
-    pub fn add(&self) -> Field {
+    pub fn add(&self) -> F {
         if self.typ == GateType::Add {
-            Field::one()
+            F::one()
         } else {
-            Field::zero()
+            F::zero()
         }
     }
 }

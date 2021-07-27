@@ -62,21 +62,49 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_double(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
-        self.typ == GateType::Double
-            && [
-                F::from(4 as u64) * &this[1].square() * &(this[2] + &this[0].double())
-                    - F::from(9 as u64) * &this[0].square().square(),
-                this[1].double() * &(this[3] + &this[1])
-                    - F::from(3 as u64) * &this[0].square() * &(this[0] - &this[2]),
-                this[1] * &this[6] - F::one(),
-                (this[2] - &this[0]) * &(this[5] + &this[1])
-                    - (this[1] - &this[3]) * &(this[0] - &this[4]),
-                (this[0] + &this[2] + &this[4]) * &(this[0] - &this[4]).square()
-                    - (this[5] + &this[1]).square(),
-                (this[2] - &this[0]) * &this[7] - F::one(),
-            ]
-            .iter()
-            .all(|p| *p == F::zero())
+        let this0 = this[0];
+        let this1 = this[1];
+        let this2 = this[2];
+        let this3 = this[3];
+        let this4 = this[4];
+        let this5 = this[5];
+        let this6 = this[6];
+        let this7 = this[7];
+
+        let zero = F::zero();
+        let one = F::one();
+        let three = F::from(3 as u64);
+        let four = F::from(4 as u64);
+        let nine = F::from(9 as u64);
+
+        ensure_eq!(self.typ, GateType::Double);
+
+        ensure_eq!(
+            zero,
+            four * &this1.square() * &(this2 + &this0.double()) - nine * &this0.square().square()
+        );
+
+        ensure_eq!(
+            zero,
+            this1.double() * &(this3 + &this1) - three * &this0.square() * &(this0 - &this2)
+        );
+
+        ensure_eq!(zero, this1 * &this6 - one);
+
+        ensure_eq!(
+            zero,
+            (this2 - &this0) * &(this5 + &this1) - (this1 - &this3) * &(this0 - &this4)
+        );
+
+        ensure_eq!(
+            zero,
+            (this0 + &this2 + &this4) * &(this0 - &this4).square() - (this5 + &this1).square()
+        );
+
+        ensure_eq!(zero, (this2 - &this0) * &this7 - one);
+
+        // all good
+        return true;
     }
 
     pub fn double(&self) -> F {

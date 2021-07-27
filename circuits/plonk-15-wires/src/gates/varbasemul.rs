@@ -102,14 +102,6 @@ use crate::wires::{GateWires, COLUMNS};
 use algebra::FftField;
 use array_init::array_init;
 
-macro_rules! zero {
-    ($eq:expr) => {
-        if $eq != Field::zero() {
-            return false;
-        }
-    };
-}
-
 impl<Field: FftField> CircuitGate<Field> {
     // TODO(mimoo): why is `wires` of size 3 if we only use 2?
     // I think it's because we used to use 2
@@ -176,97 +168,118 @@ impl<Field: FftField> CircuitGate<Field> {
         let next_s3 = next[13];
         let next_b2 = next[14];
 
+        let zero = Field::zero();
         let one = Field::one();
 
         //
         // checks
         //
 
-        if self.typ == GateType::Vbmul {
-            return false;
-        }
+        ensure_eq!(self.typ, GateType::Vbmul);
 
         // verify booleanity of the scalar bits
-        zero!(b1 - b1.square());
-        zero!(b2 - b2.square());
-        zero!(next_b1 - next_b1.square());
-        zero!(next_b2 - next_b2.square());
-        zero!(next_b3 - next_b3.square());
+        ensure_eq!(zero, b1 - b1.square());
+        ensure_eq!(zero, b2 - b2.square());
+        ensure_eq!(zero, next_b1 - next_b1.square());
+        ensure_eq!(zero, next_b2 - next_b2.square());
+        ensure_eq!(zero, next_b3 - next_b3.square());
 
         // (xp - xt) * s1 = yp – (2*b1-1)*yt
-        zero!((xp - &xt) * &s1 - &yp + &(yt * &(b1.double() - &one)));
+        ensure_eq!(zero, (xp - &xt) * &s1 - &yp + &(yt * &(b1.double() - &one)));
 
         // s1^2 - s2^2 = xt - xr
-        zero!(s1.square() - &s2.square() - &xt + &xr);
+        ensure_eq!(zero, s1.square() - &s2.square() - &xt + &xr);
 
         // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
-        zero!((xp.double() + &xt - &s1.square()) * &(s1 + &s2) - &yp.double());
+        ensure_eq!(
+            zero,
+            (xp.double() + &xt - &s1.square()) * &(s1 + &s2) - &yp.double()
+        );
 
         // (xp – xr) * s2 = yr + yp
-        zero!((xp - &xr) * &s2 - &yr - &yp);
+        ensure_eq!(zero, (xp - &xr) * &s2 - &yr - &yp);
 
         // (xr - xt) * s3 = yr – (2b2-1)*yt
-        zero!((xr - &xt) * &s3 - &yr + &(yt * &(b2.double() - &one)));
+        ensure_eq!(zero, (xr - &xt) * &s3 - &yr + &(yt * &(b2.double() - &one)));
 
         // S3^2 – s4^2 = xt - xs
-        zero!(s3.square() - &s4.square() - &xt + &xs);
+        ensure_eq!(zero, s3.square() - &s4.square() - &xt + &xs);
 
         // (2*xr + xt – s3^2) * (s3 + s4) = 2*yr
-        zero!((xr.double() + &xt - &s3.square()) * &(s3 + &s4) - &yr.double());
+        ensure_eq!(
+            zero,
+            (xr.double() + &xt - &s3.square()) * &(s3 + &s4) - &yr.double()
+        );
 
         // (xr – xs) * s4 = ys + yr
-        zero!((xr - &xs) * &s4 - &ys - &yr);
+        ensure_eq!(zero, (xr - &xs) * &s4 - &ys - &yr);
 
         // (xt - xp) * s1 = (2b1-1)*yt - yp
-        zero!((xt - &next_xp) * &next_s1 - (next_b1.double() - &one) * &yt + &next_yp);
+        ensure_eq!(
+            zero,
+            (xt - &next_xp) * &next_s1 - (next_b1.double() - &one) * &yt + &next_yp
+        );
 
         // (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-        zero!(
+        ensure_eq!(
+            zero,
             (next_xp.double() - &next_s1.square() + &xt)
                 * &((next_xp - &next_xr) * &next_s1 + &next_yr + &next_yp)
                 - (next_xp - &next_xr) * &next_yp.double()
         );
 
         // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xt + xr)
-        zero!(
+        ensure_eq!(
+            zero,
             (next_yr + &next_yp).square()
                 - (next_xp - &next_xr).square() * &(next_s1.square() - &xt + &next_xr)
         );
 
         // (xt - xr) * s3 = (2b2-1)*yt - yr
-        zero!((xt - &next_xr) * &next_s3 - (next_b2.double() - &one) * &yt - &next_yr);
+        ensure_eq!(
+            zero,
+            (xt - &next_xr) * &next_s3 - (next_b2.double() - &one) * &yt - &next_yr
+        );
 
         // (2*xr – s3^2 + xt) * ((xr – xv) * s3 + yv + yr) = (xr – xv) * 2*yr
-        zero!(
+        ensure_eq!(
+            zero,
             (next_xr.double() - &next_s3.square() + &xt)
                 * &((next_xr - &next_xv) * &next_s3 + &next_yv + &next_yr)
                 - (next_xr - &next_xv) * &next_yr.double()
         );
 
         // (yv + yr)^2 = (xr – xv)^2 * (s3^2 – xt + xv)
-        zero!(
+        ensure_eq!(
+            zero,
             (next_yv + &next_yr).square()
                 - (next_xr - &next_xv).square() * &(next_s3.square() - &xt + &next_xv)
         );
 
         // (xt - xv) * s5 = (2b3-1)*yt - yv
-        zero!((xt - &next_xv) * &next_s5 - (next_b3.double() - &one) * &yt + &next_yv);
+        ensure_eq!(
+            zero,
+            (xt - &next_xv) * &next_s5 - (next_b3.double() - &one) * &yt + &next_yv
+        );
 
         // (2*xv – s5^2 + xt) * ((xv – xs) * s5 + ys + yv) = (xv – xs) * 2*yv
-        zero!(
+        ensure_eq!(
+            zero,
             (next_xv.double() - &next_s5.square() + &xt)
                 * &((next_xv - &next_xs) * &next_s5 + &next_ys + &next_yv)
                 - (next_xv - &next_xs) * &next_yv.double()
         );
 
         // (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xt + xs)
-        zero!(
+        ensure_eq!(
+            zero,
             (next_ys + &next_yv).square()
                 - (next_xv - &next_xs).square() * &(next_s5.square() - &xt + &next_xs)
         );
 
         // TODO(mimoo): this constraint is not in the PDF
-        zero!(
+        ensure_eq!(
+            zero,
             ((((next_xr.double() + &b1).double() + &b2).double() + &next_b1).double() + &next_b2)
                 .double()
                 + &next_xs
@@ -285,6 +298,7 @@ impl<Field: FftField> CircuitGate<Field> {
         }
     }
 }
+/*
 
 #[cfg(test)]
 mod tests {
@@ -321,7 +335,7 @@ mod tests {
         let xp = _2P.x;
         let yp = _2P.y;
 
-        let witness: [_; COLUMNS] = array_init(|_| vec![Fp::zero(); COLUMNS]);
+        let witness: [_; COLUMNS] = [];
 
         let fp_sponge_params = oracle::pasta::fp::params();
         let mut gates = cg.clone();
@@ -333,3 +347,4 @@ mod tests {
         }
     }
 }
+*/

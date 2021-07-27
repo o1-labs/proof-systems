@@ -18,7 +18,7 @@ use oracle::{
     poseidon::{ArithmeticSponge, Plonk15SpongeConstants, Sponge, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use plonk_15_wires_circuits::wires::Wire;
+use plonk_15_wires_circuits::wires::{Wire, COLUMNS};
 use plonk_15_wires_circuits::{
     gate::CircuitGate,
     gates::poseidon::{round_range, ROUNDS_PER_ROW, SPONGE_WIDTH},
@@ -144,23 +144,7 @@ fn positive(index: &Index<Affine>) {
 
     for test in 0..1 {
         //  witness for Poseidon permutation custom constraints
-        let mut w = [
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-            vec![Fp::zero(); max_size],
-        ];
+        let mut w: [_; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
 
         let init = vec![
             Fp::rand(rng),

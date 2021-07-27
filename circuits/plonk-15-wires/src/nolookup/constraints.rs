@@ -148,6 +148,7 @@ pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
@@ -256,95 +257,110 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         )
         .interpolate();
 
+        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
+
+        // generic constraint polynomials
+        let qwl = array_init(|i| qwm[i].evaluate_over_domain_by_ref(domain.d4));
+        let qml = qmm.evaluate_over_domain_by_ref(domain.d4);
+        let qc = E::<F, D<F>>::from_vec_and_domain(
+            gates
+                .iter()
+                .map(|gate| {
+                    if gate.typ == GateType::Generic {
+                        gate.c[COLUMNS + 1]
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            domain.d1,
+        )
+        .interpolate();
+
+        // poseidon constraint polynomials
+        let rcm = array_init(|round| {
+            array_init(|col| {
+                E::<F, D<F>>::from_vec_and_domain(
+                    gates
+                        .iter()
+                        .map(|gate| {
+                            if gate.typ == GateType::Poseidon {
+                                gate.rc()[round][col]
+                            } else {
+                                F::zero()
+                            }
+                        })
+                        .collect(),
+                    domain.d1,
+                )
+                .interpolate()
+            })
+        });
+
+        let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
+        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
+
+        // ECC arithmetic constraint polynomials
+        let addl = addm.evaluate_over_domain_by_ref(domain.d4);
+        let doubl8 = doublem.evaluate_over_domain_by_ref(domain.d8);
+        let doubl4 = doublem.evaluate_over_domain_by_ref(domain.d4);
+        let mull4 = mulm.evaluate_over_domain_by_ref(domain.d4);
+        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
+        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+
+        // constant polynomials
+        let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
+            .evaluate_over_domain_by_ref(domain.d8);
+        let l04 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
+        let l08 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8);
+        let zero4 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4);
+        let zero8 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
+        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
+
+        // endo
+        let endo = F::zero();
+
+        // return result
         Some(ConstraintSystem {
             domain,
             public,
             sid,
             sigmal1,
-            sigmal8: array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8)),
+            sigmal8,
             sigmam,
-
-            // generic constraint polynomials
-            qwl: array_init(|i| qwm[i].evaluate_over_domain_by_ref(domain.d4)),
-            qml: qmm.evaluate_over_domain_by_ref(domain.d4),
+            qwl,
+            qml,
             qwm,
             qmm,
-            qc: E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if gate.typ == GateType::Generic {
-                            gate.c[COLUMNS + 1]
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate(),
-
-            // poseidon constraint polynomials
-            rcm: array_init(|round| {
-                array_init(|col| {
-                    E::<F, D<F>>::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| {
-                                if gate.typ == GateType::Poseidon {
-                                    gate.rc()[round][col]
-                                } else {
-                                    F::zero()
-                                }
-                            })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                })
-            }),
-
-            ps4: psm.evaluate_over_domain_by_ref(domain.d4),
-            ps8: psm.evaluate_over_domain_by_ref(domain.d8),
+            qc,
+            rcm,
+            ps4,
+            ps8,
             psm,
-
-            // ECC arithmetic constraint polynomials
-            addl: addm.evaluate_over_domain_by_ref(domain.d4),
+            addl,
             addm,
-            doubl8: doublem.evaluate_over_domain_by_ref(domain.d8),
-            doubl4: doublem.evaluate_over_domain_by_ref(domain.d4),
+            doubl8,
+            doubl4,
             doublem,
-            mull4: mulm.evaluate_over_domain_by_ref(domain.d4),
-            mull8: mulm.evaluate_over_domain_by_ref(domain.d8),
+            mull4,
+            mull8,
             mulm,
-            emull: emulm.evaluate_over_domain_by_ref(domain.d8),
+            emull,
             emulm,
-
-            // constant polynomials
-            l1: DP::from_coefficients_slice(&[F::zero(), F::one()])
-                .evaluate_over_domain_by_ref(domain.d8),
-            l04: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::one(); domain.d4.size as usize],
-                domain.d4,
-            ),
-            l08: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::one(); domain.d8.size as usize],
-                domain.d8,
-            ),
-            zero4: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::zero(); domain.d4.size as usize],
-                domain.d4,
-            ),
-            zero8: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::zero(); domain.d8.size as usize],
-                domain.d8,
-            ),
-            zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
+            l1,
+            l04,
+            l08,
+            zero4,
+            zero8,
+            zkpl,
             zkpm,
-
             gates,
             shift,
-            endo: F::zero(),
+            endo,
             fr_sponge_params,
         })
     }
