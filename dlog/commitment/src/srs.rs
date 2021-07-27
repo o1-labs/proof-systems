@@ -67,20 +67,22 @@ impl<G: CommitmentCurve> SRS<G> where G::BaseField : PrimeField, G::ScalarField 
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
-        let g : Vec<_> = (0..depth).map(|i| {
-            let mut h = Blake2b::new();
-            h.input(&(i as u32).to_be_bytes());
-            point_of_random_bytes(&m, &h.result())
-        }).collect();
+        let g: Vec<_> = (0..depth)
+            .map(|i| {
+                let mut h = Blake2b::new();
+                h.update(&(i as u32).to_be_bytes());
+                point_of_random_bytes(&m, &h.finalize())
+            })
+            .collect();
 
         let (endo_q, endo_r) = endos::<G>();
 
         const MISC : usize = 1;
         let [h] : [G;MISC] = array_init(|i| {
             let mut h = Blake2b::new();
-            h.input("srs_misc".as_bytes());
-            h.input(&(i as u32).to_be_bytes());
-            point_of_random_bytes(&m, &h.result())
+            h.update("srs_misc".as_bytes());
+            h.update(&(i as u32).to_be_bytes());
+            point_of_random_bytes(&m, &h.finalize())
         });
 
         SRS

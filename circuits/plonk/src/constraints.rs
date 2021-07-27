@@ -255,13 +255,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F>
     fn sample_shift(domain: &D<F>, i: &mut u32) -> F
     {
         let mut h = Blake2b::new();
-        h.input(&{*i += 1; *i}.to_be_bytes());
-        let mut r = F::from_random_bytes(&h.result()[..31]).unwrap();
-        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero()
-        {
+        h.update(
+            &{
+                *i += 1;
+                *i
+            }
+            .to_be_bytes(),
+        );
+        let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
+        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
             let mut h = Blake2b::new();
-            h.input(&{*i += 1; *i}.to_be_bytes());
-            r = F::from_random_bytes(&h.result()[..31]).unwrap();
+            h.update(
+                &{
+                    *i += 1;
+                    *i
+                }
+                .to_be_bytes(),
+            );
+            r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
         }
         r
     }
