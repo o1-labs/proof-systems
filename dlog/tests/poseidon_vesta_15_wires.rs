@@ -28,7 +28,7 @@ use plonk_15_wires_protocol_dlog::{
     index::{Index, SRSSpec},
     prover::ProverProof,
 };
-use rand_core::OsRng;
+use rand::{rngs::StdRng, SeedableRng};
 use std::time::Instant;
 use std::{io, io::Write};
 
@@ -109,17 +109,21 @@ fn poseidon_vesta_15_wires() {
     positive(&index);
 }
 
+// creates a proof and verifies it
 fn positive(index: &Index<Affine>) {
-    let rng = &mut OsRng;
-
-    let params = oracle::pasta::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, Plonk15SpongeConstants>::new();
-
-    let mut batch = Vec::new();
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-
+    // constant
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);
 
+    // set up
+    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let params = oracle::pasta::fp::params();
+    let mut sponge = ArithmeticSponge::<Fp, Plonk15SpongeConstants>::new();
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
+
+    // batching what?
+    let mut batch = Vec::new();
+
+    // debug
     println!("{}{:?}", "Circuit size: ".yellow(), max_size);
     println!("{}{:?}", "Polycommitment chunk size: ".yellow(), max_size);
     println!(
@@ -137,15 +141,19 @@ fn positive(index: &Index<Affine>) {
         "Sbox alpha: ".yellow(),
         Plonk15SpongeConstants::SPONGE_BOX
     );
-    println!("{}", "Base curve: vesta".green());
-    println!();
+    println!("{}", "Base curve: vesta\n".green());
     println!("{}", "Prover zk-proof computation".green());
+
     let mut start = Instant::now();
 
+    // why would there be several tests?
     for test in 0..1 {
-        //  witness for Poseidon permutation custom constraints
-        let mut w: [_; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
+        // witness for Poseidon permutation custom constraints
+        // (15 columns of vectors, each vector is of size n)
+        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
+        println!("witness: {:?}", witness);
 
+        // creates a random initial state
         let init = vec![
             Fp::rand(rng),
             Fp::rand(rng),
@@ -153,28 +161,46 @@ fn positive(index: &Index<Affine>) {
             Fp::rand(rng),
             Fp::rand(rng),
         ];
+
+        // number of poseidon instances in the circuit
         for h in 0..NUM_POS {
-            let base = h * (POS_ROWS_PER_HASH + 1);
-            for i in 0..SPONGE_WIDTH {
-                w[round_range(0)][i][base] = init[i];
+            // index
+            // TODO: is the `+ 1` correct?
+            let first_row = h * (POS_ROWS_PER_HASH + 1);
+
+            // initialize the sponge in the circuit with our random state
+            let first_state_cols = &mut witness[round_range(0)];
+            for state_idx in 0..SPONGE_WIDTH {
+                first_state_cols[state_idx][first_row] = init[state_idx];
             }
 
+            // set the sponge state
             sponge.state = init.clone();
 
-            for i in 0..POS_ROWS_PER_HASH {
-                let row = i + base;
-                for r in 0..ROUNDS_PER_ROW {
-                    let next_row = if r == ROUNDS_PER_ROW - 1 {
+            // for the poseidon rows
+            for row_idx in 0..POS_ROWS_PER_HASH {
+                let row = row_idx + first_row;
+                for round in 0..ROUNDS_PER_ROW {
+                    // the last round makes use of the next row
+                    let maybe_next_row = if round == ROUNDS_PER_ROW - 1 {
                         row + 1
                     } else {
                         row
                     };
-                    let abs_round = r + i * ROUNDS_PER_ROW;
+
+                    //
+                    let abs_round = round + row_idx * ROUNDS_PER_ROW;
+
+                    // TODO: this won't work if the circuit has an INITIAL_ARK
                     sponge.full_round(abs_round, &params);
-                    w[round_range((r + 1) % ROUNDS_PER_ROW)]
+
+                    // apply the sponge and record the result in the witness
+                    let cols_to_update = round_range((round + 1) % ROUNDS_PER_ROW);
+                    witness[cols_to_update]
                         .iter_mut()
                         .zip(sponge.state.iter())
-                        .for_each(|(w, s)| w[next_row] = *s);
+                        // update the state (last update is on the next row)
+                        .for_each(|(w, s)| w[maybe_next_row] = *s);
                 }
             }
         }
@@ -193,15 +219,23 @@ fn positive(index: &Index<Affine>) {
         w.iter_mut().for_each(|w| {w.push(Fp::rand(rng)); w.push(Fp::rand(rng))}); */
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&w), true);
+        assert_eq!(index.cs.verify(&witness), true);
 
+        // ?
         let prev = {
+            // ?
             let k = ceil_log2(index.srs.get_ref().g.len());
+
+            // random challenges
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
+
+            // commitments of ?
             let comm = {
-                let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
+                let coeffs = b_poly_coefficients(&chals);
+                let b = DensePolynomial::from_coefficients_vec(coeffs);
                 index.srs.get_ref().commit_non_hiding(&b, None)
             };
+
             (chals, comm)
         };
 
@@ -212,7 +246,7 @@ fn positive(index: &Index<Affine>) {
             ProverProof::create::<
                 DefaultFqSponge<VestaParameters, Plonk15SpongeConstants>,
                 DefaultFrSponge<Fp, Plonk15SpongeConstants>,
-            >(&group_map, &w, &index, vec![prev])
+            >(&group_map, &witness, &index, vec![prev])
             .unwrap(),
         );
 
@@ -237,7 +271,10 @@ fn positive(index: &Index<Affine>) {
         DefaultFrSponge<Fp, Plonk15SpongeConstants>,
     >(&group_map, &batch)
     {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
+        Err(error) => {
+            println!("wait what?");
+            panic!("Failure verifying the prover's proofs in batch: {}", error)
+        }
         Ok(_) => {
             println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
         }

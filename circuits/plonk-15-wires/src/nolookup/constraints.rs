@@ -365,28 +365,32 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         })
     }
 
-    // This function verifies the consistency of the wire
-    // assignements (witness) against the constraints
-    //     witness: wire assignement witness
-    //     RETURN: verification status
+    /// This function verifies the consistency of the wire
+    /// assignements (witness) against the constraints
+    ///     witness: wire assignement witness
+    ///     RETURN: verification status
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+        // TODO: what does this represent? guess: q_L is set, q_R, q_M, q_C, and q_O are not
         let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
-        (0..self.gates.len()).all
-        (
-            |j|
+
+        (0..self.gates.len()).all(|row|
                 // verify permutation consistency
-                (0..COLUMNS).all(|i|
+                (0..COLUMNS).all(|col|
                 {
-                    let wire = self.gates[j].wires[i];
-                    witness[i][j] == witness[wire.col][wire.row]
+                    let wire = self.gates[row].wires[col];
+                    witness[col][row] == witness[wire.col][wire.row]
                 })
                 &&
                 // verify witness against constraints
-                if j < self.public {self.gates[j].c == p} else {self.gates[j].verify(witness, &self)}
-        )
+                if row < self.public {
+                    // TODO: shouldn't we also check that the gate is of type zero?
+                    self.gates[row].c == p
+                } else {
+                    self.gates[row].verify(witness, &self)
+                })
     }
 
-    // sample coordinate shifts deterministically
+    /// sample coordinate shifts deterministically
     pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F {
         let mut h = Blake2b::new();
         h.input(
@@ -424,7 +428,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         shifts
     }
 
-    // evaluate witness polynomials over domains
+    /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         println!("evaluate(w, z) -> WitnessOverDomains");
         // compute shifted witness polynomials

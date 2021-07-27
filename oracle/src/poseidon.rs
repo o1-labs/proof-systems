@@ -119,12 +119,14 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
         };
     }
 
-    pub fn full_round(&mut self, r: usize, params: &ArithmeticSpongeParams<F>) {
+    /// Performs a single full round (given the round number) for the sponge.
+    /// Note that if INITIAL_ARK is set in the parameters, calling full round will not be enough to manually implement the sponge.
+    pub fn full_round(&mut self, round: usize, params: &ArithmeticSpongeParams<F>) {
         for i in 0..self.state.len() {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }
         self.apply_mds_matrix(params);
-        for (i, x) in params.round_constants[r + 1].iter().enumerate() {
+        for (i, x) in params.round_constants[round + 1].iter().enumerate() {
             self.state[i].add_assign(x);
         }
     }

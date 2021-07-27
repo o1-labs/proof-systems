@@ -255,6 +255,7 @@ where
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError> {
+        println!("verify(group_map, proofs)");
         if proofs.len() == 0 {
             return Ok(true);
         }
@@ -262,7 +263,9 @@ where
         let params = proofs
             .iter()
             .map(|(index, lgr_comm, proof)| {
+                println!("one iteration of proofs.iter().map(): ");
                 // commit to public input polynomial
+                println!("- commit to public input polynomial");
                 let p_comm = PolyComm::<G>::multi_scalar_mul(
                     &lgr_comm
                         .iter()
@@ -276,13 +279,16 @@ where
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 
                 // evaluate committed polynoms
+                println!("- evaluate committed polynoms");
                 let evals = (0..2)
                     .map(|i| proof.evals[i].combine(evlp[i]))
                     .collect::<Vec<_>>();
 
                 // compute linearization polynomial commitment
+                println!("- compute linearization polynomial commitment");
 
                 // permutation
+                println!("- permutation");
                 let zkp = index.zkpm.evaluate(oracles.zeta);
                 let mut p = vec![&index.sigma_comm[PERMUTS - 1]];
                 let mut s = vec![ConstraintSystem::perm_scalars(
@@ -293,12 +299,14 @@ where
                 )];
 
                 // generic
+                println!("- generic");
                 p.push(&index.qm_comm);
                 p.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
                 p.push(&index.qc_comm);
                 s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
 
                 // poseidon
+                println!("- poseidon");
                 s.extend(&ConstraintSystem::psdn_scalars(
                     &evals,
                     &index.fr_sponge_params,
@@ -315,14 +323,17 @@ where
                 );
 
                 // EC addition
+                println!("- EC addition");
                 s.push(ConstraintSystem::ecad_scalars(&evals, &alpha[range::ADD]));
                 p.push(&index.add_comm);
 
                 // EC doubling
+                println!("- EC doubling");
                 s.push(ConstraintSystem::double_scalars(&evals, &alpha[range::DBL]));
                 p.push(&index.double_comm);
 
                 // variable base endoscalar multiplication
+                println!("- variable base endoscalar multiplication");
                 s.push(ConstraintSystem::endomul_scalars(
                     &evals,
                     index.endo,
@@ -331,51 +342,65 @@ where
                 p.push(&index.emul_comm);
 
                 // EC variable base scalar multiplication
+                println!("- EC variable base scalar multiplication");
                 s.push(ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
                 p.push(&index.mul_comm);
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
                 // check linearization polynomial evaluation consistency
+                println!("- check linearization polynomial evaluation consistency");
                 let zeta1m1 = zeta1 - &Fr::<G>::one();
-                if (evals[0].f
-                    + &(if p_eval[0].len() > 0 {
-                        p_eval[0][0]
-                    } else {
-                        Fr::<G>::zero()
-                    })
-                    - evals[0]
-                        .w
-                        .iter()
-                        .zip(evals[0].s.iter())
-                        .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
-                        .fold(
-                            (evals[0].w[PERMUTS - 1] + &oracles.gamma)
-                                * &evals[1].z
-                                * &alpha[range::PERM][0]
-                                * &zkp,
-                            |x, y| x * y,
-                        )
-                    + evals[0]
-                        .w
-                        .iter()
-                        .zip(index.shift.iter())
-                        .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
-                        .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y)
-                    - evals[0].t * &zeta1m1)
+
+                println!("- rename_this");
+                let rename_this = if p_eval[0].len() > 0 {
+                    p_eval[0][0]
+                } else {
+                    Fr::<G>::zero()
+                };
+
+                println!("- rename_this_as_well");
+                let rename_this_as_well = evals[0]
+                    .w
+                    .iter()
+                    .zip(evals[0].s.iter())
+                    .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
+                    .fold(
+                        (evals[0].w[PERMUTS - 1] + &oracles.gamma)
+                            * &evals[1].z
+                            * &alpha[range::PERM][0]
+                            * &zkp,
+                        |x, y| x * y,
+                    );
+
+                println!("- and_this");
+                let and_this = evals[0]
+                    .w
+                    .iter()
+                    .zip(index.shift.iter())
+                    .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
+                    .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
+
+                println!("- left/right build");
+                let left = (evals[0].f + &rename_this - rename_this_as_well + and_this
+                    - -evals[0].t * &zeta1m1)
                     * &(oracles.zeta - &index.w)
-                    * &(oracles.zeta - &Fr::<G>::one())
-                    != ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
-                        + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
-                        * &(Fr::<G>::one() - evals[0].z)
-                {
+                    * &(oracles.zeta - &Fr::<G>::one());
+                let right = ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
+                    + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
+                    * &(Fr::<G>::one() - evals[0].z);
+
+                println!("- left/right check");
+                if left != right {
                     return Err(ProofError::ProofVerification);
                 }
 
+                println!("- left = right!");
                 Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        println!("- batch proofs");
         let mut batch = proofs
             .iter()
             .zip(params.iter())
@@ -444,6 +469,7 @@ where
                     )]);
 
                     // prepare for the opening proof verification
+                    println!("- prepare for the opening proof verification");
                     (
                         fq_sponge.clone(),
                         vec![oracles.zeta, oracles.zeta * &index.domain.group_gen],
@@ -457,6 +483,7 @@ where
             .collect::<Vec<_>>();
 
         // verify the opening proofs
+        println!("- verify the opening proofs");
         // TODO: Account for the different SRS lengths
         let srs = proofs[0].0.srs.get_ref();
         for (index, _, _) in proofs.iter() {

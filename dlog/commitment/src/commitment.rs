@@ -182,11 +182,11 @@ pub fn b_poly<F: Field>(chals: &Vec<F>, x: F) -> F {
     product((0..k).map(|i| (F::one() + &(chals[i] * &pow_twos[k - 1 - i]))))
 }
 
+/// ?
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let rounds = chals.len();
     let s_length = 1 << rounds;
     let mut s = vec![F::one(); s_length];
-    s[0] = F::one();
     let mut k: usize = 0;
     let mut pow: usize = 1;
     for i in 1..s_length {
@@ -197,12 +197,18 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     s
 }
 
+// TODO: move to utils
+/// Returns ceil(log2(d)) but panics if d = 0.
 pub fn ceil_log2(d: usize) -> usize {
+    assert!(d != 0);
     let mut pow2 = 1;
     let mut ceil_log2 = 0;
     while d > pow2 {
         ceil_log2 += 1;
-        pow2 *= 2;
+        pow2 = match pow2.checked_mul(2) {
+            Some(x) => x,
+            None => break,
+        }
     }
     ceil_log2
 }
@@ -914,5 +920,27 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                 .evaluate(elm)
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log2() {
+        let tests = [
+            (1, 0),
+            (2, 1),
+            (3, 2),
+            (9, 4),
+            (15, 4),
+            (15430, 14),
+            (usize::MAX, 64),
+        ];
+        for (d, expected_res) in tests.iter() {
+            let res = ceil_log2(*d);
+            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
+        }
     }
 }
