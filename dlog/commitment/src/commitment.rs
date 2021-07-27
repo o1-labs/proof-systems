@@ -61,45 +61,45 @@ pub fn shift_scalar<F: PrimeField>(x: F) -> F {
 impl<C: AffineCurve> PolyComm<C> {
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
         assert_eq!(com.len(), elm.len());
-        PolyComm::<C> {
-            shifted: {
-                let pairs = com
-                    .iter()
-                    .zip(elm.iter())
-                    .filter_map(|(c, s)| match c.shifted {
-                        Some(c) => Some((c, s)),
-                        None => None,
+        let shifted = {
+            let pairs = com
+                .iter()
+                .zip(elm.iter())
+                .filter_map(|(c, s)| match c.shifted {
+                    Some(c) => Some((c, s)),
+                    None => None,
+                })
+                .collect::<Vec<_>>();
+            if pairs.len() == 0 {
+                None
+            } else {
+                let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
+                let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
+                Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+            }
+        };
+        let unshifted = {
+            if com.len() == 0 || elm.len() == 0 {
+                Vec::new()
+            } else {
+                let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                (0..n)
+                    .map(|i| {
+                        let mut points = Vec::new();
+                        let mut scalars = Vec::new();
+                        com.iter().zip(elm.iter()).for_each(|(p, s)| {
+                            if i < p.unshifted.len() {
+                                points.push(p.unshifted[i]);
+                                scalars.push(s.into_repr())
+                            }
+                        });
+                        VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
                     })
-                    .collect::<Vec<_>>();
-                if pairs.len() == 0 {
-                    None
-                } else {
-                    let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
-                    let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
-                    Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
-                }
-            },
-            unshifted: {
-                if com.len() == 0 || elm.len() == 0 {
-                    Vec::new()
-                } else {
-                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
-                    (0..n)
-                        .map(|i| {
-                            let mut points = Vec::new();
-                            let mut scalars = Vec::new();
-                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
-                                if i < p.unshifted.len() {
-                                    points.push(p.unshifted[i]);
-                                    scalars.push(s.into_repr())
-                                }
-                            });
-                            VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
-                        })
-                        .collect::<Vec<_>>()
-                }
-            },
-        }
+                    .collect::<Vec<_>>()
+            }
+        };
+
+        PolyComm::<C> { shifted, unshifted }
     }
 }
 
@@ -162,6 +162,7 @@ where
     }
 }
 
+/// Returns the product of all the field elements belonging to an iterator.
 pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     let mut res = F::one();
     for x in xs {
@@ -170,6 +171,7 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     res
 }
 
+/// ?
 pub fn b_poly<F: Field>(chals: &Vec<F>, x: F) -> F {
     let k = chals.len();
 
@@ -375,10 +377,10 @@ where
         .unzip()
     }
 
-    // This function commits a polynomial against URS instance
-    //     plnm: polynomial to commit to with max size of sections
-    //     max: maximal degree of the polynomial, if none, no degree bound
-    //     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
+    /// This function commits a polynomial against URS instance
+    ///     plnm: polynomial to commit to with max size of sections
+    ///     max: maximal degree of the polynomial, if none, no degree bound
+    ///     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
     pub fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
@@ -432,13 +434,13 @@ where
         PolyComm::<G> { unshifted, shifted }
     }
 
-    // This function opens polynomial commitments in batch
-    //     plnms: batch of polynomials to open commitments for with, optionally, max degrees
-    //     elm: evaluation point vector to open the commitments at
-    //     polyscale: polynomial scaling factor for opening commitments in batch
-    //     evalscale: eval scaling factor for opening commitments in batch
-    //     oracle_params: parameters for the random oracle argument
-    //     RETURN: commitment opening proof
+    /// This function opens polynomial commitments in batch
+    ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    ///     elm: evaluation point vector to open the commitments at
+    ///     polyscale: polynomial scaling factor for opening commitments in batch
+    ///     evalscale: eval scaling factor for opening commitments in batch
+    ///     oracle_params: parameters for the random oracle argument
+    ///     RETURN: commitment opening proof
     pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         group_map: &G::Map,
@@ -658,16 +660,16 @@ where
         }
     }
 
-    // This function verifies batch of batched polynomial commitment opening proofs
-    //     batch: batch of batched polynomial commitment opening proofs
-    //          vector of evaluation points
-    //          polynomial scaling factor for this batched openinig proof
-    //          eval scaling factor for this batched openinig proof
-    //          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
-    //          opening proof for this batched opening
-    //     oracle_params: parameters for the random oracle argument
-    //     randomness source context
-    //     RETURN: verification status
+    /// This function verifies batch of batched polynomial commitment opening proofs
+    ///     batch: batch of batched polynomial commitment opening proofs
+    ///          vector of evaluation points
+    ///          polynomial scaling factor for this batched openinig proof
+    ///          eval scaling factor for this batched openinig proof
+    ///          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
+    ///          opening proof for this batched opening
+    ///     oracle_params: parameters for the random oracle argument
+    ///     randomness source context
+    ///     RETURN: verification status
     pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         group_map: &G::Map,
@@ -889,8 +891,8 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
         res
     }
 
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
+    /// This function "scales" (multiplies) polynomial with a scalar
+    /// It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
         for coeff in &mut result.coeffs {
@@ -905,7 +907,7 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
         DensePolynomial::<F>::from_coefficients_vec(result)
     }
 
-    // This function evaluates polynomial in chunks
+    /// This function evaluates polynomial in chunks
     fn eval(&self, elm: F, size: usize) -> Vec<F> {
         (0..self.coeffs.len())
             .step_by(size)

@@ -20,12 +20,12 @@ pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
 /// There are 5 round states per row. We put the first state first, followed by the last state
 /// so that they are both accessible by the permutation argument.
-// TODO: shouldn't it be 0, 4, 1, 2, 3 then?
+/// (round 0 is at columns 0, 1, 2, then round 1 is at columns 6, 7, 8, and finally round 4 is at columns 3, 4, 5)
 pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [0, 2, 3, 4, 1];
 
 /// Given a Poseidon round from 0 to 4 included, returns the columns (as a range) that are used in
 /// this round. The columns in a row should look like this:
-/// `[0, 0, 0, 2, 2, 2, 3, 3, 3, 4, 4, 4, 1, 1, 1]`
+/// `[0, 0, 0, 4, 4, 4, 1, 1, 1, 2, 2, 2, 3, 3, 3]`
 /// where `0, 0, 0` represents the three field elements of state 0
 pub fn round_range(i: usize) -> Range<usize> {
     let slot = STATE_ORDER[i];

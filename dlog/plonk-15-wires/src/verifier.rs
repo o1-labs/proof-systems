@@ -71,7 +71,7 @@ where
             .collect()
     }
 
-    // This function runs random oracle argument
+    /// This function runs random oracle argument
     pub fn oracles<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         &self,
         index: &Index<G>,
@@ -247,10 +247,10 @@ where
         )
     }
 
-    // This function verifies the batch of zk-proofs
-    //     proofs: vector of Plonk proofs
-    //     index: Index
-    //     RETURN: verification status
+    /// This function verifies the batch of zk-proofs
+    ///     proofs: vector of Plonk proofs
+    ///     index: Index
+    ///     RETURN: verification status
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,

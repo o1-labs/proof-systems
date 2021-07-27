@@ -32,13 +32,19 @@ use rand::{rngs::StdRng, SeedableRng};
 use std::time::Instant;
 use std::{io, io::Write};
 
-// const PERIOD: usize = Plonk15SpongeConstants::ROUNDS_FULL + 1;
+// aliases
+
+type SpongeParams = Plonk15SpongeConstants;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
+// const PERIOD: usize = SpongeParams::ROUNDS_FULL + 1;
 // const M: usize = PERIOD * (NUM_POS-1);
 // const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC: usize = 0;
 
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
-const ROUNDS_PER_HASH: usize = Plonk15SpongeConstants::ROUNDS_FULL;
+const ROUNDS_PER_HASH: usize = SpongeParams::ROUNDS_FULL;
 const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
 const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain size
 
@@ -84,7 +90,7 @@ fn poseidon_vesta_15_wires() {
     }
 
     /*
-    for j in 0..Plonk15SpongeConstants::ROUNDS_FULL-2
+    for j in 0..SpongeParams::ROUNDS_FULL-2
     {
         gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], round_constants[j].clone()));
         i+=1;
@@ -117,7 +123,7 @@ fn positive(index: &Index<Affine>) {
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let params = oracle::pasta::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, Plonk15SpongeConstants>::new();
+    let mut sponge = ArithmeticSponge::<Fp, SpongeParams>::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     // batching what?
@@ -134,13 +140,9 @@ fn positive(index: &Index<Affine>) {
     println!(
         "{}{:?}",
         "Full rounds: ".yellow(),
-        Plonk15SpongeConstants::ROUNDS_FULL
+        SpongeParams::ROUNDS_FULL
     );
-    println!(
-        "{}{:?}",
-        "Sbox alpha: ".yellow(),
-        Plonk15SpongeConstants::SPONGE_BOX
-    );
+    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::SPONGE_BOX);
     println!("{}", "Base curve: vesta\n".green());
     println!("{}", "Prover zk-proof computation".green());
 
@@ -210,7 +212,7 @@ fn positive(index: &Index<Affine>) {
         w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
 
         // ROUNDS_FULL full rounds
-        for j in 0..Plonk15SpongeConstants::ROUNDS_FULL-2
+        for j in 0..SpongeParams::ROUNDS_FULL-2
         {
             sponge.full_round(j, &params);
             w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
@@ -221,7 +223,7 @@ fn positive(index: &Index<Affine>) {
         // verify the circuit satisfiability by the computed witness
         assert_eq!(index.cs.verify(&witness), true);
 
-        // ?
+        // what is this thing?
         let prev = {
             // ?
             let k = ceil_log2(index.srs.get_ref().g.len());
@@ -229,7 +231,7 @@ fn positive(index: &Index<Affine>) {
             // random challenges
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
 
-            // commitments of ?
+            // non-hiding commitments of b polyonmials (made out of challenges) ???
             let comm = {
                 let coeffs = b_poly_coefficients(&chals);
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
@@ -242,39 +244,37 @@ fn positive(index: &Index<Affine>) {
         println!("n vs domain{} {}", max_size, index.cs.domain.d1.size);
 
         // add the proof to the batch
+        // TODO: create and verify should not take group_map, that should be during an init phase
         batch.push(
-            ProverProof::create::<
-                DefaultFqSponge<VestaParameters, Plonk15SpongeConstants>,
-                DefaultFrSponge<Fp, Plonk15SpongeConstants>,
-            >(&group_map, &witness, &index, vec![prev])
+            ProverProof::create::<BaseSponge, ScalarSponge>(
+                &group_map,
+                &witness,
+                &index,
+                vec![prev],
+            )
             .unwrap(),
         );
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
     }
+    // TODO: this should move to a bench
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
+    // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
     let verifier_index = index.verifier_index();
 
-    let lgr_comms = vec![];
+    let lgr_comms = vec![]; // why empty?
     let batch: Vec<_> = batch
         .iter()
-        .map(|p| (&verifier_index, &lgr_comms, p))
+        .map(|proof| (&verifier_index, &lgr_comms, proof))
         .collect();
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<
-        DefaultFqSponge<VestaParameters, Plonk15SpongeConstants>,
-        DefaultFrSponge<Fp, Plonk15SpongeConstants>,
-    >(&group_map, &batch)
-    {
-        Err(error) => {
-            println!("wait what?");
-            panic!("Failure verifying the prover's proofs in batch: {}", error)
-        }
+    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
         }

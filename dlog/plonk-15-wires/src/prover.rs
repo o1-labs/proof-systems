@@ -149,10 +149,10 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
 {
-    // This function constructs prover's zk-proof from the witness & the Index against SRS instance
-    //     witness: computation witness
-    //     index: Index
-    //     RETURN: prover's zk-proof
+    /// This function constructs prover's zk-proof from the witness & the Index against SRS instance
+    ///     witness: computation witness
+    ///     index: Index
+    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         witness: &[Vec<Fr<G>>; COLUMNS],
