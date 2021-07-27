@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [dependencies]
 array-init = { version = "= 0.1.1" }
-blake2 = "0.7" # "0.8.1"
+blake2 = "0.9.1"
 colored = "= 1.9.3"
 itertools = "= 0.8.2"
 num-integer = "=0.1.43"
