@@ -78,8 +78,8 @@ where
         let g: Vec<_> = (0..depth)
             .map(|i| {
                 let mut h = Blake2b::new();
-                h.input(&(i as u32).to_be_bytes());
-                point_of_random_bytes(&m, &h.result())
+                h.update(&(i as u32).to_be_bytes());
+                point_of_random_bytes(&m, &h.finalize())
             })
             .collect();
 
@@ -88,9 +88,9 @@ where
         const MISC: usize = 1;
         let [h]: [G; MISC] = array_init(|i| {
             let mut h = Blake2b::new();
-            h.input("srs_misc".as_bytes());
-            h.input(&(i as u32).to_be_bytes());
-            point_of_random_bytes(&m, &h.result())
+            h.update("srs_misc".as_bytes());
+            h.update(&(i as u32).to_be_bytes());
+            point_of_random_bytes(&m, &h.finalize())
         });
 
         SRS {
