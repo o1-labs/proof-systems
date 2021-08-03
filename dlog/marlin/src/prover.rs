@@ -327,7 +327,7 @@ where
                 )
             })
             .collect::<Vec<_>>();
-        let mut polynoms = polys
+        let mut polynomials = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();
@@ -341,7 +341,7 @@ where
         }
         let n = index.srs.get_ref().g.len();
 
-        polynoms.extend(vec![
+        polynomials.extend(vec![
             (&x_hat, None, non_hiding(1)),
             (&w, None, omega_w),
             (&za, None, omega_za),
@@ -381,7 +381,7 @@ where
             // polynomial commitment batched opening proofs
             proof: index.srs.get_ref().open::<EFqSponge>(
                 group_map,
-                polynoms,
+                polynomials,
                 &beta,
                 oracles.polys.to_field(endo),
                 oracles.evals.to_field(endo),

@@ -67,7 +67,7 @@ impl<'a, E: PairingEngine> URSValue<'a, E> {
 }
 
 pub struct Index<'a, E: PairingEngine> {
-    // constraints as Lagrange-based polynoms
+    // constraints as Lagrange-based polynomials
     pub cs: ConstraintSystem<E::Fr>,
 
     // polynomial commitment keys

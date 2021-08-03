@@ -12,7 +12,7 @@ use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
-    /// witnessn
+    /// witness
     pub w: [Field; COLUMNS],
     /// permutation
     pub z: Field,

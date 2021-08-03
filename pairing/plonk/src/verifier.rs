@@ -45,7 +45,7 @@ impl<E: PairingEngine> ProverProof<E> {
             )
             .into_affine();
 
-            // evaluate lagrange polynoms
+            // evaluate lagrange polynomials
             let mut lagrange = (0..if proof.public.len() > 0 {
                 proof.public.len()
             } else {

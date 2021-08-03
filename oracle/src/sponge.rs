@@ -10,7 +10,8 @@ pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
 const HIGH_ENTROPY_LIMBS: usize = 2;
 
-// A challenge which is used as a scalar on a group element in the verifier
+// TODO: move to a different file / module
+/// A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct ScalarChallenge<F>(pub F);
@@ -32,8 +33,7 @@ fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
 impl<F: PrimeField> ScalarChallenge<F> {
     pub fn to_field(&self, endo_coeff: &F) -> F {
         let length_in_bits: u64 = (64 * CHALLENGE_LENGTH_IN_LIMBS) as u64;
-        let ScalarChallenge(x) = self;
-        let rep = x.into_repr();
+        let rep = self.0.into_repr();
         let r = rep.as_ref();
 
         let mut a: F = (2 as u64).into();

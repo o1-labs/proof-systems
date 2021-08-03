@@ -430,11 +430,11 @@ where
             omega_z.map(|x| perm_scalar0 * x)
         };
 
-        let mut polynoms = polys
+        let mut polynomials = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();
-        polynoms.extend(vec![
+        polynomials.extend(vec![
             (&p, None, non_hiding(1)),
             (&l, None, omega_l),
             (&r, None, omega_r),
@@ -456,7 +456,7 @@ where
             },
             proof: index.srs.get_ref().open(
                 group_map,
-                polynoms,
+                polynomials,
                 &evlp.to_vec(),
                 oracles.v,
                 oracles.u,

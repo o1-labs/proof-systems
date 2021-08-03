@@ -88,22 +88,27 @@ where
         Fr<G>,
     ) {
         let n = index.domain.size;
+
         // Run random oracle argument to sample verifier oracles
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+
         // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_g(&p_comm.unshifted);
         self.commitments
             .w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
+
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
+
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
@@ -180,7 +185,7 @@ where
             fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])
         }
 
-        // query opening scaler challenges
+        // query opening scalar challenges
         oracles.v_chal = fr_sponge.challenge();
         oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
         oracles.u_chal = fr_sponge.challenge();
@@ -278,8 +283,8 @@ where
                 let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 
-                // evaluate committed polynoms
-                println!("- evaluate committed polynoms");
+                // evaluate committed polynomials
+                println!("- evaluate committed polynomials");
                 let evals = (0..2)
                     .map(|i| proof.evals[i].combine(evlp[i]))
                     .collect::<Vec<_>>();
@@ -348,11 +353,16 @@ where
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
+                //
                 // check linearization polynomial evaluation consistency
+                //
+
                 println!("- check linearization polynomial evaluation consistency");
+                // zeta1m1 = zeta^n - 1
                 let zeta1m1 = zeta1 - &Fr::<G>::one();
 
                 println!("- rename_this");
+                // public input?
                 let rename_this = if p_eval[0].len() > 0 {
                     p_eval[0][0]
                 } else {
@@ -360,6 +370,9 @@ where
                 };
 
                 println!("- rename_this_as_well");
+                // this will be negated later
+                // so it looks (including the negation)
+                // -  ((l + βsσ1 + γ)(r + βsσ2 + γ)(o + γ)zkpm(z)z(zω))α
                 let rename_this_as_well = evals[0]
                     .w
                     .iter()
@@ -374,6 +387,7 @@ where
                     );
 
                 println!("- and_this");
+                // looks like the previous stuff
                 let and_this = evals[0]
                     .w
                     .iter()
@@ -382,10 +396,14 @@ where
                     .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
 
                 println!("- left/right build");
+                // looks like -bar{t} (z^n - 1)(z - 1)(z - ω)
                 let left = (evals[0].f + &rename_this - rename_this_as_well + and_this
                     - -evals[0].t * &zeta1m1)
                     * &(oracles.zeta - &index.w)
                     * &(oracles.zeta - &Fr::<G>::one());
+
+                // looks like
+                // (z^n − 1)(z − ω)α^tbd + (z^n − 1)(z − 1)α^tbd
                 let right = ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
                     + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
                     * &(Fr::<G>::one() - evals[0].z);
@@ -409,17 +427,17 @@ where
                     (index, _lgr_comm, proof),
                     (p_eval, p_comm, f_comm, fq_sponge, oracles, polys),
                 )| {
-                    let mut polynoms = polys
+                    let mut polynomials = polys
                         .iter()
                         .map(|(comm, evals)| (comm, evals.iter().map(|x| x).collect(), None))
                         .collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
-                    polynoms.extend(vec![(
+                    polynomials.extend(vec![(
                         p_comm,
                         p_eval.iter().map(|e| e).collect::<Vec<_>>(),
                         None,
                     )]);
-                    polynoms.extend(
+                    polynomials.extend(
                         proof
                             .commitments
                             .w_comm
@@ -435,7 +453,7 @@ where
                             .map(|(c, e)| (c, e.clone(), None))
                             .collect::<Vec<_>>(),
                     );
-                    polynoms.extend(vec![
+                    polynomials.extend(vec![
                         (
                             &proof.commitments.z_comm,
                             proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(),
@@ -447,7 +465,7 @@ where
                             None,
                         ),
                     ]);
-                    polynoms.extend(
+                    polynomials.extend(
                         index
                             .sigma_comm
                             .iter()
@@ -462,7 +480,7 @@ where
                             .map(|(c, e)| (c, e.clone(), None))
                             .collect::<Vec<_>>(),
                     );
-                    polynoms.extend(vec![(
+                    polynomials.extend(vec![(
                         &proof.commitments.t_comm,
                         proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(),
                         Some(index.max_quot_size),
@@ -475,7 +493,7 @@ where
                         vec![oracles.zeta, oracles.zeta * &index.domain.group_gen],
                         oracles.v,
                         oracles.u,
-                        polynoms,
+                        polynomials,
                         &proof.proof,
                     )
                 },

@@ -420,30 +420,30 @@ where
             shifted: None,
         };
 
-        let mut polynoms = polys
+        let mut polynomials = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();
-        polynoms.extend(vec![(&p, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
+        polynomials.extend(
             index.cs.sigmam[0..COLUMNS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
-        polynoms.extend(vec![(&lkppolys.l, None, l_comm.1)]);
-        polynoms.extend(vec![(&lkppolys.lw, None, lw_comm.1)]);
-        polynoms.extend(vec![(&lkppolys.h1, None, h1_comm.1)]);
-        polynoms.extend(vec![(&lkppolys.h2, None, h2_comm.1)]);
-        polynoms.extend(vec![(&index.cs.tablem, None, non_hiding(1))]);
+        polynomials.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
+        polynomials.extend(vec![(&lkppolys.l, None, l_comm.1)]);
+        polynomials.extend(vec![(&lkppolys.lw, None, lw_comm.1)]);
+        polynomials.extend(vec![(&lkppolys.h1, None, h1_comm.1)]);
+        polynomials.extend(vec![(&lkppolys.h2, None, h2_comm.1)]);
+        polynomials.extend(vec![(&index.cs.tablem, None, non_hiding(1))]);
 
         Ok(Self {
             commitments: ProverCommitments {
@@ -457,7 +457,7 @@ where
             },
             proof: index.srs.get_ref().open(
                 group_map,
-                polynoms,
+                polynomials,
                 &evlp.to_vec(),
                 oracles.v,
                 oracles.u,

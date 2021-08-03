@@ -27,10 +27,13 @@ use std::iter::Iterator;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+/// A polynomial commitment.
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct PolyComm<C> {
+    /// A polynomial commitment (potentially split in several commitments if needed)
     pub unshifted: Vec<C>,
+    /// ?
     pub shifted: Option<C>,
 }
 
@@ -106,10 +109,15 @@ impl<C: AffineCurve> PolyComm<C> {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct OpeningProof<G: AffineCurve> {
-    pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
+    /// vector of rounds of L & R commitments
+    pub lr: Vec<(G, G)>,
+    /// ?
     pub delta: G,
+    /// ?
     pub z1: G::ScalarField,
+    /// ?
     pub z2: G::ScalarField,
+    /// ?
     pub sg: G,
 }
 
@@ -215,15 +223,15 @@ pub fn ceil_log2(d: usize) -> usize {
     ceil_log2
 }
 
+/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
 fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     let mut acc = F::one();
-    (0..d)
-        .map(|_| {
-            let r = acc;
-            acc *= &x;
-            r
-        })
-        .collect()
+    let mut res = vec![];
+    for _ in 1..=d {
+        res.push(acc);
+        acc *= x;
+    }
+    res
 }
 
 fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
@@ -352,15 +360,19 @@ impl<G: CommitmentCurve> SRS<G>
 where
     G::ScalarField: CommitmentField,
 {
+    /// Commits a polynomial, potentially splitting the result in multiple commitments.
+    // TODO: shouldn't a hidding commitment be of a different type? (e.g. NonHiddingPolyComm)
     pub fn commit(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
+        // TODO: replace with (impl RngCore + CryptoRng)
         rng: &mut dyn RngCore,
     ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
+    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
     fn mask(&self, c: PolyComm<G>, rng: &mut dyn RngCore) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         c.map(|g: G| {
             if g.is_zero() {
@@ -374,13 +386,16 @@ where
                 (g_masked.into_affine(), w)
             }
         })
+        // TODO: why return the randomness as a PolyComm? Why not a HiddenPolyComm struct instead? I get that it has the same fields but it's semtically different enough.
         .unzip()
     }
 
-    /// This function commits a polynomial against URS instance
-    ///     plnm: polynomial to commit to with max size of sections
-    ///     max: maximal degree of the polynomial, if none, no degree bound
-    ///     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
+    /// This function commits a polynomial using the SRS' basis of size `n`.
+    /// - `plnm`: polynomial to commit to with max size of sections
+    /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
+    /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
+    /// as well as an optional bounded commitment (if `max` is set).
+    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
     pub fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
@@ -393,11 +408,19 @@ where
         let unshifted = if plnm.is_zero() {
             Vec::new()
         } else {
-            (0..p / n + if p % n != 0 { 1 } else { 0 })
+            // calculate if we need to split the polynomial in multiple commitments
+            let mut num_commit = p / n;
+            if p % n != 0 {
+                num_commit += 1
+            }
+
+            (0..num_commit)
                 .map(|i| {
+                    let offset = i * n;
                     VariableBaseMSM::multi_scalar_mul(
                         &self.g,
-                        &plnm.coeffs[i * n..p]
+                        // TODO: shouldn't it be until min(p, (i+1)*n)?
+                        &plnm.coeffs[offset..p]
                             .iter()
                             .map(|s| s.into_repr())
                             .collect::<Vec<_>>(),
@@ -411,22 +434,28 @@ where
         let shifted = match max {
             None => None,
             Some(max) => {
-                let start = max - (max % n);
-                if plnm.is_zero() || start >= p {
+                // only create a shifted polynomial if it makes sense
+                // (for the last split, and if its degree is smaller than n)
+                let last_split_offset = max - (max % n); // offset of the last split
+                if plnm.is_zero() {
+                    // nothing to upper bound here
+                    Some(G::zero())
+                } else if last_split_offset >= p {
+                    // TODO: create a test at the limit to exercise that path
+                    // case 1 the number of components already establish the max degree
                     Some(G::zero())
                 } else if max % n == 0 {
+                    // a max degree cannot be enforced if max is a multiple of n
                     None
                 } else {
-                    Some(
-                        VariableBaseMSM::multi_scalar_mul(
-                            &self.g[n - (max % n)..],
-                            &plnm.coeffs[start..p]
-                                .iter()
-                                .map(|s| s.into_repr())
-                                .collect::<Vec<_>>(),
-                        )
-                        .into_affine(),
-                    )
+                    let g = &self.g[n - (max % n)..];
+                    // TODO: ..p] -> ..]
+                    let coeffs: Vec<_> = plnm.coeffs[last_split_offset..p]
+                        .iter()
+                        .map(|s| s.into_repr())
+                        .collect();
+                    let commit = VariableBaseMSM::multi_scalar_mul(g, &coeffs).into_affine();
+                    Some(commit)
                 }
             }
         };
@@ -441,26 +470,31 @@ where
     ///     evalscale: eval scaling factor for opening commitments in batch
     ///     oracle_params: parameters for the random oracle argument
     ///     RETURN: commitment opening proof
+    // TODO(mimoo): better function name + return a Result
     pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
+        // TODO(mimoo): shouldn't this be part of the SRS?
         group_map: &G::Map,
+        // TODO(mimoo): create a type for that entry
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
         elm: &Vec<Fr<G>>,      // vector of evaluation points
-        polyscale: Fr<G>,      // scaling factor for polynoms
+        polyscale: Fr<G>,      // scaling factor for polynomials
         evalscale: Fr<G>,      // scaling factor for evaluation point powers
         mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> OpeningProof<G> {
+        // make number of rounds a power of 2
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
-
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
+        // REMOVED:       let rounds = ceil_log2(self.g.len());
+        assert!(rounds == ceil_log2(self.g.len()));
 
-        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
+        // scale the polynomials in accumulator shifted, if bounded, to the end of SRS
         let (p, blinding_factor) = {
             let mut p = DensePolynomial::<Fr<G>>::zero();
 
@@ -468,63 +502,74 @@ where
             let mut scale = Fr::<G>::one();
 
             // iterating over polynomials in the batch
-            for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| p.0.is_zero() == false) {
+            // TODO(mimoo): why are we iterating over zeros?? I don't think that's normal (what if there's a bunch of zero coefficient in a middle polynomial?)
+            let non_zeros = plnms.iter().filter(|p| !p.0.is_zero());
+            for (p_i, degree_bound, omegas) in non_zeros {
                 let mut offset = 0;
                 let mut j = 0;
+
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } else {
-                                offset + self.g.len()
-                            }],
-                        );
-                        // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
-                        omega += &(omegas.unshifted[j] * scale);
-                        j += 1;
-                        scale *= &polyscale;
-                        offset += self.g.len();
+                } else {
+                    assert!(omegas.shifted.is_none());
+                }
+
+                // TODO(mimoo): this code should do what the below code does, but write tests before uncommenting & replacing
+                /*
+                // split the polynomials into several ones (would be cool if DensePolynomial had that as a method thx to the Utils trait (that already extend it with scale and shiftr, also the trait should be called DensePolynomialExt no?))
+                let splits = p_i
+                    .coeffs
+                    .chunks(self.g.len())
+                    .map(DensePolynomial::<Fr<G>>::from_coefficients_slice);
+                assert!(omegas.unshifted.len() == splits.len());
+                let chunks = splits.zip(&omegas.unshifted);
+                for (poly, &unshifted) in chunks {
+                    p += &poly.scale(scale); // TODO(mimoo): skip 1?
+                    omega += &(unshifted * scale);
+                    scale *= &polyscale;
+                }
+                // perhaps for the last chunk use .last() on the iter?
+                // for powers of scale, use iterator?
+                */
+
+                while offset < p_i.coeffs.len() {
+                    let end = std::cmp::min(offset + self.g.len(), p_i.coeffs.len());
+                    let segment =
+                        DensePolynomial::<Fr<G>>::from_coefficients_slice(&p_i.coeffs[offset..end]);
+                    // always mixing in the unshifted segments
+                    p += &segment.scale(scale); // TODO(mimoo): skip 1?
+                    omega += &(omegas.unshifted[j] * scale);
+                    j += 1;
+                    scale *= &polyscale;
+                    offset += self.g.len();
+
+                    // TODO(mimoo): shouldn't we make sure that this step only happens with the last split polynomial???
+                    // TODO(mimoo): we really need to test that part
+                    if let Some(m) = degree_bound {
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            p += &(segment.shiftr(self.g.len() - m % self.g.len()).scale(scale));
+                            let unused = self.g.len() - (m % self.g.len());
+                            let shifted = segment.shiftr(unused);
+                            assert!(shifted.len() <= self.g.len());
+                            p += &(shifted.scale(scale));
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
                     }
-                } else {
-                    assert!(omegas.shifted.is_none());
-                    while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
-                                p_i.coeffs.len()
-                            } else {
-                                offset + self.g.len()
-                            }],
-                        );
-                        // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
-                        omega += &(omegas.unshifted[j] * scale);
-                        j += 1;
-                        scale *= &polyscale;
-                        offset += self.g.len();
-                    }
                 }
+
                 assert_eq!(j, omegas.unshifted.len());
             }
             (p, omega)
         };
 
-        let rounds = ceil_log2(self.g.len());
-
         // b_j = sum_i r^i elm_i^j
+        // a padded-length vector where each entry is the linear combination of powers of our elements `elm` (where powers of `u` or `evalscale` is used in place of a random linear combination)
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = Fr::<G>::one();
-            let mut res: Vec<Fr<G>> = (0..padded_length).map(|_| Fr::<G>::zero()).collect();
+            let mut res: Vec<Fr<G>> = vec![Fr::<G>::zero(); padded_length];
             for e in elm {
                 for (i, t) in pows(padded_length, *e).iter().enumerate() {
                     res[i] += &(scale * t);
@@ -534,6 +579,7 @@ where
             res
         };
 
+        // <coeffs, b_init>
         let combined_inner_product = p
             .coeffs
             .iter()
@@ -541,30 +587,33 @@ where
             .map(|(a, b)| *a * b)
             .fold(Fr::<G>::zero(), |acc, x| acc + x);
 
+        // absorb(<coeffs, b_init>)
         sponge.absorb_fr(&[shift_scalar(combined_inner_product)]);
 
+        // sample t and map it to a curve point
         let t = sponge.challenge_fq();
         let u: G = to_group(group_map, t);
 
+        // pad coefficients to the SRS commit base (G_1, ..., G_N) length
         let mut a = p.coeffs;
         assert!(padded_length >= a.len());
         a.extend(vec![Fr::<G>::zero(); padded_length - a.len()]);
 
+        // for each round, keep track of:
+        let mut lr = vec![]; // keep track of (l, r) in each round
+        let mut blinders = vec![]; // keep track of randomness (rand_l, rand_r)
+        let mut chals = vec![]; // keep track of x in each round
+        let mut chal_invs = vec![]; // keep track of x^-1 in each round
+
+        // reduce in `rounds` rounds
         let mut b = b_init.clone();
-
-        let mut lr = vec![];
-
-        let mut blinders = vec![];
-
-        let mut chals = vec![];
-        let mut chal_invs = vec![];
-
         for _ in 0..rounds {
             let n = g.len() / 2;
             let (g_lo, g_hi) = (g[0..n].to_vec(), g[n..].to_vec());
             let (a_lo, a_hi) = (&a[0..n], &a[n..]);
             let (b_lo, b_hi) = (&b[0..n], &b[n..]);
 
+            // blind
             let rand_l = Fr::<G>::rand(rng);
             let rand_r = Fr::<G>::rand(rng);
 
@@ -591,15 +640,18 @@ where
             lr.push((l, r));
             blinders.push((rand_l, rand_r));
 
+            // absorb transcript
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
+            // get challenge x and x^-1 for the round
             let u = squeeze_challenge(&self.endo_r, &mut sponge);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
             chal_invs.push(u_inv);
 
+            // TODO(mimoo): it's not lo * x^-1 + hi * x anymore?
             a = a_hi
                 .par_iter()
                 .zip(a_lo)
@@ -641,6 +693,7 @@ where
         let d = Fr::<G>::rand(rng);
         let r_delta = Fr::<G>::rand(rng);
 
+        // delta = g0 + (d * (u * b0)) + r_delta * h
         let delta = ((g0.into_projective() + &(u.mul(b0))).into_affine().mul(d)
             + &self.h.mul(r_delta))
             .into_affine();
@@ -676,7 +729,7 @@ where
         batch: &mut Vec<(
             EFqSponge,
             Vec<Fr<G>>, // vector of evaluation points
-            Fr<G>,      // scaling factor for polynoms
+            Fr<G>,      // scaling factor for polynomials
             Fr<G>,      // scaling factor for evaluation point powers
             Vec<(
                 &PolyComm<G>,     // polycommitment
@@ -875,9 +928,13 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
 }
 
 pub trait Utils<F: Field> {
+    /// This function "scales" (multiplies all the coefficients of) a polynomial with a scalar.
     fn scale(&self, elm: F) -> Self;
+    /// Shifts all the coefficients to the right
     fn shiftr(&self, size: usize) -> Self;
+    /// ?
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
+    /// This function evaluates polynomial in chunks
     fn eval(&self, elm: F, size: usize) -> Vec<F>;
 }
 
@@ -891,8 +948,6 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
         res
     }
 
-    /// This function "scales" (multiplies) polynomial with a scalar
-    /// It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
         for coeff in &mut result.coeffs {
@@ -907,7 +962,6 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
         DensePolynomial::<F>::from_coefficients_vec(result)
     }
 
-    /// This function evaluates polynomial in chunks
     fn eval(&self, elm: F, size: usize) -> Vec<F> {
         (0..self.coeffs.len())
             .step_by(size)
@@ -928,6 +982,12 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::srs::SRS;
+    use algebra::pasta::{fp::Fp, vesta::Affine as VestaG};
+    use array_init::array_init;
+    use oracle::poseidon::PlonkSpongeConstants as SC;
+    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
+    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     fn test_log2() {
@@ -944,5 +1004,54 @@ mod tests {
             let res = ceil_log2(*d);
             println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
         }
+    }
+
+    #[test]
+    fn test_opening_proof() {
+        // create two polynomials
+        let coeffs: [Fp; 10] = array_init(|i| Fp::from(i as u32));
+        let poly = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
+        let bounded_poly = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
+
+        // create an SRS
+        let srs = SRS::<VestaG>::create(10);
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+
+        // commit the two polynomials (and upperbound the second one)
+        let commitment = srs.commit(&poly, None, rng);
+        let upperbound = bounded_poly.degree() + 1;
+        let bounded_commitment = srs.commit(&bounded_poly, Some(upperbound), rng);
+        println!("{:?}", commitment);
+        println!("{:?}", bounded_commitment);
+
+        // create an aggregated opening proof
+        let v = Fp::rand(rng);
+        let u = Fp::rand(rng);
+        let group_map = <VestaG as CommitmentCurve>::Map::setup();
+        let sponge = DefaultFqSponge::<_, SC>::new(spongeFqParams());
+
+        let polys = vec![
+            (&poly, None, commitment.1),
+            (&bounded_poly, Some(upperbound), bounded_commitment.1),
+        ];
+        let elm = vec![Fp::rand(rng), Fp::rand(rng)];
+        let opening_proof = srs.open(&group_map, polys, &elm, v, u, sponge.clone(), rng);
+
+        println!("{:?}", opening_proof);
+        /*
+        // verify the proof
+        let batch = vec![(
+            sponge,
+            elm,
+            v,
+            u,
+            vec![
+                (&commitment, vec![&elm], None),
+                (&bounded_commitment, vec![&elm], Some(upperbound)),
+            ],
+            &opening_proof,
+        )];
+               assert!(srs.verify(&group_map, &mut batch, rng));
+               */
     }
 }

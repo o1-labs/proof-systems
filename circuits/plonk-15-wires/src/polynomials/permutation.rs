@@ -109,23 +109,26 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         rng: &mut ThreadRng,
     ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
-        let mut z = vec![F::one(); n];
-        (0..n - 3).for_each(|j| {
+        let mut z = vec![F::one(); n]; // init at 1
+
+        for j in 0..n - 3 {
             z[j + 1] = witness
                 .iter()
                 .zip(self.sigmal1.iter())
                 .map(|(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma)
                 .fold(F::one(), |x, y| x * y)
-        });
+        }
+
         algebra::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
-        (0..n - 3).for_each(|j| {
+
+        for j in 0..n - 3 {
             let x = z[j];
             z[j + 1] *= witness
                 .iter()
                 .zip(self.shift.iter())
                 .map(|(w, s)| w[j] + &(self.sid[j] * &oracles.beta * s) + &oracles.gamma)
                 .fold(x, |z, y| z * y)
-        });
+        }
 
         if z[n - 3] != F::one() {
             return Err(ProofError::ProofCreation);

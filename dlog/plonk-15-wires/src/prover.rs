@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, Zero};
+use algebra::{AffineCurve, Field, PrimeField, Zero};
 use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
@@ -159,30 +159,43 @@ where
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
+        // domain for the circuit is d1
         let n = index.cs.domain.d1.size as usize;
+
+        // make sure that every columns of the witness fits in the domain
         for w in witness.iter() {
             if w.len() != n {
                 return Err(ProofError::WitnessCsInconsistent);
             }
         }
+        // TODO(mimoo): should we uncomment this?
         //if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
 
+        // set up
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // compute public input polynomial
+        //
+        // 1. Compute public input polynomial
+        //
+
         let public = witness[0][0..index.cs.public].to_vec();
+        // TODO(mimoo): should we really negate it here? better to subtract it later no?
         let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
         )
         .interpolate();
 
+        // TODO(mimoo): change to OsRng
         let rng = &mut thread_rng();
 
-        // compute witness polynomials
+        //
+        // 2. Compute witness polynomials
+        //
+
         let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
@@ -191,12 +204,24 @@ where
             .interpolate()
         });
 
-        // commit to the wire values
+        //
+        // 3. Commit to the wire values
+        //
+
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] =
             array_init(|i| index.srs.get_ref().commit(&w[i], None, rng));
 
+        //
+        // 4. Absorb and produce beta, gamma
+        //
+
+        // absorb a non-hiding commitment of the public input
+        // TODO(mimoo): why not absorb the public input directly?
+        // TODO(mimoo): should we absorb other prologue metadata? Like a hash of the circuit and a hash of the SRS (or a hash of the index)?
+        let public_comm = index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
+        fq_sponge.absorb_g(&public_comm);
+
         // absorb the wire polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
@@ -205,21 +230,41 @@ where
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
 
-        // compute permutation aggregation polynomial
+        //
+        // 5. Compute permutation aggregation polynomial
+        //
+
         let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None, rng);
 
-        // absorb the z commitment into the argument and query alpha
+        //
+        // 6. Absorb the z commitment into the argument and query alpha
+        //
+
         fq_sponge.absorb_g(&z_comm.0.unshifted);
+
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
         let alpha = range::alpha_powers(oracles.alpha);
+        println!(
+            "computed {} alpha powers: {:?}",
+            alpha.len(),
+            alpha
+                .iter()
+                .map(|x| format!("({})", x.into_repr()))
+                .collect::<Vec<_>>()
+        );
 
-        // evaluate polynomials over domains
+        //
+        // 7. Evaluate polynomials over domains
+        //
+
         let lagrange = index.cs.evaluate(&w, &z);
 
-        // compute quotient polynomial
+        //
+        // 8. Compute quotient polynomial
+        //
 
         // permutation
         let (perm, bnd) = index
@@ -255,18 +300,25 @@ where
 
         t += &bnd;
 
-        // commit to t
+        //
+        // 9. commit to t
+        //
+
         let t_comm = index
             .srs
             .get_ref()
             .commit(&t, Some(index.max_quot_size), rng);
 
-        // absorb the polycommitments into the argument and sample zeta
+        //
+        // 10. Absorb the polycommitments into the argument and sample zeta
+        //
+
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.0.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
         {
+            // TODO(mimoo): this will panic if max_quot_size is a multiple of n
             let s = t_comm.0.shifted.unwrap();
             if s.is_zero() {
                 fq_sponge.absorb_g(&[dummy])
@@ -275,27 +327,37 @@ where
             }
         };
 
+        // produce zeta_chal and zeta
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
 
-        // evaluate the polynomials
+        //
+        // 11. Evaluate the polynomials
+        //
+
         let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.d1.group_gen];
-        let evals = evlp
+
+        let evals: Vec<_> = evlp
             .iter()
-            .map(|e| ProofEvaluations::<Vec<Fr<G>>> {
-                s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(*e, index.max_poly_size)),
-                w: array_init(|i| w[i].eval(*e, index.max_poly_size)),
-                z: z.eval(*e, index.max_poly_size),
-                t: t.eval(*e, index.max_poly_size),
-                f: Vec::new(),
+            .map(|e| {
+                let s = array_init(|i| {
+                    index.cs.sigmam[0..PERMUTS - 1][i].eval(*e, index.max_poly_size)
+                });
+                let w = array_init(|i| w[i].eval(*e, index.max_poly_size));
+                let z = z.eval(*e, index.max_poly_size);
+                let t = t.eval(*e, index.max_poly_size);
+                let f = Vec::new();
+                ProofEvaluations::<Vec<Fr<G>>> { s, w, z, t, f }
             })
-            .collect::<Vec<_>>();
+            .collect();
+
         let mut evals = [evals[0].clone(), evals[1].clone()];
 
         let evlp1 = [
             evlp[0].pow(&[index.max_poly_size as u64]),
             evlp[1].pow(&[index.max_poly_size as u64]),
         ];
+
         let e = &evals
             .iter()
             .zip(evlp1.iter())
@@ -308,7 +370,9 @@ where
             })
             .collect::<Vec<_>>();
 
-        // compute and evaluate linearization polynomial
+        //
+        // 12. Compute and evaluate linearization polynomial
+        //
 
         /*
         {
@@ -357,14 +421,19 @@ where
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
         }
 
-        // query opening scaler challenges
+        //
+        // 13. Query opening scalar challenges
+        //
+
         oracles.v_chal = fr_sponge.challenge();
         oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
         oracles.u_chal = fr_sponge.challenge();
         oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
 
-        // construct the proof
-        // --------------------------------------------------------------------
+        //
+        // 14. Construct the proof
+        //
+
         let polys = prev_challenges
             .iter()
             .map(|(chals, comm)| {
@@ -374,46 +443,55 @@ where
                 )
             })
             .collect::<Vec<_>>();
+
+        // commitment of nothing
         let non_hiding = |n: usize| PolyComm {
             unshifted: vec![Fr::<G>::zero(); n],
             shifted: None,
         };
 
-        let mut polynoms = polys
+        //
+        let mut polynomials: Vec<_> = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
-            .collect::<Vec<_>>();
-        polynoms.extend(vec![(&p, None, non_hiding(1))]);
-        polynoms.extend(
+            .collect();
+        polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
+        polynomials.extend(
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
+        polynomials.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
+
+        //
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials,
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations,
+            rng,
+        );
+
+        // all good!
+        let commitments = ProverCommitments {
+            w_comm: array_init(|i| w_comm[i].0.clone()),
+            z_comm: z_comm.0,
+            t_comm: t_comm.0,
+        };
 
         Ok(Self {
-            commitments: ProverCommitments {
-                w_comm: array_init(|i| w_comm[i].0.clone()),
-                z_comm: z_comm.0,
-                t_comm: t_comm.0,
-            },
-            proof: index.srs.get_ref().open(
-                group_map,
-                polynoms,
-                &evlp.to_vec(),
-                oracles.v,
-                oracles.u,
-                fq_sponge_before_evaluations,
-                rng,
-            ),
+            commitments,
+            proof,
             evals,
             public,
             prev_challenges,

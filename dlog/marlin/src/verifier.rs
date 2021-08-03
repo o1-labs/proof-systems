@@ -266,7 +266,7 @@ where
                     return Err(0)
                 }
 
-                let mut polynoms = polys.iter().map
+                let mut polynomials = polys.iter().map
                 (
                     |(comm, evals)|
                     {
@@ -274,7 +274,7 @@ where
                     }
                 ).collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
-                polynoms.extend
+                polynomials.extend
                 (
                     vec!
                     [
@@ -310,7 +310,7 @@ where
                     oracles.beta.iter().map(|x| x.to_field(endo)).collect(),
                     oracles.polys.to_field(endo),
                     oracles.evals.to_field(endo),
-                    polynoms,
+                    polynomials,
                     &proof.proof
                 ))
             }

@@ -63,7 +63,7 @@ pub struct Index<'a, G: CommitmentCurve>
 where
     G::ScalarField: CommitmentField,
 {
-    // constraints system polynoms
+    // constraints system polynomials
     pub cs: ConstraintSystem<Fr<G>>,
 
     // polynomial commitment keys
