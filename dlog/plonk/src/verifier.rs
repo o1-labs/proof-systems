@@ -80,7 +80,7 @@ where
         &self,
         index: &Index<G>,
         p_comm: &PolyComm<G>,
-    ) -> (
+    ) -> Option<(
         EFqSponge,
         Fr<G>,
         RandomOracles<Fr<G>>,
@@ -90,7 +90,7 @@ where
         Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
         Fr<G>,
         Fr<G>,
-    ) {
+    )> {
         let n = index.domain.size;
         // Run random oracle argument to sample verifier oracles
         let mut oracles = RandomOracles::<Fr<G>>::zero();
@@ -116,7 +116,7 @@ where
             max_t_size - self.commitments.t_comm.unshifted.len()
         ]);
         {
-            let s = self.commitments.t_comm.shifted.unwrap();
+            let s = self.commitments.t_comm.shifted?;
             if s.is_zero() {
                 fq_sponge.absorb_g(&[dummy])
             } else {
@@ -244,7 +244,7 @@ where
             )
         };
 
-        (
+        Some((
             fq_sponge,
             digest,
             oracles,
@@ -254,7 +254,7 @@ where
             polys,
             zeta1,
             combined_inner_product,
-        )
+        ))
     }
 
     // This function verifies the batch of zk-proofs
@@ -281,10 +281,10 @@ where
                         .map(|l| l)
                         .collect(),
                     &proof.public.iter().map(|s| -*s).collect(),
-                );
+                ).ok_or(ProofError::BadMultiScalarMul)?;
 
                 let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
-                    proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
+                    proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm).ok_or(ProofError::OracleCommit)?;
 
                 // evaluate committed polynoms
                 let evals = (0..2)
@@ -348,7 +348,8 @@ where
                     &alpha[range::ENDML],
                 ));
 
-                let f_comm = PolyComm::multi_scalar_mul(&p, &s);
+                let f_comm =
+                    PolyComm::multi_scalar_mul(&p, &s).ok_or(ProofError::BadMultiScalarMul)?;
 
                 // check linearization polynomial evaluation consistency
                 if (evals[0].f
@@ -452,7 +453,9 @@ where
         // TODO: Account for the different SRS lengths
         let srs = proofs[0].0.srs.get_ref();
         for (index, _, _) in proofs.iter() {
-            assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
+            if index.srs.get_ref().g.len() != srs.g.len() {
+                return Err(ProofError::BadSrsLength);
+            }
         }
 
         match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng()) {
