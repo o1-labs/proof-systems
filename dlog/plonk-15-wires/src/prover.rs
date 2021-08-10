@@ -313,6 +313,7 @@ where
         // 10. Absorb the polycommitments into the argument and sample zeta
         //
 
+        // TODO(mimoo): this pattern is used in several places, it could benefit from a util function implemented on usize "14.next_multiple_of(11) -> 22"
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.0.unshifted);

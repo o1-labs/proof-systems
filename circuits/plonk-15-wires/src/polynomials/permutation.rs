@@ -27,6 +27,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
         let l0 = &self.l08.scale(oracles.gamma);
 
+        // TODO(mimoo): use self.sid[0] instead of 1
         let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             &(z - &DensePolynomial::from_coefficients_slice(&[F::one()])).into(),
             &DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]).into(),
@@ -90,6 +91,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn perm_scalars(
         e: &Vec<ProofEvaluations<F>>,
         oracles: &RandomOracles<F>,
+        // TODO(mimoo): should only pass an iterator, to prevent different calls to re-use the same alphas!
         alpha: &[F],
         z: F,
     ) -> F {

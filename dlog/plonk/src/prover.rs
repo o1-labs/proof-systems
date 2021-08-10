@@ -185,7 +185,15 @@ where
         oracles.gamma = fq_sponge.challenge();
 
         // compute permutation polynomial
-
+        // z[0] = 1
+        // z[i + 1] = z[i] * (witness[i] + sid[i] * beta + gamma) *
+        //            (witness[i+n] + sid[i] * beta * cs.r + gamma) *
+        //            (witness[i+2n] + sid[i] * beta * cs.o + gamma)
+        //            /[
+        //              (witness[i] + sigmal1[0][i] * beta + gamma) *
+        //              (witness[i+n] + sigmal1[1][i] * beta + gamma) *
+        //              (witness[i+2n] + sigmal1[2][i] * beta + gamma)
+        //             ]
         let mut z = vec![Fr::<G>::one(); n];
         (0..n - 3).for_each(|j| {
             z[j + 1] = (witness[j] + &(index.cs.sigmal1[0][j] * &oracles.beta) + &oracles.gamma)
@@ -205,9 +213,12 @@ where
                     + &oracles.gamma))
         });
 
+        // accumulator should end up being 1
         if z[n - 3] != Fr::<G>::one() {
             return Err(ProofError::ProofCreation);
         };
+
+        // last two entries of the permutation polynomials are randomized for zero-knowledgness
         z[n - 2] = Fr::<G>::rand(rng);
         z[n - 1] = Fr::<G>::rand(rng);
         let z = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(z, index.cs.domain.d1)
@@ -267,26 +278,41 @@ where
         }
 
         // permutation boundary condition check contribution
+
+        // PLONK vanilla defines L_1(w^1)=1, but we use L_1(w^0) = 1
+        // bnd1 = (z(x) - 1)/(x-1)
+        // TODO(mimoo): we should use the first element of the domain instead (cs.sid[0] or cs.domain.d1.elements().take(0)
         let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
+            // z(x) - 1
             &(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
+            // x - 1
             &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into(),
         )
         .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+
+        // checks that z(1) = 1 (initialization of accumulator)
         if res.is_zero() == false {
             return Err(ProofError::PolyDivision);
         }
 
+        // bnd2 = (z(x) - 1)/(x - omega^{n-3})
+        // due to the previous comment, we use L_(w^{n-3-1}) = 1
         let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
+            // z(x) - 1
             &(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
+            // (x - sid[n-3])
             &DensePolynomial::from_coefficients_slice(&[-index.cs.sid[n - 3], Fr::<G>::one()])
                 .into(),
         )
         .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+
+        // checks that z(sid[n-3]) = 1 (end of accumulator)
         if res.is_zero() == false {
             return Err(ProofError::PolyDivision);
         }
 
         t += &(&bnd1.scale(alpha[3]) + &bnd2.scale(alpha[4]));
+        // TODO(mimoo): is this necessary?
         t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t

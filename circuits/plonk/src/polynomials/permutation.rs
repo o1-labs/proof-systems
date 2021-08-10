@@ -56,7 +56,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         e: &Vec<ProofEvaluations<F>>,
         oracles: &RandomOracles<F>,
         shift: (F, F),
-        alpha: &[F],
+        alpha: &[F], // alpha[3..] = alplha^5
         n: u64,
         z: F,
         w: F,
@@ -67,6 +67,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let numerator = oracles.zeta.pow(&[n]) - &F::one();
 
         vec![
+            // alpha * z * (l(zeta) + beta * zeta + gamma) *
+            // (r(zeta) + beta * zeta * shift.0) *
+            // (o(zeta) + beta * zeta * shift.1) +
+            // alpha^5 * (zeta^n - 1) / (zeta - 1) +
+            // alpha^6 * (zeta^n - 1) / (zeta - w)
             (e[0].l + &bz + &oracles.gamma)
                 * &(e[0].r + &(bz * &shift.0) + &oracles.gamma)
                 * &(e[0].o + &(bz * &shift.1) + &oracles.gamma)
@@ -74,6 +79,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 * &z
                 + &(alpha[0] * &numerator * &denominator[0])
                 + &(alpha[1] * &numerator * &denominator[1]),
+            // -1 * (l(zeta) + beta * sigma1(zeta) + gamma) *
+            // (r(zeta) + beta * sigma2(z))
+            // (z(zeta) + beta * alpha * z)
             -(e[0].l + &(oracles.beta * &e[0].sigma1) + &oracles.gamma)
                 * &(e[0].r + &(oracles.beta * &e[0].sigma2) + &oracles.gamma)
                 * &(e[1].z * &oracles.beta * &oracles.alpha * &z),

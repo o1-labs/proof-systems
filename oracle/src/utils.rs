@@ -50,10 +50,10 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
     fn shift(&self, len: usize) -> Self {
         let len = len % self.evals.len();
         let mut result = self.clone();
-        result.evals.clear();
+        result.evals.clear(); // TODO(mimoo): that seems unefficient
         result.evals = self.evals[len..].to_vec();
         let mut tail = self.evals[0..len].to_vec();
-        result.evals.append(&mut tail);
+        result.evals.append(&mut tail); // TODO(mimoo): so more like a left rotation of len, not a shift
         result
     }
 }
@@ -84,25 +84,30 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     }
 
     fn eval(&self, elm: F, size: usize) -> Vec<F> {
-        (0..self.coeffs.len())
-            .step_by(size)
-            .map(|i| {
-                let end = if i + size > self.coeffs.len() {
-                    self.coeffs.len()
-                } else {
-                    i + size
-                };
-                Self::from_coefficients_slice(&self.coeffs[i..end]).evaluate(elm)
-            })
-            .collect()
-        // TODO(mimoo): refactor with:
-        /*
-        let mut res = vec[];
+        let mut res = vec![];
         for chunk in self.coeffs.chunks(size) {
             let eval = Self::from_coefficients_slice(chunk).evaluate(elm);
             res.push(eval);
         }
         res
-        */
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use algebra::{pasta::fp::Fp, One, Zero};
+
+    #[test]
+    fn test_eval() {
+        let zero = Fp::zero();
+        let one = Fp::one();
+        // 1 + x^2 + x^4 + x^8
+        let coeffs = [one, zero, one, zero, one, zero, one, zero];
+        let f = DensePolynomial::from_coefficients_slice(&coeffs);
+        let evals = f.eval(one, 2);
+        for i in 0..4 {
+            assert!(evals[i] == one);
+        }
     }
 }

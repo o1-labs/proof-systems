@@ -19,9 +19,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         p: &DensePolynomial<F>,
     ) -> (Evaluations<F, D<F>>, DensePolynomial<F>) {
         (
+            // instead of manipulating polynomials, we manipulate evaluations
+            // (l * r) * q_m + l * q_L + r * q_R + o * q_O
             &(&(&polys.d4.this.l * &polys.d4.this.r) * &self.qml)
                 + &(&(&(&polys.d4.this.l * &self.qll) + &(&polys.d4.this.r * &self.qrl))
                     + &(&polys.d4.this.o * &self.qol)),
+            // Q_c(x) - public(x)
             &self.qc + &p,
         )
     }

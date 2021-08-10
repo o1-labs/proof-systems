@@ -169,6 +169,7 @@ where
         }
         cs.endo = endo_q;
         Index {
+            // TODO(mimoo): re-order field like in the type def
             // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),
             max_quot_size: cs.domain.d8.size as usize - 7,
             fq_sponge_params,
