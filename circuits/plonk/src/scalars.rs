@@ -15,8 +15,6 @@ pub struct ProofEvaluations<Fs> {
     pub r: Fs,
     pub o: Fs,
     pub z: Fs,
-    pub t: Fs,
-    pub f: Fs,
     pub sigma1: Fs,
     pub sigma2: Fs,
 }
@@ -29,8 +27,6 @@ impl<F : FftField> ProofEvaluations<Vec<F>> {
             r: DensePolynomial::eval_polynomial(&self.r, pt),
             o: DensePolynomial::eval_polynomial(&self.o, pt),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
-            t: DensePolynomial::eval_polynomial(&self.t, pt),
-            f: DensePolynomial::eval_polynomial(&self.f, pt),
             sigma1: DensePolynomial::eval_polynomial(&self.sigma1, pt),
             sigma2: DensePolynomial::eval_polynomial(&self.sigma2, pt),
         }

@@ -10,7 +10,7 @@ use oracle::{FqSponge, rndoracle::ProofError, sponge::ScalarChallenge};
 use plonk_circuits::{scalars::RandomOracles, constraints::ConstraintSystem};
 use commitment_dlog::commitment::{CommitmentField, CommitmentCurve, PolyComm, b_poly, b_poly_coefficients, combined_inner_product};
 use ff_fft::{EvaluationDomain};
-use algebra::{Field, AffineCurve, Zero, One};
+use algebra::{Field, AffineCurve, ProjectiveCurve, Zero, One};
 use crate::plonk_sponge::FrSponge;
 use rand::thread_rng;
 
@@ -22,6 +22,16 @@ pub struct CachedValues<Fs> {
     pub zeta1: Fs,
     pub zetaw: Fs,
     pub alpha: Vec<Fs>,
+}
+
+fn chunk_commitment<C: AffineCurve>(zeta_n: C::ScalarField, f: &PolyComm<C>) -> PolyComm<C> {
+    let mut res = C::Projective::zero();
+    for chunk in f.unshifted.iter().rev() {
+        res *= zeta_n;
+        res.add_assign_mixed(chunk)
+    }
+
+    PolyComm { unshifted: vec![res.into_affine()], shifted: f.shifted }
 }
 
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
@@ -73,7 +83,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         &self,
         index: &Index<G>,
         p_comm: &PolyComm<G>,
-    ) -> (EFqSponge, Fr<G>, RandomOracles<Fr<G>>, Vec<Fr<G>>, [Vec<Fr<G>>; 2], [Fr<G>; 2], Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>, Fr<G>, Fr<G>)
+    ) -> (EFqSponge, Fr<G>, RandomOracles<Fr<G>>, Vec<Fr<G>>, [Vec<Fr<G>>; 2], [Fr<G>; 2], Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>, Fr<G>, Fr<G>, Fr<G>)
     {
         let n = index.domain.size;
         // Run random oracle argument to sample verifier oracles
@@ -96,14 +106,6 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - self.commitments.t_comm.unshifted.len()]);
-        {
-            let s = self.commitments.t_comm.shifted.unwrap();
-            if s.is_zero() {
-                fq_sponge.absorb_g(&[dummy])
-            } else {
-                fq_sponge.absorb_g(&[s])
-            }
-        };
 
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
@@ -140,6 +142,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
         ]}
         else {[Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]};
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])}
+        fr_sponge.absorb(&self.ft_eval1);
 
         // query opening scaler challenges
         oracles.v_chal = fr_sponge.challenge();
@@ -160,8 +163,25 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
             .zip(self.prev_chal_evals(index, &ep, &evlp))
             .map(|(c, e)| (c.1.clone(), e)).collect();
 
+        let evals = (0..2).map(|i| self.evals[i].combine(evlp[i])).collect::<Vec<_>>();
+
+        let zkp = index.zkpm.evaluate(oracles.zeta);
+
+        let ft_eval0 =
+        ((
+            ((zeta1 - &Fr::<G>::one()) * &alpha[3] * &(oracles.zeta - &index.w))
+            +
+            ((zeta1 - &Fr::<G>::one()) * &alpha[4] * &(oracles.zeta - &Fr::<G>::one()))
+        )/ &( (oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w) ))
+            +
+            ((evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
+            &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
+            (evals[0].o + &oracles.gamma) * &evals[1].z * &zkp * &oracles.alpha)
+        -  &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()}) ;
         let combined_inner_product = {
             let mut es : Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys.iter().map(|(_, e)| (e.iter().map(|x| x).collect(), None)).collect();
+            let ft_eval0 = vec![ft_eval0];
+            let ft_eval1 = vec![self.ft_eval1];
             es.extend(
                 vec!
                 [
@@ -172,19 +192,17 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                     (self.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                     (self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
 
-                    (self.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
-
                     (self.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
                     (self.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
 
-                    (self.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
+                    (vec![& ft_eval0, & ft_eval1], None),
                 ]
             );
 
             combined_inner_product::<G>(&ep, &oracles.v, &oracles.u, &es, index.srs.get_ref().g.len())
         };
 
-        (fq_sponge, digest, oracles, alpha, p_eval, evlp, polys, zeta1, combined_inner_product)
+        (fq_sponge, digest, oracles, alpha, p_eval, evlp, polys, zeta1, ft_eval0, combined_inner_product)
     }
 
     // This function verifies the batch of zk-proofs
@@ -213,7 +231,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                 let p_comm = PolyComm::<G>::multi_scalar_mul
                     (& lgr_comm.iter().take(proof.public.len()).map(|l| l).collect(), &proof.public.iter().map(|s| -*s).collect());
 
-                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
+                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, ft_eval0, _) = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
 
                 // evaluate committed polynoms
                 let evals = (0..2).map(|i| proof.evals[i].combine(evlp[i])).collect::<Vec<_>>();
@@ -260,28 +278,16 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
-                // check linearization polynomial evaluation consistency
-                if
-                    (evals[0].f + &(if p_eval[0].len() > 0 {p_eval[0][0]} else {Fr::<G>::zero()})
-                    -
-                    ((evals[0].l + &(oracles.beta * &evals[0].sigma1) + &oracles.gamma) *
-                    &(evals[0].r + &(oracles.beta * &evals[0].sigma2) + &oracles.gamma) *
-                    (evals[0].o + &oracles.gamma) * &evals[1].z * &zkp * &oracles.alpha)
-                    -
-                    evals[0].t * &(zeta1 - &Fr::<G>::one())) * &(oracles.zeta - &Fr::<G>::one()) * &(oracles.zeta - &index.w)
-                !=
-                    ((zeta1 - &Fr::<G>::one()) * &alpha[3] * &(oracles.zeta - &index.w))
-                    +
-                    ((zeta1 - &Fr::<G>::one()) * &alpha[4] * &(oracles.zeta - &Fr::<G>::one()))
-                 {return Err(ProofError::ProofVerification)}
+                let ft_comm =
+                    &chunk_commitment(zeta1, &f_comm) - &chunk_commitment(zeta1, &proof.commitments.t_comm).scale(zeta1 - Fr::<G>::one());
 
-                Ok((p_eval, p_comm, f_comm, fq_sponge, oracles, polys))
+                Ok((p_eval, p_comm, ft_comm, fq_sponge, oracles, vec![ft_eval0], vec![proof.ft_eval1], polys))
             }
         ).collect::<Result<Vec<_>, _>>()?;
         
         let mut batch = proofs.iter().zip(params.iter()).map
         (
-            |((index, _lgr_comm, proof), (p_eval, p_comm, f_comm, fq_sponge, oracles, polys))|
+            |((index, _lgr_comm, proof), (p_eval, p_comm, ft_comm, fq_sponge, oracles, ft_eval0, ft_eval1, polys))|
             {
                 let mut polynoms = polys.iter().map
                 (
@@ -302,12 +308,10 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField
                         (&proof.commitments.o_comm, proof.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
                         (&proof.commitments.z_comm, proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None),
 
-                        (f_comm, proof.evals.iter().map(|e| &e.f).collect::<Vec<_>>(), None),
-
                         (&index.sigma_comm[0], proof.evals.iter().map(|e| &e.sigma1).collect::<Vec<_>>(), None),
                         (&index.sigma_comm[1], proof.evals.iter().map(|e| &e.sigma2).collect::<Vec<_>>(), None),
 
-                        (&proof.commitments.t_comm, proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(), Some(index.max_quot_size)),
+                        (&ft_comm, vec![ft_eval0,  ft_eval1 ], None)
                     ]
                 );
 

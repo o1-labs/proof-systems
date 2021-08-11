@@ -35,6 +35,7 @@ struct CamlProverProof<G: AffineCurve>
     pub proof: OpeningProof<G>,
     // OCaml doesn't have sized arrays, so we have to convert to a tuple..
     pub evals: (ProofEvaluations<Vec<Fr<G>>>, ProofEvaluations<Vec<Fr<G>>>),
+    pub ft_eval1: Fr<G>,
     pub public: Vec<Fr<G>>,
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
@@ -50,6 +51,8 @@ pub struct ProverProof<G: AffineCurve>
 
     // polynomial evaluations
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
+
+    pub ft_eval1: Fr<G>,
 
     // public part of the witness
     pub public: Vec<Fr<G>>,
@@ -92,6 +95,23 @@ unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverProof<
             prev_challenges: p.prev_challenges
         }
     }
+}
+
+fn chunk_polynomial<F: Field>(
+    zeta_n: F, n: usize, f: DensePolynomial<F>
+    ) -> DensePolynomial<F> {
+    let chunks = (f.coeffs.len() + n - 1) / n;
+    let mut scale = F::one();
+    let mut coeffs = vec![F::zero(); n];
+    for i in 0..chunks {
+        let chunk = (i * n)..(std::cmp::min((i + 1) * n, f.coeffs.len()));
+        for (j, c) in f.coeffs[chunk].iter().enumerate() {
+            coeffs[j] += scale * c;
+        }
+        scale *= zeta_n;
+    }
+
+    DensePolynomial { coeffs }
 }
 
 impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, G::BaseField : PrimeField
@@ -236,21 +256,13 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t
-        let (t_comm, omega_t) = index.srs.get_ref().commit(&t, Some(index.max_quot_size), rng);
+        let (t_comm, omega_t) = index.srs.get_ref().commit(&t, None, rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.unshifted.len()]);
-        {
-            let s = t_comm.shifted.unwrap();
-            if s.is_zero() {
-                fq_sponge.absorb_g(&[dummy])
-            } else {
-                fq_sponge.absorb_g(&[s])
-            }
-        };
 
         oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
@@ -266,15 +278,12 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
                 r : r.eval(*e, index.max_poly_size),
                 o : o.eval(*e, index.max_poly_size),
                 z : z.eval(*e, index.max_poly_size),
-                t : t.eval(*e, index.max_poly_size),
 
                 sigma1: index.cs.sigmam[0].eval(*e, index.max_poly_size),
                 sigma2: index.cs.sigmam[1].eval(*e, index.max_poly_size),
-
-                f: Vec::new(),
             }
         ).collect::<Vec<_>>();
-        let mut evals = [evals[0].clone(), evals[1].clone()];
+        let evals = [evals[0].clone(), evals[1].clone()];
 
         let evlp1 = [evlp[0].pow(&[index.max_poly_size as u64]), evlp[1].pow(&[index.max_poly_size as u64])];
         let e = &evals.iter().zip(evlp1.iter()).map
@@ -285,27 +294,31 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
                 r: DensePolynomial::eval_polynomial(&es.r, e1),
                 o: DensePolynomial::eval_polynomial(&es.o, e1),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
-                t: DensePolynomial::eval_polynomial(&es.t, e1),
 
                 sigma1: DensePolynomial::eval_polynomial(&es.sigma1, e1),
                 sigma2: DensePolynomial::eval_polynomial(&es.sigma2, e1),
-
-                f: Fr::<G>::zero(),
             }
         ).collect::<Vec<_>>();
 
         // compute and evaluate linearization polynomial
 
-        let f =
-            &(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
-            &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN])) +
-            &index.cs.ecad_lnrz(&e, &alpha[range::ADD])) +
-            &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
-            &index.cs.endomul_lnrz(&e, &alpha[range::ENDML])) +
-            &index.cs.perm_lnrz(&e, &z, &oracles, &alpha[range::PERM]);
+        let zeta_n = evlp1[0];
 
-        evals[0].f = f.eval(evlp[0], index.max_poly_size);
-        evals[1].f = f.eval(evlp[1], index.max_poly_size);
+        let f_chunked = {
+            let f =
+                &(&(&(&(&index.cs.gnrc_lnrz(&e[0]) +
+                &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN])) +
+                &index.cs.ecad_lnrz(&e, &alpha[range::ADD])) +
+                &index.cs.vbmul_lnrz(&e, &alpha[range::MUL])) +
+                &index.cs.endomul_lnrz(&e, &alpha[range::ENDML])) +
+                &index.cs.perm_lnrz(&e, &z, &oracles, &alpha[range::PERM]);
+
+            chunk_polynomial(zeta_n, index.max_poly_size, f)
+        };
+
+        let t_chunked = chunk_polynomial(zeta_n, index.max_poly_size, t);
+        let ft : DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
+        let ft_eval1 = ft.evaluate(evlp[1]);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge =
@@ -317,6 +330,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
         let p_eval = if p.is_zero() {[Vec::new(), Vec::new()]}
             else {[vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]};
         for i in 0..2 {fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])}
+        fr_sponge.absorb(&ft_eval1);
 
         // query opening scaler challenges
         oracles.v_chal = fr_sponge.challenge();
@@ -356,6 +370,14 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
             omega_z.map(|x| perm_scalar0 * x)
         };
 
+        let omega_ft = {
+            let omega_t_chunked = omega_t.unshifted.iter().rev().fold(
+                Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x ) ;
+            let omega_f_chunked = omega_f.unshifted.iter().rev().fold(
+                Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x ) ;
+            PolyComm { unshifted: vec![omega_f_chunked - (zeta_n - Fr::<G>::one()) * omega_t_chunked], shifted: None }
+        };
+
         let mut polynoms = polys.iter().map(|(p, n)| (p, None, non_hiding(*n) )).collect::<Vec<_>>();
         polynoms.extend(
             vec!
@@ -365,10 +387,9 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
                 (&r, None, omega_r),
                 (&o, None, omega_o),
                 (&z, None, omega_z),
-                (&f, None, omega_f),
                 (&index.cs.sigmam[0], None, non_hiding(1)),
                 (&index.cs.sigmam[1], None, non_hiding(1)),
-                (&t, Some(index.max_quot_size), omega_t),
+                (&ft, None, omega_ft),
             ]);
 
         let proof =
@@ -392,6 +413,7 @@ impl<G: CommitmentCurve> ProverProof<G> where G::ScalarField : CommitmentField, 
                     rng
                 ),
                 evals,
+                ft_eval1,
                 public,
                 prev_challenges,
             };
