@@ -24,6 +24,7 @@ use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
 pub use crate::CommitmentField;
+use core::ops::{Add, Sub};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -57,8 +58,73 @@ pub fn shift_scalar<F:PrimeField>(x : F) -> F {
     x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
 
+impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+    type Output = PolyComm<C>;
+
+    fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
+        let mut unshifted = vec![];
+        let n1 = self.unshifted.len();
+        let n2 = other.unshifted.len();
+        for i in 0..std::cmp::max(n1, n2) {
+            let pt =
+                if i < n1 && i < n2 {
+                    self.unshifted[i] + other.unshifted[i]
+                } else if i < n1 {
+                    self.unshifted[i]
+                } else {
+                    other.unshifted[i]
+                };
+            unshifted.push(pt);
+        }
+        let shifted =
+            match (self.shifted, other.shifted) {
+                (None, _) => other.shifted,
+                (_, None) => self.shifted,
+                (Some(p1), Some(p2)) => Some(p1 + p2)
+            };
+        PolyComm { unshifted, shifted }
+    }
+}
+
+impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+    type Output = PolyComm<C>;
+
+    fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
+        let mut unshifted = vec![];
+        let n1 = self.unshifted.len();
+        let n2 = other.unshifted.len();
+        for i in 0..std::cmp::max(n1, n2) {
+            let pt =
+                if i < n1 && i < n2 {
+                    self.unshifted[i] + (- other.unshifted[i])
+                } else if i < n1 {
+                    self.unshifted[i]
+                } else {
+                    other.unshifted[i]
+                };
+            unshifted.push(pt);
+        }
+        let shifted =
+            match (self.shifted, other.shifted) {
+                (None, _) => other.shifted,
+                (_, None) => self.shifted,
+                (Some(p1), Some(p2)) => Some(p1 + (- p2))
+            };
+        PolyComm { unshifted, shifted }
+    }
+}
+
 impl<C: AffineCurve> PolyComm<C>
 {
+    pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
+        PolyComm {
+            unshifted:
+                self.unshifted.iter()
+                .map(|g| g.mul(c).into_affine()).collect(),
+            shifted: self.shifted.map(|g| g.mul(c).into_affine())
+        }
+    }
+
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self
     {
         assert_eq!(com.len(), elm.len());
