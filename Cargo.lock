@@ -128,18 +128,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "commitment_pairing"
-version = "0.1.0"
-dependencies = [
- "algebra",
- "colored 1.9.3",
- "ff-fft",
- "oracle",
- "rand",
- "rand_core",
-]
-
-[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -376,21 +364,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "marlin_protocol_pairing"
-version = "0.1.0"
-dependencies = [
- "algebra",
- "colored 1.9.3",
- "commitment_pairing",
- "ff-fft",
- "marlin_circuits",
- "oracle",
- "rand",
- "rand_core",
- "sprs 0.7.1",
-]
-
-[[package]]
 name = "matrixmultiply"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -529,24 +502,6 @@ dependencies = [
  "ocaml",
  "rand",
  "rayon",
-]
-
-[[package]]
-name = "pairing"
-version = "0.1.0"
-dependencies = [
- "algebra",
- "colored 1.9.3",
- "commitment_pairing",
- "ff-fft",
- "marlin_circuits",
- "marlin_protocol_pairing",
- "oracle",
- "plonk_5_wires_circuits",
- "plonk_protocol_pairing",
- "rand",
- "rand_core",
- "sprs 0.7.1",
 ]
 
 [[package]]
@@ -705,22 +660,6 @@ dependencies = [
  "rand",
  "rand_core",
  "rayon",
- "sprs 0.7.1",
-]
-
-[[package]]
-name = "plonk_protocol_pairing"
-version = "0.1.0"
-dependencies = [
- "algebra",
- "array-init",
- "colored 1.9.3",
- "commitment_pairing",
- "ff-fft",
- "oracle",
- "plonk_circuits",
- "rand",
- "rand_core",
  "sprs 0.7.1",
 ]
 
