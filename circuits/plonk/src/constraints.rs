@@ -54,6 +54,9 @@ pub struct ConstraintSystem<F: FftField> {
     pub qol: Evaluations<F, D<F>>, // output wire polynomial over domain.d4
     pub qml: Evaluations<F, D<F>>, // multiplication evaluations over domain.d4
 
+    // Q_L = (1, 0, 1, 1, 0, 1)
+    // qll = (1, 1), (2, 0), (3, 1), (4, 1)
+
     // permutation polynomials
     pub sigmal1: [Vec<F>; 3], // permutation polynomial array evaluations over domain d1
     pub sigmal4: [Evaluations<F, D<F>>; 3], // permutation polynomial array evaluations over domain d8

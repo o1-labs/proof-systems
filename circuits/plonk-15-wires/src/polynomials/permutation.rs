@@ -71,6 +71,28 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 * &self.zkpl,
             &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2]),
         ))
+
+        /*
+                let a = &(&lagrange
+            .d8
+            .this
+            .w
+            .iter()
+            .zip(self.shift.iter())
+            .map(|(p, s)| p + &(l0 + &self.l1.scale(oracles.beta * s)))
+            .fold(lagrange.d8.this.z.clone(), |x, y| &x * &y)
+            - &lagrange
+                .d8
+                .this
+                .w
+                .iter()
+                .zip(self.sigmal8.iter())
+                .map(|(p, s)| p + &(l0 + &s.scale(oracles.beta)))
+                .fold(lagrange.d8.next.z.clone(), |x, y| &x * &y));
+        let perm = a.scale(alpha[0]) * &self.zkpl;
+
+        Ok((perm, &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2])))
+         */
     }
 
     // permutation linearization poly contribution computation

@@ -110,6 +110,7 @@ pub struct ConstraintSystem<F: FftField> {
     /// 1-st Lagrange evaluated over domain.d8
     pub l1: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d4
+    // TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
     pub l04: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d8
     pub l08: E<F, D<F>>,
@@ -129,6 +130,8 @@ pub struct ConstraintSystem<F: FftField> {
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
+/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
+// TODO(mimoo): ensure that this cannot be used by a circuit
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }

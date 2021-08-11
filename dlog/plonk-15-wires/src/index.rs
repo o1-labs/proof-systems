@@ -63,48 +63,67 @@ pub struct Index<'a, G: CommitmentCurve>
 where
     G::ScalarField: CommitmentField,
 {
-    // constraints system polynomials
+    /// constraints system polynomials
     pub cs: ConstraintSystem<Fr<G>>,
 
-    // polynomial commitment keys
+    /// polynomial commitment keys
     pub srs: SRSValue<'a, G>,
 
-    // maximal size of polynomial section
+    /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    // maximal size of the quotient polynomial according to the supported constraints
+    /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
-    // random oracle argument parameters
+    /// random oracle argument parameters
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
 pub struct VerifierIndex<'a, G: CommitmentCurve> {
-    pub domain: D<Fr<G>>,     // evaluation domain
-    pub max_poly_size: usize, // maximal size of polynomial section
-    pub max_quot_size: usize, // maximal size of the quotient polynomial according to the supported constraints
-    pub srs: SRSValue<'a, G>, // polynomial commitment keys
+    /// evaluation domain
+    pub domain: D<Fr<G>>,
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+    /// polynomial commitment keys
+    pub srs: SRSValue<'a, G>,
 
     // index polynomial commitments
-    pub sigma_comm: [PolyComm<G>; PERMUTS], // permutation commitment array
-    pub qw_comm: [PolyComm<G>; GENERICS],   // wire commitment array
-    pub qm_comm: PolyComm<G>,               // multiplication commitment
-    pub qc_comm: PolyComm<G>,               // constant wire commitment
+    /// permutation commitment array
+    pub sigma_comm: [PolyComm<G>; PERMUTS],
+    /// wire commitment array
+    pub qw_comm: [PolyComm<G>; GENERICS],
+    /// multiplication commitment
+    pub qm_comm: PolyComm<G>,
+    /// constant wire commitment
+    pub qc_comm: PolyComm<G>,
 
     // poseidon polynomial commitments
-    pub rcm_comm: [[PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH]; ROUNDS_PER_ROW], // round constant polynomial commitment array
-    pub psm_comm: PolyComm<G>, // poseidon constraint selector polynomial commitment
+    /// round constant polynomial commitment array
+    pub rcm_comm: [[PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH]; ROUNDS_PER_ROW],
+    /// poseidon constraint selector polynomial commitment
+    pub psm_comm: PolyComm<G>,
 
     // ECC arithmetic polynomial commitments
-    pub add_comm: PolyComm<G>, // EC addition selector polynomial commitment
-    pub double_comm: PolyComm<G>, // EC doubling selector polynomial commitment
-    pub mul_comm: PolyComm<G>, // EC variable base scalar multiplication selector polynomial commitment
-    pub emul_comm: PolyComm<G>, // endoscalar multiplication selector polynomial commitment
+    /// EC addition selector polynomial commitment
+    pub add_comm: PolyComm<G>,
+    /// EC doubling selector polynomial commitment
+    pub double_comm: PolyComm<G>,
+    /// EC variable base scalar multiplication selector polynomial commitment
+    pub mul_comm: PolyComm<G>,
+    /// endoscalar multiplication selector polynomial commitment
+    pub emul_comm: PolyComm<G>,
 
-    pub shift: [Fr<G>; PERMUTS],      // wire coordinate shifts
-    pub zkpm: DensePolynomial<Fr<G>>, // zero-knowledge polynomial
-    pub w: Fr<G>,                     // root of unity for zero-knowledge
-    pub endo: Fr<G>,                  // endoscalar coefficient
+    /// wire coordinate shifts
+    pub shift: [Fr<G>; PERMUTS],
+    /// zero-knowledge polynomial
+    pub zkpm: DensePolynomial<Fr<G>>,
+    // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
+    /// domain offset for zero-knowledge
+    pub w: Fr<G>,
+    /// endoscalar coefficient
+    pub endo: Fr<G>,
 
     // random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,

@@ -12,15 +12,16 @@ use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
-    /// witness
+    /// witness polynomials
     pub w: [Field; COLUMNS],
-    /// permutation
+    /// permutation polynomial
     pub z: Field,
-    /// quotient
+    /// quotient polynomial
     pub t: Field,
-    /// ?
+    /// full polynomial
     pub f: Field,
-    /// ?
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
 }
 

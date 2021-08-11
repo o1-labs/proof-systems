@@ -393,6 +393,8 @@ where
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
 
+        // TODO(mimoo): either exponentiate the chunks, or assert that f is a single chunk
+
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge = {
             let mut s = EFrSponge::new(index.cs.fr_sponge_params.clone());

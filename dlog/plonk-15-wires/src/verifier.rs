@@ -141,14 +141,21 @@ where
         let alpha = range::alpha_powers(oracles.alpha);
 
         // compute Lagrange base evaluation denominators
+        // TODO(mimoo): this could belong to the if branch (if self.public.len() > 0)
+
+        // w = [1, w, w^2, ..., w^{public_len - 1}]
         let w = (0..self.public.len())
             .zip(index.domain.elements())
             .map(|(_, w)| w)
             .collect::<Vec<_>>();
+        // lagrange = [z - 1, z - w, z - w^2, ...]
         let mut lagrange = w.iter().map(|w| oracles.zeta - w).collect::<Vec<_>>();
+        // lagrange.append([z*w - 1, z*w - w, z*w - w^2, ...])
         (0..self.public.len())
             .zip(w.iter())
             .for_each(|(_, w)| lagrange.push(zetaw - w));
+        // lagrange contains [1/(X-1), 1/(X-w), 1/(X-w^2), etc.] evaluated at z and z*w
+        // TODO(mimoo): separate the z from the zw evaluations
         algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
@@ -178,6 +185,17 @@ where
                         * &(zetaw.pow(&[n as u64]) - &Fr::<G>::one()),
                 ],
             ]
+        /*
+        TODO(mimoo): refactor with this:
+        let mut eval_z = Fr::<G>::zero();
+        // does izip uses the length of public here?
+        let stuff = itertools::izip!(self.public, lagrange, index.domain.elements());
+        for (public, lagrange, witness) in stuff {
+            eval_z -= lagrange * public * witness
+        }
+        eval_z *= zeta1 - Fr::<G>::one();
+        eval_z *= index.domain.size_inv;
+        */
         } else {
             [Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]
         };
@@ -267,6 +285,7 @@ where
 
         let params = proofs
             .iter()
+            // TODO(mimoo): shouldn't these lagrange commitments come pre-computed?
             .map(|(index, lgr_comm, proof)| {
                 println!("one iteration of proofs.iter().map(): ");
                 // commit to public input polynomial
@@ -355,58 +374,64 @@ where
 
                 //
                 // check linearization polynomial evaluation consistency
+                // see https://hackmd.io/@mimoo/HkuQJKxgY
                 //
 
                 println!("- check linearization polynomial evaluation consistency");
-                // zeta1m1 = zeta^n - 1
-                let zeta1m1 = zeta1 - &Fr::<G>::one();
 
-                println!("- rename_this");
-                // public input?
-                let rename_this = if p_eval[0].len() > 0 {
-                    p_eval[0][0]
-                } else {
-                    Fr::<G>::zero()
+                let zeta1m1 = zeta1 - &Fr::<G>::one(); // zeta^n - 1
+
+                // [f(zeta) + pub(zeta) + permutation_stuff - t(zeta) * (zeta^n - 1)](zeta - w^{n-3})(zeta - 1)
+                let left = {
+                    let f_zeta = evals[0].f;
+                    let t_zeta = evals[0].t;
+
+                    let public_zeta = if p_eval[0].len() > 0 {
+                        p_eval[0][0]
+                    } else {
+                        Fr::<G>::zero()
+                    };
+
+                    let perm_sigmas = evals[0]
+                        .w
+                        .iter()
+                        .zip(evals[0].s.iter())
+                        .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
+                        .fold(
+                            (evals[0].w[PERMUTS - 1] + &oracles.gamma)
+                                * &evals[1].z
+                                * &alpha[range::PERM][0]
+                                * &zkp,
+                            |x, y| x * y,
+                        );
+
+                    let perm_shifts = evals[0]
+                        .w
+                        .iter()
+                        .zip(index.shift.iter())
+                        .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
+                        .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
+
+                    let permutation_stuff = perm_shifts - perm_sigmas;
+                    let permutation_lagrange_stuff =
+                        (oracles.zeta - &index.w) * (oracles.zeta - Fr::<G>::one());
+
+                    let left_hand_side = f_zeta + &public_zeta + permutation_stuff;
+                    let moving_t = left_hand_side - t_zeta * &zeta1m1;
+
+                    moving_t * permutation_lagrange_stuff
                 };
 
-                println!("- rename_this_as_well");
-                // this will be negated later
-                // so it looks (including the negation)
-                // -  ((l + βsσ1 + γ)(r + βsσ2 + γ)(o + γ)zkpm(z)z(zω))α
-                let rename_this_as_well = evals[0]
-                    .w
-                    .iter()
-                    .zip(evals[0].s.iter())
-                    .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
-                    .fold(
-                        (evals[0].w[PERMUTS - 1] + &oracles.gamma)
-                            * &evals[1].z
-                            * &alpha[range::PERM][0]
-                            * &zkp,
-                        |x, y| x * y,
-                    );
-
-                println!("- and_this");
-                // looks like the previous stuff
-                let and_this = evals[0]
-                    .w
-                    .iter()
-                    .zip(index.shift.iter())
-                    .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
-                    .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
-
-                println!("- left/right build");
-                // looks like -bar{t} (z^n - 1)(z - 1)(z - ω)
-                let left = (evals[0].f + &rename_this - rename_this_as_well + and_this
-                    - -evals[0].t * &zeta1m1)
-                    * &(oracles.zeta - &index.w)
-                    * &(oracles.zeta - &Fr::<G>::one());
-
-                // looks like
-                // (z^n − 1)(z − ω)α^tbd + (z^n − 1)(z − 1)α^tbd
-                let right = ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
-                    + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
-                    * &(Fr::<G>::one() - evals[0].z);
+                // (1 - z(zeta)) * [(zeta^n - 1) * alpha^PERM1 * (zeta - w^{n-3}) + (zeta^n - 1) * alpha^PERM2 * (zeta - 1)]
+                let right = {
+                    // (zeta^n - 1) * alpha^PERM1 * (zeta - w^{n-3})
+                    let acc_init = zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w);
+                    // (zeta^n - 1) * alpha^PERM2 * (zeta - 1)
+                    let acc_final =
+                        (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one()));
+                    // multiply by (1 - z(zeta)) to finish both lagrange polynomials
+                    (acc_init + acc_final) * &(Fr::<G>::one() - evals[0].z)
+                };
 
                 println!("- left/right check");
                 if left != right {
@@ -505,6 +530,7 @@ where
         // TODO: Account for the different SRS lengths
         let srs = proofs[0].0.srs.get_ref();
         for (index, _, _) in proofs.iter() {
+            // TODO(mimoo): do we really want to panic here?
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 

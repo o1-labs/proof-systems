@@ -62,6 +62,7 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     fn eval_polynomial(coeffs: &[F], x: F) -> F {
         let mut res = F::zero();
         for c in coeffs.iter().rev() {
+            // TODO(mimoo): refactor to `res = c + x * res` (horner's rule)
             res *= &x;
             res += c;
         }

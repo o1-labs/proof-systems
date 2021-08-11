@@ -38,13 +38,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         for i in 0..GENERICS {
             res.push(evals.w[i]);
         }
-        res.push(F::one());
+        // res = [l * r, l, r, o, 1]
+        res.push(F::one()); // TODO(mimoo): this one is not used
         return res;
     }
 
     // generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(&self, evals: &ProofEvaluations<F>) -> DensePolynomial<F> {
         let scalars = Self::gnrc_scalars(evals);
+        // l * r * qmm + qc + l * qwm[0] + r * qwm[1] + o * qwm[2]
         &(&self.qmm.scale(scalars[0]) + &self.qc)
             + &self
                 .qwm
