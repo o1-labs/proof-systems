@@ -18,6 +18,7 @@ use ark_ec::{
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -59,21 +60,87 @@ pub fn shift_scalar<F: PrimeField>(x: F) -> F {
     x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
 
+impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+    type Output = PolyComm<C>;
+
+    fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
+        let mut unshifted = vec![];
+        let n1 = self.unshifted.len();
+        let n2 = other.unshifted.len();
+        for i in 0..std::cmp::max(n1, n2) {
+            let pt = if i < n1 && i < n2 {
+                self.unshifted[i] + other.unshifted[i]
+            } else if i < n1 {
+                self.unshifted[i]
+            } else {
+                other.unshifted[i]
+            };
+            unshifted.push(pt);
+        }
+        let shifted = match (self.shifted, other.shifted) {
+            (None, _) => other.shifted,
+            (_, None) => self.shifted,
+            (Some(p1), Some(p2)) => Some(p1 + p2),
+        };
+        PolyComm { unshifted, shifted }
+    }
+}
+
+impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+    type Output = PolyComm<C>;
+
+    fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
+        let mut unshifted = vec![];
+        let n1 = self.unshifted.len();
+        let n2 = other.unshifted.len();
+        for i in 0..std::cmp::max(n1, n2) {
+            let pt = if i < n1 && i < n2 {
+                self.unshifted[i] + (-other.unshifted[i])
+            } else if i < n1 {
+                self.unshifted[i]
+            } else {
+                other.unshifted[i]
+            };
+            unshifted.push(pt);
+        }
+        let shifted = match (self.shifted, other.shifted) {
+            (None, _) => other.shifted,
+            (_, None) => self.shifted,
+            (Some(p1), Some(p2)) => Some(p1 + (-p2)),
+        };
+        PolyComm { unshifted, shifted }
+    }
+}
+
 impl<C: AffineCurve> PolyComm<C> {
+    pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
+        PolyComm {
+            unshifted: self
+                .unshifted
+                .iter()
+                .map(|g| g.mul(c).into_affine())
+                .collect(),
+            shifted: self.shifted.map(|g| g.mul(c).into_affine()),
+        }
+    }
+
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
+        assert_eq!(com.len(), elm.len());
         PolyComm::<C> {
             shifted: {
-                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {
+                let pairs = com
+                    .iter()
+                    .zip(elm.iter())
+                    .filter_map(|(c, s)| match c.shifted {
+                        Some(c) => Some((c, s)),
+                        None => None,
+                    })
+                    .collect::<Vec<_>>();
+                if pairs.len() == 0 {
                     None
                 } else {
-                    let points = com
-                        .iter()
-                        .map(|c| {
-                            assert!(c.shifted.is_some());
-                            c.shifted.unwrap()
-                        })
-                        .collect::<Vec<_>>();
-                    let scalars = elm.iter().map(|s| s.into_repr()).collect::<Vec<_>>();
+                    let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
+                    let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
                     Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
                 }
             },
