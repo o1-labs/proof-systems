@@ -14,7 +14,7 @@ pub trait PolyUtils<F: FftField> {
 }
 
 pub trait EvalUtils<F: FftField> {
-    /// This function "scales" (multiplies) polynomaial with a scalar
+    /// This function "scales" (multiplies) a polynomial with a scalar
     /// It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self;
     fn square(&self) -> Self;
@@ -47,13 +47,16 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
         result
     }
 
+    // TODO(mimoo): so more like a left rotation of len, not a shift
     fn shift(&self, len: usize) -> Self {
         let len = len % self.evals.len();
         let mut result = self.clone();
         result.evals.clear(); // TODO(mimoo): that seems unefficient
+
+        // [1, 2, 3, 4, 5, 6] -len:2-> [3, 4, 5, 6, 1, 2]
         result.evals = self.evals[len..].to_vec();
         let mut tail = self.evals[0..len].to_vec();
-        result.evals.append(&mut tail); // TODO(mimoo): so more like a left rotation of len, not a shift
+        result.evals.append(&mut tail);
         result
     }
 }

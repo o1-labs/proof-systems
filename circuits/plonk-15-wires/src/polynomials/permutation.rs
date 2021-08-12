@@ -17,7 +17,7 @@ use oracle::{
 use rand::rngs::ThreadRng;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    // permutation quotient poly contribution computation
+    /// permutation quotient poly contribution computation
     pub fn perm_quot(
         &self,
         lagrange: &WitnessOverDomains<F>,
@@ -28,6 +28,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let l0 = &self.l08.scale(oracles.gamma);
 
         // TODO(mimoo): use self.sid[0] instead of 1
+        // accumulator init := (z(x) - 1) / (x - 1)
         let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             &(z - &DensePolynomial::from_coefficients_slice(&[F::one()])).into(),
             &DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]).into(),
@@ -37,6 +38,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             return Err(ProofError::PolyDivision);
         }
 
+        // accumulator end := (z(x) - 1) / (x - sid[n-3])
         let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             &(z - &DensePolynomial::from_coefficients_slice(&[F::one()])).into(),
             &DensePolynomial::from_coefficients_slice(&[
@@ -50,52 +52,31 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             return Err(ProofError::PolyDivision);
         }
 
-        Ok((
-            &(&lagrange
-                .d8
-                .this
-                .w
-                .iter()
-                .zip(self.shift.iter())
-                .map(|(p, s)| p + &(l0 + &self.l1.scale(oracles.beta * s)))
-                .fold(lagrange.d8.this.z.clone(), |x, y| &x * &y)
-                - &lagrange
-                    .d8
-                    .this
-                    .w
-                    .iter()
-                    .zip(self.sigmal8.iter())
-                    .map(|(p, s)| p + &(l0 + &s.scale(oracles.beta)))
-                    .fold(lagrange.d8.next.z.clone(), |x, y| &x * &y))
-                .scale(alpha[0])
-                * &self.zkpl,
-            &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2]),
-        ))
+        // shifts = z8 *
+        // (w8[0] + [gamma, gamma, ... in d8] + (x-1) * beta * shift[0]) *
+        // (w8[1] + [gamma, gamma, ... in d8] + (x-1) * beta * shift[1]) * ...
+        let mut shifts = lagrange.d8.this.z.clone();
+        for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
+            let thing = witness + &(l0 + &self.l1.scale(oracles.beta * shift));
+            shifts = &shifts * &thing;
+        }
 
-        /*
-                let a = &(&lagrange
-            .d8
-            .this
-            .w
-            .iter()
-            .zip(self.shift.iter())
-            .map(|(p, s)| p + &(l0 + &self.l1.scale(oracles.beta * s)))
-            .fold(lagrange.d8.this.z.clone(), |x, y| &x * &y)
-            - &lagrange
-                .d8
-                .this
-                .w
-                .iter()
-                .zip(self.sigmal8.iter())
-                .map(|(p, s)| p + &(l0 + &s.scale(oracles.beta)))
-                .fold(lagrange.d8.next.z.clone(), |x, y| &x * &y));
-        let perm = a.scale(alpha[0]) * &self.zkpl;
+        // sigmas = z8.shift(8) *
+        // (w8[0] + [gamma, gamma, ... in d8] + sigma[0] * beta) *
+        // (w8[1] + [gamma, gamma, ... in d8] + sigma[1] * beta) * ...
+        let mut sigmas = lagrange.d8.next.z.clone();
+        for (witness, sigma) in lagrange.d8.this.w.iter().zip(self.sigmal8.iter()) {
+            let term = witness + &(l0 + &sigma.scale(oracles.beta));
+            sigmas = &sigmas * &term;
+        }
+
+        let perm = &shifts - &sigmas;
+        let perm = &perm.scale(alpha[0]) * &self.zkpl;
 
         Ok((perm, &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2])))
-         */
     }
 
-    // permutation linearization poly contribution computation
+    /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
         e: &Vec<ProofEvaluations<F>>,
@@ -125,7 +106,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .fold(e[1].z * &oracles.beta * alpha[0] * &z, |x, y| x * y)
     }
 
-    // permutation aggregation polynomial computation
+    /// permutation aggregation polynomial computation
     pub fn perm_aggreg(
         &self,
         witness: &[Vec<F>; COLUMNS],
@@ -133,8 +114,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         rng: &mut ThreadRng,
     ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
-        let mut z = vec![F::one(); n]; // init at 1
 
+        // initialize accumulator at 1
+        let mut z = vec![F::one(); n];
+
+        // z[j+1] = [
+        //           (w[0][j] + sid[j] * beta * shift[0] + gamma) *
+        //           (w[1][j] + sid[j] * beta * shift[1] + gamma) *
+        //           ... *
+        //           (w[14][j] + sid[j] * beta * shift[14] + gamma)
+        //          ] / [
+        //           (w[0][j] + sigma[0] * beta + gamma) *
+        //           (w[1][j] + sigma[1] * beta + gamma) *
+        //           ... *
+        //           (w[14][j] + sigma[14] * beta + gamma)
+        //          ]
+        //
+        // except for the first element (initialized at 1),
+        // and the last k elements for zero-knowledgness
         for j in 0..n - 3 {
             z[j + 1] = witness
                 .iter()
@@ -154,9 +151,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 .fold(x, |z, y| z * y)
         }
 
+        // check that last accumulator entry is 1
         if z[n - 3] != F::one() {
             return Err(ProofError::ProofCreation);
         };
+
+        // fill last two entries with randomness
         z[n - 2] = F::rand(rng);
         z[n - 1] = F::rand(rng);
         Ok(Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate())

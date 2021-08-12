@@ -453,6 +453,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             d4: WitnessShifts {
                 next: WitnessEvals {
                     w: array_init(|i| w4[i].shift(4)),
+                    // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
                 this: WitnessEvals {

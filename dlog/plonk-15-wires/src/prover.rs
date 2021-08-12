@@ -474,6 +474,14 @@ where
         polynomials.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
 
         //
+        println!("debug prover:");
+        println!("oracles: {:?}", oracles);
+        println!("alpha: {:?}", alpha);
+        println!("p_eval: {:?}", p_eval);
+        println!("evlp: {:?}", evlp);
+        println!("polys: {:?}", polys);
+
+        //
         let proof = index.srs.get_ref().open(
             group_map,
             polynomials,

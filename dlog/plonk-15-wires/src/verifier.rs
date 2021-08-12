@@ -136,7 +136,7 @@ where
         };
 
         // prepare some often used values
-        let zeta1 = oracles.zeta.pow(&[n]);
+        let zeta_n = oracles.zeta.pow(&[n]);
         let zetaw = oracles.zeta * &index.domain.group_gen;
         let alpha = range::alpha_powers(oracles.alpha);
 
@@ -170,7 +170,7 @@ where
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -*l * p * &w)
                         .fold(Fr::<G>::zero(), |x, y| x + &y))
-                        * &(zeta1 - &Fr::<G>::one())
+                        * &(zeta_n - &Fr::<G>::one())
                         * &index.domain.size_inv,
                 ],
                 vec![
@@ -193,7 +193,7 @@ where
         for (public, lagrange, witness) in stuff {
             eval_z -= lagrange * public * witness
         }
-        eval_z *= zeta1 - Fr::<G>::one();
+        eval_z *= zeta_n - Fr::<G>::one();
         eval_z *= index.domain.size_inv;
         */
         } else {
@@ -265,7 +265,7 @@ where
             p_eval,
             evlp,
             polys,
-            zeta1,
+            zeta_n,
             combined_inner_product,
         )
     }
@@ -299,8 +299,14 @@ where
                     &proof.public.iter().map(|s| -*s).collect(),
                 );
 
-                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
+                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta_n, _) =
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
+                println!("debug verifier:");
+                println!("oracles: {:?}", oracles);
+                println!("alpha: {:?}", alpha);
+                println!("p_eval: {:?}", p_eval);
+                println!("evlp: {:?}", evlp);
+                println!("polys: {:?}", polys);
 
                 // evaluate committed polynomials
                 println!("- evaluate committed polynomials");
@@ -379,45 +385,53 @@ where
 
                 println!("- check linearization polynomial evaluation consistency");
 
-                let zeta1m1 = zeta1 - &Fr::<G>::one(); // zeta^n - 1
+                let f_zeta = evals[0].f;
+                let t_zeta = evals[0].t;
+                let w_zeta = evals[0].w;
+                let s_zeta = evals[0].s;
+                let z_zeta = evals[0].z;
+
+                let z_zeta_omega = evals[1].z;
+
+                let zeta_n_minus_1 = zeta_n - &Fr::<G>::one(); // zeta^n - 1
 
                 // [f(zeta) + pub(zeta) + permutation_stuff - t(zeta) * (zeta^n - 1)](zeta - w^{n-3})(zeta - 1)
                 let left = {
-                    let f_zeta = evals[0].f;
-                    let t_zeta = evals[0].t;
-
                     let public_zeta = if p_eval[0].len() > 0 {
                         p_eval[0][0]
                     } else {
                         Fr::<G>::zero()
                     };
 
-                    let perm_sigmas = evals[0]
-                        .w
+                    let perm_sigmas = w_zeta
                         .iter()
-                        .zip(evals[0].s.iter())
+                        .zip(s_zeta.iter())
                         .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
                         .fold(
-                            (evals[0].w[PERMUTS - 1] + &oracles.gamma)
-                                * &evals[1].z
+                            (w_zeta[PERMUTS - 1] + &oracles.gamma)
+                                * &z_zeta_omega
                                 * &alpha[range::PERM][0]
                                 * &zkp,
                             |x, y| x * y,
                         );
+                    println!("number of s_zeta: {:?}", s_zeta.len());
 
-                    let perm_shifts = evals[0]
-                        .w
+                    let perm_shifts = w_zeta
                         .iter()
                         .zip(index.shift.iter())
                         .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
-                        .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
+                        .fold(alpha[range::PERM][0] * &zkp * &z_zeta, |x, y| x * y);
+                    println!(
+                        "number of shift: {:?} (should have one more)",
+                        index.shift.len()
+                    );
 
                     let permutation_stuff = perm_shifts - perm_sigmas;
                     let permutation_lagrange_stuff =
                         (oracles.zeta - &index.w) * (oracles.zeta - Fr::<G>::one());
 
                     let left_hand_side = f_zeta + &public_zeta + permutation_stuff;
-                    let moving_t = left_hand_side - t_zeta * &zeta1m1;
+                    let moving_t = left_hand_side - t_zeta * &zeta_n_minus_1;
 
                     moving_t * permutation_lagrange_stuff
                 };
@@ -425,12 +439,13 @@ where
                 // (1 - z(zeta)) * [(zeta^n - 1) * alpha^PERM1 * (zeta - w^{n-3}) + (zeta^n - 1) * alpha^PERM2 * (zeta - 1)]
                 let right = {
                     // (zeta^n - 1) * alpha^PERM1 * (zeta - w^{n-3})
-                    let acc_init = zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w);
+                    let acc_init =
+                        zeta_n_minus_1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w);
                     // (zeta^n - 1) * alpha^PERM2 * (zeta - 1)
                     let acc_final =
-                        (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one()));
+                        zeta_n_minus_1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one());
                     // multiply by (1 - z(zeta)) to finish both lagrange polynomials
-                    (acc_init + acc_final) * &(Fr::<G>::one() - evals[0].z)
+                    (acc_init + acc_final) * &(Fr::<G>::one() - z_zeta)
                 };
 
                 println!("- left/right check");
