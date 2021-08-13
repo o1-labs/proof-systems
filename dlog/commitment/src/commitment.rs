@@ -10,7 +10,7 @@ The folowing functionality is implemented
 
 *****************************************************************************************************************/
 
-use crate::srs::SRS;
+use crate::srs::TrimmedSRS;
 pub use crate::CommitmentField;
 use algebra::{
     curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, Field,
@@ -338,7 +338,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     res
 }
 
-impl<G: CommitmentCurve> SRS<G>
+impl<'a, G: CommitmentCurve> TrimmedSRS<'a, G>
 where
     G::ScalarField: CommitmentField,
 {
@@ -359,7 +359,7 @@ where
                 (g, Fr::<G>::zero())
             } else {
                 let w = Fr::<G>::rand(rng);
-                let mut g_masked = self.h.mul(w);
+                let mut g_masked = self.srs.h.mul(w);
                 g_masked.add_assign_mixed(&g);
                 (g_masked.into_affine(), w)
             }
@@ -376,7 +376,7 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let n = self.g.len();
+        let n = self.len();
         let p = plnm.coeffs.len();
 
         // committing all the segments without shifting
@@ -386,7 +386,7 @@ where
             (0..p / n + if p % n != 0 { 1 } else { 0 })
                 .map(|i| {
                     VariableBaseMSM::multi_scalar_mul(
-                        &self.g,
+                        &self.g(),
                         &plnm.coeffs[i * n..p]
                             .iter()
                             .map(|s| s.into_repr())
@@ -409,7 +409,7 @@ where
                 } else {
                     Some(
                         VariableBaseMSM::multi_scalar_mul(
-                            &self.g[n - (max % n)..],
+                            &self.g()[n - (max % n)..],
                             &plnm.coeffs[start..p]
                                 .iter()
                                 .map(|s| s.into_repr())
@@ -441,13 +441,13 @@ where
         mut sponge: EFqSponge, // sponge
         rng: &mut dyn RngCore,
     ) -> OpeningProof<G> {
-        let rounds = ceil_log2(self.g.len());
+        let rounds = self.rounds();
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
 
-        let padding = padded_length - self.g.len();
-        let mut g = self.g.clone();
+        let padding = padded_length - self.len();
+        let mut g = self.g().to_vec();
         g.extend(vec![G::zero(); padding]);
 
         // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
@@ -466,10 +466,10 @@ where
                     assert!(p_i.coeffs.len() <= m + 1);
                     while offset < p_i.coeffs.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                            &p_i.coeffs[offset..if offset + self.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
-                                offset + self.g.len()
+                                offset + self.len()
                             }],
                         );
                         // always mixing in the unshifted segments
@@ -477,10 +477,10 @@ where
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
-                        offset += self.g.len();
+                        offset += self.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            p += &(segment.shiftr(self.g.len() - m % self.g.len()).scale(scale));
+                            p += &(segment.shiftr(self.len() - m % self.len()).scale(scale));
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
@@ -489,10 +489,10 @@ where
                     assert!(omegas.shifted.is_none());
                     while offset < p_i.coeffs.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                            &p_i.coeffs[offset..if offset + self.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
-                                offset + self.g.len()
+                                offset + self.len()
                             }],
                         );
                         // always mixing in the unshifted segments
@@ -500,15 +500,13 @@ where
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
-                        offset += self.g.len();
+                        offset += self.len();
                     }
                 }
                 assert_eq!(j, omegas.unshifted.len());
             }
             (p, omega)
         };
-
-        let rounds = ceil_log2(self.g.len());
 
         // b_j = sum_i r^i elm_i^j
         let b_init = {
@@ -549,6 +547,10 @@ where
         let mut chals = vec![];
         let mut chal_invs = vec![];
 
+        let hh = self.h();
+
+        let endo_r = self.endo_r();
+
         for _ in 0..rounds {
             let n = g.len() / 2;
             let (g_lo, g_hi) = (g[0..n].to_vec(), g[n..].to_vec());
@@ -559,7 +561,7 @@ where
             let rand_r = Fr::<G>::rand(rng);
 
             let l = VariableBaseMSM::multi_scalar_mul(
-                &[&g[0..n], &[self.h, u]].concat(),
+                &[&g[0..n], &[hh, u]].concat(),
                 &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
                     .concat()
                     .iter()
@@ -569,7 +571,7 @@ where
             .into_affine();
 
             let r = VariableBaseMSM::multi_scalar_mul(
-                &[&g[n..], &[self.h, u]].concat(),
+                &[&g[n..], &[hh, u]].concat(),
                 &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]]
                     .concat()
                     .iter()
@@ -584,7 +586,7 @@ where
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
-            let u = squeeze_challenge(&self.endo_r, &mut sponge);
+            let u = squeeze_challenge(&endo_r, &mut sponge);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -632,11 +634,11 @@ where
         let r_delta = Fr::<G>::rand(rng);
 
         let delta = ((g0.into_projective() + &(u.mul(b0))).into_affine().mul(d)
-            + &self.h.mul(r_delta))
+            + &hh.mul(r_delta))
             .into_affine();
 
         sponge.absorb_g(&[delta]);
-        let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
+        let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
 
         let z1 = a0 * &c + &d;
         let z2 = c * &r_prime + &r_delta;
@@ -697,16 +699,16 @@ where
         // We also check that the sg component of the proof is equal to the polynomial commitment
         // to the "s" array
 
-        let nonzero_length = self.g.len();
+        let nonzero_length = self.len();
 
-        let max_rounds = ceil_log2(nonzero_length);
+        let max_rounds = self.rounds();
 
         let padded_length = 1 << max_rounds;
 
         // TODO: This will need adjusting
         let padding = padded_length - nonzero_length;
-        let mut points = vec![self.h];
-        points.extend(self.g.clone());
+        let mut points = vec![self.h()];
+        points.extend(self.g().to_vec());
         points.extend(vec![G::zero(); padding]);
 
         let mut scalars = vec![Fr::<G>::zero(); padded_length + 1];
@@ -718,6 +720,8 @@ where
 
         let mut rand_base_i = Fr::<G>::one();
         let mut sg_rand_base_i = Fr::<G>::one();
+
+        let endo_r = self.endo_r();
 
         for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             // TODO: This computation is repeated in ProverProof::oracles
@@ -737,7 +741,7 @@ where
                         (evals.clone(), bound)
                     })
                     .collect();
-                combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
+                combined_inner_product::<G>(evaluation_points, xi, r, &es, self.len())
             };
 
             sponge.absorb_fr(&[shift_scalar(combined_inner_product0)]);
@@ -746,10 +750,10 @@ where
             let u: G = to_group(group_map, t);
 
             let Challenges { chal, chal_inv } =
-                opening.challenges::<EFqSponge>(&self.endo_r, sponge);
+                opening.challenges::<EFqSponge>(&endo_r, sponge);
 
             sponge.absorb_g(&[opening.delta]);
-            let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
+            let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
 
             // < s, sum_i r^i pows(evaluation_point[i]) >
             // ==
