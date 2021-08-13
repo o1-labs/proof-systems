@@ -163,6 +163,15 @@ where
         // domain for the circuit is d1
         let n = index.cs.domain.d1.size as usize;
 
+        // debug
+        let GENERIC = true;
+        let POSEIDON = false;
+        let EC_ADD = true;
+        let EC_DBL = true;
+        let ENDO_SCALAR_MUL = true;
+        let SCALAR_MUL = true;
+        let PERMUTATION = false;
+
         // make sure that every columns of the witness fits in the domain
         for w in witness.iter() {
             if w.len() != n {
@@ -184,11 +193,13 @@ where
 
         let public = witness[0][0..index.cs.public].to_vec();
         // TODO(mimoo): should we really negate it here? better to subtract it later no?
-        let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        let public_poly = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
         )
         .interpolate();
+
+        println!("public poly: {:?}", public_poly.coeffs);
 
         // TODO(mimoo): change to OsRng
         let rng = &mut thread_rng();
@@ -219,7 +230,11 @@ where
         // absorb a non-hiding commitment of the public input
         // TODO(mimoo): why not absorb the public input directly?
         // TODO(mimoo): should we absorb other prologue metadata? Like a hash of the circuit and a hash of the SRS (or a hash of the index)?
-        let public_comm = index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
+        let public_comm = index
+            .srs
+            .get_ref()
+            .commit_non_hiding(&public_poly, None)
+            .unshifted;
         fq_sponge.absorb_g(&public_comm);
 
         // absorb the wire polycommitments into the argument
@@ -271,8 +286,8 @@ where
         let (perm, bnd) = index
             .cs
             .perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
-        // generic
-        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &p);
+        // generic + public input
+        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &public_poly);
         // poseidon
         let (pos4, pos8, posp) =
             index
@@ -288,18 +303,71 @@ where
         let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
 
         // collect contribution evaluations
-        let t4 = &(&add + &mul4) + &(&pos4 + &(&gen + &doub4));
-        let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &doub8)));
+
+        // initialize t4 and t8 to 0 polynomials
+        let mut t4 = DensePolynomial::from_coefficients_slice(&[Fr::<G>::zero()])
+            .evaluate_over_domain_by_ref(index.cs.domain.d4);
+        let mut t8 = DensePolynomial::from_coefficients_slice(&[Fr::<G>::zero()])
+            .evaluate_over_domain_by_ref(index.cs.domain.d8);
+
+        // mimoo: these were the initial calculations
+        //        let t4 = &(&add + &mul4) + &(&pos4 + &(&gen + &doub4));
+        //        let mut t8 = &mul8 + &(&emul8 + &(&pos8 + &doub8));
+
+        // lagrange form
+        if GENERIC {
+            t4 = &t4 + &gen;
+        }
+
+        if POSEIDON {
+            t4 = &t4 + &pos4;
+            t8 = &t8 + &pos8;
+        }
+
+        if PERMUTATION {
+            t8 = &t8 + &perm;
+        }
+
+        if EC_ADD {
+            t4 = &t4 + &add;
+        }
+
+        if EC_DBL {
+            t4 = &t4 + &doub4;
+            t8 = &t8 + &doub8;
+        }
+
+        if ENDO_SCALAR_MUL {
+            t8 = &t8 + &emul8;
+        }
+
+        if SCALAR_MUL {
+            t4 = &t4 + &mul4;
+            t8 = &t8 + &mul8;
+        }
+
+        // polynomial form
+        let mut t = &t4.interpolate() + &t8.interpolate();
+
+        if GENERIC {
+            t = &t + &genp;
+        }
+
+        if POSEIDON {
+            t = &t + &posp;
+        }
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
+        let (mut t, res) = t
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
             return Err(ProofError::PolyDivision);
         }
 
-        t += &bnd;
+        if PERMUTATION {
+            t += &bnd;
+        };
 
         //
         // 9. commit to t
@@ -395,15 +463,36 @@ where
             println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
         } */
 
-        let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0])
-            + &index
-                .cs
-                .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]))
-            + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]))
-            + &index.cs.double_lnrz(&e, &alpha[range::DBL]))
-            + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]))
-            + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]))
-            + &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+        let mut f = DensePolynomial::zero();
+
+        if GENERIC {
+            f = &f + &index.cs.gnrc_lnrz(&e[0]);
+        }
+
+        if POSEIDON {
+            f = &f
+                + &index
+                    .cs
+                    .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
+        }
+
+        if EC_ADD {
+            f = &f + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]);
+        }
+
+        if EC_DBL {
+            f = &f + &&index.cs.double_lnrz(&e, &alpha[range::DBL]);
+        }
+        if ENDO_SCALAR_MUL {
+            f = &f + &&index.cs.endomul_lnrz(&e, &alpha[range::ENDML]);
+        }
+        if SCALAR_MUL {
+            f = &f + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]);
+        }
+
+        if PERMUTATION {
+            f = &f + &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+        }
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
@@ -414,13 +503,16 @@ where
             s.absorb(&fq_sponge.digest());
             s
         };
-        let p_eval = if p.is_zero() {
+        let public_eval = if public_poly.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]
+            [
+                vec![public_poly.evaluate(evlp[0])],
+                vec![public_poly.evaluate(evlp[1])],
+            ]
         };
         for i in 0..2 {
-            fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
+            fr_sponge.absorb_evaluations(&public_eval[i], &evals[i])
         }
 
         //
@@ -457,7 +549,7 @@ where
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect();
-        polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
@@ -477,7 +569,7 @@ where
         println!("debug prover:");
         println!("oracles: {:?}", oracles);
         println!("alpha: {:?}", alpha);
-        println!("p_eval: {:?}", p_eval);
+        println!("public_eval: {:?}", public_eval);
         println!("evlp: {:?}", evlp);
         println!("polys: {:?}", polys);
 

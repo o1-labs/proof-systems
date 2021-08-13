@@ -25,7 +25,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         z: &DensePolynomial<F>,
         alpha: &[F],
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
-        let l0 = &self.l08.scale(oracles.gamma);
+        // constant gamma in evaluation form (in domain d8)
+        let gamma = &self.l08.scale(oracles.gamma);
 
         // TODO(mimoo): use self.sid[0] instead of 1
         // accumulator init := (z(x) - 1) / (x - 1)
@@ -52,26 +53,27 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             return Err(ProofError::PolyDivision);
         }
 
-        // shifts = z8 *
-        // (w8[0] + [gamma, gamma, ... in d8] + (x-1) * beta * shift[0]) *
-        // (w8[1] + [gamma, gamma, ... in d8] + (x-1) * beta * shift[1]) * ...
+        // shifts = z(x) *
+        // (w[0](x) + gamma + x * beta * shift[0]) *
+        // (w[1](x) + gamma + x * beta * shift[1]) * ...
+        // in evaluation form in d8
         let mut shifts = lagrange.d8.this.z.clone();
         for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-            let thing = witness + &(l0 + &self.l1.scale(oracles.beta * shift));
-            shifts = &shifts * &thing;
+            let term = &(witness + gamma) + &self.l1.scale(oracles.beta * shift);
+            shifts = &shifts * &term;
         }
 
-        // sigmas = z8.shift(8) *
-        // (w8[0] + [gamma, gamma, ... in d8] + sigma[0] * beta) *
-        // (w8[1] + [gamma, gamma, ... in d8] + sigma[1] * beta) * ...
+        // sigmas = z(x * w) *
+        // (w8[0] + gamma + sigma[0] * beta) *
+        // (w8[1] + gamma + sigma[1] * beta) * ...
+        // in evaluation form in d8
         let mut sigmas = lagrange.d8.next.z.clone();
         for (witness, sigma) in lagrange.d8.this.w.iter().zip(self.sigmal8.iter()) {
-            let term = witness + &(l0 + &sigma.scale(oracles.beta));
+            let term = witness + &(gamma + &sigma.scale(oracles.beta));
             sigmas = &sigmas * &term;
         }
 
-        let perm = &shifts - &sigmas;
-        let perm = &perm.scale(alpha[0]) * &self.zkpl;
+        let perm = &(&shifts - &sigmas).scale(alpha[0]) * &self.zkpl;
 
         Ok((perm, &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2])))
     }

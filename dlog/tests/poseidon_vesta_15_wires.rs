@@ -4,7 +4,7 @@ use algebra::{
         pallas::Affine as Other,
         vesta::{Affine, VestaParameters},
     },
-    UniformRand, Zero,
+    One, UniformRand, Zero,
 };
 use array_init::array_init;
 use colored::Colorize;
@@ -277,6 +277,109 @@ fn positive(index: &Index<Affine>) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
+        }
+    }
+}
+
+#[test]
+fn generic_vesta_15_wires() {
+    // circuit gates
+    let mut gates = vec![];
+    let mut abs_row = 0;
+
+    // add generic gate for multiplication l * r = o
+    let wires = array_init(|col| Wire { col, row: abs_row });
+    let (on, off) = (Fp::one(), Fp::zero());
+    let qw: [Fp; COLUMNS] = [
+        /* left */ on, /* right */ on, /* output */ on,
+        /* the rest of the columns don't matter */
+        off, off, off, off, off, off, off, off, off, off, off, off,
+    ];
+    let multiplication = on;
+    let constant = off;
+    gates.push(CircuitGate::<Fp>::create_generic(
+        abs_row,
+        wires,
+        qw,
+        multiplication,
+        constant,
+    ));
+    abs_row += 1;
+
+    // add a zero gate, just because
+    let wires = array_init(|col| Wire { col, row: abs_row });
+    gates.push(CircuitGate::<Fp>::zero(abs_row, wires));
+    abs_row += 1;
+
+    // create the index
+    let fp_sponge_params = oracle::pasta::fp::params();
+    let public = 0;
+    let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, public).unwrap();
+    let fq_sponge_params = oracle::pasta::fq::params();
+    let (endo_q, _endo_r) = endos::<Other>();
+    let srs = SRS::create(abs_row);
+    let srs = SRSSpec::Use(&srs);
+    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+
+    // set up
+    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
+
+    // witness
+    let mut abs_row = 0;
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); abs_row]);
+    let left = 0;
+    let right = 1;
+    let output = 2;
+    witness[left][abs_row] = 3u32.into();
+    witness[right][abs_row] = 5u32.into();
+    witness[output][abs_row] = (3u32 * 5).into();
+    println!("witness: {:?}", witness);
+
+    // verify the circuit satisfiability by the computed witness
+    assert_eq!(index.cs.verify(&witness), true);
+
+    // what is this thing?
+    let prev = {
+        // ?
+        let k = ceil_log2(index.srs.get_ref().g.len());
+
+        // random challenges
+        let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
+
+        // non-hiding commitments of b polyonmials (made out of challenges) ???
+        let comm = {
+            let coeffs = b_poly_coefficients(&chals);
+            let b = DensePolynomial::from_coefficients_vec(coeffs);
+            index.srs.get_ref().commit_non_hiding(&b, None)
+        };
+
+        (chals, comm)
+    };
+
+    println!("n vs domain{} {}", abs_row, index.cs.domain.d1.size);
+
+    // add the proof to the batch
+    let mut batch = Vec::new();
+    batch.push(
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![prev])
+            .unwrap(),
+    );
+
+    let verifier_index = index.verifier_index();
+
+    let lgr_comms = vec![]; // why empty?
+    let batch: Vec<_> = batch
+        .iter()
+        .map(|proof| (&verifier_index, &lgr_comms, proof))
+        .collect();
+
+    // verify the proofs in batch
+    println!("{}", "Verifier zk-proofs verification".green());
+    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+        Err(error) => panic!("error: {}", error),
+        Ok(_) => {
+            println!("all good!");
         }
     }
 }

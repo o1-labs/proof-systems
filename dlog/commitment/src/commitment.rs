@@ -1167,6 +1167,7 @@ mod tests {
 
         println!("{:?}", opening_proof);
 
+
         // verify the proof
         let mut batch: Vec<(
             _,

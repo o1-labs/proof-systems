@@ -136,6 +136,9 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }
 
+/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
+/// Currently, we use k = 3 blinding factors for 2 evaluations,
+/// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
     // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
     let w3 = zk_w3(domain);
@@ -157,10 +160,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
-        let domain = EvaluationDomains::<F>::create(gates.len())?;
+        // for some reason we need more than 1 gate for the circuit to work, see TODO below
+        assert!(gates.len() > 1);
+
+        // +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
+        // see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        let domain = EvaluationDomains::<F>::create(gates.len() + 3)?;
+        assert!(domain.d1.size > 3);
+
+        // pre-compute all the elements
         let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
 
         // sample the coordinate shifts
+        // TODO(mimoo): should we check that the shifts are all different?
         let shift = Self::sample_shifts(&domain.d1, PERMUTS - 1);
         let shift: [F; PERMUTS] = array_init(|i| if i == 0 { F::one() } else { shift[i - 1] });
 
@@ -193,7 +205,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate()
         });
 
-        let mut s = sid[0..2].to_vec();
+        let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?
         sid.append(&mut s);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
@@ -468,6 +480,30 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },
+        }
+    }
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use algebra::{pasta::fp::Fp, FftField, Field, SquareRootField};
+
+    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+        pub fn for_testing(
+            sponge_params: ArithmeticSpongeParams<F>,
+            gates: Vec<CircuitGate<F>>,
+        ) -> Self {
+            let fp_sponge_params = oracle::pasta::fp::params();
+            let public = 0;
+            ConstraintSystem::<F>::create(gates, sponge_params, public).unwrap()
+        }
+    }
+
+    impl ConstraintSystem<Fp> {
+        pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
+            let fp_sponge_params = oracle::pasta::fp::params();
+            Self::for_testing(fp_sponge_params, gates)
         }
     }
 }
