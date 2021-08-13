@@ -542,7 +542,7 @@ where
 
             let p =
                 Evaluations::<Fp, D<Fp>>::from_vec_and_domain(v, index.cs.domain.d1).interpolate();
-            index.srs.get_ref().commit_non_hiding(&p, None)
+            index.srs.get_ref().trim(index.cs.domain.d1.size.trailing_zeros() as usize).commit_non_hiding(&p, None)
         })
         .collect();
 
@@ -761,7 +761,7 @@ where
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let b = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&chals));
-                index.srs.get_ref().commit_non_hiding(&b, None)
+                index.srs.get_ref().trim(index.cs.domain.d1.size.trailing_zeros() as usize).commit_non_hiding(&b, None)
             };
             (chals, comm)
         };

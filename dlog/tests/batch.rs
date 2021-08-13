@@ -31,8 +31,10 @@ where
     let rng = &mut rand::thread_rng();
     let mut random = rand::thread_rng();
 
-    let size = 1 << 7;
+    let size_log2 = 7;
+    let size = 1 << size_log2;
     let srs = SRS::<Affine>::create(size);
+    let srs = srs.trim(size_log2);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
     let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq::params());
