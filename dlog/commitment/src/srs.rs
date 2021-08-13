@@ -22,6 +22,40 @@ pub struct SRS<G: CommitmentCurve> {
     pub endo_q: G::BaseField,
 }
 
+pub struct TrimmedSRS<'a, G: CommitmentCurve> {
+    pub srs: &'a SRS<G>,
+    pub trimmed_length_log2: usize
+}
+
+impl<G: CommitmentCurve> SRS<G> {
+    pub fn trim<'a>(&'a self, trimmed_length_log2: usize) -> TrimmedSRS<'a, G> {
+        assert!((1 << trimmed_length_log2) <= self.g.len());
+        TrimmedSRS { srs: self, trimmed_length_log2 }
+    }
+}
+
+impl<'a, G: CommitmentCurve> TrimmedSRS<'a, G> {
+    pub fn len(&self) -> usize {
+        1 << self.trimmed_length_log2
+    }
+
+    pub fn rounds(&self) -> usize {
+        self.trimmed_length_log2
+    }
+
+    pub fn g(&self) -> &'a [G] {
+        & self.srs.g[0..self.len()]
+    }
+
+    pub fn h(&self) -> G {
+        self.srs.h
+    }
+
+    pub fn endo_r(&self) -> G::ScalarField {
+        self.srs.endo_r
+    }
+}
+
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
 where
     G::BaseField: PrimeField,
