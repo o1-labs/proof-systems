@@ -165,13 +165,16 @@ where
         )
         .interpolate();
 
+        let trimmed_length = (index.cs.domain.d1.size as u64).trailing_zeros() as usize;
+        let srs = index.srs.get_ref().trim(trimmed_length);
+
         // commit to the l, r, o wire values
-        let (l_comm, omega_l) = index.srs.get_ref().commit(&l, None, rng);
-        let (r_comm, omega_r) = index.srs.get_ref().commit(&r, None, rng);
-        let (o_comm, omega_o) = index.srs.get_ref().commit(&o, None, rng);
+        let (l_comm, omega_l) = srs.commit(&l, None, rng);
+        let (r_comm, omega_r) = srs.commit(&r, None, rng);
+        let (o_comm, omega_o) = srs.commit(&o, None, rng);
 
         // absorb the public input, l, r, o polycommitments into the argument
-        let public_input_comm = &index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
+        let public_input_comm = &srs.commit_non_hiding(&p, None).unshifted;
         // this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);
         fq_sponge.absorb_g(&public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
@@ -212,7 +215,7 @@ where
             .interpolate();
 
         // commit to z
-        let (z_comm, omega_z) = index.srs.get_ref().commit(&z, None, rng);
+        let (z_comm, omega_z) = srs.commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.unshifted);
@@ -288,9 +291,7 @@ where
         t.coeffs.resize(index.max_quot_size, Fr::<G>::zero());
 
         // commit to t
-        let (t_comm, omega_t) = index
-            .srs
-            .get_ref()
+        let (t_comm, omega_t) = srs
             .commit(&t, Some(index.max_quot_size), rng);
 
         // absorb the polycommitments into the argument and sample zeta
@@ -452,7 +453,7 @@ where
                 z_comm,
                 t_comm,
             },
-            proof: index.srs.get_ref().open(
+            proof: srs.open(
                 group_map,
                 polynoms,
                 &evlp.to_vec(),

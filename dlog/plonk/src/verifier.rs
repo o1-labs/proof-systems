@@ -450,9 +450,13 @@ where
 
         // verify the opening proofs
         // TODO: Account for the different SRS lengths
-        let srs = proofs[0].0.srs.get_ref();
+        let index0 = &proofs[0].0;
+        let trimmed_length = (index0.domain.size as u64).trailing_zeros() as usize;
+        let srs = index0.srs.get_ref().trim(trimmed_length);
+
         for (index, _, _) in proofs.iter() {
-            assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
+            let trimmed_length = (index.domain.size as u64).trailing_zeros() as usize;
+            assert_eq!(index.srs.get_ref().trim(trimmed_length).len(), srs.len());
         }
 
         match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng()) {

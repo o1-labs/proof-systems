@@ -82,28 +82,31 @@ where
     G::ScalarField: CommitmentField,
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
-        let srs = match &self.srs {
+        let srs0 = match &self.srs {
             SRSValue::Value(s) => SRSValue::Value(s.clone()),
             SRSValue::Ref(x) => SRSValue::Ref(x),
         };
 
+        let trimmed_length = (self.cs.domain.d1.size as u64).trailing_zeros() as usize;
+        let srs = srs0.get_ref().trim(trimmed_length);
+
         VerifierIndex {
             domain: self.cs.domain.d1,
 
-            sigma_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.sigmam[i], None)),
-            qw_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.qwm[i], None)),
-            qm_comm: srs.get_ref().commit_non_hiding(&self.cs.qmm, None),
-            qc_comm: srs.get_ref().commit_non_hiding(&self.cs.qc, None),
+            sigma_comm: array_init(|i| srs.commit_non_hiding(&self.cs.sigmam[i], None)),
+            qw_comm: array_init(|i| srs.commit_non_hiding(&self.cs.qwm[i], None)),
+            qm_comm: srs.commit_non_hiding(&self.cs.qmm, None),
+            qc_comm: srs.commit_non_hiding(&self.cs.qc, None),
 
-            rcm_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.rcm[i], None)),
-            psm_comm: srs.get_ref().commit_non_hiding(&self.cs.psm, None),
+            rcm_comm: array_init(|i| srs.commit_non_hiding(&self.cs.rcm[i], None)),
+            psm_comm: srs.commit_non_hiding(&self.cs.psm, None),
 
-            add_comm: srs.get_ref().commit_non_hiding(&self.cs.addm, None),
-            double_comm: srs.get_ref().commit_non_hiding(&self.cs.doublem, None),
-            mul1_comm: srs.get_ref().commit_non_hiding(&self.cs.mul1m, None),
-            mul2_comm: srs.get_ref().commit_non_hiding(&self.cs.mul2m, None),
-            emul_comm: srs.get_ref().commit_non_hiding(&self.cs.emulm, None),
-            pack_comm: srs.get_ref().commit_non_hiding(&self.cs.packm, None),
+            add_comm: srs.commit_non_hiding(&self.cs.addm, None),
+            double_comm: srs.commit_non_hiding(&self.cs.doublem, None),
+            mul1_comm: srs.commit_non_hiding(&self.cs.mul1m, None),
+            mul2_comm: srs.commit_non_hiding(&self.cs.mul2m, None),
+            emul_comm: srs.commit_non_hiding(&self.cs.emulm, None),
+            pack_comm: srs.commit_non_hiding(&self.cs.packm, None),
 
             w: zk_w(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
@@ -113,7 +116,7 @@ where
             max_quot_size: self.max_quot_size,
             zkpm: self.cs.zkpm.clone(),
             shift: self.cs.shift,
-            srs,
+            srs: srs0,
         }
     }
 

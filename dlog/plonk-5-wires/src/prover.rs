@@ -189,12 +189,15 @@ where
             .interpolate()
         });
 
+        let trimmed_length = (index.cs.domain.d1.size as u64).trailing_zeros() as usize;
+        let srs = index.srs.get_ref().trim(trimmed_length);
+
         // commit to the wire values
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] =
-            array_init(|i| index.srs.get_ref().commit(&w[i], None, rng));
+            array_init(|i| srs.commit(&w[i], None, rng));
 
         // absorb the wire polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
+        fq_sponge.absorb_g(&srs.commit_non_hiding(&p, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
@@ -232,7 +235,7 @@ where
             .interpolate();
 
         // commit to z
-        let z_comm = index.srs.get_ref().commit(&z, None, rng);
+        let z_comm = srs.commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
@@ -284,9 +287,7 @@ where
         t += &bnd;
 
         // commit to t
-        let t_comm = index
-            .srs
-            .get_ref()
+        let t_comm = srs
             .commit(&t, Some(index.max_quot_size), rng);
 
         // absorb the polycommitments into the argument and sample zeta
@@ -416,7 +417,7 @@ where
                 z_comm: z_comm.0,
                 t_comm: t_comm.0,
             },
-            proof: index.srs.get_ref().open(
+            proof: srs.open(
                 group_map,
                 polynoms,
                 &evlp.to_vec(),
