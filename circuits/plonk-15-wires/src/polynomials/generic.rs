@@ -9,7 +9,7 @@ use crate::nolookup::scalars::ProofEvaluations;
 use crate::polynomial::WitnessOverDomains;
 use crate::wires::GENERICS;
 use algebra::{FftField, SquareRootField};
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ff_fft::{DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::PolyUtils;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -21,13 +21,59 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> (Evaluations<F, D<F>>, DensePolynomial<F>) {
         // w[0](x) * w[1](x) * qml(x)
         let multiplication = &(&polys.d4.this.w[0] * &polys.d4.this.w[1]) * &self.qml;
+
         // presence of left, right, and output wire
         // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
         let mut wires = self.zero4.clone();
         for (w, q) in polys.d4.this.w.iter().zip(self.qwl.iter()) {
             wires += &(w * q);
         }
-        (&multiplication + &wires, &self.qc + &public)
+
+        // return in lagrange and monomial form for optimization purpose
+        let eval_part = &multiplication + &wires;
+        let poly_part = &self.qc + &public;
+
+        // verify that each row is 0 (remove when done)
+        let full_poly = eval_part.interpolate_by_ref();
+        let values: Vec<_> = polys
+            .d4
+            .this
+            .w
+            .iter()
+            .zip(self.qwl.iter())
+            .map(|(w, q)| (w.interpolate_by_ref(), q.interpolate_by_ref()))
+            .collect();
+        let mul_gate_val = multiplication.interpolate_by_ref();
+        let mul_gate = self.qml.interpolate_by_ref();
+        for (row, elem) in self.domain.d1.elements().enumerate() {
+            println!("row {}", row);
+            for (col, (w, q)) in values.iter().enumerate() {
+                println!(
+                    "  col {} | w = {} | q = {}",
+                    col,
+                    w.evaluate(elem),
+                    q.evaluate(elem)
+                );
+            }
+            println!(
+                "  q_M = {} | mul = {}",
+                mul_gate.evaluate(elem),
+                mul_gate_val.evaluate(elem)
+            );
+
+            let res = full_poly.evaluate(elem);
+            if !res.is_zero() {
+                panic!("row {} of generic polynomial doesn't evaluate to zero", row);
+            }
+        }
+
+        // verify that it is divisible by Z_H (remove when that passes)
+        let aaa = eval_part.interpolate_by_ref();
+        let (_t, res) = aaa.divide_by_vanishing_poly(self.domain.d1).expect("woot?");
+        assert!(res.is_zero());
+
+        //
+        (eval_part, poly_part)
     }
 
     pub fn gnrc_scalars(evals: &ProofEvaluations<F>) -> Vec<F> {

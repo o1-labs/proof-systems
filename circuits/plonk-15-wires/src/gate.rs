@@ -31,7 +31,7 @@ pub enum GateType {
     Lookup,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CircuitGate<Field: FftField> {
     /// row position in the circuit
     // TODO(mimoo): shouldn't this be u32 since we serialize it as a u32?

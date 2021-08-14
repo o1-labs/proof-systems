@@ -10,6 +10,7 @@ use algebra::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {
+    // TODO(mimoo): why qw is length 15 if the polynomial side only uses 3?
     pub fn create_generic(row: usize, wires: GateWires, qw: [F; COLUMNS], qm: F, qc: F) -> Self {
         let mut c = qw.to_vec();
         c.push(qm);
@@ -24,9 +25,8 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
-        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-
         // assignments
+        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let left = this[0];
         let right = this[1];
 
@@ -41,13 +41,15 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(self.typ, GateType::Generic);
 
         // toggling each column x[i] depending on the selectors c[i]
-        // TODO(mimoo): why involve an addition with all columns?
+        // TODO(mimoo): why involve an addition with all columns? also the polynomial side doesn't use all of these
         let big_sum = (0..COLUMNS)
             .map(|i| self.c[i] * &this[i])
-            .fold(F::zero(), |x, y| x + &y);
+            .fold(zero, |x, y| x + &y);
 
         // multiplication selector c[15] is for x[0] and x[1]
         let mul = mul_selector * &left * &right;
+        //        let mul2 = mul_selector * this[COLUMNS];
+        //        ensure_eq!(mul, mul2);
 
         // TODO(mimoo): what about the output?
         ensure_eq!(zero, big_sum + &mul + &constant_selector);

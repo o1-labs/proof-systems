@@ -282,27 +282,23 @@ where
         // 8. Compute quotient polynomial
         //
 
+        // generic + public input
+        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &public_poly);
+
         // permutation
         let (perm, bnd) = index
             .cs
             .perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
-        // generic + public input
-        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &public_poly);
+
+        // scalar multiplication
+        let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
+        let mul8 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
+
         // poseidon
         let (pos4, pos8, posp) =
             index
                 .cs
                 .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
-        // EC addition
-        let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
-        // EC doubling
-        let (doub4, doub8) = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
-        // endoscaling
-        let mul8 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
-        // scalar multiplication
-        let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
-
-        // collect contribution evaluations
 
         // initialize t4 and t8 to 0 polynomials
         let mut t4 = DensePolynomial::from_coefficients_slice(&[Fr::<G>::zero()])
@@ -329,15 +325,20 @@ where
         }
 
         if EC_ADD {
+            // EC addition
+            let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
             t4 = &t4 + &add;
         }
 
         if EC_DBL {
+            // EC doubling
+            let (doub4, doub8) = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
             t4 = &t4 + &doub4;
             t8 = &t8 + &doub8;
         }
 
         if ENDO_SCALAR_MUL {
+            // endoscaling
             t8 = &t8 + &emul8;
         }
 
@@ -361,7 +362,8 @@ where
         let (mut t, res) = t
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 

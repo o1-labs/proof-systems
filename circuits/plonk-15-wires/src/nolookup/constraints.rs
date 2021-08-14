@@ -131,7 +131,6 @@ pub struct ConstraintSystem<F: FftField> {
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
-// TODO(mimoo): ensure that this cannot be used by a circuit
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }
@@ -140,15 +139,16 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
 /// Currently, we use k = 3 blinding factors for 2 evaluations,
 /// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
-    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
 
+    // (x-w3)(x-w2)(x-w1) =
+    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
     DP::from_coefficients_slice(&[
-        -w1 * &w2 * &w3,
-        (w1 * &w2) + &(w1 * &w3) + &(w3 * &w2),
-        -w1 - &w2 - &w3,
+        -w1 * &w2 * &w3,                        // 1
+        (w1 * &w2) + &(w1 * &w3) + &(w3 * &w2), // x
+        -w1 - &w2 - &w3,                        // x^2
         F::one(),
     ])
 }
@@ -233,7 +233,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 .iter()
                 .map(|gate| {
                     if gate.typ == GateType::Generic {
-                        gate.c[GENERICS]
+                        gate.c[COLUMNS]
                     } else {
                         F::zero()
                     }
@@ -384,25 +384,39 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
+    // TODO(mimoo): return a better error that tells you the col and row
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
-        // TODO: what does this represent? guess: q_L is set, q_R, q_M, q_C, and q_O are not
-        let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
+        let left_wire = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
 
-        (0..self.gates.len()).all(|row|
-                // verify permutation consistency
-                (0..COLUMNS).all(|col|
-                {
-                    let wire = self.gates[row].wires[col];
-                    witness[col][row] == witness[wire.col][wire.row]
-                })
-                &&
-                // verify witness against constraints
-                if row < self.public {
-                    // TODO: shouldn't we also check that the gate is of type zero?
-                    self.gates[row].c == p
-                } else {
-                    self.gates[row].verify(witness, &self)
-                })
+        println!("looking at {} gates", self.gates.len());
+
+        for (row, gate) in self.gates.iter().enumerate() {
+            // check if wires are connected
+            for col in 0..COLUMNS {
+                let wire = gate.wires[col];
+                if witness[col][row] != witness[wire.col][wire.row] {
+                    println!(
+                        "wires (col:{}, {}) and ({}, {}) are not connected",
+                        col, row, wire.col, wire.row
+                    );
+                    return false;
+                }
+            }
+
+            if row < self.public {
+                if gate.c != left_wire {
+                    // for public gates, only the left wire is toggled
+                    println!("the public gate #{} has some incorrect wiring", row);
+                    return false;
+                }
+            } else if !gate.verify(witness, &self) {
+                println!("the gate #{} did not verify", row);
+                return false;
+            }
+        }
+
+        // all good!
+        return true;
     }
 
     /// sample coordinate shifts deterministically
