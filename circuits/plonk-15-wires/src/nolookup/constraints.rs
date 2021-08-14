@@ -145,11 +145,12 @@ pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
 
     // (x-w3)(x-w2)(x-w1) =
     // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+    let w1w2 = w1 * &w2;
     DP::from_coefficients_slice(&[
-        -w1 * &w2 * &w3,                        // 1
-        (w1 * &w2) + &(w1 * &w3) + &(w3 * &w2), // x
-        -w1 - &w2 - &w3,                        // x^2
-        F::one(),
+        -w1w2 * &w3,                      // 1
+        w1w2 + &(w1 * &w3) + &(w3 * &w2), // x
+        -w1 - &w2 - &w3,                  // x^2
+        F::one(),                         // x^3
     ])
 }
 

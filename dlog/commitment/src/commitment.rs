@@ -942,7 +942,7 @@ where
                 res
             };
 
-            // ?
+            // for recursion
             let s = b_poly_coefficients(&chal);
 
             // ?
@@ -1167,7 +1167,6 @@ mod tests {
 
         println!("{:?}", opening_proof);
 
-
         // verify the proof
         let mut batch: Vec<(
             _,
@@ -1191,6 +1190,7 @@ mod tests {
             ],
             &opening_proof,
         )];
+
         assert!(srs.verify(&group_map, &mut batch, rng));
     }
 }

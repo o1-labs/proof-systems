@@ -345,13 +345,13 @@ where
 
                 // permutation
                 println!("- permutation");
-                let zkp = index.zkpm.evaluate(oracles.zeta);
+                let zkp_zeta = index.zkpm.evaluate(oracles.zeta);
                 let mut p = vec![&index.sigma_comm[PERMUTS - 1]];
                 let mut s = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     &oracles,
                     &alpha[range::PERM],
-                    zkp,
+                    zkp_zeta,
                 )];
 
                 // generic
@@ -429,7 +429,7 @@ where
                             (w_zeta[PERMUTS - 1] + &oracles.gamma)
                                 * z_zeta_omega
                                 * &alpha[range::PERM][0]
-                                * &zkp,
+                                * &zkp_zeta,
                             |x, y| x * y,
                         );
                     println!("number of s_zeta: {:?}", s_zeta.len());
@@ -438,7 +438,7 @@ where
                         .iter()
                         .zip(index.shift.iter())
                         .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
-                        .fold(alpha[range::PERM][0] * zkp * z_zeta, |x, y| x * y);
+                        .fold(alpha[range::PERM][0] * zkp_zeta * z_zeta, |x, y| x * y);
                     println!(
                         "number of shift: {:?} (should have one more)",
                         index.shift.len()

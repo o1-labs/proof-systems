@@ -6,7 +6,7 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, PrimeField, Zero};
+use algebra::{AffineCurve, Field, One, PrimeField, Zero};
 use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
@@ -170,7 +170,7 @@ where
         let EC_DBL = true;
         let ENDO_SCALAR_MUL = true;
         let SCALAR_MUL = true;
-        let PERMUTATION = false;
+        let PERMUTATION = true;
 
         // make sure that every columns of the witness fits in the domain
         for w in witness.iter() {
@@ -294,6 +294,12 @@ where
         let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
         let mul8 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
 
+        // EC addition
+        let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
+
+        // EC doubling
+        let (doub4, doub8) = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
+
         // poseidon
         let (pos4, pos8, posp) =
             index
@@ -325,14 +331,10 @@ where
         }
 
         if EC_ADD {
-            // EC addition
-            let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
             t4 = &t4 + &add;
         }
 
         if EC_DBL {
-            // EC doubling
-            let (doub4, doub8) = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
             t4 = &t4 + &doub4;
             t8 = &t8 + &doub8;
         }
@@ -493,7 +495,8 @@ where
         }
 
         if PERMUTATION {
-            f = &f + &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+            let perm = index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+            f = &f + &perm;
         }
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
@@ -551,19 +554,83 @@ where
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect();
+
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials.clone(),
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations.clone(),
+            rng,
+        );
+
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
+
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials.clone(),
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations.clone(),
+            rng,
+        );
+
         polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
         );
-        polynomials.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials.clone(),
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations.clone(),
+            rng,
+        );
+        polynomials.extend(vec![(&z, None, z_comm.1)]);
+
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials.clone(),
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations.clone(),
+            rng,
+        );
+
+        /*
+                polynomials.extend(vec![(&f, None, non_hiding(1))]);
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials.clone(),
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations.clone(),
+            rng,
+        );
+
+        */
         polynomials.extend(
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
+        );
+        let proof = index.srs.get_ref().open(
+            group_map,
+            polynomials.clone(),
+            &evlp.to_vec(),
+            oracles.v,
+            oracles.u,
+            fq_sponge_before_evaluations.clone(),
+            rng,
         );
         polynomials.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
 

@@ -9,7 +9,10 @@ use crate::nolookup::scalars::{ProofEvaluations, RandomOracles};
 use crate::polynomial::WitnessOverDomains;
 use crate::wires::*;
 use algebra::{FftField, SquareRootField};
-use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ff_fft::{
+    DenseOrSparsePolynomial, DensePolynomial, EvaluationDomain, Evaluations,
+    Radix2EvaluationDomain as D,
+};
 use oracle::{
     rndoracle::ProofError,
     utils::{EvalUtils, PolyUtils},
@@ -27,12 +30,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.l08.scale(oracles.gamma);
+        let one_poly = DensePolynomial::from_coefficients_slice(&[F::one()]);
+        let z_minus_1 = z - &one_poly;
 
         // TODO(mimoo): use self.sid[0] instead of 1
         // accumulator init := (z(x) - 1) / (x - 1)
+        let x_minus_1 = DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]);
         let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
-            &(z - &DensePolynomial::from_coefficients_slice(&[F::one()])).into(),
-            &DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]).into(),
+            &z_minus_1.clone().into(),
+            &x_minus_1.clone().into(),
         )
         .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
@@ -40,15 +46,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
 
         // accumulator end := (z(x) - 1) / (x - sid[n-3])
-        let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
-            &(z - &DensePolynomial::from_coefficients_slice(&[F::one()])).into(),
-            &DensePolynomial::from_coefficients_slice(&[
-                -self.sid[self.domain.d1.size as usize - 3],
-                F::one(),
-            ])
-            .into(),
-        )
-        .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
+        let denominator = DensePolynomial::from_coefficients_slice(&[
+            -self.sid[self.domain.d1.size as usize - 3],
+            F::one(),
+        ]);
+        let (bnd2, res) =
+            DenseOrSparsePolynomial::divide_with_q_and_r(&z_minus_1.into(), &denominator.into())
+                .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
             return Err(ProofError::PolyDivision);
         }
@@ -56,6 +60,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // shifts = z(x) *
         // (w[0](x) + gamma + x * beta * shift[0]) *
         // (w[1](x) + gamma + x * beta * shift[1]) * ...
+        // (w[6](x) + gamma + x * beta * shift[6])
         // in evaluation form in d8
         let mut shifts = lagrange.d8.this.z.clone();
         for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
@@ -66,6 +71,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // sigmas = z(x * w) *
         // (w8[0] + gamma + sigma[0] * beta) *
         // (w8[1] + gamma + sigma[1] * beta) * ...
+        // (w8[6] + gamma + sigma[6] * beta)
         // in evaluation form in d8
         let mut sigmas = lagrange.d8.next.z.clone();
         for (witness, sigma) in lagrange.d8.this.w.iter().zip(self.sigmal8.iter()) {
@@ -74,8 +80,78 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
 
         let perm = &(&shifts - &sigmas).scale(alpha[0]) * &self.zkpl;
+        let bnd = &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2]);
 
-        Ok((perm, &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2])))
+        // test if every evaluation in the domain of the perm is zero
+        let x_n_minus_1: DensePolynomial<F> = self.domain.d1.vanishing_polynomial().into();
+
+        {
+            // testing lagrange base first first
+
+            let base = x_n_minus_1.scale(self.domain.d1.size_inv); // (x^n-1)/n
+            let base: DenseOrSparsePolynomial<F> = base.into();
+            let x_minus_1: DenseOrSparsePolynomial<_> = x_minus_1.into();
+            let (base, rem) = base.divide_with_q_and_r(&x_minus_1).unwrap(); // (x^n-1)/n(x-1)
+
+            if !rem.is_zero() {
+                panic!(" wtf??? {:?}", rem);
+            }
+
+            for (idx, elem) in self.domain.d1.elements().enumerate() {
+                let res = base.evaluate(elem);
+                if idx == 0 && res != F::one() {
+                    panic!("holy shit batman: superman is here");
+                }
+                if idx > 0 && !res.is_zero() {
+                    panic!("holy shit batman");
+                }
+            }
+        }
+
+        let perm_test = (&shifts - &sigmas).interpolate();
+        let perm_test = &perm_test * &self.zkpl.interpolate_by_ref();
+        let bnd2_test = bnd2.scale(crate::nolookup::constraints::zk_w3(self.domain.d1));
+        let bnd2_test = &bnd2_test * &x_n_minus_1;
+        let bnd2_test = bnd2_test.scale(self.domain.d1.size_inv);
+
+        let bnd1_test = bnd1.scale(self.domain.d1.size_inv); // (z(x)-1)/n(x-1)
+        let bnd1_test = &bnd1_test * &x_n_minus_1; // (z(x)-1)(z^n-1)/n(x-1)
+
+        // easy test first
+        let first = self.domain.d1.elements().next().unwrap();
+        if z.evaluate(first) != F::one() {
+            panic!("holy shit batman");
+        }
+        if z.evaluate(self.sid[(self.domain.d1.size - 3) as usize]) != F::one() {
+            panic!("hole shit batman: the sequel");
+        }
+
+        // all domain
+        for (row, elem) in ff_fft::EvaluationDomain::elements(&self.domain.d1).enumerate() {
+            let vv = perm_test.evaluate(elem);
+            if !vv.is_zero() {
+                panic!("row {} has perm evaluation different from zero", row);
+            }
+
+            let b1 = bnd1_test.evaluate(elem);
+            if !b1.is_zero() {
+                panic!("row {} has bnd1 evaluation different from zero", row);
+            }
+
+            let b2 = bnd2_test.evaluate(elem);
+            if !b2.is_zero() {
+                panic!("row {} has bnd2 evaluation different from zero", row);
+            }
+        }
+
+        // test if perm can be divided by vanishing polynomial (delete once it does)
+        let (_, res) = perm_test.divide_by_vanishing_poly(self.domain.d1).unwrap();
+        if !res.is_zero() {
+            panic!("perm_quot failed");
+        }
+
+        //
+        Ok((perm, bnd))
     }
 
     /// permutation linearization poly contribution computation
@@ -117,6 +193,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
 
+        // only works if first element is 1
+        assert!(self.domain.d1.elements().next() == Some(F::one()));
+
         // initialize accumulator at 1
         let mut z = vec![F::one(); n];
 
@@ -124,12 +203,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //           (w[0][j] + sid[j] * beta * shift[0] + gamma) *
         //           (w[1][j] + sid[j] * beta * shift[1] + gamma) *
         //           ... *
-        //           (w[14][j] + sid[j] * beta * shift[14] + gamma)
+        //           (w[6][j] + sid[j] * beta * shift[6] + gamma)
         //          ] / [
         //           (w[0][j] + sigma[0] * beta + gamma) *
         //           (w[1][j] + sigma[1] * beta + gamma) *
         //           ... *
-        //           (w[14][j] + sigma[14] * beta + gamma)
+        //           (w[6][j] + sigma[6] * beta + gamma)
         //          ]
         //
         // except for the first element (initialized at 1),
@@ -158,9 +237,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             return Err(ProofError::ProofCreation);
         };
 
-        // fill last two entries with randomness
+        // fill last k entries with randomness
+        // TODO(mimoo): isn't this supposed to be 3 rand entries for 2 evaluations?
         z[n - 2] = F::rand(rng);
         z[n - 1] = F::rand(rng);
-        Ok(Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate())
+
+        for zz in &z {
+            println!("z: {}", zz);
+        }
+
+        let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate();
+        Ok(res)
     }
 }

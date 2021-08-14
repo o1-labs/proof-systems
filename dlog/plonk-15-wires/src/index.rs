@@ -79,6 +79,7 @@ where
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
+// TODO(mimoo): a lot of this stuff is kinda redundant with the Index/ProverIndex. There probably should be a "commonIndex" and then a ProverIndex and VerifierIndex that includes it.
 pub struct VerifierIndex<'a, G: CommitmentCurve> {
     /// evaluation domain
     pub domain: D<Fr<G>>,
