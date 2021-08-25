@@ -161,12 +161,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         oracles: &RandomOracles<F>,
         alpha: &[F],
     ) -> DensePolynomial<F> {
-        self.sigmam[PERMUTS - 1].scale(Self::perm_scalars(
-            e,
-            oracles,
-            alpha,
-            self.zkpm.evaluate(oracles.zeta),
-        ))
+        let zkpm_zeta = self.zkpm.evaluate(oracles.zeta);
+        let scalar = Self::perm_scalars(e, oracles, alpha, zkpm_zeta);
+        self.sigmam[PERMUTS - 1].scale(scalar)
     }
 
     pub fn perm_scalars(
@@ -174,14 +171,25 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         oracles: &RandomOracles<F>,
         // TODO(mimoo): should only pass an iterator, to prevent different calls to re-use the same alphas!
         alpha: &[F],
-        z: F,
+        zkp_zeta: F,
     ) -> F {
         -e[0]
             .w
             .iter()
             .zip(e[0].s.iter())
             .map(|(w, s)| oracles.gamma + &(oracles.beta * s) + w)
-            .fold(e[1].z * &oracles.beta * alpha[0] * &z, |x, y| x * y)
+            .fold(e[1].z * &oracles.beta * alpha[0] * &zkp_zeta, |x, y| x * y)
+        /* TODO(mimoo): refactor with this when test pass
+        // we only use PERMUTATIONS-1 sigmas, as the last one is used later as a polynomial
+        let sigmas = e[0].s.iter();
+        // - z(zeta * omega) * beta * alpha^PERM0 * zkp(zeta)
+        let mut res = -alpha[0] * e[1].z * &oracles.beta * zkp_zeta;
+        for (witness_zeta, sigma_zeta) in e[0].w.iter().zip(sigmas) {
+            // * (gamma + beta * sigma_i(zeta) + w_i(zeta))
+            res *= oracles.gamma + oracles.beta * sigma_zeta + witness_zeta
+        }
+        res
+        */
     }
 
     /// permutation aggregation polynomial computation

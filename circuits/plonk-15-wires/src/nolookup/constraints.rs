@@ -196,12 +196,18 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let mut sigmal1 = s.clone();
 
         // compute permutation polynomials
-        gates.iter().enumerate().for_each(|(i, _)| {
-            (0..PERMUTS).for_each(|j| {
-                let wire = gates[i].wires[j];
-                sigmal1[j][i] = s[wire.col][wire.row]
-            })
-        });
+        for (row, gate) in gates.iter().enumerate() {
+            for col in 0..PERMUTS {
+                println!("permutation debug");
+                let wire = gate.wires[col];
+                println!(
+                    "row {} and column {} is connected with row {} and column {}",
+                    row, col, wire.row, wire.col
+                );
+                sigmal1[col][row] = s[wire.col][wire.row];
+            }
+        }
+
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| {
             E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate()
         });

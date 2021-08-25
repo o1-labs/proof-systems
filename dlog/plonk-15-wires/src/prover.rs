@@ -165,12 +165,12 @@ where
 
         // debug
         let GENERIC = true;
-        let POSEIDON = false;
+        let POSEIDON = true;
         let EC_ADD = true;
         let EC_DBL = true;
         let ENDO_SCALAR_MUL = true;
         let SCALAR_MUL = true;
-        let PERMUTATION = true;
+        let PERMUTATION = false;
 
         // make sure that every columns of the witness fits in the domain
         for w in witness.iter() {
@@ -497,6 +497,124 @@ where
         if PERMUTATION {
             let perm = index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
             f = &f + &perm;
+        }
+
+        //
+        // test permutation stuff (besides bnd)
+        //
+        {
+            let zeta = oracles.zeta;
+            let gamma = oracles.gamma;
+            let beta = oracles.beta;
+            let shifts = index.cs.shift;
+
+            //
+            // create z
+            //
+
+            let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
+
+            //
+            // test z somehow
+            //
+
+            // no need, it works now
+
+            //
+            // create t
+            //
+            let (perm, _bnd) = index
+                .cs
+                .perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])
+                .unwrap();
+
+            // multiply with Z_H, wait... we haven't divided so far, so no need to multiply no?
+            /*
+            let t = perm.interpolate().evaluate(zeta)
+                * ff_fft::EvaluationDomain::evaluate_vanishing_polynomial(
+                    &index.cs.domain.d1,
+                    zeta,
+                );
+                */
+            let t = perm.interpolate().evaluate(zeta);
+
+            //
+            // test t somehow
+            //
+
+            // no need, it works now
+
+            //
+            // create f
+            //
+
+            let f = index
+                .cs
+                .perm_lnrz(&e, &oracles, &alpha[range::PERM])
+                .evaluate(zeta);
+
+            // (w_6(zeta) + gamma)
+            let mut perm_next = e[0].w[6] + gamma;
+            // * (w_i(zeta) + beta * perm_i(z) + gamma)
+            perm_next *= e[0].w[0] + beta * e[0].s[0] + gamma;
+            perm_next *= e[0].w[1] + beta * e[0].s[1] + gamma;
+            perm_next *= e[0].w[2] + beta * e[0].s[2] + gamma;
+            perm_next *= e[0].w[3] + beta * e[0].s[3] + gamma;
+            perm_next *= e[0].w[4] + beta * e[0].s[4] + gamma;
+            perm_next *= e[0].w[5] + beta * e[0].s[5] + gamma;
+            // * z(zeta * omega) * zkpm(zeta) * alpha^PERM0
+            perm_next *= e[1].z * index.cs.zkpm.evaluate(zeta);
+            perm_next *= alpha[range::PERM][0];
+
+            let mut perm_prev = Fr::<G>::one();
+            let beta_zeta = beta * zeta;
+            // * (w_i(zeta) * beta * shift_i * zeta + gamma)
+            perm_prev *= e[0].w[0] + beta_zeta * shifts[0] + gamma;
+            perm_prev *= e[0].w[1] + beta_zeta * shifts[1] + gamma;
+            perm_prev *= e[0].w[2] + beta_zeta * shifts[2] + gamma;
+            perm_prev *= e[0].w[3] + beta_zeta * shifts[3] + gamma;
+            perm_prev *= e[0].w[4] + beta_zeta * shifts[4] + gamma;
+            perm_prev *= e[0].w[5] + beta_zeta * shifts[5] + gamma;
+            perm_prev *= e[0].w[6] + beta_zeta * shifts[6] + gamma;
+            // * z(zeta) * zkpm(zeta) * alpha^PERM0
+            perm_prev *= e[0].z * index.cs.zkpm.evaluate(zeta);
+            perm_prev *= alpha[range::PERM][0];
+
+            let f = f - perm_next + perm_prev;
+
+            //
+            // test that shifts and permutation are the same
+            //
+            if e[0].s[0] != shifts[0] * zeta {
+                panic!("sigma[0](zeta) != zeta * shift_0");
+            }
+            if e[0].s[1] != shifts[1] * zeta {
+                panic!("sigma[1](zeta) != zeta * shift_1");
+            }
+            if e[0].s[2] != shifts[2] * zeta {
+                panic!("sigma[2](zeta) != zeta * shift_2");
+            }
+            if e[0].s[3] != shifts[3] * zeta {
+                panic!("sigma[3](zeta) != zeta * shift_3");
+            }
+            if e[0].s[4] != shifts[4] * zeta {
+                panic!("sigma[4](zeta) != zeta * shift_4");
+            }
+            if e[0].s[5] != shifts[5] * zeta {
+                panic!("sigma[5](zeta) != zeta * shift_5");
+            }
+            if index.cs.sigmam[6].evaluate(zeta) != shifts[6] * zeta {
+                panic!("sigma[6](zeta) != zeta * shift_6");
+            }
+
+            //
+            // check f - t * Z_H = 0
+            //
+            if f - t != Fr::<G>::zero() {
+                println!("f: {}", f);
+                println!("t: {}", t);
+                panic!("f(zeta) - t(zeta) Z_H(zeta) != 0");
+            }
         }
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);

@@ -292,7 +292,7 @@ where
 
                 // debug
                 let GENERIC = true;
-                let POSEIDON = false;
+                let POSEIDON = true;
                 let EC_ADD = true;
                 let EC_DBL = true;
                 let ENDO_SCALAR_MUL = true;
@@ -338,6 +338,7 @@ where
 
                 let z_zeta_omega = &evals[1].z;
 
+                // TODO(mimoo): there's a "vanishing polynomial function"
                 let zeta_n_minus_1 = zeta_n - &Fr::<G>::one(); // zeta^n - 1
 
                 // compute linearization polynomial commitment
@@ -411,6 +412,18 @@ where
 
                 println!("- check linearization polynomial evaluation consistency");
 
+                // let's write left == right ourselves
+                {
+                    /*
+                    let left = public_zeta + f_zeta;
+                    let left = left + &permutation_stuff;
+
+                    let right = *t_zeta * zeta_n_minus_1;
+                    println!("my left = {:?}", left);
+                    println!("my right = {:?}", right);
+                    */
+                }
+
                 // [f(zeta) + pub(zeta) + permutation_stuff - t(zeta) * (zeta^n - 1)](zeta - w^{n-3})(zeta - 1)
                 let left = {
                     let public_zeta = if p_eval[0].len() > 0 {
@@ -421,7 +434,7 @@ where
 
                     println!("{} public_zeta: {:?}", line!(), public_zeta);
 
-                    let perm_sigmas = w_zeta
+                    let perm_next = w_zeta
                         .iter()
                         .zip(s_zeta.iter())
                         .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
@@ -434,17 +447,18 @@ where
                         );
                     println!("number of s_zeta: {:?}", s_zeta.len());
 
-                    let perm_shifts = w_zeta
+                    let beta_zeta = oracles.beta * oracles.zeta;
+                    let perm_prev = w_zeta
                         .iter()
                         .zip(index.shift.iter())
-                        .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
+                        .map(|(w, s)| oracles.gamma + &(beta_zeta * s) + w)
                         .fold(alpha[range::PERM][0] * zkp_zeta * z_zeta, |x, y| x * y);
                     println!(
                         "number of shift: {:?} (should have one more)",
                         index.shift.len()
                     );
 
-                    let permutation_stuff = perm_shifts - perm_sigmas;
+                    let permutation_stuff = perm_prev - perm_next;
                     let permutation_lagrange_stuff =
                         (oracles.zeta - &index.w) * (oracles.zeta - Fr::<G>::one());
 
@@ -454,20 +468,10 @@ where
                     }
                     let moving_t = left_hand_side - *t_zeta * zeta_n_minus_1;
 
-                    // let's write left == right ourselves
-                    {
-                        let left = public_zeta + f_zeta;
-                        let left = left + &permutation_stuff;
-
-                        let right = *t_zeta * zeta_n_minus_1;
-                        println!("my left = {:?}", left);
-                        println!("my right = {:?}", right);
-                    }
-
                     if PERMUTATION {
-                        moving_t
-                    } else {
                         moving_t * permutation_lagrange_stuff
+                    } else {
+                        moving_t
                     }
                 };
 
