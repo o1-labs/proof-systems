@@ -205,11 +205,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         let lhs = ROUND_EQUATIONS.iter().fold(F::zero(), |acc, eq| {
             let (target_row, target_round) = &eq.target;
-            let this_or_next = match target_row {
-                CurrOrNext::Curr => 0,
-                CurrOrNext::Next => 1,
+            let cols = match target_row {
+                CurrOrNext::Curr => &evals[0].w,
+                CurrOrNext::Next => &evals[1].w,
             };
-            evals[this_or_next].w[round_to_cols(*target_round)]
+            cols[round_to_cols(*target_round)]
                 .iter()
                 .zip(alp[eq.source].iter())
                 .map(|(p, a)| -*a * p)
@@ -229,7 +229,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
 
         // TODO(mimoo): how is that useful? we already have access to these
-        let mut res = vec![lhs - rhs];
+        let mut res = vec![lhs + rhs];
         for i in 0..COLUMNS {
             res.push(alpha[i]);
         }
