@@ -480,6 +480,35 @@ where
                     .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
         }
 
+        {
+            //
+            // Test poseidon stuff
+            //
+
+            let zeta = oracles.zeta;
+
+            let f = index
+                .cs
+                .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
+            let f = f.evaluate(zeta);
+
+            let (pos4, pos8, posp) =
+                index
+                    .cs
+                    .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
+
+            let mut t = pos4.interpolate();
+            t = &t + &pos8.interpolate();
+            t = &t + &posp;
+            let t = t.evaluate(zeta);
+
+            if f - t != Fr::<G>::zero() {
+                println!("f: {}", f);
+                println!("t: {}", t);
+                panic!("[POSEIDON] f(zeta) - t(zeta) Z_H(zeta) != 0");
+            }
+        }
+
         if EC_ADD {
             f = &f + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]);
         }
@@ -610,10 +639,11 @@ where
             //
             // check f - t * Z_H = 0
             //
+            // (no need to multiply with Z_H because we haven't divided at this point)
             if f - t != Fr::<G>::zero() {
                 println!("f: {}", f);
                 println!("t: {}", t);
-                panic!("f(zeta) - t(zeta) Z_H(zeta) != 0");
+                panic!("[PERMUTATION] f(zeta) - t(zeta) Z_H(zeta) != 0");
             }
         }
 
@@ -723,6 +753,7 @@ where
         );
 
         /*
+        TODO(mimoo): uncomment this and fix the bug
                 polynomials.extend(vec![(&f, None, non_hiding(1))]);
         let proof = index.srs.get_ref().open(
             group_map,

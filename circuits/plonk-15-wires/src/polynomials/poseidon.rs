@@ -17,13 +17,16 @@ use oracle::{
     utils::{EvalUtils, PolyUtils},
 };
 
+//
+// Stuff
+//
+
 enum CurrOrNext {
     Curr,
     Next,
 }
 
-// An equation of the form:
-// (curr | next)[i] = round(curr[j])
+/// An equation of the form `(curr | next)[i] = round(curr[j])`
 struct RoundEquation {
     source: usize,
     target: (CurrOrNext, usize),
@@ -52,11 +55,13 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
     },
 ];
 
+//
+// Implementations
+//
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    // poseidon quotient poly contribution computation f^7 + c(x) - f(wx)
-    //
-    // optimization: shuffle the intra-row rounds so that the final state is in one of the
-    // permutation columns
+    /// poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
+    /// optimization: shuffle the intra-row rounds so that the final state is in one of the permutation columns
     pub fn psdn_quot(
         &self,
         polys: &WitnessOverDomains<F>,
@@ -67,6 +72,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         Evaluations<F, D<F>>,
         DensePolynomial<F>,
     ) {
+        // if this gate is not used, return zero polynomials
         if self.psm.is_zero() {
             return (
                 self.zero4.clone(),
@@ -106,10 +112,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // let alp : [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
 
         // In the logical order
-        let sboxed: [[Evaluations<F, D<F>>; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| {
-            let mut x: [_; SPONGE_WIDTH] =
-                array_init(|i| polys.d8.this.w[round_range(r)][i].clone());
+        let sboxed: [[Evaluations<F, D<F>>; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
+            let state = &polys.d8.this.w[round_to_cols(round)];
+            let mut x: [_; SPONGE_WIDTH] = array_init(|i| state[i].clone());
             x.iter_mut().for_each(|p| {
+                // TODO(mimoo): define a pow function on Evaluations
                 p.evals
                     .iter_mut()
                     .for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p))
@@ -133,7 +140,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // This ordering of alphas is somewhat arbitrary and maybe should be
         // changed depending on circuit efficiency.
         let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =
-            array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
+            array_init(|round| array_init(|i| alpha[round * SPONGE_WIDTH + i]));
 
         let lhs = ROUND_EQUATIONS.iter().fold(self.zero4.clone(), |acc, eq| {
             let (target_row, target_round) = &eq.target;
@@ -141,7 +148,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 CurrOrNext::Curr => &polys.d4.this.w,
                 CurrOrNext::Next => &polys.d4.next.w,
             };
-            cols[round_range(*target_round)]
+            cols[round_to_cols(*target_round)]
                 .iter()
                 .zip(alp[eq.source].iter())
                 .map(|(p, a)| p.scale(-*a))
@@ -186,59 +193,64 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         params: &ArithmeticSpongeParams<F>,
         alpha: &[F],
     ) -> Vec<F> {
-        let sboxed: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|r| {
-            array_init(|i| sbox::<F, Plonk15SpongeConstants>(evals[0].w[round_range(r)][i]))
+        let w_zeta = evals[0].w;
+        let sboxed: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
+            array_init(|i| {
+                let col = round_to_cols(round);
+                sbox::<F, Plonk15SpongeConstants>(w_zeta[col][i])
+            })
         });
         let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =
-            array_init(|r| array_init(|i| alpha[r * SPONGE_WIDTH + i]));
+            array_init(|round| array_init(|i| alpha[round * SPONGE_WIDTH + i]));
 
-        /*
         let lhs = ROUND_EQUATIONS.iter().fold(F::zero(), |acc, eq| {
             let (target_row, target_round) = &eq.target;
-            let this_or_next =
-                match target_row {
-                    CurrOrNext::Curr => 0,
-                    CurrOrNext::Next => 1,
-                };
-            evals[this_or_next].w[round_range(*target_round)].iter()
+            let this_or_next = match target_row {
+                CurrOrNext::Curr => 0,
+                CurrOrNext::Next => 1,
+            };
+            evals[this_or_next].w[round_to_cols(*target_round)]
+                .iter()
                 .zip(alp[eq.source].iter())
                 .map(|(p, a)| -*a * p)
                 .fold(acc, |x, y| x + &y)
-        }); */
+        });
 
         let mut rhs = F::zero();
         for eq in ROUND_EQUATIONS.iter() {
-            for (i, p) in sboxed[eq.source].iter().enumerate() {
+            let ss = sboxed[eq.source];
+            let aa = alp[eq.source];
+            for (i, p) in ss.iter().enumerate() {
                 // Each of these contributes to the right hand side of SPONGE_WIDTH cell equations
-                let coeff = (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| {
-                    acc + alp[eq.source][j] * params.mds[j][i]
-                });
+                let coeff =
+                    (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| acc + aa[j] * params.mds[j][i]);
                 rhs += coeff * p;
             }
         }
 
-        let mut res = vec![rhs];
+        // TODO(mimoo): how is that useful? we already have access to these
+        let mut res = vec![lhs - rhs];
         for i in 0..COLUMNS {
             res.push(alpha[i]);
         }
-        println!("psdn_scalars {:?}", res);
         res
     }
 
-    // poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
+    /// poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
     pub fn psdn_lnrz(
         &self,
         evals: &Vec<ProofEvaluations<F>>,
         params: &ArithmeticSpongeParams<F>,
         alpha: &[F],
     ) -> DensePolynomial<F> {
-        println!("psdn_lnrz");
-        let scalars = Self::psdn_scalars(evals, params, alpha);
+        let scalars = Self::psdn_scalars(evals, params, alpha)[0];
         self.rcm
             .iter()
             .flatten()
             .zip(alpha[0..COLUMNS].iter())
             .map(|(r, a)| r.scale(*a))
-            .fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
+            .fold(self.psm.scale(scalars), |x, y| &x + &y)
     }
 }
+
+// TODO(mimoo): test to ensure equivalence between quotient and lnrz

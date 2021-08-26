@@ -21,7 +21,7 @@ use oracle::{
 use plonk_15_wires_circuits::wires::{Wire, COLUMNS};
 use plonk_15_wires_circuits::{
     gate::CircuitGate,
-    gates::poseidon::{round_range, ROUNDS_PER_ROW, SPONGE_WIDTH},
+    gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
     nolookup::constraints::ConstraintSystem,
 };
 use plonk_15_wires_protocol_dlog::{
@@ -171,7 +171,7 @@ fn positive(index: &Index<Affine>) {
             let first_row = h * (POS_ROWS_PER_HASH + 1);
 
             // initialize the sponge in the circuit with our random state
-            let first_state_cols = &mut witness[round_range(0)];
+            let first_state_cols = &mut witness[round_to_cols(0)];
             for state_idx in 0..SPONGE_WIDTH {
                 first_state_cols[state_idx][first_row] = init[state_idx];
             }
@@ -197,7 +197,7 @@ fn positive(index: &Index<Affine>) {
                     sponge.full_round(abs_round, &params);
 
                     // apply the sponge and record the result in the witness
-                    let cols_to_update = round_range((round + 1) % ROUNDS_PER_ROW);
+                    let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
                     witness[cols_to_update]
                         .iter_mut()
                         .zip(sponge.state.iter())

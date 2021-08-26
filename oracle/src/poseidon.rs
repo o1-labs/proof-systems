@@ -69,10 +69,12 @@ pub trait Sponge<Input, Digest> {
     fn squeeze(&mut self, params: &Self::Params) -> Digest;
 }
 
+/// x^5
+// TODO: this needs to be fixed to take SPONGE_BOX into account!
 pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
     let mut res = x;
-    res.square_in_place();
-    res.square_in_place();
+    res.square_in_place(); // x^2
+    res.square_in_place(); // x^4
     res *= x;
     res
 }

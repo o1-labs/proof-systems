@@ -9,29 +9,50 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use crate::gate::{CircuitGate, GateType};
+use crate::wires::Wire;
 use crate::{nolookup::constraints::ConstraintSystem, wires::GateWires, wires::COLUMNS};
 use algebra::FftField;
 use array_init::array_init;
 use oracle::poseidon::{sbox, Plonk15SpongeConstants, SpongeConstants};
 use std::ops::Range;
 
+//
+// Constants
+//
+
+/// Width of the sponge
 pub const SPONGE_WIDTH: usize = Plonk15SpongeConstants::SPONGE_WIDTH;
+
+/// Number of rows
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
-/// There are 5 round states per row. We put the first state first, followed by the last state
-/// so that they are both accessible by the permutation argument.
-/// (round 0 is at columns 0, 1, 2, then round 1 is at columns 6, 7, 8, and finally round 4 is at columns 3, 4, 5)
-pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [0, 2, 3, 4, 1];
+/// Number of rounds
+pub const ROUNDS_PER_HASH: usize = Plonk15SpongeConstants::ROUNDS_FULL;
 
-/// Given a Poseidon round from 0 to 4 included, returns the columns (as a range) that are used in
-/// this round. The columns in a row should look like this:
-/// `[0, 0, 0, 4, 4, 4, 1, 1, 1, 2, 2, 2, 3, 3, 3]`
-/// where `0, 0, 0` represents the three field elements of state 0
-pub fn round_range(i: usize) -> Range<usize> {
+/// Number of PLONK rows required to implement Poseidon
+pub const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
+
+/// The order in a row in which we store states before and after permutations
+pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [
+    0, // the first state is stored first
+    // we skip the next column for subsequent states
+    2, 3, 4,
+    // we store the last state directly after the first state,
+    // so that it can be used in the permutation argument
+    1,
+];
+
+/// Given a Poseidon round from 0 to 4 (inclusive),
+/// returns the columns (as a range) that are used in this round.
+pub const fn round_to_cols(i: usize) -> Range<usize> {
     let slot = STATE_ORDER[i];
     let start = slot * SPONGE_WIDTH;
     start..(start + SPONGE_WIDTH)
 }
+
+//
+// Implementations
+//
 
 impl<Field: FftField> CircuitGate<Field> {
     pub fn create_poseidon(
@@ -46,6 +67,51 @@ impl<Field: FftField> CircuitGate<Field> {
             wires,
             c: c.iter().flatten().map(|x| *x).collect(),
         }
+    }
+
+    /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
+    /// For that, you need to pass:
+    /// - the index of the first `row`
+    /// - the first and last rows' wires (because they are used in the permutation)
+    /// - the round constants
+    // TODO(mimoo): test this once the manual gate creation passes
+    pub fn create_poseidon_gadget(
+        // the absolute row in the circuit
+        row: usize,
+        // first and last row of the poseidon circuit (because they are used in the permutation)
+        first_and_last_row: [GateWires; 2],
+        round_constants: [[Field; SPONGE_WIDTH]; ROUNDS_PER_HASH],
+    ) -> Vec<Self> {
+        let mut gates = vec![];
+
+        // create the gates
+        let relative_rows = 0..POS_ROWS_PER_HASH;
+        let last_row = row + POS_ROWS_PER_HASH;
+        let absolute_rows = row..last_row;
+
+        for (abs_row, rel_row) in absolute_rows.zip(relative_rows) {
+            // the 15 wires for this row
+            let wires = if rel_row == 0 {
+                first_and_last_row[0]
+            } else {
+                array_init(|col| Wire { col, row: abs_row })
+            };
+
+            // round constant for this row
+            let coeffs = array_init(|offset| {
+                let round = rel_row * ROUNDS_PER_ROW + offset + 1;
+                array_init(|field_el| round_constants[round][field_el])
+            });
+
+            // create poseidon gate for this row
+            gates.push(CircuitGate::create_poseidon(abs_row, wires, coeffs));
+        }
+
+        // final (zero) gate that contains the output of poseidon
+        gates.push(CircuitGate::zero(last_row, first_and_last_row[1]));
+
+        //
+        gates
     }
 
     pub fn verify_poseidon(
