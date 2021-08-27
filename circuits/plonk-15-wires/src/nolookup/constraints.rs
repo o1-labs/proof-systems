@@ -169,7 +169,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 .iter()
                 .map(|gate| {
                     if gate.typ == GateType::Generic {
-                        gate.c[GENERICS]
+                        gate.c[COLUMNS]
                     } else {
                         F::zero()
                     }
