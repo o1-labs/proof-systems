@@ -119,7 +119,7 @@ dependencies = [
  "dlog_solver",
  "ff-fft",
  "groupmap",
- "itertools",
+ "itertools 0.8.2",
  "ocaml",
  "oracle",
  "rand",
@@ -328,6 +328,15 @@ name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69ddb889f9d0d08a67338271fa9b62996bc788c7796a5c18cf057420aaed5eaf"
 dependencies = [
  "either",
 ]
@@ -558,6 +567,7 @@ dependencies = [
  "array-init",
  "blake2",
  "ff-fft",
+ "itertools 0.10.1",
  "num-derive",
  "num-traits 0.2.14",
  "ocaml",
@@ -594,6 +604,7 @@ dependencies = [
  "colored 2.0.0",
  "commitment_dlog",
  "ff-fft",
+ "groupmap",
  "ocaml",
  "oracle",
  "plonk_15_wires_circuits",

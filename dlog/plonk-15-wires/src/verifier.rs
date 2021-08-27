@@ -296,7 +296,7 @@ where
                 p.push(&index.qm_comm);
                 p.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
                 p.push(&index.qc_comm);
-                s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
+                s.extend(&ConstraintSystem::gnrc_scalars(&evals[0].w));
 
                 // poseidon
                 s.extend(&ConstraintSystem::psdn_scalars(

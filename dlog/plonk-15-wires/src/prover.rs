@@ -226,7 +226,7 @@ where
             .cs
             .perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
         // generic
-        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &p);
+        let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
         // poseidon
         let (pos4, pos8, posp) =
             index
@@ -329,7 +329,7 @@ where
             println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
         } */
 
-        let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0])
+        let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0].w)
             + &index
                 .cs
                 .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]))
