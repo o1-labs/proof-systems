@@ -22,7 +22,9 @@ pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 // so that they are both accessible by the permutation argument.
 pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [0, 2, 3, 4, 1];
 
-pub fn round_range(i: usize) -> Range<usize> {
+/// Given a Poseidon round from 0 to 4 (inclusive),
+/// returns the columns (as a range) that are used in this round.
+pub const fn round_to_cols(i: usize) -> Range<usize> {
     let slot = STATE_ORDER[i];
     let start = slot * SPONGE_WIDTH;
     start..(start + SPONGE_WIDTH)
