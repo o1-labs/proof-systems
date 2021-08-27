@@ -206,11 +206,15 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
 // TODO: move to utils
 /// Returns ceil(log2(d)) but panics if d = 0.
 pub fn ceil_log2(d: usize) -> usize {
+    assert!(d != 0);
     let mut pow2 = 1;
     let mut ceil_log2 = 0;
     while d > pow2 {
         ceil_log2 += 1;
-        pow2 *= 2;
+        pow2 = match pow2.checked_mul(2) {
+            Some(x) => x,
+            None => break,
+        }
     }
     ceil_log2
 }
@@ -218,13 +222,12 @@ pub fn ceil_log2(d: usize) -> usize {
 /// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
 fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     let mut acc = F::one();
-    (0..d)
-        .map(|_| {
-            let r = acc;
-            acc *= &x;
-            r
-        })
-        .collect()
+    let mut res = vec![];
+    for _ in 1..=d {
+        res.push(acc);
+        acc *= x;
+    }
+    res
 }
 
 fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
@@ -938,5 +941,37 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                 .evaluate(elm)
             })
             .collect()
+    }
+}
+
+//
+// Tests
+//
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::srs::SRS;
+    use algebra::pasta::{fp::Fp, vesta::Affine as VestaG};
+    use array_init::array_init;
+    use oracle::poseidon::PlonkSpongeConstants as SC;
+    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn test_log2() {
+        let tests = [
+            (1, 0),
+            (2, 1),
+            (3, 2),
+            (9, 4),
+            (15, 4),
+            (15430, 14),
+            (usize::MAX, 64),
+        ];
+        for (d, expected_res) in tests.iter() {
+            let res = ceil_log2(*d);
+            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
+        }
     }
 }
