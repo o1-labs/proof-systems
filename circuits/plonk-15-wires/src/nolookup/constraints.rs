@@ -161,9 +161,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
-        let domain = EvaluationDomains::<F>::create(gates.len())?;
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
+
+        // +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
+        // see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        let domain = EvaluationDomains::<F>::create(gates.len() + 3)?;
+        assert!(domain.d1.size > 3);
 
         // pre-compute all the elements
         let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
@@ -192,12 +196,18 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let mut sigmal1 = s.clone();
 
         // compute permutation polynomials
-        gates.iter().enumerate().for_each(|(i, _)| {
-            (0..PERMUTS).for_each(|j| {
-                let wire = gates[i].wires[j];
-                sigmal1[j][i] = s[wire.col][wire.row]
-            })
-        });
+        for (row, gate) in gates.iter().enumerate() {
+            for col in 0..PERMUTS {
+                println!("permutation debug");
+                let wire = gate.wires[col];
+                println!(
+                    "row {} and column {} is connected with row {} and column {}",
+                    row, col, wire.row, wire.col
+                );
+                sigmal1[col][row] = s[wire.col][wire.row];
+            }
+        }
+
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| {
             E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate()
         });
@@ -383,20 +393,37 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ///     RETURN: verification status
     // TODO(mimoo): return a better error that tells you the col and row
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
-        let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
-        (0..self.gates.len()).all
-        (
-            |j|
-                // verify permutation consistency
-                (0..COLUMNS).all(|i|
-                {
-                    let wire = self.gates[j].wires[i];
-                    witness[i][j] == witness[wire.col][wire.row]
-                })
-                &&
-                // verify witness against constraints
-                if j < self.public {self.gates[j].c == p} else {self.gates[j].verify(witness, &self)}
-        )
+        let left_wire = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
+
+        println!("looking at {} gates", self.gates.len());
+
+        for (row, gate) in self.gates.iter().enumerate() {
+            // check if wires are connected
+            for col in 0..COLUMNS {
+                let wire = gate.wires[col];
+                if witness[col][row] != witness[wire.col][wire.row] {
+                    println!(
+                        "wires (col:{}, {}) and ({}, {}) are not connected",
+                        col, row, wire.col, wire.row
+                    );
+                    return false;
+                }
+            }
+
+            if row < self.public {
+                if gate.c != left_wire {
+                    // for public gates, only the left wire is toggled
+                    println!("the public gate #{} has some incorrect wiring", row);
+                    return false;
+                }
+            } else if !gate.verify(witness, &self) {
+                println!("the gate #{} did not verify", row);
+                return false;
+            }
+        }
+
+        // all good!
+        return true;
     }
 
     /// sample coordinate shifts deterministically
@@ -458,6 +485,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             d4: WitnessShifts {
                 next: WitnessEvals {
                     w: array_init(|i| w4[i].shift(4)),
+                    // TODO(mimoo): change z to an Option? Or maybe not, we might actually need this dummy evaluation in the aggregated evaluation proof
                     z: z4.clone(), // dummy evaluation
                 },
                 this: WitnessEvals {
