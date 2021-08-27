@@ -15,100 +15,159 @@ use blake2::{Blake2b, Digest};
 use ff_fft::{
     DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
 };
-use oracle::poseidon::{ArithmeticSpongeParams, Plonk15SpongeConstants};
+use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::utils::EvalUtils;
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField> {
-    pub public: usize,                // number of public inputs
-    pub domain: EvaluationDomains<F>, // evaluation domains
-    pub gates: Vec<CircuitGate<F>>,   // circuit gates
+    // Basics
+    // ------
+    /// number of public inputs
+    pub public: usize,
+    /// evaluation domains
+    pub domain: EvaluationDomains<F>,
+    /// circuit gates
+    pub gates: Vec<CircuitGate<F>>,
 
-    // POLYNOMIALS OVER THE MONOMIAL BASE
-    pub sigmam: [DP<F>; PERMUTS], // permutation polynomial array
-    pub zkpm: DP<F>,              // zero-knowledge polynomial
+    // Polynomials over the monomial base
+    // ----------------------------------
+    /// permutation polynomial array
+    pub sigmam: [DP<F>; PERMUTS],
+    /// zero-knowledge polynomial
+    pub zkpm: DP<F>,
 
-    // generic constraint selector polynomials
-    pub qwm: [DP<F>; GENERICS], // linear wire constraint polynomial
-    pub qmm: DP<F>,             // multiplication polynomial
-    pub qc: DP<F>,              // constant wire polynomial
+    // Generic constraint selector polynomials
+    // ---------------------------------------
+    /// linear wire constraint polynomial
+    pub qwm: [DP<F>; GENERICS],
+    /// multiplication polynomial
+    pub qmm: DP<F>,
+    /// constant wire polynomial
+    pub qc: DP<F>,
 
-    // poseidon selector polynomials
-    pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW], // round constant polynomials
-    pub psm: DP<F>,                                   // poseidon constraint selector polynomial
+    // Poseidon selector polynomials
+    // -----------------------------
+    /// round constant polynomials
+    pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+    /// poseidon constraint selector polynomial
+    pub psm: DP<F>,
 
     // ECC arithmetic selector polynomials
-    pub addm: DP<F>,    // EC point addition constraint selector polynomial
-    pub doublem: DP<F>, // EC point doubling constraint selector polynomial
-    pub mulm: DP<F>,    // mulm constraint selector polynomial
-    pub emulm: DP<F>,   // emulm constraint selector polynomial
+    // -----------------------------------
+    /// EC point addition constraint selector polynomial
+    pub addm: DP<F>,
+    /// EC point doubling constraint selector polynomial
+    pub doublem: DP<F>,
+    /// mulm constraint selector polynomial
+    pub mulm: DP<F>,
+    /// emulm constraint selector polynomial
+    pub emulm: DP<F>,
 
-    // POLYNOMIALS OVER LAGRANGE BASE
+    //
+    // Polynomials over lagrange base
+    //
 
-    // generic constraint selector polynomials
-    pub qwl: [E<F, D<F>>; GENERICS], // left input wire polynomial over domain.d4
-    pub qml: E<F, D<F>>,             // multiplication evaluations over domain.d4
+    // Generic constraint selector polynomials
+    // ---------------------------------------
+    /// left input wire polynomial over domain.d4
+    pub qwl: [E<F, D<F>>; GENERICS],
+    /// multiplication evaluations over domain.d4
+    pub qml: E<F, D<F>>,
 
     // permutation polynomials
-    pub sigmal1: [Vec<F>; PERMUTS], // permutation polynomial array evaluations over domain d1
-    pub sigmal8: [E<F, D<F>>; PERMUTS], // permutation polynomial array evaluations over domain d8
-    pub sid: Vec<F>,                // SID polynomial
+    // -----------------------
+    /// permutation polynomial array evaluations over domain d1
+    pub sigmal1: [Vec<F>; PERMUTS],
+    /// permutation polynomial array evaluations over domain d8
+    pub sigmal8: [E<F, D<F>>; PERMUTS],
+    /// SID polynomial
+    pub sid: Vec<F>,
 
-    // poseidon selector polynomials
-    pub ps4: E<F, D<F>>, // poseidon selector over domain.d4
-    pub ps8: E<F, D<F>>, // poseidon selector over domain.d8
+    // Poseidon selector polynomials
+    // -----------------------------
+    /// poseidon selector over domain.d4
+    pub ps4: E<F, D<F>>,
+    /// poseidon selector over domain.d8
+    pub ps8: E<F, D<F>>,
 
     // ECC arithmetic selector polynomials
-    pub addl: E<F, D<F>>, // EC point addition selector evaluations w over domain.d4
-    pub doubl8: E<F, D<F>>, // EC point doubling selector evaluations w over domain.d8
-    pub doubl4: E<F, D<F>>, // EC point doubling selector evaluations w over domain.d4
-    pub mull4: E<F, D<F>>, // scalar multiplication selector evaluations over domain.d4
-    pub mull8: E<F, D<F>>, // scalar multiplication selector evaluations over domain.d8
-    pub emull: E<F, D<F>>, // endoscalar multiplication selector evaluations over domain.d8
+    // -----------------------------------
+    /// EC point addition selector evaluations w over domain.d4
+    pub addl: E<F, D<F>>,
+    /// EC point doubling selector evaluations w over domain.d8
+    pub doubl8: E<F, D<F>>,
+    /// EC point doubling selector evaluations w over domain.d4
+    pub doubl4: E<F, D<F>>,
+    /// scalar multiplication selector evaluations over domain.d4
+    pub mull4: E<F, D<F>>,
+    /// scalar multiplication selector evaluations over domain.d8
+    pub mull8: E<F, D<F>>,
+    /// endoscalar multiplication selector evaluations over domain.d8
+    pub emull: E<F, D<F>>,
 
-    // constant polynomials
-    pub l1: E<F, D<F>>,    // 1-st Lagrange evaluated over domain.d8
-    pub l04: E<F, D<F>>,   // 0-th Lagrange evaluated over domain.d4
-    pub l08: E<F, D<F>>,   // 0-th Lagrange evaluated over domain.d8
-    pub zero4: E<F, D<F>>, // zero evaluated over domain.d8
-    pub zero8: E<F, D<F>>, // zero evaluated over domain.d8
-    pub zkpl: E<F, D<F>>,  // zero-knowledge polynomial over domain.d8
+    // Constant polynomials
+    // --------------------
+    /// 1-st Lagrange evaluated over domain.d8
+    pub l1: E<F, D<F>>,
+    /// 0-th Lagrange evaluated over domain.d4
+    // TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
+    pub l04: E<F, D<F>>,
+    /// 0-th Lagrange evaluated over domain.d8
+    pub l08: E<F, D<F>>,
+    /// zero evaluated over domain.d8
+    pub zero4: E<F, D<F>>,
+    /// zero evaluated over domain.d8
+    pub zero8: E<F, D<F>>,
+    /// zero-knowledge polynomial over domain.d8
+    pub zkpl: E<F, D<F>>,
 
-    pub shift: [F; PERMUTS], // wire coordinate shifts
-    pub endo: F,             // coefficient for the group endomorphism
+    /// wire coordinate shifts
+    pub shift: [F; PERMUTS],
+    /// coefficient for the group endomorphism
+    pub endo: F,
 
-    // random oracle argument parameters
+    /// random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
+/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }
 
+/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
+/// Currently, we use k = 3 for 2 blinding factors,
+/// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
-    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
 
+    // (x-w3)(x-w2)(x-w1) =
+    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
+    let w1w2 = w1 * &w2;
     DP::from_coefficients_slice(&[
-        -w1 * &w2 * &w3,
-        (w1 * &w2) + &(w1 * &w3) + &(w3 * &w2),
-        -w1 - &w2 - &w3,
-        F::one(),
+        -w1w2 * &w3,                      // 1
+        w1w2 + &(w1 * &w3) + &(w3 * &w2), // x
+        -w1 - &w2 - &w3,                  // x^2
+        F::one(),                         // x^3
     ])
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+    /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
         let domain = EvaluationDomains::<F>::create(gates.len())?;
+
+        // pre-compute all the elements
         let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
 
         // sample the coordinate shifts
+        // TODO(mimoo): should we check that the shifts are all different?
         let shift = Self::sample_shifts(&domain.d1, PERMUTS - 1);
         let shift: [F; PERMUTS] = array_init(|i| if i == 0 { F::one() } else { shift[i - 1] });
 
@@ -141,7 +200,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate()
         });
 
-        let mut s = sid[0..2].to_vec();
+        let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?
         sid.append(&mut s);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
@@ -208,103 +267,119 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         )
         .interpolate();
 
+        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
+
+        // generic constraint polynomials
+        let qwl = array_init(|i| qwm[i].evaluate_over_domain_by_ref(domain.d4));
+        let qml = qmm.evaluate_over_domain_by_ref(domain.d4);
+        let qc = E::<F, D<F>>::from_vec_and_domain(
+            gates
+                .iter()
+                .map(|gate| {
+                    if gate.typ == GateType::Generic {
+                        gate.c[COLUMNS + 1]
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            domain.d1,
+        )
+        .interpolate();
+
+        // poseidon constraint polynomials
+        let rcm = array_init(|round| {
+            array_init(|col| {
+                E::<F, D<F>>::from_vec_and_domain(
+                    gates
+                        .iter()
+                        .map(|gate| {
+                            if gate.typ == GateType::Poseidon {
+                                gate.rc()[round][col]
+                            } else {
+                                F::zero()
+                            }
+                        })
+                        .collect(),
+                    domain.d1,
+                )
+                .interpolate()
+            })
+        });
+
+        let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
+        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
+
+        // ECC arithmetic constraint polynomials
+        let addl = addm.evaluate_over_domain_by_ref(domain.d4);
+        let doubl8 = doublem.evaluate_over_domain_by_ref(domain.d8);
+        let doubl4 = doublem.evaluate_over_domain_by_ref(domain.d4);
+        let mull4 = mulm.evaluate_over_domain_by_ref(domain.d4);
+        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
+        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+
+        // constant polynomials
+        let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
+            .evaluate_over_domain_by_ref(domain.d8);
+        let l04 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
+        let l08 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8);
+        let zero4 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4);
+        let zero8 =
+            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
+        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
+
+        // endo
+        let endo = F::zero();
+
+        // return result
         Some(ConstraintSystem {
             domain,
             public,
             sid,
             sigmal1,
-            sigmal8: array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8)),
+            sigmal8,
             sigmam,
-
-            // generic constraint polynomials
-            qwl: array_init(|i| qwm[i].evaluate_over_domain_by_ref(domain.d4)),
-            qml: qmm.evaluate_over_domain_by_ref(domain.d4),
+            qwl,
+            qml,
             qwm,
             qmm,
-            qc: E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if gate.typ == GateType::Generic {
-                            gate.c[COLUMNS + 1]
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate(),
-
-            // poseidon constraint polynomials
-            rcm: array_init(|round| {
-                array_init(|col| {
-                    E::<F, D<F>>::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| {
-                                if gate.typ == GateType::Poseidon {
-                                    gate.rc()[round][col]
-                                } else {
-                                    F::zero()
-                                }
-                            })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                })
-            }),
-
-            ps4: psm.evaluate_over_domain_by_ref(domain.d4),
-            ps8: psm.evaluate_over_domain_by_ref(domain.d8),
+            qc,
+            rcm,
+            ps4,
+            ps8,
             psm,
-
-            // ECC arithmetic constraint polynomials
-            addl: addm.evaluate_over_domain_by_ref(domain.d4),
+            addl,
             addm,
-            doubl8: doublem.evaluate_over_domain_by_ref(domain.d8),
-            doubl4: doublem.evaluate_over_domain_by_ref(domain.d4),
+            doubl8,
+            doubl4,
             doublem,
-            mull4: mulm.evaluate_over_domain_by_ref(domain.d4),
-            mull8: mulm.evaluate_over_domain_by_ref(domain.d8),
+            mull4,
+            mull8,
             mulm,
-            emull: emulm.evaluate_over_domain_by_ref(domain.d8),
+            emull,
             emulm,
-
-            // constant polynomials
-            l1: DP::from_coefficients_slice(&[F::zero(), F::one()])
-                .evaluate_over_domain_by_ref(domain.d8),
-            l04: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::one(); domain.d4.size as usize],
-                domain.d4,
-            ),
-            l08: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::one(); domain.d8.size as usize],
-                domain.d8,
-            ),
-            zero4: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::zero(); domain.d4.size as usize],
-                domain.d4,
-            ),
-            zero8: E::<F, D<F>>::from_vec_and_domain(
-                vec![F::zero(); domain.d8.size as usize],
-                domain.d8,
-            ),
-            zkpl: zkpm.evaluate_over_domain_by_ref(domain.d8),
+            l1,
+            l04,
+            l08,
+            zero4,
+            zero8,
+            zkpl,
             zkpm,
-
             gates,
             shift,
-            endo: F::zero(),
+            endo,
             fr_sponge_params,
         })
     }
 
-    // This function verifies the consistency of the wire
-    // assignements (witness) against the constraints
-    //     witness: wire assignement witness
-    //     RETURN: verification status
+    /// This function verifies the consistency of the wire
+    /// assignements (witness) against the constraints
+    ///     witness: wire assignement witness
+    ///     RETURN: verification status
+    // TODO(mimoo): return a better error that tells you the col and row
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         let p = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
         (0..self.gates.len()).all
@@ -322,7 +397,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         )
     }
 
-    // sample coordinate shifts deterministically
+    /// sample coordinate shifts deterministically
     pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F {
         let mut h = Blake2b::new();
         h.input(
@@ -360,7 +435,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         shifts
     }
 
-    // evaluate witness polynomials over domains
+    /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
         let w8: [E<F, D<F>>; COLUMNS] =
