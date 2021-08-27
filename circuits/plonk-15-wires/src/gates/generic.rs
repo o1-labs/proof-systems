@@ -5,7 +5,7 @@ This source file implements Plonk generic constraint gate primitive.
 *****************************************************************************************************************/
 
 use crate::gate::{CircuitGate, GateType};
-use crate::wires::{GateWires, COLUMNS};
+use crate::wires::{GateWires, COLUMNS, GENERICS};
 use algebra::FftField;
 use array_init::array_init;
 
@@ -65,6 +65,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// verifies that the generic gate constraints are solved by the witness
+    // TODO(mimoo): this is not going to work for public inputs no?
     pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
@@ -82,18 +83,17 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(self.typ, GateType::Generic);
 
         // toggling each column x[i] depending on the selectors c[i]
-        // TODO(mimoo): why involve an addition with all columns? also the polynomial side doesn't use all of these
-        let big_sum = (0..COLUMNS)
+        let sum = (0..GENERICS)
             .map(|i| self.c[i] * &this[i])
             .fold(zero, |x, y| x + &y);
 
-        // multiplication selector c[15] is for x[0] and x[1]
+        // multiplication
         let mul = mul_selector * &left * &right;
-        //        let mul2 = mul_selector * this[COLUMNS];
-        //        ensure_eq!(mul, mul2);
+        ensure_eq!(zero, sum + &mul + &constant_selector);
 
-        // TODO(mimoo): what about the output?
-        ensure_eq!(zero, big_sum + &mul + &constant_selector);
+        // TODO(mimoo): additional checks:
+        // - if both left and right wire are set, then output must be set
+        // - if constant wire is set, then left wire must be set
 
         // all good
         return true;

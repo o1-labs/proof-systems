@@ -82,27 +82,36 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         (eval_part, poly_part)
     }
 
+    /// produces w[0](zeta) * w[1](zeta), w[0](zeta), w[1](zeta), w[2](zeta), 1
     pub fn gnrc_scalars(w_zeta: &[F; COLUMNS]) -> Vec<F> {
         let mut res = vec![w_zeta[0] * &w_zeta[1]];
         for i in 0..GENERICS {
             res.push(w_zeta[i]);
         }
-        // res = [l * r, l, r, o, 1]
-        res.push(F::one()); // TODO(mimoo): this one is not used
+        res.push(F::one()); // TODO(mimoo): this one shouldn't be here no?
         return res;
     }
 
     /// generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(&self, w_zeta: &[F; COLUMNS]) -> DensePolynomial<F> {
         let scalars = Self::gnrc_scalars(w_zeta);
-        // l * r * qmm + qc + l * qwm[0] + r * qwm[1] + o * qwm[2]
-        &(&self.qmm.scale(scalars[0]) + &self.qc)
-            + &self
-                .qwm
-                .iter()
-                .zip(scalars[1..].iter())
-                .map(|(q, s)| q.scale(*s))
-                .fold(DensePolynomial::<F>::zero(), |x, y| &x + &y)
+
+        // w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2]
+        let mut res = self
+            .qwm
+            .iter()
+            .zip(scalars[1..].iter())
+            .map(|(q, s)| q.scale(*s))
+            .fold(DensePolynomial::<F>::zero(), |x, y| &x + &y);
+
+        // multiplication
+        res += &self.qmm.scale(scalars[0]);
+
+        // constant selector
+        res += &self.qc;
+
+        // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
+        res
     }
 }
 
@@ -113,7 +122,7 @@ mod tests {
         gate::CircuitGate,
         wires::{Wire, COLUMNS},
     };
-    use algebra::{pasta::fp::Fp, Field, One, UniformRand, Zero};
+    use algebra::{pasta::fp::Fp, UniformRand, Zero};
     use array_init::array_init;
     use itertools::iterate;
     use rand::SeedableRng;
