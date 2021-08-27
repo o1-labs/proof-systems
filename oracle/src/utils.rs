@@ -84,18 +84,30 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     }
 
     fn eval(&self, elm: F, size: usize) -> Vec<F> {
-        (0..self.coeffs.len())
-            .step_by(size)
-            .map(|i| {
-                Self::from_coefficients_slice(
-                    &self.coeffs[i..if i + size > self.coeffs.len() {
-                        self.coeffs.len()
-                    } else {
-                        i + size
-                    }],
-                )
-                .evaluate(elm)
-            })
-            .collect()
+        let mut res = vec![];
+        for chunk in self.coeffs.chunks(size) {
+            let eval = Self::from_coefficients_slice(chunk).evaluate(elm);
+            res.push(eval);
+        }
+        res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use algebra::{pasta::fp::Fp, One, Zero};
+
+    #[test]
+    fn test_eval() {
+        let zero = Fp::zero();
+        let one = Fp::one();
+        // 1 + x^2 + x^4 + x^8
+        let coeffs = [one, zero, one, zero, one, zero, one, zero];
+        let f = DensePolynomial::from_coefficients_slice(&coeffs);
+        let evals = f.eval(one, 2);
+        for i in 0..4 {
+            assert!(evals[i] == one);
+        }
     }
 }
