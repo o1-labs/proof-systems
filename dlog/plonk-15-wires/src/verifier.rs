@@ -88,22 +88,28 @@ where
         Fr<G>,
     ) {
         let n = index.domain.size;
+        let omega = index.domain.group_gen;
+
         // Run random oracle argument to sample verifier oracles
         let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+
         // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_g(&p_comm.unshifted);
         self.commitments
             .w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
+
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
         oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
+
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
@@ -131,19 +137,26 @@ where
         };
 
         // prepare some often used values
-        let zeta1 = oracles.zeta.pow(&[n]);
-        let zetaw = oracles.zeta * &index.domain.group_gen;
+        let zeta_n = oracles.zeta.pow(&[n]);
+        let zetaw = oracles.zeta * &omega;
         let alpha = range::alpha_powers(oracles.alpha);
 
         // compute Lagrange base evaluation denominators
+        // TODO(mimoo): this could belong to the if branch (if self.public.len() > 0)
+
+        // w = [1, w, w^2, ..., w^{public_len - 1}]
         let w = (0..self.public.len())
             .zip(index.domain.elements())
             .map(|(_, w)| w)
             .collect::<Vec<_>>();
+        // lagrange = [z - 1, z - w, z - w^2, ...]
         let mut lagrange = w.iter().map(|w| oracles.zeta - w).collect::<Vec<_>>();
+        // lagrange.append([z*w - 1, z*w - w, z*w - w^2, ...])
         (0..self.public.len())
             .zip(w.iter())
             .for_each(|(_, w)| lagrange.push(zetaw - w));
+        // lagrange contains [1/(X-1), 1/(X-w), 1/(X-w^2), etc.] evaluated at z and z*w
+        // TODO(mimoo): separate the z from the zw evaluations
         algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
@@ -158,7 +171,7 @@ where
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -*l * p * &w)
                         .fold(Fr::<G>::zero(), |x, y| x + &y))
-                        * &(zeta1 - &Fr::<G>::one())
+                        * &(zeta_n - &Fr::<G>::one())
                         * &index.domain.size_inv,
                 ],
                 vec![
@@ -173,6 +186,17 @@ where
                         * &(zetaw.pow(&[n as u64]) - &Fr::<G>::one()),
                 ],
             ]
+        /*
+        TODO(mimoo): refactor with this:
+        let mut eval_z = Fr::<G>::zero();
+        // does izip uses the length of public here?
+        let stuff = itertools::izip!(self.public, lagrange, index.domain.elements());
+        for (public, lagrange, witness) in stuff {
+            eval_z -= lagrange * public * witness
+        }
+        eval_z *= zeta_n - Fr::<G>::one();
+        eval_z *= index.domain.size_inv;
+        */
         } else {
             [Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]
         };
@@ -242,7 +266,7 @@ where
             p_eval,
             evlp,
             polys,
-            zeta1,
+            zeta_n,
             combined_inner_product,
         )
     }
@@ -255,14 +279,28 @@ where
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError> {
+        println!("verify(group_map, proofs)");
         if proofs.len() == 0 {
             return Ok(true);
         }
 
         let params = proofs
             .iter()
+            // TODO(mimoo): shouldn't these lagrange commitments come pre-computed?
             .map(|(index, lgr_comm, proof)| {
+                println!("one iteration of proofs.iter().map(): ");
+
+                // debug
+                let GENERIC = true;
+                let POSEIDON = true;
+                let EC_ADD = true;
+                let EC_DBL = true;
+                let ENDO_SCALAR_MUL = true;
+                let SCALAR_MUL = true;
+                let PERMUTATION = true;
+
                 // commit to public input polynomial
+                println!("- commit to public input polynomial");
                 let p_comm = PolyComm::<G>::multi_scalar_mul(
                     &lgr_comm
                         .iter()
@@ -272,33 +310,60 @@ where
                     &proof.public.iter().map(|s| -*s).collect(),
                 );
 
-                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
+                let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta_n, _) =
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
+                println!("debug verifier:");
+                println!("oracles: {:?}", oracles);
+                println!("alpha: {:?}", alpha);
+                println!("p_eval: {:?}", p_eval);
+                println!("evlp: {:?}", evlp);
+                println!("polys: {:?}", polys);
 
-                // evaluate committed polynoms
-                let evals = (0..2)
-                    .map(|i| proof.evals[i].combine(evlp[i]))
-                    .collect::<Vec<_>>();
+                // evaluate committed polynomials
+                println!("- evaluate committed polynomials");
+
+                let evals = vec![
+                    proof.evals[0].combine(evlp[0]),
+                    proof.evals[1].combine(evlp[1]),
+                ];
+
+                let evals_zeta = &evals[0];
+                let evals_zeta_omega = &evals[1];
+
+                let f_zeta = &evals[0].f;
+                let t_zeta = &evals[0].t;
+                let w_zeta = &evals[0].w;
+                let s_zeta = &evals[0].s;
+                let z_zeta = &evals[0].z;
+
+                let z_zeta_omega = &evals[1].z;
+
+                // TODO(mimoo): there's a "vanishing polynomial function"
+                let zeta_n_minus_1 = zeta_n - &Fr::<G>::one(); // zeta^n - 1
 
                 // compute linearization polynomial commitment
+                println!("- compute linearization polynomial commitment");
 
                 // permutation
-                let zkp = index.zkpm.evaluate(oracles.zeta);
+                println!("- permutation");
+                let zkp_zeta = index.zkpm.evaluate(oracles.zeta);
                 let mut p = vec![&index.sigma_comm[PERMUTS - 1]];
                 let mut s = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     &oracles,
                     &alpha[range::PERM],
-                    zkp,
+                    zkp_zeta,
                 )];
 
                 // generic
+                println!("- generic");
                 p.push(&index.qm_comm);
                 p.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
                 p.push(&index.qc_comm);
-                s.extend(&ConstraintSystem::gnrc_scalars(&evals[0]));
+                s.extend(&ConstraintSystem::gnrc_scalars(&evals_zeta.w));
 
                 // poseidon
+                println!("- poseidon");
                 s.extend(&ConstraintSystem::psdn_scalars(
                     &evals,
                     &index.fr_sponge_params,
@@ -315,14 +380,17 @@ where
                 );
 
                 // EC addition
+                println!("- EC addition");
                 s.push(ConstraintSystem::ecad_scalars(&evals, &alpha[range::ADD]));
                 p.push(&index.add_comm);
 
                 // EC doubling
+                println!("- EC doubling");
                 s.push(ConstraintSystem::double_scalars(&evals, &alpha[range::DBL]));
                 p.push(&index.double_comm);
 
                 // variable base endoscalar multiplication
+                println!("- variable base endoscalar multiplication");
                 s.push(ConstraintSystem::endomul_scalars(
                     &evals,
                     index.endo,
@@ -331,44 +399,100 @@ where
                 p.push(&index.emul_comm);
 
                 // EC variable base scalar multiplication
+                println!("- EC variable base scalar multiplication");
                 s.push(ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
                 p.push(&index.mul_comm);
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
+                //
                 // check linearization polynomial evaluation consistency
-                let zeta1m1 = zeta1 - &Fr::<G>::one();
-                if (evals[0].f
-                    + &(if p_eval[0].len() > 0 {
+                // see https://hackmd.io/@mimoo/HkuQJKxgY
+                //
+
+                println!("- check linearization polynomial evaluation consistency");
+
+                // let's write left == right ourselves
+                {
+                    /*
+                    let left = public_zeta + f_zeta;
+                    let left = left + &permutation_stuff;
+
+                    let right = *t_zeta * zeta_n_minus_1;
+                    println!("my left = {:?}", left);
+                    println!("my right = {:?}", right);
+                    */
+                }
+
+                // [f(zeta) + pub(zeta) + permutation_stuff - t(zeta) * (zeta^n - 1)](zeta - w^{n-3})(zeta - 1)
+                let left = {
+                    let public_zeta = if p_eval[0].len() > 0 {
                         p_eval[0][0]
                     } else {
                         Fr::<G>::zero()
-                    })
-                    - evals[0]
-                        .w
+                    };
+
+                    println!("{} public_zeta: {:?}", line!(), public_zeta);
+
+                    let perm_next = w_zeta
                         .iter()
-                        .zip(evals[0].s.iter())
+                        .zip(s_zeta.iter())
                         .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
                         .fold(
-                            (evals[0].w[PERMUTS - 1] + &oracles.gamma)
-                                * &evals[1].z
+                            (w_zeta[PERMUTS - 1] + &oracles.gamma)
+                                * z_zeta_omega
                                 * &alpha[range::PERM][0]
-                                * &zkp,
+                                * &zkp_zeta,
                             |x, y| x * y,
-                        )
-                    + evals[0]
-                        .w
+                        );
+                    println!("number of s_zeta: {:?}", s_zeta.len());
+
+                    let beta_zeta = oracles.beta * oracles.zeta;
+                    let perm_prev = w_zeta
                         .iter()
                         .zip(index.shift.iter())
-                        .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
-                        .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y)
-                    - evals[0].t * &zeta1m1)
-                    * &(oracles.zeta - &index.w)
-                    * &(oracles.zeta - &Fr::<G>::one())
-                    != ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
-                        + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
-                        * &(Fr::<G>::one() - evals[0].z)
-                {
+                        .map(|(w, s)| oracles.gamma + &(beta_zeta * s) + w)
+                        .fold(alpha[range::PERM][0] * zkp_zeta * z_zeta, |x, y| x * y);
+                    println!(
+                        "number of shift: {:?} (should have one more)",
+                        index.shift.len()
+                    );
+
+                    let permutation_stuff = perm_prev - perm_next;
+                    let permutation_lagrange_stuff =
+                        (oracles.zeta - &index.w) * (oracles.zeta - Fr::<G>::one());
+
+                    let mut left_hand_side = *f_zeta + public_zeta;
+                    if PERMUTATION {
+                        left_hand_side = left_hand_side + &permutation_stuff;
+                    }
+                    let moving_t = left_hand_side - *t_zeta * zeta_n_minus_1;
+
+                    if PERMUTATION {
+                        moving_t * permutation_lagrange_stuff
+                    } else {
+                        moving_t
+                    }
+                };
+
+                // (1 - z(zeta)) * [(zeta^n - 1) * alpha^PERM1 * (zeta - w^{n-3}) + (zeta^n - 1) * alpha^PERM2 * (zeta - 1)]
+                let right = if PERMUTATION {
+                    // (zeta^n - 1) * alpha^PERM1 * (zeta - w^{n-3})
+                    let acc_init =
+                        zeta_n_minus_1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w);
+                    // (zeta^n - 1) * alpha^PERM2 * (zeta - 1)
+                    let acc_final =
+                        zeta_n_minus_1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one());
+                    // multiply by (1 - z(zeta)) to finish both lagrange polynomials
+                    (acc_init + acc_final) * &(Fr::<G>::one() - z_zeta)
+                } else {
+                    Fr::<G>::zero()
+                };
+
+                println!("- left/right check");
+                if left != right {
+                    println!("left = {:?}", left);
+                    println!("right = {:?}", right);
                     return Err(ProofError::ProofVerification);
                 }
 
@@ -460,6 +584,7 @@ where
         // TODO: Account for the different SRS lengths
         let srs = proofs[0].0.srs.get_ref();
         for (index, _, _) in proofs.iter() {
+            // TODO(mimoo): do we really want to panic here?
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 
