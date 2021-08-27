@@ -473,3 +473,27 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+    use algebra::{pasta::fp::Fp, FftField, Field, SquareRootField};
+
+    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+        pub fn for_testing(
+            sponge_params: ArithmeticSpongeParams<F>,
+            gates: Vec<CircuitGate<F>>,
+        ) -> Self {
+            let fp_sponge_params = oracle::pasta::fp::params();
+            let public = 0;
+            ConstraintSystem::<F>::create(gates, sponge_params, public).unwrap()
+        }
+    }
+
+    impl ConstraintSystem<Fp> {
+        pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
+            let fp_sponge_params = oracle::pasta::fp::params();
+            Self::for_testing(fp_sponge_params, gates)
+        }
+    }
+}
