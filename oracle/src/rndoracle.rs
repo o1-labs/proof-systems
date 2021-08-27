@@ -28,6 +28,6 @@ pub enum ProofError {
 // Implement `Display` for ProofError
 impl fmt::Display for ProofError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({})", self)
+        write!(f, "({:?})", self)
     }
 }
