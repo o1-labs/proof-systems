@@ -1,7 +1,8 @@
-use algebra::{
-    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, BitIterator,
-    Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero,
+use ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, ProjectiveCurve,
+    SWModelParameters,
 };
+use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use rayon::prelude::*;
 
@@ -26,7 +27,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
         })
         .collect::<Vec<_>>();
 
-    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..len).step_by(2).zip(denominators.iter()) {
         let j = i / 2;
@@ -83,7 +84,7 @@ fn batch_add_assign<P: SWModelParameters>(
         denominators[i] = d;
     }
 
-    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..n).zip(denominators.iter()) {
         let p0 = v0[i];
@@ -136,8 +137,8 @@ fn affine_combine_base<P: SWModelParameters>(
     };
     assert!(g1g2.len() == n);
 
-    let bits1 = BitIterator::new(x1.into_repr());
-    let bits2 = BitIterator::new(x2.into_repr());
+    let bits1 = BitIteratorBE::new(x1.into_repr());
+    let bits2 = BitIteratorBE::new(x2.into_repr());
 
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
@@ -149,7 +150,7 @@ fn affine_combine_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -197,8 +198,8 @@ fn affine_window_combine_base<P: SWModelParameters>(
     };
     assert!(g1g2.len() == n);
 
-    let windows1 = BitIterator::new(x1.into_repr()).tuples();
-    let windows2 = BitIterator::new(x2.into_repr()).tuples();
+    let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
+    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
@@ -213,7 +214,7 @@ fn affine_window_combine_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -259,7 +260,7 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
 ) -> Vec<SWJAffine<P>> {
     let n = g1.len();
 
-    let windows2 = BitIterator::new(x2.into_repr()).tuples();
+    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
@@ -273,7 +274,7 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
+            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -391,8 +392,8 @@ fn shamir_sum<G: AffineCurve>(
     g1g2.add_assign_mixed(&g2);
     let g1g2 = g1g2.into_affine();
 
-    let bits1 = BitIterator::new(x1.into_repr());
-    let bits2 = BitIterator::new(x2.into_repr());
+    let bits1 = BitIteratorBE::new(x1.into_repr());
+    let bits2 = BitIteratorBE::new(x2.into_repr());
 
     let mut res = G::Projective::zero();
 
@@ -532,8 +533,8 @@ fn window_shamir<G: AffineCurve>(
     let [_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
         shamir_window_table(g1, g2);
 
-    let windows1 = BitIterator::new(x1.into_repr()).tuples();
-    let windows2 = BitIterator::new(x2.into_repr()).tuples();
+    let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
+    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
     let mut res = G::Projective::zero();
 
@@ -648,208 +649,4 @@ pub fn shamir_window_table<G: AffineCurve>(g1: G, g2: G) -> [G; 16] {
         v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13],
         v[14], v[15],
     ]
-}
-
-#[test]
-fn test_batch_double_in_place() {
-    use algebra::{
-        bn_382::g::{Affine as GAffine, Bn_382GParameters as P},
-        bn_382::{Fp, Fq},
-        UniformRand,
-    };
-
-    let n = 10;
-
-    let x: Fq = UniformRand::rand(&mut rand::thread_rng());
-    let g = GAffine::prime_subgroup_generator()
-        .mul(x.into_repr())
-        .into_affine();
-
-    let mut denominators = vec![Fp::zero(); n];
-
-    let p0 = vec![g; 10];
-    let mut p = p0.clone();
-
-    // double in place twice
-    for _ in 0..2 {
-        for i in 0..n {
-            denominators[i] = p[i].y.double();
-        }
-        algebra::fields::batch_inversion::<Fp>(&mut denominators);
-
-        // TODO: Use less memory
-        for i in 0..n {
-            let d = denominators[i];
-            let sq = p[i].x.square();
-            let s = (sq.double() + &sq + &P::COEFF_A) * &d;
-            let x = s.square() - &p[i].x.double();
-            let y = -p[i].y - &(s * &(x - &p[i].x));
-            p[i].x = x;
-            p[i].y = y;
-        }
-    }
-
-    let mut p1: Vec<_> = p0.iter().map(|x| x.into_projective()).collect();
-    for x in p1.iter_mut() {
-        x.double_in_place();
-        x.double_in_place();
-    }
-
-    let p: Vec<_> = p.iter().map(|x| x.into_projective()).collect();
-
-    assert_eq!(p, p1);
-}
-
-#[test]
-fn test_batch_add_assign() {
-    use algebra::{
-        bn_382::g::Affine as GAffine,
-        bn_382::{Fp, Fq},
-        UniformRand,
-    };
-    let n = 10;
-
-    let mut denominators = vec![Fp::zero(); n];
-    let x1: Fq = UniformRand::rand(&mut rand::thread_rng());
-    let g1 = vec![
-        GAffine::prime_subgroup_generator()
-            .mul(x1.into_repr())
-            .into_affine();
-        n
-    ];
-
-    let x2: Fq = UniformRand::rand(&mut rand::thread_rng());
-    let g2 = vec![
-        GAffine::prime_subgroup_generator()
-            .mul(x2.into_repr())
-            .into_affine();
-        n
-    ];
-
-    let mut res_batch = g1.clone();
-    batch_add_assign(&mut denominators, &mut res_batch, &g2);
-    let res_batch: Vec<_> = res_batch.iter().map(|x| x.into_projective()).collect();
-
-    let res: Vec<_> = g1
-        .iter()
-        .zip(g2.iter())
-        .map(|(g1, g2)| g1.into_projective() + &g2.into_projective())
-        .collect();
-    assert_eq!(res, res_batch);
-}
-
-#[test]
-fn test_shamir_window_table() {
-    use algebra::{
-        bn_382::g::Affine as GAffine,
-        bn_382::{Fp, Fq},
-        UniformRand,
-    };
-    let n = 10;
-
-    let mut denominators = vec![Fp::zero(); n];
-    let x1: Fq = UniformRand::rand(&mut rand::thread_rng());
-    let g1 = vec![
-        GAffine::prime_subgroup_generator()
-            .mul(x1.into_repr())
-            .into_affine();
-        n
-    ];
-
-    let x2: Fq = UniformRand::rand(&mut rand::thread_rng());
-    let g2 = vec![
-        GAffine::prime_subgroup_generator()
-            .mul(x2.into_repr())
-            .into_affine();
-        n
-    ];
-
-    let t_batch = affine_shamir_window_table(&mut denominators, &g1, &g2);
-
-    let t_sings: Vec<_> = g1
-        .iter()
-        .zip(g2.iter())
-        .map(|(g1, g2)| shamir_window_table(*g1, *g2))
-        .collect();
-
-    for (i, tbl) in t_sings.iter().enumerate() {
-        for j in 0..15 {
-            assert_eq!(tbl[1 + j], t_batch[j][i]);
-        }
-    }
-}
-
-#[test]
-fn bench_combine() {
-    use algebra::{bn_382::g::Affine as GAffine, bn_382::Fq, UniformRand};
-    use std::time::Instant;
-
-    const N: usize = 200_000;
-    const N_OVER_2: usize = N / 2;
-
-    let x1: Fq = UniformRand::rand(&mut rand::thread_rng());
-    let x2 = x1.inverse().unwrap();
-
-    let v1: Vec<GAffine> = (0..N_OVER_2)
-        .map(|_| GAffine::prime_subgroup_generator())
-        .collect();
-    let v2: Vec<GAffine> = (0..N_OVER_2)
-        .map(|_| GAffine::prime_subgroup_generator())
-        .collect();
-
-    let r = {
-        let start = Instant::now();
-        let res = combine(&v1, &v2, x1, x2);
-        println!("combine {:?} {:?}", res.len(), start.elapsed());
-        res
-    };
-
-    {
-        let start = Instant::now();
-        let res = affine_window_combine(&v1, &v2, x1, x2);
-        println!(
-            "affine_window_combine {:?} {:?}",
-            res.len(),
-            start.elapsed()
-        );
-        assert_eq!(r, res);
-    }
-
-    {
-        let start = Instant::now();
-        let res = affine_combine(&v1, &v2, x1, x2);
-        println!("affine_combine {:?} {:?}", res.len(), start.elapsed());
-        assert_eq!(r, res);
-    };
-
-    {
-        let start = Instant::now();
-        let res = window_combine(&v1, &v2, x1, x2);
-        println!("window_combine {:?} {:?}", res.len(), start.elapsed());
-        assert_eq!(r, res);
-    };
-}
-
-#[test]
-fn shamir_equivalence() {
-    use algebra::{
-        bn_382::g::{Affine, Projective},
-        bn_382::Fq as Fr,
-        UniformRand,
-    };
-    use rand_core::OsRng;
-    let rng = &mut OsRng;
-
-    let mut g1: Projective = Affine::prime_subgroup_generator().into_projective();
-    g1 *= Fr::rand(rng);
-    let g1 = g1.into_affine();
-
-    let mut g2: Projective = Affine::prime_subgroup_generator().into_projective();
-    g2 *= Fr::rand(rng);
-    let g2 = g2.into_affine();
-
-    let x1 = Fr::rand(rng);
-    let x2 = Fr::rand(rng);
-
-    assert_eq!(shamir_sum(x1, g1, x2, g2), window_shamir(x1, g1, x2, g2))
 }

@@ -6,11 +6,15 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, One, PrimeField, UniformRand, Zero};
+use ark_ec::AffineCurve;
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_poly::{
+    univariate::{DenseOrSparsePolynomial, DensePolynomial},
+    Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_circuits::{
     constraints::ConstraintSystem,
@@ -22,7 +26,7 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ProverCommitments<G: AffineCurve> {
     pub l_comm: PolyComm<G>,
     pub r_comm: PolyComm<G>,
@@ -31,8 +35,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub t_comm: PolyComm<G>,
 }
 
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-#[cfg(feature = "ocaml_types")]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 struct CamlProverProof<G: AffineCurve> {
     pub commitments: ProverCommitments<G>,
     pub proof: OpeningProof<G>,
@@ -61,28 +64,31 @@ pub struct ProverProof<G: AffineCurve> {
 }
 
 #[cfg(feature = "ocaml_types")]
-unsafe impl<G: AffineCurve + ocaml::ToValue> ocaml::ToValue for ProverProof<G>
+unsafe impl<G: AffineCurve + ocaml::IntoValue> ocaml::IntoValue for ProverProof<G>
 where
-    G::ScalarField: ocaml::ToValue,
+    G::ScalarField: ocaml::IntoValue,
 {
-    fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(CamlProverProof {
-            commitments: self.commitments,
-            proof: self.proof,
-            evals: {
-                let [evals0, evals1] = self.evals;
-                (evals0, evals1)
+    fn into_value(self, runtime: &ocaml::Runtime) -> ocaml::Value {
+        ocaml::IntoValue::into_value(
+            CamlProverProof {
+                commitments: self.commitments,
+                proof: self.proof,
+                evals: {
+                    let [evals0, evals1] = self.evals;
+                    (evals0, evals1)
+                },
+                public: self.public,
+                prev_challenges: self.prev_challenges,
             },
-            public: self.public,
-            prev_challenges: self.prev_challenges,
-        })
+            runtime,
+        )
     }
 }
 
 #[cfg(feature = "ocaml_types")]
-unsafe impl<G: AffineCurve + ocaml::FromValue> ocaml::FromValue for ProverProof<G>
+unsafe impl<'a, G: AffineCurve + ocaml::FromValue<'a>> ocaml::FromValue<'a> for ProverProof<G>
 where
-    G::ScalarField: ocaml::FromValue,
+    G::ScalarField: ocaml::FromValue<'a>,
 {
     fn from_value(v: ocaml::Value) -> Self {
         let p: CamlProverProof<G> = ocaml::FromValue::from_value(v);
@@ -192,7 +198,7 @@ where
                 * &(witness[j + n] + &(index.cs.sigmal1[1][j] * &oracles.beta) + &oracles.gamma)
                 * &(witness[j + 2 * n] + &(index.cs.sigmal1[2][j] * &oracles.beta) + &oracles.gamma)
         });
-        algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n - 3]);
+        ark_ff::batch_inversion::<Fr<G>>(&mut z[1..=n - 3]);
         (0..n - 3).for_each(|j| {
             let x = z[j];
             z[j + 1] *= &(x
@@ -376,7 +382,7 @@ where
         let p_eval = if p.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]
+            [vec![p.evaluate(&evlp[0])], vec![p.evaluate(&evlp[1])]]
         };
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
@@ -412,7 +418,7 @@ where
         // Therefore, the coefficient of the blinding base in the f commitment is
         // perm_scalars[0] * the coefficient in the z commitment.
         let omega_f = {
-            let zkp = index.cs.zkpm.evaluate(oracles.zeta);
+            let zkp = index.cs.zkpm.evaluate(&oracles.zeta);
             let evals = (0..2)
                 .map(|i| evals[i].combine(evlp[i]))
                 .collect::<Vec<_>>();

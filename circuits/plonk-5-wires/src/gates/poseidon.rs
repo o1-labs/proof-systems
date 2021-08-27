@@ -14,9 +14,9 @@ use crate::{
     wires::GateWires,
     wires::{COLUMNS, WIRES},
 };
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
-use oracle::poseidon_5_wires::{sbox, PlonkSpongeConstants};
+use oracle::poseidon::{sbox, PlonkSpongeConstants5W};
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_poseidon(row: usize, wires: GateWires, c: Vec<F>) -> Self {
@@ -30,7 +30,7 @@ impl<F: FftField> CircuitGate<F> {
 
     pub fn verify_poseidon(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
         let this: [F; COLUMNS] =
-            array_init(|i| sbox::<F, PlonkSpongeConstants>(witness[i][self.row]));
+            array_init(|i| sbox::<F, PlonkSpongeConstants5W>(witness[i][self.row]));
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
         let rc = self.rc();
 

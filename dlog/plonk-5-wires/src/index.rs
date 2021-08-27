@@ -4,17 +4,16 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use algebra::AffineCurve;
-use algebra::PrimeField;
+use ark_ec::AffineCurve;
+use ark_ff::PrimeField;
+use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
-    srs::SRS,
+    srs::{SRSSpec, SRSValue},
     CommitmentField,
 };
-use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::poseidon::{ArithmeticSpongeParams, SpongeConstants};
-use oracle::poseidon_5_wires::PlonkSpongeConstants;
+use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants5W, SpongeConstants};
 use plonk_5_wires_circuits::{
     constraints::{zk_w, ConstraintSystem},
     wires::COLUMNS,
@@ -22,42 +21,6 @@ use plonk_5_wires_circuits::{
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
-
-pub enum SRSValue<'a, G: CommitmentCurve> {
-    Value(SRS<G>),
-    Ref(&'a SRS<G>),
-}
-
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> {
-    pub fn get_ref(&self) -> &SRS<G> {
-        match self {
-            SRSValue::Value(x) => &x,
-            SRSValue::Ref(x) => x,
-        }
-    }
-}
-
-pub enum SRSSpec<'a, G: CommitmentCurve> {
-    Use(&'a SRS<G>),
-    Generate(usize),
-}
-
-impl<'a, G: CommitmentCurve> SRSValue<'a, G>
-where
-    G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
-{
-    pub fn generate(size: usize) -> SRS<G> {
-        SRS::<G>::create(size)
-    }
-
-    pub fn create<'b>(spec: SRSSpec<'a, G>) -> SRSValue<'a, G> {
-        match spec {
-            SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size)),
-        }
-    }
-}
 
 pub struct Index<'a, G: CommitmentCurve>
 where
@@ -171,7 +134,7 @@ where
         }
         cs.endo = endo_q;
         Index {
-            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            max_quot_size: PlonkSpongeConstants5W::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
             fq_sponge_params,
             max_poly_size,
             srs,

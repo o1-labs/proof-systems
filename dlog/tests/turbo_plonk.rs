@@ -21,31 +21,29 @@ This source file tests constraints for the following computatios:
 
 **********************************************************************************************************/
 
-use algebra::{
-    tweedle::{
-        dee::{Affine, TweedledeeParameters},
-        fp::Fp,
-    },
-    Field, One, UniformRand, Zero,
+use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
-    srs::SRS,
+    srs::{SRSSpec, SRS},
 };
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use groupmap::GroupMap;
+use mina_curves::pasta::{
+    pallas::Affine as Other,
+    vesta::{Affine, VestaParameters},
+    Fp,
+};
 use oracle::poseidon::*;
 use oracle::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants as SC, Sponge},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use plonk_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::GateWires};
-use plonk_protocol_dlog::{
-    index::{Index, SRSSpec},
-    prover::ProverProof,
-};
-use rand_core::OsRng;
+use plonk_protocol_dlog::{index::Index, prover::ProverProof};
+use rand::rngs::OsRng;
 use std::time::Instant;
 use std::{io, io::Write};
 
@@ -55,7 +53,7 @@ const PUBLIC: usize = 6;
 
 #[test]
 fn turbo_plonk() {
-    let c = &oracle::tweedle::fp::params().round_constants;
+    let c = &oracle::pasta::fp::params().round_constants;
 
     let z = Fp::zero();
     let p = Fp::one();
@@ -507,17 +505,17 @@ fn turbo_plonk() {
         gates.append(&mut endomul);
     }
 
-    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<algebra::tweedle::dum::Affine>();
+    let (endo_q, _endo_r) = commitment_dlog::srs::endos::<Other>();
     let srs = SRS::create(MAX_SIZE);
 
     let index = Index::<Affine>::create(
         ConstraintSystem::<Fp>::create(
             gates,
-            oracle::tweedle::fp::params() as ArithmeticSpongeParams<Fp>,
+            oracle::pasta::fp::params() as ArithmeticSpongeParams<Fp>,
             PUBLIC,
         )
         .unwrap(),
-        oracle::tweedle::fq::params(),
+        oracle::pasta::fq::params(),
         endo_q,
         SRSSpec::Use(&srs),
     );
@@ -532,8 +530,7 @@ where
 {
     let rng = &mut OsRng;
 
-    let params: ArithmeticSpongeParams<Fp> = oracle::tweedle::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
+    let mut sponge = ArithmeticSponge::<Fp, SC>::new(oracle::pasta::fp::params());
 
     let z = Fp::zero();
     let mut batch = Vec::new();
@@ -633,7 +630,7 @@ where
 
         // HALF_ROUNDS_FULL full rounds constraint gates
         for j in 0..SC::ROUNDS_FULL {
-            sponge.full_round(j, &params);
+            sponge.full_round(j + 1);
             l.push(sponge.state[0]);
             r.push(sponge.state[1]);
             o.push(sponge.state[2]);
@@ -772,8 +769,15 @@ where
         };
 
         // add the proof to the batch
-        batch.push(ProverProof::create::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
-            &group_map, &witness, &index, vec![prev]).unwrap());
+        batch.push(
+            ProverProof::create::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
+                &group_map,
+                &witness,
+                &index,
+                vec![prev],
+            )
+            .unwrap(),
+        );
 
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
@@ -781,7 +785,7 @@ where
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // verify one proof serially
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
+    match ProverProof::verify::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
         &group_map,
         &vec![(&verifier_index, &lgr_comms, &batch[0])],
     ) {
@@ -796,7 +800,7 @@ where
         .iter()
         .map(|p| (&verifier_index, &lgr_comms, p))
         .collect();
-    match ProverProof::verify::<DefaultFqSponge<TweedledeeParameters, SC>, DefaultFrSponge<Fp, SC>>(
+    match ProverProof::verify::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
         &group_map, &batch,
     ) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
@@ -820,8 +824,7 @@ where
 
     let s = (y2 - &y1) / &(x2 - &x1);
 
-    let mut sponge = ArithmeticSponge::<Fp, SC>::new();
-    let params: ArithmeticSpongeParams<Fp> = oracle::tweedle::fp::params();
+    let mut sponge = ArithmeticSponge::<Fp, SC>::new(oracle::pasta::fp::params());
     sponge.state = vec![x1, x2, x3];
     let z = Fp::zero();
 
@@ -879,7 +882,7 @@ where
 
     // ROUNDS_FULL full rounds constraint gates
     for j in 0..SC::ROUNDS_FULL {
-        sponge.full_round(j, &params);
+        sponge.full_round(j + 1);
         l.push(sponge.state[0]);
         r.push(sponge.state[1]);
         o.push(sponge.state[2]);

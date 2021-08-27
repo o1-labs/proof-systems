@@ -2,12 +2,12 @@
 
 This source file implements non-special point (with distinct abscissas) Weierstrass curve addition
 
-    ADD gate constrains
+    ADD gate constraints
         (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
         (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
         (x2 - x1) * r = 1
 
-    Permutation constrains
+    Permutation constraints
 
         -> x1
         -> y1
@@ -16,7 +16,7 @@ This source file implements non-special point (with distinct abscissas) Weierstr
         x3 ->
         y3 ->
 
-    The constrains above are derived from the following EC Affine arithmetic equations:
+    The constraints above are derived from the following EC Affine arithmetic equations:
 
         (x2 - x1) * s = y2 - y1
         s * s = x1 + x2 + x3
@@ -31,7 +31,7 @@ This source file implements non-special point (with distinct abscissas) Weierstr
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {

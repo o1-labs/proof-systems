@@ -8,12 +8,12 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
 use crate::wires::COLUMNS;
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{
     poseidon::ArithmeticSpongeParams,
-    poseidon_5_wires::{sbox, PlonkSpongeConstants},
+    poseidon::{sbox, PlonkSpongeConstants5W},
     utils::{EvalUtils, PolyUtils},
 };
 
@@ -41,7 +41,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lro.iter_mut().for_each(|p| {
             p.evals
                 .iter_mut()
-                .for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p))
+                .for_each(|p| *p = sbox::<F, PlonkSpongeConstants5W>(*p))
         });
 
         let scalers = (0..COLUMNS)
@@ -56,13 +56,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                     .iter()
                     .zip(alpha[0..COLUMNS].iter())
                     .map(|(p, a)| p.scale(-*a))
-                    .fold(self.zero4.clone(), |x, y| &x + &y), // next row on other side of equality
+                    .fold(self.zero4.clone(), |x, y| &x + &y),
             &self.ps8
                 * &lro
                     .iter()
                     .zip(scalers.iter())
                     .map(|(p, s)| p.scale(*s))
-                    .fold(self.zero8.clone(), |x, y| &x + &y), //
+                    .fold(self.zero8.clone(), |x, y| &x + &y),
             self.rcm
                 .iter()
                 .zip(alpha[0..COLUMNS].iter())
@@ -79,7 +79,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sbox = evals[0]
             .w
             .iter()
-            .map(|&w| sbox::<F, PlonkSpongeConstants>(w))
+            .map(|&w| sbox::<F, PlonkSpongeConstants5W>(w))
             .collect::<Vec<_>>();
         let lro = params
             .mds

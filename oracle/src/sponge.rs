@@ -1,8 +1,6 @@
 use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeConstants};
-use algebra::{
-    curves::{short_weierstrass_jacobian::GroupAffine, SWModelParameters},
-    BigInteger, Field, FpParameters, One, PrimeField, Zero,
-};
+use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
+use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
 pub use crate::FqSponge;
 
@@ -13,7 +11,7 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 // TODO: move to a different file / module
 /// A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {
@@ -62,13 +60,11 @@ impl<F: PrimeField> ScalarChallenge<F> {
 
 #[derive(Clone)]
 pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
-    pub params: ArithmeticSpongeParams<P::BaseField>,
     pub sponge: ArithmeticSponge<P::BaseField, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
 pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
-    pub params: ArithmeticSpongeParams<Fr>,
     pub sponge: ArithmeticSponge<Fr, SC>,
     pub last_squeezed: Vec<u64>,
 }
@@ -89,8 +85,9 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
             let (limbs, remaining) = last_squeezed.split_at(num_limbs);
             self.last_squeezed = remaining.to_vec();
             Fr::from_repr(pack::<Fr::BigInt>(&limbs))
+                .expect("internal representation was not a valid field element")
         } else {
-            let x = self.sponge.squeeze(&self.params).into_repr();
+            let x = self.sponge.squeeze().into_repr();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze(num_limbs)
@@ -110,7 +107,7 @@ where
             self.last_squeezed = remaining.to_vec();
             limbs.to_vec()
         } else {
-            let x = self.sponge.squeeze(&self.params).into_repr();
+            let x = self.sponge.squeeze().into_repr();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze_limbs(num_limbs)
@@ -119,11 +116,12 @@ where
 
     pub fn squeeze_field(&mut self) -> P::BaseField {
         self.last_squeezed = vec![];
-        self.sponge.squeeze(&self.params)
+        self.sponge.squeeze()
     }
 
     pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
         P::ScalarField::from_repr(pack(&self.squeeze_limbs(num_limbs)))
+            .expect("internal representation was not a valid field element")
     }
 }
 
@@ -135,8 +133,7 @@ where
 {
     fn new(params: ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
         DefaultFqSponge {
-            params,
-            sponge: ArithmeticSponge::new(),
+            sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],
         }
     }
@@ -147,8 +144,8 @@ where
             if g.infinity {
                 panic!("sponge got zero curve point");
             } else {
-                self.sponge.absorb(&self.params, &[g.x]);
-                self.sponge.absorb(&self.params, &[g.y]);
+                self.sponge.absorb(&[g.x]);
+                self.sponge.absorb(&[g.y]);
             }
         }
     }
@@ -158,29 +155,25 @@ where
         let total_length = P::ScalarField::size_in_bits();
 
         x.iter().for_each(|x| {
-            // Big endian
-            let mut bits: Vec<bool> = x.into_repr().to_bits();
-            // Little endian
-            bits.reverse();
-            let mut bits: Vec<_> = (0..total_length)
-                .map(|i| if i < bits.len() { bits[i] } else { false })
-                .collect();
-            // Big endian
-            bits.reverse();
+            // padding (since unpadded_bits is a BigInt, it can be larger than the total_length)
+            let unpadded_bits = x.into_repr().to_bits_be();
+            let padding = total_length.saturating_sub(unpadded_bits.len());
+            let mut bits = vec![false; padding];
+            bits.extend_from_slice(&unpadded_bits);
 
+            // absorb
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
-                self.sponge.absorb(
-                    &self.params,
-                    &[P::BaseField::from_repr(
-                        <P::BaseField as PrimeField>::BigInt::from_bits(&bits),
-                    )],
-                );
+                self.sponge.absorb(&[P::BaseField::from_repr(
+                    <P::BaseField as PrimeField>::BigInt::from_bits_be(&bits),
+                )
+                .expect("padding code has a bug")]);
             } else {
                 let low_bits = P::BaseField::from_repr(
-                    <P::BaseField as PrimeField>::BigInt::from_bits(&bits[1..]),
-                );
+                    <P::BaseField as PrimeField>::BigInt::from_bits_be(&bits[1..]),
+                )
+                .expect("padding code has a bug");
 
                 let high_bit = if bits[0] {
                     P::BaseField::one()
@@ -188,15 +181,15 @@ where
                     P::BaseField::zero()
                 };
 
-                self.sponge.absorb(&self.params, &[low_bits]);
-                self.sponge.absorb(&self.params, &[high_bit]);
+                self.sponge.absorb(&[low_bits]);
+                self.sponge.absorb(&[high_bit]);
             }
         });
     }
 
     fn digest(mut self) -> P::ScalarField {
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
-        P::ScalarField::from_repr(x.into())
+        P::ScalarField::from_repr(x.into()).expect("the sponge code has a bug")
     }
 
     fn challenge(&mut self) -> P::ScalarField {

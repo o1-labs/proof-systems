@@ -2,20 +2,20 @@
 
 This source file implements constraints for non-special point doubling on Weierstrass curve
 
-DOUBLE gate constrains
+DOUBLE gate constraints
 
     4 * y1^2 * (x2 + 2*x1) = 9 * x1^4
     2 * y1 * (y2 - y1) = (3 * x1^2) * (x2 – x1)
     y1 * r = 1
 
-Permutation constrains
+Permutation constraints
 
     -> x1
     -> y1
     x2 ->
     y2 ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     2 * s * y1 = 3 * x1^2
     x2 = s^2 – 2*x1
@@ -36,7 +36,7 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {

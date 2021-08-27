@@ -12,15 +12,15 @@ The folowing functionality is implemented
 
 use crate::srs::SRS;
 pub use crate::CommitmentField;
-use algebra::{
-    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, Field,
-    FpParameters, One, PrimeField, ProjectiveCurve, SWModelParameters, SquareRootField,
-    UniformRand, VariableBaseMSM, Zero,
+use ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
+    AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ff_fft::DensePolynomial;
+use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand_core::RngCore;
+use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::iter::Iterator;
 
@@ -29,7 +29,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
@@ -61,52 +61,48 @@ pub fn shift_scalar<F: PrimeField>(x: F) -> F {
 
 impl<C: AffineCurve> PolyComm<C> {
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
-        assert_eq!(com.len(), elm.len());
-        let shifted = {
-            let pairs = com
-                .iter()
-                .zip(elm.iter())
-                .filter_map(|(c, s)| match c.shifted {
-                    Some(c) => Some((c, s)),
-                    None => None,
-                })
-                .collect::<Vec<_>>();
-            if pairs.len() == 0 {
-                None
-            } else {
-                let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
-                let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
-                Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
-            }
-        };
-        let unshifted = {
-            if com.len() == 0 || elm.len() == 0 {
-                Vec::new()
-            } else {
-                let n = com.iter().map(|c| c.unshifted.len());
-                let n = Iterator::max(n).expect("com is not empty");
-                (0..n)
-                    .map(|i| {
-                        let mut points = Vec::new();
-                        let mut scalars = Vec::new();
-                        com.iter().zip(elm.iter()).for_each(|(p, s)| {
-                            if i < p.unshifted.len() {
-                                points.push(p.unshifted[i]);
-                                scalars.push(s.into_repr())
-                            }
-                        });
-                        VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
-                    })
-                    .collect::<Vec<_>>()
-            }
-        };
-
-        PolyComm::<C> { shifted, unshifted }
+        PolyComm::<C> {
+            shifted: {
+                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {
+                    None
+                } else {
+                    let points = com
+                        .iter()
+                        .map(|c| {
+                            assert!(c.shifted.is_some());
+                            c.shifted.unwrap()
+                        })
+                        .collect::<Vec<_>>();
+                    let scalars = elm.iter().map(|s| s.into_repr()).collect::<Vec<_>>();
+                    Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+                }
+            },
+            unshifted: {
+                if com.len() == 0 || elm.len() == 0 {
+                    Vec::new()
+                } else {
+                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                    (0..n)
+                        .map(|i| {
+                            let mut points = Vec::new();
+                            let mut scalars = Vec::new();
+                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
+                                if i < p.unshifted.len() {
+                                    points.push(p.unshifted[i]);
+                                    scalars.push(s.into_repr())
+                                }
+                            });
+                            VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
+                        })
+                        .collect::<Vec<_>>()
+                }
+            },
+        }
     }
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -156,14 +152,13 @@ where
 
         let chal_inv = {
             let mut cs = chal.clone();
-            algebra::fields::batch_inversion(&mut cs);
+            ark_ff::batch_inversion(&mut cs);
             cs
         };
 
         Challenges { chal, chal_inv }
     }
 }
-
 
 /// Returns the product of all the field elements belonging to an iterator.
 pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
@@ -367,13 +362,17 @@ where
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
-        rng: &mut dyn RngCore,
+        rng: &mut (impl RngCore + CryptoRng),
     ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
-    fn mask(&self, c: PolyComm<G>, rng: &mut dyn RngCore) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+    fn mask(
+        &self,
+        c: PolyComm<G>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         c.map(|g: G| {
             if g.is_zero() {
                 // TODO: This leaks information when g is the identity!
@@ -455,8 +454,7 @@ where
     ///     evalscale: eval scaling factor for opening commitments in batch
     ///     oracle_params: parameters for the random oracle argument
     ///     RETURN: commitment opening proof
-    // TODO(mimoo): better function name + return a Result
-    pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
@@ -465,9 +463,12 @@ where
         polyscale: Fr<G>,      // scaling factor for polynoms
         evalscale: Fr<G>,      // scaling factor for evaluation point powers
         mut sponge: EFqSponge, // sponge
-        rng: &mut dyn RngCore,
-    ) -> OpeningProof<G> {
-        // make number of rounds a power of 2
+        rng: &mut RNG,
+    ) -> OpeningProof<G>
+    where
+        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
@@ -686,8 +687,7 @@ where
     ///     oracle_params: parameters for the random oracle argument
     ///     randomness source context
     ///     RETURN: verification status
-    // TODO(mimoo): need an easier to use interface here, probably a type for batch
-    pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         batch: &mut Vec<(
@@ -702,8 +702,12 @@ where
             )>,
             &OpeningProof<G>, // batched opening proof
         )>,
-        rng: &mut dyn RngCore,
-    ) -> bool {
+        rng: &mut RNG,
+    ) -> bool
+    where
+        EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
         //

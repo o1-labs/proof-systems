@@ -3,7 +3,7 @@
 This source file implements group endomorphism optimised
 variable base scalar multiplication custom Plonk constraints.
 
-EVBSM gate constrains
+EVBSM gate constraints
 
     b1*(b1-1) = 0
     b2*(b2-1) = 0
@@ -12,7 +12,7 @@ EVBSM gate constrains
     (2*xp + (1 + (endo - 1) * b2) * xt – s1^2) * (s1 + s2) = 2*yp
     (xp – xs) * s2 = ys + yp
 
-Permutation constrains
+Permutation constraints
 
     -> b1(i)
     -> b2(i+1)
@@ -25,7 +25,7 @@ Permutation constrains
     xs(255) ->
     ys(255) ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     (xq - xp) * s1 = yq - yp
     s1 * s1 = xp + xq + x1
@@ -57,7 +57,7 @@ use crate::{
     constraints::ConstraintSystem,
     wires::{GateWires, COLUMNS},
 };
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {

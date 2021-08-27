@@ -1,7 +1,8 @@
-use algebra::{Field, PrimeField};
-use oracle::poseidon::{ArithmeticSpongeParams, Sponge};
-use oracle::poseidon_5_wires::{ArithmeticSponge, PlonkSpongeConstants as SC};
-use oracle::sponge_5_wires::{DefaultFrSponge, ScalarChallenge};
+use ark_ff::{Field, PrimeField};
+use oracle::poseidon::{
+    ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants5W as SC, Sponge,
+};
+use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 use plonk_5_wires_circuits::scalars::ProofEvaluations;
 
 pub trait FrSponge<Fr: Field> {
@@ -14,24 +15,23 @@ pub trait FrSponge<Fr: Field> {
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     fn new(params: ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
         DefaultFrSponge {
-            params,
-            sponge: ArithmeticSponge::new(),
+            sponge: ArithmeticSponge::new(params),
             last_squeezed: vec![],
         }
     }
 
     fn absorb(&mut self, x: &Fr) {
         self.last_squeezed = vec![];
-        self.sponge.absorb(&self.params, &[*x]);
+        self.sponge.absorb(&[*x]);
     }
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
-        ScalarChallenge(self.squeeze(oracle::sponge_5_wires::CHALLENGE_LENGTH_IN_LIMBS))
+        ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>) {
         self.last_squeezed = vec![];
-        self.sponge.absorb(&self.params, p);
+        self.sponge.absorb(p);
 
         let points = [
             &e.w[0], &e.w[1], &e.w[2], &e.w[3], &e.w[4], &e.z, &e.t, &e.f, &e.s[0], &e.s[1],
@@ -39,7 +39,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         ];
 
         for p in &points {
-            self.sponge.absorb(&self.params, p);
+            self.sponge.absorb(p);
         }
     }
 }

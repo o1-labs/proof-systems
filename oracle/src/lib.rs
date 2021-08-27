@@ -1,14 +1,10 @@
-pub mod bn_382;
 pub mod pasta;
 pub mod poseidon;
-pub mod poseidon_5_wires;
 pub mod rndoracle;
 pub mod sponge;
-pub mod sponge_5_wires;
-pub mod tweedle;
 pub mod utils;
 
-use algebra::Field;
+use ark_ff::Field;
 
 pub trait FqSponge<Fq: Field, G, Fr> {
     fn new(p: poseidon::ArithmeticSpongeParams<Fq>) -> Self;

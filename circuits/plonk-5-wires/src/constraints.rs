@@ -8,12 +8,13 @@ pub use super::domains::EvaluationDomains;
 pub use super::gate::{CircuitGate, GateType};
 pub use super::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 pub use super::wires::{Wire, COLUMNS, WIRES};
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{
+    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as D, UVPolynomial,
+};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
-use ff_fft::{
-    DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
-};
 use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::utils::EvalUtils;
 
@@ -23,7 +24,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub domain: EvaluationDomains<F>, // evaluation domains
     pub gates: Vec<CircuitGate<F>>,   // circuit gates
 
-    // POLYNOMIALS OVER THE MONOMIAL BASE
+    // POLYNOMIALS OVER THE MONOMIAL BASIS
     pub sigmam: [DP<F>; COLUMNS], // permutation polynomial array
     pub zkpm: DP<F>,              // zero-knowledge polynomial
 
@@ -45,7 +46,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub mul2m: DP<F>,   // mul2m constraint selector polynomial
     pub emulm: DP<F>,   // emul1m constraint selector polynomial
 
-    // POLYNOMIALS OVER LAGRANGE BASE
+    // POLYNOMIALS OVER LAGRANGE BASIS
 
     // generic constraint selector polynomials
     pub qwl: [E<F, D<F>>; COLUMNS], // left input wire polynomial over domain.d4
@@ -349,24 +350,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // sample coordinate shifts deterministically
     pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F {
         let mut h = Blake2b::new();
-        h.input(
+        h.update(
             &{
                 *i += 1;
                 *i
             }
             .to_be_bytes(),
         );
-        let mut r = F::from_random_bytes(&h.result()[..31]).unwrap();
+        let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
         while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
             let mut h = Blake2b::new();
-            h.input(
+            h.update(
                 &{
                     *i += 1;
                     *i
                 }
                 .to_be_bytes(),
             );
-            r = F::from_random_bytes(&h.result()[..31]).unwrap();
+            r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
         }
         r
     }

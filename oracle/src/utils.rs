@@ -1,5 +1,7 @@
-use algebra::FftField;
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::FftField;
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use rayon::prelude::*;
 
 // TODO(mimoo): these functions are also defined in dlog/commitment/src

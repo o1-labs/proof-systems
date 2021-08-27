@@ -12,7 +12,7 @@ One-bit round constraints:
 
 S = (P + (b ? T : −T)) + P
 
-VBSM gate constrains
+VBSM gate constraints
 
     b*(b-1) = 0
     (xp - xt) * s1 = yp – (2b-1)*yt
@@ -20,7 +20,7 @@ VBSM gate constrains
     (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
     (xp – xs) * s2 = ys + yp
 
-Permutation constrains
+Permutation constraints
 
     -> b(i)
     -> xt(i) -> xt(i+2) -> … -> xt(509)
@@ -32,7 +32,7 @@ Permutation constrains
     xs(509) ->
     ys(509) ->
 
-The constrains above are derived from the following EC Affine arithmetic equations:
+The constraints above are derived from the following EC Affine arithmetic equations:
 
     (xq - xp) * s1 = yq - yp
     s1 * s1 = xp + xq + x1
@@ -61,7 +61,7 @@ The constrains above are derived from the following EC Affine arithmetic equatio
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::{GateWires, COLUMNS};
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {
