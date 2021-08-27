@@ -121,6 +121,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         rng: &mut ThreadRng,
     ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
+
+        // only works if first element is 1
+        assert!(self.domain.d1.elements().next() == Some(F::one()));
+
         // initialize accumulator at 1
         let mut z = vec![F::one(); n];
 
