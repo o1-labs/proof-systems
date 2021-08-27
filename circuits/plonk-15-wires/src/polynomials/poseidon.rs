@@ -22,8 +22,7 @@ enum CurrOrNext {
     Next,
 }
 
-// An equation of the form:
-// (curr | next)[i] = round(curr[j])
+/// An equation of the form `(curr | next)[i] = round(curr[j])`
 struct RoundEquation {
     source: usize,
     target: (CurrOrNext, usize),
@@ -53,10 +52,8 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ];
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    // poseidon quotient poly contribution computation f^7 + c(x) - f(wx)
-    //
-    // optimization: shuffle the intra-row rounds so that the final state is in one of the
-    // permutation columns
+    /// poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
+    /// optimization: shuffle the intra-row rounds so that the final state is in one of the permutation columns
     pub fn psdn_quot(
         &self,
         polys: &WitnessOverDomains<F>,
@@ -67,6 +64,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         Evaluations<F, D<F>>,
         DensePolynomial<F>,
     ) {
+        // if this gate is not used, return zero polynomials
         if self.psm.is_zero() {
             return (
                 self.zero4.clone(),
@@ -231,7 +229,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         res
     }
 
-    // poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
+    /// poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
     pub fn psdn_lnrz(
         &self,
         evals: &Vec<ProofEvaluations<F>>,
@@ -247,3 +245,5 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .fold(self.psm.scale(scalars), |x, y| &x + &y)
     }
 }
+
+// TODO(mimoo): test to ensure equivalence between quotient and lnrz

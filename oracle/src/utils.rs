@@ -2,23 +2,28 @@ use algebra::FftField;
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use rayon::prelude::*;
 
+// TODO(mimoo): these functions are also defined in dlog/commitment/src
 pub trait PolyUtils<F: FftField> {
+    /// This function "scales" (multiplies) polynomaial with a scalar
+    /// It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self;
     fn shiftr(&self, size: usize) -> Self;
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
+    /// This function evaluates polynomial in chunks
     fn eval(&self, elm: F, size: usize) -> Vec<F>;
 }
 
 pub trait EvalUtils<F: FftField> {
+    /// This function "scales" (multiplies) a polynomial with a scalar
+    /// It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self;
     fn square(&self) -> Self;
     fn pow(&self, pow: usize) -> Self;
+    /// utility function for shifting poly along domain coordinate
     fn shift(&self, len: usize) -> Self;
 }
 
 impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
         result.evals.par_iter_mut().for_each(|coeff| *coeff *= &elm);
@@ -42,7 +47,6 @@ impl<F: FftField> EvalUtils<F> for Evaluations<F, D<F>> {
         result
     }
 
-    // utility function for shifting poly along domain coordinate
     fn shift(&self, len: usize) -> Self {
         let len = len % self.evals.len();
         let mut result = self.clone();
@@ -64,8 +68,6 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
         res
     }
 
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
         result
@@ -81,7 +83,6 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
         DensePolynomial::<F>::from_coefficients_vec(result)
     }
 
-    // This function evaluates polynomial in chunks
     fn eval(&self, elm: F, size: usize) -> Vec<F> {
         (0..self.coeffs.len())
             .step_by(size)
