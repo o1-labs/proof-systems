@@ -74,14 +74,14 @@ impl<Field: FftField> CircuitGate<Field> {
     /// - the index of the first `row`
     /// - the first and last rows' wires (because they are used in the permutation)
     /// - the round constants
-    // TODO(mimoo): test this once the manual gate creation passes
+    /// The function returns a set of gates, as well as the next pointer to the circuit (next empty absolute row)
     pub fn create_poseidon_gadget(
         // the absolute row in the circuit
         row: usize,
         // first and last row of the poseidon circuit (because they are used in the permutation)
         first_and_last_row: [GateWires; 2],
-        round_constants: [[Field; SPONGE_WIDTH]; ROUNDS_PER_HASH],
-    ) -> Vec<Self> {
+        round_constants: &Vec<Vec<Field>>,
+    ) -> (Vec<Self>, usize) {
         let mut gates = vec![];
 
         // create the gates
@@ -111,7 +111,7 @@ impl<Field: FftField> CircuitGate<Field> {
         gates.push(CircuitGate::zero(last_row, first_and_last_row[1]));
 
         //
-        gates
+        (gates, last_row)
     }
 
     pub fn verify_poseidon(

@@ -170,7 +170,7 @@ where
         let EC_DBL = true;
         let ENDO_SCALAR_MUL = true;
         let SCALAR_MUL = true;
-        let PERMUTATION = false;
+        let PERMUTATION = true;
 
         // make sure that every columns of the witness fits in the domain
         for w in witness.iter() {
@@ -283,7 +283,7 @@ where
         //
 
         // generic + public input
-        let (gen, genp) = index.cs.gnrc_quot(&lagrange, &public_poly);
+        let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &public_poly);
 
         // permutation
         let (perm, bnd) = index
@@ -470,7 +470,7 @@ where
         let mut f = DensePolynomial::zero();
 
         if GENERIC {
-            f = &f + &index.cs.gnrc_lnrz(&e[0]);
+            f = &f + &index.cs.gnrc_lnrz(&e[0].w);
         }
 
         if POSEIDON {
@@ -752,9 +752,8 @@ where
             rng,
         );
 
-        /*
-        TODO(mimoo): uncomment this and fix the bug
-                polynomials.extend(vec![(&f, None, non_hiding(1))]);
+        //TODO(mimoo): uncomment this and fix the bug
+        polynomials.extend(vec![(&f, None, non_hiding(1))]);
         let proof = index.srs.get_ref().open(
             group_map,
             polynomials.clone(),
@@ -765,7 +764,6 @@ where
             rng,
         );
 
-        */
         polynomials.extend(
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()

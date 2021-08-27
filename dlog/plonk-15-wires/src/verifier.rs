@@ -297,7 +297,7 @@ where
                 let EC_DBL = true;
                 let ENDO_SCALAR_MUL = true;
                 let SCALAR_MUL = true;
-                let PERMUTATION = false;
+                let PERMUTATION = true;
 
                 // commit to public input polynomial
                 println!("- commit to public input polynomial");
@@ -360,7 +360,7 @@ where
                 p.push(&index.qm_comm);
                 p.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
                 p.push(&index.qc_comm);
-                s.extend(&ConstraintSystem::gnrc_scalars(&evals_zeta));
+                s.extend(&ConstraintSystem::gnrc_scalars(&evals_zeta.w));
 
                 // poseidon
                 println!("- poseidon");

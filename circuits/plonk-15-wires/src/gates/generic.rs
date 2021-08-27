@@ -24,6 +24,47 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
+    /// creates an addition gate
+    pub fn create_generic_add(row: usize, wires: GateWires) -> Self {
+        let on = F::one();
+        let off = F::zero();
+        let qw: [F; COLUMNS] = array_init(|col| {
+            if col < 2 {
+                on
+            } else if col == 2 {
+                -on
+            } else {
+                off
+            }
+        });
+        Self::create_generic(row, wires, qw, off, off)
+    }
+
+    /// creates a multiplication gate
+    pub fn create_generic_mul(row: usize, wires: GateWires) -> Self {
+        let on = F::one();
+        let off = F::zero();
+        let qw: [F; COLUMNS] = array_init(|col| if col == 2 { on } else { off });
+        Self::create_generic(row, wires, qw, -on, off)
+    }
+
+    /// creates a constant gate
+    pub fn create_generic_const(row: usize, wires: GateWires, constant: F) -> Self {
+        let on = F::one();
+        let off = F::zero();
+        let qw: [F; COLUMNS] = array_init(|col| if col == 0 { on } else { off });
+        Self::create_generic(row, wires, qw, off, -constant)
+    }
+
+    /// creates a public input gate
+    pub fn create_generic_public(row: usize, wires: GateWires) -> Self {
+        let on = F::one();
+        let off = F::zero();
+        let qw: [F; COLUMNS] = array_init(|col| if col == 0 { on } else { off });
+        Self::create_generic(row, wires, qw, off, off)
+    }
+
+    /// verifies that the generic gate constraints are solved by the witness
     pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);

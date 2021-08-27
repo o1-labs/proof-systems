@@ -5,6 +5,7 @@ This source file implements Plonk circuit gate wires primitive.
 *****************************************************************************************************************/
 
 use algebra::bytes::{FromBytes, ToBytes};
+use array_init::array_init;
 use std::io::{Read, Result as IoResult, Write};
 
 pub const GENERICS: usize = 3;
@@ -20,6 +21,13 @@ pub struct Wire {
     // TODO(mimoo): shouldn't we use u32 since we serialize them as u32?
     pub row: usize,
     pub col: usize,
+}
+
+impl Wire {
+    /// Creates a new set of wires for a given row.
+    pub fn new(row: usize) -> [Self; COLUMNS] {
+        array_init(|col| Self { row, col })
+    }
 }
 
 /// GateWires document the wiring of a gate. More specifically, each value either
