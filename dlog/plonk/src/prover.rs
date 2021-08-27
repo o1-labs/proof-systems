@@ -97,6 +97,20 @@ unsafe impl<'a, G: AffineCurve + ocaml::FromValue<'a>> ocaml::FromValue<'a> for 
     }
 }
 
+fn trim_commitment<C: AffineCurve>(c : PolyComm<C>) -> PolyComm<C> {
+    let mut c = c;
+    let mut i = c.unshifted.len() - 1;
+    let zero = C::zero();
+    loop {
+        if c.unshifted[i] != zero {
+            break;
+        }
+        i -= 1;
+    };
+    c.unshifted.truncate(i + 1);
+    c
+}
+
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
@@ -172,6 +186,7 @@ where
         let (l_comm, omega_l) = srs.commit(&l, None, rng);
         let (r_comm, omega_r) = srs.commit(&r, None, rng);
         let (o_comm, omega_o) = srs.commit(&o, None, rng);
+
 
         // absorb the public input, l, r, o polycommitments into the argument
         let public_input_comm = &srs.commit_non_hiding(&p, None).unshifted;
@@ -293,6 +308,7 @@ where
         // commit to t
         let (t_comm, omega_t) = srs
             .commit(&t, Some(index.max_quot_size), rng);
+        let t_comm = trim_commitment(t_comm);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
@@ -381,7 +397,7 @@ where
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
         }
 
-        // query opening scaler challenges
+        // query opening scalar challenges
         oracles.v_chal = fr_sponge.challenge();
         oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
         oracles.u_chal = fr_sponge.challenge();

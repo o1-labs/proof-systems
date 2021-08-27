@@ -131,7 +131,7 @@ where
         srs: SRSSpec<'a, G>,
     ) -> Self {
         let srs = SRSValue::create(srs);
-        let max_poly_size = srs.get_ref().g.len();
+        let max_poly_size = cs.domain.d1.size as usize;
         if cs.public > 0 {
             assert!(
                 max_poly_size >= cs.domain.d1.size as usize,
