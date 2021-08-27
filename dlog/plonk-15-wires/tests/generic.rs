@@ -11,7 +11,7 @@ use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
-use ff_fft::{DensePolynomial, Evaluations};
+use ff_fft::DensePolynomial;
 use groupmap::GroupMap;
 use oracle::{
     poseidon::Plonk15SpongeConstants,

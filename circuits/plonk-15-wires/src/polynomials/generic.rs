@@ -4,8 +4,6 @@ This source file implements generic constraint polynomials.
 
 *****************************************************************************************************************/
 
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::polynomial::WitnessOverDomains;
 use crate::wires::GENERICS;
 use crate::{nolookup::constraints::ConstraintSystem, polynomial::COLUMNS};
 use algebra::{FftField, SquareRootField};
@@ -68,7 +66,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// function to verify the generic polynomials with a witness
-    #[cfg(test)]
     pub fn verify_generic(
         &self,
         witness: &[DensePolynomial<F>; COLUMNS],
