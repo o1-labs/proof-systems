@@ -7,8 +7,8 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel", "asm" ] }
-ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }

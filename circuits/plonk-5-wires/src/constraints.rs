@@ -8,12 +8,13 @@ pub use super::domains::EvaluationDomains;
 pub use super::gate::{CircuitGate, GateType};
 pub use super::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 pub use super::wires::{Wire, COLUMNS, WIRES};
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{
+    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as D, UVPolynomial,
+};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
-use ff_fft::{
-    DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
-};
 use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::utils::EvalUtils;
 

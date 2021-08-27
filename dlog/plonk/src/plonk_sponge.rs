@@ -1,4 +1,4 @@
-use algebra::{Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use oracle::poseidon::{
     ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants as SC, Sponge,
 };

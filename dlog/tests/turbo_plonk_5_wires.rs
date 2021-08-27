@@ -31,13 +31,15 @@ This source file tests constraints for the following computations:
 
 **********************************************************************************************************/
 
-use algebra::{BigInteger, Field, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_ff::{BigInteger, Field, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRSSpec, SRS},
 };
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     pallas::Affine as Other,
@@ -52,7 +54,7 @@ use oracle::{
 };
 use plonk_5_wires_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::Wire};
 use plonk_5_wires_protocol_dlog::{index::Index, prover::ProverProof};
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use std::time::Instant;
 use std::{io, io::Write};
 
@@ -1045,7 +1047,7 @@ fn positive(index: &Index<Affine>) {
         let scalar = w();
         let bits = scalar
             .into_repr()
-            .to_bits()
+            .to_bits_be()
             .iter()
             .map(|b| match *b {
                 true => Fp::one(),
