@@ -162,6 +162,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: usize,
     ) -> Option<Self> {
         let domain = EvaluationDomains::<F>::create(gates.len())?;
+        // for some reason we need more than 1 gate for the circuit to work, see TODO below
+        assert!(gates.len() > 1);
 
         // pre-compute all the elements
         let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
