@@ -97,6 +97,7 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     // polynomial evaluations
+    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
 
     // public part of the witness

@@ -11,12 +11,18 @@ use ff_fft::DensePolynomial;
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
-pub struct ProofEvaluations<Fs> {
-    pub w: [Fs; COLUMNS],
-    pub z: Fs,
-    pub t: Fs,
-    pub f: Fs,
-    pub s: [Fs; PERMUTS - 1],
+pub struct ProofEvaluations<Field> {
+    /// witness polynomials
+    pub w: [Field; COLUMNS],
+    /// permutation polynomial
+    pub z: Field,
+    /// quotient polynomial
+    pub t: Field,
+    /// full polynomial
+    pub f: Field,
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    pub s: [Field; PERMUTS - 1],
 }
 
 impl<F: FftField> ProofEvaluations<Vec<F>> {

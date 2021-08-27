@@ -9,18 +9,38 @@ Constraint vector format:
 *****************************************************************************************************************/
 
 use crate::gate::{CircuitGate, GateType};
+use crate::wires::Wire;
 use crate::{nolookup::constraints::ConstraintSystem, wires::GateWires, wires::COLUMNS};
 use algebra::FftField;
 use array_init::array_init;
 use oracle::poseidon::{sbox, Plonk15SpongeConstants, SpongeConstants};
 use std::ops::Range;
 
+//
+// Constants
+//
+
+/// Width of the sponge
 pub const SPONGE_WIDTH: usize = Plonk15SpongeConstants::SPONGE_WIDTH;
+
+/// Number of rows
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
-// There are 5 round states per row. We put the first state first, followed by the last state
-// so that they are both accessible by the permutation argument.
-pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [0, 2, 3, 4, 1];
+/// Number of rounds
+pub const ROUNDS_PER_HASH: usize = Plonk15SpongeConstants::ROUNDS_FULL;
+
+/// Number of PLONK rows required to implement Poseidon
+pub const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
+
+/// The order in a row in which we store states before and after permutations
+pub const STATE_ORDER: [usize; ROUNDS_PER_ROW] = [
+    0, // the first state is stored first
+    // we skip the next column for subsequent states
+    2, 3, 4,
+    // we store the last state directly after the first state,
+    // so that it can be used in the permutation argument
+    1,
+];
 
 /// Given a Poseidon round from 0 to 4 (inclusive),
 /// returns the columns (as a range) that are used in this round.

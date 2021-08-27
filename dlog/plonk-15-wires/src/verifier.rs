@@ -71,7 +71,7 @@ where
             .collect()
     }
 
-    // This function runs random oracle argument
+    /// This function runs random oracle argument
     pub fn oracles<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         &self,
         index: &Index<G>,
@@ -180,7 +180,7 @@ where
             fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])
         }
 
-        // query opening scaler challenges
+        // query opening scalar challenges
         oracles.v_chal = fr_sponge.challenge();
         oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
         oracles.u_chal = fr_sponge.challenge();
@@ -247,10 +247,10 @@ where
         )
     }
 
-    // This function verifies the batch of zk-proofs
-    //     proofs: vector of Plonk proofs
-    //     index: Index
-    //     RETURN: verification status
+    /// This function verifies the batch of zk-proofs
+    ///     proofs: vector of Plonk proofs
+    ///     index: Index
+    ///     RETURN: verification status
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
@@ -384,17 +384,17 @@ where
                     (index, _lgr_comm, proof),
                     (p_eval, p_comm, f_comm, fq_sponge, oracles, polys),
                 )| {
-                    let mut polynoms = polys
+                    let mut polynomials = polys
                         .iter()
                         .map(|(comm, evals)| (comm, evals.iter().map(|x| x).collect(), None))
                         .collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
-                    polynoms.extend(vec![(
+                    polynomials.extend(vec![(
                         p_comm,
                         p_eval.iter().map(|e| e).collect::<Vec<_>>(),
                         None,
                     )]);
-                    polynoms.extend(
+                    polynomials.extend(
                         proof
                             .commitments
                             .w_comm
@@ -410,7 +410,7 @@ where
                             .map(|(c, e)| (c, e.clone(), None))
                             .collect::<Vec<_>>(),
                     );
-                    polynoms.extend(vec![
+                    polynomials.extend(vec![
                         (
                             &proof.commitments.z_comm,
                             proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(),
@@ -422,7 +422,7 @@ where
                             None,
                         ),
                     ]);
-                    polynoms.extend(
+                    polynomials.extend(
                         index
                             .sigma_comm
                             .iter()
@@ -437,7 +437,7 @@ where
                             .map(|(c, e)| (c, e.clone(), None))
                             .collect::<Vec<_>>(),
                     );
-                    polynoms.extend(vec![(
+                    polynomials.extend(vec![(
                         &proof.commitments.t_comm,
                         proof.evals.iter().map(|e| &e.t).collect::<Vec<_>>(),
                         Some(index.max_quot_size),
@@ -449,7 +449,7 @@ where
                         vec![oracles.zeta, oracles.zeta * &index.domain.group_gen],
                         oracles.v,
                         oracles.u,
-                        polynoms,
+                        polynomials,
                         &proof.proof,
                     )
                 },
