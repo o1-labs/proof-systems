@@ -8,8 +8,12 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::{ProofEvaluations, RandomOracles};
 use crate::wires::COLUMNS;
-use algebra::{FftField, SquareRootField};
-use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{
+    univariate::{DenseOrSparsePolynomial, DensePolynomial},
+    Evaluations, Radix2EvaluationDomain as D,
+};
+use ark_poly::{Polynomial, UVPolynomial};
 use oracle::{
     rndoracle::ProofError,
     utils::{EvalUtils, PolyUtils},
@@ -81,7 +85,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         self.sigmam[COLUMNS - 1].scale(Self::perm_scalars(
             e,
             oracles,
-            self.zkpm.evaluate(oracles.zeta),
+            self.zkpm.evaluate(&oracles.zeta),
         ))
     }
 
@@ -110,7 +114,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 .map(|(w, s)| w[j] + &(s[j] * &oracles.beta1) + &oracles.gamma1)
                 .fold(F::one(), |x, y| x * y)
         });
-        algebra::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
+        ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
         (0..n - 3).for_each(|j| {
             let x = z[j];
             z[j + 1] *= witness

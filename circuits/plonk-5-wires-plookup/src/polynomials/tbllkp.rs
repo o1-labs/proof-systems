@@ -8,10 +8,11 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::{LookupEvals, LookupPolys};
 use crate::scalars::RandomOracles;
 use crate::wires::COLUMNS;
-use algebra::{FftField, SquareRootField};
-use ff_fft::{
-    DenseOrSparsePolynomial, DensePolynomial as DP, EvaluationDomain, Evaluations as E,
-    Radix2EvaluationDomain as D,
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::UVPolynomial;
+use ark_poly::{
+    univariate::{DenseOrSparsePolynomial, DensePolynomial as DP},
+    EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
 };
 use oracle::{
     rndoracle::ProofError,
@@ -118,7 +119,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             z[j + 1] = (gammabeta1 + lkpevl.h1.evals[j] + (oracles.beta2 * lkpevl.h1.evals[j + 1]))
                 * (gammabeta1 + lkpevl.h2.evals[j] + (oracles.beta2 * lkpevl.h2.evals[j + 1]))
         });
-        algebra::fields::batch_inversion::<F>(&mut z[1..n]);
+        ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
         (0..n - 1).for_each(|j| {
             let x = z[j];
             z[j + 1] *= &(x

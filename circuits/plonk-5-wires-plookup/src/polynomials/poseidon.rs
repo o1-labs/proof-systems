@@ -8,12 +8,12 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
 use crate::wires::COLUMNS;
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{
     poseidon::ArithmeticSpongeParams,
-    poseidon_5_wires::{sbox, PlonkSpongeConstants},
+    poseidon::{sbox, PlonkSpongeConstants},
     utils::{EvalUtils, PolyUtils},
 };
 

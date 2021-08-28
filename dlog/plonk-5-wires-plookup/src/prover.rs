@@ -6,13 +6,16 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, Zero};
+use ark_ec::AffineCurve;
+use ark_ff::{Field, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use oracle::{rndoracle::ProofError, sponge_5_wires::ScalarChallenge, utils::PolyUtils, FqSponge};
+use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_5_wires_plookup_circuits::{
     polynomial::LookupPolys,
     scalars::{ProofEvaluations, RandomOracles},
@@ -392,7 +395,7 @@ where
         let p_eval = if p.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]
+            [vec![p.evaluate(&evlp[0])], vec![p.evaluate(&evlp[1])]]
         };
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])

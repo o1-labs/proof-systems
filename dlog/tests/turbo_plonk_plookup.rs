@@ -33,25 +33,26 @@ This source file tests constraints for the following computations:
 
 **********************************************************************************************************/
 
-use algebra::{
-    tweedle::{
-        dee::{Affine, TweedledeeParameters},
-        dum::Affine as Other,
-        fp::Fp,
-    },
-    BigInteger, Field, One, PrimeField, SquareRootField, UniformRand, Zero,
+use ark_ff::{BigInteger, Field, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use groupmap::GroupMap;
+use mina_curves::pasta::{
+    pallas::Affine as Other,
+    vesta::{Affine, VestaParameters},
+    Fp,
+};
 use oracle::{
-    poseidon::{ArithmeticSpongeParams, Sponge, SpongeConstants},
-    poseidon_5_wires::*,
-    sponge_5_wires::{DefaultFqSponge, DefaultFrSponge},
+    poseidon::{
+        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants5W, Sponge, SpongeConstants,
+    },
+    sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use plonk_5_wires_plookup_circuits::{
     constraints::ConstraintSystem, gate::CircuitGate, wires::Wire,
@@ -60,7 +61,7 @@ use plonk_5_wires_plookup_protocol_dlog::{
     index::{Index, SRSSpec},
     prover::ProverProof,
 };
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use std::time::Instant;
 use std::{io, io::Write};
 
@@ -396,8 +397,8 @@ fn turbo_plonk_5_wires_plookup() {
 
     // custom constraints for Poseidon hash function permutation
 
-    let c = &oracle::tweedle::fp5::params().round_constants;
-    for i in 0..PlonkSpongeConstants::ROUNDS_FULL {
+    let c = &oracle::pasta::fp5::params().round_constants;
+    for i in 0..PlonkSpongeConstants5W::ROUNDS_FULL {
         gates.push(CircuitGate::<Fp>::create_poseidon(
             i + 19,
             [
@@ -425,7 +426,7 @@ fn turbo_plonk_5_wires_plookup() {
             c[i].clone(),
         ));
     }
-    let mut i = PlonkSpongeConstants::ROUNDS_FULL + 19;
+    let mut i = PlonkSpongeConstants5W::ROUNDS_FULL + 19;
     gates.push(CircuitGate::<Fp>::zero(
         i,
         [
@@ -888,18 +889,15 @@ fn turbo_plonk_5_wires_plookup() {
 
     let srs = SRS::create(MAX_SIZE);
     let (endo_q, _endo_r) = endos::<Other>();
-    let index = Index::<Affine>::create(
-        ConstraintSystem::<Fp>::create(
-            gates,
-            table,
-            oracle::tweedle::fp5::params() as ArithmeticSpongeParams<Fp>,
-            PUBLIC,
-        )
-        .unwrap(),
-        oracle::tweedle::fq5::params(),
-        endo_q,
-        SRSSpec::Use(&srs),
-    );
+    let cs = ConstraintSystem::<Fp>::create(
+        gates,
+        table,
+        oracle::pasta::fp5::params() as ArithmeticSpongeParams<Fp>,
+        PUBLIC,
+    )
+    .unwrap();
+    let fq_sponge_params = oracle::pasta::fq5::params();
+    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, SRSSpec::Use(&srs));
 
     positive(&index);
     negative(&index);
@@ -909,7 +907,7 @@ fn positive(index: &Index<Affine>) {
     let rng = &mut OsRng;
     let mut batch = Vec::new();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let params = oracle::tweedle::fp5::params();
+    let params = oracle::pasta::fp5::params();
     let lgr_comms: Vec<_> = (0..PUBLIC)
         .map(|i| {
             let mut v = vec![Fp::zero(); i + 1];
@@ -1086,7 +1084,8 @@ fn positive(index: &Index<Affine>) {
 
         //  witness for Poseidon permutation custom constraints
 
-        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants>::new();
+        let mut sponge =
+            ArithmeticSponge::<Fp, PlonkSpongeConstants5W>::new(oracle::pasta::fp5::params());
         sponge.state = vec![w(), w(), w(), w(), w()];
         witness
             .iter_mut()
@@ -1095,8 +1094,8 @@ fn positive(index: &Index<Affine>) {
 
         // ROUNDS_FULL full rounds
 
-        for j in 0..PlonkSpongeConstants::ROUNDS_FULL {
-            sponge.full_round(j, &params);
+        for j in 0..PlonkSpongeConstants5W::ROUNDS_FULL {
+            sponge.full_round(j);
             witness
                 .iter_mut()
                 .zip(sponge.state.iter())
@@ -1116,7 +1115,7 @@ fn positive(index: &Index<Affine>) {
         let scalar = w();
         let bits = scalar
             .into_repr()
-            .to_bits()
+            .to_bits_be()
             .iter()
             .map(|b| match *b {
                 true => Fp::one(),
@@ -1324,8 +1323,8 @@ fn positive(index: &Index<Affine>) {
         // add the proof to the batch
         batch.push(
             ProverProof::create::<
-                DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>,
-                DefaultFrSponge<Fp, PlonkSpongeConstants>,
+                DefaultFqSponge<VestaParameters, PlonkSpongeConstants5W>,
+                DefaultFrSponge<Fp, PlonkSpongeConstants5W>,
             >(&group_map, &witness, &index, vec![prev])
             .unwrap(),
         );
@@ -1337,8 +1336,8 @@ fn positive(index: &Index<Affine>) {
 
     // verify one proof serially
     match ProverProof::verify::<
-        DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>,
-        DefaultFrSponge<Fp, PlonkSpongeConstants>,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstants5W>,
+        DefaultFrSponge<Fp, PlonkSpongeConstants5W>,
     >(&group_map, &vec![(&verifier_index, &lgr_comms, &batch[0])])
     {
         Err(error) => panic!("Failure verifying the prover's proof: {}", error),
@@ -1353,8 +1352,8 @@ fn positive(index: &Index<Affine>) {
         .map(|p| (&verifier_index, &lgr_comms, p))
         .collect();
     match ProverProof::verify::<
-        DefaultFqSponge<TweedledeeParameters, PlonkSpongeConstants>,
-        DefaultFrSponge<Fp, PlonkSpongeConstants>,
+        DefaultFqSponge<VestaParameters, PlonkSpongeConstants5W>,
+        DefaultFrSponge<Fp, PlonkSpongeConstants5W>,
     >(&group_map, &batch)
     {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
