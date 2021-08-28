@@ -13,7 +13,7 @@ use commitment_dlog::{
     srs::{SRSSpec, SRSValue},
     CommitmentField,
 };
-use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants, SpongeConstants};
+use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstantsBasic, SpongeConstants};
 use plonk_circuits::constraints::{zk_w, ConstraintSystem};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -137,7 +137,7 @@ where
         }
         cs.endo = endo_q;
         Index {
-            max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
+            max_quot_size: PlonkSpongeConstantsBasic::SPONGE_BOX * (cs.domain.d1.size as usize - 1),
             fq_sponge_params,
             max_poly_size,
             srs,

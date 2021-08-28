@@ -78,7 +78,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let multiplication = &(&witness[0] * &witness[1]) * &self.qmm;
 
         // addition (of left, right, output wires)
-        assert!(self.qwm.len() == GENERICS);
+        if self.qwm.len() != GENERICS {
+            return false;
+        }
         let mut wires = DensePolynomial::zero();
         for (w, q) in witness.iter().zip(self.qwm.iter()) {
             wires += &(w * q);
@@ -102,7 +104,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
             // qc check
             if qc != F::zero() {
-                assert!(-qc == values[0].0.evaluate(&elem));
+                if -qc != values[0].0.evaluate(&elem) {
+                    return false;
+                }
             }
 
             //

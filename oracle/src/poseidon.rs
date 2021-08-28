@@ -19,24 +19,9 @@ pub trait SpongeConstants {
 }
 
 #[derive(Clone)]
-pub struct MarlinSpongeConstants {}
+pub struct PlonkSpongeConstantsBasic {}
 
-impl SpongeConstants for MarlinSpongeConstants {
-    const ROUNDS_FULL: usize = 8;
-    const ROUNDS_PARTIAL: usize = 30;
-    const HALF_ROUNDS_FULL: usize = 4;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 17;
-    const FULL_MDS: bool = false;
-    const INITIAL_ARK: bool = true;
-}
-
-#[derive(Clone)]
-pub struct PlonkSpongeConstants {}
-
-impl SpongeConstants for PlonkSpongeConstants {
+impl SpongeConstants for PlonkSpongeConstantsBasic {
     const ROUNDS_FULL: usize = 63;
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;
@@ -64,9 +49,9 @@ impl SpongeConstants for PlonkSpongeConstants5W {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstants3 {}
+pub struct PlonkSpongeConstants3W {}
 
-impl SpongeConstants for PlonkSpongeConstants3 {
+impl SpongeConstants for PlonkSpongeConstants3W {
     const ROUNDS_FULL: usize = 54;
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;
@@ -119,6 +104,7 @@ pub struct ArithmeticSpongeParams<F: Field> {
 pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub sponge_state: SpongeState,
     rate: usize,
+    // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
     pub state: Vec<F>,
     params: ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
@@ -149,6 +135,8 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     /// Performs a single full round (given the round number) for the sponge.
     /// Note that if INITIAL_ARK is set in the parameters, calling full round will not be enough to manually implement the sponge.
     pub fn full_round(&mut self, r: usize) {
+        // TODO(mimoo): ideally this should be enforced in the type of the state itself
+        assert!(self.state.len() == SC::SPONGE_WIDTH);
         for i in 0..self.state.len() {
             self.state[i] = sbox::<F, SC>(self.state[i]);
         }

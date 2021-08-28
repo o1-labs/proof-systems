@@ -13,7 +13,7 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 use array_init::array_init;
 use oracle::{
     poseidon::ArithmeticSpongeParams,
-    poseidon::{sbox, PlonkSpongeConstants},
+    poseidon::{sbox, PlonkSpongeConstantsBasic},
     utils::{EvalUtils, PolyUtils},
 };
 
@@ -41,7 +41,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lro.iter_mut().for_each(|p| {
             p.evals
                 .iter_mut()
-                .for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p))
+                .for_each(|p| *p = sbox::<F, PlonkSpongeConstantsBasic>(*p))
         });
 
         let scalers = (0..COLUMNS)
@@ -79,7 +79,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sbox = evals[0]
             .w
             .iter()
-            .map(|&w| sbox::<F, PlonkSpongeConstants>(w))
+            .map(|&w| sbox::<F, PlonkSpongeConstantsBasic>(w))
             .collect::<Vec<_>>();
         let lro = params
             .mds

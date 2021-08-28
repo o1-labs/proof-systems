@@ -95,7 +95,7 @@ impl<F: FftField> CircuitGate<F> {
 
             // round constant for this row
             let coeffs = array_init(|offset| {
-                let round = rel_row * ROUNDS_PER_ROW + offset + 1;
+                let round = rel_row * ROUNDS_PER_ROW + offset;
                 array_init(|field_el| round_constants[round][field_el])
             });
 
@@ -110,60 +110,58 @@ impl<F: FftField> CircuitGate<F> {
         (gates, last_row)
     }
 
+    /// Checks if a witness verifies a poseidon gate
     pub fn verify_poseidon(
         &self,
+        // TODO(mimoo): we should just pass two rows instead of the whole witness
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        // TODO: Needs to be fixed
-
-        let this: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
-            let wire = STATE_ORDER[round];
-            array_init(|col| witness[col + wire * SPONGE_WIDTH][self.row])
-        });
-        let next: [F; SPONGE_WIDTH] =
-            array_init(|i| witness[i + STATE_ORDER[0] * SPONGE_WIDTH][self.row + 1]);
-
-        let rc = self.rc();
-
-        let perm: [Vec<F>; ROUNDS_PER_ROW] = array_init(|round| {
-            cs.fr_sponge_params
-                .mds
-                .iter()
-                .enumerate()
-                .map(|(i, m)| {
-                    rc[round][i]
-                        + &this[round]
-                            .iter()
-                            .zip(m.iter())
-                            .fold(F::zero(), |x, (s, &m)| {
-                                m * sbox::<F, PlonkSpongeConstants15W>(*s) + x
-                            })
-                })
-                .collect::<Vec<_>>()
-        });
-
         ensure_eq!(
             self.typ,
             GateType::Poseidon,
             "incorrect gate type (should be poseidon)"
         );
 
-        for (p, n) in perm.iter().zip(this.iter().skip(1)) {
-            if p != n {
-                return Err(format!("wrong eq 1 for p={:?}, n={:?}", p, n));
+        // fetch each state in the right order
+        let mut states = vec![];
+        for round in 0..ROUNDS_PER_ROW {
+            let cols = round_to_cols(round);
+            let state: Vec<F> = witness[cols].iter().map(|col| col[self.row]).collect();
+            states.push(state);
+        }
+        // (last state is in next row)
+        let cols = round_to_cols(0);
+        let next_row = self.row + 1;
+        let last_state: Vec<F> = witness[cols].iter().map(|col| col[next_row]).collect();
+        states.push(last_state);
+
+        // round constants
+        let rc = self.rc();
+
+        // for each round, check that the permutation was applied correctly
+        for round in 0..ROUNDS_PER_ROW {
+            for (i, mds_row) in cs.fr_sponge_params.mds.iter().enumerate() {
+                // i-th(new_state) = i-th(rc) + mds(sbox(state))
+                let state = &states[round];
+                let mut new_state = rc[round][i];
+                for (&s, mds) in state.iter().zip(mds_row.iter()) {
+                    let sboxed = sbox::<F, PlonkSpongeConstants15W>(s);
+                    new_state += sboxed * mds;
+                }
+
+                ensure_eq!(
+                    new_state,
+                    states[round + 1][i],
+                    format!(
+                        "poseidon: permutation of state[{}] -> state[{}][{}] is incorrect",
+                        round,
+                        round + 1,
+                        i
+                    )
+                );
             }
         }
-
-        let n: Vec<_> = next.into();
-        ensure_eq!(n, perm[ROUNDS_PER_ROW - 1], "wrong eq 2");
-
-        /*
-            self.typ == GateType::Poseidon
-                && perm.iter().zip(this.iter().skip(1)).all(|(p, n)| p == n)
-                && perm[ROUNDS_PER_ROW - 1] == next
-        }
-        */
 
         Ok(())
     }
@@ -176,7 +174,7 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    // Coefficients are output here in the logical order
+    /// round constant that are relevant for this specific gate
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         array_init(|round| {
             array_init(|col| {

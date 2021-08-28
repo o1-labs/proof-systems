@@ -10,7 +10,7 @@ use crate::scalars::ProofEvaluations;
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{
-    poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants},
+    poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstantsBasic},
     utils::{EvalUtils, PolyUtils},
 };
 use rayon::prelude::*;
@@ -43,7 +43,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lro.iter_mut().for_each(|p| {
             p.evals
                 .par_iter_mut()
-                .for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p))
+                .for_each(|p| *p = sbox::<F, PlonkSpongeConstantsBasic>(*p))
         });
 
         let scalers = (0..params.mds.len())
@@ -74,9 +74,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .iter()
             .map(|m| {
                 [
-                    sbox::<F, PlonkSpongeConstants>(evals[0].l),
-                    sbox::<F, PlonkSpongeConstants>(evals[0].r),
-                    sbox::<F, PlonkSpongeConstants>(evals[0].o),
+                    sbox::<F, PlonkSpongeConstantsBasic>(evals[0].l),
+                    sbox::<F, PlonkSpongeConstantsBasic>(evals[0].r),
+                    sbox::<F, PlonkSpongeConstantsBasic>(evals[0].o),
                 ]
                 .iter()
                 .zip(m.iter())

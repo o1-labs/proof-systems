@@ -14,13 +14,13 @@ use serde::Serialize;
 //
 
 #[cfg(feature = "3w")]
-use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstants};
+use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstantsBasic};
 
 #[cfg(feature = "5w")]
 use oracle::{pasta::fp5 as Parameters, poseidon::PlonkSpongeConstants5W as PlonkSpongeConstants};
 
 #[cfg(feature = "3")]
-use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3 as PlonkSpongeConstants};
+use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3W as PlonkSpongeConstants};
 
 //
 // structs
@@ -44,7 +44,7 @@ pub struct TestVector {
 
 // calls the poseidon hash function with the `input` and returns a digest
 fn poseidon(input: &[Fp]) -> Fp {
-    let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new(Parameters::params());
+    let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
     s.absorb(input);
     let output = s.squeeze();
     output

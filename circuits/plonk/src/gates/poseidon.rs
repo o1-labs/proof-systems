@@ -11,10 +11,13 @@ Constraint vector format:
 use crate::gate::{CircuitGate, GateType};
 use crate::{constraints::ConstraintSystem, wires::GateWires};
 use ark_ff::FftField;
-use oracle::poseidon::{sbox, PlonkSpongeConstants, SpongeConstants};
+use oracle::poseidon::{sbox, PlonkSpongeConstantsBasic, SpongeConstants};
 
 impl<F: FftField> CircuitGate<F> {
-    pub fn create_poseidon(wires: GateWires, rc: [F; PlonkSpongeConstants::SPONGE_WIDTH]) -> Self {
+    pub fn create_poseidon(
+        wires: GateWires,
+        rc: [F; PlonkSpongeConstantsBasic::SPONGE_WIDTH],
+    ) -> Self {
         CircuitGate {
             typ: GateType::Poseidon,
             wires,
@@ -25,9 +28,9 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_poseidon(&self, next: &Self, witness: &Vec<F>, cs: &ConstraintSystem<F>) -> bool {
         let rc = self.rc();
         let sbox = [
-            sbox::<F, PlonkSpongeConstants>(witness[self.wires.l.0]),
-            sbox::<F, PlonkSpongeConstants>(witness[self.wires.r.0]),
-            sbox::<F, PlonkSpongeConstants>(witness[self.wires.o.0]),
+            sbox::<F, PlonkSpongeConstantsBasic>(witness[self.wires.l.0]),
+            sbox::<F, PlonkSpongeConstantsBasic>(witness[self.wires.r.0]),
+            sbox::<F, PlonkSpongeConstantsBasic>(witness[self.wires.o.0]),
         ];
         let next = [
             witness[next.wires.l.0],

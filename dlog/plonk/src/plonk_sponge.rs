@@ -1,6 +1,6 @@
 use ark_ff::{Field, PrimeField};
 use oracle::poseidon::{
-    ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants as SC, Sponge,
+    ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsBasic as SC, Sponge,
 };
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 use plonk_circuits::scalars::ProofEvaluations;
