@@ -1,5 +1,5 @@
-use algebra::FftField;
-use ff_fft::{EvaluationDomain, Radix2EvaluationDomain as Domain};
+use ark_ff::FftField;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
 
 #[derive(Debug, Clone, Copy)]
 pub struct EvaluationDomains<F: FftField> {
@@ -31,7 +31,8 @@ impl<F: FftField> EvaluationDomains<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use algebra::{pasta::fp::Fp, Field};
+    use ark_ff::Field;
+    use mina_curves::pasta::fp::Fp;
 
     #[test]
     #[ignore] // TODO(mimoo): wait for fix upstream (https://github.com/arkworks-rs/algebra/pull/307)

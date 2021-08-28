@@ -5,8 +5,8 @@ This source file implements Plonk constraint gate primitive.
 *****************************************************************************************************************/
 
 use crate::{nolookup::constraints::ConstraintSystem, wires::*};
-use algebra::bytes::{FromBytes, ToBytes};
-use algebra::FftField;
+use ark_ff::bytes::{FromBytes, ToBytes};
+use ark_ff::FftField;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 

@@ -7,11 +7,12 @@ This source file implements zk-proof batch verifier functionality.
 pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, One, Zero};
+use ark_ec::AffineCurve;
+use ark_ff::{Field, One, Zero};
+use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
 };
-use ff_fft::EvaluationDomain;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
     lookup::{constraints::ConstraintSystem, scalars::RandomOracles},
@@ -152,7 +153,7 @@ where
         (0..self.public.len())
             .zip(w.iter())
             .for_each(|(_, w)| lagrange.push(zetaw - w));
-        algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
+        ark_ff::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
         // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
@@ -302,7 +303,7 @@ where
                 // compute linearization polynomial commitment
 
                 // permutation
-                let zkp = index.zkpm.evaluate(oracles.po.zeta);
+                let zkp = index.zkpm.evaluate(&oracles.po.zeta);
                 let mut p = vec![&index.sigma_comm[PERMUTS - 1]];
                 let mut s = vec![CS::perm_scalars(
                     &pevals,
@@ -315,7 +316,7 @@ where
                 p.push(&index.qm_comm);
                 p.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
                 p.push(&index.qc_comm);
-                s.extend(&CS::gnrc_scalars(&pevals[0]));
+                s.extend(&CS::gnrc_scalars(&pevals[0].w));
 
                 // poseidon
                 s.extend(&CS::psdn_scalars(
@@ -535,7 +536,7 @@ where
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 
-        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng()) {
+        match srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
             false => Err(ProofError::OpenProof),
             true => Ok(true),
         }

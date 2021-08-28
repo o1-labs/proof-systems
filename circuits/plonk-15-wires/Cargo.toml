@@ -7,18 +7,19 @@ edition = "2018"
 path = "src/lib.rs"
 
 [dependencies]
-algebra = { path = "../../zexe/algebra", features = [ "parallel", "bn_382", "tweedle", "pasta", "asm" ] }
-algebra-core = { path = "../../zexe/algebra-core", features = [ "parallel"] }
-ff-fft = { path = "../../zexe/ff-fft", features = [ "parallel"] }
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ocaml = { version = "0.18.1", optional = true }
 oracle = { path = "../../oracle" }
 rand_core = { version = "0.5" }
 array-init = { version = "1.0.0" }
 rayon = { version = "1" }
-blake2 = "0.7"
-rand = "0.7.3"
+blake2 = "0.9.1"
+rand = "0.8.0"
 num-derive = "0.3"
 num-traits = "0.2"
+
+mina-curves = { path = "../../curves" }
 
 [dev-dependencies]
 itertools = "0.10.1"

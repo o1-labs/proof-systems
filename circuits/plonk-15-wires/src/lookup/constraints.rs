@@ -9,11 +9,14 @@ use crate::gate::CircuitGate;
 use crate::nolookup::constraints::ConstraintSystem as CS;
 use crate::polynomial::*;
 use crate::wires::*;
-use algebra::{FftField, SquareRootField};
-use array_init::array_init;
-use ff_fft::{
-    DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
+use ark_ff::Zero;
+use ark_ff::{FftField, SquareRootField};
+use ark_poly::UVPolynomial;
+use ark_poly::{
+    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as D,
 };
+use array_init::array_init;
 use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::utils::EvalUtils;
 

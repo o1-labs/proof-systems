@@ -1,19 +1,17 @@
-use algebra::{
-    pasta::{
-        fp::Fp,
-        pallas::Affine as Other,
-        vesta::{Affine, VestaParameters},
-    },
-    Field, One, UniformRand, Zero,
-};
+use ark_ff::{Field, One, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
-use ff_fft::DensePolynomial;
 use groupmap::GroupMap;
+use mina_curves::pasta::{
+    fp::Fp,
+    pallas::Affine as Other,
+    vesta::{Affine, VestaParameters},
+};
 use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -137,7 +135,7 @@ fn positive(index: &Index<Affine>) {
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let params = oracle::pasta::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SpongeParams>::new();
+    let mut sponge = ArithmeticSponge::<Fp, SpongeParams>::new(params);
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     // batching what?
@@ -208,7 +206,7 @@ fn positive(index: &Index<Affine>) {
                     let abs_round = round + row_idx * ROUNDS_PER_ROW;
 
                     // TODO: this won't work if the circuit has an INITIAL_ARK
-                    sponge.full_round(abs_round, &params);
+                    sponge.full_round(abs_round);
 
                     // apply the sponge and record the result in the witness
                     let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);

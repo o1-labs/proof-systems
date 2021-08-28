@@ -9,12 +9,14 @@ use crate::gate::{CircuitGate, GateType};
 use crate::gates::poseidon::*;
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
-use algebra::{FftField, SquareRootField};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::UVPolynomial;
+use ark_poly::{
+    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as D,
+};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
-use ff_fft::{
-    DensePolynomial as DP, EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
-};
 use oracle::poseidon::ArithmeticSpongeParams;
 use oracle::utils::EvalUtils;
 
@@ -422,24 +424,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// sample coordinate shifts deterministically
     pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F {
         let mut h = Blake2b::new();
-        h.input(
+        h.update(
             &{
                 *i += 1;
                 *i
             }
             .to_be_bytes(),
         );
-        let mut r = F::from_random_bytes(&h.result()[..31]).unwrap();
+        let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
         while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
             let mut h = Blake2b::new();
-            h.input(
+            h.update(
                 &{
                     *i += 1;
                     *i
                 }
                 .to_be_bytes(),
             );
-            r = F::from_random_bytes(&h.result()[..31]).unwrap();
+            r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
         }
         r
     }
@@ -500,7 +502,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use algebra::{pasta::fp::Fp, FftField, SquareRootField};
+    use ark_ff::{FftField, SquareRootField};
+    use mina_curves::pasta::fp::Fp;
 
     impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         pub fn for_testing(

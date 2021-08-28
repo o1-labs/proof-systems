@@ -11,7 +11,7 @@ Constraint vector format:
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::Wire;
 use crate::{nolookup::constraints::ConstraintSystem, wires::GateWires, wires::COLUMNS};
-use algebra::FftField;
+use ark_ff::FftField;
 use array_init::array_init;
 use oracle::poseidon::{sbox, PlonkSpongeConstants15W, SpongeConstants};
 use std::ops::Range;

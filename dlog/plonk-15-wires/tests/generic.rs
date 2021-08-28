@@ -1,18 +1,16 @@
-use algebra::{
-    pasta::{
-        fp::Fp,
-        pallas::Affine as Other,
-        vesta::{Affine, VestaParameters},
-    },
-    One, UniformRand, Zero,
-};
+use ark_ff::{One, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
-use ff_fft::DensePolynomial;
 use groupmap::GroupMap;
+use mina_curves::pasta::{
+    fp::Fp,
+    pallas::Affine as Other,
+    vesta::{Affine, VestaParameters},
+};
 use oracle::{
     poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge},

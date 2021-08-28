@@ -942,7 +942,7 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                         i + size
                     }],
                 )
-                .evaluate(elm)
+                .evaluate(&elm)
             })
             .collect()
     }
@@ -956,8 +956,8 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
 mod tests {
     use super::*;
     use crate::srs::SRS;
-    use algebra::pasta::{fp::Fp, vesta::Affine as VestaG};
     use array_init::array_init;
+    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::poseidon::PlonkSpongeConstants as SC;
     use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};

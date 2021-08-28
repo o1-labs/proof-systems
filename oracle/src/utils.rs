@@ -88,7 +88,7 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
     fn eval(&self, elm: F, size: usize) -> Vec<F> {
         let mut res = vec![];
         for chunk in self.coeffs.chunks(size) {
-            let eval = Self::from_coefficients_slice(chunk).evaluate(elm);
+            let eval = Self::from_coefficients_slice(chunk).evaluate(&elm);
             res.push(eval);
         }
         res
@@ -98,7 +98,8 @@ impl<F: FftField> PolyUtils<F> for DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use algebra::{pasta::fp::Fp, One, Zero};
+    use ark_ff::{One, Zero};
+    use mina_curves::pasta::fp::Fp;
 
     #[test]
     fn test_eval() {

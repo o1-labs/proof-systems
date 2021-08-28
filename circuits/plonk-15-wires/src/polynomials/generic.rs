@@ -6,8 +6,11 @@ This source file implements generic constraint polynomials.
 
 use crate::wires::GENERICS;
 use crate::{nolookup::constraints::ConstraintSystem, polynomial::COLUMNS};
-use algebra::{FftField, SquareRootField};
-use ff_fft::{DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::{FftField, SquareRootField, Zero};
+use ark_poly::Polynomial;
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
 use oracle::utils::PolyUtils;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -29,7 +32,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // return in lagrange and monomial form for optimization purpose
         let eval_part = &multiplication + &wires;
-        let poly_part = &self.qc + &public;
+        let poly_part = &self.qc + public;
         (eval_part, poly_part)
     }
 
@@ -95,28 +98,28 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         //
         for (row, elem) in self.domain.d1.elements().enumerate() {
-            let qc = self.qc.evaluate(elem);
+            let qc = self.qc.evaluate(&elem);
 
             // qc check
             if qc != F::zero() {
-                assert!(-qc == values[0].0.evaluate(elem));
+                assert!(-qc == values[0].0.evaluate(&elem));
             }
 
             //
-            let res = f.evaluate(elem);
+            let res = f.evaluate(&elem);
             if !res.is_zero() {
                 for (col, (w, q)) in values.iter().enumerate() {
                     println!(
                         "  col {} | w = {} | q = {}",
                         col,
-                        w.evaluate(elem),
-                        q.evaluate(elem)
+                        w.evaluate(&elem),
+                        q.evaluate(&elem)
                     );
                 }
                 println!(
                     "  q_M = {} | mul = {}",
-                    self.qmm.evaluate(elem),
-                    multiplication.evaluate(elem)
+                    self.qmm.evaluate(&elem),
+                    multiplication.evaluate(&elem)
                 );
                 println!("  q_C = {}", qc);
                 println!("row {} of generic polynomial doesn't evaluate to zero", row);
@@ -140,9 +143,11 @@ mod tests {
         gate::CircuitGate,
         wires::{Wire, COLUMNS},
     };
-    use algebra::{pasta::fp::Fp, UniformRand, Zero};
+
+    use ark_ff::{UniformRand, Zero};
     use array_init::array_init;
     use itertools::iterate;
+    use mina_curves::pasta::fp::Fp;
     use rand::SeedableRng;
 
     #[test]
@@ -215,12 +220,12 @@ mod tests {
             .divide_by_vanishing_poly(cs.domain.d1)
             .unwrap();
         assert!(rem.is_zero());
-        let t_zeta = t.evaluate(zeta);
+        let t_zeta = t.evaluate(&zeta);
 
         // compute linearization f(z)
-        let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(zeta));
+        let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
         let f = cs.gnrc_lnrz(&w_zeta);
-        let f_zeta = f.evaluate(zeta);
+        let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)
         let z_h_zeta = cs.domain.d1.evaluate_vanishing_polynomial(zeta);

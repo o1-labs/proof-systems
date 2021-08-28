@@ -5,8 +5,8 @@ This source file implements Plonk prover polynomials primitive.
 *****************************************************************************************************************/
 
 pub use super::wires::COLUMNS;
-use algebra::FftField;
-use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_ff::FftField;
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 
 // PLONK
 
