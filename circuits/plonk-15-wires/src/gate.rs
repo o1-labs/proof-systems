@@ -113,9 +113,13 @@ impl<F: FftField> CircuitGate<F> {
 
     /// This function verifies the consistency of the wire
     /// assignements (witness) against the constraints
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
+    pub fn verify(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
         match self.typ {
-            GateType::Zero => true,
+            GateType::Zero => Ok(()),
             GateType::Generic => self.verify_generic(witness),
             GateType::Poseidon => self.verify_poseidon(witness, cs),
             GateType::Add => self.verify_add(witness),

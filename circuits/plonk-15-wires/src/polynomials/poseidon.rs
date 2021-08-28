@@ -305,7 +305,7 @@ mod tests {
 
         // make sure we're done filling the witness correctly
         assert!(gates_row.next() == witness_row.next());
-        assert!(cs.verify(&witness));
+        cs.verify(&witness).unwrap();
 
         // generate witness polynomials
         let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =

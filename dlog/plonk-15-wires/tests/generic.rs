@@ -107,7 +107,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     }
 
     // verify the circuit satisfiability by the computed witness
-    assert!(index.cs.verify(&witness));
+    index.cs.verify(&witness).unwrap();
 
     // previous opening for recursion
     let prev = {

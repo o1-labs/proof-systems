@@ -32,15 +32,20 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    pub fn verify_lookup(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+    pub fn verify_lookup(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         let w: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
-        self.typ == GateType::Lookup
-            && w[4]
-                == w[0]
-                    + &(w[1] * &F::from(0x100 as u64))
-                    + &(w[2] * &F::from(0x10000 as u64))
-                    + &(w[3] * &F::from(0x1000000 as u64))
+        ensure_eq!(self.typ, GateType::Lookup, "lookup: incorrect gate");
+
+        ensure_eq!(
+            w[4],
+            w[0] + &(w[1] * &F::from(0x100 as u64))
+                + &(w[2] * &F::from(0x10000 as u64))
+                + &(w[3] * &F::from(0x1000000 as u64)),
+            "lookup: incorrect sum"
+        );
+
+        Ok(())
     }
 
     pub fn lookup(&self) -> F {

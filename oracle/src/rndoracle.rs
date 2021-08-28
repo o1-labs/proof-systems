@@ -7,9 +7,12 @@ This source file implements the random oracle argument API.
 pub use super::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use std::fmt;
 
+// TODO(mimoo): move this out of oracle
 #[derive(Debug, Clone, Copy)]
 pub enum ProofError {
     WitnessCsInconsistent,
+    // TODO(mimoo): once this is moved, error can be propagated here
+    WitnessGateError,
     DomainCreation,
     PolyDivision,
     PolyCommit,

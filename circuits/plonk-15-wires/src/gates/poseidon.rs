@@ -110,7 +110,11 @@ impl<F: FftField> CircuitGate<F> {
         (gates, last_row)
     }
 
-    pub fn verify_poseidon(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
+    pub fn verify_poseidon(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
         // TODO: Needs to be fixed
 
         let this: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
@@ -139,9 +143,29 @@ impl<F: FftField> CircuitGate<F> {
                 .collect::<Vec<_>>()
         });
 
-        self.typ == GateType::Poseidon
-            && perm.iter().zip(this.iter().skip(1)).all(|(p, n)| p == n)
-            && perm[ROUNDS_PER_ROW - 1] == next
+        ensure_eq!(
+            self.typ,
+            GateType::Poseidon,
+            "incorrect gate type (should be poseidon)"
+        );
+
+        for (p, n) in perm.iter().zip(this.iter().skip(1)) {
+            if p != n {
+                return Err(format!("wrong eq 1 for p={:?}, n={:?}", p, n));
+            }
+        }
+
+        let n: Vec<_> = next.into();
+        ensure_eq!(n, perm[ROUNDS_PER_ROW - 1], "wrong eq 2");
+
+        /*
+            self.typ == GateType::Poseidon
+                && perm.iter().zip(this.iter().skip(1)).all(|(p, n)| p == n)
+                && perm[ROUNDS_PER_ROW - 1] == next
+        }
+        */
+
+        Ok(())
     }
 
     pub fn ps(&self) -> F {

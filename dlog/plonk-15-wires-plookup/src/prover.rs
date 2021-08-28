@@ -187,9 +187,11 @@ where
                 return Err(ProofError::WitnessCsInconsistent);
             }
         }
-        if index.pcs.cs.verify(witness) != true {
-            return Err(ProofError::WitnessCsInconsistent);
-        };
+        index
+            .pcs
+            .cs
+            .verify(witness)
+            .map_err(|_gate_err| ProofError::WitnessGateError)?;
 
         let mut oracles = RandomOracles::<Fr<G>>::zero();
 
