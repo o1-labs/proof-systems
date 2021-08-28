@@ -13,7 +13,7 @@ use crate::wires::Wire;
 use crate::{nolookup::constraints::ConstraintSystem, wires::GateWires, wires::COLUMNS};
 use algebra::FftField;
 use array_init::array_init;
-use oracle::poseidon::{sbox, Plonk15SpongeConstants, SpongeConstants};
+use oracle::poseidon::{sbox, PlonkSpongeConstants15W, SpongeConstants};
 use std::ops::Range;
 
 //
@@ -21,13 +21,13 @@ use std::ops::Range;
 //
 
 /// Width of the sponge
-pub const SPONGE_WIDTH: usize = Plonk15SpongeConstants::SPONGE_WIDTH;
+pub const SPONGE_WIDTH: usize = PlonkSpongeConstants15W::SPONGE_WIDTH;
 
 /// Number of rows
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
 /// Number of rounds
-pub const ROUNDS_PER_HASH: usize = Plonk15SpongeConstants::ROUNDS_FULL;
+pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstants15W::ROUNDS_FULL;
 
 /// Number of PLONK rows required to implement Poseidon
 pub const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
@@ -133,7 +133,7 @@ impl<F: FftField> CircuitGate<F> {
                             .iter()
                             .zip(m.iter())
                             .fold(F::zero(), |x, (s, &m)| {
-                                m * sbox::<F, Plonk15SpongeConstants>(*s) + x
+                                m * sbox::<F, PlonkSpongeConstants15W>(*s) + x
                             })
                 })
                 .collect::<Vec<_>>()

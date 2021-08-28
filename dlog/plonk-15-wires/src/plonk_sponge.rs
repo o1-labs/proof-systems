@@ -1,8 +1,7 @@
 use algebra::{Field, PrimeField};
 use plonk_15_wires_circuits::nolookup::scalars::ProofEvaluations;
-// use oracle::poseidon_5_wires::{ArithmeticSponge, PlonkSpongeConstants as SC};
 use oracle::poseidon::{
-    ArithmeticSponge, ArithmeticSpongeParams, Plonk15SpongeConstants as SC, Sponge,
+    ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W as SC, Sponge,
 };
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 

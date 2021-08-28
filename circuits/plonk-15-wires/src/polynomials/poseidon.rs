@@ -13,7 +13,7 @@ use algebra::{FftField, SquareRootField};
 use array_init::array_init;
 use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{
-    poseidon::{sbox, ArithmeticSpongeParams, Plonk15SpongeConstants, PlonkSpongeConstants},
+    poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W},
     utils::{EvalUtils, PolyUtils},
 };
 
@@ -111,7 +111,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 // TODO(mimoo): define a pow function on Evaluations
                 p.evals
                     .iter_mut()
-                    .for_each(|p| *p = sbox::<F, PlonkSpongeConstants>(*p))
+                    .for_each(|p| *p = sbox::<F, PlonkSpongeConstants15W>(*p))
             });
             x
         });
@@ -189,7 +189,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sboxed: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
             array_init(|i| {
                 let col = round_to_cols(round);
-                sbox::<F, Plonk15SpongeConstants>(w_zeta[col][i])
+                sbox::<F, PlonkSpongeConstants15W>(w_zeta[col][i])
             })
         });
         let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =

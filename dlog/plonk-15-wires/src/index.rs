@@ -13,7 +13,7 @@ use commitment_dlog::{
     CommitmentField,
 };
 use ff_fft::{DensePolynomial, Radix2EvaluationDomain as D};
-use oracle::poseidon::{ArithmeticSpongeParams, Plonk15SpongeConstants, SpongeConstants};
+use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants15W, SpongeConstants};
 use plonk_15_wires_circuits::{
     gates::poseidon::ROUNDS_PER_ROW,
     nolookup::constraints::{zk_w3, ConstraintSystem},
@@ -102,7 +102,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
 
     // poseidon polynomial commitments
     /// round constant polynomial commitment array
-    pub rcm_comm: [[PolyComm<G>; Plonk15SpongeConstants::SPONGE_WIDTH]; ROUNDS_PER_ROW],
+    pub rcm_comm: [[PolyComm<G>; PlonkSpongeConstants15W::SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial commitment
     pub psm_comm: PolyComm<G>,
 

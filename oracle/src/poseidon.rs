@@ -78,6 +78,21 @@ impl SpongeConstants for PlonkSpongeConstants3 {
     const INITIAL_ARK: bool = false;
 }
 
+#[derive(Clone)]
+pub struct PlonkSpongeConstants15W {}
+
+impl SpongeConstants for PlonkSpongeConstants15W {
+    const ROUNDS_FULL: usize = 55;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
+    const SPONGE_RATE: usize = 2;
+    const SPONGE_BOX: usize = 7;
+    const FULL_MDS: bool = true;
+    const INITIAL_ARK: bool = false;
+}
+
 pub trait Sponge<Input: Field, Digest> {
     fn new(params: ArithmeticSpongeParams<Input>) -> Self;
     fn absorb(&mut self, x: &[Input]);

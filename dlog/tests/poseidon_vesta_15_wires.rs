@@ -15,7 +15,7 @@ use commitment_dlog::{
 use ff_fft::DensePolynomial;
 use groupmap::GroupMap;
 use oracle::{
-    poseidon::{ArithmeticSponge, Plonk15SpongeConstants, Sponge, SpongeConstants},
+    poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use plonk_15_wires_circuits::wires::{Wire, COLUMNS};
@@ -34,7 +34,7 @@ use std::{io, io::Write};
 
 // aliases
 
-type SpongeParams = Plonk15SpongeConstants;
+type SpongeParams = PlonkSpongeConstants15W;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
