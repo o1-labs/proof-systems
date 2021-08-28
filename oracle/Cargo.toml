@@ -16,24 +16,20 @@ rand = "0.8.0"
 rayon = { version = "1" }
 
 # for export_test_vectors
-num-bigint = { version = "0.3", optional = true }
-custom_derive = { version = "0.1.7", optional = true }
-enum_derive = { version = "0.1.7", optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
-hex = { version = "0.4", optional = true }
-
-[dev-dependencies]
+num-bigint = { version = "0.4.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 hex = { version = "0.4" }
 ark-serialize = "0.3.0"
 
+[dev-dependencies]
+hex = { version = "0.4" }
+
 [features]
 ocaml_types = [ "ocaml" ]
 
 # for test vectors
-export_test_vectors = [ "serde", "serde_json", "hex", "num-bigint", "custom_derive", "enum_derive" ]
+default = ["3w"]
 3w = [ ]
 5w = [ ]
 3 = [ ]
@@ -43,4 +39,3 @@ name = "export_test_vectors"
 test = false
 bench = false
 path = "tests/export_test_vectors/export_test_vectors.rs"
-required-features = [ "export_test_vectors" ]
