@@ -66,7 +66,7 @@ impl<F: FftField> CircuitGate<F> {
 
     /// verifies that the generic gate constraints are solved by the witness
     // TODO(mimoo): this is not going to work for public inputs no?
-    pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+    pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let left = this[0];
@@ -80,7 +80,7 @@ impl<F: FftField> CircuitGate<F> {
         let zero = F::zero();
 
         // check if it's the correct gate
-        ensure_eq!(self.typ, GateType::Generic);
+        ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
 
         // toggling each column x[i] depending on the selectors c[i]
         let sum = (0..GENERICS)
@@ -89,13 +89,17 @@ impl<F: FftField> CircuitGate<F> {
 
         // multiplication
         let mul = mul_selector * &left * &right;
-        ensure_eq!(zero, sum + &mul + &constant_selector);
+        ensure_eq!(
+            zero,
+            sum + &mul + &constant_selector,
+            "generic: incorrect sum"
+        );
 
         // TODO(mimoo): additional checks:
         // - if both left and right wire are set, then output must be set
         // - if constant wire is set, then left wire must be set
 
         // all good
-        return true;
+        return Ok(());
     }
 }

@@ -246,4 +246,99 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 }
 
-// TODO(mimoo): test to ensure equivalence between quotient and lnrz
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        gate::CircuitGate,
+        wires::{Wire, COLUMNS},
+    };
+
+    use ark_ff::{UniformRand, Zero};
+    use array_init::array_init;
+    use itertools::iterate;
+    use mina_curves::pasta::fp::Fp;
+    use rand::SeedableRng;
+
+    #[test]
+    fn test_generic_polynomial() {
+        // create constraint system with a single generic gate
+        let mut gates = vec![];
+
+        // create generic gates
+        let mut gates_row = iterate(0usize, |&i| i + 1);
+        let r = gates_row.next().unwrap();
+        gates.push(CircuitGate::create_generic_add(r, Wire::new(r))); // add
+        let r = gates_row.next().unwrap();
+        gates.push(CircuitGate::create_generic_mul(r, Wire::new(r))); // mul
+        let r = gates_row.next().unwrap();
+        gates.push(CircuitGate::create_generic_const(
+            r,
+            Wire::new(r),
+            19u32.into(),
+        )); // const
+
+        // create constraint system
+        let cs = ConstraintSystem::fp_for_testing(gates);
+
+        // generate witness
+        let n = cs.domain.d1.size();
+        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
+        // fill witness
+        let mut witness_row = iterate(0usize, |&i| i + 1);
+        let left = 0;
+        let right = 1;
+        let output = 2;
+        // add
+        let r = witness_row.next().unwrap();
+        witness[left][r] = 11u32.into();
+        witness[right][r] = 23u32.into();
+        witness[output][r] = 34u32.into();
+        // mul
+        let r = witness_row.next().unwrap();
+        witness[left][r] = 5u32.into();
+        witness[right][r] = 3u32.into();
+        witness[output][r] = 15u32.into();
+        // const
+        let r = witness_row.next().unwrap();
+        witness[left][r] = 19u32.into();
+
+        // make sure we're done filling the witness correctly
+        assert!(gates_row.next() == witness_row.next());
+        cs.verify(&witness).unwrap();
+
+        // generate witness polynomials
+        let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =
+            array_init(|col| Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1));
+        let witness: [DensePolynomial<Fp>; COLUMNS] =
+            array_init(|col| witness_evals[col].interpolate_by_ref());
+        let witness_d4: [Evaluations<Fp, D<Fp>>; COLUMNS] =
+            array_init(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
+
+        // make sure we've done that correctly
+        let public = DensePolynomial::zero();
+        assert!(cs.verify_generic(&witness, &public));
+
+        // random zeta
+        let rng = &mut rand::rngs::StdRng::from_seed([0; 32]);
+        let zeta = Fp::rand(rng);
+
+        // compute quotient by dividing with vanishing polynomial
+        let (t1, t2) = cs.psdn_quot(&witness_d4, &public);
+        let t_before_division = &t1.interpolate() + &t2;
+        let (t, rem) = t_before_division
+            .divide_by_vanishing_poly(cs.domain.d1)
+            .unwrap();
+        assert!(rem.is_zero());
+        let t_zeta = t.evaluate(&zeta);
+
+        // compute linearization f(z)
+        let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
+        let f = cs.psdn_lnrz(&w_zeta);
+        let f_zeta = f.evaluate(&zeta);
+
+        // check that f(z) = t(z) * Z_H(z)
+        let z_h_zeta = cs.domain.d1.evaluate_vanishing_polynomial(zeta);
+        assert!(f_zeta == t_zeta * &z_h_zeta);
+    }
+}

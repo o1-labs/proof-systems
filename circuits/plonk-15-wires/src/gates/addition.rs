@@ -41,7 +41,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// Given a set of [witness] over an Add gate, verify that the constraints checks out.
-    pub fn verify_add(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+    pub fn verify_add(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
         let x1 = this[0];
@@ -55,18 +55,23 @@ impl<F: FftField> CircuitGate<F> {
         let one = F::one();
         let zero = F::zero();
 
-        ensure_eq!(self.typ, GateType::Add);
-
-        ensure_eq!(zero, (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3));
+        ensure_eq!(self.typ, GateType::Add, "add: incorrect gate type");
 
         ensure_eq!(
             zero,
-            (x1 + x2 + x3) * (x1 - x3).square() - (y3 + y1).square()
+            (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3),
+            "add: eq 1 wrong"
         );
 
-        ensure_eq!(zero, (x2 - x1) * r - one);
+        ensure_eq!(
+            zero,
+            (x1 + x2 + x3) * (x1 - x3).square() - (y3 + y1).square(),
+            "add: eq 2 wrong"
+        );
 
-        return true;
+        ensure_eq!(zero, (x2 - x1) * r - one, "add: eq 3 wrong");
+
+        return Ok(());
     }
 
     /// Returns 1 if [self] is an [GateType::Add] gate, 0 otherwise.

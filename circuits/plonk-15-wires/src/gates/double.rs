@@ -59,7 +59,7 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    pub fn verify_double(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+    pub fn verify_double(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 
         let this0 = this[0];
@@ -77,34 +77,38 @@ impl<F: FftField> CircuitGate<F> {
         let four = F::from(4 as u64);
         let nine = F::from(9 as u64);
 
-        ensure_eq!(self.typ, GateType::Double);
+        ensure_eq!(self.typ, GateType::Double, "double: incorrect gate");
 
         ensure_eq!(
             zero,
-            four * &this1.square() * &(this2 + &this0.double()) - nine * &this0.square().square()
+            four * &this1.square() * &(this2 + &this0.double()) - nine * &this0.square().square(),
+            "double: wrong eq 1"
         );
 
         ensure_eq!(
             zero,
-            this1.double() * &(this3 + &this1) - three * &this0.square() * &(this0 - &this2)
+            this1.double() * &(this3 + &this1) - three * &this0.square() * &(this0 - &this2),
+            "double: wrong eq 2"
         );
 
-        ensure_eq!(zero, this1 * &this6 - one);
+        ensure_eq!(zero, this1 * &this6 - one, "double: wrong eq 3");
 
         ensure_eq!(
             zero,
-            (this2 - &this0) * &(this5 + &this1) - (this1 - &this3) * &(this0 - &this4)
+            (this2 - &this0) * &(this5 + &this1) - (this1 - &this3) * &(this0 - &this4),
+            "double: wrong eq 4"
         );
 
         ensure_eq!(
             zero,
-            (this0 + &this2 + &this4) * &(this0 - &this4).square() - (this5 + &this1).square()
+            (this0 + &this2 + &this4) * &(this0 - &this4).square() - (this5 + &this1).square(),
+            "double: wrong eq 5"
         );
 
-        ensure_eq!(zero, (this2 - &this0) * &this7 - one);
+        ensure_eq!(zero, (this2 - &this0) * &this7 - one, "double: wrong eq 6");
 
         // all good
-        return true;
+        return Ok(());
     }
 
     pub fn double(&self) -> F {

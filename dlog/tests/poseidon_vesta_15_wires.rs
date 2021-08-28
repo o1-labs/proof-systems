@@ -233,7 +233,7 @@ fn positive(index: &Index<Affine>) {
         w.iter_mut().for_each(|w| {w.push(Fp::rand(rng)); w.push(Fp::rand(rng))}); */
 
         // verify the circuit satisfiability by the computed witness
-        assert_eq!(index.cs.verify(&witness), true);
+        index.cs.verify(&witness).unwrap();
 
         // what is this thing?
         let prev = {

@@ -46,39 +46,87 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    pub fn verify_endomul(&self, witness: &[Vec<F>; COLUMNS], cs: &ConstraintSystem<F>) -> bool {
+    pub fn verify_endomul(
+        &self,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
         let xq1 = (F::one() + &((cs.endo - &F::one()) * &next[12])) * &this[0];
         let xq2 = (F::one() + &((cs.endo - &F::one()) * &next[14])) * &this[0];
 
-        self.typ == GateType::Endomul
-            && [
-                // verify booleanity of the scalar bits
-                this[11] - this[11].square(),
-                this[12] - this[12].square(),
-                this[13] - this[13].square(),
-                this[14] - this[14].square(),
-                (xq1 - this[4]) * this[9] - (this[11].double() - F::one()) * this[2] + this[5],
-                (this[4].double() - this[9].square() + xq1)
-                    * ((this[4] - this[7]) * this[9] + this[8] + this[5])
-                    - (this[4] - this[7]) * this[5].double(),
-                (this[8] + this[5]).square()
-                    - (this[4] - this[7]).square() * (this[9].square() - xq1 + this[7]),
-                (xq2 - this[7]) * this[10] - (this[13].double() - F::one()) * this[2] + this[8],
-                (this[7].double() - this[10].square() + xq2)
-                    * ((this[7] - this[2]) * this[10] + this[3] + this[8])
-                    - (this[7] - this[2]) * this[8].double(),
-                (this[3] + this[8]).square()
-                    - (this[7] - this[2]).square() * (this[10].square() - xq2 + this[2]),
-                (((witness[6][self.row + 1].double() + this[11]).double() + this[12]).double()
-                    + this[13])
-                    .double()
-                    + this[14]
-                    - this[6],
-            ]
-            .iter()
-            .all(|p| *p == F::zero())
+        ensure_eq!(self.typ, GateType::Endomul, "endomul: incorrect gate");
+
+        // verify booleanity of the scalar bits
+
+        ensure_eq!(
+            F::zero(),
+            this[11] - this[11].square(),
+            "endomul: wrong eq 1"
+        );
+        ensure_eq!(
+            F::zero(),
+            this[12] - this[12].square(),
+            "endomul: wrong eq 2"
+        );
+        ensure_eq!(
+            F::zero(),
+            this[13] - this[13].square(),
+            "endomul: wrong eq 3"
+        );
+        ensure_eq!(
+            F::zero(),
+            this[14] - this[14].square(),
+            "endomul: wrong eq 4"
+        );
+        ensure_eq!(
+            F::zero(),
+            (xq1 - this[4]) * this[9] - (this[11].double() - F::one()) * this[2] + this[5],
+            "endomul: wrong eq 5"
+        );
+        ensure_eq!(
+            F::zero(),
+            (this[4].double() - this[9].square() + xq1)
+                * ((this[4] - this[7]) * this[9] + this[8] + this[5])
+                - (this[4] - this[7]) * this[5].double(),
+            "endomul: wrong eq 6"
+        );
+        ensure_eq!(
+            F::zero(),
+            (this[8] + this[5]).square()
+                - (this[4] - this[7]).square() * (this[9].square() - xq1 + this[7]),
+            "endomul: wrong eq 7"
+        );
+        ensure_eq!(
+            F::zero(),
+            (xq2 - this[7]) * this[10] - (this[13].double() - F::one()) * this[2] + this[8],
+            "endomul: wrong eq 8"
+        );
+        ensure_eq!(
+            F::zero(),
+            (this[7].double() - this[10].square() + xq2)
+                * ((this[7] - this[2]) * this[10] + this[3] + this[8])
+                - (this[7] - this[2]) * this[8].double(),
+            "endomul: wrong eq 9"
+        );
+        ensure_eq!(
+            F::zero(),
+            (this[3] + this[8]).square()
+                - (this[7] - this[2]).square() * (this[10].square() - xq2 + this[2]),
+            "endomul: wrong eq 10"
+        );
+        ensure_eq!(
+            F::zero(),
+            (((witness[6][self.row + 1].double() + this[11]).double() + this[12]).double()
+                + this[13])
+                .double()
+                + this[14]
+                - this[6],
+            "endomul: wrong eq 11"
+        );
+
+        Ok(())
     }
 
     pub fn endomul(&self) -> F {

@@ -156,6 +156,17 @@ pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
     ])
 }
 
+/// Represents an error found when verifying a witness with a gate
+#[derive(Debug)]
+pub enum GateError {
+    /// Some connected wires have different values
+    DisconnectedWires(Wire, Wire),
+    /// A public gate was incorrectly connected
+    IncorrectPublic(usize),
+    /// A specific gate did not verify correctly
+    Custom { row: usize, err: String },
+}
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
@@ -388,8 +399,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    // TODO(mimoo): return a better error that tells you the col and row
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> bool {
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), GateError> {
         let left_wire = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
 
         for (row, gate) in self.gates.iter().enumerate() {
@@ -397,28 +407,29 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             for col in 0..COLUMNS {
                 let wire = gate.wires[col];
                 if witness[col][row] != witness[wire.col][wire.row] {
-                    println!(
-                        "wires (col:{}, {}) and ({}, {}) are not connected",
-                        col, row, wire.col, wire.row
-                    );
-                    return false;
+                    return Err(GateError::DisconnectedWires(
+                        Wire { col, row },
+                        Wire {
+                            col: wire.col,
+                            row: wire.row,
+                        },
+                    ));
                 }
             }
 
+            // for public gates, only the left wire is toggled
             if row < self.public {
                 if gate.c != left_wire {
-                    // for public gates, only the left wire is toggled
-                    println!("the public gate #{} has some incorrect wiring", row);
-                    return false;
+                    return Err(GateError::IncorrectPublic(row));
                 }
-            } else if !gate.verify(witness, &self) {
-                println!("the gate #{} did not verify", row);
-                return false;
             }
+
+            gate.verify(witness, &self)
+                .map_err(|err| GateError::Custom { row, err })?;
         }
 
         // all good!
-        return true;
+        return Ok(());
     }
 
     /// sample coordinate shifts deterministically
