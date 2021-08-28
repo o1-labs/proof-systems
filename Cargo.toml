@@ -10,7 +10,6 @@ members = [
     "groupmap",
     "oracle"
 ]
-exclude = [ "./zexe" ]
 
 [profile.release]
 lto = true
