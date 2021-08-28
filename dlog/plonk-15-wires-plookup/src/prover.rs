@@ -279,7 +279,7 @@ where
                 .cs
                 .perm_quot(&lagrange, &oracles.po, &z, &alpha[range::PERM])?;
         // generic
-        let (gen, genp) = index.pcs.cs.gnrc_quot(&lagrange, &p);
+        let (gen, genp) = index.pcs.cs.gnrc_quot(&lagrange.d4.this.w, &p);
         // poseidon
         let (pos4, pos8, posp) = index.pcs.cs.psdn_quot(
             &lagrange,
@@ -375,7 +375,7 @@ where
 
         // compute and evaluate linearization polynomial
 
-        let f = &(&(&(&(&(&(&index.pcs.cs.gnrc_lnrz(&pe[0])
+        let f = &(&(&(&(&(&(&index.pcs.cs.gnrc_lnrz(&pe[0].w)
             + &index.pcs.cs.psdn_lnrz(
                 &pe,
                 &index.pcs.cs.fr_sponge_params,
