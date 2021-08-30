@@ -13,7 +13,7 @@ use mina_curves::pasta::{
 };
 use oracle::utils::PolyUtils;
 
-use oracle::poseidon::PlonkSpongeConstants as SC;
+use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
 

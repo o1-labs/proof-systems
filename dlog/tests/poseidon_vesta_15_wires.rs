@@ -66,53 +66,17 @@ fn poseidon_vesta_15_wires() {
     // custom constraints for Poseidon hash function permutation
     // ROUNDS_FULL full rounds constraint gates
     for _ in 0..NUM_POS {
-        /*
-                let first_wire = array_init(|col| Wire { col, row: abs_row });
-                let last_row = abs_row + POS_ROWS_PER_HASH;
-                let last_wire = array_init(|col| Wire { col, row: last_row });
-                let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
-                    abs_row,
-                    [first_wire, last_wire],
-                    round_constants,
-                );
-                gates.extend(poseidon);
-                abs_row = row;
-        */
-
-        // create a poseidon gadget manully
-        for rel_row in 0..POS_ROWS_PER_HASH {
-            // the 15 wires for this row
-            let wires = array_init(|col| Wire { col, row: abs_row });
-
-            // round constant for this row
-            let coeffs = array_init(|offset| {
-                let round = rel_row * ROUNDS_PER_ROW + offset + 1;
-                array_init(|field_el| round_constants[round][field_el])
-            });
-
-            // create poseidon gate for this row
-            gates.push(CircuitGate::<Fp>::create_poseidon(abs_row, wires, coeffs));
-            abs_row += 1;
-        }
-
-        // final (zero) gate that contains the output of poseidon
-        let wires = array_init(|col| Wire { col, row: abs_row });
-        gates.push(CircuitGate::<Fp>::zero(abs_row, wires));
-        abs_row += 1;
+        let first_wire = array_init(|col| Wire { col, row: abs_row });
+        let last_row = abs_row + POS_ROWS_PER_HASH;
+        let last_wire = array_init(|col| Wire { col, row: last_row });
+        let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
+            abs_row,
+            [first_wire, last_wire],
+            round_constants,
+        );
+        gates.extend(poseidon);
+        abs_row = row;
     }
-
-    /*
-    for j in 0..SpongeParams::ROUNDS_FULL-2
-    {
-        gates.push(CircuitGate::<Fp>::create_poseidon(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}], round_constants[j].clone()));
-        i+=1;
-    }
-    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
-    i+=1;
-    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
-    i+=1;
-    gates.push(CircuitGate::<Fp>::zero(i, [Wire{col:0, row:i}, Wire{col:1, row:i}, Wire{col:2, row:i}, Wire{col:3, row:i}, Wire{col:4, row:i}]));
-    */
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
@@ -137,8 +101,6 @@ fn positive(index: &Index<Affine>) {
     let params = oracle::pasta::fp::params();
     let mut sponge = ArithmeticSponge::<Fp, SpongeParams>::new(params);
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-
-    // batching what?
     let mut batch = Vec::new();
 
     // debug
@@ -159,22 +121,12 @@ fn positive(index: &Index<Affine>) {
     println!("{}", "Prover zk-proof computation".green());
 
     let mut start = Instant::now();
-
-    // why would there be several tests?
     for test in 0..1 {
         // witness for Poseidon permutation custom constraints
-        // (15 columns of vectors, each vector is of size n)
         let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
-        println!("witness: {:?}", witness);
 
         // creates a random initial state
-        let init = vec![
-            Fp::rand(rng),
-            Fp::rand(rng),
-            Fp::rand(rng),
-            Fp::rand(rng),
-            Fp::rand(rng),
-        ];
+        let init = vec![Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
 
         // number of poseidon instances in the circuit
         for h in 0..NUM_POS {
@@ -205,7 +157,9 @@ fn positive(index: &Index<Affine>) {
                     //
                     let abs_round = round + row_idx * ROUNDS_PER_ROW;
 
-                    // TODO: this won't work if the circuit has an INITIAL_ARK
+                    // apply the sponge and record the result in the witness
+                    // (this won't work if the circuit has an INITIAL_ARK)
+                    assert!(!PlonkSpongeConstants15W::INITIAL_ARK);
                     sponge.full_round(abs_round);
 
                     // apply the sponge and record the result in the witness
@@ -219,31 +173,13 @@ fn positive(index: &Index<Affine>) {
             }
         }
 
-        /*
-        sponge.state = init.clone();
-        w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
-
-        // ROUNDS_FULL full rounds
-        for j in 0..SpongeParams::ROUNDS_FULL-2
-        {
-            sponge.full_round(j, &params);
-            w.iter_mut().zip(sponge.state.iter()).for_each(|(w, s)| w.push(*s));
-        }
-
-        w.iter_mut().for_each(|w| {w.push(Fp::rand(rng)); w.push(Fp::rand(rng))}); */
-
         // verify the circuit satisfiability by the computed witness
         index.cs.verify(&witness).unwrap();
 
-        // what is this thing?
+        //
         let prev = {
-            // ?
             let k = ceil_log2(index.srs.get_ref().g.len());
-
-            // random challenges
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-
-            // non-hiding commitments of b polyonmials (made out of challenges) ???
             let comm = {
                 let coeffs = b_poly_coefficients(&chals);
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
@@ -270,13 +206,14 @@ fn positive(index: &Index<Affine>) {
         print!("{:?}\r", test);
         io::stdout().flush().unwrap();
     }
+
     // TODO: this should move to a bench
     println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
 
     // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
     let verifier_index = index.verifier_index();
 
-    let lgr_comms = vec![]; // why empty?
+    let lgr_comms = vec![];
     let batch: Vec<_> = batch
         .iter()
         .map(|proof| (&verifier_index, &lgr_comms, proof))

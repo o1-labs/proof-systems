@@ -38,7 +38,7 @@ use mina_curves::pasta::{
 };
 use oracle::poseidon::*;
 use oracle::{
-    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants as SC, Sponge},
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsBasic as SC, Sponge},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use plonk_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::GateWires};

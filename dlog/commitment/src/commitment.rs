@@ -955,12 +955,6 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::srs::SRS;
-    use array_init::array_init;
-    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
-    use oracle::poseidon::PlonkSpongeConstants as SC;
-    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     fn test_log2() {
