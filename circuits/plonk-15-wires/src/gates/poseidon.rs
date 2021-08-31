@@ -50,22 +50,6 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-/// Apply an MDS matrix to a state
-fn apply_mds<F: FftField>(mds: &[Vec<F>], state: &[F]) -> Vec<F> {
-    assert!(mds.len() == state.len());
-    mds.iter().for_each(|e| assert!(e.len() == state.len()));
-
-    let mut res = vec![];
-    for mds_row in mds {
-        let mut t = F::zero();
-        for (&m, s) in mds_row.iter().zip(state) {
-            t += m * s;
-        }
-        res.push(t);
-    }
-    res
-}
-
 impl<F: FftField> CircuitGate<F> {
     pub fn create_poseidon(
         row: usize,

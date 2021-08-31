@@ -246,6 +246,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,7 +262,7 @@ mod tests {
     use rand::SeedableRng;
 
     #[test]
-    fn test_generic_polynomial() {
+    fn test_poseidon_polynomial() {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
@@ -342,3 +343,4 @@ mod tests {
         assert!(f_zeta == t_zeta * &z_h_zeta);
     }
 }
+    */
