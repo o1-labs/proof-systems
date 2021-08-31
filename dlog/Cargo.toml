@@ -9,10 +9,6 @@ mina-curves = { path = "../curves" }
 commitment_dlog = { path = "commitment" }
 plonk_circuits = { path = "../circuits/plonk" }
 plonk_protocol_dlog = { path = "plonk" }
-plonk_5_wires_circuits = { path = "../circuits/plonk-5-wires" }
-plonk_5_wires_protocol_dlog = { path = "plonk-5-wires" }
-plonk_5_wires_plookup_circuits = { path = "../circuits/plonk-5-wires-plookup" }
-plonk_5_wires_plookup_protocol_dlog = { path = "plonk-5-wires-plookup" }
 plonk_15_wires_circuits = { path = "../circuits/plonk-15-wires" }
 plonk_15_wires_protocol_dlog = { path = "plonk-15-wires" }
 plonk_15_wires_plookup_protocol_dlog = { path = "plonk-15-wires-plookup" }

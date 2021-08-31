@@ -1,12 +1,13 @@
 [workspace]
 members = [
     "circuits/plonk",
-    "circuits/plonk-5-wires",
+    "circuits/plonk-15-wires",
     "curves",
     "dlog",
     "dlog/commitment",
     "dlog/plonk",
-    "dlog/plonk-5-wires",
+    "dlog/plonk-15-wires",
+    "dlog/plonk-15-wires-plookup",
     "groupmap",
     "oracle"
 ]
