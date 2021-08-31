@@ -131,6 +131,9 @@ where
         srs: SRSSpec<'a, G>,
     ) -> Self {
         let srs = SRSValue::create(srs);
+
+        // This is the size of the trimmed SRS that we will use. I.e., we will split all
+        // polynomials committed to into chunks of size max_poly_size.
         let max_poly_size = cs.domain.d1.size as usize;
         if cs.public > 0 {
             assert!(

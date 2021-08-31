@@ -22,9 +22,11 @@ pub struct SRS<G: CommitmentCurve> {
     pub endo_q: G::BaseField,
 }
 
+/// A trimmed reference string. It contains a reference to an SRS, along with a
+/// trimmed power-of-2 length.
 pub struct TrimmedSRS<'a, G: CommitmentCurve> {
-    pub srs: &'a SRS<G>,
-    pub trimmed_length_log2: usize
+    srs: &'a SRS<G>,
+    trimmed_length_log2: usize
 }
 
 impl<G: CommitmentCurve> SRS<G> {

@@ -32,7 +32,11 @@ where
     let mut random = rand::thread_rng();
 
     let size_log2 = 7;
-    let size = 1 << size_log2;
+    let padding_to_test_trimming = 2;
+    let size = 1 << (size_log2 + padding_to_test_trimming);
+
+    // We make the srs larger than the "trimmed" size in order to
+    // test the trimming functionality.
     let srs = SRS::<Affine>::create(size);
     let srs = srs.trim(size_log2);
 
