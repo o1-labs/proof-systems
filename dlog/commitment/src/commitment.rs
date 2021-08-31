@@ -881,6 +881,7 @@ where
             rand_base_i *= &rand_base;
             sg_rand_base_i *= &sg_rand_base;
         }
+
         // verify the equation
         let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
         VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
