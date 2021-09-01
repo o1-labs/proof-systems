@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["commitment_dlog","groupmap","mina_curves","oracle","plonk_5_wires_circuits","plonk_5_wires_protocol_dlog","plonk_circuits","plonk_protocol_dlog"];

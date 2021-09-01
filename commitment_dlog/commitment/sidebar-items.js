@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["b_poly",""],["b_poly_coefficients",""],["ceil_log2",""],["combined_inner_product",""],["product",""],["shift_scalar",""]],"struct":[["Challenges",""],["OpeningProof",""],["PolyComm",""]],"trait":[["CommitmentCurve",""],["Utils",""]]});

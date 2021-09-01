@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["constraints",""],["domains",""],["gate",""],["gates",""],["polynomial",""],["polynomials",""],["scalars",""],["wires",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["ADD",""],["DBL",""],["ENDML",""],["MLPCK",""],["MUL",""],["PACK",""],["PERM",""],["PSDN",""]],"fn":[["alpha_powers",""]]});
