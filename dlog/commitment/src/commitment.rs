@@ -17,7 +17,7 @@ use ark_ec::{
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, UVPolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -380,52 +380,32 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let n = self.g.len();
-        let p = plnm.coeffs.len();
+        commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+    }
 
-        // committing all the segments without shifting
-        let unshifted = if plnm.is_zero() {
-            Vec::new()
-        } else {
-            (0..p / n + if p % n != 0 { 1 } else { 0 })
-                .map(|i| {
-                    VariableBaseMSM::multi_scalar_mul(
-                        &self.g,
-                        &plnm.coeffs[i * n..p]
-                            .iter()
-                            .map(|s| s.into_repr())
-                            .collect::<Vec<_>>(),
-                    )
-                    .into_affine()
-                })
-                .collect()
-        };
+    pub fn commit_evaluations_non_hiding(
+        &self,
+        domain: D<Fr<G>>,
+        plnm: &Evaluations<Fr<G>, D<Fr<G>>>,
+        max: Option<usize>,
+    ) -> PolyComm<G> {
+        let is_zero = plnm.evals.iter().all(|x| x.is_zero());
+        let basis =
+            match self.lagrange_bases.get(&domain.size()) {
+                None => panic!("lagrange bases for size {} not found", domain.size()),
+                Some(v) => &v[..]
+            };
+        commit_helper(&plnm.evals[..], basis, is_zero, max)
+    }
 
-        // committing only last segment shifted to the right edge of SRS
-        let shifted = match max {
-            None => None,
-            Some(max) => {
-                let start = max - (max % n);
-                if plnm.is_zero() || start >= p {
-                    Some(G::zero())
-                } else if max % n == 0 {
-                    None
-                } else {
-                    Some(
-                        VariableBaseMSM::multi_scalar_mul(
-                            &self.g[n - (max % n)..],
-                            &plnm.coeffs[start..p]
-                                .iter()
-                                .map(|s| s.into_repr())
-                                .collect::<Vec<_>>(),
-                        )
-                        .into_affine(),
-                    )
-                }
-            }
-        };
-
-        PolyComm::<G> { unshifted, shifted }
+    pub fn commit_evaluations(
+        &self,
+        domain: D<Fr<G>>,
+        plnm: &Evaluations<Fr<G>, D<Fr<G>>>,
+        max: Option<usize>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+        self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
     }
 
     // This function opens polynomial commitments in batch
@@ -925,4 +905,58 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
             })
             .collect()
     }
+}
+
+fn commit_helper<G: CommitmentCurve>(
+    scalars: &[Fr<G>],
+    basis: &[G],
+    is_zero: bool,
+    max: Option<usize>,
+) -> PolyComm<G> {
+    let n = basis.len();
+    let p = scalars.len();
+
+    // committing all the segments without shifting
+    let unshifted = if is_zero {
+        Vec::new()
+    } else {
+        (0..p / n + if p % n != 0 { 1 } else { 0 })
+            .map(|i| {
+                VariableBaseMSM::multi_scalar_mul(
+                    basis,
+                    &scalars[i * n..p]
+                        .iter()
+                        .map(|s| s.into_repr())
+                        .collect::<Vec<_>>(),
+                )
+                .into_affine()
+            })
+            .collect()
+    };
+
+    // committing only last segment shifted to the right edge of SRS
+    let shifted = match max {
+        None => None,
+        Some(max) => {
+            let start = max - (max % n);
+            if is_zero || start >= p {
+                Some(G::zero())
+            } else if max % n == 0 {
+                None
+            } else {
+                Some(
+                    VariableBaseMSM::multi_scalar_mul(
+                        &basis[n - (max % n)..],
+                        &scalars[start..p]
+                            .iter()
+                            .map(|s| s.into_repr())
+                            .collect::<Vec<_>>(),
+                    )
+                    .into_affine(),
+                )
+            }
+        }
+    };
+
+    PolyComm::<G> { unshifted, shifted }
 }
