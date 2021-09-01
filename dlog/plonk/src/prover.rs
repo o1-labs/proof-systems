@@ -6,11 +6,15 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
-use algebra::{AffineCurve, Field, One, PrimeField, UniformRand, Zero};
+use ark_ec::AffineCurve;
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_poly::{
+    univariate::{DenseOrSparsePolynomial, DensePolynomial},
+    Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
+};
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_circuits::{
     constraints::ConstraintSystem,
@@ -208,7 +212,7 @@ where
                 * &(witness[j + n] + &(index.cs.sigmal1[1][j] * &oracles.beta) + &oracles.gamma)
                 * &(witness[j + 2 * n] + &(index.cs.sigmal1[2][j] * &oracles.beta) + &oracles.gamma)
         });
-        algebra::fields::batch_inversion::<Fr<G>>(&mut z[1..=n - 3]);
+        ark_ff::batch_inversion::<Fr<G>>(&mut z[1..=n - 3]);
         (0..n - 3).for_each(|j| {
             let x = z[j];
             z[j + 1] *= &(x
@@ -391,7 +395,7 @@ where
         let p_eval = if p.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(evlp[0])], vec![p.evaluate(evlp[1])]]
+            [vec![p.evaluate(&evlp[0])], vec![p.evaluate(&evlp[1])]]
         };
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
@@ -427,7 +431,7 @@ where
         // Therefore, the coefficient of the blinding base in the f commitment is
         // perm_scalars[0] * the coefficient in the z commitment.
         let omega_f = {
-            let zkp = index.cs.zkpm.evaluate(oracles.zeta);
+            let zkp = index.cs.zkpm.evaluate(&oracles.zeta);
             let evals = (0..2)
                 .map(|i| evals[i].combine(evlp[i]))
                 .collect::<Vec<_>>();

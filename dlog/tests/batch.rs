@@ -5,7 +5,7 @@ verification of a batch of batched opening proofs of polynomial commitments
 
 *****************************************************************************************************************/
 
-use algebra::UniformRand;
+use ark_ff::{UniformRand, Zero};
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
@@ -17,8 +17,8 @@ use oracle::poseidon::PlonkSpongeConstants as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
 
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
-use ff_fft::DensePolynomial;
 use groupmap::GroupMap;
 use rand::Rng;
 use std::time::{Duration, Instant};
@@ -96,7 +96,7 @@ where
             commit += start.elapsed();
 
             start = Instant::now();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>>(
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
                 &group_map,
                 (0..a.len())
                     .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
@@ -142,6 +142,6 @@ where
     println!("{}{:?}", "open time: ".magenta(), open);
 
     let start = Instant::now();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>>(&group_map, &mut proofs, rng));
+    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
     println!("{}{:?}", "verification time: ".green(), start.elapsed());
 }

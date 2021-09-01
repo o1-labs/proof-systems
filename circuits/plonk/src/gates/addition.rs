@@ -26,7 +26,7 @@ l=y1, r=y2, o=y3, l_next=x1, r_next=x2, o_next=x3:
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::GateWires;
-use algebra::FftField;
+use ark_ff::FftField;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_add(wires: &[GateWires; 2]) -> Vec<Self> {

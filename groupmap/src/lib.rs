@@ -1,8 +1,5 @@
-use algebra::{
-    curves::models::SWModelParameters,
-    fields::{Field, SquareRootField},
-    One, Zero,
-};
+use ark_ec::models::SWModelParameters;
+use ark_ff::{Field, One, SquareRootField, Zero};
 
 pub trait GroupMap<F> {
     fn setup() -> Self;
@@ -157,7 +154,7 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
             .collect();
 
         let mut alphas: Vec<G::BaseField> = t2_alpha_invs.iter().map(|(_, a)| a.clone()).collect();
-        algebra::fields::batch_inversion::<G::BaseField>(&mut alphas);
+        ark_ff::batch_inversion::<G::BaseField>(&mut alphas);
 
         let potential_xs = t2_alpha_invs
             .iter()

@@ -12,15 +12,15 @@ The folowing functionality is implemented
 
 use crate::srs::TrimmedSRS;
 pub use crate::CommitmentField;
-use algebra::{
-    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, Field,
-    FpParameters, One, PrimeField, ProjectiveCurve, SWModelParameters, SquareRootField,
-    UniformRand, VariableBaseMSM, Zero,
+use ark_ec::{
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
+    AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ff_fft::DensePolynomial;
+use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand_core::RngCore;
+use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::iter::Iterator;
 
@@ -152,7 +152,7 @@ where
 
         let chal_inv = {
             let mut cs = chal.clone();
-            algebra::fields::batch_inversion(&mut cs);
+            ark_ff::batch_inversion(&mut cs);
             cs
         };
 
@@ -346,12 +346,16 @@ where
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
-        rng: &mut dyn RngCore,
+        rng: &mut (impl RngCore + CryptoRng),
     ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
-    fn mask(&self, c: PolyComm<G>, rng: &mut dyn RngCore) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+    fn mask(
+        &self,
+        c: PolyComm<G>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         c.map(|g: G| {
             if g.is_zero() {
                 // TODO: This leaks information when g is the identity!
@@ -431,7 +435,7 @@ where
     //     evalscale: eval scaling factor for opening commitments in batch
     //     oracle_params: parameters for the random oracle argument
     //     RETURN: commitment opening proof
-    pub fn open<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
@@ -439,8 +443,12 @@ where
         polyscale: Fr<G>,      // scaling factor for polynoms
         evalscale: Fr<G>,      // scaling factor for evaluation point powers
         mut sponge: EFqSponge, // sponge
-        rng: &mut dyn RngCore,
-    ) -> OpeningProof<G> {
+        rng: &mut RNG,
+    ) -> OpeningProof<G>
+    where
+        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         let rounds = self.rounds();
         let padded_length = 1 << rounds;
 
@@ -662,7 +670,7 @@ where
     //     oracle_params: parameters for the random oracle argument
     //     randomness source context
     //     RETURN: verification status
-    pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         batch: &mut Vec<(
@@ -677,8 +685,12 @@ where
             )>,
             &OpeningProof<G>, // batched opening proof
         )>,
-        rng: &mut dyn RngCore,
-    ) -> bool {
+        rng: &mut RNG,
+    ) -> bool
+    where
+        EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+        RNG: RngCore + CryptoRng,
+    {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
         //
@@ -913,7 +925,7 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                         i + size
                     }],
                 )
-                .evaluate(elm)
+                .evaluate(&elm)
             })
             .collect()
     }

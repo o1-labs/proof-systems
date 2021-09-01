@@ -4,7 +4,7 @@ pub mod rndoracle;
 pub mod sponge;
 pub mod utils;
 
-use algebra::Field;
+use ark_ff::Field;
 
 pub trait FqSponge<Fq: Field, G, Fr> {
     fn new(p: poseidon::ArithmeticSpongeParams<Fq>) -> Self;
