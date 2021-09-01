@@ -6,16 +6,22 @@ This source file implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
-use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
+use rayon::prelude::*;
+use ark_ff::{Field, BigInteger, FromBytes, PrimeField, ToBytes};
+use ark_ec::{ProjectiveCurve, AffineCurve};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
 use std::io::{Read, Result as IoResult, Write};
+use std::collections::HashMap;
+use crate::fft::group_fft;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone)]
 pub struct SRS<G: CommitmentCurve> {
     pub g: Vec<G>, // for committing polynomials
     pub h: G,      // blinding
+    pub lagrange_bases: HashMap<usize, Vec<G>>, // Lagrange bases, per domain size
 
     // Coefficients for the curve endomorphism
     pub endo_r: G::ScalarField,
@@ -70,6 +76,38 @@ where
         self.g.len()
     }
 
+    /// Compute commitments to the lagrange basis corresponding to the given domain and
+    /// cache them in the SRS
+    pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
+        let n = domain.size();
+        if n > self.g.len() {
+            panic!("add_lagrange_basis: Domain size {} larger than SRS size {}", n, self.g.len());
+        }
+
+        if self.lagrange_bases.contains_key(&n) {
+            return;
+        }
+
+        let mut lg: Vec<<G as AffineCurve>::Projective> =
+            self.g[0..n].iter().map(|g| g.into_projective()).collect();
+
+        group_fft::<<G as AffineCurve>::Projective>(
+            lg.as_mut_slice(),
+            domain.group_gen_inv,
+            domain.log_size_of_group,
+        );
+
+        let n_inv = <G::ScalarField as From<u64>>::from(n as u64)
+            .inverse()
+            .unwrap();
+        lg.par_iter_mut().for_each(|g| {
+            *g *= n_inv;
+        });
+
+        <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
+        self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());
+    }
+
     // This function creates SRS instance for circuits up to depth d
     //      depth: maximal depth of SRS string
     //      size: circuit size
@@ -97,6 +135,7 @@ where
         SRS {
             g,
             h,
+            lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
         }
@@ -123,6 +162,7 @@ where
         Ok(SRS {
             g,
             h,
+            lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
         })
