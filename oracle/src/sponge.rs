@@ -142,7 +142,9 @@ where
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
-                panic!("sponge got zero curve point");
+                // absorb a fake point (0, 0)
+                let zero = P::BaseField::zero();
+                self.sponge.absorb(&[zero, zero]);
             } else {
                 self.sponge.absorb(&[g.x]);
                 self.sponge.absorb(&[g.y]);
