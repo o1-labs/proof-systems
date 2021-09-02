@@ -147,6 +147,12 @@
 <span id="145">145</span>
 <span id="146">146</span>
 <span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
 </pre><pre class="rust">
 <span class="comment">/*****************************************************************************************************************
 
@@ -232,30 +238,33 @@ This source file implements Plonk Protocol Index primitive.
     <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
 {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verifier_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">srs</span> {
+        <span class="kw">let</span> <span class="ident">srs0</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">srs</span> {
             <span class="ident">SRSValue::Value</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SRSValue::Value</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
             <span class="ident">SRSValue::Ref</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SRSValue::Ref</span>(<span class="ident">x</span>),
         };
 
+        <span class="kw">let</span> <span class="ident">trimmed_length</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">srs0</span>.<span class="ident">get_ref</span>().<span class="ident">trim</span>(<span class="ident">trimmed_length</span>);
+
         <span class="ident">VerifierIndex</span> {
             <span class="ident">domain</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
 
-            <span class="ident">sigma_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">sigmam</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>)),
-            <span class="ident">ql_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qlm</span>, <span class="prelude-val">None</span>),
-            <span class="ident">qr_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qrm</span>, <span class="prelude-val">None</span>),
-            <span class="ident">qo_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qom</span>, <span class="prelude-val">None</span>),
-            <span class="ident">qm_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qmm</span>, <span class="prelude-val">None</span>),
-            <span class="ident">qc_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qc</span>, <span class="prelude-val">None</span>),
+            <span class="ident">sigma_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">sigmam</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>)),
+            <span class="ident">ql_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qlm</span>, <span class="prelude-val">None</span>),
+            <span class="ident">qr_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qrm</span>, <span class="prelude-val">None</span>),
+            <span class="ident">qo_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qom</span>, <span class="prelude-val">None</span>),
+            <span class="ident">qm_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qmm</span>, <span class="prelude-val">None</span>),
+            <span class="ident">qc_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">qc</span>, <span class="prelude-val">None</span>),
 
-            <span class="ident">rcm_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">rcm</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>)),
-            <span class="ident">psm_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">psm</span>, <span class="prelude-val">None</span>),
+            <span class="ident">rcm_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">rcm</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>)),
+            <span class="ident">psm_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">psm</span>, <span class="prelude-val">None</span>),
 
-            <span class="ident">add_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">addm</span>, <span class="prelude-val">None</span>),
-            <span class="ident">mul1_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">mul1m</span>, <span class="prelude-val">None</span>),
-            <span class="ident">mul2_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">mul2m</span>, <span class="prelude-val">None</span>),
-            <span class="ident">emul1_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">emul1m</span>, <span class="prelude-val">None</span>),
-            <span class="ident">emul2_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">emul2m</span>, <span class="prelude-val">None</span>),
-            <span class="ident">emul3_comm</span>: <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">emul3m</span>, <span class="prelude-val">None</span>),
+            <span class="ident">add_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">addm</span>, <span class="prelude-val">None</span>),
+            <span class="ident">mul1_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">mul1m</span>, <span class="prelude-val">None</span>),
+            <span class="ident">mul2_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">mul2m</span>, <span class="prelude-val">None</span>),
+            <span class="ident">emul1_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">emul1m</span>, <span class="prelude-val">None</span>),
+            <span class="ident">emul2_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">emul2m</span>, <span class="prelude-val">None</span>),
+            <span class="ident">emul3_comm</span>: <span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">emul3m</span>, <span class="prelude-val">None</span>),
 
             <span class="ident">w</span>: <span class="ident">zk_w</span>(<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>),
             <span class="ident">fr_sponge_params</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">clone</span>(),
@@ -264,7 +273,7 @@ This source file implements Plonk Protocol Index primitive.
             <span class="ident">max_poly_size</span>: <span class="self">self</span>.<span class="ident">max_poly_size</span>,
             <span class="ident">max_quot_size</span>: <span class="self">self</span>.<span class="ident">max_quot_size</span>,
             <span class="ident">zkpm</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">zkpm</span>.<span class="ident">clone</span>(),
-            <span class="ident">srs</span>,
+            <span class="ident">srs</span>: <span class="ident">srs0</span>,
             <span class="ident">r</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">r</span>,
             <span class="ident">o</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">o</span>,
         }
@@ -278,7 +287,10 @@ This source file implements Plonk Protocol Index primitive.
         <span class="ident">srs</span>: <span class="ident">SRSSpec</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRSValue::create</span>(<span class="ident">srs</span>);
-        <span class="kw">let</span> <span class="ident">max_poly_size</span> <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">g</span>.<span class="ident">len</span>();
+
+        <span class="comment">// This is the size of the trimmed SRS that we will use. I.e., we will split all</span>
+        <span class="comment">// polynomials committed to into chunks of size max_poly_size.</span>
+        <span class="kw">let</span> <span class="ident">max_poly_size</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">if</span> <span class="ident">cs</span>.<span class="ident">public</span> <span class="op">&gt;</span> <span class="number">0</span> {
             <span class="macro">assert!</span>(
                 <span class="ident">max_poly_size</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>,
