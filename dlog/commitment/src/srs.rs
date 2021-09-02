@@ -25,7 +25,7 @@ pub struct SRS<G: CommitmentCurve> {
 /// A trimmed reference string. It contains a reference to an SRS, along with a
 /// trimmed power-of-2 length.
 pub struct TrimmedSRS<'a, G: CommitmentCurve> {
-    srs: &'a SRS<G>,
+    pub srs: &'a SRS<G>,
     trimmed_length_log2: usize
 }
 
