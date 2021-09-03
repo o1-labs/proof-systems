@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["SRSSpec",""],["SRSValue",""]],"fn":[["endos",""]],"struct":[["SRS",""],["TrimmedSRS","A trimmed reference string. It contains a reference to an SRS, along with a trimmed power-of-2 length."]],"trait":[["QnrField",""]]});
+initSidebarItems({"enum":[["SRSSpec",""],["SRSValue",""]],"fn":[["endos",""]],"struct":[["SRS",""]],"trait":[["QnrField",""]]});

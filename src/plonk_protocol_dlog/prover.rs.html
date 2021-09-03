@@ -475,23 +475,6 @@
 <span id="473">473</span>
 <span id="474">474</span>
 <span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
 </pre><pre class="rust">
 <span class="comment">/********************************************************************************************
 
@@ -596,20 +579,6 @@ This source file implements prover&#39;s zk-proof primitive.
     }
 }
 
-<span class="kw">fn</span> <span class="ident">trim_commitment</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span>(<span class="ident">c</span> : <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">c</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span> <span class="op">=</span> <span class="ident">c</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>;
-    <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">C::zero</span>();
-    <span class="kw">loop</span> {
-        <span class="kw">if</span> <span class="ident">c</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">zero</span> {
-            <span class="kw">break</span>;
-        }
-        <span class="ident">i</span> <span class="op">-</span><span class="op">=</span> <span class="number">1</span>;
-    };
-    <span class="ident">c</span>.<span class="ident">unshifted</span>.<span class="ident">truncate</span>(<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
-    <span class="ident">c</span>
-}
-
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
@@ -678,17 +647,13 @@ This source file implements prover&#39;s zk-proof primitive.
         )
         .<span class="ident">interpolate</span>();
 
-        <span class="kw">let</span> <span class="ident">trimmed_length</span> <span class="op">=</span> (<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">trailing_zeros</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">trim</span>(<span class="ident">trimmed_length</span>);
-
         <span class="comment">// commit to the l, r, o wire values</span>
-        <span class="kw">let</span> (<span class="ident">l_comm</span>, <span class="ident">omega_l</span>) <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
-        <span class="kw">let</span> (<span class="ident">r_comm</span>, <span class="ident">omega_r</span>) <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">r</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
-        <span class="kw">let</span> (<span class="ident">o_comm</span>, <span class="ident">omega_o</span>) <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">o</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
-
+        <span class="kw">let</span> (<span class="ident">l_comm</span>, <span class="ident">omega_l</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+        <span class="kw">let</span> (<span class="ident">r_comm</span>, <span class="ident">omega_r</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">r</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+        <span class="kw">let</span> (<span class="ident">o_comm</span>, <span class="ident">omega_o</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">o</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
         <span class="comment">// absorb the public input, l, r, o polycommitments into the argument</span>
-        <span class="kw">let</span> <span class="ident">public_input_comm</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="prelude-val">None</span>).<span class="ident">unshifted</span>;
+        <span class="kw">let</span> <span class="ident">public_input_comm</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="prelude-val">None</span>).<span class="ident">unshifted</span>;
         <span class="comment">// this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">public_input_comm</span>);
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">l_comm</span>.<span class="ident">unshifted</span>);
@@ -729,7 +694,7 @@ This source file implements prover&#39;s zk-proof primitive.
             .<span class="ident">interpolate</span>();
 
         <span class="comment">// commit to z</span>
-        <span class="kw">let</span> (<span class="ident">z_comm</span>, <span class="ident">omega_z</span>) <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+        <span class="kw">let</span> (<span class="ident">z_comm</span>, <span class="ident">omega_z</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
         <span class="comment">// absorb the z commitment into the argument and query alpha</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">z_comm</span>.<span class="ident">unshifted</span>);
@@ -805,9 +770,10 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="ident">t</span>.<span class="ident">coeffs</span>.<span class="ident">resize</span>(<span class="ident">index</span>.<span class="ident">max_quot_size</span>, <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>());
 
         <span class="comment">// commit to t</span>
-        <span class="kw">let</span> (<span class="ident">t_comm</span>, <span class="ident">omega_t</span>) <span class="op">=</span> <span class="ident">srs</span>
+        <span class="kw">let</span> (<span class="ident">t_comm</span>, <span class="ident">omega_t</span>) <span class="op">=</span> <span class="ident">index</span>
+            .<span class="ident">srs</span>
+            .<span class="ident">get_ref</span>()
             .<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>, <span class="prelude-val">Some</span>(<span class="ident">index</span>.<span class="ident">max_quot_size</span>), <span class="ident">rng</span>);
-        <span class="kw">let</span> <span class="ident">t_comm</span> <span class="op">=</span> <span class="ident">trim_commitment</span>(<span class="ident">t_comm</span>);
 
         <span class="comment">// absorb the polycommitments into the argument and sample zeta</span>
         <span class="kw">let</span> <span class="ident">max_t_size</span> <span class="op">=</span> (<span class="ident">index</span>.<span class="ident">max_quot_size</span> <span class="op">+</span> <span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="op">-</span> <span class="number">1</span>) <span class="op">/</span> <span class="ident">index</span>.<span class="ident">max_poly_size</span>;
@@ -896,7 +862,7 @@ This source file implements prover&#39;s zk-proof primitive.
             <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">p_eval</span>[<span class="ident">i</span>], <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="ident">i</span>])
         }
 
-        <span class="comment">// query opening scalar challenges</span>
+        <span class="comment">// query opening scaler challenges</span>
         <span class="ident">oracles</span>.<span class="ident">v_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
         <span class="ident">oracles</span>.<span class="ident">v</span> <span class="op">=</span> <span class="ident">oracles</span>.<span class="ident">v_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">endo_r</span>);
         <span class="ident">oracles</span>.<span class="ident">u_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
@@ -968,7 +934,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 <span class="ident">z_comm</span>,
                 <span class="ident">t_comm</span>,
             },
-            <span class="ident">proof</span>: <span class="ident">srs</span>.<span class="ident">open</span>(
+            <span class="ident">proof</span>: <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">open</span>(
                 <span class="ident">group_map</span>,
                 <span class="ident">polynoms</span>,
                 <span class="kw-2">&amp;</span><span class="ident">evlp</span>.<span class="ident">to_vec</span>(),
