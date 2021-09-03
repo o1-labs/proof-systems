@@ -29,8 +29,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
-pub struct PolyComm<C>
-{
+pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
 }
@@ -924,5 +923,90 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                 .evaluate(&elm)
             })
             .collect()
+    }
+}
+
+//
+// Tests
+//
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::srs::SRS;
+    use array_init::array_init;
+    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
+    use oracle::poseidon::PlonkSpongeConstants as SC;
+    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn test_opening_proof() {
+        // create two polynomials
+        let coeffs: [Fp; 10] = array_init(|i| Fp::from(i as u32));
+        let poly1 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
+        let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
+
+        // create an SRS
+        let srs = SRS::<VestaG>::create(20);
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+
+        // commit the two polynomials (and upperbound the second one)
+        let commitment = srs.commit(&poly1, None, rng);
+        let upperbound = poly2.degree() + 1;
+        let bounded_commitment = srs.commit(&poly2, Some(upperbound), rng);
+
+        // create an aggregated opening proof
+        let (u, v) = (Fp::rand(rng), Fp::rand(rng));
+        let group_map = <VestaG as CommitmentCurve>::Map::setup();
+        let sponge = DefaultFqSponge::<_, SC>::new(spongeFqParams());
+
+        let polys = vec![
+            (&poly1, None, commitment.1),
+            (&poly2, Some(upperbound), bounded_commitment.1),
+        ];
+        let elm = vec![Fp::rand(rng), Fp::rand(rng)];
+
+        let opening_proof = srs.open(&group_map, polys, &elm, v, u, sponge.clone(), rng);
+
+        // evaluate the polynomials at these two points
+        let poly1_chunked_evals = vec![
+            poly1.eval(elm[0], srs.g.len()),
+            poly1.eval(elm[1], srs.g.len()),
+        ];
+
+        fn sum(c: &[Fp]) -> Fp {
+            c.iter().fold(Fp::zero(), |a, &b| a + b)
+        }
+
+        assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
+        assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
+
+        let poly2_chunked_evals = vec![
+            poly2.eval(elm[0], srs.g.len()),
+            poly2.eval(elm[1], srs.g.len()),
+        ];
+
+        assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
+        assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
+
+        // verify the proof
+        let mut batch = vec![(
+            sponge,
+            elm.clone(),
+            v,
+            u,
+            vec![
+                (&commitment.0, poly1_chunked_evals.iter().collect(), None),
+                (
+                    &bounded_commitment.0,
+                    poly2_chunked_evals.iter().collect(),
+                    Some(upperbound),
+                ),
+            ],
+            &opening_proof,
+        )];
+
+        assert!(srs.verify(&group_map, &mut batch, rng));
     }
 }
