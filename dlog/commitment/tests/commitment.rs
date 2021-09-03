@@ -24,7 +24,7 @@ use rand::Rng;
 use std::time::{Duration, Instant};
 
 #[test]
-fn dlog_commitment_test()
+fn test_commit()
 where
     <Fp as std::str::FromStr>::Err: std::fmt::Debug,
 {
