@@ -25,12 +25,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn perm_quot(
         &self,
         lagrange: &WitnessOverDomains<F>,
-        oracles: &RandomOracles<F>,
+        beta: F,
+        gamma: F,
         z: &DensePolynomial<F>,
         alpha: &[F],
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.l08.scale(oracles.gamma);
+        let gamma = &self.l08.scale(gamma);
         let one_poly = DensePolynomial::from_coefficients_slice(&[F::one()]);
         let z_minus_1 = z - &one_poly;
 
@@ -65,7 +66,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // in evaluation form in d8
         let mut shifts = lagrange.d8.this.z.clone();
         for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-            let term = &(witness + gamma) + &self.l1.scale(oracles.beta * shift);
+            let term = &(witness + gamma) + &self.l1.scale(beta * shift);
             shifts = &shifts * &term;
         }
 
@@ -76,7 +77,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // in evaluation form in d8
         let mut sigmas = lagrange.d8.next.z.clone();
         for (witness, sigma) in lagrange.d8.this.w.iter().zip(self.sigmal8.iter()) {
-            let term = witness + &(gamma + &sigma.scale(oracles.beta));
+            let term = witness + &(gamma + &sigma.scale(beta));
             sigmas = &sigmas * &term;
         }
 
@@ -91,17 +92,20 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn perm_lnrz(
         &self,
         e: &Vec<ProofEvaluations<F>>,
-        oracles: &RandomOracles<F>,
+        zeta: F,
+        beta: F,
+        gamma: F,
         alpha: &[F],
     ) -> DensePolynomial<F> {
-        let zkpm_zeta = self.zkpm.evaluate(&oracles.zeta);
-        let scalar = Self::perm_scalars(e, oracles, alpha, zkpm_zeta);
+        let zkpm_zeta = self.zkpm.evaluate(&zeta);
+        let scalar = Self::perm_scalars(e, beta, gamma, alpha, zkpm_zeta);
         self.sigmam[PERMUTS - 1].scale(scalar)
     }
 
     pub fn perm_scalars(
         e: &Vec<ProofEvaluations<F>>,
-        oracles: &RandomOracles<F>,
+        beta: F,
+        gamma: F,
         // TODO(mimoo): should only pass an iterator, to prevent different calls to re-use the same alphas!
         alpha: &[F],
         zkp_zeta: F,
@@ -110,15 +114,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .w
             .iter()
             .zip(e[0].s.iter())
-            .map(|(w, s)| oracles.gamma + &(oracles.beta * s) + w)
-            .fold(e[1].z * &oracles.beta * alpha[0] * &zkp_zeta, |x, y| x * y)
+            .map(|(w, s)| gamma + &(beta * s) + w)
+            .fold(e[1].z * beta * alpha[0] * &zkp_zeta, |x, y| x * y)
     }
 
     /// permutation aggregation polynomial computation
     pub fn perm_aggreg(
         &self,
         witness: &[Vec<F>; COLUMNS],
-        oracles: &RandomOracles<F>,
+        beta: &F,
+        gamma: &F,
         rng: &mut ThreadRng,
     ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
@@ -147,7 +152,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             z[j + 1] = witness
                 .iter()
                 .zip(self.sigmal1.iter())
-                .map(|(w, s)| w[j] + &(s[j] * &oracles.beta) + &oracles.gamma)
+                .map(|(w, s)| w[j] + &(s[j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y)
         }
 
@@ -158,7 +163,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             z[j + 1] *= witness
                 .iter()
                 .zip(self.shift.iter())
-                .map(|(w, s)| w[j] + &(self.sid[j] * &oracles.beta * s) + &oracles.gamma)
+                .map(|(w, s)| w[j] + &(self.sid[j] * beta * s) + gamma)
                 .fold(x, |z, y| z * y)
         }
 

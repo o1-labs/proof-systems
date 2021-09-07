@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::{Field, Zero};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -17,7 +17,7 @@ use commitment_dlog::commitment::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_15_wires_circuits::{
-    nolookup::scalars::{ProofEvaluations, RandomOracles},
+    nolookup::scalars::ProofEvaluations,
     wires::{COLUMNS, PERMUTS},
 };
 use rand::thread_rng;
@@ -171,8 +171,6 @@ where
         }
         //if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
 
-        let mut oracles = RandomOracles::<Fr<G>>::zero();
-
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
@@ -206,19 +204,19 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
         // sample beta, gamma oracles
-        oracles.beta = fq_sponge.challenge();
-        oracles.gamma = fq_sponge.challenge();
+        let beta = fq_sponge.challenge();
+        let gamma = fq_sponge.challenge();
 
         // compute permutation aggregation polynomial
-        let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
+        let z = index.cs.perm_aggreg(witness, &beta, &gamma, rng)?;
         // commit to z
         let z_comm = index.srs.get_ref().commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
-        oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
-        oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
-        let alpha = range::alpha_powers(oracles.alpha);
+        let alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        let alpha = alpha_chal.to_field(&index.srs.get_ref().endo_r);
+        let alphas = range::alpha_powers(alpha);
 
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&w, &z);
@@ -228,22 +226,22 @@ where
         // permutation
         let (perm, bnd) = index
             .cs
-            .perm_quot(&lagrange, &oracles, &z, &alpha[range::PERM])?;
+            .perm_quot(&lagrange, beta, gamma, &z, &alphas[range::PERM])?;
         // generic
         let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
         // poseidon
         let (pos4, pos8, posp) =
             index
                 .cs
-                .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
+                .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alphas[range::PSDN]);
         // EC addition
-        let add = index.cs.ecad_quot(&lagrange, &alpha[range::ADD]);
+        let add = index.cs.ecad_quot(&lagrange, &alphas[range::ADD]);
         // EC doubling
-        let (doub4, doub8) = index.cs.double_quot(&lagrange, &alpha[range::DBL]);
+        let (doub4, doub8) = index.cs.double_quot(&lagrange, &alphas[range::DBL]);
         // endoscaling
-        let mul8 = index.cs.endomul_quot(&lagrange, &alpha[range::ENDML]);
+        let mul8 = index.cs.endomul_quot(&lagrange, &alphas[range::ENDML]);
         // scalar multiplication
-        let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
+        let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alphas[range::MUL]);
 
         // collect contribution evaluations
         let t4 = &(&add + &mul4) + &(&pos4 + &(&gen + &doub4));
@@ -279,30 +277,37 @@ where
             }
         };
 
-        oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
-        oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
+        let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
+        let omega = index.cs.domain.d1.group_gen;
+        let zeta_omega = zeta * &omega;
 
         // evaluate the polynomials
-        let evlp = [oracles.zeta, oracles.zeta * &index.cs.domain.d1.group_gen];
-        let evals = evlp
-            .iter()
-            .map(|e| ProofEvaluations::<Vec<Fr<G>>> {
-                s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(*e, index.max_poly_size)),
-                w: array_init(|i| w[i].eval(*e, index.max_poly_size)),
-                z: z.eval(*e, index.max_poly_size),
                 t: t.eval(*e, index.max_poly_size),
                 f: Vec::new(),
-            })
-            .collect::<Vec<_>>();
-        let mut evals = [evals[0].clone(), evals[1].clone()];
+        let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
+            s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
+            w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
+            z: z.eval(zeta, index.max_poly_size),
+        };
+        let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
+            s: array_init(|i| {
+                index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
+            }),
+            w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
+            z: z.eval(zeta_omega, index.max_poly_size),
+        };
 
-        let evlp1 = [
-            evlp[0].pow(&[index.max_poly_size as u64]),
-            evlp[1].pow(&[index.max_poly_size as u64]),
-        ];
-        let e = &evals
+        let chunked_evals = [chunked_evals_zeta.clone(), chunked_evals_zeta_omega.clone()];
+
+        let zeta_n = zeta.pow(&[index.max_poly_size as u64]);
+        let zeta_omega_n = zeta_omega.pow(&[index.max_poly_size as u64]);
+
+        // normal evaluations
+        let power_of_eval_points_for_chunks = [zeta_n, zeta_omega_n];
+        let evals = &chunked_evals
             .iter()
-            .zip(evlp1.iter())
+            .zip(power_of_eval_points_for_chunks.iter())
             .map(|(es, &e1)| ProofEvaluations::<Fr<G>> {
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
@@ -314,24 +319,6 @@ where
 
         // compute and evaluate linearization polynomial
 
-        /*
-        {
-            let f = index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.gnrc_lnrz(&e[0]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
-            println!("p{} psm_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&index.cs.psm, None));
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.double_lnrz(&e, &alpha[range::DBL]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-        } */
 
         let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0].w)
             + &index
@@ -355,17 +342,17 @@ where
         let p_eval = if p.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(&evlp[0])], vec![p.evaluate(&evlp[1])]]
+            [vec![p.evaluate(&zeta)], vec![p.evaluate(&zeta_omega)]]
         };
         for i in 0..2 {
-            fr_sponge.absorb_evaluations(&p_eval[i], &evals[i])
+            fr_sponge.absorb_evaluations(&p_eval[i], &chunked_evals[i])
         }
 
         // query opening scaler challenges
-        oracles.v_chal = fr_sponge.challenge();
-        oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
-        oracles.u_chal = fr_sponge.challenge();
-        oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
+        let v_chal = fr_sponge.challenge();
+        let v = v_chal.to_field(&index.srs.get_ref().endo_r);
+        let u_chal = fr_sponge.challenge();
+        let u = u_chal.to_field(&index.srs.get_ref().endo_r);
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -412,13 +399,13 @@ where
             proof: index.srs.get_ref().open(
                 group_map,
                 polynoms,
-                &evlp.to_vec(),
                 oracles.v,
                 oracles.u,
+                &vec![zeta, zeta_omega],
                 fq_sponge_before_evaluations,
                 rng,
             ),
-            evals,
+            evals: chunked_evals,
             public,
             prev_challenges,
         })
