@@ -87,6 +87,7 @@ struct CamlProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
     // OCaml doesn't have sized arrays, so we have to convert to a tuple..
     pub evals: (ProofEvaluations<Vec<Fr<G>>>, ProofEvaluations<Vec<Fr<G>>>),
+    pub ft_eval1: Fr<G>,
     pub public: Vec<Fr<G>>,
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
@@ -102,6 +103,8 @@ pub struct ProverProof<G: AffineCurve> {
     // polynomial evaluations
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
+
+    pub ft_eval1: Fr<G>,
 
     // public part of the witness
     pub public: Vec<Fr<G>>,
@@ -147,6 +150,34 @@ where
             prev_challenges: p.prev_challenges,
         }
     }
+}
+
+/// Returns the smallest n such that a * n > b
+// TODO(mimoo): we use this pattern all over the place, create a function for that
+fn ceil_div(a: usize, b: usize) -> usize {
+    // ( a + b - 1 ) / b
+    let nominator = a
+        .checked_add(b)
+        .expect("overflow")
+        .checked_sub(1)
+        .expect("underflow");
+    nominator.checked_div(b).expect("division by zero")
+}
+
+/// Multiplies the chunks of a polynomial with powers of zeta^n
+fn chunk_polynomial<F: Field>(zeta_n: F, n: usize, f: DensePolynomial<F>) -> DensePolynomial<F> {
+    let chunks = (f.coeffs.len() + n - 1) / n;
+    let mut scale = F::one();
+    let mut coeffs = vec![F::zero(); n];
+
+    for chunk in coeffs.chunks(n) {
+        for (j, c) in chunk.iter().enumerate() {
+            coeffs[j] += scale * c;
+        }
+        scale *= zeta_n;
+    }
+
+    DensePolynomial { coeffs }
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -258,24 +289,13 @@ where
         t += &bnd;
 
         // commit to t
-        let t_comm = index
-            .srs
-            .get_ref()
-            .commit(&t, Some(index.max_quot_size), rng);
+        let t_comm = index.srs.get_ref().commit(&t, None, rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.0.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
-        {
-            let s = t_comm.0.shifted.unwrap();
-            if s.is_zero() {
-                fq_sponge.absorb_g(&[dummy])
-            } else {
-                fq_sponge.absorb_g(&[s])
-            }
-        };
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
@@ -283,8 +303,6 @@ where
         let zeta_omega = zeta * &omega;
 
         // evaluate the polynomials
-                t: t.eval(*e, index.max_poly_size),
-                f: Vec::new(),
         let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
@@ -312,26 +330,34 @@ where
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
-                t: DensePolynomial::eval_polynomial(&es.t, e1),
-                f: Fr::<G>::zero(),
             })
             .collect::<Vec<_>>();
 
         // compute and evaluate linearization polynomial
+        let f_chunked = {
+            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w)
+                + &index.cs.psdn_lnrz(
+                    &evals,
+                    &index.cs.fr_sponge_params,
+                    &alphas[range::PSDN],
+                ))
+                + &index.cs.ecad_lnrz(&evals, &alphas[range::ADD]))
+                + &index.cs.double_lnrz(&evals, &alphas[range::DBL]))
+                + &index.cs.endomul_lnrz(&evals, &alphas[range::ENDML]))
+                + &index.cs.vbmul_lnrz(&evals, &alphas[range::MUL]))
+                + &index
+                    .cs
+                    .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);
 
+            chunk_polynomial(zeta_n, index.max_poly_size, f)
+        };
 
-        let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0].w)
-            + &index
-                .cs
-                .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]))
-            + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]))
-            + &index.cs.double_lnrz(&e, &alpha[range::DBL]))
-            + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]))
-            + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]))
-            + &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+        let t_chunked = chunk_polynomial(zeta_n, index.max_poly_size, t);
+        let ft_chunked: DensePolynomial<Fr<G>> =
+            &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
 
-        evals[0].f = f.eval(evlp[0], index.max_poly_size);
-        evals[1].f = f.eval(evlp[1], index.max_poly_size);
+        let ft: DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
+        let ft_eval1 = ft.evaluate(&zeta_omega);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge = {
@@ -347,6 +373,7 @@ where
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &chunked_evals[i])
         }
+        fr_sponge.absorb(&ft_eval1);
 
         // query opening scaler challenges
         let v_chal = fr_sponge.challenge();
@@ -370,25 +397,44 @@ where
             shifted: None,
         };
 
-        let mut polynoms = polys
+        let omega_ft = {
+            let omega_t_chunked = t_comm
+                .1
+                .unshifted
+                .iter()
+                .rev()
+                .fold(Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x);
+            let omega_f_chunked = f_comm
+                .1
+                .unshifted
+                .iter()
+                .rev()
+                .fold(Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x);
+            PolyComm {
+                unshifted: vec![omega_f_chunked - (zeta_n - Fr::<G>::one()) * omega_t_chunked],
+                shifted: None,
+            }
+        };
+
+        let mut polynomials = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();
-        polynoms.extend(vec![(&p, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&z, None, z_comm.1)]);
+        polynomials.extend(
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
+        polynomials.extend(vec![(&ft, None, omega_ft)]);
 
         Ok(Self {
             commitments: ProverCommitments {
@@ -398,14 +444,15 @@ where
             },
             proof: index.srs.get_ref().open(
                 group_map,
-                polynoms,
-                oracles.v,
-                oracles.u,
+                polynomials,
                 &vec![zeta, zeta_omega],
+                v,
+                u,
                 fq_sponge_before_evaluations,
                 rng,
             ),
             evals: chunked_evals,
+            ft_eval1,
             public,
             prev_challenges,
         })
