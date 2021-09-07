@@ -105,8 +105,8 @@ pub struct RandomOracles<F: Field> {
     pub u_chal: ScalarChallenge<F>,
 }
 
-impl<F: Field> RandomOracles<F> {
-    pub fn zero() -> Self {
+impl<F: Field> Default for RandomOracles<F> {
+    fn default() -> Self {
         let c = ScalarChallenge(F::zero());
         Self {
             beta: F::zero(),

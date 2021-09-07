@@ -117,7 +117,7 @@ pub struct RandomOracles<F: Field> {
 impl<F: Field> RandomOracles<F> {
     pub fn zero() -> Self {
         Self {
-            po: RO::<F>::zero(),
+            po: RO::<F>::default(),
             beta: F::zero(),
             gamma: F::zero(),
         }

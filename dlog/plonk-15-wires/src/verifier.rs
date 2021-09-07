@@ -31,7 +31,7 @@ where
         &self,
         index: &Index<G>,
         evaluation_points: &[Fr<G>],
-        evlp: &[Fr<G>],
+        powers_of_eval_points_for_chunks: &[Fr<G>],
     ) -> Vec<Vec<Vec<Fr<G>>>> {
         self.prev_challenges
             .iter()
@@ -65,7 +65,7 @@ where
                                 ret
                             })
                             .fold(Fr::<G>::zero(), |x, y| x + &y);
-                        vec![full - &(diff * &evlp[i]), diff]
+                        vec![full - &(diff * &powers_of_eval_points_for_chunks[i]), diff]
                     })
                     .collect()
             })
@@ -89,22 +89,26 @@ where
         Fr<G>,
     ) {
         let n = index.domain.size;
+
         // Run random oracle argument to sample verifier oracles
-        let mut oracles = RandomOracles::<Fr<G>>::zero();
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+
         // absorb the public input, l, r, o polycommitments into the argument
         fq_sponge.absorb_g(&p_comm.unshifted);
         self.commitments
             .w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+
         // sample beta, gamma oracles
-        oracles.beta = fq_sponge.challenge();
-        oracles.gamma = fq_sponge.challenge();
+        let beta = fq_sponge.challenge();
+        let gamma = fq_sponge.challenge();
+
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
-        oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
-        oracles.alpha = oracles.alpha_chal.to_field(&index.srs.get_ref().endo_r);
+        let alpha_chal = ScalarChallenge(fq_sponge.challenge());
+        let alpha = alpha_chal.to_field(&index.srs.get_ref().endo_r);
+
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
@@ -122,8 +126,8 @@ where
             }
         };
 
-        oracles.zeta_chal = ScalarChallenge(fq_sponge.challenge());
-        oracles.zeta = oracles.zeta_chal.to_field(&index.srs.get_ref().endo_r);
+        let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+        let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
         let digest = fq_sponge.clone().digest();
         let mut fr_sponge = {
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
@@ -132,16 +136,16 @@ where
         };
 
         // prepare some often used values
-        let zeta1 = oracles.zeta.pow(&[n]);
-        let zetaw = oracles.zeta * &index.domain.group_gen;
-        let alpha = range::alpha_powers(oracles.alpha);
+        let zeta1 = zeta.pow(&[n]);
+        let zetaw = zeta * &index.domain.group_gen;
+        let alphas = range::alpha_powers(alpha);
 
         // compute Lagrange base evaluation denominators
         let w = (0..self.public.len())
             .zip(index.domain.elements())
             .map(|(_, w)| w)
             .collect::<Vec<_>>();
-        let mut lagrange = w.iter().map(|w| oracles.zeta - w).collect::<Vec<_>>();
+        let mut lagrange = w.iter().map(|w| zeta - w).collect::<Vec<_>>();
         (0..self.public.len())
             .zip(w.iter())
             .for_each(|(_, w)| lagrange.push(zetaw - w));
@@ -182,22 +186,22 @@ where
         }
 
         // query opening scalar challenges
-        oracles.v_chal = fr_sponge.challenge();
-        oracles.v = oracles.v_chal.to_field(&index.srs.get_ref().endo_r);
-        oracles.u_chal = fr_sponge.challenge();
-        oracles.u = oracles.u_chal.to_field(&index.srs.get_ref().endo_r);
+        let v_chal = fr_sponge.challenge();
+        let v = v_chal.to_field(&index.srs.get_ref().endo_r);
+        let u_chal = fr_sponge.challenge();
+        let u = u_chal.to_field(&index.srs.get_ref().endo_r);
 
-        let ep = [oracles.zeta, zetaw];
+        let ep = [zeta, zetaw];
 
-        let evlp = [
-            oracles.zeta.pow(&[index.max_poly_size as u64]),
+        let powers_of_eval_points_for_chunks = [
+            zeta.pow(&[index.max_poly_size as u64]),
             zetaw.pow(&[index.max_poly_size as u64]),
         ];
 
         let polys: Vec<(PolyComm<G>, _)> = self
             .prev_challenges
             .iter()
-            .zip(self.prev_chal_evals(index, &ep, &evlp))
+            .zip(self.prev_chal_evals(index, &ep, &powers_of_eval_points_for_chunks))
             .map(|(c, e)| (c.1.clone(), e))
             .collect();
 
@@ -226,22 +230,27 @@ where
                 Some(index.max_quot_size),
             )]);
 
-            combined_inner_product::<G>(
-                &ep,
-                &oracles.v,
-                &oracles.u,
-                &es,
-                index.srs.get_ref().g.len(),
-            )
+            combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.get_ref().g.len())
         };
 
         (
             fq_sponge,
             digest,
-            oracles,
-            alpha,
+            RandomOracles {
+                beta,
+                gamma,
+                alpha_chal,
+                alpha: alpha,
+                zeta,
+                v,
+                u,
+                zeta_chal,
+                v_chal,
+                u_chal,
+            },
+            alphas,
             p_eval,
-            evlp,
+            powers_of_eval_points_for_chunks,
             polys,
             zeta1,
             combined_inner_product,
@@ -256,6 +265,7 @@ where
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError> {
+        // if there's no proof to verify, return early
         if proofs.len() == 0 {
             return Ok(true);
         }
