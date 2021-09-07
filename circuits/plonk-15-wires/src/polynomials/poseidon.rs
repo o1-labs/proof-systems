@@ -359,15 +359,11 @@ mod tests {
             ProofEvaluations {
                 w: w_zeta,
                 z: Fp::zero(),
-                t: Fp::zero(),
-                f: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
             },
             ProofEvaluations {
                 w: w_zeta_omega,
                 z: Fp::zero(),
-                t: Fp::zero(),
-                f: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
             },
         ];

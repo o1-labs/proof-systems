@@ -1,10 +1,15 @@
+use mina_curves::pasta;
+
+pub mod chunked;
 mod combine;
-mod qnr_field;
-pub use qnr_field::*;
 pub mod commitment;
+mod qnr_field;
 pub mod srs;
 
-use mina_curves::pasta;
+pub use commitment::PolyComm;
+pub use qnr_field::*;
+
+// Fields that can be used for commitments
 
 pub trait CommitmentField: QnrField {}
 

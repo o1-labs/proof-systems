@@ -18,7 +18,7 @@ use commitment_dlog::commitment::{
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    nolookup::scalars::ProofEvaluations,
+    nolookup::{constraints::ConstraintSystem, scalars::ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
 };
 use rand::thread_rng;
@@ -88,6 +88,7 @@ struct CamlProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
     // OCaml doesn't have sized arrays, so we have to convert to a tuple..
     pub evals: (ProofEvaluations<Vec<Fr<G>>>, ProofEvaluations<Vec<Fr<G>>>),
+    pub ft_eval1: Fr<G>,
     pub public: Vec<Fr<G>>,
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
@@ -103,6 +104,8 @@ pub struct ProverProof<G: AffineCurve> {
     // polynomial evaluations
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
+
+    pub ft_eval1: Fr<G>,
 
     // public part of the witness
     pub public: Vec<Fr<G>>,
@@ -259,24 +262,13 @@ where
         t += &bnd;
 
         // commit to t
-        let t_comm = index
-            .srs
-            .get_ref()
-            .commit(&t, Some(index.max_quot_size), rng);
+        let t_comm = index.srs.get_ref().commit(&t, None, rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
         let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.0.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
-        {
-            let s = t_comm.0.shifted.unwrap();
-            if s.is_zero() {
-                fq_sponge.absorb_g(&[dummy])
-            } else {
-                fq_sponge.absorb_g(&[s])
-            }
-        };
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
@@ -284,8 +276,6 @@ where
         let zeta_omega = zeta * &omega;
 
         // evaluate the polynomials
-                t: t.eval(*e, index.max_poly_size),
-                f: Vec::new(),
         let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
@@ -313,8 +303,6 @@ where
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
-                t: DensePolynomial::eval_polynomial(&es.t, e1),
-                f: Fr::<G>::zero(),
             })
             .collect::<Vec<_>>();
 
@@ -339,8 +327,6 @@ where
 
         let t_chunked = t.chunk_polynomial(zeta_n, index.max_poly_size);
         let ft: DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
-        let ft_eval0 = ft.evaluate(&zeta);
-        println!("prover's ft_eval0 = {}", ft_eval0);
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
@@ -357,6 +343,7 @@ where
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &chunked_evals[i])
         }
+        fr_sponge.absorb(&ft_eval1);
 
         // query opening scaler challenges
         let v_chal = fr_sponge.challenge();
@@ -380,55 +367,39 @@ where
             shifted: None,
         };
 
-        let omega_f = {
-            let zkp = index.cs.zkpm.evaluate(&zeta);
-            let evals = vec![
-                chunked_evals_zeta.combine(zeta),
-                chunked_evals_zeta_omega.combine(zeta_omega),
-            ];
-            let perm_scalar0 =
-                ConstraintSystem::perm_scalars(&evals, beta, gamma, &alphas[range::PERM], zkp);
-            z_comm.1.map(|x| perm_scalar0 * x)
-        };
+        // construct the blinding part of the ft polynomial for Maller's optimization
+        // (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
+        let blinding_ft = {
+            let blinding_t = t_comm.1.chunk_blinding(zeta_n);
+            let blinding_f = Fr::<G>::zero();
 
-        let omega_ft = {
-            let omega_t_chunked = t_comm
-                .1
-                .unshifted
-                .iter()
-                .rev()
-                .fold(Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x);
-            let omega_f_chunked = omega_f
-                .unshifted
-                .iter()
-                .rev()
-                .fold(Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x);
             PolyComm {
-                // rand_f - Z_H(zeta) * rand_t
-                unshifted: vec![omega_f_chunked - (zeta_n - Fr::<G>::one()) * omega_t_chunked],
+                // blinding_f - Z_H(zeta) * blinding_t
+                unshifted: vec![blinding_f - (zeta_n - Fr::<G>::one()) * blinding_t],
                 shifted: None,
             }
         };
 
+        // construct evaluation proof
         let mut polynomials = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();
-        polynoms.extend(vec![(&p, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&z, None, z_comm.1), (&f, None, non_hiding(1))]);
-        polynoms.extend(
+        polynomials.extend(vec![(&z, None, z_comm.1)]);
+        polynomials.extend(
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        polynoms.extend(vec![(&t, Some(index.max_quot_size), t_comm.1)]);
+        polynomials.extend(vec![(&ft, None, blinding_ft)]);
 
         Ok(Self {
             commitments: ProverCommitments {
@@ -438,14 +409,15 @@ where
             },
             proof: index.srs.get_ref().open(
                 group_map,
-                polynoms,
-                oracles.v,
-                oracles.u,
+                polynomials,
                 &vec![zeta, zeta_omega],
+                v,
+                u,
                 fq_sponge_before_evaluations,
                 rng,
             ),
             evals: chunked_evals,
+            ft_eval1,
             public,
             prev_challenges,
         })
