@@ -16,6 +16,7 @@ jobs:
 
             - name: Build Documentation
               run: |
+                rustup install nightly
                 RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all --no-deps
 
             - name: Deploy
