@@ -42,7 +42,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         for i in 0..GENERICS {
             res.push(w_zeta[i]);
         }
-        res.push(F::one()); // TODO(mimoo): this one shouldn't be here no?
         return res;
     }
 
