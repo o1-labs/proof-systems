@@ -7,7 +7,6 @@ members = [
     "dlog/commitment",
     "dlog/plonk",
     "dlog/plonk-15-wires",
-    "dlog/plonk-15-wires-plookup",
     "groupmap",
     "oracle",
     "utils",
