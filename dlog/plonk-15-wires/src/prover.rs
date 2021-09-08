@@ -15,7 +15,8 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
+use o1_utils::ExtendedDensePolynomial;
+use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
     nolookup::scalars::ProofEvaluations,
     wires::{COLUMNS, PERMUTS},
@@ -318,20 +319,29 @@ where
             .collect::<Vec<_>>();
 
         // compute and evaluate linearization polynomial
+        let f_chunked = {
+            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w)
+                + &index.cs.psdn_lnrz(
+                    &evals,
+                    &index.cs.fr_sponge_params,
+                    &alphas[range::PSDN],
+                ))
+                + &index.cs.ecad_lnrz(&evals, &alphas[range::ADD]))
+                + &index.cs.double_lnrz(&evals, &alphas[range::DBL]))
+                + &index.cs.endomul_lnrz(&evals, &alphas[range::ENDML]))
+                + &index.cs.vbmul_lnrz(&evals, &alphas[range::MUL]))
+                + &index
+                    .cs
+                    .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);
 
+            f.chunk_polynomial(zeta_n, index.max_poly_size)
+        };
 
-        let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0].w)
-            + &index
-                .cs
-                .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]))
-            + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]))
-            + &index.cs.double_lnrz(&e, &alpha[range::DBL]))
-            + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]))
-            + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]))
-            + &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
-
-        evals[0].f = f.eval(evlp[0], index.max_poly_size);
-        evals[1].f = f.eval(evlp[1], index.max_poly_size);
+        let t_chunked = t.chunk_polynomial(zeta_n, index.max_poly_size);
+        let ft: DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
+        let ft_eval0 = ft.evaluate(&zeta);
+        println!("prover's ft_eval0 = {}", ft_eval0);
+        let ft_eval1 = ft.evaluate(&zeta_omega);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
         let mut fr_sponge = {
@@ -370,7 +380,37 @@ where
             shifted: None,
         };
 
-        let mut polynoms = polys
+        let omega_f = {
+            let zkp = index.cs.zkpm.evaluate(&zeta);
+            let evals = vec![
+                chunked_evals_zeta.combine(zeta),
+                chunked_evals_zeta_omega.combine(zeta_omega),
+            ];
+            let perm_scalar0 =
+                ConstraintSystem::perm_scalars(&evals, beta, gamma, &alphas[range::PERM], zkp);
+            z_comm.1.map(|x| perm_scalar0 * x)
+        };
+
+        let omega_ft = {
+            let omega_t_chunked = t_comm
+                .1
+                .unshifted
+                .iter()
+                .rev()
+                .fold(Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x);
+            let omega_f_chunked = omega_f
+                .unshifted
+                .iter()
+                .rev()
+                .fold(Fr::<G>::zero(), |acc, x| (zeta_n * &acc) + x);
+            PolyComm {
+                // rand_f - Z_H(zeta) * rand_t
+                unshifted: vec![omega_f_chunked - (zeta_n - Fr::<G>::one()) * omega_t_chunked],
+                shifted: None,
+            }
+        };
+
+        let mut polynomials = polys
             .iter()
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();

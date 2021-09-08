@@ -14,10 +14,8 @@ use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial as DP},
     EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D,
 };
-use oracle::{
-    rndoracle::ProofError,
-    utils::{EvalUtils, PolyUtils},
-};
+use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use oracle::rndoracle::ProofError;
 use rand::rngs::ThreadRng;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {

@@ -7,7 +7,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 use crate::nolookup::scalars::{ProofEvaluations as PE, RandomOracles as RO};
 use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
-use oracle::utils::PolyUtils;
+use o1_utils::ExtendedDensePolynomial;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {

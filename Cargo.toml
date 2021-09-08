@@ -9,7 +9,8 @@ members = [
     "dlog/plonk-15-wires",
     "dlog/plonk-15-wires-plookup",
     "groupmap",
-    "oracle"
+    "oracle",
+    "utils",
 ]
 
 [profile.release]

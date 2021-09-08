@@ -15,7 +15,8 @@ use ark_poly::{
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
+use o1_utils::ExtendedDensePolynomial;
+use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_circuits::{
     constraints::ConstraintSystem,
     scalars::{ProofEvaluations, RandomOracles},

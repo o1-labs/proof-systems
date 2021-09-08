@@ -17,8 +17,8 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
+use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
-use oracle::utils::EvalUtils;
 
 pub struct ConstraintSystem<F: FftField> {
     pub cs: CS<F>, // plonk constraint system

@@ -20,6 +20,7 @@ use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand,
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
+use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
@@ -961,59 +962,6 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
         res += &(x * y);
     }
     res
-}
-
-pub trait Utils<F: Field> {
-    /// This function "scales" (multiplies all the coefficients of) a polynomial with a scalar.
-    fn scale(&self, elm: F) -> Self;
-    /// Shifts all the coefficients to the right.
-    fn shiftr(&self, size: usize) -> Self;
-    /// `eval_polynomial(coeffs, x)` evaluates a polynomial given its coefficients `coeffs` and a point `x`.
-    fn eval_polynomial(coeffs: &[F], x: F) -> F;
-    /// This function evaluates polynomial in chunks.
-    fn eval(&self, elm: F, size: usize) -> Vec<F>;
-}
-
-impl<F: Field> Utils<F> for DensePolynomial<F> {
-    fn eval_polynomial(coeffs: &[F], x: F) -> F {
-        // this uses https://en.wikipedia.org/wiki/Horner%27s_method
-        let mut res = F::zero();
-        for c in coeffs.iter().rev() {
-            res *= &x;
-            res += c;
-        }
-        res
-    }
-
-    fn scale(&self, elm: F) -> Self {
-        let mut result = self.clone();
-        for coeff in &mut result.coeffs {
-            *coeff *= &elm
-        }
-        result
-    }
-
-    fn shiftr(&self, size: usize) -> Self {
-        let mut result = vec![F::zero(); size];
-        result.extend(self.coeffs.clone());
-        DensePolynomial::<F>::from_coefficients_vec(result)
-    }
-
-    fn eval(&self, elm: F, size: usize) -> Vec<F> {
-        (0..self.coeffs.len())
-            .step_by(size)
-            .map(|i| {
-                Self::from_coefficients_slice(
-                    &self.coeffs[i..if i + size > self.coeffs.len() {
-                        self.coeffs.len()
-                    } else {
-                        i + size
-                    }],
-                )
-                .evaluate(&elm)
-            })
-            .collect()
-    }
 }
 
 //
