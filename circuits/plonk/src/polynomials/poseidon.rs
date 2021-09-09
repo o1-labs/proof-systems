@@ -9,10 +9,8 @@ use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use oracle::{
-    poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstantsBasic},
-    utils::{EvalUtils, PolyUtils},
-};
+use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use oracle::poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstantsBasic};
 use rayon::prelude::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {

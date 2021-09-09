@@ -12,10 +12,8 @@ use crate::wires::COLUMNS;
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use oracle::{
-    poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W},
-    utils::{EvalUtils, PolyUtils},
-};
+use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use oracle::poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W};
 
 enum CurrOrNext {
     Curr,
@@ -361,15 +359,11 @@ mod tests {
             ProofEvaluations {
                 w: w_zeta,
                 z: Fp::zero(),
-                t: Fp::zero(),
-                f: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
             },
             ProofEvaluations {
                 w: w_zeta_omega,
                 z: Fp::zero(),
-                t: Fp::zero(),
-                f: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
             },
         ];
