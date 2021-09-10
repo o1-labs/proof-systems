@@ -387,8 +387,10 @@ where
                 // generic
                 commitments_part.push(&index.qm_comm);
                 commitments_part.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
-                commitments_part.push(&index.qc_comm);
                 scalars_part.extend(&ConstraintSystem::gnrc_scalars(&evals[0].w));
+
+                commitments_part.push(&index.qc_comm);
+                scalars_part.push(Fr::<G>::one());
 
                 // poseidon
                 scalars_part.extend(&ConstraintSystem::psdn_scalars(
