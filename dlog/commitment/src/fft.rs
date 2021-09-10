@@ -82,7 +82,7 @@ fn parallel_fft<T: DomainCoeff<F>, F: FftField>(
         .for_each(|(i, a)| *a = tmp[i % num_chunks][i / num_chunks]);
 }
 
-pub fn serial_group_fft<G: ProjectiveCurve>(a: &mut [G], omega: G::ScalarField, log_n: u32) {
+fn serial_group_fft<G: ProjectiveCurve>(a: &mut [G], omega: G::ScalarField, log_n: u32) {
     let n = a.len() as u32;
     assert_eq!(n, 1 << log_n);
 
@@ -117,6 +117,14 @@ pub fn serial_group_fft<G: ProjectiveCurve>(a: &mut [G], omega: G::ScalarField, 
     }
 }
 
+/// The FFT algorithm for a field F can be performed on vectors whose entries are elements
+/// of any F-vector space. The traditional finite-field FFT is when this vector space is
+/// F itself.
+///
+/// But, a group with scalar field F is also an F-vector space, and we can use the FFT algorithm
+/// to convert a series of group elements `[g_0, ..., g_{n-1}]`, with `g_i` thought of as
+/// a commitment to the polynomial `x^i`, into a series of group elements that correspond to the
+/// commitments to the Lagrange basis polynomials over the domain of size n.
 pub fn group_fft<G: ProjectiveCurve>(a: &mut [G], omega: G::ScalarField, log_n: u32) {
     best_fft(a, omega, log_n, serial_group_fft::<G>)
 }

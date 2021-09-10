@@ -19,12 +19,15 @@ use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone)]
 pub struct SRS<G: CommitmentCurve> {
-    pub g: Vec<G>, // for committing polynomials
-    pub h: G,      // blinding
-    pub lagrange_bases: HashMap<usize, Vec<G>>, // Lagrange bases, per domain size
-
-    // Coefficients for the curve endomorphism
+    /// The vector of group elements for committing to polynomials in coefficient form
+    pub g: Vec<G>,
+    /// A group element used for blinding commitments
+    pub h: G,
+    /// Commitments to Lagrange bases, per domain size
+    pub lagrange_bases: HashMap<usize, Vec<G>>,
+    /// Coefficient for the curve endomorphism
     pub endo_r: G::ScalarField,
+    /// Coefficient for the curve endomorphism
     pub endo_q: G::BaseField,
 }
 
@@ -108,9 +111,7 @@ where
         self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());
     }
 
-    // This function creates SRS instance for circuits up to depth d
-    //      depth: maximal depth of SRS string
-    //      size: circuit size
+    /// This function creates SRS instance for circuits with number of rows up to `depth`.
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
