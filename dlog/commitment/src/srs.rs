@@ -6,15 +6,13 @@ This source file implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
-use rayon::prelude::*;
-use ark_ff::{Field, BigInteger, FromBytes, PrimeField, ToBytes};
+use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
 use ark_ec::{ProjectiveCurve, AffineCurve};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
 use std::io::{Read, Result as IoResult, Write};
 use std::collections::HashMap;
-use crate::fft::group_fft;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone)]
@@ -93,19 +91,7 @@ where
 
         let mut lg: Vec<<G as AffineCurve>::Projective> =
             self.g[0..n].iter().map(|g| g.into_projective()).collect();
-
-        group_fft::<<G as AffineCurve>::Projective>(
-            lg.as_mut_slice(),
-            domain.group_gen_inv,
-            domain.log_size_of_group,
-        );
-
-        let n_inv = <G::ScalarField as From<u64>>::from(n as u64)
-            .inverse()
-            .unwrap();
-        lg.par_iter_mut().for_each(|g| {
-            *g *= n_inv;
-        });
+        domain.ifft_in_place(&mut lg);
 
         <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
         self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());

@@ -1,6 +1,5 @@
 mod combine;
 mod qnr_field;
-mod fft;
 pub use qnr_field::*;
 pub mod commitment;
 pub mod srs;
