@@ -89,6 +89,61 @@ where
             return;
         }
 
+        // Let V be a vector space over the field F.
+        //
+        // Given
+        // - a domain [ 1, w, w^2, ..., w^{n - 1} ]
+        // - a vector v := [ v_0, ..., v_{n - 1} ] in V^n
+        //
+        // the FFT algorithm computes the matrix application
+        //
+        // u = M(w) * v
+        //
+        // where
+        // M(w) =
+        //   1 1       1           ... 1
+        //   1 w       w^2         ... w^{n-1}
+        //   ...
+        //   1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1}
+        //
+        // The IFFT algorithm computes
+        //
+        // v = M(w)^{-1} * u
+        //
+        // Let's see how we can use this algorithm to compute the lagrange basis
+        // commitments.
+        //
+        // Let V be the vector space F[x] of polynomials in x over F.
+        // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
+        // normalized Lagrange polynomial (where L_i(omega^j) = j == i ? 1 : 0).
+        //
+        // Consider the rows of M(w) * v. Let me write out the matrix and vector so you
+        // can see more easily.
+        //
+        //   | 1 1       1           ... 1               |   | L_0     |
+        //   | 1 w       w^2         ... w^{n-1}         | * | L_1     |
+        //   | ...                                       |   | ...     |
+        //   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |
+        //
+        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it's the polynomial
+        // that has the value 1 on every element of the domain.
+        // In other words, it's the polynomial 1.
+        //
+        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it's the
+        // polynomial which has value w^i on w^i.
+        // In other words, it's the polynomial x.
+        //
+        // In general, you can see that row i is in fact the polynomial x^i.
+        //
+        // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
+        //
+        // Therefore, the IFFT algorithm, when applied to the vector u (the standard
+        // monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.
+        //
+        // Now, because the polynomial commitment scheme is additively homomorphic, and
+        // because the commitment to the polynomial x^i is just self.g[i], we can obtain
+        // commitments to the normalized Lagrange polynomials by applying IFFT to the
+        // vector self.g[0..n].
         let mut lg: Vec<<G as AffineCurve>::Projective> =
             self.g[0..n].iter().map(|g| g.into_projective()).collect();
         domain.ifft_in_place(&mut lg);
