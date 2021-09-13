@@ -115,7 +115,7 @@ where
         //
         // Let V be the vector space F[x] of polynomials in x over F.
         // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
-        // normalized Lagrange polynomial (where L_i(omega^j) = j == i ? 1 : 0).
+        // normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).
         //
         // Consider the rows of M(w) * v. Let me write out the matrix and vector so you
         // can see more easily.
