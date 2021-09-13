@@ -975,6 +975,33 @@ mod tests {
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
+    fn test_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments : Vec<_> =
+            (0..n).map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p =
+                    Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain)
+                    .interpolate();
+                let c = srs.commit_non_hiding(&p, None);
+                assert!(c.shifted.is_none());
+                assert_eq!(c.unshifted.len(), 1);
+                c.unshifted[0]
+            }).collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(computed_lagrange_commitments[i], expected_lagrange_commitments[i]);
+        }
+    }
+
+    #[test]
     fn test_opening_proof() {
         // create two polynomials
         let coeffs: [Fp; 10] = array_init(|i| Fp::from(i as u32));
