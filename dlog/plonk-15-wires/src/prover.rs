@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::{Field, Zero};
+use ark_ff::{FftField, Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -17,13 +17,23 @@ use commitment_dlog::commitment::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_15_wires_circuits::{
-    nolookup::scalars::{ProofEvaluations, RandomOracles},
+    expr::{Environment, l0_1},
+    polynomials::{chacha, lookup},
+    nolookup::scalars::{LookupEvaluations, ProofEvaluations, RandomOracles},
     wires::{COLUMNS, PERMUTS},
+    gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
 };
 use rand::thread_rng;
+use std::collections::HashMap;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
+
+#[derive(Clone)]
+pub struct LookupCommitments<G: AffineCurve> {
+    pub sorted: Vec<PolyComm<G>>,
+    pub aggreg: PolyComm<G>
+}
 
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
@@ -31,6 +41,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub w_comm: [PolyComm<G>; COLUMNS],
     pub z_comm: PolyComm<G>,
     pub t_comm: PolyComm<G>,
+    pub lookup: Option<LookupCommitments<G>>,
 }
 
 #[derive(Clone)]
@@ -149,6 +160,33 @@ where
     }
 }
 
+fn combine_evaluations<F: FftField>(
+    init : (Evaluations<F, D<F>>, Evaluations<F, D<F>>),
+    alpha: F,
+    prev_alpha_pow: F,
+    es: Vec<Evaluations<F, D<F>>>,
+    ) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>) {
+
+    let mut alpha_pow = prev_alpha_pow;
+    let pows = (0..).map(|_| {
+        alpha_pow *= alpha;
+        alpha_pow
+    });
+
+    es.into_iter().zip(pows).fold(init, |(mut a4, mut a8), (mut e, alpha_pow)| {
+        e.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+        if e.domain().size == a4.domain().size {
+            a4 += &e;
+        } else if e.domain().size == a8.domain().size {
+            a8 += &e;
+        } else {
+            panic!("Bad evaluation")
+        }
+        drop(e);
+        (a4, a8)
+    })
+}
+
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
@@ -163,6 +201,7 @@ where
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
+        let d1 = index.cs.domain.d1;
         let n = index.cs.domain.d1.size as usize;
         for w in witness.iter() {
             if w.len() != n {
@@ -205,9 +244,144 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
+        let lookup_info = LookupInfo::<Fr<G>>::create();
+        let lookup_used = lookup_info.lookup_used(&index.cs.gates);
+        let joint_combiner : Option<Fr<G>> =
+            lookup_used.as_ref().map(|u| {
+                match u {
+                    LookupsUsed::Joint =>
+                        ScalarChallenge(fq_sponge.challenge()),
+                    LookupsUsed::Single =>
+                        ScalarChallenge(Fr::<G>::zero())
+                }.to_field(&index.srs.get_ref().endo_r)
+            });
+
+        let iter_lookup_table = || (0..n).map(|i| {
+            let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+            combine_table_entry(joint_combiner.unwrap(), row)
+        });
+
+        // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
+        // reduced to a single lookup
+        // sum_i joint_combiner^i f_i
+        // in the "joint table"
+        // sum_i joint_combiner^i T_i
+        //
+        // We write down all these combined joint lookups in the sorted-lookup
+        // table, so `lookup_sorted` ends up being a list of all these combined values.
+        //
+        // We will commit to the columns of lookup_sorted. For example, the 0th one,
+        //
+        // as
+        //
+        // sum_i lookup_sorted[0][i] L_i
+        //
+        // where L_i is the ith normalized lagrange commitment, and where
+        // lookup_sorted[0][i] = sum_j joint_combiner^j f_{0, i, j}
+        //
+        // for some lookup values f_{0, i, j}
+        //
+        // Computing it that way is not the best, since for example, in our four-bit xor table,
+        // all the individual f_{0, i, j} are only four bits while the combined scalar
+        //
+        // sum_j joint_combiner^j f_{0, i, j}
+        //
+        // will (with overwhelming probability) be a basically full width field element.
+        //
+        // As a result, if the lookup values are smaller, it will be better not to
+        // combine the joint lookup values and instead to compute the commitment to
+        // lookup_sorted[0][i] (for example) as
+        //
+        // sum_j joint_combiner^j (sum_i f_{0, i, j} L_i)
+        // = sum_i (sum_j joint_combiner^j f_{0, i, j}) L_i
+        // = sum_i lookup_sorted[0][i] L_i
+        //
+        // This should be quite a lot cheaper when the scalars f_{0, i, j} are small.
+        // We should try it to see how it is in practice. It would be nice if there
+        // were some cheap computation we could run on the lookup values to determine
+        // whether we should combine the scalars before the multi-exp or not, like computing
+        // their average length or something like that.
+
+        let dummy_lookup_value: Option<Fr<G>> =
+            joint_combiner.as_ref().map(|j| {
+                combine_table_entry(
+                    *j,
+                    index.cs.dummy_lookup_values[0].iter())
+            });
+
+        let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8)  =
+            match &joint_combiner {
+                None => (None, None, None, None),
+                Some(joint_combiner) => {
+                    // TODO: Once we switch to committing using lagrange commitments,
+                    // `witness` will be consumed when we interpolate, so interpolation will
+                    // have to moved below this.
+                    let lookup_sorted =
+                        lookup::sorted(
+                            dummy_lookup_value.unwrap(),
+                            iter_lookup_table,
+                            index.cs.lookup_table_lengths[0],
+                            d1,
+                            &index.cs.gates,
+                            &witness,
+                            *joint_combiner,
+                            rng)?;
+                    let coeffs : Vec<_> =
+                        // TODO: When we switch to lagrange we can avoid this clone.
+                        lookup_sorted.iter().map(|e| e.clone().interpolate()).collect();
+                    let comm : Vec<_> =
+                        coeffs.iter()
+                        .map(|p| index.srs.get_ref().commit(p, None, rng)).collect();
+                    let evals8 : Vec<_> =
+                        coeffs.iter()
+                        .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
+                        .collect();
+
+                    // absorb lookup polynomials
+                    comm.iter().for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
+
+                    (Some(lookup_sorted), Some(coeffs), Some(comm), Some(evals8))
+                }
+            };
+
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
+
+        let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
+            // compute lookup aggregation polynomial
+            match (&joint_combiner, lookup_sorted) {
+                (None, None) => (None, None, None),
+                (Some(joint_combiner), Some(lookup_sorted)) => {
+                    let aggreg =
+                        lookup::aggregation(
+                            dummy_lookup_value.unwrap(),
+                            iter_lookup_table(),
+                            d1,
+                            &index.cs.gates,
+                            &witness,
+                            *joint_combiner,
+                            oracles.beta, oracles.gamma,
+                            &lookup_sorted,
+                            rng)?;
+                    drop(lookup_sorted);
+                    use ark_ff::One;
+                    if aggreg.evals[n - 3] != Fr::<G>::one() {
+                        panic!("aggregation incorrect: {}", aggreg.evals[n-3]);
+                    }
+
+                    // TODO: use commit_evaluations once lagrange changes land
+                    let coeffs = aggreg.interpolate();
+                    let comm = index.srs.get_ref().commit(&coeffs, None, rng);
+                    fq_sponge.absorb_g(&comm.0.unshifted);
+
+                    // TODO: There's probably a clever way to expand the domain without
+                    // interpolating
+                    let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
+                    (Some(coeffs), Some(comm), Some(evals8))
+                },
+                (Some(_), None) | (None, Some(_)) => panic!("unreachable")
+            };
 
         // compute permutation aggregation polynomial
         let z = index.cs.perm_aggreg(witness, &oracles, rng)?;
@@ -223,7 +397,54 @@ where
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&w, &z);
 
+        let lookup_table_combined =
+            // TODO w correct, c incorrect
+            joint_combiner.as_ref().map(|j| {
+                let joint_table = &index.cs.lookup_tables8[0];
+                let mut res = joint_table[joint_table.len() - 1].clone();
+                for col in joint_table.iter().rev().skip(1) {
+                    res.evals.iter_mut().for_each(|e| *e *= j);
+                    res += &col;
+                }
+                res
+            });
+
         // compute quotient polynomial
+        let env =
+            joint_combiner.as_ref()
+            .zip(lookup_table_combined.as_ref())
+            .zip(lookup_sorted8.as_ref())
+            .zip(lookup_aggreg8.as_ref()).map(|(((joint_combiner, lookup_table_combined), lookup_sorted), lookup_aggreg)| {
+            let mut index_evals = HashMap::new();
+                use GateType::*;
+                index_evals.insert(Poseidon, &index.cs.ps8);
+                index_evals.insert(Add, &index.cs.addl);
+                index_evals.insert(Double, &index.cs.doubl8);
+                index_evals.insert(Vbmul, &index.cs.mull8);
+                index_evals.insert(Endomul, &index.cs.emull);
+                [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal].iter().enumerate().for_each(|(i, g)| {
+                    if let Some(c) = &index.cs.chacha8 {
+                        index_evals.insert(*g, &c[i]);
+                    }
+                });
+
+                Environment {
+                    alpha: oracles.alpha,
+                    beta: oracles.beta,
+                    gamma: oracles.gamma,
+                    joint_combiner: *joint_combiner,
+                    witness: &lagrange.d8.this.w,
+                    zk_polynomial: &index.cs.zkpl,
+                    z: &lagrange.d8.this.z,
+                    l0_1: l0_1(d1),
+                    domain: index.cs.domain,
+                    lookup_aggreg: &lookup_aggreg,
+                    index: index_evals,
+                    lookup_sorted: &lookup_sorted,
+                    lookup_table: lookup_table_combined,
+                    lookup_selectors: &index.cs.lookup_selectors,
+                }
+            });
 
         // permutation
         let (perm, bnd) = index
@@ -245,9 +466,51 @@ where
         // scalar multiplication
         let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alpha[range::MUL]);
 
+
         // collect contribution evaluations
         let t4 = &(&add + &mul4) + &(&pos4 + &(&gen + &doub4));
+        let t4 =
+            match env.as_ref() {
+                None => t4,
+                Some(env) => {
+                    let start = std::time::Instant::now();
+                    let chacha = chacha::constraint(range::CHACHA.start).evaluations(env);
+                    println!("{}{:?}", "chacha time: ", start.elapsed());
+                    assert_eq!(chacha.evals.len(), 4 * n);
+                    for i in 0..n {
+                        if ! chacha.evals[i * 4].is_zero() {
+                            println!("{}", i);
+                            println!("{:?}", index.cs.gates[i].typ);
+                        }
+                    }
+                    &t4 + &chacha
+                }
+            };
         let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &doub8)));
+
+        // quotient polynomial for lookup
+        // lookup::constraints
+        let (t4, t8) =
+            match &env {
+                None => (t4, t8),
+                Some(env) => {
+                    let start = std::time::Instant::now();
+                    let es = combine_evaluations(
+                        (t4, t8),
+                        oracles.alpha,
+                        alpha[alpha.len() - 1],
+                        lookup::constraints(dummy_lookup_value.unwrap(), d1)
+                        .iter().map(|e| e.evaluations(env)).collect()
+                    );
+                    println!("{}{:?}", "combine time: ", start.elapsed());
+                    es
+                }
+            };
+        drop(env);
+        drop(lookup_table_combined);
+        drop(lookup_sorted8);
+        drop(lookup_aggreg8);
+        // TODO: Drop everything else referenced in env
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
@@ -292,8 +555,27 @@ where
                 z: z.eval(*e, index.max_poly_size),
                 t: t.eval(*e, index.max_poly_size),
                 f: Vec::new(),
+                lookup:
+                    lookup_aggreg_coeffs.as_ref()
+                    .zip(lookup_sorted_coeffs.as_ref())
+                    .zip(joint_combiner.as_ref())
+                    .map(|((aggreg, sorted), joint_combiner)|
+                        LookupEvaluations {
+                            aggreg: aggreg.eval(*e, index.max_poly_size),
+                            sorted: sorted.iter().map(|c| c.eval(*e, index.max_poly_size)).collect(),
+                            table:
+                                index.cs.lookup_tables[0]
+                                .iter()
+                                .map(|p| p.eval(*e, index.max_poly_size))
+                                .rev()
+                                .fold(vec![Fr::<G>::zero()], |acc, x| {
+                                    acc.into_iter().zip(x.iter()).map(|(acc, x)| acc * joint_combiner + x).collect()
+                                })
+                        }),
             })
             .collect::<Vec<_>>();
+        drop(lookup_aggreg_coeffs);
+        drop(lookup_sorted_coeffs);
         let mut evals = [evals[0].clone(), evals[1].clone()];
 
         let evlp1 = [
@@ -308,30 +590,19 @@ where
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
                 t: DensePolynomial::eval_polynomial(&es.t, e1),
+                lookup:
+                    es.lookup.as_ref().map(|l| {
+                        LookupEvaluations {
+                            table: DensePolynomial::eval_polynomial(&l.table, e1),
+                            aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),
+                            sorted: l.sorted.iter().map(|p| DensePolynomial::eval_polynomial(p, e1)).collect(),
+                        }
+                    }),
                 f: Fr::<G>::zero(),
             })
             .collect::<Vec<_>>();
 
         // compute and evaluate linearization polynomial
-
-        /*
-        {
-            let f = index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.gnrc_lnrz(&e[0]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]);
-            println!("p{} psm_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&index.cs.psm, None));
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.double_lnrz(&e, &alpha[range::DBL]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-            let f = &f + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]);
-            println!("p{} f_comm {:?}", line!(), index.srs.get_ref().commit_non_hiding(&f, None));
-        } */
 
         let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0].w)
             + &index
@@ -408,6 +679,13 @@ where
                 w_comm: array_init(|i| w_comm[i].0.clone()),
                 z_comm: z_comm.0,
                 t_comm: t_comm.0,
+                lookup:
+                    lookup_aggreg_comm.zip(lookup_sorted_comm).map(|(a, s)| {
+                        LookupCommitments {
+                            aggreg: a.0,
+                            sorted: s.iter().map(|(x, _)| x.clone()).collect()
+                        }
+                    })
             },
             proof: index.srs.get_ref().open(
                 group_map,
