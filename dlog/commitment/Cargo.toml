@@ -7,7 +7,7 @@ edition = "2018"
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
-ocaml = { version = "0.22.0", optional = true }
+ocaml = { version = "0.22.1", optional = true }
 rand_core = { version = "0.6.0" }
 colored = "1.9.2"
 rand = "0.8.0"
@@ -19,8 +19,8 @@ array-init = "1.0.0"
 groupmap = { path = "../../groupmap" }
 mina-curves = { path = "../../curves" }
 o1-utils = { path = "../../utils" }
+ocaml-gen = { path = "../../ocaml-gen", optional = true }
 oracle = { path = "../../oracle" }
 
 [features]
-
-ocaml_types = [ "ocaml" ]
+ocaml_types = [ "ocaml", "ocaml-gen" ]
