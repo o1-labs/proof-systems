@@ -11,6 +11,17 @@ use array_init::array_init;
 use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
 
 #[derive(Clone)]
+pub struct LookupEvaluations<Field> {
+    /// sorted lookup table polynomial
+    pub sorted: Vec<Field>,
+    /// lookup aggregation polynomial
+    pub aggreg: Field,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    pub table: Field,
+}
+
+#[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
     pub w: [Field; COLUMNS],
@@ -23,6 +34,8 @@ pub struct ProofEvaluations<Field> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
+    /// lookup-related evalutions
+    pub lookup: Option<LookupEvaluations<Field>>,
 }
 
 impl<F: FftField> ProofEvaluations<Vec<F>> {
@@ -33,6 +46,14 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             t: DensePolynomial::eval_polynomial(&self.t, pt),
             f: DensePolynomial::eval_polynomial(&self.f, pt),
+            lookup:
+                self.lookup.as_ref().map(|l| {
+                    LookupEvaluations {
+                        table: DensePolynomial::eval_polynomial(&l.table, pt),
+                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
+                        sorted: l.sorted.iter().map(|x| DensePolynomial::eval_polynomial(x, pt)).collect(),
+                    }
+                })
         }
     }
 }
