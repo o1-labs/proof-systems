@@ -5,7 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::gate::{CircuitGate, GateType};
+use crate::gate::{LookupInfo, CircuitGate, GateType};
 use crate::gates::poseidon::*;
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
@@ -106,6 +106,8 @@ pub struct ConstraintSystem<F: FftField> {
     pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
     pub emull: E<F, D<F>>,
+    /// ChaCha indexes
+    pub chacha8: Option<[E<F, D<F>>; 4]>,
 
     // Constant polynomials
     // --------------------
@@ -130,11 +132,30 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// random oracle argument parameters
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
+
+    /// Lookup tables
+    pub dummy_lookup_values: Vec<Vec<F>>,
+    pub lookup_tables: Vec<Vec<DP<F>>>,
+    pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
+    pub lookup_table_lengths: Vec<usize>,
+
+    /// Lookup selectors:
+    /// For each kind of lookup-pattern, we have a selector that's
+    /// 1 at the rows where that pattern should be enforced, and 1 at
+    /// all other rows.
+    pub lookup_selectors: Vec<E<F, D<F>>>,
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
+}
+
+pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
+    let w3 = zk_w3(domain);
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3)
 }
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
@@ -171,6 +192,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
+        lookup_tables: Vec< Vec<Vec<F>> >,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
@@ -307,6 +329,47 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         )
         .interpolate();
 
+        let chacha8 = {
+            use GateType::*;
+            let has_chacha_gate =
+                gates.iter().any(|gate| {
+                    match gate.typ {
+                        ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => true,
+                        _ => false
+                    }
+                });
+            if !has_chacha_gate {
+                None
+            } else {
+                let a : [_; 4] =
+                    array_init(|i| {
+                        let g =
+                            match i {
+                                0 => ChaCha0,
+                                1 => ChaCha1,
+                                2 => ChaCha2,
+                                3 => ChaChaFinal,
+                                _ => panic!("Invalid index")
+                            };
+                        E::<F, D<F>>::from_vec_and_domain(
+                            gates
+                                .iter()
+                                .map(|gate| {
+                                    if gate.typ == g {
+                                        F::one()
+                                    } else {
+                                        F::zero()
+                                    }
+                                })
+                                .collect(),
+                            domain.d1)
+                            .interpolate()
+                            .evaluate_over_domain(domain.d8)
+                    });
+                Some(a)
+            }
+        };
+
         // poseidon constraint polynomials
         let rcm = array_init(|round| {
             array_init(|col| {
@@ -341,6 +404,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
+        // TODO: These are all unnecessary. Remove
         let l04 =
             E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
         let l08 =
@@ -354,8 +418,42 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // endo
         let endo = F::zero();
 
+        let lookup_table_lengths: Vec<_> = lookup_tables.iter().map(|v| v[0].len()).collect();
+        let dummy_lookup_values : Vec<Vec<F>> =
+            lookup_tables.iter()
+            .map(|cols| cols.iter().map(|c| c[c.len() - 1]).collect())
+            .collect();
+
+        let lookup_tables : Vec<Vec<DP<F>>> =
+            lookup_tables
+            .into_iter()
+            .zip(dummy_lookup_values.iter())
+            .map(|(t, dummy)| {
+                t.into_iter().enumerate().map(|(i, mut col)| {
+                    let d = dummy[i];
+                    col.extend((0..(n - col.len())).map(|_| d));
+                    E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate()
+                }).collect()
+            }).collect();
+        let lookup_tables8 = lookup_tables.iter().map(|t| {
+            t.iter().map(|col| col.evaluate_over_domain_by_ref(domain.d8)).collect()
+        }).collect();
+
+        let lookup_info = LookupInfo::<F>::create();
+
         // return result
         Some(ConstraintSystem {
+            chacha8,
+            lookup_selectors:
+                if lookup_info.lookup_used(&gates).is_some() {
+                    LookupInfo::<F>::create().selector_polynomials(domain, &gates)
+                } else {
+                    vec![]
+                },
+            dummy_lookup_values,
+            lookup_table_lengths,
+            lookup_tables8,
+            lookup_tables,
             domain,
             public,
             sid,
@@ -522,7 +620,7 @@ pub mod tests {
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 
