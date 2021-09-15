@@ -414,7 +414,15 @@ where
                 None => panic!("lagrange bases for size {} not found", domain.size()),
                 Some(v) => &v[..]
             };
-        commit_helper(&plnm.evals[..], basis, is_zero, max)
+        if domain.size == plnm.domain().size {
+            commit_helper(&plnm.evals[..], basis, is_zero, max)
+        } else if domain.size < plnm.domain().size {
+            let s = (plnm.domain().size / domain.size) as usize;
+            let v : Vec<_> = (0..(domain.size as usize)).map(|i| plnm.evals[s * i]).collect();
+            commit_helper(&v[..], basis, is_zero, max)
+        } else {
+            panic!("desired commitment domain size greater than evaluations' domain size")
+        }
     }
 
     pub fn commit_evaluations(
