@@ -4,6 +4,7 @@ This source file implements Posedon constraint polynomials.
 
 *****************************************************************************************************************/
 
+use crate::gate::CurrOrNext;
 use crate::gates::poseidon::*;
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
@@ -16,11 +17,6 @@ use oracle::{
     poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W},
     utils::{EvalUtils, PolyUtils},
 };
-
-enum CurrOrNext {
-    Curr,
-    Next,
-}
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 struct RoundEquation {
