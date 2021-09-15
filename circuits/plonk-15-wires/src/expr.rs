@@ -85,6 +85,11 @@ pub enum Expr<F> {
 }
 
 impl<F> Expr<F> {
+    /// Convenience function for constructing cells
+    pub fn cell(col:Column, row: CurrOrNext) -> Expr<F> {
+        Expr::Cell(Variable { col, row })
+    }
+
     fn degree(&self, d1_size: usize) -> usize {
         use Expr::*;
         match self {
@@ -96,7 +101,7 @@ impl<F> Expr<F> {
             ZkPolynomial => 3,
             UnnormalizedLagrangeBasis(_) => d1_size,
             Cell(_) => d1_size,
-            Mul(x, y) => (*x).degree(d1_size) * (*y).degree(d1_size),
+            Mul(x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
             Sub(x, y) | Add(x, y) => std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size)),
         }
     }
@@ -163,7 +168,7 @@ impl<F: Field> From<u64> for Expr<F> {
 
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
 enum Domain {
-    D1 = 1, D4 = 4, D8 = 8
+    D1 = 1, D2 = 2, D4 = 4, D8 = 8
 }
 
 enum EvalResult<'a, F: FftField> {
@@ -181,7 +186,7 @@ fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
     }
     let mut v = vec![F::one(), x];
     for i in 2..n {
-        v[i] = v[i - 1] * x;
+        v.push(v[i - 1] * x);
     }
     v
 }
@@ -229,6 +234,7 @@ fn unnormalized_lagrange_evals<F:FftField>(
     let k =
         match res_domain {
             Domain::D1 => 1,
+            Domain::D2 => 2,
             Domain::D4 => 4,
             Domain::D8 => 8,
         };
@@ -267,10 +273,10 @@ fn unnormalized_lagrange_evals<F:FftField>(
     // 1 / (omega^q omega_k^r - omega^i)
 
     // Set the 0 mod k indices
-    evals[k * i] = omega_minus_i * l0_1;
-    for q in 1..(n as usize) {
+    for q in 0..(n as usize) {
         evals[k * q] = F::zero();
     }
+    evals[k * i] = omega_minus_i * l0_1;
 
     // Finish computing the non-zero mod k indices
     for q in 0..(n as usize) {
@@ -318,10 +324,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let n = res_domain.1.size as usize;
                 let scale = (d as usize) / (res_domain.0 as usize);
-                let mut v: Vec<_> = (0..n - 1).map(|i| {
-                    x + evals.evals[scale * i + s]
+                let v: Vec<_> = (0..n).map(|i| {
+                    x + evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 }).collect();
-                v.push(x + evals.evals[(scale * (n-1) + s) % evals.evals.len()]);
                 Evals {
                     domain: res_domain.0,
                     evals:
@@ -339,11 +344,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
             | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                let n = evals.evals.len();
-                evals.evals.iter_mut().zip(0..(n-1)).for_each(|(e, i)| {
-                    *e += es_sub.evals[scale * i + s];
+                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                    *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
-                evals.evals[n - 1] += es_sub.evals[(scale * (n-1) + s) % es_sub.evals.len()];
                 Evals { evals, domain: d }
             },
             (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
@@ -351,10 +354,10 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
 
                 let n = res_domain.1.size as usize;
-                let mut v: Vec<_> = (0..n - 1).map(|i| {
-                    es1.evals[scale1 * i + s1] + es2.evals[scale2 * i + s2]
+                let v: Vec<_> = (0..n).map(|i| {
+                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] 
+                        + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
                 }).collect();
-                v.push(es1.evals[(scale1 * (n-1) + s1) % es1.evals.len()] + es2.evals[(scale2 * (n-1) + s2) % es2.evals.len()]);
 
                 Evals {
                     domain: res_domain.0,
@@ -384,13 +387,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 Self::init(
                     res_domain,
-                    |i| evals.evals[(scale * i + s) % evals.evals.len()] - x)
+                    |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x)
             },
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 Self::init(
                     res_domain,
-                    |i| x - evals.evals[(scale * i + s) % evals.evals.len()])
+                    |i| x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
             },
             (Evals { domain:d1, evals: mut es1 }, Evals { domain:d2, evals: es2 }) => {
                 assert_eq!(d1, d2);
@@ -399,20 +402,16 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                let n = evals.evals.len();
-                evals.evals.iter_mut().zip(0..(n-1)).for_each(|(e, i)| {
-                    *e = es_sub.evals[scale * i + s] - *e;
+                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                    *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
                 });
-                evals.evals[n-1] = es_sub.evals[(scale * (n-1) + s) % es_sub.evals.len()] - evals.evals[n-1];
                 Evals { evals, domain: d }
             }
             (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                let n = evals.evals.len();
-                evals.evals.iter_mut().zip(0..(n-1)).for_each(|(e, i)| {
-                    *e -= es_sub.evals[scale * i + s];
+                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                    *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
-                evals.evals[n - 1] -= es_sub.evals[(scale * (n-1) + s) % es_sub.evals.len()];
                 Evals { evals, domain: d }
             },
             (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
@@ -421,7 +420,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 Self::init(
                     res_domain,
-                    |i| es1.evals[(scale1 * i + s1) % es1.evals.len()] - es2.evals[(scale2 * i + s2) % es2.evals.len()])
+                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                    - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()])
             }
         }
     }
@@ -442,7 +442,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 Self::init(
                     res_domain,
-                    |i| x * evals.evals[(scale * i + s) % evals.evals.len()])
+                    |i| x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
             },
             (Evals { domain:d1, evals: mut es1 }, Evals { domain:d2, evals: es2 }) => {
                 assert_eq!(d1, d2);
@@ -452,11 +452,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
             | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                let n = evals.evals.len();
-                evals.evals.iter_mut().zip(0..(n-1)).for_each(|(e, i)| {
-                    *e *= es_sub.evals[scale * i + s];
+                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                    *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
-                evals.evals[n - 1] *= es_sub.evals[(scale * (n-1) + s) % es_sub.evals.len()];
                 Evals { evals, domain: d }
             },
             (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
@@ -465,7 +463,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 Self::init(
                     res_domain,
-                    |i| es1.evals[(scale1 * i + s1) % es1.evals.len()] * es2.evals[(scale2 * i + s2) % es1.evals.len()])
+                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] * es2.evals[(scale2 * i + (d2 as usize) * s2) % es1.evals.len()])
             }
         }
     }
@@ -474,6 +472,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {
         Domain::D1 => env.domain.d1,
+        Domain::D2 => env.domain.d2,
         Domain::D4 => env.domain.d4,
         Domain::D8 => env.domain.d8
     }
@@ -518,12 +517,17 @@ impl<F: FftField> Expr<F> {
             Cell(Variable { col, row }) => {
                 let evals = &evals[curr_or_next(*row)];
                 use Column::*;
+                let lookup_evals =
+                    match &evals.lookup {
+                        Some(l) => Ok(l),
+                        None => Err("Lookup should not have been used")
+                    };
                 match col {
                     Witness(i) => Ok(evals.w[*i]),
                     Z => Ok(evals.z),
-                    LookupSorted(i) => Ok(evals.lookup_sorted[*i]),
-                    LookupAggreg => Ok(evals.lookup_aggreg),
-                    LookupTable => Ok(evals.lookup_table),
+                    LookupSorted(i) => lookup_evals.map(|l| l.sorted[*i]),
+                    LookupAggreg => lookup_evals.map(|l| l.aggreg),
+                    LookupTable => lookup_evals.map(|l| l.table),
                     LookupKindIndex(_) | Index(_) =>
                         Err("Cannot get index evaluation (should have been linearized away)")
                 }
@@ -557,7 +561,7 @@ impl<F: FftField> Expr<F> {
                 let scale = (d_sub as usize) / (d as usize);
                 EvalResult::init_(
                     (d, res_domain),
-                    |i| evals.evals[(scale * i + s) % evals.evals.len()])
+                    |i| evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()])
             }
         }
     }
@@ -707,4 +711,3 @@ impl<F: FftField> Expr<F> {
         Ok(Linearization { constant_term, index_terms: res.into_iter().collect() })
     }
 }
-
