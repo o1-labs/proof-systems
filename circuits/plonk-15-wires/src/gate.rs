@@ -27,9 +27,13 @@ pub struct LocalPosition {
 
 #[derive(Clone)]
 pub struct SingleLookup<F> {
-    tableId: usize,
+    table_id: usize,
     // Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>
+}
+
+pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item=&'a F>>(joint_combiner: F, v: I) ->F {
+    v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
 }
 
 impl<F: Field> SingleLookup<F> {
@@ -97,6 +101,11 @@ fn max_lookups_per_row<F>(kinds: &Vec<Vec<JointLookup<F>>>) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
 
+pub enum LookupsUsed {
+    Single,
+    Joint,
+}
+
 impl<F: FftField> LookupInfo<F> {
     pub fn create() -> Self {
         let kinds = lookup_kinds::<F>();
@@ -109,19 +118,22 @@ impl<F: FftField> LookupInfo<F> {
         }
     }
 
-    pub fn lookup_used(&self, gates: &Vec<CircuitGate<F>>) -> bool {
-        gates.iter().any(|g| {
+    pub fn lookup_used(&self, gates: &Vec<CircuitGate<F>>) -> Option<LookupsUsed> {
+        let mut lookups_used = None;
+        for g in gates.iter() {
             let typ = g.typ;
 
-            if let Some(_) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                return true;
+            for r in &[ CurrOrNext::Curr, CurrOrNext::Next ] {
+                if let Some(v) = self.kinds_map.get(&(typ, *r)) {
+                    if self.kinds[*v].len() > 0 {
+                        return Some(LookupsUsed::Joint);
+                    } else {
+                        lookups_used = Some(LookupsUsed::Single);
+                    }
+                }
             }
-            if let Some(_) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                return true;
-            }
-
-            false
-        })
+        }
+        lookups_used
     }
 
     pub fn selector_polynomials<'a>(&'a self, domain: EvaluationDomains<F>, gates: &Vec<CircuitGate<F>>) -> Vec<E<F, D<F>>> {
@@ -180,7 +192,7 @@ impl GateType {
                 let op2 = curr_row(7 + i);
                 let res = curr_row(11 + i);
                 let l = |loc: LocalPosition|
-                    SingleLookup { tableId:0, value: vec![(F::one(), loc)] };
+                    SingleLookup { table_id:0, value: vec![(F::one(), loc)] };
                 JointLookup { entry: vec![l(op1), l(op2), l(res)] }
             }).collect();
 
@@ -204,10 +216,10 @@ impl GateType {
                 // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
                 let x =
                     SingleLookup {
-                        tableId:0,
+                        table_id:0,
                         value: vec![(one_half, nybble), (neg_one_half, low_bit)]
                     };
-                JointLookup { entry: vec![x.clone(), x, SingleLookup { tableId:0, value: vec![] } ] }
+                JointLookup { entry: vec![x.clone(), x, SingleLookup { table_id:0, value: vec![] } ] }
             }).collect();
 
         let mut chacha_final_where = HashSet::new();
