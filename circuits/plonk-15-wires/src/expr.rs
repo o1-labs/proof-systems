@@ -1,6 +1,6 @@
 use crate::nolookup::scalars::{ProofEvaluations, RandomOracles};
 use crate::nolookup::constraints::{eval_zk_polynomial};
-use ark_ff::{FftField, Field};
+use ark_ff::{FftField, Field, Zero, One};
 use ark_poly::{Evaluations, EvaluationDomain, Radix2EvaluationDomain as D};
 use crate::gate::{GateType, CurrOrNext};
 use std::ops::{Add, Sub, Mul};
@@ -9,6 +9,13 @@ use CurrOrNext::*;
 
 use crate::wires::COLUMNS;
 use crate::domains::EvaluationDomains;
+
+pub struct Constants<F> {
+    pub alpha: F,
+    pub beta: F,
+    pub gamma: F,
+    pub joint_combiner: F,
+}
 
 // All are evaluations over the D8 domain
 pub struct Environment<'a, F : FftField> {
@@ -67,37 +74,170 @@ pub struct Variable {
     pub row: CurrOrNext,
 }
 
-#[derive(Clone, Debug)]
-pub enum Expr<F> {
-    Alpha { power: usize },
-    Gamma,
+#[derive(Clone, Debug, PartialEq)]
+pub enum ConstantExpr<F> {
+    Alpha,
     Beta,
-    JointCombiner {power: usize },
-    Constant(F),
+    Gamma,
+    JointCombiner,
+    Literal(F),
+    Pow(Box<ConstantExpr<F>>, usize),
+    Mul(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+    Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+    Sub(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+}
+
+impl<F: Field> ConstantExpr<F> {
+    pub fn pow(self, p: usize) -> Self {
+        if p == 0 {
+            return Literal(F::one());
+        }
+        use ConstantExpr::*;
+        match self {
+            Literal(x) => Literal(x.pow(&[p as u64])),
+            x => Pow(Box::new(x), p)
+        }
+    }
+
+    pub fn value(&self, c: &Constants<F>) -> F {
+        use ConstantExpr::*;
+        match self {
+            Alpha => c.alpha,
+            Beta => c.beta,
+            Gamma => c.gamma,
+            JointCombiner => c.joint_combiner,
+            Literal(x) => *x,
+            Pow(x, p) => x.value(c).pow(&[*p as u64]),
+            Mul(x, y) => x.value(c) * y.value(c),
+            Add(x, y) => x.value(c) + y.value(c),
+            Sub(x, y) => x.value(c) - y.value(c),
+        }
+    }
+}
+
+impl<F: Field> Zero for ConstantExpr<F> {
+    fn zero() -> Self {
+        ConstantExpr::Literal(F::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        match self {
+            ConstantExpr::Literal(x) => x.is_zero(),
+            _ => false
+        }
+    }
+}
+
+impl<F: Field> One for ConstantExpr<F> {
+    fn one() -> Self {
+        ConstantExpr::Literal(F::one())
+    }
+
+    fn is_one(&self) -> bool {
+        match self {
+            ConstantExpr::Literal(x) => x.is_one(),
+            _ => false
+        }
+    }
+}
+
+impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
+    type Output = ConstantExpr<F>;
+    fn add(self, other: Self) -> Self {
+        use ConstantExpr::*;
+        if self.is_zero() {
+            return other;
+        }
+        if other.is_zero() {
+            return self
+        }
+        match (self, other) {
+            (Literal(x), Literal(y)) => Literal(x + y),
+            (x, y) => Add(Box::new(x), Box::new(y))
+        }
+    }
+}
+
+impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
+    type Output = ConstantExpr<F>;
+    fn sub(self, other: Self) -> Self {
+        use ConstantExpr::*;
+        if other.is_zero() {
+            return self
+        }
+        match (self, other) {
+            (Literal(x), Literal(y)) => Literal(x - y),
+            (x, y) => Sub(Box::new(x), Box::new(y))
+        }
+    }
+}
+
+impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
+    type Output = ConstantExpr<F>;
+    fn mul(self, other: Self) -> Self {
+        use ConstantExpr::*;
+        if self.is_one() {
+            return other;
+        }
+        if other.is_one() {
+            return self;
+        }
+        match (self, other) {
+            (Literal(x), Literal(y)) => Literal(x * y),
+            (x, y) => Mul(Box::new(x), Box::new(y))
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Expr<C> {
+    Constant(C),
     Cell(Variable),
-    Mul(Box<Expr<F>>, Box<Expr<F>>),
-    Add(Box<Expr<F>>, Box<Expr<F>>),
-    Sub(Box<Expr<F>>, Box<Expr<F>>),
+    Mul(Box<Expr<C>>, Box<Expr<C>>),
+    Add(Box<Expr<C>>, Box<Expr<C>>),
+    Sub(Box<Expr<C>>, Box<Expr<C>>),
     ZkPolynomial,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
 }
 
-impl<F> Expr<F> {
+impl<F: Zero> Zero for Expr<F> {
+    fn zero() -> Self {
+        Expr::Constant(F::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        match self {
+            Expr::Constant(x) => x.is_zero(),
+            _ => false
+        }
+    }
+}
+
+impl<F: One + PartialEq> One for Expr<F> {
+    fn one() -> Self {
+        Expr::Constant(F::one())
+    }
+
+    fn is_one(&self) -> bool {
+        match self {
+            Expr::Constant(x) => x.is_one(),
+            _ => false
+        }
+    }
+}
+
+impl<C> Expr<C> {
     /// Convenience function for constructing cells
-    pub fn cell(col:Column, row: CurrOrNext) -> Expr<F> {
+    pub fn cell(col:Column, row: CurrOrNext) -> Expr<C> {
         Expr::Cell(Variable { col, row })
     }
 
     fn degree(&self, d1_size: usize) -> usize {
         use Expr::*;
         match self {
-            Constant(_)
-            | Alpha { power: _ }
-            | Beta
-            | Gamma
-            | JointCombiner { power: _ } => 0,
+            Constant(_) => 0,
             ZkPolynomial => 3,
             UnnormalizedLagrangeBasis(_) => d1_size,
             Cell(_) => d1_size,
@@ -107,55 +247,38 @@ impl<F> Expr<F> {
     }
 }
 
-impl<F: Field> Add<Expr<F>> for Expr<F> {
+impl<F: Zero> Add<Expr<F>> for Expr<F> {
     type Output = Expr<F>;
     fn add(self, other: Self) -> Self {
-        match self {
-            Expr::Constant(x) => {
-                if x.is_zero() {
-                    return other;
-                }
-            },
-            _ => ()
-        };
-        match other {
-            Expr::Constant(x) => {
-                if x.is_zero() {
-                    return self;
-                }
-            },
-            _ => ()
-        };
+        if self.is_zero() {
+            return other;
+        }
+        if other.is_zero() {
+            return self;
+        }
         Expr::Add(Box::new(self), Box::new(other))
     }
 }
 
-impl<F: Field> Mul<Expr<F>> for Expr<F> {
+impl<F: One + PartialEq> Mul<Expr<F>> for Expr<F> {
     type Output = Expr<F>;
     fn mul(self, other: Self) -> Self {
-        match self {
-            Expr::Constant(x) => {
-                if x.is_one() {
-                    return other;
-                }
-            },
-            _ => ()
-        };
-        match other {
-            Expr::Constant(x) => {
-                if x.is_one() {
-                    return self;
-                }
-            },
-            _ => ()
-        };
+        if self.is_one() {
+            return other;
+        }
+        if other.is_one() {
+            return self;
+        }
         Expr::Mul(Box::new(self), Box::new(other))
     }
 }
 
-impl<F: Field> Sub<Expr<F>> for Expr<F> {
+impl<F: Zero> Sub<Expr<F>> for Expr<F> {
     type Output = Expr<F>;
     fn sub(self, other: Self) -> Self {
+        if other.is_zero() {
+            return self;
+        }
         Expr::Sub(Box::new(self), Box::new(other))
     }
 }
@@ -163,6 +286,12 @@ impl<F: Field> Sub<Expr<F>> for Expr<F> {
 impl<F: Field> From<u64> for Expr<F> {
     fn from(x : u64) -> Self {
         Expr::Constant(F::from(x))
+    }
+}
+
+impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
+    fn from(x : u64) -> Self {
+        Expr::Constant(ConstantExpr::Literal(F::from(x)))
     }
 }
 
@@ -485,16 +614,53 @@ fn curr_or_next(row: CurrOrNext) -> usize {
     }
 }
 
+impl<F: FftField> Expr<ConstantExpr<F>> {
+    pub fn literal(x: F) -> Self {
+        Expr::Constant(ConstantExpr::Literal(x))
+    }
+
+    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
+        let zero = Expr::<ConstantExpr<F>>::zero();
+        cs.into_iter().zip(alpha0..).map(|(c, i)| {
+            Expr::Constant(ConstantExpr::Alpha.pow(i)) * c
+        }).fold(zero, |acc, x| acc + x)
+    }
+
+    pub fn beta() -> Self {
+        Expr::Constant(ConstantExpr::Beta)
+    }
+
+    pub fn evaluate_constants(&self, c: &Constants<F>) -> Expr<F> {
+        use Expr::*;
+        match self {
+            Constant(x) => Constant(x.value(c)),
+            Cell(v) => Cell(*v),
+            ZkPolynomial => ZkPolynomial,
+            UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
+            Add(x, y) => Add(Box::new(x.evaluate_constants(c)), Box::new(y.evaluate_constants(c))),
+            Mul(x, y) => Mul(Box::new(x.evaluate_constants(c)), Box::new(y.evaluate_constants(c))),
+            Sub(x, y) => Sub(Box::new(x.evaluate_constants(c)), Box::new(y.evaluate_constants(c))),
+        }
+    }
+
+    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
+        let c = Constants {
+            alpha: env.alpha,
+            beta: env.beta,
+            gamma: env.gamma,
+            joint_combiner: env.joint_combiner
+        };
+        let e = self.evaluate_constants(&c);
+        e.evaluations(env)
+    }
+}
+
 impl<F: FftField> Expr<F> {
     pub fn evaluate(
         &self, d: D<F>, pt: F, oracles: &RandomOracles<F>, 
         evals: &[ProofEvaluations<F>; 2]) -> Result<F, &str> {
         use Expr::*;
         match self {
-            Alpha {power} => Ok(oracles.alpha.pow(&[*power as u64])),
-            Gamma => Ok(oracles.gamma),
-            Beta => Ok(oracles.beta),
-            JointCombiner { power:_ } => Err("Joint lookup tables not yet implemented"),
             Constant(x) => Ok(*x),
             Mul(x, y) => {
                 let x = (*x).evaluate(d, pt, oracles, evals)?;
@@ -575,10 +741,6 @@ impl<F: FftField> Expr<F> {
                     evals: env.zk_polynomial
                 },
             Expr::Constant(x) => EvalResult::Constant(*x),
-            Expr::Alpha { power } => EvalResult::Constant(env.alpha.pow(&[*power as u64])),
-            Expr::Beta => EvalResult::Constant(env.beta),
-            Expr::Gamma => EvalResult::Constant(env.gamma),
-            Expr::JointCombiner { power } => EvalResult::Constant(env.joint_combiner.pow(&[*power as u64])),
             Expr::UnnormalizedLagrangeBasis(i) =>
                 EvalResult::Evals {
                     domain: d,
@@ -625,6 +787,12 @@ pub struct Linearization<F> {
     pub index_terms: Vec<(Column, Expr<F>)>
 }
 
+impl<C> Expr<C> {
+    pub fn constant(c: C) -> Expr<C> {
+        Expr::Constant(c)
+    }
+}
+
 impl<F: FftField> Expr<F> {
     fn monomials(&self) -> HashMap<Vec<Variable>, Expr<F>> {
         let sing = |v: Vec<Variable>, c: Expr<F>| {
@@ -637,11 +805,7 @@ impl<F: FftField> Expr<F> {
         match self {
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
             ZkPolynomial => constant(ZkPolynomial),
-            Alpha { power } => constant(Alpha { power: *power }),
-            Beta => constant(Beta),
-            Gamma => constant(Gamma),
-            JointCombiner { power } => constant(JointCombiner { power: *power }),
-            Constant(x) => constant(Constant(*x)),
+            Constant(c) => constant(Constant(*c)),
             Cell(var) => sing(vec![*var], Constant(F::one())),
             Add(e1, e2) => {
                 let mut res = e1.monomials();
@@ -678,14 +842,6 @@ impl<F: FftField> Expr<F> {
         }
     }
 
-    pub fn combine_constraints(alpha0: usize, cs: Vec<Expr<F>>) -> Expr<F> {
-        let zero : Self = 0.into();
-        cs.into_iter().zip(alpha0..).map(|(c, i)| {
-            let a : Self = if i == 0 { 1.into() } else { Expr::Alpha { power: i } };
-            a * c
-        }).fold(zero, |acc, x| acc + x)
-    }
-
     pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<F>, &str> {
         let mut res : HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term : Expr<F> = 0.into();
@@ -711,3 +867,5 @@ impl<F: FftField> Expr<F> {
         Ok(Linearization { constant_term, index_terms: res.into_iter().collect() })
     }
 }
+
+pub type E<F> = Expr<ConstantExpr<F>>;
