@@ -12,3 +12,4 @@ pub mod nolookup;
 pub mod polynomial;
 pub mod polynomials;
 pub mod wires;
+pub mod expr;
