@@ -17,7 +17,10 @@ use ark_ec::{
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, UVPolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D, UVPolynomial,
+};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -80,7 +83,7 @@ impl<C: AffineCurve> PolyComm<C> {
                 if com.len() == 0 || elm.len() == 0 {
                     Vec::new()
                 } else {
-                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                    let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (0..n)
                         .map(|i| {
                             let mut points = Vec::new();
@@ -389,11 +392,10 @@ where
         max: Option<usize>,
     ) -> PolyComm<G> {
         let is_zero = plnm.evals.iter().all(|x| x.is_zero());
-        let basis =
-            match self.lagrange_bases.get(&domain.size()) {
-                None => panic!("lagrange bases for size {} not found", domain.size()),
-                Some(v) => &v[..]
-            };
+        let basis = match self.lagrange_bases.get(&domain.size()) {
+            None => panic!("lagrange bases for size {} not found", domain.size()),
+            Some(v) => &v[..],
+        };
         commit_helper(&plnm.evals[..], basis, is_zero, max)
     }
 
@@ -982,22 +984,24 @@ mod tests {
         let mut srs = SRS::<VestaG>::create(n);
         srs.add_lagrange_basis(domain);
 
-        let expected_lagrange_commitments : Vec<_> =
-            (0..n).map(|i| {
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
-                let p =
-                    Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain)
-                    .interpolate();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
                 let c = srs.commit_non_hiding(&p, None);
                 assert!(c.shifted.is_none());
                 assert_eq!(c.unshifted.len(), 1);
                 c.unshifted[0]
-            }).collect();
+            })
+            .collect();
 
         let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
         for i in 0..n {
-            assert_eq!(computed_lagrange_commitments[i], expected_lagrange_commitments[i]);
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i]
+            );
         }
     }
 
