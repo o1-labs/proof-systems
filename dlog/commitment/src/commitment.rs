@@ -470,7 +470,61 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+        Self::commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+    }
+
+    fn commit_helper(
+        scalars: &[Fr<G>],
+        basis: &[G],
+        is_zero: bool,
+        max: Option<usize>,
+    ) -> PolyComm<G> {
+        let n = basis.len();
+        let p = scalars.len();
+
+        // committing all the segments without shifting
+        let unshifted = if is_zero {
+            Vec::new()
+        } else {
+            (0..p / n + if p % n != 0 { 1 } else { 0 })
+                .map(|i| {
+                    VariableBaseMSM::multi_scalar_mul(
+                        basis,
+                        &scalars[i * n..p]
+                            .iter()
+                            .map(|s| s.into_repr())
+                            .collect::<Vec<_>>(),
+                    )
+                    .into_affine()
+                })
+                .collect()
+        };
+
+        // committing only last segment shifted to the right edge of SRS
+        let shifted = match max {
+            None => None,
+            Some(max) => {
+                let start = max - (max % n);
+                if is_zero || start >= p {
+                    Some(G::zero())
+                } else if max % n == 0 {
+                    None
+                } else {
+                    Some(
+                        VariableBaseMSM::multi_scalar_mul(
+                            &basis[n - (max % n)..],
+                            &scalars[start..p]
+                                .iter()
+                                .map(|s| s.into_repr())
+                                .collect::<Vec<_>>(),
+                        )
+                        .into_affine(),
+                    )
+                }
+            }
+        };
+
+        PolyComm::<G> { unshifted, shifted }
     }
 
     pub fn commit_evaluations_non_hiding(
@@ -484,7 +538,7 @@ where
             None => panic!("lagrange bases for size {} not found", domain.size()),
             Some(v) => &v[..],
         };
-        commit_helper(&plnm.evals[..], basis, is_zero, max)
+        Self::commit_helper(&plnm.evals[..], basis, is_zero, max)
     }
 
     pub fn commit_evaluations(
@@ -954,6 +1008,13 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
 mod tests {
     use super::*;
 
+    use crate::srs::SRS;
+    use array_init::array_init;
+    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
+    use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
+    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
+    use rand::{rngs::StdRng, SeedableRng};
+
     #[test]
     fn test_log2() {
         let tests = [
@@ -970,75 +1031,6 @@ mod tests {
             println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
         }
     }
-}
-
-fn commit_helper<G: CommitmentCurve>(
-    scalars: &[Fr<G>],
-    basis: &[G],
-    is_zero: bool,
-    max: Option<usize>,
-) -> PolyComm<G> {
-    let n = basis.len();
-    let p = scalars.len();
-
-    // committing all the segments without shifting
-    let unshifted = if is_zero {
-        Vec::new()
-    } else {
-        (0..p / n + if p % n != 0 { 1 } else { 0 })
-            .map(|i| {
-                VariableBaseMSM::multi_scalar_mul(
-                    basis,
-                    &scalars[i * n..p]
-                        .iter()
-                        .map(|s| s.into_repr())
-                        .collect::<Vec<_>>(),
-                )
-                .into_affine()
-            })
-            .collect()
-    };
-
-    // committing only last segment shifted to the right edge of SRS
-    let shifted = match max {
-        None => None,
-        Some(max) => {
-            let start = max - (max % n);
-            if is_zero || start >= p {
-                Some(G::zero())
-            } else if max % n == 0 {
-                None
-            } else {
-                Some(
-                    VariableBaseMSM::multi_scalar_mul(
-                        &basis[n - (max % n)..],
-                        &scalars[start..p]
-                            .iter()
-                            .map(|s| s.into_repr())
-                            .collect::<Vec<_>>(),
-                    )
-                    .into_affine(),
-                )
-            }
-        }
-    };
-
-    PolyComm::<G> { unshifted, shifted }
-}
-
-//
-// Tests
-//
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::srs::SRS;
-    use array_init::array_init;
-    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
-    use oracle::poseidon::PlonkSpongeConstants as SC;
-    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
-    use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
     fn test_lagrange_commitments() {
