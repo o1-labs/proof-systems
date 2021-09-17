@@ -1,4 +1,4 @@
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use colored::Colorize;
@@ -80,7 +80,7 @@ fn poseidon_vesta_15_wires() {
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, PUBLIC).unwrap();
+    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
     let srs = SRS::create(max_size);
@@ -189,7 +189,7 @@ fn positive(index: &Index<Affine>) {
             (chals, comm)
         };
 
-        println!("n vs domain{} {}", max_size, index.cs.domain.d1.size);
+        println!("n vs domain: {} {}", max_size, index.cs.domain.d1.size);
 
         // add the proof to the batch
         // TODO: create and verify should not take group_map, that should be during an init phase
