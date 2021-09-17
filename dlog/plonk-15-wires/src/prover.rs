@@ -7,7 +7,7 @@ This source file implements prover's zk-proof primitive.
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, Field, Zero};
+use ark_ff::{FftField, UniformRand, Field, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -17,12 +17,14 @@ use commitment_dlog::commitment::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_15_wires_circuits::{
+    expr,
     expr::{Environment, l0_1},
     polynomials::{chacha, lookup},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations, RandomOracles},
     wires::{COLUMNS, PERMUTS},
-    gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
+    gate::{combine_table_entry, LookupsUsed, LookupInfo, JointLookup, LocalPosition, GateType},
 };
+use lookup::{CombinedEntry, UncombinedEntry};
 use rand::thread_rng;
 use std::collections::HashMap;
 
@@ -225,6 +227,15 @@ where
 
         let rng = &mut thread_rng();
 
+        // commit to the wire values
+        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] =
+            array_init(|i| {
+                let e =
+                    Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+                        witness[i].clone(), index.cs.domain.d1);
+                index.srs.get_ref().commit_evaluations(d1, &e, None, rng)
+            });
+
         // compute witness polynomials
         let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
@@ -233,10 +244,6 @@ where
             )
             .interpolate()
         });
-
-        // commit to the wire values
-        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] =
-            array_init(|i| index.srs.get_ref().commit(&w[i], None, rng));
 
         // absorb the wire polycommitments into the argument
         fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
@@ -255,11 +262,6 @@ where
                         ScalarChallenge(Fr::<G>::zero())
                 }.to_field(&index.srs.get_ref().endo_r)
             });
-
-        let iter_lookup_table = || (0..n).map(|i| {
-            let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
-            combine_table_entry(joint_combiner.unwrap(), row)
-        });
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
@@ -302,36 +304,58 @@ where
         // whether we should combine the scalars before the multi-exp or not, like computing
         // their average length or something like that.
 
-        let dummy_lookup_value: Option<Fr<G>> =
+        let dummy_lookup_value: Option<_> =
             joint_combiner.as_ref().map(|j| {
-                combine_table_entry(
-                    *j,
-                    index.cs.dummy_lookup_values[0].iter())
+                CombinedEntry(
+                    combine_table_entry(
+                        *j,
+                        index.cs.dummy_lookup_values[0].iter()))
             });
 
-        let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8)  =
+        let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
             match &joint_combiner {
                 None => (None, None, None, None),
                 Some(joint_combiner) => {
+                    let iter_lookup_table = || (0..n).map(|i| {
+                        UncombinedEntry(
+                            index.cs.lookup_tables8[0].iter().map(|e| e.evals[8 * i])
+                                .collect())
+                    });
+                    let iter_lookup_table = || (0..n).map(|i| {
+                        let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        CombinedEntry (
+                        combine_table_entry(*joint_combiner, row) )
+                    });
+
+
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
-                    let lookup_sorted =
+                    let lookup_sorted : Vec<Vec<CombinedEntry<Fr<G>>>> =
                         lookup::sorted(
-                            dummy_lookup_value.unwrap(),
+                            dummy_lookup_value.as_ref().unwrap().clone(),
                             iter_lookup_table,
                             index.cs.lookup_table_lengths[0],
                             d1,
                             &index.cs.gates,
                             &witness,
-                            *joint_combiner,
-                            rng)?;
-                    let coeffs : Vec<_> =
-                        // TODO: When we switch to lagrange we can avoid this clone.
-                        lookup_sorted.iter().map(|e| e.clone().interpolate()).collect();
+                            *joint_combiner)?;
+
+                    let lookup_sorted : Vec<_> =
+                        lookup_sorted.into_iter().map(|chunk| {
+                            let v : Vec<_> = chunk.into_iter().map(|x| x.0).collect();
+                            lookup::zk_patch(v, d1, rng)
+                        }).collect();
+
+                    let start = std::time::Instant::now();
                     let comm : Vec<_> =
-                        coeffs.iter()
-                        .map(|p| index.srs.get_ref().commit(p, None, rng)).collect();
+                        lookup_sorted.iter().map(|v|
+                                index.srs.get_ref().commit_evaluations(d1, v, None, rng))
+                        .collect();
+                    println!("{}{:?}", "comm time: ", start.elapsed());
+                    let coeffs : Vec<_> =
+                        // TODO: We can avoid storing these coefficients.
+                        lookup_sorted.iter().map(|e| e.clone().interpolate()).collect();
                     let evals8 : Vec<_> =
                         coeffs.iter()
                         .map(|v| v.evaluate_over_domain_by_ref(index.cs.domain.d8))
@@ -353,9 +377,14 @@ where
             match (&joint_combiner, lookup_sorted) {
                 (None, None) => (None, None, None),
                 (Some(joint_combiner), Some(lookup_sorted)) => {
+                    let iter_lookup_table = || (0..n).map(|i| {
+                        let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        combine_table_entry(*joint_combiner, row)
+                    });
+
                     let aggreg =
                         lookup::aggregation(
-                            dummy_lookup_value.unwrap(),
+                            dummy_lookup_value.unwrap().0,
                             iter_lookup_table(),
                             d1,
                             &index.cs.gates,
@@ -370,10 +399,10 @@ where
                         panic!("aggregation incorrect: {}", aggreg.evals[n-3]);
                     }
 
-                    // TODO: use commit_evaluations once lagrange changes land
-                    let coeffs = aggreg.interpolate();
-                    let comm = index.srs.get_ref().commit(&coeffs, None, rng);
+                    let comm = index.srs.get_ref().commit_evaluations(d1, &aggreg, None, rng);
                     fq_sponge.absorb_g(&comm.0.unshifted);
+
+                    let coeffs = aggreg.interpolate();
 
                     // TODO: There's probably a clever way to expand the domain without
                     // interpolating
@@ -398,7 +427,6 @@ where
         let lagrange = index.cs.evaluate(&w, &z);
 
         let lookup_table_combined =
-            // TODO w correct, c incorrect
             joint_combiner.as_ref().map(|j| {
                 let joint_table = &index.cs.lookup_tables8[0];
                 let mut res = joint_table[joint_table.len() - 1].clone();
@@ -499,7 +527,7 @@ where
                         (t4, t8),
                         oracles.alpha,
                         alpha[alpha.len() - 1],
-                        lookup::constraints(dummy_lookup_value.unwrap(), d1)
+                        lookup::constraints(dummy_lookup_value.unwrap().0, d1)
                         .iter().map(|e| e.evaluations(env)).collect()
                     );
                     println!("{}{:?}", "combine time: ", start.elapsed());
