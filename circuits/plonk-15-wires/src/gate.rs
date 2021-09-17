@@ -88,6 +88,7 @@ pub enum GateType {
 
 pub struct LookupInfo<F> {
     pub max_per_row: usize,
+    pub max_joint_size: usize,
     pub kinds: Vec<Vec<JointLookup<F>>>,
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
     pub empty: Vec<JointLookup<F>>,
@@ -111,6 +112,13 @@ impl<F: FftField> LookupInfo<F> {
         let kinds = lookup_kinds::<F>();
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
+            max_joint_size:
+                kinds.iter().fold(0, |acc0, v| {
+                    v.iter().fold(acc0, |acc, j| {
+                        std::cmp::max(acc, j.entry.len())
+                    })
+                }),
+
             kinds_map: GateType::lookup_kinds_map::<F>(),
             kinds,
             max_per_row,
