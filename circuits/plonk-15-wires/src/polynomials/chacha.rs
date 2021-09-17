@@ -118,6 +118,10 @@ On each of them we'll do the plookups
 which checks that ((y^x')_i - lo((y^x')_i)) is a nybble,
 which guarantees that the low bit is computed correctly.
 
+There is no need to check nybbleness of (y^x')_i because those will be constrained to
+be equal to the copies of those values from previous rows, which have already been
+constrained for nybbleness (by the lookup in the XOR table).
+
 And we'll check that y' is the sum of the shifted nybbles.
 
 *****************************************************************************************************************/
