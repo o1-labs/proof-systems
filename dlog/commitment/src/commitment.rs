@@ -368,7 +368,7 @@ where
     }
 
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
-    fn mask(
+    pub fn mask(
         &self,
         c: PolyComm<G>,
         rng: &mut (impl RngCore + CryptoRng),
