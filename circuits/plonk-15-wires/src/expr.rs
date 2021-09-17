@@ -307,7 +307,7 @@ enum EvalResult<'a, F: FftField> {
 }
 
 // x^0, ..., x^{n - 1}
-fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
+pub fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
     if n == 0 {
         return vec![F::one()];
     } else if n == 1 {
