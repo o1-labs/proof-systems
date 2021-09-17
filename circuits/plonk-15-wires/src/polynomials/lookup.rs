@@ -30,7 +30,7 @@ first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
 *****************************************************************************************************************/
 
-use ark_ff::{FftField, Zero, One};
+use ark_ff::{Field, FftField, Zero, One};
 use rand::Rng;
 use CurrOrNext::*;
 use std::collections::{HashMap};
@@ -103,11 +103,11 @@ pub struct LookupWitness<F: FftField> {
     pub f_chunks: Vec<F>,
 }
 
-const ZK_ROWS: usize = 2;
+pub const ZK_ROWS: usize = 2;
 
 // Pad with zeroes and then add 2 random elements in the last two
 // rows for zero knowledge.
-fn zk_patch<R: Rng + ?Sized, F: FftField>(mut e : Vec<F>, d: D<F>, rng: &mut R) -> Evaluations<F, D<F>> {
+pub fn zk_patch<R: Rng + ?Sized, F: FftField>(mut e : Vec<F>, d: D<F>, rng: &mut R) -> Evaluations<F, D<F>> {
     let n = d.size as usize;
     let k = e.len();
     assert!(k <= n - ZK_ROWS);
@@ -215,6 +215,46 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     }
 }
 
+pub trait Entry {
+    type Field: Field;
+    type Params;
+
+    fn evaluate(p: & Self::Params, j: &JointLookup<Self::Field>, witness: &[Vec<Self::Field>; COLUMNS], row: usize) -> Self;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CombinedEntry<F>(pub F);
+impl<F: Field> Entry for CombinedEntry<F> {
+    type Field = F;
+    type Params = F;
+
+    fn evaluate(joint_combiner: &F, j: &JointLookup<F>, witness: &[Vec<F>; COLUMNS], row: usize) -> CombinedEntry<F> {
+        let eval = |pos : LocalPosition| -> F {
+            let row = match pos.row { Curr => row, Next => row + 1 };
+            witness[pos.column][row]
+        };
+
+        CombinedEntry(j.evaluate(*joint_combiner, &eval))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct UncombinedEntry<F>(pub Vec<F>);
+
+impl<F: Field> Entry for UncombinedEntry<F> {
+    type Field = F;
+    type Params = ();
+
+    fn evaluate(_: &(), j: &JointLookup<F>, witness: &[Vec<F>; COLUMNS], row: usize) -> UncombinedEntry<F> {
+        let eval = |pos : LocalPosition| -> F {
+            let row = match pos.row { Curr => row, Next => row + 1 };
+            witness[pos.column][row]
+        };
+
+        UncombinedEntry(j.entry.iter().map(|s| s.evaluate(&eval)).collect())
+    }
+}
+
 /*
    Aggregration polyomial is the product of terms
 
@@ -222,23 +262,29 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     ---------------------------------------------------------------------------
     \prod_j (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
 */
-pub fn sorted<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
+pub fn sorted
+    <'a
+    , F: FftField
+    , E: Entry<Field=F> + Eq + std::hash::Hash + Clone
+    , I: Iterator<Item= E>
+    , G: Fn() -> I >
+    (
     // TODO: Multiple tables
-    dummy_lookup_value: F,
+    dummy_lookup_value: E,
     lookup_table: G,
     lookup_table_entries: usize,
     d1: D<F>,
     gates: &Vec<CircuitGate<F>>,
     witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
-    rng: &mut R,
-    ) -> Result<Vec<Evaluations<F, D<F>>>, ProofError>  
+    params: E::Params,
+    )
+    -> Result<Vec<Vec<E>>, ProofError>
 {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
     let n = d1.size as usize;
-    let mut counts : HashMap<F, usize> = HashMap::new();
+    let mut counts : HashMap<E, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
     let lookup_info = LookupInfo::<F>::create();
@@ -246,19 +292,14 @@ pub fn sorted<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item= F>, G: Fn() ->
     let max_lookups_per_row = lookup_info.max_per_row;
 
     for i in 0..lookup_rows {
-        let eval = |pos : LocalPosition| -> F {
-            let row = match pos.row { Curr => i, Next => i + 1 };
-            witness[pos.column][row]
-        };
-
         let spec = by_row[i];
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let table_entry = joint_lookup.evaluate(joint_combiner, &eval);
+            let table_entry = E::evaluate(&params, joint_lookup, &witness, i);
             let count = counts.entry(table_entry).or_insert(0);
             *count += 1;
         }
-        *counts.entry(dummy_lookup_value).or_insert(0) += padding;
+        *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
     }
 
     for t in lookup_table().take(lookup_rows) {
@@ -267,7 +308,10 @@ pub fn sorted<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item= F>, G: Fn() ->
     }
 
     let sorted = {
-        let mut sorted : Vec<Vec<F>> = vec![vec![]; max_lookups_per_row + 1];
+        let mut sorted : Vec<Vec<E>> = vec![];
+        for _ in 0..max_lookups_per_row + 1 {
+            sorted.push(vec![])
+        }
 
         let mut i = 0;
         for t in lookup_table().take(lookup_table_entries) {
@@ -279,13 +323,13 @@ pub fn sorted<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item= F>, G: Fn() ->
             for j in 0..t_count {
                 let idx = i + j;
                 let col = idx / lookup_rows;
-                sorted[col].push(t);
+                sorted[col].push(t.clone());
             }
             i += t_count;
         }
 
         for i in 0..max_lookups_per_row {
-            let end_val = sorted[i + 1][0];
+            let end_val = sorted[i + 1][0].clone();
             sorted[i].push(end_val);
         }
 
@@ -298,10 +342,7 @@ pub fn sorted<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item= F>, G: Fn() ->
         sorted
     };
 
-    Ok (
-        sorted.into_iter()
-        .map(|v| zk_patch(v, d1, rng))
-        .collect())
+    Ok(sorted)
 }
 
 pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
