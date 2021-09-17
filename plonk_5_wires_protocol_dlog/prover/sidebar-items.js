@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CamlProverCommitments",""],["ProverCommitments",""],["ProverProof",""]]});
+initSidebarItems({"struct":[["ProverCommitments",""],["ProverProof",""]]});

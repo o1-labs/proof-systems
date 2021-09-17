@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CamlProofEvaluations",""],["ProofEvaluations",""],["RandomOracles",""]]});
+initSidebarItems({"struct":[["ProofEvaluations",""],["RandomOracles",""]]});

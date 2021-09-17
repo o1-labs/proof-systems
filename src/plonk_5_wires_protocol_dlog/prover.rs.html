@@ -434,6 +434,45 @@
 <span id="434">434</span>
 <span id="435">435</span>
 <span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -470,62 +509,6 @@ This source file implements prover&#39;s zk-proof primitive.
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>, <span class="ident">derive</span>(<span class="ident">ocaml::ToValue</span>, <span class="ident">ocaml::FromValue</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="comment">// polynomial commitments</span>
-    <span class="kw">pub</span> <span class="ident">w_comm</span>: (
-        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    ),
-    <span class="kw">pub</span> <span class="ident">z_comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">t_comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">ocaml::ToValue</span><span class="op">&gt;</span> <span class="ident">ocaml::ToValue</span> <span class="kw">for</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">ocaml::ToValue</span>,
-{
-    <span class="kw">fn</span> <span class="ident">to_value</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ocaml::Value</span> {
-        <span class="kw">let</span> [<span class="ident">w_comm0</span>, <span class="ident">w_comm1</span>, <span class="ident">w_comm2</span>, <span class="ident">w_comm3</span>, <span class="ident">w_comm4</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">w_comm</span>;
-        <span class="ident">ocaml::ToValue::to_value</span>(<span class="ident">CamlProverCommitments</span> {
-            <span class="ident">w_comm</span>: (<span class="ident">w_comm0</span>, <span class="ident">w_comm1</span>, <span class="ident">w_comm2</span>, <span class="ident">w_comm3</span>, <span class="ident">w_comm4</span>),
-            <span class="ident">z_comm</span>: <span class="self">self</span>.<span class="ident">z_comm</span>,
-            <span class="ident">t_comm</span>: <span class="self">self</span>.<span class="ident">t_comm</span>,
-        })
-    }
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">ocaml::FromValue</span><span class="op">&gt;</span> <span class="ident">ocaml::FromValue</span> <span class="kw">for</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">ocaml::FromValue</span>,
-{
-    <span class="kw">fn</span> <span class="ident">from_value</span>(<span class="ident">v</span>: <span class="ident">ocaml::Value</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">comms</span>: <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ocaml::FromValue::from_value</span>(<span class="ident">v</span>);
-        <span class="kw">let</span> (<span class="ident">w_comm0</span>, <span class="ident">w_comm1</span>, <span class="ident">w_comm2</span>, <span class="ident">w_comm3</span>, <span class="ident">w_comm4</span>) <span class="op">=</span> <span class="ident">comms</span>.<span class="ident">w_comm</span>;
-        <span class="ident">ProverCommitments</span> {
-            <span class="ident">w_comm</span>: [<span class="ident">w_comm0</span>, <span class="ident">w_comm1</span>, <span class="ident">w_comm2</span>, <span class="ident">w_comm3</span>, <span class="ident">w_comm4</span>],
-            <span class="ident">z_comm</span>: <span class="ident">comms</span>.<span class="ident">z_comm</span>,
-            <span class="ident">t_comm</span>: <span class="ident">comms</span>.<span class="ident">t_comm</span>,
-        }
-    }
-}
-
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>, <span class="ident">derive</span>(<span class="ident">ocaml::ToValue</span>, <span class="ident">ocaml::FromValue</span>))]</span>
-<span class="kw">struct</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">proof</span>: <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    <span class="comment">// OCaml doesn&#39;t have sized arrays, so we have to convert to a tuple..</span>
-    <span class="kw">pub</span> <span class="ident">evals</span>: (<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
     <span class="comment">// polynomial commitments</span>
     <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
@@ -541,45 +524,6 @@ This source file implements prover&#39;s zk-proof primitive.
 
     <span class="comment">// The challenges underlying the optional polynomials folded into the proof</span>
     <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">ocaml::ToValue</span><span class="op">&gt;</span> <span class="ident">ocaml::ToValue</span> <span class="kw">for</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">ocaml::ToValue</span>,
-{
-    <span class="kw">fn</span> <span class="ident">to_value</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ocaml::Value</span> {
-        <span class="ident">ocaml::ToValue::to_value</span>(<span class="ident">CamlProverProof</span> {
-            <span class="ident">commitments</span>: <span class="self">self</span>.<span class="ident">commitments</span>,
-            <span class="ident">proof</span>: <span class="self">self</span>.<span class="ident">proof</span>,
-            <span class="ident">evals</span>: {
-                <span class="kw">let</span> [<span class="ident">evals0</span>, <span class="ident">evals1</span>] <span class="op">=</span> <span class="self">self</span>.<span class="ident">evals</span>;
-                (<span class="ident">evals0</span>, <span class="ident">evals1</span>)
-            },
-            <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">public</span>,
-            <span class="ident">prev_challenges</span>: <span class="self">self</span>.<span class="ident">prev_challenges</span>,
-        })
-    }
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
-<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">ocaml::FromValue</span><span class="op">&gt;</span> <span class="ident">ocaml::FromValue</span> <span class="kw">for</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">ocaml::FromValue</span>,
-{
-    <span class="kw">fn</span> <span class="ident">from_value</span>(<span class="ident">v</span>: <span class="ident">ocaml::Value</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">p</span>: <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ocaml::FromValue::from_value</span>(<span class="ident">v</span>);
-        <span class="ident">ProverProof</span> {
-            <span class="ident">commitments</span>: <span class="ident">p</span>.<span class="ident">commitments</span>,
-            <span class="ident">proof</span>: <span class="ident">p</span>.<span class="ident">proof</span>,
-            <span class="ident">evals</span>: {
-                <span class="kw">let</span> (<span class="ident">evals0</span>, <span class="ident">evals1</span>) <span class="op">=</span> <span class="ident">p</span>.<span class="ident">evals</span>;
-                [<span class="ident">evals0</span>, <span class="ident">evals1</span>]
-            },
-            <span class="ident">public</span>: <span class="ident">p</span>.<span class="ident">public</span>,
-            <span class="ident">prev_challenges</span>: <span class="ident">p</span>.<span class="ident">prev_challenges</span>,
-        }
-    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
@@ -868,6 +812,140 @@ This source file implements prover&#39;s zk-proof primitive.
             <span class="ident">public</span>,
             <span class="ident">prev_challenges</span>,
         })
+    }
+}
+
+<span class="comment">//</span>
+<span class="comment">// OCaml types</span>
+<span class="comment">//</span>
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::caml</span>::{<span class="ident">CamlOpeningProof</span>, <span class="ident">CamlPolyComm</span>};
+    <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
+    <span class="kw">use</span> <span class="ident">plonk_5_wires_circuits::scalars::caml::CamlProofEvaluations</span>;
+
+    <span class="comment">//</span>
+    <span class="comment">// ProverCommitments&lt;G&gt; &lt;-&gt; CamlProverCommitments&lt;CamlG&gt;</span>
+    <span class="comment">//</span>
+
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
+        <span class="comment">// polynomial commitments</span>
+        <span class="kw">pub</span> <span class="ident">w_comm</span>: (
+            <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+            <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+            <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+            <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+            <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+        ),
+        <span class="kw">pub</span> <span class="ident">z_comm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">t_comm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+        <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">prover_comm</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+            <span class="kw">let</span> <span class="ident">w_comm</span> <span class="op">=</span> <span class="ident">prover_comm</span>
+                .<span class="ident">w_comm</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">cloned</span>()
+                .<span class="ident">map</span>(<span class="ident">Into::into</span>)
+                .<span class="ident">collect_tuple</span>()
+                .<span class="ident">expect</span>(<span class="string">&quot;collect_tuple has a bug&quot;</span>);
+            <span class="self">Self</span> {
+                <span class="ident">w_comm</span>,
+                <span class="ident">z_comm</span>: <span class="ident">prover_comm</span>.<span class="ident">z_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">t_comm</span>: <span class="ident">prover_comm</span>.<span class="ident">t_comm</span>.<span class="ident">into</span>(),
+            }
+        }
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+        <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+            <span class="kw">let</span> <span class="ident">w_comm</span> <span class="op">=</span> [
+                <span class="self">self</span>.<span class="ident">w_comm</span>.<span class="number">0</span>.<span class="ident">into</span>(),
+                <span class="self">self</span>.<span class="ident">w_comm</span>.<span class="number">1</span>.<span class="ident">into</span>(),
+                <span class="self">self</span>.<span class="ident">w_comm</span>.<span class="number">2</span>.<span class="ident">into</span>(),
+                <span class="self">self</span>.<span class="ident">w_comm</span>.<span class="number">3</span>.<span class="ident">into</span>(),
+                <span class="self">self</span>.<span class="ident">w_comm</span>.<span class="number">4</span>.<span class="ident">into</span>(),
+            ];
+            <span class="ident">ProverCommitments</span> {
+                <span class="ident">w_comm</span>,
+                <span class="ident">z_comm</span>: <span class="self">self</span>.<span class="ident">z_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">t_comm</span>: <span class="self">self</span>.<span class="ident">t_comm</span>.<span class="ident">into</span>(),
+            }
+        }
+    }
+
+    <span class="comment">//</span>
+    <span class="comment">// ProverProof&lt;G&gt; &lt;-&gt; CamlProverProof&lt;CamlG&gt;</span>
+    <span class="comment">//</span>
+
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> {
+        <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">proof</span>: <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>,
+        <span class="comment">// OCaml doesn&#39;t have sized arrays, so we have to convert to a tuple..</span>
+        <span class="kw">pub</span> <span class="ident">evals</span>: (<span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>),
+        <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+        <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+        <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pp</span>: <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+            <span class="self">Self</span> {
+                <span class="ident">commitments</span>: <span class="ident">pp</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
+                <span class="ident">proof</span>: <span class="ident">pp</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
+                <span class="ident">evals</span>: (<span class="ident">pp</span>.<span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">clone</span>().<span class="ident">into</span>(), <span class="ident">pp</span>.<span class="ident">evals</span>[<span class="number">1</span>].<span class="ident">clone</span>().<span class="ident">into</span>()),
+                <span class="ident">public</span>: <span class="ident">pp</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">prev_challenges</span>: <span class="ident">pp</span>
+                    .<span class="ident">prev_challenges</span>
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">c</span>)<span class="op">|</span> {
+                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>();
+                        (<span class="ident">v</span>, <span class="ident">c</span>.<span class="ident">into</span>())
+                    })
+                    .<span class="ident">collect</span>(),
+            }
+        }
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
+        <span class="ident">CamlG</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+        <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+            <span class="ident">ProverProof</span> {
+                <span class="ident">commitments</span>: <span class="self">self</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
+                <span class="ident">proof</span>: <span class="self">self</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
+                <span class="ident">evals</span>: [<span class="self">self</span>.<span class="ident">evals</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="self">self</span>.<span class="ident">evals</span>.<span class="number">1</span>.<span class="ident">into</span>()],
+                <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">prev_challenges</span>: <span class="self">self</span>
+                    .<span class="ident">prev_challenges</span>
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">c</span>)<span class="op">|</span> {
+                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>();
+                        (<span class="ident">v</span>, <span class="ident">c</span>.<span class="ident">into</span>())
+                    })
+                    .<span class="ident">collect</span>(),
+            }
+        }
     }
 }
 </code></pre></div>
