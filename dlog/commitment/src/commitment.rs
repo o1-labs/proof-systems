@@ -1135,17 +1135,17 @@ pub mod caml {
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(xxx: OpeningProof<G>) -> Self {
+        fn from(opening_proof: OpeningProof<G>) -> Self {
             Self {
-                lr: xxx
+                lr: opening_proof
                     .lr
                     .into_iter()
                     .map(|(g1, g2)| (g1.into(), g2.into()))
                     .collect(),
-                delta: xxx.delta.into(),
-                z1: xxx.z1.into(),
-                z2: xxx.z2.into(),
-                sg: xxx.sg.into(),
+                delta: opening_proof.delta.into(),
+                z1: opening_proof.z1.into(),
+                z2: opening_proof.z2.into(),
+                sg: opening_proof.sg.into(),
             }
         }
     }
