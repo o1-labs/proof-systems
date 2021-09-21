@@ -40,7 +40,7 @@ const PUBLIC: usize = 0;
 
 #[test]
 fn chacha() {
-    let num_chachas = 128;
+    let num_chachas = 16;
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
     let max_size = 1 << ceil_log2(n_lower_bound);
