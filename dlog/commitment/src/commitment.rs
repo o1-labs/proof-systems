@@ -857,22 +857,18 @@ where
         for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
             // TODO: This computation is repeated in ProverProof::oracles
             let combined_inner_product0 = {
-                let es: Vec<_> = polys
-                    .iter()
-                    .map(|(comm, evals, bound)| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*bound)?;
-                            let x = comm.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evals.clone(), bound)
-                    })
-                    .collect();
-                combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
+                let mut evals = vec![];
+                for (comm, evals, bound) in polys {
+                    let bound = match comm.shifted {
+                        None => None,
+                        // if the shifted part is zero, no need to check the bound
+                        // TODO: is this true? don't we need to check the number of chunks?
+                        Some(x) if x.is_zero() => None, 
+                        _ => Some(bound)
+                    };
+                    evals.push((evals.clone(), bound));
+                }
+                combined_inner_product::<G>(evaluation_points, xi, r, &evals, self.g.len())
             };
 
             sponge.absorb_fr(&[shift_scalar(combined_inner_product0)]);
