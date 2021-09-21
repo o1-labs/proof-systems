@@ -456,7 +456,7 @@ where
             assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
         }
 
-        match srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
+        match srs.batch_verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
             false => Err(ProofError::OpenProof),
             true => Ok(true),
         }

@@ -136,6 +136,6 @@ where
     println!("{}{:?}", "open time: ".magenta(), open);
 
     let start = Instant::now();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
+    assert!(srs.batch_verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
     println!("{}{:?}", "verification time: ".green(), start.elapsed());
 }

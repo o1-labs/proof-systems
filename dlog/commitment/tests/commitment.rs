@@ -20,7 +20,7 @@ use rand::Rng;
 use std::time::{Duration, Instant};
 
 // Note: Because the current API uses large tuples of types, I re-create types
-// in this test to facilitate aggregated proofs and batch verification of proofs.
+// in this test to facilitate multi-proofs and batch verification of proofs.
 // TODO: improve the polynomial commitment API
 
 /// A commitment
@@ -74,8 +74,8 @@ mod prover {
     }
 }
 
-/// This struct represents an aggregated evaluation proof for a number of polynomial commitments, as well as a number of evaluation points.
-pub struct AggregatedEvaluationProof {
+/// This struct represents an multi-evaluation proof for a number of polynomial commitments, as well as a number of evaluation points.
+pub struct MultiEvaluationProof {
     /// a number of evaluation points
     eval_points: Vec<Fp>,
     /// a number of commitments evaluated at these evaluation points
@@ -90,8 +90,8 @@ pub struct AggregatedEvaluationProof {
     proof: OpeningProof<Affine>,
 }
 
-impl AggregatedEvaluationProof {
-    /// This function converts an aggregated evaluation proof into something the verify API understands
+impl MultiEvaluationProof {
+    /// This function converts an multi-evaluation proof into something the verify API understands
     pub fn verify_type(&self) -> verifier::BatchVerify {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
@@ -134,7 +134,7 @@ where
     let mut time_commit = Duration::new(0, 0);
     let mut time_open = Duration::new(0, 0);
 
-    // create 7 distinct "aggregated evaluation proofs"
+    // create 7 distinct "multi-evaluation proofs"
     let mut proofs = vec![];
     for _ in 0..7 {
         // generate 7 random evaluation points
@@ -186,7 +186,7 @@ where
             });
         }
 
-        // create aggregated evaluation proof
+        // create multi-evaluation proof
         let mut polynomials = vec![];
         for c in &commitments {
             polynomials.push((
@@ -213,7 +213,7 @@ where
 
         // prepare for batch verification
         let eval_commitments = commitments.into_iter().map(|c| c.eval_commit).collect();
-        proofs.push(AggregatedEvaluationProof {
+        proofs.push(MultiEvaluationProof {
             eval_points,
             eval_commitments,
             polymask,
@@ -234,7 +234,7 @@ where
 
     // batch verify all the proofs
     let mut batch: Vec<verifier::BatchVerify> = proofs.iter().map(|p| p.verify_type()).collect();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
+    assert!(srs.batch_verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench
     println!(

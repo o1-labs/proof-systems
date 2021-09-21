@@ -374,9 +374,20 @@ fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) ->
     G::of_coordinates(x, y)
 }
 
-/// Computes the linearization of the evaluations of a (potentially split) polynomial.
-/// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,
+/// Computes the righthand side of the inner product 
+/// For example, f(x1) + xi * g(x1) + r * [ f(x2) + xi * g(x2) ]
+/// Each given `chunked_multi_evals` is associated to a matrix where 
+/// the rows represent the number of evaluated points,
 /// and the columns represent potential segments (if a polynomial was split in several parts).
+/// 
+///  ---------------------------------------
+/// |    | t_lo      | t_mid      | t_hi    |
+/// | ---------------------------------------
+/// | x1 | t_lo(x1)  | t_mid(x1) | t_hi(x1) |
+/// | ---------------------------------------
+/// | x2 | t_lo(x2)  | t_mid(x2) | t_hi(x2) |
+/// ----------------------------------------
+///
 /// Note that if one of the polynomial comes specified with a degree bound,
 /// the evaluation for the last segment is potentially shifted to meet the proof.
 pub fn combined_inner_product<G: CommitmentCurve>(
@@ -384,13 +395,13 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     xi: &Fr<G>,
     r: &Fr<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)>,
+    chunked_multi_evals: &Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)>,
     srs_length: usize,
 ) -> Fr<G> {
     let mut res = Fr::<G>::zero();
     let mut xi_i = Fr::<G>::one();
 
-    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| evals_tr[0].len() > 0) {
+    for (evals_tr, shifted) in chunked_multi_evals.iter().filter(|(evals_tr, _)| evals_tr[0].len() > 0) {
         // transpose the evaluations
         let evals = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
@@ -791,7 +802,7 @@ where
     ///     oracle_params: parameters for the random oracle argument
     ///     randomness source context
     ///     RETURN: verification status
-    pub fn verify<EFqSponge, RNG>(
+    pub fn batch_verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         batch: &mut Vec<(
@@ -1124,6 +1135,6 @@ mod tests {
             &opening_proof,
         )];
 
-        assert!(srs.verify(&group_map, &mut batch, rng));
+        assert!(srs.batch_verify(&group_map, &mut batch, rng));
     }
 }
