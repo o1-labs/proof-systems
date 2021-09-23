@@ -140,7 +140,6 @@ pub trait ToBinding {
 /// It is usually derived automatically via the [OcamlGen] macro,
 /// or the [OCamlCustomType] macro for custom types.
 pub trait ToOcaml {
-    // TODO: use TypeInfo instead
     fn to_ocaml(env: &Env, generics: &[&str]) -> String;
     fn to_id() -> u128;
 }
