@@ -35,8 +35,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
     }
 }
 
+/*
 #[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct CamlProofEvaluations<Fs> {
     pub w: (Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs),
     pub z: Fs,
@@ -51,9 +52,9 @@ pub struct CamlProofEvaluations<Fs> {
 }
 
 #[cfg(feature = "ocaml_types")]
-unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
-    fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(CamlProofEvaluations {
+unsafe impl<Fs: ocaml::IntoValue> ocaml::IntoValue for ProofEvaluations<Fs> {
+    fn into_value(self) -> ocaml::Value {
+        ocaml::IntoValue::to_value(CamlProofEvaluations {
             w: {
                 let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = self.w;
                 (
@@ -102,9 +103,10 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
         }
     }
 }
+*/
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
+#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct RandomOracles<F: Field> {
     // Plonk oracles
     pub po: RO<F>,
