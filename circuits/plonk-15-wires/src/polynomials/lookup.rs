@@ -427,7 +427,7 @@ pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     Ok(zk_patch(lookup_aggreg, d1, rng))
 }
 
-pub fn constraints<F: FftField>(dummy_lookup: F, d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -453,9 +453,13 @@ pub fn constraints<F: FftField>(dummy_lookup: F, d1: D<F>) -> Vec<E<F>> {
     let one : E<F> = E::one();
     let non_lookup_indcator = one.clone() - lookup_indicator;
 
+    let dummy_lookup : C<F> =
+        dummy_lookup.iter().rev()
+        .fold(C::Literal(F::zero()), |acc, x| C::JointCombiner * acc + C::Literal(*x));
+
     let complements_with_beta_term: Vec<C<F>> = {
         let mut v = vec![C::one()];
-        let x = C::Gamma + C::Literal(dummy_lookup);
+        let x = C::Gamma + dummy_lookup;
         for i in 1..(lookup_info.max_per_row+1) {
             v.push(v[i - 1].clone() * x.clone())
         }
