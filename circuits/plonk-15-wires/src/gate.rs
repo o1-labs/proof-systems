@@ -102,6 +102,7 @@ fn max_lookups_per_row<F>(kinds: &Vec<Vec<JointLookup<F>>>) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum LookupsUsed {
     Single,
     Joint,
