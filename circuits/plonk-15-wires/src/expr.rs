@@ -1,11 +1,12 @@
-use crate::nolookup::scalars::{ProofEvaluations, RandomOracles};
+use crate::nolookup::scalars::{ProofEvaluations};
 use crate::nolookup::constraints::{eval_zk_polynomial};
 use ark_ff::{FftField, Field, Zero, One};
-use ark_poly::{Evaluations, EvaluationDomain, Radix2EvaluationDomain as D};
+use ark_poly::{univariate::DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D};
 use crate::gate::{GateType, CurrOrNext};
 use std::ops::{Add, Sub, Mul};
 use std::collections::{HashMap, HashSet};
 use CurrOrNext::*;
+use rayon::prelude::*;
 
 use crate::wires::COLUMNS;
 use crate::domains::EvaluationDomains;
@@ -35,6 +36,36 @@ pub struct Environment<'a, F : FftField> {
     // The value
     // prod_{j != 1} (1 - omega^j)
     pub l0_1: F,
+}
+
+impl<'a, F: FftField> Environment<'a, F> {
+    fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
+        use Column::*;
+        let e =
+            match col {
+                LookupKindIndex(i) => &self.lookup_selectors[*i],
+                Witness(i) => &self.witness[*i],
+                Z => self.z,
+                LookupSorted(i) => &self.lookup_sorted[*i],
+                LookupAggreg => self.lookup_aggreg,
+                LookupTable => self.lookup_table,
+                Index(t) =>
+                    match self.index.get(t) {
+                        None => return None,
+                        Some(e) => e,
+                    }
+            };
+        Some(e)
+    }
+
+    pub fn constants(&self) -> Constants<F> {
+        Constants {
+            alpha: self.alpha,
+            beta: self.beta,
+            gamma: self.gamma,
+            joint_combiner: self.joint_combiner
+        }
+    }
 }
 
 // In this file, we define
@@ -76,15 +107,59 @@ pub struct Variable {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstantExpr<F> {
+    // TODO: Factor these out into an enum just for Alpha, Beta, Gamma, JointCombiner
     Alpha,
     Beta,
     Gamma,
     JointCombiner,
     Literal(F),
     Pow(Box<ConstantExpr<F>>, usize),
-    Mul(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+    // TODO: I think having separate Add, Sub, Mul constructors is faster than
+    // having a BinOp constructor :(
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+    Mul(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
     Sub(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+}
+
+impl<F: Copy> ConstantExpr<F> {
+    fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
+        match self {
+            ConstantExpr::Alpha => {
+                res.push(PolishToken::Alpha)
+            },
+            ConstantExpr::Beta => {
+                res.push(PolishToken::Beta)
+            },
+            ConstantExpr::Gamma => {
+                res.push(PolishToken::Gamma)
+            },
+            ConstantExpr::JointCombiner => {
+                res.push(PolishToken::JointCombiner)
+            },
+            ConstantExpr::Add(x, y) => {
+                x.as_ref().to_polish_(res);
+                y.as_ref().to_polish_(res);
+                res.push(PolishToken::Add)
+            },
+            ConstantExpr::Mul(x, y) => {
+                x.as_ref().to_polish_(res);
+                y.as_ref().to_polish_(res);
+                res.push(PolishToken::Mul)
+            },
+            ConstantExpr::Sub(x, y) => {
+                x.as_ref().to_polish_(res);
+                y.as_ref().to_polish_(res);
+                res.push(PolishToken::Sub)
+            },
+            ConstantExpr::Literal(x) => {
+                res.push(PolishToken::Literal(*x))
+            },
+            ConstantExpr::Pow(x, n) => {
+                x.to_polish_(res);
+                res.push(PolishToken::Pow(*n))
+            },
+        }
+    }
 }
 
 impl<F: Field> ConstantExpr<F> {
@@ -193,13 +268,93 @@ impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
 pub enum Expr<C> {
     Constant(C),
     Cell(Variable),
-    Mul(Box<Expr<C>>, Box<Expr<C>>),
     Add(Box<Expr<C>>, Box<Expr<C>>),
+    Mul(Box<Expr<C>>, Box<Expr<C>>),
     Sub(Box<Expr<C>>, Box<Expr<C>>),
     ZkPolynomial,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum PolishToken<F> {
+    Alpha,
+    Beta,
+    Gamma,
+    JointCombiner,
+    Literal(F),
+    Cell(Variable),
+    Pow(usize),
+    Add,
+    Mul,
+    Sub,
+    ZkPolynomial,
+    UnnormalizedLagrangeBasis(usize)
+}
+
+impl<F: FftField> PolishToken<F> {
+    pub fn evaluate(
+        toks: &Vec<PolishToken<F>>, d: D<F>, pt: F,
+        evals: &[ProofEvaluations<F>], c: &Constants<F>) -> Option<F> {
+        let mut stack = vec![];
+
+        for t in toks.iter() {
+            use PolishToken::*;
+            match t {
+                Alpha => stack.push(c.alpha),
+                Beta => stack.push(c.beta),
+                Gamma => stack.push(c.gamma),
+                JointCombiner => stack.push(c.joint_combiner),
+                ZkPolynomial => stack.push(eval_zk_polynomial(d, pt)),
+                UnnormalizedLagrangeBasis(i) =>
+                    stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
+                Literal(x) => stack.push(*x),
+                Cell(Variable { col, row }) => {
+                    let evals = &evals[curr_or_next(*row)];
+                    use Column::*;
+                    let l =
+                        match &evals.lookup {
+                            Some(l) => l,
+                            None => return None
+                        };
+                    let x =
+                        match col {
+                            Witness(i) => evals.w[*i],
+                            Z => evals.z,
+                            LookupSorted(i) => l.sorted[*i],
+                            LookupAggreg => l.aggreg,
+                            LookupTable => l.table,
+                            LookupKindIndex(_) | Index(_) =>
+                                return None
+                        };
+                    stack.push(x);
+                },
+                Pow(n) => {
+                    let i = stack.len() - 1;
+                    stack[i] = stack[i].pow(&[*n as u64]);
+                },
+                Add => {
+                    let y = stack.pop()?;
+                    let x = stack.pop()?;
+                    stack.push(x + y);
+                },
+                Mul => {
+                    let y = stack.pop()?;
+                    let x = stack.pop()?;
+                    stack.push(x * y);
+                },
+                Sub => {
+                    let y = stack.pop()?;
+                    let x = stack.pop()?;
+                    stack.push(x - y);
+                },
+            }
+        }
+
+        assert_eq!(stack.len(), 1);
+        Some(stack[0])
+    }
 }
 
 impl<F: Zero> Zero for Expr<F> {
@@ -421,17 +576,17 @@ fn unnormalized_lagrange_evals<F:FftField>(
 }
 
 impl<'a, F: FftField> EvalResult<'a, F> {
-    fn init_<G: Fn(usize) -> F>(
+    fn init_<G: Sync + Send + Fn(usize) -> F>(
         res_domain: (Domain, D<F>),
         g : G) -> Evaluations<F, D<F>> {
         let n = res_domain.1.size as usize;
         Evaluations::<F, D<F>>::from_vec_and_domain(
-            (0..n).map(g).collect(),
+            (0..n).into_par_iter().map(g).collect(),
             res_domain.1
         )
     }
 
-    fn init<G: Fn(usize) -> F>(res_domain: (Domain, D<F>), g : G) -> Self {
+    fn init<G: Sync + Send + Fn(usize) -> F>(res_domain: (Domain, D<F>), g : G) -> Self {
         Self::Evals {
             domain: res_domain.0,
             evals: Self::init_(res_domain, g)
@@ -444,16 +599,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x + y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                for e in evals.evals.iter_mut() {
-                    *e += x;
-                }
+                evals.evals.par_iter_mut().for_each(|e| *e += x);
                 Evals { domain, evals }
             },
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) |
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let n = res_domain.1.size as usize;
                 let scale = (d as usize) / (res_domain.0 as usize);
-                let v: Vec<_> = (0..n).map(|i| {
+                let v: Vec<_> = (0..n).into_par_iter().map(|i| {
                     x + evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 }).collect();
                 Evals {
@@ -473,7 +626,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
             | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
                 Evals { evals, domain: d }
@@ -483,7 +636,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
 
                 let n = res_domain.1.size as usize;
-                let v: Vec<_> = (0..n).map(|i| {
+                let v: Vec<_> = (0..n).into_par_iter().map(|i| {
                     es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] 
                         + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
                 }).collect();
@@ -505,11 +658,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
             (Evals { domain, mut evals }, Constant(x)) => {
-                evals.evals.iter_mut().for_each(|e| *e -= x);
+                evals.evals.par_iter_mut().for_each(|e| *e -= x);
                 Evals { domain, evals }
             },
             (Constant(x), Evals { domain, mut evals }) => {
-                evals.evals.iter_mut().for_each(|e| *e = x - *e);
+                evals.evals.par_iter_mut().for_each(|e| *e = x - *e);
                 Evals { domain, evals }
             },
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) => {
@@ -531,14 +684,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
                 });
                 Evals { evals, domain: d }
             }
             (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
                 Evals { evals, domain: d }
@@ -561,9 +714,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), Constant(y)) => Constant(x * y),
             (Evals { domain, mut evals }, Constant(x))
             | (Constant(x), Evals { domain, mut evals }) => {
-                for e in evals.evals.iter_mut() {
-                    *e *= x;
-                }
+                evals.evals.par_iter_mut().for_each(|e| *e *= x);
                 Evals { domain, evals }
             },
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) |
@@ -581,7 +732,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
             | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
-                evals.evals.iter_mut().enumerate().for_each(|(i, e)| {
+                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
                 Evals { evals, domain: d }
@@ -619,6 +770,44 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         Expr::Constant(ConstantExpr::Literal(x))
     }
 
+    pub fn to_polish(&self) -> Vec<PolishToken<F>> {
+        let mut res = vec![];
+        self.to_polish_(&mut res);
+        res
+    }
+
+    fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
+        match self {
+            Expr::Constant(c) => {
+                c.to_polish_(res);
+            },
+            Expr::Cell(v) => {
+                res.push(PolishToken::Cell(*v))
+            },
+            Expr::ZkPolynomial => {
+                res.push(PolishToken::ZkPolynomial);
+            },
+            Expr::UnnormalizedLagrangeBasis(i) => {
+                res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
+            },
+            Expr::Add(x, y) => {
+                x.to_polish_(res);
+                y.to_polish_(res);
+                res.push(PolishToken::Add);
+            },
+            Expr::Mul(x, y) => {
+                x.to_polish_(res);
+                y.to_polish_(res);
+                res.push(PolishToken::Add);
+            },
+            Expr::Sub(x, y) => {
+                x.to_polish_(res);
+                y.to_polish_(res);
+                res.push(PolishToken::Sub);
+            },
+        }
+    }
+
     pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
         cs.into_iter().zip(alpha0..).map(|(c, i)| {
@@ -630,51 +819,101 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         Expr::Constant(ConstantExpr::Beta)
     }
 
-    pub fn evaluate_constants(&self, c: &Constants<F>) -> Expr<F> {
+    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F> {
         use Expr::*;
         match self {
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
             ZkPolynomial => ZkPolynomial,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
-            Add(x, y) => Add(Box::new(x.evaluate_constants(c)), Box::new(y.evaluate_constants(c))),
-            Mul(x, y) => Mul(Box::new(x.evaluate_constants(c)), Box::new(y.evaluate_constants(c))),
-            Sub(x, y) => Sub(Box::new(x.evaluate_constants(c)), Box::new(y.evaluate_constants(c))),
+            Add(x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
+            Mul(x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
+            Sub(x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c)
         }
     }
 
+    pub fn evaluate(
+        &self, d: D<F>, pt: F,
+        evals: &[ProofEvaluations<F>],
+        env: &Environment<F>) -> Result<F, &str> {
+        self.evaluate_(d, pt, evals, &env.constants())
+    }
+
+    pub fn evaluate_(
+        &self, d: D<F>, pt: F,
+        evals: &[ProofEvaluations<F>],
+        c: &Constants<F>) -> Result<F, &str> {
+        use Expr::*;
+        match self {
+            Constant(x) => Ok(x.value(c)),
+            Mul(x, y) => {
+                let x = (*x).evaluate_(d, pt, evals, c)?;
+                let y = (*y).evaluate_(d, pt, evals, c)?;
+                Ok(x * y)
+            },
+            Add(x, y) => {
+                let x = (*x).evaluate_(d, pt, evals, c)?;
+                let y = (*y).evaluate_(d, pt, evals, c)?;
+                Ok(x + y)
+            },
+            Sub(x, y) => {
+                let x = (*x).evaluate_(d, pt, evals, c)?;
+                let y = (*y).evaluate_(d, pt, evals, c)?;
+                Ok(x - y)
+            },
+            ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
+            UnnormalizedLagrangeBasis(i) =>
+                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
+            Cell(Variable { col, row }) => {
+                let evals = &evals[curr_or_next(*row)];
+                use Column::*;
+                let lookup_evals =
+                    match &evals.lookup {
+                        Some(l) => Ok(l),
+                        None => Err("Lookup should not have been used")
+                    };
+                match col {
+                    Witness(i) => Ok(evals.w[*i]),
+                    Z => Ok(evals.z),
+                    LookupSorted(i) => lookup_evals.map(|l| l.sorted[*i]),
+                    LookupAggreg => lookup_evals.map(|l| l.aggreg),
+                    LookupTable => lookup_evals.map(|l| l.table),
+                    LookupKindIndex(_) | Index(_) =>
+                        Err("Cannot get index evaluation (should have been linearized away)")
+                }
+            }
+        }
+    }
+
+    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F> {
+        self.evaluate_constants_(&env.constants())
+    }
+
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
-        let c = Constants {
-            alpha: env.alpha,
-            beta: env.beta,
-            gamma: env.gamma,
-            joint_combiner: env.joint_combiner
-        };
-        let e = self.evaluate_constants(&c);
-        e.evaluations(env)
+        self.evaluate_constants(env).evaluations(env)
     }
 }
 
 impl<F: FftField> Expr<F> {
     pub fn evaluate(
-        &self, d: D<F>, pt: F, oracles: &RandomOracles<F>, 
-        evals: &[ProofEvaluations<F>; 2]) -> Result<F, &str> {
+        &self, d: D<F>, pt: F,
+        evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
             Mul(x, y) => {
-                let x = (*x).evaluate(d, pt, oracles, evals)?;
-                let y = (*y).evaluate(d, pt, oracles, evals)?;
+                let x = (*x).evaluate(d, pt, evals)?;
+                let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x * y)
             },
             Add(x, y) => {
-                let x = (*x).evaluate(d, pt, oracles, evals)?;
-                let y = (*y).evaluate(d, pt, oracles, evals)?;
+                let x = (*x).evaluate(d, pt, evals)?;
+                let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x + y)
             },
             Sub(x, y) => {
-                let x = (*x).evaluate(d, pt, oracles, evals)?;
-                let y = (*y).evaluate(d, pt, oracles, evals)?;
+                let x = (*x).evaluate(d, pt, evals)?;
+                let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
             },
             ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
@@ -748,19 +987,9 @@ impl<F: FftField> Expr<F> {
                 },
             Expr::Cell(Variable { col, row }) => {
                 let evals : &'a Evaluations<F, D<F>> = {
-                    use Column::*;
-                    match col {
-                        LookupKindIndex(i) => &env.lookup_selectors[*i],
-                        Witness(i) => &env.witness[*i],
-                        Z => env.z,
-                        LookupSorted(i) => &env.lookup_sorted[*i],
-                        LookupAggreg => env.lookup_aggreg,
-                        LookupTable => env.lookup_table,
-                        Index(t) => 
-                            match env.index.get(t) {
-                                None => return EvalResult::Constant(F::zero()),
-                                Some(e) => e
-                            }
+                    match env.get_column(col) {
+                        None => return EvalResult::Constant(F::zero()),
+                        Some(e) => e
                     }
                 };
                 EvalResult::SubEvals { 
@@ -782,10 +1011,87 @@ impl<F: FftField> Expr<F> {
     }
 }
 
-pub struct Linearization<F> {
-    pub constant_term: Expr<F>,
-    pub index_terms: Vec<(Column, Expr<F>)>
+#[derive(Clone, Debug)]
+pub struct Linearization<E> {
+    pub constant_term: E,
+    pub index_terms: Vec<(Column, E)>
 }
+
+impl<A> Linearization<A> {
+    pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B> {
+        Linearization {
+            constant_term: f(&self.constant_term),
+            index_terms: self.index_terms.iter().map(|(c, x)| (*c, f(x))).collect()
+        }
+    }
+}
+
+impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+    pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F>> {
+        Linearization {
+            constant_term: self.constant_term.evaluate_constants(env),
+            index_terms:
+                self.index_terms.iter()
+                .map(|(c, e)| (*c, e.evaluate_constants(env)))
+                .collect()
+        }
+    }
+}
+
+impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
+    pub fn to_polynomial(&self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
+        let cs = env.constants();
+        let n = env.domain.d1.size as usize;
+        let mut res = vec![F::zero(); n];
+        self.index_terms.iter().for_each(|(idx, c)| {
+            let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, &cs).unwrap();
+            let e = env.get_column(&idx).expect(&format!("Index polynomial {:?} not found", idx));
+            let scale = e.evals.len() / n;
+            res.par_iter_mut().enumerate().for_each(|(i, r)| {
+                *r += c * e.evals[scale * i]
+            })
+        });
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
+        (PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, &cs).unwrap(), p)
+    }
+}
+impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+    pub fn to_polynomial(&self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
+        let cs = env.constants();
+        let n = env.domain.d1.size as usize;
+        let mut res = vec![F::zero(); n];
+        self.index_terms.iter().for_each(|(idx, c)| {
+            let c = c.evaluate_(env.domain.d1, pt, evals, &cs).unwrap();
+            let e = env.get_column(&idx).expect(&format!("Index polynomial {:?} not found", idx));
+            let scale = e.evals.len() / n;
+            res.par_iter_mut().enumerate().for_each(|(i, r)| {
+                *r += c * e.evals[scale * i]
+            })
+        });
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
+        (self.constant_term.evaluate_(env.domain.d1, pt, evals, &cs).unwrap(), p)
+    }
+}
+
+/*
+impl<F: FftField> Linearization<Expr<F>> {
+    pub fn to_polynomial(self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
+        let n = env.domain.d1.size as usize;
+        let mut res = vec![F::zero(); n];
+        self.index_terms.into_iter().for_each(|(idx, c)| {
+            let c = c.evaluate(env.domain.d1, pt, evals).unwrap();
+            let e = env.get_column(&idx).expect(&format!("Index polynomial {:?} not found", idx));
+            let scale = e.evals.len() / n;
+            res.par_iter_mut().enumerate().for_each(|(i, r)| {
+                *r += c * e.evals[scale * i]
+            })
+        });
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
+        //.fold(DensePolynomial::zero(), |acc, p| &acc + &p);
+        (self.constant_term.evaluate(env.domain.d1, pt, evals).unwrap(), p)
+    }
+}
+*/
 
 impl<C> Expr<C> {
     pub fn constant(c: C) -> Expr<C> {
@@ -793,7 +1099,111 @@ impl<C> Expr<C> {
     }
 }
 
+impl<F: Clone + One + Zero + PartialEq> Expr<F> {
+    fn monomials(&self) -> HashMap<Vec<Variable>, Expr<F>> {
+        let sing = |v: Vec<Variable>, c: Expr<F>| {
+            let mut h = HashMap::new();
+            h.insert(v, c);
+            h
+        };
+        let constant = |e : Expr<F>| sing(vec![], e);
+        use Expr::*;
+        match self {
+            UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
+            ZkPolynomial => constant(ZkPolynomial),
+            Constant(c) => constant(Constant(c.clone())),
+            Cell(var) => sing(vec![*var], Constant(F::one())),
+            Add(e1, e2) => {
+                let mut res = e1.monomials();
+                for (m, c) in e2.monomials() {
+                    let v =
+                        match res.remove(&m) {
+                            None => Self::zero(),
+                            Some(v) => v + c
+                        };
+                    res.insert(m, v);
+                }
+                res
+            },
+            Sub(e1, e2) => {
+                let mut res = e1.monomials();
+                for (m, c) in e2.monomials() {
+                    let v =
+                        match res.remove(&m) {
+                            None => Self::zero(),
+                            Some(v) => v - c
+                        };
+                    res.insert(m, v);
+                }
+                res
+            },
+            Mul(e1, e2) => {
+                let e1 = e1.monomials();
+                let e2 = e2.monomials();
+                let mut res : HashMap<_, Expr<F>> = HashMap::new();
+                for (m1, c1) in e1.iter() {
+                    for (m2, c2) in e2.iter() {
+                        let mut m = m1.clone();
+                        m.extend(m2);
+                        m.sort();
+                        let c1c2 = c1.clone() * c2.clone();
+                        let v = res.entry(m).or_insert(Self::zero());
+                        *v = v.clone() + c1c2;
+                    }
+                }
+                res
+            }
+        }
+    }
+
+    pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<Expr<F>>, &str> {
+        let mut res : HashMap<Column, Expr<F>> = HashMap::new();
+        let mut constant_term : Expr<F> = Self::zero();
+        let monomials = self.monomials();
+
+        for (m, c) in monomials {
+            let (evaluated, mut unevaluated) : (Vec<_>, _) = m.into_iter().partition(|v| evaluated.contains(&v.col));
+            let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
+            if unevaluated.len() == 0 {
+                constant_term = constant_term + c;
+            } else if unevaluated.len() == 1 {
+                let var = unevaluated.remove(0);
+                match var.row {
+                    Next => return Err("Linearization failed (needed polynomial value at \"next\" row)"),
+                    Curr => {
+                        let e =
+                            match res.remove(&var.col) {
+                                Some(v) => v + c,
+                                None => Self::zero()
+                            };
+                        res.insert(var.col, e);
+                        // This code used to be
+                        //
+                        // let v = res.entry(var.col).or_insert(0.into());
+                        // *v = v.clone() + c
+                        //
+                        // but calling clone made it extremely slow, so I replaced it
+                        // with the above that moves v out of the map with .remove and
+                        // into v + c.
+                        //
+                        // I'm not sure if there's a way to do it with the HashMap API
+                        // without calling remove.
+                    }
+                }
+            }
+            else {
+                return Err("Linearization failed");
+            }
+        }
+        Ok(Linearization { constant_term, index_terms: res.into_iter().collect() })
+    }
+}
+
+/*
 impl<F: FftField> Expr<F> {
+    // This function takes about 7ms, so the value should be factored
+    // into the index types so that the verifier doesn't have to call
+    // it for every proof.
     fn monomials(&self) -> HashMap<Vec<Variable>, Expr<F>> {
         let sing = |v: Vec<Variable>, c: Expr<F>| {
             let mut h = HashMap::new();
@@ -845,7 +1255,9 @@ impl<F: FftField> Expr<F> {
     pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<F>, &str> {
         let mut res : HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term : Expr<F> = 0.into();
-        for (m, c) in self.monomials() {
+        let monomials = self.monomials();
+
+        for (m, c) in monomials {
             let (evaluated, mut unevaluated) : (Vec<_>, _) = m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
             if unevaluated.len() == 0 {
@@ -855,8 +1267,23 @@ impl<F: FftField> Expr<F> {
                 match var.row {
                     Next => return Err("Linearization failed (needed polynomial value at \"next\" row)"),
                     Curr => {
-                        let v = res.entry(var.col).or_insert(0.into());
-                        *v = v.clone() + c;
+                        let e =
+                            match res.remove(&var.col) {
+                                Some(v) => v + c,
+                                None => 0.into()
+                            };
+                        res.insert(var.col, e);
+                        // This code used to be
+                        //
+                        // let v = res.entry(var.col).or_insert(0.into());
+                        // *v = v.clone() + c
+                        //
+                        // but calling clone made it extremely slow, so I replaced it
+                        // with the above that moves v out of the map with .remove and
+                        // into v + c.
+                        //
+                        // I'm not sure if there's a way to do it with the HashMap api 
+                        // without calling remove.
                     }
                 }
             }
@@ -867,5 +1294,6 @@ impl<F: FftField> Expr<F> {
         Ok(Linearization { constant_term, index_terms: res.into_iter().collect() })
     }
 }
+*/
 
 pub type E<F> = Expr<ConstantExpr<F>>;
