@@ -18,7 +18,7 @@ use commitment_dlog::commitment::{
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
 use plonk_15_wires_circuits::{
     expr,
-    expr::{Environment, l0_1},
+    expr::{Expr, Column, Environment, l0_1},
     polynomials::{chacha, lookup},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations, RandomOracles},
     wires::{COLUMNS, PERMUTS},
@@ -26,7 +26,7 @@ use plonk_15_wires_circuits::{
 };
 use lookup::{CombinedEntry, UncombinedEntry};
 use rand::thread_rng;
-use std::collections::HashMap;
+use std::collections::{HashSet, HashMap};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -253,15 +253,20 @@ where
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
-        let joint_combiner : Option<Fr<G>> =
+
+        oracles.joint_combiner =
             lookup_used.as_ref().map(|u| {
-                match u {
-                    LookupsUsed::Joint =>
-                        ScalarChallenge(fq_sponge.challenge()),
-                    LookupsUsed::Single =>
-                        ScalarChallenge(Fr::<G>::zero())
-                }.to_field(&index.srs.get_ref().endo_r)
+                let s =
+                    match u {
+                        LookupsUsed::Joint =>
+                            ScalarChallenge(fq_sponge.challenge()),
+                        LookupsUsed::Single =>
+                            ScalarChallenge(Fr::<G>::zero())
+                    };
+                (s, s.to_field(&index.srs.get_ref().endo_r))
             });
+
+        let joint_combiner : Option<Fr<G>> = oracles.joint_combiner.as_ref().map(|(_, x)| *x);
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
@@ -316,11 +321,13 @@ where
             match &joint_combiner {
                 None => (None, None, None, None),
                 Some(joint_combiner) => {
+                    /* TODO
                     let iter_lookup_table = || (0..n).map(|i| {
                         UncombinedEntry(
                             index.cs.lookup_tables8[0].iter().map(|e| e.evals[8 * i])
                                 .collect())
                     });
+                    */
                     let iter_lookup_table = || (0..n).map(|i| {
                         let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         CombinedEntry (
@@ -527,17 +534,22 @@ where
                         (t4, t8),
                         oracles.alpha,
                         alpha[alpha.len() - 1],
-                        lookup::constraints(dummy_lookup_value.unwrap().0, d1)
+                        lookup::constraints(
+                            // dummy_lookup_value.unwrap().0,
+                            &index.cs.dummy_lookup_values[0],
+                            d1)
                         .iter().map(|e| e.evaluations(env)).collect()
                     );
                     println!("{}{:?}", "combine time: ", start.elapsed());
                     es
                 }
             };
+        /*
         drop(env);
         drop(lookup_table_combined);
         drop(lookup_sorted8);
         drop(lookup_aggreg8);
+        */
         // TODO: Drop everything else referenced in env
 
         // divide contributions with vanishing polynomial
@@ -632,6 +644,9 @@ where
 
         // compute and evaluate linearization polynomial
 
+        // TODO: compute the linearization polynomial in evaluation form so
+        // that we can drop the coefficient forms of the index polynomials from
+        // the constraint system struct
         let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&e[0].w)
             + &index
                 .cs
@@ -641,6 +656,20 @@ where
             + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]))
             + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]))
             + &index.cs.perm_lnrz(&e, &oracles, &alpha[range::PERM]);
+
+        let f =
+            match env.as_ref() {
+                None => f,
+                Some(env) => {
+                    let start = std::time::Instant::now();
+                    let (_lin_constant, lin) =
+                        index
+                        .linearization
+                        .to_polynomial(env, evlp[0], e);
+                    println!("ltin time {:?}", start.elapsed());
+                    f + lin
+                }
+            };
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);
