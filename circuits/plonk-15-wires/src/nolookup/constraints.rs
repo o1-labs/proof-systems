@@ -79,7 +79,7 @@ pub struct ConstraintSystem<F: FftField> {
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
-    pub sigmal1: [Vec<F>; PERMUTS],
+    pub sigmal1: [E<F, D<F>>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
     pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
@@ -238,8 +238,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
+        let sigmal1 : [_ ; PERMUTS] = {
+            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+            [ E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s6, domain.d1) ]
+        };
+
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate()
+            sigmal1[i].clone().interpolate()
         });
 
         let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?

@@ -114,6 +114,7 @@ unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct RandomOracles<F: Field> {
+    pub joint_combiner: Option<(ScalarChallenge<F>, F)>,
     pub beta: F,
     pub gamma: F,
     pub alpha_chal: ScalarChallenge<F>,
@@ -140,6 +141,7 @@ impl<F: Field> RandomOracles<F> {
             zeta_chal: c,
             v_chal: c,
             u_chal: c,
+            joint_combiner: None,
         }
     }
 }
