@@ -15,6 +15,8 @@ use commitment_dlog::commitment::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
+    expr::{Constants, PolishToken, Column},
+    gate::{GateType, LookupsUsed},
     nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
     wires::*,
 };
@@ -98,9 +100,31 @@ where
             .w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+
+        oracles.joint_combiner =
+            index.lookup_used.as_ref().map(|u| {
+                let s =
+                    match u {
+                        LookupsUsed::Joint =>
+                            ScalarChallenge(fq_sponge.challenge()),
+                        LookupsUsed::Single =>
+                            ScalarChallenge(Fr::<G>::zero())
+                    };
+                (s, s.to_field(&index.srs.get_ref().endo_r))
+            });
+
+        self.commitments.lookup.iter().for_each(|l| {
+            l.sorted.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+        });
+
         // sample beta, gamma oracles
         oracles.beta = fq_sponge.challenge();
         oracles.gamma = fq_sponge.challenge();
+
+        self.commitments.lookup.iter().for_each(|l| {
+            fq_sponge.absorb_g(&l.aggreg.unshifted);
+        });
+
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
         oracles.alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -335,11 +359,93 @@ where
                 s.push(ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
                 p.push(&index.mul_comm);
 
+                let constants = oracles.joint_combiner.map(|(_, j)| {
+                    Constants {
+                        alpha: oracles.alpha,
+                        beta: oracles.beta,
+                        gamma: oracles.gamma,
+                        joint_combiner: j
+                    }
+                });
+
+                match constants.as_ref() {
+                    None => (),
+                    Some(cs) => {
+                        index.linearization.index_terms.iter().for_each(|(c, e)| {
+                            let e = PolishToken::evaluate(e, index.domain, oracles.zeta, &evals, &cs).unwrap();
+                            let l = proof.commitments.lookup.as_ref().unwrap();
+                            use Column::*;
+                            match c {
+                                Witness(i) => {
+                                    s.push(e);
+                                    p.push(&proof.commitments.w_comm[*i])
+                                },
+                                Z => {
+                                    s.push(e);
+                                    p.push(&proof.commitments.z_comm);
+                                },
+                                LookupSorted(i) => {
+                                    s.push(e);
+                                    p.push(&l.sorted[*i])
+                                },
+                                LookupAggreg => {
+                                    s.push(e);
+                                    p.push(&l.aggreg)
+                                },
+                                LookupTable => {
+                                    let mut j = Fr::<G>::one();
+                                    s.push(e);
+                                    p.push(&index.lookup_tables[0][0]);
+                                    for t in index.lookup_tables[0].iter().skip(1) {
+                                        j *= cs.joint_combiner;
+                                        s.push(e * j);
+                                        p.push(t);
+                                    }
+                                },
+                                LookupKindIndex(i) => {
+                                    s.push(e);
+                                    p.push(&index.lookup_selectors[*i]);
+                                },
+                                Index(t) => {
+                                    use GateType::*;
+                                    let c =
+                                        match t {
+                                            Zero | Generic => panic!("Selector for {:?} not defined", t),
+                                            Add => &index.add_comm,
+                                            Double => &index.double_comm,
+                                            Vbmul => &index.mul_comm,
+                                            Endomul => &index.emul_comm,
+                                            Poseidon => &index.psm_comm,
+                                            ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
+                                            ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
+                                            ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
+                                            ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                                        };
+                                    s.push(e);
+                                    p.push(c);
+                                }
+                            }
+                        });
+                    }
+                };
+
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
+
+                let f_eval =
+                    match constants {
+                        None => evals[0].f,
+                        Some(cs) => {
+                            evals[0].f +
+                            PolishToken::evaluate(
+                                &index.linearization.constant_term,
+                                index.domain, oracles.zeta,
+                                &evals, &cs).unwrap()
+                        }
+                    };
 
                 // check linearization polynomial evaluation consistency
                 let zeta1m1 = zeta1 - &Fr::<G>::one();
-                if (evals[0].f
+                if (f_eval //evals[0].f
                     + &(if p_eval[0].len() > 0 {
                         p_eval[0][0]
                     } else {
