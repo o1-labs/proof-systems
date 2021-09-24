@@ -3,32 +3,29 @@
 //! Some doc is needed here.
 //!
 //! ```
-//! // create a binary for generating your OCaml types, and import all the types
-//! fn main() {
-//!   // the bindings are printed out for now
-//!   println!("(* this file is generated automatically *)\n");
+//! // the bindings are printed out for now
+//! println!("(* this file is generated automatically *)\n");
 //!
-//!   // initialize your environment
-//!   let env = &mut Env::default();
+//! // initialize your environment
+//! let env = &mut Env::default();
 //!
-//!   // we need to create fake generic placeholders for generic structs
-//!   decl_fake_generic!(T1, 0);
-//!   decl_fake_generic!(T2, 1);
+//! // we need to create fake generic placeholders for generic structs
+//! decl_fake_generic!(T1, 0);
+//! decl_fake_generic!(T2, 1);
 //!
-//!   // declare a module Types containing a bunch of types
-//!   decl_module!(env, "Types", {
-//!       decl_type!(env, CamlScalarChallenge::<T1>);
-//!       // you can also rename a type
-//!       decl_type!(env, CamlRandomOracles::<T1> => "random_oracles");
-//!   });
+//! // declare a module Types containing a bunch of types
+//! decl_module!(env, "Types", {
+//!     decl_type!(env, CamlScalarChallenge::<T1>);
+//!     // you can also rename a type
+//!     decl_type!(env, CamlRandomOracles::<T1> => "random_oracles");
+//! });
 //!
-//!   decl_module!(env, "BigInt256", {
-//!       decl_type!(env, CamlBigInteger256 => "t");
-//!       // you will have to import all (*) so that this can find
-//!       // the underlying function called `caml_of_numeral_to_ocaml`
-//!       decl_func!(env, caml_of_numeral => "of_numeral");
-//!   });
-//! }
+//! decl_module!(env, "BigInt256", {
+//!     decl_type!(env, CamlBigInteger256 => "t");
+//!     // you will have to import all (*) so that this can find
+//!     // the underlying function called `caml_of_numeral_to_ocaml`
+//!     decl_func!(env, caml_of_numeral => "of_numeral");
+//! });
 //! ```
 //!
 
@@ -59,7 +56,7 @@ pub struct Env {
 impl Drop for Env {
     /// This makes sure that we close our OCaml modules (with the keyword `end`)
     fn drop(&mut self) {
-        if self.current_module.len() != 0 {
+        if !self.current_module.is_empty() {
             panic!("you must call .root() on the environment to finalize the generation. You are currently still nested: {:?}", self.current_module);
         }
     }
@@ -126,21 +123,28 @@ impl Env {
 // Traits
 //
 
-/// ToBinding is the trait implemented by types to generate their OCaml bindings.
+/// OCamlBinding is the trait implemented by types to generate their OCaml bindings.
 /// It is usually derived automatically via the [OcamlGen] macro,
 /// or the [OCamlCustomType] macro for custom types.
 /// For functions, refer to the [ocaml_gen] macro.
-pub trait ToBinding {
-    /// will generate the OCaml bindings for a type
-    fn to_binding(env: &mut Env, rename: Option<&'static str>) -> String;
+pub trait OCamlBinding {
+    /// will generate the OCaml bindings for a type (called root type).
+    /// It takes the current environment [Env],
+    /// as well as an optional name (if you wish to rename the type in OCaml).
+    fn ocaml_binding(env: &mut Env, rename: Option<&'static str>) -> String;
 }
 
-/// ToOcaml is the trait implemented by types to facilitate generation of their OCaml bindings.
+/// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.
 /// It is usually derived automatically via the [OcamlGen] macro,
 /// or the [OCamlCustomType] macro for custom types.
-pub trait ToOcaml {
-    fn to_ocaml(env: &Env, generics: &[&str]) -> String;
-    fn to_id() -> u128;
+pub trait OCamlDesc {
+    /// describes the type in OCaml, given the current environment [Env]
+    /// and the list of generic type parameters of the root type
+    /// (the type that makes use of this type)
+    fn ocaml_desc(env: &Env, generics: &[&str]) -> String;
+
+    /// Returns a unique ID for the type. This ID will not change if concrete type parameters are used.
+    fn unique_id() -> u128;
 }
 
 //
@@ -177,12 +181,12 @@ macro_rules! decl_func {
 #[macro_export]
 macro_rules! decl_type {
     ($env:expr, $ty:ty) => {{
-        let res = <$ty as ::ocaml_gen::ToBinding>::to_binding($env, None);
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::to_binding($env, None);
         println!("{}", res);
     }};
     // rename
     ($env:expr, $ty:ty => $new:expr) => {{
-        let res = <$ty as ::ocaml_gen::ToBinding>::to_binding($env, Some($new));
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::to_binding($env, Some($new));
         println!("{}", res);
     }};
 }
@@ -193,12 +197,12 @@ macro_rules! decl_fake_generic {
     ($name:ident, $i:expr) => {
         pub struct $name;
 
-        impl ::ocaml_gen::ToOcaml for $name {
-            fn to_ocaml(_env: &::ocaml_gen::Env, generics: &[&str]) -> String {
+        impl ::ocaml_gen::OCamlDesc for $name {
+            fn ocaml_desc(_env: &::ocaml_gen::Env, generics: &[&str]) -> String {
                 format!("'{}", generics[$i])
             }
 
-            fn to_id() -> u128 {
+            fn unique_id() -> u128 {
                 ::ocaml_gen::const_random!(u128)
             }
         }

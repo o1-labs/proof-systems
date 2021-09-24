@@ -4,9 +4,8 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 use syn::{
-    punctuated::Punctuated, Fields, FnArg, GenericArgument, GenericParam, PathArguments,
-    PredicateType, ReturnType, TraitBound, TraitBoundModifier, Type, TypeParamBound, TypePath,
-    WherePredicate,
+    punctuated::Punctuated, Fields, FnArg, GenericParam, PredicateType, ReturnType, TraitBound,
+    TraitBoundModifier, Type, TypeParamBound, TypePath, WherePredicate,
 };
 
 /// A macro to create OCaml bindings for a function that uses #[ocaml::func]
@@ -43,7 +42,7 @@ pub fn ocaml_gen(_attribute: TokenStream, item: TokenStream) -> TokenStream {
     let return_value = match output {
         ReturnType::Default => quote! { "unit".to_string() },
         ReturnType::Type(_, t) => quote! {
-            <#t as ::ocaml_gen::ToOcaml>::to_ocaml(env, &[])
+            <#t as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[])
         },
     };
 
@@ -60,7 +59,7 @@ pub fn ocaml_gen(_attribute: TokenStream, item: TokenStream) -> TokenStream {
             let mut args: Vec<String> = vec![];
             #(
                 args.push(
-                    <#inputs as ::ocaml_gen::ToOcaml>::to_ocaml(env, &[])
+                    <#inputs as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[])
                 );
             );*
             let inputs = if args.len() == 0 {
@@ -94,7 +93,7 @@ pub fn ocaml_gen(_attribute: TokenStream, item: TokenStream) -> TokenStream {
 //
 
 /// The OcamlGen derive macro.
-/// It generates implementations of ToOCaml and ToBinding on a type.
+/// It generates implementations of ToOCaml and OCamlBinding on a type.
 /// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
 /// For example:
 ///
@@ -116,7 +115,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     let fields = &item_struct.fields;
 
     //
-    // to_ocaml
+    // ocaml_desc
     //
 
     let generics_ident: Vec<_> = generics
@@ -125,23 +124,22 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             GenericParam::Type(t) => Some(&t.ident),
             _ => None,
         })
-        .map(|ident| ident)
         .collect();
 
     let name_str = name.to_string();
 
-    let to_ocaml = quote! {
-        fn to_ocaml(env: &::ocaml_gen::Env, generics: &[&str]) -> String {
+    let ocaml_desc = quote! {
+        fn ocaml_desc(env: &::ocaml_gen::Env, generics: &[&str]) -> String {
             // get type parameters
             let mut generics_ocaml = vec![];
             #(
                 generics_ocaml.push(
-                    <#generics_ident as ::ocaml_gen::ToOcaml>::to_ocaml(env, generics)
+                    <#generics_ident as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, generics)
                 );
             );*
 
             // get name
-            let type_id = <Self as ::ocaml_gen::ToOcaml>::to_id();
+            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
             let name = env.get_type(type_id);
 
             // return the type description in OCaml
@@ -150,17 +148,17 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     };
 
     //
-    // to_id
+    // unique_id
     //
 
-    let to_id = quote! {
-        fn to_id() -> u128 {
+    let unique_id = quote! {
+        fn unique_id() -> u128 {
             ::ocaml_gen::const_random!(u128)
         }
     };
 
     //
-    // to_binding
+    // ocaml_binding
     //
 
     let generics_str: Vec<String> = generics
@@ -201,7 +199,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                 let mut missing_types: Vec<String> = vec![];
                 #(
                     missing_types.push(
-                        <#fields_to_call as ::ocaml_gen::ToOcaml>::to_ocaml(env, &global_generics)
+                        <#fields_to_call as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics)
                     );
                 );*
 
@@ -256,7 +254,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
                 let mut missing_types: Vec<String> = vec![];
                 #(
-                    missing_types.push(&<#fields_to_call>::to_ocaml(env, &global_generics));
+                    missing_types.push(&<#fields_to_call>::ocaml_desc(env, &global_generics));
                 );*
 
                 for ty in punctured_generics {
@@ -278,14 +276,14 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
     let ocaml_name = rust_ident_to_ocaml(name_str);
 
-    let to_binding = quote! {
-        fn to_binding(
+    let ocaml_binding = quote! {
+        fn ocaml_binding(
             env: &mut ::ocaml_gen::Env,
             rename: Option<&'static str>,
         ) -> String {
             // register the new type
             let ty_name = rename.unwrap_or(#ocaml_name);
-            let ty_id = <Self as ::ocaml_gen::ToOcaml>::to_id();
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
             env.new_type(ty_id, ty_name);
 
 
@@ -294,7 +292,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                 #body
             };
 
-            let name = <Self as ::ocaml_gen::ToOcaml>::to_ocaml(env, &global_generics);
+            let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
 
             format!("type {} = {}", name, generics_ocaml)
         }
@@ -306,51 +304,48 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, _where_clause) = item_struct.generics.split_for_impl();
 
-    // add ToOcaml bounds to the generic types
+    // add OCamlDesc bounds to the generic types
     let mut extended_generics = item_struct.generics.clone();
     extended_generics.make_where_clause();
     let mut extended_where_clause = extended_generics.where_clause.unwrap();
-    let path: syn::Path = syn::parse_str("::ocaml_gen::ToOcaml").unwrap();
-    let impl_to_ocaml = TraitBound {
+    let path: syn::Path = syn::parse_str("::ocaml_gen::OCamlDesc").unwrap();
+    let impl_ocaml_desc = TraitBound {
         paren_token: None,
         modifier: TraitBoundModifier::None,
         lifetimes: None,
         path,
     };
     for generic in generics {
-        match generic {
-            GenericParam::Type(t) => {
-                let mut bounds = Punctuated::<TypeParamBound, syn::token::Add>::new();
-                bounds.push(TypeParamBound::Trait(impl_to_ocaml.clone()));
+        if let GenericParam::Type(t) = generic {
+            let mut bounds = Punctuated::<TypeParamBound, syn::token::Add>::new();
+            bounds.push(TypeParamBound::Trait(impl_ocaml_desc.clone()));
 
-                let path: syn::Path = syn::parse_str(&t.ident.to_string()).unwrap();
+            let path: syn::Path = syn::parse_str(&t.ident.to_string()).unwrap();
 
-                let bounded_ty = Type::Path(TypePath { qself: None, path });
+            let bounded_ty = Type::Path(TypePath { qself: None, path });
 
-                extended_where_clause
-                    .predicates
-                    .push(WherePredicate::Type(PredicateType {
-                        lifetimes: None,
-                        bounded_ty,
-                        colon_token: syn::token::Colon {
-                            spans: [Span::call_site()],
-                        },
-                        bounds,
-                    }));
-            }
-            _ => (),
+            extended_where_clause
+                .predicates
+                .push(WherePredicate::Type(PredicateType {
+                    lifetimes: None,
+                    bounded_ty,
+                    colon_token: syn::token::Colon {
+                        spans: [Span::call_site()],
+                    },
+                    bounds,
+                }));
         };
     }
 
-    // generate implementations for ToOcaml and ToBinding
+    // generate implementations for OCamlDesc and OCamlBinding
     let gen = quote! {
-        impl #impl_generics ::ocaml_gen::ToOcaml for #name #ty_generics #extended_where_clause {
-            #to_ocaml
-            #to_id
+        impl #impl_generics ::ocaml_gen::OCamlDesc for #name #ty_generics #extended_where_clause {
+            #ocaml_desc
+            #unique_id
         }
 
-        impl #impl_generics ::ocaml_gen::ToBinding for #name #ty_generics  #extended_where_clause {
-            #to_binding
+        impl #impl_generics ::ocaml_gen::OCamlBinding for #name #ty_generics  #extended_where_clause {
+            #ocaml_binding
         }
     };
     gen.into()
@@ -360,7 +355,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 // almost same code for custom types
 //
 
-/// Derives implementations for ToOcaml and ToBinding on a custom type
+/// Derives implementations for OCamlDesc and OCamlBinding on a custom type
 /// For example:
 ///
 /// ```
@@ -379,44 +374,44 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     let name = &item_struct.ident;
 
     //
-    // to_ocaml
+    // ocaml_desc
     //
 
     let name_str = name.to_string();
 
-    let to_ocaml = quote! {
-        fn to_ocaml(env: &::ocaml_gen::Env, _generics: &[&str]) -> String {
-            let type_id = <Self as ::ocaml_gen::ToOcaml>::to_id();
+    let ocaml_desc = quote! {
+        fn ocaml_desc(env: &::ocaml_gen::Env, _generics: &[&str]) -> String {
+            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
             env.get_type(type_id)
         }
     };
 
     //
-    // to_id
+    // unique_id
     //
 
-    let to_id = quote! {
-        fn to_id() -> u128 {
+    let unique_id = quote! {
+        fn unique_id() -> u128 {
             ::ocaml_gen::const_random!(u128)
         }
     };
 
     //
-    // to_binding
+    // ocaml_binding
     //
 
     let ocaml_name = rust_ident_to_ocaml(name_str);
 
-    let to_binding = quote! {
-        fn to_binding(
+    let ocaml_binding = quote! {
+        fn ocaml_binding(
             env: &mut ::ocaml_gen::Env,
             rename: Option<&'static str>,
         ) -> String {
             // register the new type
             let ty_name = rename.unwrap_or(#ocaml_name);
-            let ty_id = <Self as ::ocaml_gen::ToOcaml>::to_id();
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
             env.new_type(ty_id, ty_name);
-            let name = <Self as ::ocaml_gen::ToOcaml>::to_ocaml(env, &[]);
+            let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[]);
             format!("type {}", name)
         }
     };
@@ -427,15 +422,15 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, where_clause) = item_struct.generics.split_for_impl();
 
-    // generate implementations for ToOcaml and ToBinding
+    // generate implementations for OCamlDesc and OCamlBinding
     let gen = quote! {
-        impl #impl_generics ::ocaml_gen::ToOcaml for #name #ty_generics #where_clause {
-            #to_ocaml
-            #to_id
+        impl #impl_generics ::ocaml_gen::OCamlDesc for #name #ty_generics #where_clause {
+            #ocaml_desc
+            #unique_id
         }
 
-        impl #impl_generics ::ocaml_gen::ToBinding for #name #ty_generics  #where_clause {
-            #to_binding
+        impl #impl_generics ::ocaml_gen::OCamlBinding for #name #ty_generics  #where_clause {
+            #ocaml_binding
         }
     };
 
@@ -452,17 +447,14 @@ fn rust_ident_to_ocaml(ident: String) -> String {
 }
 
 /// return true if the type passed is a generic
-fn is_generic(generics: &Vec<String>, ty: &Type) -> Option<String> {
-    match ty {
-        Type::Path(p) => {
-            if let Some(ident) = p.path.get_ident() {
-                let ident = ident.to_string();
-                if generics.contains(&ident) {
-                    return Some(ident);
-                }
+fn is_generic(generics: &[String], ty: &Type) -> Option<String> {
+    if let Type::Path(p) = ty {
+        if let Some(ident) = p.path.get_ident() {
+            let ident = ident.to_string();
+            if generics.contains(&ident) {
+                return Some(ident);
             }
         }
-        _ => (),
     }
-    return None;
+    None
 }
