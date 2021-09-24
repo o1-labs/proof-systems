@@ -102,7 +102,7 @@ fn chacha() {
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     let start = Instant::now();
-    let _ =
+    let proof =
         ProverProof::create::<BaseSponge, ScalarSponge>(
             &group_map,
             &witness,
@@ -111,6 +111,20 @@ fn chacha() {
         )
         .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
+
+    let start = Instant::now();
+    let verifier_index = index.verifier_index();
+    println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
+
+    let lgr_comms = vec![];
+    let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
+    let start = Instant::now();
+    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
+        Ok(_) => {
+            println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
+        }
+    }
 }
 
 /*
