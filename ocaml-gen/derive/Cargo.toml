@@ -5,6 +5,7 @@ edition = "2018"
 
 [lib]
 proc-macro = true
+doctest = false
 
 [dependencies]
 syn = { version = "1.0.76", features = ["full"] }
