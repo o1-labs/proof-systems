@@ -181,12 +181,12 @@ macro_rules! decl_func {
 #[macro_export]
 macro_rules! decl_type {
     ($env:expr, $ty:ty) => {{
-        let res = <$ty as ::ocaml_gen::OCamlBinding>::to_binding($env, None);
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None);
         println!("{}", res);
     }};
     // rename
     ($env:expr, $ty:ty => $new:expr) => {{
-        let res = <$ty as ::ocaml_gen::OCamlBinding>::to_binding($env, Some($new));
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new));
         println!("{}", res);
     }};
 }
