@@ -7,8 +7,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
     Fp,
 };
-use oracle::utils::PolyUtils;
-
+use o1_utils::densepolynomial::ExtendedDensePolynomial;
 use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
