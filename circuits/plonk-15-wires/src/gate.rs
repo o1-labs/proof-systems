@@ -351,7 +351,6 @@ impl<F: FftField> CircuitGate<F> {
             Double => self.verify_double(witness),
             Vbmul => self.verify_vbmul(witness),
             Endomul => self.verify_endomul(witness, cs),
-            Lookup => self.verify_lookup(witness),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo")
         }
     }
