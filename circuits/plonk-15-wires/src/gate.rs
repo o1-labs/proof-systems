@@ -138,6 +138,8 @@ impl<F: FftField> CircuitGate<F> {
             GateType::Vbmul => self.verify_vbmul(witness),
             GateType::Endomul => self.verify_endomul(witness, cs),
             GateType::Lookup => self.verify_lookup(witness),
+            GateType::ChaCha0 | GateType::ChaCha1 | GateType::ChaCha2 | GateType::ChaChaFinal =>
+                panic!("ChaCha verify not implement"),
         }
     }
 }
