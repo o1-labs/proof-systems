@@ -5,6 +5,7 @@ extern crate num_derive;
 pub mod macros;
 
 pub mod domains;
+pub mod expr;
 pub mod gate;
 pub mod gates;
 pub mod lookup;

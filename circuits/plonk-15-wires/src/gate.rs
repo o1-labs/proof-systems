@@ -10,8 +10,14 @@ use ark_ff::FftField;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CurrOrNext {
+    Curr,
+    Next,
+}
+
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Eq, Hash, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive, PartialOrd, Ord)]
 pub enum GateType {
     /// zero gate
     Zero,
