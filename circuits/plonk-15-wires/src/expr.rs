@@ -3,8 +3,9 @@ use crate::nolookup::constraints::{eval_zk_polynomial};
 use ark_ff::{FftField, Field, Zero, One};
 use ark_poly::{univariate::DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D};
 use crate::gate::{GateType, CurrOrNext};
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, Sub, Mul, Neg};
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use CurrOrNext::*;
 use rayon::prelude::*;
 
@@ -119,6 +120,35 @@ pub enum ConstantExpr<F> {
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
     Mul(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
     Sub(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+}
+
+impl<F: fmt::Display> fmt::Display for ConstantExpr<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ConstantExpr::*;
+        match self {
+            Alpha => write!(f, "Alpha")?,
+            Beta => write!(f, "Beta")?,
+            Gamma => write!(f, "Gamma")?,
+            JointCombiner => write!(f, "JointCombiner")?,
+            Literal(x) => write!(f, "{}", x)?,
+            Pow(x, n) => write!(f, "Pow({}, {})", x.as_ref(), n)?,
+            Add(x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
+            Mul(x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
+            Sub(x, y) => write!(f, "({} - {})", x.as_ref(), y.as_ref())?,
+        };
+        Ok(())
+    }
+}
+
+impl<F : One + Neg<Output=F>> Neg for ConstantExpr<F> {
+    type Output = ConstantExpr<F>;
+
+    fn neg(self) -> ConstantExpr<F> {
+        match self {
+            ConstantExpr::Literal(x) => ConstantExpr::Literal(x.neg()),
+            e => ConstantExpr::Mul(Box::new(ConstantExpr::Literal(F::one().neg())), Box::new(e))
+        }
+    }
 }
 
 impl<F: Copy> ConstantExpr<F> {
@@ -277,6 +307,22 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(usize),
 }
 
+impl<F: fmt::Display> fmt::Display for Expr<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use Expr::*;
+        match self {
+            Constant(x) => write!(f, "{}", x)?,
+            Cell(v) => write!(f, "Cell({:?})", *v)?,
+            UnnormalizedLagrangeBasis(i) => write!(f, "UnnormalizedLagrangeBasis({})", *i)?,
+            ZkPolynomial => write!(f, "ZkPolynomial")?,
+            Add(x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
+            Mul(x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
+            Sub(x, y) => write!(f, "({} - {})", x.as_ref(), y.as_ref())?,
+        };
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum PolishToken<F> {
     Alpha,
@@ -398,6 +444,17 @@ impl<C> Expr<C> {
             Cell(_) => d1_size,
             Mul(x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
             Sub(x, y) | Add(x, y) => std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size)),
+        }
+    }
+}
+
+impl<F : One + Neg<Output=F>> Neg for Expr<F> {
+    type Output = Expr<F>;
+
+    fn neg(self) -> Expr<F> {
+        match self {
+            Expr::Constant(x) => Expr::Constant(x.neg()),
+            e => Expr::Mul(Box::new(Expr::Constant(F::one().neg())), Box::new(e))
         }
     }
 }
@@ -798,7 +855,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Expr::Mul(x, y) => {
                 x.to_polish_(res);
                 y.to_polish_(res);
-                res.push(PolishToken::Add);
+                res.push(PolishToken::Mul);
             },
             Expr::Sub(x, y) => {
                 x.to_polish_(res);
@@ -1099,7 +1156,7 @@ impl<C> Expr<C> {
     }
 }
 
-impl<F: Clone + One + Zero + PartialEq> Expr<F> {
+impl<F: std::fmt::Debug + Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
     fn monomials(&self) -> HashMap<Vec<Variable>, Expr<F>> {
         let sing = |v: Vec<Variable>, c: Expr<F>| {
             let mut h = HashMap::new();
@@ -1118,7 +1175,7 @@ impl<F: Clone + One + Zero + PartialEq> Expr<F> {
                 for (m, c) in e2.monomials() {
                     let v =
                         match res.remove(&m) {
-                            None => Self::zero(),
+                            None => c,
                             Some(v) => v + c
                         };
                     res.insert(m, v);
@@ -1130,7 +1187,7 @@ impl<F: Clone + One + Zero + PartialEq> Expr<F> {
                 for (m, c) in e2.monomials() {
                     let v =
                         match res.remove(&m) {
-                            None => Self::zero(),
+                            None => -c, // Expr::constant(F::one()) * c,
                             Some(v) => v - c
                         };
                     res.insert(m, v);
@@ -1174,7 +1231,7 @@ impl<F: Clone + One + Zero + PartialEq> Expr<F> {
                         let e =
                             match res.remove(&var.col) {
                                 Some(v) => v + c,
-                                None => Self::zero()
+                                None => c
                             };
                         res.insert(var.col, e);
                         // This code used to be
