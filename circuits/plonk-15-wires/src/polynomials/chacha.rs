@@ -296,7 +296,9 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
 
     let combine_nybbles = |ns: Vec<E<F>>| -> E<F> {
         ns.into_iter().enumerate().fold(E::zero(),
-            |acc: E<F>, (i, t)| acc + E::from(1 << (4 * i)) * t) 
+            |acc: E<F>, (i, t)| {
+                acc + E::from(1 << (4 * i)) * t
+            }) 
     };
 
     // Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
@@ -378,4 +380,124 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
         // the shifting using a ChaChaFinal gate.
         index(ChaChaFinal) * chacha_final,
     ].into_iter().fold(0.into(), |acc, x| acc + x)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_ff::UniformRand;
+    use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D, EvaluationDomain};
+    use crate::{
+        polynomials::{chacha, lookup},
+        gate::{LookupInfo, LookupsUsed},
+        expr::{PolishToken, Constants, Expr, Column, Linearization},
+        gates::poseidon::ROUNDS_PER_ROW,
+        nolookup::constraints::{zk_w3, ConstraintSystem},
+        nolookup::scalars::{ProofEvaluations, LookupEvaluations},
+        wires::*,
+    };
+    use mina_curves::pasta::fp::{Fp as F};
+    use crate::polynomials::chacha::constraint;
+    use rand::{rngs::StdRng, SeedableRng};
+    use array_init::array_init;
+    use std::fmt::{Formatter, Display};
+
+    struct Polish(Vec<PolishToken<F>>);
+    impl Display for Polish {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            write!(f, "[")?;
+            for x in self.0.iter() {
+                match x {
+                    PolishToken::Literal(a) => write!(f, "{}, ", a)?,
+                    PolishToken::Add => write!(f, "+, ")?,
+                    PolishToken::Mul => write!(f, "*, ")?,
+                    PolishToken::Sub => write!(f, "-, ")?,
+                    x => write!(f, "{:?}, ", x)?
+                }
+            }
+            write!(f, "]")?;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn chacha_linearization() {
+        let lookup_info = LookupInfo::<F>::create();
+
+        let evaluated_cols = {
+            let mut h = std::collections::HashSet::new();
+            // use Column::*;
+            for i in 0..COLUMNS {
+                h.insert(Column::Witness(i));
+            }
+            for i in 0..(lookup_info.max_per_row + 1) {
+                h.insert(Column::LookupSorted(i));
+            }
+            h.insert(Column::Z);
+            h.insert(Column::LookupAggreg);
+            h.insert(Column::LookupTable);
+            h
+        };
+
+        let expr = constraint::<F>(10);
+        let linearized = expr.linearize(evaluated_cols).unwrap();
+        let expr_polish = expr.to_polish();
+        let linearized_polish = linearized.map(|e| e.to_polish());
+
+        let mut rng = &mut StdRng::from_seed([0u8; 32]);
+
+        let d = D::new(1024).unwrap();
+
+        let pt = F::rand(rng);
+        let mut eval = || {
+            ProofEvaluations {
+                w: array_init(|_| F::rand(rng)),
+                z: F::rand(rng),
+                s: array_init(|_| F::rand(rng)),
+                lookup:
+                    Some(
+                        LookupEvaluations {
+                            sorted: 
+                                (0..(lookup_info.max_per_row + 1)).map(|_| F::rand(rng)).collect(),
+                            aggreg: F::rand(rng),
+                            table: F::rand(rng)
+                        })
+            }
+        };
+        let evals = vec![eval(), eval()];
+
+        let constants =
+            Constants {
+                alpha: F::rand(rng),
+                beta: F::rand(rng),
+                gamma: F::rand(rng),
+                joint_combiner: F::rand(rng),
+            };
+
+        assert_eq!(
+            linearized.constant_term.evaluate_(d, pt, &evals, &constants).unwrap(),
+            PolishToken::evaluate(
+                &linearized_polish.constant_term,
+                d, pt, &evals, &constants).unwrap());
+
+        linearized.index_terms.iter().zip(linearized_polish.index_terms.iter()).for_each(|((c1, e1), (c2, e2))| {
+            assert_eq!(c1, c2);
+            println!("{:?} ?", c1);
+            let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
+            let x2 = PolishToken::evaluate(&e2, d, pt, &evals, &constants).unwrap();
+            if x1 != x2 {
+                println!("e1: {}", e1);
+                println!("e2: {}", Polish(e2.clone()));
+                println!("Polish evaluation differed for {:?}: {} != {}", c1, x1, x2);
+            } else {
+                println!("{:?} OK", c1);
+            }
+        });
+
+        /*
+        assert_eq!(
+            expr.evaluate_(d, pt, &evals, &constants).unwrap(),
+            PolishToken::evaluate(&expr_polish, d, pt, &evals, &constants).unwrap());
+            */
+    }
 }
