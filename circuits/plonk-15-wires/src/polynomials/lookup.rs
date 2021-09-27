@@ -30,13 +30,15 @@ first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
 *****************************************************************************************************************/
 
-use ark_ff::{Field, FftField, Zero, One};
+use crate::nolookup::scalars::ProofEvaluations;
+use crate::polynomial::WitnessOverDomains;
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+
+use ark_ff::{Field, SquareRootField, FftField, Zero, One};
 use rand::Rng;
 use CurrOrNext::*;
 use std::collections::{HashMap};
-use ark_poly::{
-    Evaluations, Radix2EvaluationDomain as D,
-};
 use crate::{
     wires::{COLUMNS},
     gate::{CircuitGate, LookupInfo, LocalPosition, CurrOrNext, SingleLookup, JointLookup},

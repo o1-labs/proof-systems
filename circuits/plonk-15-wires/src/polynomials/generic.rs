@@ -11,7 +11,7 @@ use ark_poly::Polynomial;
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use oracle::utils::PolyUtils;
+use o1_utils::ExtendedDensePolynomial;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
@@ -42,7 +42,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         for i in 0..GENERICS {
             res.push(w_zeta[i]);
         }
-        res.push(F::one()); // TODO(mimoo): this one shouldn't be here no?
         return res;
     }
 

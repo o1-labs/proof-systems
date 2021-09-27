@@ -8,7 +8,8 @@ use crate::wires::*;
 use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
-use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
+use o1_utils::ExtendedDensePolynomial;
+use oracle::sponge::ScalarChallenge;
 
 #[derive(Clone)]
 pub struct LookupEvaluations<Field> {
@@ -27,10 +28,6 @@ pub struct ProofEvaluations<Field> {
     pub w: [Field; COLUMNS],
     /// permutation polynomial
     pub z: Field,
-    /// quotient polynomial
-    pub t: Field,
-    /// full polynomial
-    pub f: Field,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
@@ -44,8 +41,6 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
-            t: DensePolynomial::eval_polynomial(&self.t, pt),
-            f: DensePolynomial::eval_polynomial(&self.f, pt),
             lookup:
                 self.lookup.as_ref().map(|l| {
                     LookupEvaluations {
@@ -127,8 +122,8 @@ pub struct RandomOracles<F: Field> {
     pub u_chal: ScalarChallenge<F>,
 }
 
-impl<F: Field> RandomOracles<F> {
-    pub fn zero() -> Self {
+impl<F: Field> Default for RandomOracles<F> {
+    fn default() -> Self {
         let c = ScalarChallenge(F::zero());
         Self {
             beta: F::zero(),

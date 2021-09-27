@@ -13,10 +13,8 @@ use crate::wires::COLUMNS;
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use oracle::{
-    poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W},
-    utils::{EvalUtils, PolyUtils},
-};
+use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use oracle::poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W};
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 struct RoundEquation {
@@ -242,38 +240,43 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
         gate::CircuitGate,
-        wires::{Wire, COLUMNS},
+        wires::{Wire, COLUMNS, PERMUTS},
     };
 
     use ark_ff::{UniformRand, Zero};
+    use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use itertools::iterate;
     use mina_curves::pasta::fp::Fp;
+    use oracle::{
+        poseidon::SpongeConstants,
+        rndoracle::{ArithmeticSponge, Sponge},
+    };
     use rand::SeedableRng;
 
     #[test]
     fn test_poseidon_polynomial() {
-        // create constraint system with a single generic gate
+        // create constraint system with a single poseidon gate
         let mut gates = vec![];
 
-        // create generic gates
-        let mut gates_row = iterate(0usize, |&i| i + 1);
-        let r = gates_row.next().unwrap();
-        gates.push(CircuitGate::create_generic_add(r, Wire::new(r))); // add
-        let r = gates_row.next().unwrap();
-        gates.push(CircuitGate::create_generic_mul(r, Wire::new(r))); // mul
-        let r = gates_row.next().unwrap();
-        gates.push(CircuitGate::create_generic_const(
-            r,
-            Wire::new(r),
-            19u32.into(),
-        )); // const
+        // create poseidon gates
+        let gates_row = 0;
+        let first_wire = Wire::new(gates_row);
+        let last_row = gates_row + POS_ROWS_PER_HASH;
+        let last_wire = Wire::new(last_row);
+        let params = oracle::pasta::fp::params();
+
+        let (poseidon, gates_row) = CircuitGate::<Fp>::create_poseidon_gadget(
+            gates_row,
+            [first_wire, last_wire],
+            &params.round_constants,
+        );
+        gates.extend(poseidon);
 
         // create constraint system
         let cs = ConstraintSystem::fp_for_testing(gates);
@@ -281,27 +284,36 @@ mod tests {
         // generate witness
         let n = cs.domain.d1.size();
         let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
+
         // fill witness
+        let mut sponge = ArithmeticSponge::<Fp, PlonkSpongeConstants15W>::new(params);
         let mut witness_row = iterate(0usize, |&i| i + 1);
-        let left = 0;
-        let right = 1;
-        let output = 2;
-        // add
-        let r = witness_row.next().unwrap();
-        witness[left][r] = 11u32.into();
-        witness[right][r] = 23u32.into();
-        witness[output][r] = 34u32.into();
-        // mul
-        let r = witness_row.next().unwrap();
-        witness[left][r] = 5u32.into();
-        witness[right][r] = 3u32.into();
-        witness[output][r] = 15u32.into();
-        // const
-        let r = witness_row.next().unwrap();
-        witness[left][r] = 19u32.into();
+        let mut abs_round = 0;
+        assert!(!PlonkSpongeConstants15W::INITIAL_ARK); // for full_round
+
+        for _ in 0..POS_ROWS_PER_HASH {
+            let row = witness_row.next().unwrap();
+            for round in 0..ROUNDS_PER_ROW {
+                // the last round makes use of the next row
+                let maybe_next_row = if round == ROUNDS_PER_ROW - 1 {
+                    row + 1
+                } else {
+                    row
+                };
+
+                // apply the sponge and record the result in the witness
+                sponge.full_round(abs_round);
+                abs_round += 1;
+                let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
+                for (w, s) in witness[cols_to_update].iter_mut().zip(sponge.state.iter()) {
+                    w[maybe_next_row] = *s;
+                }
+            }
+        }
 
         // make sure we're done filling the witness correctly
-        assert!(gates_row.next() == witness_row.next());
+        assert_eq!(Some(gates_row), witness_row.next());
+        assert_eq!(abs_round, 55);
         cs.verify(&witness).unwrap();
 
         // generate witness polynomials
@@ -309,20 +321,26 @@ mod tests {
             array_init(|col| Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1));
         let witness: [DensePolynomial<Fp>; COLUMNS] =
             array_init(|col| witness_evals[col].interpolate_by_ref());
-        let witness_d4: [Evaluations<Fp, D<Fp>>; COLUMNS] =
-            array_init(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
 
         // make sure we've done that correctly
-        let public = DensePolynomial::zero();
-        assert!(cs.verify_generic(&witness, &public));
+        //        let public = DensePolynomial::zero();
+        //        assert!(cs.verify_poseidon(&witness, &public));
 
         // random zeta
         let rng = &mut rand::rngs::StdRng::from_seed([0; 32]);
         let zeta = Fp::rand(rng);
 
+        // create alphas
+        let mut alphas = vec![];
+        // TODO(mimoo): replace with range::PSDN once it moves to circuit
+        for _ in 0..15 {
+            alphas.push(Fp::rand(rng));
+        }
+
         // compute quotient by dividing with vanishing polynomial
-        let (t1, t2) = cs.psdn_quot(&witness_d4, &public);
-        let t_before_division = &t1.interpolate() + &t2;
+        let lagrange = cs.evaluate(&witness, &DensePolynomial::zero());
+        let (pos4, pos8, posp) = cs.psdn_quot(&lagrange, &cs.fr_sponge_params, &alphas);
+        let t_before_division = &(&pos4.interpolate() + &pos8.interpolate()) + &posp;
         let (t, rem) = t_before_division
             .divide_by_vanishing_poly(cs.domain.d1)
             .unwrap();
@@ -330,8 +348,25 @@ mod tests {
         let t_zeta = t.evaluate(&zeta);
 
         // compute linearization f(z)
+        let zeta_omega = zeta * &cs.domain.d1.group_gen;
+        let w_zeta: [_; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
+        let w_zeta_omega: [_; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta_omega));
+        let evals = vec![
+            ProofEvaluations {
+                w: w_zeta,
+                z: Fp::zero(),
+                s: [Fp::zero(); PERMUTS - 1],
+                lookup: None,
+            },
+            ProofEvaluations {
+                w: w_zeta_omega,
+                z: Fp::zero(),
+                s: [Fp::zero(); PERMUTS - 1],
+                lookup: None,
+            },
+        ];
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
-        let f = cs.psdn_lnrz(&w_zeta);
+        let f = cs.psdn_lnrz(&evals, &cs.fr_sponge_params, &alphas);
         let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)
@@ -339,4 +374,3 @@ mod tests {
         assert!(f_zeta == t_zeta * &z_h_zeta);
     }
 }
-    */

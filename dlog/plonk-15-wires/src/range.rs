@@ -1,6 +1,7 @@
 use ark_ff::Field;
 use std::ops::Range;
 
+// TODO(mimoo): this should move to the respective gates
 pub const PSDN: Range<usize> = 0..15;
 pub const PERM: Range<usize> = 15..18;
 pub const ADD: Range<usize> = 18..21;

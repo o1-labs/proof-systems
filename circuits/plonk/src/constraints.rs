@@ -15,8 +15,8 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
+use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstantsBasic, SpongeConstants};
-use oracle::utils::EvalUtils;
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField> {

@@ -55,7 +55,7 @@ fn poseidon_vesta_15_wires() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    let round_constants = &oracle::pasta::fp::params().round_constants;
+    let round_constants = oracle::pasta::fp::params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
     let mut abs_row = 0;
@@ -66,13 +66,13 @@ fn poseidon_vesta_15_wires() {
     // custom constraints for Poseidon hash function permutation
     // ROUNDS_FULL full rounds constraint gates
     for _ in 0..NUM_POS {
-        let first_wire = array_init(|col| Wire { col, row: abs_row });
+        let first_wire = Wire::new(abs_row);
         let last_row = abs_row + POS_ROWS_PER_HASH;
-        let last_wire = array_init(|col| Wire { col, row: last_row });
+        let last_wire = Wire::new(last_row);
         let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
             abs_row,
             [first_wire, last_wire],
-            round_constants,
+            &round_constants,
         );
         gates.extend(poseidon);
         abs_row = row;
