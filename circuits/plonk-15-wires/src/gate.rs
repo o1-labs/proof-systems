@@ -35,6 +35,11 @@ pub enum GateType {
     Endomul,
     /// lookup
     Lookup,
+    /// ChaCha
+    ChaCha0,
+    ChaCha1,
+    ChaCha2,
+    ChaChaFinal,
 }
 
 #[derive(Clone, Debug)]
