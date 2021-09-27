@@ -18,7 +18,7 @@ use commitment_dlog::commitment::{
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    nolookup::{constraints::ConstraintSystem, scalars::ProofEvaluations},
+    nolookup::scalars::ProofEvaluations,
     wires::{COLUMNS, PERMUTS},
 };
 use rand::thread_rng;
@@ -280,6 +280,7 @@ where
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
             z: z.eval(zeta, index.max_poly_size),
+            lookup: None,
         };
         let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| {
@@ -287,6 +288,7 @@ where
             }),
             w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
             z: z.eval(zeta_omega, index.max_poly_size),
+            lookup: None,
         };
 
         let chunked_evals = [chunked_evals_zeta.clone(), chunked_evals_zeta_omega.clone()];
@@ -303,6 +305,7 @@ where
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
+                lookup: None,
             })
             .collect::<Vec<_>>();
 

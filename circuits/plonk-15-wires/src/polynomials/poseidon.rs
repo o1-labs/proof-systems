@@ -360,11 +360,13 @@ mod tests {
                 w: w_zeta,
                 z: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
+                lookup: None,
             },
             ProofEvaluations {
                 w: w_zeta_omega,
                 z: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
+                lookup: None,
             },
         ];
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
