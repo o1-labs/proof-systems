@@ -26,6 +26,7 @@ pub enum ProofError {
     EvaluationGroup,
     OracleCommit,
     RuntimeEnv,
+    ValueNotInTable,
 }
 
 // Implement `Display` for ProofError
