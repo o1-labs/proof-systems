@@ -17,7 +17,10 @@ use ark_ec::{
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D, UVPolynomial,
+};
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
@@ -28,9 +31,7 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
-pub struct PolyComm<C>
-{
+pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
 }
@@ -81,7 +82,7 @@ impl<C: AffineCurve> PolyComm<C> {
                 if com.len() == 0 || elm.len() == 0 {
                     Vec::new()
                 } else {
-                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                    let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (0..n)
                         .map(|i| {
                             let mut points = Vec::new();
@@ -102,7 +103,6 @@ impl<C: AffineCurve> PolyComm<C> {
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -380,52 +380,31 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let n = self.len();
-        let p = plnm.coeffs.len();
+        commit_helper(&plnm.coeffs[..], &self.g(), plnm.is_zero(), max)
+    }
 
-        // committing all the segments without shifting
-        let unshifted = if plnm.is_zero() {
-            Vec::new()
-        } else {
-            (0..p / n + if p % n != 0 { 1 } else { 0 })
-                .map(|i| {
-                    VariableBaseMSM::multi_scalar_mul(
-                        &self.g(),
-                        &plnm.coeffs[i * n..p]
-                            .iter()
-                            .map(|s| s.into_repr())
-                            .collect::<Vec<_>>(),
-                    )
-                    .into_affine()
-                })
-                .collect()
+    pub fn commit_evaluations_non_hiding(
+        &self,
+        domain: D<Fr<G>>,
+        plnm: &Evaluations<Fr<G>, D<Fr<G>>>,
+        max: Option<usize>,
+    ) -> PolyComm<G> {
+        let is_zero = plnm.evals.iter().all(|x| x.is_zero());
+        let basis = match self.srs.lagrange_bases.get(&domain.size()) {
+            None => panic!("lagrange bases for size {} not found", domain.size()),
+            Some(v) => &v[..],
         };
+        commit_helper(&plnm.evals[..], basis, is_zero, max)
+    }
 
-        // committing only last segment shifted to the right edge of SRS
-        let shifted = match max {
-            None => None,
-            Some(max) => {
-                let start = max - (max % n);
-                if plnm.is_zero() || start >= p {
-                    Some(G::zero())
-                } else if max % n == 0 {
-                    None
-                } else {
-                    Some(
-                        VariableBaseMSM::multi_scalar_mul(
-                            &self.g()[n - (max % n)..],
-                            &plnm.coeffs[start..p]
-                                .iter()
-                                .map(|s| s.into_repr())
-                                .collect::<Vec<_>>(),
-                        )
-                        .into_affine(),
-                    )
-                }
-            }
-        };
-
-        PolyComm::<G> { unshifted, shifted }
+    pub fn commit_evaluations(
+        &self,
+        domain: D<Fr<G>>,
+        plnm: &Evaluations<Fr<G>, D<Fr<G>>>,
+        max: Option<usize>,
+        rng: &mut (impl RngCore + CryptoRng),
+    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+        self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
     }
 
     // This function opens polynomial commitments in batch
@@ -928,5 +907,271 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                 .evaluate(&elm)
             })
             .collect()
+    }
+}
+
+fn commit_helper<G: CommitmentCurve>(
+    scalars: &[Fr<G>],
+    basis: &[G],
+    is_zero: bool,
+    max: Option<usize>,
+) -> PolyComm<G> {
+    let n = basis.len();
+    let p = scalars.len();
+
+    // committing all the segments without shifting
+    let unshifted = if is_zero {
+        Vec::new()
+    } else {
+        (0..p / n + if p % n != 0 { 1 } else { 0 })
+            .map(|i| {
+                VariableBaseMSM::multi_scalar_mul(
+                    basis,
+                    &scalars[i * n..p]
+                        .iter()
+                        .map(|s| s.into_repr())
+                        .collect::<Vec<_>>(),
+                )
+                .into_affine()
+            })
+            .collect()
+    };
+
+    // committing only last segment shifted to the right edge of SRS
+    let shifted = match max {
+        None => None,
+        Some(max) => {
+            let start = max - (max % n);
+            if is_zero || start >= p {
+                Some(G::zero())
+            } else if max % n == 0 {
+                None
+            } else {
+                Some(
+                    VariableBaseMSM::multi_scalar_mul(
+                        &basis[n - (max % n)..],
+                        &scalars[start..p]
+                            .iter()
+                            .map(|s| s.into_repr())
+                            .collect::<Vec<_>>(),
+                    )
+                    .into_affine(),
+                )
+            }
+        }
+    };
+
+    PolyComm::<G> { unshifted, shifted }
+}
+
+//
+// Tests
+//
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::srs::SRS;
+    use array_init::array_init;
+    use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
+    use oracle::poseidon::PlonkSpongeConstants as SC;
+    use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn test_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                let c = srs.commit_non_hiding(&p, None);
+                assert!(c.shifted.is_none());
+                assert_eq!(c.unshifted.len(), 1);
+                c.unshifted[0]
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i]
+            );
+        }
+    }
+
+    #[test]
+    fn test_opening_proof() {
+        // create two polynomials
+        let coeffs: [Fp; 10] = array_init(|i| Fp::from(i as u32));
+        let poly1 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs);
+        let poly2 = DensePolynomial::<Fp>::from_coefficients_slice(&coeffs[..5]);
+
+        // create an SRS
+        let srs = SRS::<VestaG>::create(20);
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+
+        // commit the two polynomials (and upperbound the second one)
+        let commitment = srs.commit(&poly1, None, rng);
+        let upperbound = poly2.degree() + 1;
+        let bounded_commitment = srs.commit(&poly2, Some(upperbound), rng);
+
+        // create an aggregated opening proof
+        let (u, v) = (Fp::rand(rng), Fp::rand(rng));
+        let group_map = <VestaG as CommitmentCurve>::Map::setup();
+        let sponge = DefaultFqSponge::<_, SC>::new(spongeFqParams());
+
+        let polys = vec![
+            (&poly1, None, commitment.1),
+            (&poly2, Some(upperbound), bounded_commitment.1),
+        ];
+        let elm = vec![Fp::rand(rng), Fp::rand(rng)];
+
+        let opening_proof = srs.open(&group_map, polys, &elm, v, u, sponge.clone(), rng);
+
+        // evaluate the polynomials at these two points
+        let poly1_chunked_evals = vec![
+            poly1.eval(elm[0], srs.g.len()),
+            poly1.eval(elm[1], srs.g.len()),
+        ];
+
+        fn sum(c: &[Fp]) -> Fp {
+            c.iter().fold(Fp::zero(), |a, &b| a + b)
+        }
+
+        assert_eq!(sum(&poly1_chunked_evals[0]), poly1.evaluate(&elm[0]));
+        assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
+
+        let poly2_chunked_evals = vec![
+            poly2.eval(elm[0], srs.g.len()),
+            poly2.eval(elm[1], srs.g.len()),
+        ];
+
+        assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
+        assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
+
+        // verify the proof
+        let mut batch = vec![(
+            sponge,
+            elm.clone(),
+            v,
+            u,
+            vec![
+                (&commitment.0, poly1_chunked_evals.iter().collect(), None),
+                (
+                    &bounded_commitment.0,
+                    poly2_chunked_evals.iter().collect(),
+                    Some(upperbound),
+                ),
+            ],
+            &opening_proof,
+        )];
+
+        assert!(srs.verify(&group_map, &mut batch, rng));
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    // polynomial commitment
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
+    pub struct CamlPolyComm<CamlG> {
+        pub unshifted: Vec<CamlG>,
+        pub shifted: Option<CamlG>,
+    }
+
+    //
+
+    impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+    {
+        fn from(polycomm: PolyComm<G>) -> Self {
+            Self {
+                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
+                shifted: polycomm.shifted.map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> Into<PolyComm<G>> for CamlPolyComm<CamlG>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+    {
+        fn into(self) -> PolyComm<G> {
+            PolyComm {
+                unshifted: self.unshifted.into_iter().map(Into::into).collect(),
+                shifted: self.shifted.map(Into::into),
+            }
+        }
+    }
+
+    // opening proof
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue)]
+    pub struct CamlOpeningProof<G, F> {
+        pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
+        pub delta: G,
+        pub z1: F,
+        pub z2: F,
+        pub sg: G,
+    }
+
+    impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(opening_proof: OpeningProof<G>) -> Self {
+            Self {
+                lr: opening_proof
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: opening_proof.delta.into(),
+                z1: opening_proof.z1.into(),
+                z2: opening_proof.z2.into(),
+                sg: opening_proof.sg.into(),
+            }
+        }
+    }
+
+    impl<G, CamlF, CamlG> Into<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+        CamlF: Into<G::ScalarField>,
+    {
+        fn into(self) -> OpeningProof<G> {
+            OpeningProof {
+                lr: self
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: self.delta.into(),
+                z1: self.z1.into(),
+                z2: self.z2.into(),
+                sg: self.sg.into(),
+            }
+        }
     }
 }

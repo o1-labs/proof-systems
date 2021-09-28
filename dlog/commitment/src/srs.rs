@@ -7,18 +7,25 @@ This source file implements the Marlin structured reference string primitive
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
 use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
+use ark_ec::{ProjectiveCurve, AffineCurve};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
 use std::io::{Read, Result as IoResult, Write};
+use std::collections::HashMap;
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 
 #[derive(Debug, Clone)]
 pub struct SRS<G: CommitmentCurve> {
-    pub g: Vec<G>, // for committing polynomials
-    pub h: G,      // blinding
-
-    // Coefficients for the curve endomorphism
+    /// The vector of group elements for committing to polynomials in coefficient form
+    pub g: Vec<G>,
+    /// A group element used for blinding commitments
+    pub h: G,
+    /// Commitments to Lagrange bases, per domain size
+    pub lagrange_bases: HashMap<usize, Vec<G>>,
+    /// Coefficient for the curve endomorphism
     pub endo_r: G::ScalarField,
+    /// Coefficient for the curve endomorphism
     pub endo_q: G::BaseField,
 }
 
@@ -106,9 +113,82 @@ where
         self.g.len()
     }
 
-    // This function creates SRS instance for circuits up to depth d
-    //      depth: maximal depth of SRS string
-    //      size: circuit size
+    /// Compute commitments to the lagrange basis corresponding to the given domain and
+    /// cache them in the SRS
+    pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
+        let n = domain.size();
+        if n > self.g.len() {
+            panic!("add_lagrange_basis: Domain size {} larger than SRS size {}", n, self.g.len());
+        }
+
+        if self.lagrange_bases.contains_key(&n) {
+            return;
+        }
+
+        // Let V be a vector space over the field F.
+        //
+        // Given
+        // - a domain [ 1, w, w^2, ..., w^{n - 1} ]
+        // - a vector v := [ v_0, ..., v_{n - 1} ] in V^n
+        //
+        // the FFT algorithm computes the matrix application
+        //
+        // u = M(w) * v
+        //
+        // where
+        // M(w) =
+        //   1 1       1           ... 1
+        //   1 w       w^2         ... w^{n-1}
+        //   ...
+        //   1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1}
+        //
+        // The IFFT algorithm computes
+        //
+        // v = M(w)^{-1} * u
+        //
+        // Let's see how we can use this algorithm to compute the lagrange basis
+        // commitments.
+        //
+        // Let V be the vector space F[x] of polynomials in x over F.
+        // Let v in V be the vector [ L_0, ..., L_{n - 1} ] where L_i is the i^{th}
+        // normalized Lagrange polynomial (where L_i(w^j) = j == i ? 1 : 0).
+        //
+        // Consider the rows of M(w) * v. Let me write out the matrix and vector so you
+        // can see more easily.
+        //
+        //   | 1 1       1           ... 1               |   | L_0     |
+        //   | 1 w       w^2         ... w^{n-1}         | * | L_1     |
+        //   | ...                                       |   | ...     |
+        //   | 1 w^{n-1} (w^2)^{n-1} ... (w^{n-1})^{n-1} |   | L_{n-1} |
+        //
+        // The 0th row is L_0 + L1 + ... + L_{n - 1}. So, it's the polynomial
+        // that has the value 1 on every element of the domain.
+        // In other words, it's the polynomial 1.
+        //
+        // The 1st row is L_0 + w L_1 + ... + w^{n - 1} L_{n - 1}. So, it's the
+        // polynomial which has value w^i on w^i.
+        // In other words, it's the polynomial x.
+        //
+        // In general, you can see that row i is in fact the polynomial x^i.
+        //
+        // Thus, M(w) * v is the vector u, where u = [ 1, x, x^2, ..., x^n ]
+        //
+        // Therefore, the IFFT algorithm, when applied to the vector u (the standard
+        // monomial basis) will yield the vector v of the (normalized) Lagrange polynomials.
+        //
+        // Now, because the polynomial commitment scheme is additively homomorphic, and
+        // because the commitment to the polynomial x^i is just self.g[i], we can obtain
+        // commitments to the normalized Lagrange polynomials by applying IFFT to the
+        // vector self.g[0..n].
+        let mut lg: Vec<<G as AffineCurve>::Projective> =
+            self.g[0..n].iter().map(|g| g.into_projective()).collect();
+        domain.ifft_in_place(&mut lg);
+
+        <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
+        self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());
+    }
+
+    /// This function creates SRS instance for circuits with number of rows up to `depth`.
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
 
@@ -133,6 +213,7 @@ where
         SRS {
             g,
             h,
+            lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
         }
@@ -159,6 +240,7 @@ where
         Ok(SRS {
             g,
             h,
+            lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
         })
