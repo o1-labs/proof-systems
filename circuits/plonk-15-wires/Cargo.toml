@@ -9,7 +9,6 @@ path = "src/lib.rs"
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
-ocaml = { version = "0.18.1", optional = true }
 rand_core = { version = "0.5" }
 array-init = { version = "1.0.0" }
 rayon = { version = "1" }
@@ -22,8 +21,11 @@ mina-curves = { path = "../../curves" }
 o1-utils = { path = "../../utils" }
 oracle = { path = "../../oracle" }
 
+ocaml = { version = "0.22.1", optional = true }
+ocaml-gen = { path = "../../ocaml-gen", optional = true }
+
 [dev-dependencies]
 itertools = "0.10.1"
 
 [features]
-ocaml_types = [ "ocaml", "oracle/ocaml_types" ]
+ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]

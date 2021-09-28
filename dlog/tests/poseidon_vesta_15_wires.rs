@@ -1,4 +1,4 @@
-use ark_ff::{Field, One, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use colored::Colorize;

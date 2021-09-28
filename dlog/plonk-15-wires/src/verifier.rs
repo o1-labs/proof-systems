@@ -7,7 +7,7 @@ This source file implements zk-proof batch verifier functionality.
 pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::AffineCurve;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
