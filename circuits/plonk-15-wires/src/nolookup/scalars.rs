@@ -71,7 +71,7 @@ impl<F: Field> Default for RandomOracles<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use ocaml_gen::{ocaml_gen, OcamlGen};
+    use ocaml_gen::OcamlGen;
     use oracle::sponge::caml::CamlScalarChallenge;
 
     //

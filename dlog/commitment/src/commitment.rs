@@ -18,8 +18,8 @@ use ark_ec::{
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as D, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+    UVPolynomial,
 };
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
@@ -1007,6 +1007,7 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
+    use ark_poly::Polynomial;
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
@@ -1137,7 +1138,7 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use ocaml_gen::{ocaml_gen, OcamlGen};
+    use ocaml_gen::OcamlGen;
 
     // polynomial commitment
 

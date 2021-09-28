@@ -18,7 +18,7 @@ use commitment_dlog::commitment::{
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    nolookup::{constraints::ConstraintSystem, scalars::ProofEvaluations},
+    nolookup::scalars::ProofEvaluations,
     wires::{COLUMNS, PERMUTS},
 };
 use rand::thread_rng;
