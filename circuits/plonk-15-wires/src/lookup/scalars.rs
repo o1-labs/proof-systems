@@ -35,78 +35,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
     }
 }
 
-/*
-#[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
-pub struct CamlProofEvaluations<Fs> {
-    pub w: (Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs),
-    pub z: Fs,
-    pub t: Fs,
-    pub f: Fs,
-    pub s: (Fs, Fs, Fs, Fs, Fs),
-    pub l: Fs,
-    pub lw: Fs,
-    pub h1: Fs,
-    pub h2: Fs,
-    pub tb: Fs,
-}
-
-#[cfg(feature = "ocaml_types")]
-unsafe impl<Fs: ocaml::IntoValue> ocaml::IntoValue for ProofEvaluations<Fs> {
-    fn into_value(self) -> ocaml::Value {
-        ocaml::IntoValue::to_value(CamlProofEvaluations {
-            w: {
-                let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = self.w;
-                (
-                    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
-                )
-            },
-            z: self.z,
-            t: self.t,
-            f: self.f,
-            s: {
-                let [s0, s1, s2, s3, s4] = self.s;
-                (s0, s1, s2, s3, s4)
-            },
-            l: self.l,
-            lw: self.lw,
-            h1: self.h1,
-            h2: self.h2,
-            tb: self.tb,
-        })
-    }
-}
-
-#[cfg(feature = "ocaml_types")]
-unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
-    fn from_value(v: ocaml::Value) -> Self {
-        let evals: CamlProofEvaluations<Fs> = ocaml::FromValue::from_value(v);
-        ProofEvaluations {
-            w: {
-                let (w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14) = evals.w;
-                [
-                    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
-                ]
-            },
-            z: evals.z,
-            t: evals.t,
-            f: evals.f,
-            s: {
-                let (s0, s1, s2, s3, s4) = evals.s;
-                [s0, s1, s2, s3, s4]
-            },
-            l: evals.l,
-            lw: evals.lw,
-            h1: evals.h1,
-            h2: evals.h2,
-            tb: evals.tb,
-        }
-    }
-}
-*/
-
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct RandomOracles<F: Field> {
     // Plonk oracles
     pub po: RO<F>,
