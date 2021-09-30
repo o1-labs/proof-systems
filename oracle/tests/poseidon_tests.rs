@@ -1,10 +1,12 @@
-use ark_ff::{BigInteger256, PrimeField, UniformRand};
-use ark_serialize::CanonicalDeserialize as _;
-use mina_curves::pasta::Fp;
-use oracle::poseidon::Sponge as _;
 use serde::Deserialize;
 use std::fs::File;
-use std::path::PathBuf; // needed for ::new() sponge
+use std::path::PathBuf;
+
+use mina_curves::pasta::Fp;
+use algebra::{
+    fields::PrimeField, BigInteger256, CanonicalDeserialize as _,
+};
+use oracle::poseidon::Sponge as _; // needed for ::new() sponge
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
@@ -37,7 +39,7 @@ fn hex_to_field(hexstring: &str) -> Fp {
     let bytearray = hex::decode(hexstring).expect("couldn't deserialize hex encoded test vector");
     let bignum = BigInteger256::deserialize(&mut &bytearray[..])
         .expect("couldn't deserialize bignum representation");
-    Fp::from_repr(bignum).unwrap()
+    Fp::from_repr(bignum)
 }
 
 fn test_vectors<F>(test_vector_file: &str, hash: F)

@@ -41,7 +41,7 @@ Gate 1
 
 use crate::gate::{CircuitGate, GateType};
 use crate::wires::GateWires;
-use ark_ff::FftField;
+use algebra::FftField;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 3]) -> Vec<Self> {

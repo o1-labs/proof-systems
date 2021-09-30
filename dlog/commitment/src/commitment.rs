@@ -12,15 +12,15 @@ The folowing functionality is implemented
 
 use crate::srs::TrimmedSRS;
 pub use crate::CommitmentField;
-use ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
-    AffineCurve, ProjectiveCurve, SWModelParameters,
+use algebra::{
+    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, Field,
+    FpParameters, One, PrimeField, ProjectiveCurve, SWModelParameters, SquareRootField,
+    UniformRand, VariableBaseMSM, Zero,
 };
-use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ff_fft::DensePolynomial;
 use groupmap::{BWParameters, GroupMap};
 use oracle::{sponge::ScalarChallenge, FqSponge};
-use rand_core::{CryptoRng, RngCore};
+use rand_core::RngCore;
 use rayon::prelude::*;
 use std::iter::Iterator;
 
@@ -149,7 +149,7 @@ where
 
         let chal_inv = {
             let mut cs = chal.clone();
-            ark_ff::batch_inversion(&mut cs);
+            algebra::fields::batch_inversion(&mut cs);
             cs
         };
 
@@ -343,16 +343,12 @@ where
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
-        rng: &mut (impl RngCore + CryptoRng),
+        rng: &mut dyn RngCore,
     ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
-    fn mask(
-        &self,
-        c: PolyComm<G>,
-        rng: &mut (impl RngCore + CryptoRng),
-    ) -> (PolyComm<G>, PolyComm<Fr<G>>) {
+    fn mask(&self, c: PolyComm<G>, rng: &mut dyn RngCore) -> (PolyComm<G>, PolyComm<Fr<G>>) {
         c.map(|g: G| {
             if g.is_zero() {
                 // TODO: This leaks information when g is the identity!
@@ -444,7 +440,7 @@ where
     ) -> OpeningProof<G>
     where
         EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
-        RNG: RngCore + CryptoRng,
+        RNG: RngCore,
     {
         let rounds = self.rounds();
         let padded_length = 1 << rounds;
@@ -667,7 +663,7 @@ where
     //     oracle_params: parameters for the random oracle argument
     //     randomness source context
     //     RETURN: verification status
-    pub fn verify<EFqSponge, RNG>(
+    pub fn verify<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         group_map: &G::Map,
         batch: &mut Vec<(
@@ -682,12 +678,8 @@ where
             )>,
             &OpeningProof<G>, // batched opening proof
         )>,
-        rng: &mut RNG,
-    ) -> bool
-    where
-        EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
-        RNG: RngCore + CryptoRng,
-    {
+        rng: &mut dyn RngCore,
+    ) -> bool {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
         //
@@ -922,7 +914,7 @@ impl<F: Field> Utils<F> for DensePolynomial<F> {
                         i + size
                     }],
                 )
-                .evaluate(&elm)
+                .evaluate(elm)
             })
             .collect()
     }

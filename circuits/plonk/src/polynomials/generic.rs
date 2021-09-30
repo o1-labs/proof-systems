@@ -7,8 +7,8 @@ This source file implements generic constraint polynomials.
 use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
-use ark_ff::{FftField, SquareRootField};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::PolyUtils;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -22,7 +22,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             &(&(&polys.d4.this.l * &polys.d4.this.r) * &self.qml)
                 + &(&(&(&polys.d4.this.l * &self.qll) + &(&polys.d4.this.r * &self.qrl))
                     + &(&polys.d4.this.o * &self.qol)),
-            &self.qc + p,
+            &self.qc + &p,
         )
     }
 

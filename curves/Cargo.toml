@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-ark-ec = "0.3.0"
-ark-ff = "0.3.0"
+algebra = { path = "../zexe/algebra", features = ["std", "parallel"] }
+algebra-core = { path = "../zexe/algebra-core", features = ["std"] }
 
 [dev-dependencies]
-rand = { version = "0.8.0", default-features = false }
+rand = { version = "0.7", default-features = false }
 rand_xorshift = "0.2"

@@ -14,7 +14,7 @@ use crate::{
     wires::GateWires,
     wires::{COLUMNS, WIRES},
 };
-use ark_ff::FftField;
+use algebra::FftField;
 use array_init::array_init;
 use oracle::poseidon::{sbox, PlonkSpongeConstants5W};
 

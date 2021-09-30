@@ -1,8 +1,7 @@
-use ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, ProjectiveCurve,
-    SWModelParameters,
+use algebra::{
+    curves::models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, BitIterator,
+    Field, One, PrimeField, ProjectiveCurve, SWModelParameters, Zero,
 };
-use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use rayon::prelude::*;
 
@@ -27,7 +26,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
         })
         .collect::<Vec<_>>();
 
-    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..len).step_by(2).zip(denominators.iter()) {
         let j = i / 2;
@@ -84,7 +83,7 @@ fn batch_add_assign<P: SWModelParameters>(
         denominators[i] = d;
     }
 
-    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+    algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
 
     for (i, d) in (0..n).zip(denominators.iter()) {
         let p0 = v0[i];
@@ -137,8 +136,8 @@ fn affine_combine_base<P: SWModelParameters>(
     };
     assert!(g1g2.len() == n);
 
-    let bits1 = BitIteratorBE::new(x1.into_repr());
-    let bits2 = BitIteratorBE::new(x2.into_repr());
+    let bits1 = BitIterator::new(x1.into_repr());
+    let bits2 = BitIterator::new(x2.into_repr());
 
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
@@ -150,7 +149,7 @@ fn affine_combine_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -198,8 +197,8 @@ fn affine_window_combine_base<P: SWModelParameters>(
     };
     assert!(g1g2.len() == n);
 
-    let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
-    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    let windows1 = BitIterator::new(x1.into_repr()).tuples();
+    let windows2 = BitIterator::new(x2.into_repr()).tuples();
 
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
@@ -214,7 +213,7 @@ fn affine_window_combine_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -260,7 +259,7 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
 ) -> Vec<SWJAffine<P>> {
     let n = g1.len();
 
-    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    let windows2 = BitIterator::new(x2.into_repr()).tuples();
 
     let mut p = vec![SWJAffine::<P>::zero(); n];
 
@@ -274,7 +273,7 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
             for i in 0..n {
                 denominators[i] = p[i].y.double();
             }
-            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+            algebra::fields::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
             for i in 0..n {
@@ -392,8 +391,8 @@ fn shamir_sum<G: AffineCurve>(
     g1g2.add_assign_mixed(&g2);
     let g1g2 = g1g2.into_affine();
 
-    let bits1 = BitIteratorBE::new(x1.into_repr());
-    let bits2 = BitIteratorBE::new(x2.into_repr());
+    let bits1 = BitIterator::new(x1.into_repr());
+    let bits2 = BitIterator::new(x2.into_repr());
 
     let mut res = G::Projective::zero();
 
@@ -533,8 +532,8 @@ fn window_shamir<G: AffineCurve>(
     let [_g00_00, g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
         shamir_window_table(g1, g2);
 
-    let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
-    let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
+    let windows1 = BitIterator::new(x1.into_repr()).tuples();
+    let windows2 = BitIterator::new(x2.into_repr()).tuples();
 
     let mut res = G::Projective::zero();
 

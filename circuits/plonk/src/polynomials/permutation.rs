@@ -7,8 +7,8 @@ This source file implements permutation constraint polynomial.
 use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::{ProofEvaluations, RandomOracles};
-use ark_ff::{FftField, SquareRootField};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D};
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::{EvalUtils, PolyUtils};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -45,7 +45,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             (self.r, self.o),
             alpha,
             self.domain.d1.size,
-            self.zkpm.evaluate(&oracles.zeta),
+            self.zkpm.evaluate(oracles.zeta),
             self.sid[self.domain.d1.size as usize - 3],
         );
         &z.scale(scalars[0]) + &self.sigmam[2].scale(scalars[1])
@@ -63,7 +63,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> Vec<F> {
         let bz = oracles.beta * &oracles.zeta;
         let mut denominator = [oracles.zeta - &F::one(), oracles.zeta - &w];
-        ark_ff::batch_inversion::<F>(&mut denominator);
+        algebra::fields::batch_inversion::<F>(&mut denominator);
         let numerator = oracles.zeta.pow(&[n]) - &F::one();
 
         vec![

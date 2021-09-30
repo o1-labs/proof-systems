@@ -10,7 +10,7 @@ Constraint vector format:
 
 use crate::gate::{CircuitGate, GateType};
 use crate::{constraints::ConstraintSystem, wires::GateWires};
-use ark_ff::FftField;
+use algebra::FftField;
 use oracle::poseidon::{sbox, PlonkSpongeConstants, SpongeConstants};
 
 impl<F: FftField> CircuitGate<F> {

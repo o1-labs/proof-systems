@@ -8,11 +8,8 @@ use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::{ProofEvaluations, RandomOracles};
 use crate::wires::COLUMNS;
-use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{
-    univariate::{DenseOrSparsePolynomial, DensePolynomial},
-    Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
-};
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DenseOrSparsePolynomial, DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::{
     rndoracle::ProofError,
     utils::{EvalUtils, PolyUtils},
@@ -83,7 +80,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         self.sigmam[COLUMNS - 1].scale(Self::perm_scalars(
             e,
             oracles,
-            self.zkpm.evaluate(&oracles.zeta),
+            self.zkpm.evaluate(oracles.zeta),
         ))
     }
 

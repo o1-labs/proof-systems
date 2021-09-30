@@ -7,12 +7,11 @@ This source file implements zk-proof batch verifier functionality.
 pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
-use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
-use ark_poly::{EvaluationDomain, Polynomial};
+use algebra::{AffineCurve, Field, One, Zero};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
 };
+use ff_fft::EvaluationDomain;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_5_wires_circuits::{
     constraints::ConstraintSystem, scalars::RandomOracles, wires::COLUMNS,
@@ -144,7 +143,7 @@ where
         (0..self.public.len())
             .zip(w.iter())
             .for_each(|(_, w)| lagrange.push(zetaw - w));
-        ark_ff::batch_inversion::<Fr<G>>(&mut lagrange);
+        algebra::fields::batch_inversion::<Fr<G>>(&mut lagrange);
 
         // evaluate public input polynomials
         // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
@@ -283,7 +282,7 @@ where
                 // compute linearization polynomial commitment
 
                 // permutation
-                let zkp = index.zkpm.evaluate(&oracles.zeta);
+                let zkp = index.zkpm.evaluate(oracles.zeta);
                 let mut p = vec![&index.sigma_comm[COLUMNS - 1]];
                 let mut s = vec![ConstraintSystem::perm_scalars(&evals, &oracles, zkp)];
 
@@ -463,7 +462,7 @@ where
             assert_eq!(index.srs.get_ref().trim(trimmed_length).len(), srs.len());
         }
 
-        match srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
+        match srs.verify::<EFqSponge>(group_map, &mut batch, &mut thread_rng()) {
             false => Err(ProofError::OpenProof),
             true => Ok(true),
         }

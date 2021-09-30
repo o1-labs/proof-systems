@@ -33,8 +33,8 @@ This source file implements non-special point Weierstrass curve addition constra
 use crate::constraints::ConstraintSystem;
 use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
-use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use algebra::{FftField, SquareRootField};
+use ff_fft::{DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use oracle::utils::{EvalUtils, PolyUtils};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
