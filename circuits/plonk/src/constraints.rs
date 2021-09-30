@@ -87,22 +87,23 @@ pub struct ConstraintSystem<F: FftField> {
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
-pub fn zk_w<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - 3])
+pub fn zk_w<F: FftField>(domain: D<F>) -> Option<F> {
+    if domain.size < 3 { return None }
+    Some(domain.group_gen.pow(&[domain.size - 3]))
 }
 
-pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
+pub fn zk_polynomial<F: FftField>(domain: D<F>) -> Option<DensePolynomial<F>> {
     // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-    let w3 = zk_w(domain);
+    let w3 = zk_w(domain)?;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
 
-    DensePolynomial::from_coefficients_slice(&[
+    Some(DensePolynomial::from_coefficients_slice(&[
         -w1 * &w2 * &w3,
         (w1 * &w2) + &(w1 * &w3) + &(w3 * &w2),
         -w1 - &w2 - &w3,
         F::one(),
-    ])
+    ]))
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -150,7 +151,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         sid.append(&mut s);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-        let zkpm = zk_polynomial(domain.d1);
+        let zkpm = zk_polynomial(domain.d1)?;
 
         // compute generic constraint polynomials
         let qlm = Evaluations::<F, D<F>>::from_vec_and_domain(

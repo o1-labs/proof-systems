@@ -110,7 +110,9 @@ where
             emul2_comm: srs.commit_non_hiding(&self.cs.emul2m, None),
             emul3_comm: srs.commit_non_hiding(&self.cs.emul3m, None),
 
-            w: zk_w(self.cs.domain.d1),
+            // Safe to unwrap here because we've already successfully called this when creating the
+            // constraint system.
+            w: zk_w(self.cs.domain.d1).unwrap(),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
             endo: self.cs.endo,

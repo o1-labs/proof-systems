@@ -60,19 +60,16 @@ pub fn shift_scalar<F: PrimeField>(x: F) -> F {
 }
 
 impl<C: AffineCurve> PolyComm<C> {
-    pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
-        PolyComm::<C> {
+    pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Option<Self> {
+        Some(PolyComm::<C> {
             shifted: {
                 if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {
                     None
                 } else {
                     let points = com
                         .iter()
-                        .map(|c| {
-                            assert!(c.shifted.is_some());
-                            c.shifted.unwrap()
-                        })
-                        .collect::<Vec<_>>();
+                        .map(|c| { c.shifted })
+                        .collect::<Option<Vec<_>>>()?;
                     let scalars = elm.iter().map(|s| s.into_repr()).collect::<Vec<_>>();
                     Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
                 }
@@ -81,7 +78,7 @@ impl<C: AffineCurve> PolyComm<C> {
                 if com.len() == 0 || elm.len() == 0 {
                     Vec::new()
                 } else {
-                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                    let n = com.iter().map(|c| c.unshifted.len()).max()?;
                     (0..n)
                         .map(|i| {
                             let mut points = Vec::new();
@@ -97,7 +94,7 @@ impl<C: AffineCurve> PolyComm<C> {
                         .collect::<Vec<_>>()
                 }
             },
-        }
+        })
     }
 }
 

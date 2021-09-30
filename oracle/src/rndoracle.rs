@@ -23,6 +23,8 @@ pub enum ProofError {
     EvaluationGroup,
     OracleCommit,
     RuntimeEnv,
+    BadMultiScalarMul,
+    BadSrsLength,
 }
 
 // Implement `Display` for ProofError

@@ -131,7 +131,9 @@ where
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
         let n = index.cs.domain.d1.size as usize;
-        assert!(n <= index.srs.get_ref().g.len());
+        if n > index.srs.get_ref().g.len() {
+            return Err(ProofError::BadSrsLength);
+        }
         if witness.len() != 3 * n {
             return Err(ProofError::WitnessCsInconsistent);
         }
@@ -320,7 +322,7 @@ where
         fq_sponge.absorb_g(&t_comm.unshifted);
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.unshifted.len()]);
         {
-            let s = t_comm.shifted.unwrap();
+            let s = t_comm.shifted.unwrap(); // Unwrap is fine here, we've just created the value.
             if s.is_zero() {
                 fq_sponge.absorb_g(&[dummy])
             } else {

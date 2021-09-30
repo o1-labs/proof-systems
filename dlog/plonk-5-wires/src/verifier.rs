@@ -270,7 +270,7 @@ where
                         .map(|l| l)
                         .collect(),
                     &proof.public.iter().map(|s| -*s).collect(),
-                );
+                ).ok_or(ProofError::BadMultiScalarMul)?;
 
                 let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
@@ -330,7 +330,7 @@ where
                 ));
                 p.extend([&index.mul1_comm, &index.mul2_comm].to_vec());
 
-                let f_comm = PolyComm::multi_scalar_mul(&p, &s);
+                let f_comm = PolyComm::multi_scalar_mul(&p, &s).ok_or(ProofError::BadMultiScalarMul)?;
 
                 // check linearization polynomial evaluation consistency
                 let zeta1m1 = zeta1 - &Fr::<G>::one();
