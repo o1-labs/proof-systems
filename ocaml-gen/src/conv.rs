@@ -4,6 +4,16 @@
 use crate::{Env, OCamlDesc};
 use const_random::const_random;
 
+impl OCamlDesc for () {
+    fn ocaml_desc(_env: &Env, _generics: &[&str]) -> String {
+        "unit".to_string()
+    }
+
+    fn unique_id() -> u128 {
+        const_random!(u128)
+    }
+}
+
 impl OCamlDesc for [u8; 32] {
     fn ocaml_desc(_env: &Env, _generics: &[&str]) -> String {
         "bytes".to_string()

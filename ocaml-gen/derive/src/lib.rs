@@ -130,7 +130,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
     let ocaml_desc = quote! {
         fn ocaml_desc(env: &::ocaml_gen::Env, generics: &[&str]) -> String {
             // get type parameters
-            let mut generics_ocaml = vec![];
+            let mut generics_ocaml: Vec<String> = vec![];
             #(
                 generics_ocaml.push(
                     <#generics_ident as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, generics)
@@ -142,7 +142,11 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
             let name = env.get_type(type_id);
 
             // return the type description in OCaml
-            format!("({}) {}", generics_ocaml.join(", "), name)
+            if generics_ocaml.is_empty() {
+                name.to_string()
+            } else {
+                format!("({}) {}", generics_ocaml.join(", "), name)
+            }
         }
     };
 
@@ -241,9 +245,12 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
                 }
 
                 // example: type 'a t = Infinity | Finite of 'a
-                generics_ocaml.push(
+                let tag = if fields.is_empty() {
+                    name.to_string()
+                } else {
                     format!("{} of {}", name, fields.join(" * "))
-                );
+                };
+                generics_ocaml.push(tag);
             }
             format!("{}", generics_ocaml.join(" | "))
         }
@@ -370,7 +377,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     let ocaml_desc = quote! {
         fn ocaml_desc(env: &::ocaml_gen::Env, generics: &[&str]) -> String {
             // get type parameters
-            let mut generics_ocaml = vec![];
+            let mut generics_ocaml: Vec<String> = vec![];
             #(
                 generics_ocaml.push(
                     <#generics_ident as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, generics)
@@ -382,7 +389,11 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             let name = env.get_type(type_id);
 
             // return the type description in OCaml
-            format!("({}) {}", generics_ocaml.join(", "), name)
+            if generics_ocaml.is_empty() {
+                name.to_string()
+            } else {
+                format!("({}) {}", generics_ocaml.join(", "), name)
+            }
         }
     };
 
