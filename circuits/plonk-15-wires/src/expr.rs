@@ -12,31 +12,48 @@ use rayon::prelude::*;
 use crate::wires::COLUMNS;
 use crate::domains::EvaluationDomains;
 
+/// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
+    /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
+    /// The challenge beta from the PLONK IOP.
     pub beta: F,
+    /// The challenge gamma from the PLONK IOP.
     pub gamma: F,
+    /// The challenge joint_combiner which is used to combine
+    /// joint lookup tables.
     pub joint_combiner: F,
 }
 
-// All are evaluations over the D8 domain
+/// The collection of polynomials (all in evaluation form) and constants
+/// required to evaluate an expression as a polynomial.
+///
+/// All are evaluations over the D8 domain
 pub struct Environment<'a, F : FftField> {
+    /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
+    /// The polynomial which vanishes on the last 3 elements of the domain.
+    /// Used for ZK blinding.
     pub zk_polynomial: &'a Evaluations<F, D<F>>,
+    /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
+    /// The sorted lookup table polynomials.
     pub lookup_sorted: &'a Vec<Evaluations<F, D<F>>>,
+    /// The lookup aggregation polynomials.
     pub lookup_aggreg: &'a Evaluations<F, D<F>>,
-    pub alpha: F,
-    pub beta: F,
-    pub gamma: F,
-    pub joint_combiner: F,
-    pub domain: EvaluationDomains<F>,
+    /// The index selector polynomials.
     pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
+    /// The lookup-type selector polynomials.
     pub lookup_selectors: &'a Vec<Evaluations<F, D<F>>>,
+    /// The evaluations of the combined lookup table polynomial.
     pub lookup_table: &'a Evaluations<F, D<F>>,
-    // The value
-    // prod_{j != 1} (1 - omega^j)
+    /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
+    /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
+    /// Constant values required
+    pub constants: Constants<F>,
+    /// The domains used in the PLONK argument.
+    pub domain: EvaluationDomains<F>,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -58,15 +75,6 @@ impl<'a, F: FftField> Environment<'a, F> {
             };
         Some(e)
     }
-
-    pub fn constants(&self) -> Constants<F> {
-        Constants {
-            alpha: self.alpha,
-            beta: self.beta,
-            gamma: self.gamma,
-            joint_combiner: self.joint_combiner
-        }
-    }
 }
 
 // In this file, we define
@@ -78,7 +86,7 @@ impl<'a, F: FftField> Environment<'a, F> {
 // and L_i(x) to be the normalized lagrange polynomial,
 // L_i(x) = l_i(x) / l_i(omega^i)
 
-/// prod_{j != 1} (1 - omega^j)
+/// Computes `prod_{j != 1} (1 - omega^j)`
 pub fn l0_1<F:FftField>(d: D<F>) -> F {
     let mut omega_j = d.group_gen;
     let mut res = F::one();
@@ -90,6 +98,7 @@ pub fn l0_1<F:FftField>(d: D<F>) -> F {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
     Witness(usize),
     Z,
@@ -101,12 +110,20 @@ pub enum Column {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+/// A type representing a variable which can appear in a constraint. It specifies a column
+/// and a relative position (Curr or Next)
 pub struct Variable {
+    /// The column of this variable
     pub col: Column,
+    /// The row (Curr of Next) of this variable
     pub row: CurrOrNext,
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// An arithmetic expression over
+///
+/// - the operations *, +, -, ^
+/// - the constants `alpha`, `beta`, `gamma`, `joint_combiner`, and literal field elements.
 pub enum ConstantExpr<F> {
     // TODO: Factor these out into an enum just for Alpha, Beta, Gamma, JointCombiner
     Alpha,
@@ -164,6 +181,7 @@ impl<F: Copy> ConstantExpr<F> {
 }
 
 impl<F: Field> ConstantExpr<F> {
+    /// Exponentiate a constant expression.
     pub fn pow(self, p: usize) -> Self {
         if p == 0 {
             return Literal(F::one());
@@ -175,6 +193,7 @@ impl<F: Field> ConstantExpr<F> {
         }
     }
 
+    /// Evaluate the given constant expression to a field element.
     pub fn value(&self, c: &Constants<F>) -> F {
         use ConstantExpr::*;
         match self {
@@ -191,6 +210,16 @@ impl<F: Field> ConstantExpr<F> {
     }
 }
 
+/// An multi-variate polynomial over the base ring `C` with
+/// variables
+///
+/// - `Cell(v)` for `v : Variable`
+/// - ZkPolynomial
+/// - UnnormalizedLagrangeBasis(i) for `i : usize`
+///
+/// This represents a PLONK "custom constraint", which enforces that
+/// the corresponding combination of the polynomials corresponding to
+/// the above variables should vanish on the PLONK domain.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr<C> {
     Constant(C),
@@ -204,6 +233,9 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(usize),
 }
 
+/// For efficiency of evaluation, we compile expressions to
+/// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
+/// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PolishToken<F> {
     Alpha,
@@ -242,6 +274,7 @@ fn evaluate_variable<'a, 'b, 'c, F: Field>(evals: &'a [ProofEvaluations<F>], v: 
 }
 
 impl<F: FftField> PolishToken<F> {
+    /// Evaluate an RPN expression to a field element.
     pub fn evaluate(
         toks: &Vec<PolishToken<F>>, d: D<F>, pt: F,
         evals: &[ProofEvaluations<F>], c: &Constants<F>) -> Option<F> {
@@ -291,11 +324,12 @@ impl<F: FftField> PolishToken<F> {
 }
 
 impl<C> Expr<C> {
-    /// Convenience function for constructing cells
+    /// Convenience function for constructing cell variables.
     pub fn cell(col:Column, row: CurrOrNext) -> Expr<C> {
         Expr::Cell(Variable { col, row })
     }
 
+    /// Convenience function for constructing constant expressions.
     pub fn constant(c: C) -> Expr<C> {
         Expr::Constant(c)
     }
@@ -324,7 +358,7 @@ enum EvalResult<'a, F: FftField> {
     SubEvals { domain: Domain, shift: usize, evals : &'a Evaluations<F, D<F>> }
 }
 
-// x^0, ..., x^{n - 1}
+/// Compute the powers of `x`, `x^0, ..., x^{n - 1}`
 pub fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
     if n == 0 {
         return vec![F::one()];
@@ -629,10 +663,13 @@ fn curr_or_next(row: CurrOrNext) -> usize {
 }
 
 impl<F: FftField> Expr<ConstantExpr<F>> {
+    /// Convenience function for constructing expressions from literal
+    /// field elements.
     pub fn literal(x: F) -> Self {
         Expr::Constant(ConstantExpr::Literal(x))
     }
 
+    /// Compile an expression to an RPN expression.
     pub fn to_polish(&self) -> Vec<PolishToken<F>> {
         let mut res = vec![];
         self.to_polish_(&mut res);
@@ -671,6 +708,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         }
     }
 
+    /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
+    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
         cs.into_iter().zip(alpha0..).map(|(c, i)| {
@@ -678,6 +717,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         }).fold(zero, |acc, x| acc + x)
     }
 
+    /// The expression `beta`.
     pub fn beta() -> Self {
         Expr::Constant(ConstantExpr::Beta)
     }
@@ -695,13 +735,15 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         }
     }
 
+    /// Evaluate an expression as a field element against an environment.
     pub fn evaluate(
         &self, d: D<F>, pt: F,
         evals: &[ProofEvaluations<F>],
         env: &Environment<F>) -> Result<F, &str> {
-        self.evaluate_(d, pt, evals, &env.constants())
+        self.evaluate_(d, pt, evals, &env.constants)
     }
 
+    /// Evaluate an expression as a field element against the constants.
     pub fn evaluate_(
         &self, d: D<F>, pt: F,
         evals: &[ProofEvaluations<F>],
@@ -731,16 +773,19 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         }
     }
 
+    /// Evaluate the constant expressions in this expression down into field elements.
     pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F> {
-        self.evaluate_constants_(&env.constants())
+        self.evaluate_constants_(&env.constants)
     }
 
+    /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
 }
 
 impl<F: FftField> Expr<F> {
+    /// Evaluate an expression into a field element.
     pub fn evaluate(
         &self, d: D<F>, pt: F,
         evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
@@ -769,6 +814,7 @@ impl<F: FftField> Expr<F> {
         }
     }
 
+    /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size as usize;
         let deg = self.degree(d1_size);
@@ -841,12 +887,15 @@ impl<F: FftField> Expr<F> {
 }
 
 #[derive(Clone, Debug)]
+/// A "linearization", which is linear combination with `E` coefficients of
+/// columns.
 pub struct Linearization<E> {
     pub constant_term: E,
     pub index_terms: Vec<(Column, E)>
 }
 
 impl<A> Linearization<A> {
+    /// Apply a function to all the coefficients in the linearization.
     pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B> {
         Linearization {
             constant_term: f(&self.constant_term),
@@ -856,20 +905,18 @@ impl<A> Linearization<A> {
 }
 
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+    /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
+    /// to literal field elements.
     pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F>> {
-        Linearization {
-            constant_term: self.constant_term.evaluate_constants(env),
-            index_terms:
-                self.index_terms.iter()
-                .map(|(c, e)| (*c, e.evaluate_constants(env)))
-                .collect()
-        }
+        self.map(|e| e.evaluate_constants(env))
     }
 }
 
 impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
+    /// Given a linearization and an environment, compute the polynomial corresponding to the
+    /// linearization, in evaluation form.
     pub fn to_polynomial(&self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
-        let cs = env.constants();
+        let cs = &env.constants;
         let n = env.domain.d1.size as usize;
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
@@ -885,8 +932,10 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
     }
 }
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+    /// Given a linearization and an environment, compute the polynomial corresponding to the
+    /// linearization, in evaluation form.
     pub fn to_polynomial(&self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
-        let cs = env.constants();
+        let cs = &env.constants;
         let n = env.domain.d1.size as usize;
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
@@ -959,6 +1008,32 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
         }
     }
 
+    /// There is an optimization in PLONK called "linearization" in which a certain
+    /// polynomial is expressed as a linear combination of other polynomials in order
+    /// to reduce the number of evaluations needed in the IOP (by relying on the homomorphic
+    /// property of the polynomial commitments used.)
+    ///
+    /// The function performs this "linearization", which we now describe in some detail.
+    ///
+    /// In mathematical language, an expression `e: Expr<F>`
+    /// is an element of the polynomial ring `F[V]`, where `V` is a set of variables.
+    ///
+    /// Given a subset `V_0` of `V` (and letting `V_1 = V \setminus V_0`), there is a map
+    /// `factor_{V_0}: F[V] -> (F[V_1])[V_0]`. That is, polynomials with `F` coefficients in the variables `V = V_0 \cup V_1`
+    /// are the same thing as polynomials with `F[V_1]` coefficients in variables `V_0`.
+    ///
+    /// There is also a function
+    /// `lin_or_err : (F[V_1])[V_0] -> Result<Vec<(V_0, F[V_2])>, &str>`
+    ///
+    /// which checks if the given input is in fact a degree 1 polynomial in the variables `V_0`
+    /// (i.e., a linear combination of `V_0` elements with `F[V_1]` coefficients)
+    /// returning this linear combination if so.
+    ///
+    /// Given an expression `e` and set of columns `C_0`, letting
+    /// `V_0 = { Variable { col: c, row: r } | c in C_0, r in { Curr, Next } }`,
+    /// this function computes `lin_or_err(factor_{V_0}(e))`, although it does not
+    /// compute it in that way. Instead, it computes it by reducing the expression into
+    /// a sum of monomials with `F` coefficients, and then factors the monomials.
     pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<Expr<F>>, &str> {
         let mut res : HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term : Expr<F> = Self::zero();
@@ -1208,4 +1283,5 @@ impl<F: fmt::Display> fmt::Display for Expr<F> {
     }
 }
 
+/// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
