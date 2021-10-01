@@ -47,18 +47,27 @@ impl<F: Field> JointLookup<F> {
     }
 }
 
+/// Specifies the configuration of lookups we want to enforce.
 pub struct LookupInfo<F> {
+    /// The maximum number of lookups applied per row.
     pub max_per_row: usize,
+    /// The maximum size of a joint lookup.
     pub max_joint_size: usize,
+    /// The different kinds of lookups which we can selectively enforce
+    /// on each row.
     pub kinds: Vec<Vec<JointLookup<F>>>,
+    /// For each type of row, which kind of lookups should be applied on that row.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
-    pub empty: Vec<JointLookup<F>>,
+    /// An empty vector.
+    empty: Vec<JointLookup<F>>,
 }
 
 fn max_lookups_per_row<F>(kinds: &Vec<Vec<JointLookup<F>>>) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
 
+/// Type for representing whether a lookup configuration uses all single lookups,
+/// or if it uses some joint lookup.
 #[derive(Copy, Clone, Debug)]
 pub enum LookupsUsed {
     Single,
@@ -66,6 +75,8 @@ pub enum LookupsUsed {
 }
 
 impl<F: FftField> LookupInfo<F> {
+    /// This creates the lookup configuration we will be using which is tailored
+    /// for implementing constraints for the ChaCha20 block cipher.
     pub fn create() -> Self {
         let kinds = lookup_kinds().into_iter().map(|(x, _)| x).collect();
         let max_per_row = max_lookups_per_row(&kinds);
@@ -84,6 +95,8 @@ impl<F: FftField> LookupInfo<F> {
         }
     }
 
+    /// Compute whether any of the given gates use lookups, and whether they use
+    /// Joint or Single lookups if so.
     pub fn lookup_used(&self, gates: &Vec<CircuitGate<F>>) -> Option<LookupsUsed> {
         let mut lookups_used = None;
         for g in gates.iter() {
@@ -102,6 +115,8 @@ impl<F: FftField> LookupInfo<F> {
         lookups_used
     }
 
+    /// We have one selector polynomial per lookup-kind, which selectively
+    /// applies that lookup on the correct rows.
     pub fn selector_polynomials<'a>(&'a self, domain: EvaluationDomains<F>, gates: &Vec<CircuitGate<F>>) -> Vec<E<F, D<F>>> {
         let n = domain.d1.size as usize;
         let mut res : Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
@@ -127,6 +142,7 @@ impl<F: FftField> LookupInfo<F> {
             .collect()
     }
 
+    /// For each row, which lookup-kinds to enforce on that row.
     pub fn by_row<'a>(&'a self, gates: &Vec<CircuitGate<F>>) -> Vec<&'a Vec<JointLookup<F>>> {
         let mut kinds = vec![&self.empty; gates.len() + 1];
         for i in 0..gates.len() {
@@ -149,7 +165,7 @@ impl<F: FftField> LookupInfo<F> {
 ///
 /// See circuits/plonk-15-wires/src/polynomials/chacha.rs for an explanation of
 /// how these work.
-pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
+fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
     let curr_row = |column| LocalPosition { row: CurrOrNext::Curr, column };
     let chacha_pattern =
         (0..4).map(|i| {
@@ -195,7 +211,7 @@ pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, 
     vec![(chacha_pattern, chacha_where), (chacha_final_pattern, chacha_final_where)]
 }
 
-pub fn lookup_kinds_map<F: Field>() -> HashMap<(GateType, CurrOrNext), usize> {
+fn lookup_kinds_map<F: Field>() -> HashMap<(GateType, CurrOrNext), usize> {
     let mut res = HashMap::new();
     let lookup_kinds = lookup_kinds::<F>();
     for (i, (_, locs)) in lookup_kinds.into_iter().enumerate() {
