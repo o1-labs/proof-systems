@@ -1,10 +1,14 @@
 use ark_ff::FftField;
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EvaluationDomains<F: FftField> {
+    #[serde(with = "o1_utils::radix2evaluationdomain::serialization")]
     pub d1: Domain<F>, // size n
+    #[serde(with = "o1_utils::radix2evaluationdomain::serialization")]
     pub d4: Domain<F>, // size 4n
+    #[serde(with = "o1_utils::radix2evaluationdomain::serialization")]
     pub d8: Domain<F>, // size 8n
 }
 
