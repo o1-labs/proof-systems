@@ -72,12 +72,11 @@ impl Env {
     }
 
     /// retrieves a type that was declared previously
-    pub fn get_type(&self, ty: u128) -> String {
-        let (type_path, type_name) = self
-            .locations
-            .get(&ty)
-            // not a great error, I know
-            .expect("ocaml-gen: the type hasn't been declared");
+    pub fn get_type(&self, ty: u128, name: &str) -> String {
+        let (type_path, type_name) = self.locations.get(&ty).expect(&format!(
+            "ocaml-gen: the type {} hasn't been declared",
+            name
+        ));
 
         let type_path = type_path.join(".");
         let current_module = self.current_module.join(".");
