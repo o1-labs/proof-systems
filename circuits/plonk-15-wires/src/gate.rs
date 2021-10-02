@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::OcamlEnum)
@@ -46,6 +46,7 @@ pub struct CircuitGate<F: FftField> {
     /// gate wires
     pub wires: GateWires,
     /// constraints vector
+    // TODO: rename
     pub c: Vec<F>,
 }
 
@@ -178,6 +179,21 @@ pub mod caml {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
                 c: cg.c.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<&CircuitGate<F>> for CamlCircuitGate<CamlF>
+    where
+        CamlF: From<F>,
+        F: FftField,
+    {
+        fn from(cg: &CircuitGate<F>) -> Self {
+            Self {
+                row: cg.row.try_into().expect("usize -> isize"),
+                typ: cg.typ,
+                wires: array_to_tuple(cg.wires),
+                c: cg.c.clone().into_iter().map(Into::into).collect(),
             }
         }
     }
