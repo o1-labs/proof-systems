@@ -6,26 +6,40 @@ This source file implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
-use ark_ec::{ProjectiveCurve, AffineCurve};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
-use std::io::{Read, Result as IoResult, Write};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Debug, Clone)]
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
+    //    #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
     /// A group element used for blinding commitments
+    //    #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub h: G,
     /// Commitments to Lagrange bases, per domain size
+    //    #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "HashMap<_, Vec<o1_utils::serialization::SerdeAs>>")]
     pub lagrange_bases: HashMap<usize, Vec<G>>,
     /// Coefficient for the curve endomorphism
+    //    #[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo_r: G::ScalarField,
     /// Coefficient for the curve endomorphism
+    //    #[serde(bound = "G::BaseField: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo_q: G::BaseField,
 }
 
@@ -82,7 +96,11 @@ where
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
         let n = domain.size();
         if n > self.g.len() {
-            panic!("add_lagrange_basis: Domain size {} larger than SRS size {}", n, self.g.len());
+            panic!(
+                "add_lagrange_basis: Domain size {} larger than SRS size {}",
+                n,
+                self.g.len()
+            );
         }
 
         if self.lagrange_bases.contains_key(&n) {
@@ -149,7 +167,8 @@ where
         domain.ifft_in_place(&mut lg);
 
         <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-        self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());
+        self.lagrange_bases
+            .insert(n, lg.iter().map(|g| g.into_affine()).collect());
     }
 
     /// This function creates SRS instance for circuits with number of rows up to `depth`.

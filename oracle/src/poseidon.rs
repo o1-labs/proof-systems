@@ -6,6 +6,7 @@ This file implements Poseidon Hash Function primitive
 
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 pub trait SpongeConstants {
     const ROUNDS_FULL: usize;
@@ -95,9 +96,12 @@ pub enum SpongeState {
     Squeezed(usize),
 }
 
+#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ArithmeticSpongeParams<F: Field> {
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub round_constants: Vec<Vec<F>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub mds: Vec<Vec<F>>,
 }
 

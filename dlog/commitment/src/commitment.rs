@@ -27,13 +27,14 @@ use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::iter::Iterator;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
@@ -366,6 +367,66 @@ where
         crate::combine::affine_window_combine(g1, g2, x1, x2)
     }
 }
+
+//
+// EXPERIMENTS
+//
+
+/*
+impl<T> Serialize for &T
+where
+    T: AffineCurve,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut bytes = vec![];
+        self.serialize(&bytes).map_err(serde::de::Error::custom)?;
+        serializer.serialize_bytes(&bytes)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for T
+where
+    T: AffineCurve,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = deserializer.deserialize_bytes();
+        CommitmentCurve::deserialize(&bytes).map_err(serde::de::Error::custom)
+    }
+}
+
+
+struct LocalType<A: CommitmentCurve>;
+
+impl<A> serde_with::SerializeAs<&dyn CommitmentCurve> for LocalType<A> {
+    fn serialize_as<S>(value: &impl CommitmentCurve, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut bytes = vec![];
+        value.serialize(&bytes).map_err(serde::de::Error::custom)?;
+        serializer.serialize_bytes(&bytes)
+    }
+}
+
+impl<'de, A> serde_with::DeserializeAs<'de, CommitmentCurve> for LocalType<A> {
+    fn deserialize_as<D>(deserializer: D) -> Result<CommitmentCurve, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        MODULE::deserialize(deserializer)
+    }
+}
+*/
+
+//
+// END EXPERIMENTS
+//
 
 fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) -> G {
     let (x, y) = m.to_group(t);

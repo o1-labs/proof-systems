@@ -7,6 +7,7 @@ This source file implements Plonk Protocol Index primitive.
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
@@ -19,12 +20,17 @@ use plonk_15_wires_circuits::{
     nolookup::constraints::{zk_w3, ConstraintSystem},
     wires::*,
 };
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+#[derive(Serialize, Deserialize)]
 pub enum SRSValue<'a, G: CommitmentCurve> {
     Value(SRS<G>),
+    // TODO: this is probably very wrong, if you see this you should not accept this PR
+    #[serde(bound = "&'a SRS<G>: Serialize + DeserializeOwned")]
     Ref(&'a SRS<G>),
 }
 
@@ -59,14 +65,18 @@ where
     }
 }
 
+#[serde_as]
+#[derive(Serialize, Deserialize)]
 pub struct Index<'a, G: CommitmentCurve>
 where
     G::ScalarField: CommitmentField,
 {
     /// constraints system polynomials
+    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
 
     /// polynomial commitment keys
+    #[serde(bound = "SRSValue<'a, G>: Serialize + DeserializeOwned")]
     pub srs: SRSValue<'a, G>,
 
     /// maximal size of polynomial section
@@ -80,14 +90,18 @@ where
 }
 
 // TODO(mimoo): a lot of this stuff is kinda redundant with the Index/ProverIndex. There probably should be a "commonIndex" and then a ProverIndex and VerifierIndex that includes it.
+#[serde_as]
+#[derive(Serialize, Deserialize)]
 pub struct VerifierIndex<'a, G: CommitmentCurve> {
     /// evaluation domain
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<Fr<G>>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
     /// polynomial commitment keys
+    #[serde(bound = "SRSValue<'a, G>: Serialize + DeserializeOwned")]
     pub srs: SRSValue<'a, G>,
 
     // index polynomial commitments
@@ -117,13 +131,20 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     pub emul_comm: PolyComm<G>,
 
     /// wire coordinate shifts
+    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [Fr<G>; PERMUTS],
     /// zero-knowledge polynomial
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub zkpm: DensePolynomial<Fr<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
+    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub w: Fr<G>,
     /// endoscalar coefficient
+    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: Fr<G>,
 
     // random oracle argument parameters

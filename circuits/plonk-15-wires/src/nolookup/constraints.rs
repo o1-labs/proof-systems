@@ -15,6 +15,7 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use o1_utils::ExtendedEvaluations;
@@ -37,46 +38,46 @@ pub struct ConstraintSystem<F: FftField> {
     // Polynomials over the monomial base
     // ----------------------------------
     /// permutation polynomial array
-    #[serde_as(as = "[o1_utils::densepolynomial::SerdeAs; PERMUTS]")]
+    #[serde_as(as = "[o1_utils::dense_polynomial::SerdeAs; PERMUTS]")]
     pub sigmam: [DP<F>; PERMUTS],
     /// zero-knowledge polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub zkpm: DP<F>,
 
     // Generic constraint selector polynomials
     // ---------------------------------------
     /// linear wire constraint polynomial
-    #[serde_as(as = "[o1_utils::densepolynomial::SerdeAs; GENERICS]")]
+    #[serde_as(as = "[o1_utils::dense_polynomial::SerdeAs; GENERICS]")]
     pub qwm: [DP<F>; GENERICS],
     /// multiplication polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub qmm: DP<F>,
     /// constant wire polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub qc: DP<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
     /// round constant polynomials
-    #[serde_as(as = "[[o1_utils::densepolynomial::SerdeAs; SPONGE_WIDTH]; ROUNDS_PER_ROW]")]
+    #[serde_as(as = "[[o1_utils::dense_polynomial::SerdeAs; SPONGE_WIDTH]; ROUNDS_PER_ROW]")]
     pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub psm: DP<F>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition constraint selector polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub addm: DP<F>,
     /// EC point doubling constraint selector polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub doublem: DP<F>,
     /// mulm constraint selector polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub mulm: DP<F>,
     /// emulm constraint selector polynomial
-    #[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]
+    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
     pub emulm: DP<F>,
 
     //
@@ -100,6 +101,7 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "[o1_utils::evaluations::SerdeAs; PERMUTS]")]
     pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
 
     // Poseidon selector polynomials
@@ -155,8 +157,12 @@ pub struct ConstraintSystem<F: FftField> {
     pub zkpl: E<F, D<F>>,
 
     /// wire coordinate shifts
+    #[serde(bound = "F: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
     /// coefficient for the group endomorphism
+    #[serde(bound = "F: CanonicalDeserialize + CanonicalSerialize")]
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
 
     /// random oracle argument parameters
