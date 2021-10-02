@@ -139,7 +139,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 
             // get name
             let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            let name = env.get_type(type_id);
+            let name = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
             if generics_ocaml.is_empty() {
@@ -386,7 +386,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
             // get name
             let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            let name = env.get_type(type_id);
+            let name = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
             if generics_ocaml.is_empty() {
@@ -632,7 +632,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     let ocaml_desc = quote! {
         fn ocaml_desc(env: &::ocaml_gen::Env, _generics: &[&str]) -> String {
             let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            env.get_type(type_id)
+            env.get_type(type_id, #name_str)
         }
     };
 
