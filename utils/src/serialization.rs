@@ -1,6 +1,7 @@
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use serde::{Deserialize, Serialize};
-
+/*
+// do we need this code?
 pub fn deserialize<'de, G, D>(deserializer: D) -> Result<G, D::Error>
 where
     G: CanonicalDeserialize,
@@ -19,6 +20,7 @@ where
         .map_err(serde::ser::Error::custom)?;
     serializer.serialize_bytes(&bytes)
 }
+*/
 
 pub struct SerdeAs;
 
@@ -33,7 +35,11 @@ where
         let mut bytes = vec![];
         val.serialize(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
+
+        /*
         serializer.serialize_bytes(&bytes)
+        */
+        serde_with::Bytes::serialize_as(&bytes, serializer)
     }
 }
 
@@ -45,6 +51,7 @@ where
     where
         D: serde::Deserializer<'de>,
     {
-        deserialize(deserializer)
+        let bytes: Vec<u8> = serde_with::Bytes::deserialize_as(deserializer)?;
+        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }

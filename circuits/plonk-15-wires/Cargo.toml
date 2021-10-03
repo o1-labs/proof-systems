@@ -28,7 +28,10 @@ ocaml = { version = "0.22.1", optional = true }
 ocaml-gen = { path = "../../ocaml-gen", optional = true }
 
 [dev-dependencies]
+bincode = "1.3.3"
 itertools = "0.10.1"
+proptest = "1.0.0"
+proptest-derive = "0.3.0"
 
 [features]
 ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]

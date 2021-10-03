@@ -157,8 +157,8 @@ fn test_index_serialization() {
     let gates = create_generic_circuit();
 
     // test serialization on a CircuitGate
-    let encoded = bincode::serialize(&gates[0]).unwrap();
-    println!("gate: {:?}", gates[0]);
+    let encoded = bincode::serialize(&gates[1]).unwrap();
+    println!("gate: {:?}", gates[1]);
     println!("encoded gate: {:?}", encoded);
     let deserialized_gate: CircuitGate<Fp> = bincode::deserialize(&encoded).unwrap();
     println!("decoded gate: {:?}", deserialized_gate);
