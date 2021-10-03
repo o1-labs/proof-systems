@@ -26,12 +26,19 @@ use serde_with::serde_as;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum SRSValue<'a, G: CommitmentCurve> {
     Value(SRS<G>),
-    // TODO: this is probably very wrong, if you see this you should not accept this PR
-    #[serde(bound = "&'a SRS<G>: Serialize + DeserializeOwned")]
     Ref(&'a SRS<G>),
+}
+
+impl<'a, G> Default for SRSValue<'a, G>
+where
+    G: CommitmentCurve,
+{
+    fn default() -> Self {
+        Self::Value(SRS::<G>::default())
+    }
 }
 
 impl<'a, G: CommitmentCurve> SRSValue<'a, G> {
@@ -66,7 +73,7 @@ where
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Index<'a, G: CommitmentCurve>
 where
     G::ScalarField: CommitmentField,
@@ -76,7 +83,7 @@ where
     pub cs: ConstraintSystem<Fr<G>>,
 
     /// polynomial commitment keys
-    #[serde(bound = "SRSValue<'a, G>: Serialize + DeserializeOwned")]
+    #[serde(skip)]
     pub srs: SRSValue<'a, G>,
 
     /// maximal size of polynomial section
@@ -86,6 +93,7 @@ where
     pub max_quot_size: usize,
 
     /// random oracle argument parameters
+    #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
@@ -101,7 +109,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
     /// polynomial commitment keys
-    #[serde(bound = "SRSValue<'a, G>: Serialize + DeserializeOwned")]
+    #[serde(skip)]
     pub srs: SRSValue<'a, G>,
 
     // index polynomial commitments
@@ -131,24 +139,24 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     pub emul_comm: PolyComm<G>,
 
     /// wire coordinate shifts
-    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
+    //    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [Fr<G>; PERMUTS],
     /// zero-knowledge polynomial
-    #[serde_as(as = "o1_utils::dense_polynomial::SerdeAs")]
+    #[serde(skip)]
     pub zkpm: DensePolynomial<Fr<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
-    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    #[serde(skip)]
     pub w: Fr<G>,
     /// endoscalar coefficient
-    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    #[serde(skip)]
     pub endo: Fr<G>,
 
     // random oracle argument parameters
+    #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
@@ -219,4 +227,12 @@ where
             cs,
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_index_serialization() {}
 }

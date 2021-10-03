@@ -18,28 +18,28 @@ use serde_with::serde_as;
 use std::collections::HashMap;
 use std::io::{Read, Result as IoResult, Write};
 
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+//#[serde_as]
+#[derive(Debug, Clone, Default)]
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
     //    #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    //    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
     /// A group element used for blinding commitments
     //    #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub h: G,
     /// Commitments to Lagrange bases, per domain size
     //    #[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "HashMap<_, Vec<o1_utils::serialization::SerdeAs>>")]
+    //    #[serde_as(as = "HashMap<_, Vec<o1_utils::serialization::SerdeAs>>")]
     pub lagrange_bases: HashMap<usize, Vec<G>>,
     /// Coefficient for the curve endomorphism
     //    #[serde(bound = "G::ScalarField: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo_r: G::ScalarField,
     /// Coefficient for the curve endomorphism
     //    #[serde(bound = "G::BaseField: CanonicalDeserialize + CanonicalSerialize")]
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    //    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo_q: G::BaseField,
 }
 

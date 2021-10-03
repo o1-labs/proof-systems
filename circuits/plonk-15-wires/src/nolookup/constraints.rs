@@ -20,19 +20,21 @@ use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: FftField> {
     // Basics
     // ------
     /// number of public inputs
     pub public: usize,
     /// evaluation domains
+    #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
     pub domain: EvaluationDomains<F>,
     /// circuit gates
+    #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
     // Polynomials over the monomial base
@@ -96,6 +98,7 @@ pub struct ConstraintSystem<F: FftField> {
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS]")]
     pub sigmal1: [Vec<F>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
     #[serde_as(as = "[o1_utils::evaluations::SerdeAs; PERMUTS]")]
@@ -157,15 +160,14 @@ pub struct ConstraintSystem<F: FftField> {
     pub zkpl: E<F, D<F>>,
 
     /// wire coordinate shifts
-    #[serde(bound = "F: CanonicalDeserialize + CanonicalSerialize")]
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
     /// coefficient for the group endomorphism
-    #[serde(bound = "F: CanonicalDeserialize + CanonicalSerialize")]
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
 
     /// random oracle argument parameters
+    #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 

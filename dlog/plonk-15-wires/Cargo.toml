@@ -31,6 +31,7 @@ plonk_15_wires_circuits = { path = "../../circuits/plonk-15-wires" }
 [dev-dependencies]
 groupmap = { path = "../../groupmap" }
 mina-curves = { path = "../../curves" }
+bincode = "1.3.3"
 
 [features]
 default = []

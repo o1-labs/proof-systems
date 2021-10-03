@@ -9,6 +9,7 @@ use ark_ff::bytes::{FromBytes, ToBytes};
 use ark_ff::FftField;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
 #[repr(C)]
@@ -36,6 +37,7 @@ pub enum GateType {
     Lookup,
 }
 
+#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CircuitGate<F: FftField> {
     /// row position in the circuit
@@ -47,6 +49,7 @@ pub struct CircuitGate<F: FftField> {
     pub wires: GateWires,
     /// constraints vector
     // TODO: rename
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub c: Vec<F>,
 }
 

@@ -32,8 +32,7 @@ type SpongeParams = PlonkSpongeConstants15W;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-#[test]
-fn test_generic_gate() {
+fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
     // circuit gates
     let mut gates = vec![];
     let mut abs_row = 0;
@@ -61,7 +60,15 @@ fn test_generic_gate() {
     // add a zero gate, just because
     let wires = Wire::new(abs_row);
     gates.push(CircuitGate::<Fp>::zero(abs_row, wires));
-    abs_row += 1;
+    //abs_row += 1;
+
+    //
+    gates
+}
+
+#[test]
+fn test_generic_gate() {
+    let gates = create_generic_circuit();
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); 2]);
@@ -80,8 +87,10 @@ fn test_generic_gate() {
     // zero gate
     row += 1;
 
-    //
-    assert_eq!(row, abs_row);
+    // check that witness is correctly formed
+    assert_eq!(row, gates.len());
+
+    // create and verify proof based on the witness
     verify_proof(gates, witness, 0);
 }
 
@@ -136,4 +145,48 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
         .map(|proof| (&verifier_index, &lgr_comms, proof))
         .collect();
     ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
+}
+
+#[test]
+fn test_index_serialization() {
+    // set up
+    let rng = &mut StdRng::from_seed([0u8; 32]);
+    let group_map = <Affine as CommitmentCurve>::Map::setup();
+
+    // create gates
+    let gates = create_generic_circuit();
+
+    // test serialization on a CircuitGate
+    let encoded = bincode::serialize(&gates[0]).unwrap();
+    println!("gate: {:?}", gates[0]);
+    println!("encoded gate: {:?}", encoded);
+    let deserialized_gate: CircuitGate<Fp> = bincode::deserialize(&encoded).unwrap();
+    println!("decoded gate: {:?}", deserialized_gate);
+
+    // create the constraint system
+    let fp_sponge_params = oracle::pasta::fp::params();
+    let public = 0;
+    let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, public).unwrap();
+
+    // serialize the constraint system
+    let encoded = bincode::serialize(&cs).unwrap();
+    println!("gate: {:?}", cs);
+    println!("encoded gate: {:?}", encoded);
+    let decoded: ConstraintSystem<Fp> = bincode::deserialize(&encoded).unwrap();
+    println!("decoded gate: {:?}", decoded);
+
+    // create the index
+    let n = cs.domain.d1.size as usize;
+    let fq_sponge_params = oracle::pasta::fq::params();
+    let (endo_q, _endo_r) = endos::<Other>();
+    let srs = SRS::create(n);
+    let srs = SRSSpec::Use(&srs);
+    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+
+    // serialize the index
+    let encoded = bincode::serialize(&index).unwrap();
+    println!("gate: {:?}", index);
+    println!("encoded gate: {:?}", encoded);
+    let decoded: Index<Affine> = bincode::deserialize(&encoded).unwrap();
+    println!("decoded gate: {:?}", decoded);
 }
