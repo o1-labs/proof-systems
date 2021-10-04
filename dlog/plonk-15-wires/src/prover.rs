@@ -322,13 +322,6 @@ where
             match &joint_combiner {
                 None => (None, None, None, None),
                 Some(joint_combiner) => {
-                    /* TODO
-                    let iter_lookup_table = || (0..n).map(|i| {
-                        UncombinedEntry(
-                            index.cs.lookup_tables8[0].iter().map(|e| e.evals[8 * i])
-                                .collect())
-                    });
-                    */
                     let iter_lookup_table = || (0..n).map(|i| {
                         let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         CombinedEntry (
@@ -355,12 +348,10 @@ where
                             lookup::zk_patch(v, d1, rng)
                         }).collect();
 
-                    let start = std::time::Instant::now();
                     let comm : Vec<_> =
                         lookup_sorted.iter().map(|v|
                                 index.srs.get_ref().commit_evaluations(d1, v, None, rng))
                         .collect();
-                    println!("{}{:?}", "comm time: ", start.elapsed());
                     let coeffs : Vec<_> =
                         // TODO: We can avoid storing these coefficients.
                         lookup_sorted.iter().map(|e| e.clone().interpolate()).collect();
@@ -508,16 +499,7 @@ where
             match env.as_ref() {
                 None => t4,
                 Some(env) => {
-                    let start = std::time::Instant::now();
                     let chacha = chacha::constraint(range::CHACHA.start).evaluations(env);
-                    println!("{}{:?}", "chacha time: ", start.elapsed());
-                    assert_eq!(chacha.evals.len(), 4 * n);
-                    for i in 0..n {
-                        if ! chacha.evals[i * 4].is_zero() {
-                            println!("{}", i);
-                            println!("{:?}", index.cs.gates[i].typ);
-                        }
-                    }
                     &t4 + &chacha
                 }
             };
@@ -544,13 +526,6 @@ where
                     es
                 }
             };
-        /*
-        drop(env);
-        drop(lookup_table_combined);
-        drop(lookup_sorted8);
-        drop(lookup_aggreg8);
-        */
-        // TODO: Drop everything else referenced in env
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
@@ -639,12 +614,6 @@ where
             })
             .collect::<Vec<_>>();
 
-        let t_chunked = t.chunk_polynomial(zeta_n, index.max_poly_size);
-
-        {
-            // Test correctness of linearization
-        };
-
         // compute and evaluate linearization polynomial
         let f_chunked = {
             // TODO: compute the linearization polynomial in evaluation form so
@@ -664,33 +633,29 @@ where
                     .cs
                     .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);
 
-            println!("f_chunked eval {}", f.evaluate(&zeta));
-            println!("ft'_eval0 expected {}",
-                     f.evaluate(&zeta)
-                     -
-                     t_chunked.evaluate(&zeta));
-
             let f =
                 match env.as_ref() {
                     None => f,
                     Some(env) => {
-                        let start = std::time::Instant::now();
                         let (_lin_constant, lin) =
                             index
                             .linearization
                             .to_polynomial(env, zeta, evals);
-                        println!("ltin time {:?}", start.elapsed());
                         f + lin
                     }
                 };
 
-            println!("chunking f");
+            drop(env);
+            drop(lookup_sorted8);
+            drop(lookup_aggreg8);
+            drop(lookup_table_combined);
+
             f.chunk_polynomial(zeta_n, index.max_poly_size)
         };
 
-            println!("chunking t");
+        let t_chunked = t.chunk_polynomial(zeta_n, index.max_poly_size);
+
         let ft: DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
-            println!("prover ft_eval0 {}", ft.evaluate(&zeta));
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
