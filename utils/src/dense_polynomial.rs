@@ -2,7 +2,6 @@
 
 use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
-use serde_with::{DeserializeAs, SerializeAs};
 
 //
 // ExtendedDensePolynomial trait

@@ -4,10 +4,11 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
+use std::rc::Rc;
+
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
@@ -26,55 +27,10 @@ use serde_with::serde_as;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-#[derive(Debug)]
-pub enum SRSValue<'a, G: CommitmentCurve> {
-    Value(SRS<G>),
-    Ref(&'a SRS<G>),
-}
-
-impl<'a, G> Default for SRSValue<'a, G>
-where
-    G: CommitmentCurve,
-{
-    fn default() -> Self {
-        Self::Value(SRS::<G>::default())
-    }
-}
-
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> {
-    pub fn get_ref(&self) -> &SRS<G> {
-        match self {
-            SRSValue::Value(x) => &x,
-            SRSValue::Ref(x) => x,
-        }
-    }
-}
-
-pub enum SRSSpec<'a, G: CommitmentCurve> {
-    Use(&'a SRS<G>),
-    Generate(usize),
-}
-
-impl<'a, G: CommitmentCurve> SRSValue<'a, G>
-where
-    G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
-{
-    pub fn generate(size: usize) -> SRS<G> {
-        SRS::<G>::create(size)
-    }
-
-    pub fn create<'b>(spec: SRSSpec<'a, G>) -> SRSValue<'a, G> {
-        match spec {
-            SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size)),
-        }
-    }
-}
-
+/// The index common to both the prover and verifier
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Index<'a, G: CommitmentCurve>
+pub struct Index<G: CommitmentCurve>
 where
     G::ScalarField: CommitmentField,
 {
@@ -84,7 +40,7 @@ where
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: SRSValue<'a, G>,
+    pub srs: Rc<SRS<G>>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -97,10 +53,10 @@ where
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-// TODO(mimoo): a lot of this stuff is kinda redundant with the Index/ProverIndex. There probably should be a "commonIndex" and then a ProverIndex and VerifierIndex that includes it.
+/// The verifier index
 #[serde_as]
 #[derive(Serialize, Deserialize)]
-pub struct VerifierIndex<'a, G: CommitmentCurve> {
+pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<Fr<G>>,
@@ -110,7 +66,7 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: SRSValue<'a, G>,
+    pub srs: Rc<SRS<G>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -139,7 +95,6 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     pub emul_comm: PolyComm<G>,
 
     /// wire coordinate shifts
-    //    #[serde(bound = "Fr<G>: CanonicalDeserialize + CanonicalSerialize")]
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [Fr<G>; PERMUTS],
     /// zero-knowledge polynomial
@@ -160,34 +115,29 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-impl<'a, G: CommitmentCurve> Index<'a, G>
+impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
     G::ScalarField: CommitmentField,
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
-        let srs = match &self.srs {
-            SRSValue::Value(s) => SRSValue::Value(s.clone()),
-            SRSValue::Ref(x) => SRSValue::Ref(x),
-        };
-
         VerifierIndex {
             domain: self.cs.domain.d1,
 
-            sigma_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.sigmam[i], None)),
-            qw_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.qwm[i], None)),
-            qm_comm: srs.get_ref().commit_non_hiding(&self.cs.qmm, None),
-            qc_comm: srs.get_ref().commit_non_hiding(&self.cs.qc, None),
+            sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
+            qw_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.qwm[i], None)),
+            qm_comm: self.srs.commit_non_hiding(&self.cs.qmm, None),
+            qc_comm: self.srs.commit_non_hiding(&self.cs.qc, None),
 
             rcm_comm: array_init(|i| {
-                array_init(|j| srs.get_ref().commit_non_hiding(&self.cs.rcm[i][j], None))
+                array_init(|j| self.srs.commit_non_hiding(&self.cs.rcm[i][j], None))
             }),
-            psm_comm: srs.get_ref().commit_non_hiding(&self.cs.psm, None),
+            psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
-            add_comm: srs.get_ref().commit_non_hiding(&self.cs.addm, None),
-            double_comm: srs.get_ref().commit_non_hiding(&self.cs.doublem, None),
-            mul_comm: srs.get_ref().commit_non_hiding(&self.cs.mulm, None),
-            emul_comm: srs.get_ref().commit_non_hiding(&self.cs.emulm, None),
+            add_comm: self.srs.commit_non_hiding(&self.cs.addm, None),
+            double_comm: self.srs.commit_non_hiding(&self.cs.doublem, None),
+            mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
+            emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
 
             w: zk_w3(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
@@ -197,7 +147,7 @@ where
             max_quot_size: self.max_quot_size,
             zkpm: self.cs.zkpm.clone(),
             shift: self.cs.shift,
-            srs,
+            srs: Rc::clone(&self.srs),
         }
     }
 
@@ -206,10 +156,9 @@ where
         mut cs: ConstraintSystem<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         endo_q: Fr<G>,
-        srs: SRSSpec<'a, G>,
+        srs: Rc<SRS<G>>,
     ) -> Self {
-        let srs = SRSValue::create(srs);
-        let max_poly_size = srs.get_ref().g.len();
+        let max_poly_size = srs.g.len();
         if cs.public > 0 {
             assert!(
                 max_poly_size >= cs.domain.d1.size as usize,

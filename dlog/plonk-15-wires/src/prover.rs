@@ -101,10 +101,10 @@ where
 
         // commit to the wire values
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] =
-            array_init(|i| index.srs.get_ref().commit(&w[i], None, rng));
+            array_init(|i| index.srs.commit(&w[i], None, rng));
 
         // absorb the wire polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
+        fq_sponge.absorb_g(&index.srs.commit_non_hiding(&p, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
@@ -116,12 +116,12 @@ where
         // compute permutation aggregation polynomial
         let z = index.cs.perm_aggreg(witness, &beta, &gamma, rng)?;
         // commit to z
-        let z_comm = index.srs.get_ref().commit(&z, None, rng);
+        let z_comm = index.srs.commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-        let alpha = alpha_chal.to_field(&index.srs.get_ref().endo_r);
+        let alpha = alpha_chal.to_field(&index.srs.endo_r);
         let alphas = range::alpha_powers(alpha);
 
         // evaluate polynomials over domains
@@ -164,7 +164,7 @@ where
         t += &bnd;
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, None, rng);
+        let t_comm = index.srs.commit(&t, None, rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
@@ -173,7 +173,7 @@ where
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
-        let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
+        let zeta = zeta_chal.to_field(&index.srs.endo_r);
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * &omega;
 
@@ -249,9 +249,9 @@ where
 
         // query opening scaler challenges
         let v_chal = fr_sponge.challenge();
-        let v = v_chal.to_field(&index.srs.get_ref().endo_r);
+        let v = v_chal.to_field(&index.srs.endo_r);
         let u_chal = fr_sponge.challenge();
-        let u = u_chal.to_field(&index.srs.get_ref().endo_r);
+        let u = u_chal.to_field(&index.srs.endo_r);
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -309,7 +309,7 @@ where
                 z_comm: z_comm.0,
                 t_comm: t_comm.0,
             },
-            proof: index.srs.get_ref().open(
+            proof: index.srs.open(
                 group_map,
                 polynomials,
                 &vec![zeta, zeta_omega],
