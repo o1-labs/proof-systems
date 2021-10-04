@@ -187,31 +187,4 @@ where
             endo_q,
         }
     }
-
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        u64::write(&(self.g.len() as u64), &mut writer)?;
-        for x in &self.g {
-            G::write(x, &mut writer)?;
-        }
-        G::write(&self.h, &mut writer)?;
-        Ok(())
-    }
-
-    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let n = u64::read(&mut reader)? as usize;
-        let mut g = vec![];
-        for _ in 0..n {
-            g.push(G::read(&mut reader)?);
-        }
-
-        let h = G::read(&mut reader)?;
-        let (endo_q, endo_r) = endos::<G>();
-        Ok(SRS {
-            g,
-            h,
-            lagrange_bases: HashMap::new(),
-            endo_r,
-            endo_q,
-        })
-    }
 }
