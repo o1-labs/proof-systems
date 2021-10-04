@@ -239,7 +239,7 @@ where
             };
             if lookup_used.is_some() {
                 (chacha::constraint(super::range::CHACHA.start)
-                    + Expr::combine_constraints(super::range::CHACHA.end,
+                    + Expr::combine_constraints(2 + super::range::CHACHA.end,
                         lookup::constraints(
                             &cs.dummy_lookup_values[0], cs.domain.d1)))
                 .linearize(evaluated_cols)
