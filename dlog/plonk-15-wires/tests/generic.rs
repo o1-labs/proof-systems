@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -20,10 +22,7 @@ use plonk_15_wires_circuits::{
     nolookup::constraints::ConstraintSystem,
     wires::{Wire, COLUMNS},
 };
-use plonk_15_wires_protocol_dlog::{
-    index::{Index, SRSSpec},
-    prover::ProverProof,
-};
+use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 
 // aliases
@@ -105,8 +104,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = SRS::create(n);
-    let srs = SRSSpec::Use(&srs);
+    let srs = Rc::new(SRS::create(n));
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
     // pad the witness
@@ -120,12 +118,12 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
 
     // previous opening for recursion
     let prev = {
-        let k = ceil_log2(index.srs.get_ref().g.len());
+        let k = ceil_log2(index.srs.g.len());
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.get_ref().commit_non_hiding(&b, None)
+            index.srs.commit_non_hiding(&b, None)
         };
         (chals, comm)
     };
@@ -149,10 +147,6 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
 
 #[test]
 fn test_index_serialization() {
-    // set up
-    let rng = &mut StdRng::from_seed([0u8; 32]);
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-
     // create gates
     let gates = create_generic_circuit();
 
@@ -182,8 +176,7 @@ fn test_index_serialization() {
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = SRS::create(n);
-    let srs = SRSSpec::Use(&srs);
+    let srs = Rc::new(SRS::create(n));
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
     // serialize the index

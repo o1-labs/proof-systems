@@ -27,7 +27,7 @@ use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::iter::Iterator;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;

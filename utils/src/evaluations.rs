@@ -3,7 +3,6 @@
 use ark_ff::FftField;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
 use rayon::prelude::*;
-use serde_with::{DeserializeAs, SerializeAs};
 
 /// An extension for the [Evaluations] type.
 pub trait ExtendedEvaluations<F: FftField> {
