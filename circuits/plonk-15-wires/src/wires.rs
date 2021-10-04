@@ -54,3 +54,34 @@ impl FromBytes for Wire {
         Ok(Wire { row, col })
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use ocaml_gen::OcamlGen;
+    use std::convert::TryInto;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlWire {
+        pub row: ocaml::Int,
+        pub col: ocaml::Int,
+    }
+
+    impl From<Wire> for CamlWire {
+        fn from(w: Wire) -> Self {
+            Self {
+                row: w.row.try_into().expect("usize -> isize"),
+                col: w.col.try_into().expect("usize -> isize"),
+            }
+        }
+    }
+
+    impl From<CamlWire> for Wire {
+        fn from(w: CamlWire) -> Self {
+            Self {
+                row: w.row.try_into().expect("isize -> usize"),
+                col: w.col.try_into().expect("isize -> usize"),
+            }
+        }
+    }
+}

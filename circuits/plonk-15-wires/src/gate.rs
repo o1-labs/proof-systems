@@ -13,7 +13,7 @@ use serde_with::serde_as;
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::OcamlEnum)
@@ -138,6 +138,136 @@ impl<F: FftField> CircuitGate<F> {
             GateType::Endomul => self.verify_endomul(witness, cs),
             GateType::Lookup => self.verify_lookup(witness),
         }
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use crate::wires::caml::CamlWire;
+    use ocaml_gen::OcamlGen;
+    use std::convert::TryInto;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlCircuitGate<F> {
+        pub row: ocaml::Int,
+        pub typ: GateType,
+        pub wires: (
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+            CamlWire,
+        ),
+        pub c: Vec<F>,
+    }
+
+    impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
+    where
+        CamlF: From<F>,
+        F: FftField,
+    {
+        fn from(cg: CircuitGate<F>) -> Self {
+            Self {
+                row: cg.row.try_into().expect("usize -> isize"),
+                typ: cg.typ,
+                wires: array_to_tuple(cg.wires),
+                c: cg.c.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<&CircuitGate<F>> for CamlCircuitGate<CamlF>
+    where
+        CamlF: From<F>,
+        F: FftField,
+    {
+        fn from(cg: &CircuitGate<F>) -> Self {
+            Self {
+                row: cg.row.try_into().expect("usize -> isize"),
+                typ: cg.typ,
+                wires: array_to_tuple(cg.wires),
+                c: cg.c.clone().into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<CamlCircuitGate<CamlF>> for CircuitGate<F>
+    where
+        F: From<CamlF>,
+        F: FftField,
+    {
+        fn from(ccg: CamlCircuitGate<CamlF>) -> Self {
+            Self {
+                row: ccg.row.try_into().expect("isize -> usize"),
+                typ: ccg.typ,
+                wires: tuple_to_array(ccg.wires),
+                c: ccg.c.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    /// helper to convert array to tuple (OCaml doesn't have fixed-size arrays)
+    fn array_to_tuple<T1, T2>(
+        a: [T1; 15],
+    ) -> (T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2)
+    where
+        T1: Clone,
+        T2: From<T1>,
+    {
+        (
+            a[0].clone().into(),
+            a[1].clone().into(),
+            a[2].clone().into(),
+            a[3].clone().into(),
+            a[4].clone().into(),
+            a[5].clone().into(),
+            a[6].clone().into(),
+            a[7].clone().into(),
+            a[8].clone().into(),
+            a[9].clone().into(),
+            a[10].clone().into(),
+            a[11].clone().into(),
+            a[12].clone().into(),
+            a[13].clone().into(),
+            a[14].clone().into(),
+        )
+    }
+
+    /// helper to convert tuple to array (OCaml doesn't have fixed-size arrays)
+    fn tuple_to_array<T1, T2>(
+        a: (T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1),
+    ) -> [T2; 15]
+    where
+        T2: From<T1>,
+    {
+        [
+            a.0.into(),
+            a.1.into(),
+            a.2.into(),
+            a.3.into(),
+            a.4.into(),
+            a.5.into(),
+            a.6.into(),
+            a.7.into(),
+            a.8.into(),
+            a.9.into(),
+            a.10.into(),
+            a.11.into(),
+            a.12.into(),
+            a.13.into(),
+            a.14.into(),
+        ]
     }
 }
 
