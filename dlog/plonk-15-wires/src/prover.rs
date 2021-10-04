@@ -510,21 +510,15 @@ where
         let (t4, t8) =
             match &env {
                 None => (t4, t8),
-                Some(env) => {
-                    let start = std::time::Instant::now();
-                    let es = combine_evaluations(
+                Some(env) =>
+                    combine_evaluations(
                         (t4, t8),
                         alpha,
                         alphas[alphas.len() - 1],
                         lookup::constraints(
-                            // dummy_lookup_value.unwrap().0,
                             &index.cs.dummy_lookup_values[0],
                             d1)
-                        .iter().map(|e| e.evaluations(env)).collect()
-                    );
-                    println!("{}{:?}", "combine time: ", start.elapsed());
-                    es
-                }
+                        .iter().map(|e| e.evaluations(env)).collect())
             };
 
         // divide contributions with vanishing polynomial
