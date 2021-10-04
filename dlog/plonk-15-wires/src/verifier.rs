@@ -283,7 +283,6 @@ where
 
             ft_eval0 += nominator * &denominator;
 
-            println!("verife ft_eval0 first {}", ft_eval0);
             match joint_combiner.as_ref() {
                 None => (),
                 Some((_, j)) => {
@@ -300,8 +299,6 @@ where
                         &evals, &cs).unwrap();
                 }
             };
-
-            println!("verife ft_eval0 {}", ft_eval0);
 
             ft_eval0
         };
