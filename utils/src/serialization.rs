@@ -1,27 +1,54 @@
+//! This adds a few utility functions for serializing and deserializing
+//! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
+
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use serde::{Deserialize, Serialize};
-/*
-// do we need this code?
-pub fn deserialize<'de, G, D>(deserializer: D) -> Result<G, D::Error>
-where
-    G: CanonicalDeserialize,
-    D: serde::Deserializer<'de>,
-{
-    let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
-    G::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+use serde_with::Bytes;
+
+//
+// Serialization with serde
+//
+
+pub mod serialization {
+    //! You can use this module for serialization and deserializing arkworks types with [serde].
+    //! Simply use the following attribute on your field:
+    //! `#[serde(with = "o1_utils::DensePolynomial::serialization") attribute"]`
+
+    use super::*;
+    use serde_with::{DeserializeAs, SerializeAs};
+
+    /// You can use this to serialize a [DensePolynomial] with serde and the "serialize_with" attribute.
+    /// See https://serde.rs/field-attrs.html
+    pub fn serialize<S>(val: impl CanonicalSerialize, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut bytes = vec![];
+        val.serialize(&mut bytes)
+            .map_err(serde::ser::Error::custom)?;
+
+        Bytes::serialize_as(&bytes, serializer)
+    }
+
+    /// You can use this to deserialize a [DensePolynomial] with serde and the "deserialize_with" attribute.
+    /// See https://serde.rs/field-attrs.html
+    pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+    where
+        T: CanonicalDeserialize,
+        D: serde::Deserializer<'de>,
+    {
+        let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
+        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+    }
 }
 
-pub fn serialize<S>(val: impl CanonicalSerialize, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    let mut bytes = vec![];
-    val.serialize(&mut bytes)
-        .map_err(serde::ser::Error::custom)?;
-    serializer.serialize_bytes(&bytes)
-}
-*/
+//
+// Serialization with [serde_with]
+//
 
+/// You can use [SerdeAs] with [serde_with] in order to serialize and deserialize types that implement [CanonicalSerialize] and [CanonicalDeserialize],
+/// or containers of types that implement these traits (Vec, arrays, etc.)
+/// Simply add annotations like `#[serde_as(as = "o1_utils::densepolynomial::SerdeAs")]`
+/// See https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as
 pub struct SerdeAs;
 
 impl<T> serde_with::SerializeAs<T> for SerdeAs
@@ -36,10 +63,7 @@ where
         val.serialize(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
-        /*
-        serializer.serialize_bytes(&bytes)
-        */
-        serde_with::Bytes::serialize_as(&bytes, serializer)
+        Bytes::serialize_as(&bytes, serializer)
     }
 }
 
@@ -51,7 +75,7 @@ where
     where
         D: serde::Deserializer<'de>,
     {
-        let bytes: Vec<u8> = serde_with::Bytes::deserialize_as(deserializer)?;
+        let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
         T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }

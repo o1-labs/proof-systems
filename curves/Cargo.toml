@@ -12,3 +12,7 @@ rand = { version = "0.8.0", default-features = false }
 rand_xorshift = "0.2"
 ark-algebra-test-templates = "0.3.0"
 ark-std = "0.3.0"
+proptest = "1.0.0"
+
+[features]
+default = []

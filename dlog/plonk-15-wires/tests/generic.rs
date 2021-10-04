@@ -156,13 +156,6 @@ fn test_index_serialization() {
     // create gates
     let gates = create_generic_circuit();
 
-    // test serialization on a CircuitGate
-    let encoded = bincode::serialize(&gates[1]).unwrap();
-    println!("gate: {:?}", gates[1]);
-    println!("encoded gate: {:?}", encoded);
-    let deserialized_gate: CircuitGate<Fp> = bincode::deserialize(&encoded).unwrap();
-    println!("decoded gate: {:?}", deserialized_gate);
-
     // create the constraint system
     let fp_sponge_params = oracle::pasta::fp::params();
     let public = 0;
@@ -170,10 +163,20 @@ fn test_index_serialization() {
 
     // serialize the constraint system
     let encoded = bincode::serialize(&cs).unwrap();
-    println!("gate: {:?}", cs);
-    println!("encoded gate: {:?}", encoded);
     let decoded: ConstraintSystem<Fp> = bincode::deserialize(&encoded).unwrap();
-    println!("decoded gate: {:?}", decoded);
+
+    // check if serialization worked on some of the fields
+    fn compare_cs(cs1: &ConstraintSystem<Fp>, cs2: &ConstraintSystem<Fp>) {
+        assert_eq!(cs1.public, cs2.public);
+        assert_eq!(cs1.domain.d1, cs2.domain.d1);
+        assert_eq!(cs1.gates[2].wires[2], cs2.gates[2].wires[2]);
+        assert_eq!(cs1.sigmam[0], cs2.sigmam[0]);
+        assert_eq!(cs1.zkpm, cs2.zkpm);
+        assert_eq!(cs1.sid[0], cs2.sid[0]);
+        assert_eq!(cs1.endo, cs2.endo);
+    }
+
+    compare_cs(&cs, &decoded);
 
     // create the index
     let n = cs.domain.d1.size as usize;
@@ -185,8 +188,10 @@ fn test_index_serialization() {
 
     // serialize the index
     let encoded = bincode::serialize(&index).unwrap();
-    println!("gate: {:?}", index);
-    println!("encoded gate: {:?}", encoded);
     let decoded: Index<Affine> = bincode::deserialize(&encoded).unwrap();
-    println!("decoded gate: {:?}", decoded);
+
+    // check if serialization worked on some of the fields
+    assert_eq!(index.max_poly_size, decoded.max_poly_size);
+    assert_eq!(index.max_quot_size, decoded.max_quot_size);
+    compare_cs(&index.cs, &decoded.cs);
 }

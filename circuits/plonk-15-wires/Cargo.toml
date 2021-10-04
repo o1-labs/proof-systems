@@ -34,4 +34,5 @@ proptest = "1.0.0"
 proptest-derive = "0.3.0"
 
 [features]
+default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]

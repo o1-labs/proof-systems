@@ -275,7 +275,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;
@@ -285,7 +285,14 @@ mod tests {
 
     // TODO: move to mina-curves
     prop_compose! {
-        fn arb_fp(num: usize)(seed: [u8; 32]) -> Vec<Fp> {
+        pub fn arb_fp()(seed: [u8; 32]) -> Fp {
+            let rng = &mut rand::rngs::StdRng::from_seed(seed);
+            Fp::rand(rng)
+        }
+    }
+
+    prop_compose! {
+        fn arb_fp_vec(max: usize)(seed: [u8; 32], num in 0..max) -> Vec<Fp> {
             let rng = &mut rand::rngs::StdRng::from_seed(seed);
             let mut v = vec![];
             for _ in 0..num {
@@ -296,7 +303,7 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(row in any::<usize>(), typ: GateType, wires: GateWires, c in arb_fp(5)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(row in any::<usize>(), typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
                 row,
                 typ,
