@@ -10,8 +10,11 @@ path = "src/lib.rs"
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
+o1-utils = { path = "../utils" }
 rand = "0.8.0"
 rayon = { version = "1" }
+serde = { version = "1.0", features = ["derive"] }
+serde_with = "1.10.0"
 
 mina-curves = { path = "../curves" }
 
@@ -22,7 +25,6 @@ syn = { version = "1.0.76", optional = true }
 
 # for export_test_vectors
 num-bigint = { version = "0.4.0" }
-serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
 hex = { version = "0.4" }
 ark-serialize = "0.3.0"
