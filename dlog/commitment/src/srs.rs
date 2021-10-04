@@ -7,25 +7,34 @@ This source file implements the Marlin structured reference string primitive
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
+use ark_ff::{BigInteger, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
-use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Debug, Clone, Default)]
+#[serde_as]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
     /// A group element used for blinding commitments
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub h: G,
+
+    // TODO: the following field should be separated, as they are optimization values
     /// Commitments to Lagrange bases, per domain size
+    #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<G>>,
     /// Coefficient for the curve endomorphism
+    #[serde(skip)]
     pub endo_r: G::ScalarField,
     /// Coefficient for the curve endomorphism
+    #[serde(skip)]
     pub endo_q: G::BaseField,
 }
 
