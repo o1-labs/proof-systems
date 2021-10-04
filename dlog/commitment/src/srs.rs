@@ -6,16 +6,16 @@ This source file implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
-use ark_ec::{ProjectiveCurve, AffineCurve};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
-use std::io::{Read, Result as IoResult, Write};
 use std::collections::HashMap;
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
     pub g: Vec<G>,
@@ -82,7 +82,11 @@ where
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
         let n = domain.size();
         if n > self.g.len() {
-            panic!("add_lagrange_basis: Domain size {} larger than SRS size {}", n, self.g.len());
+            panic!(
+                "add_lagrange_basis: Domain size {} larger than SRS size {}",
+                n,
+                self.g.len()
+            );
         }
 
         if self.lagrange_bases.contains_key(&n) {
@@ -149,7 +153,8 @@ where
         domain.ifft_in_place(&mut lg);
 
         <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-        self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());
+        self.lagrange_bases
+            .insert(n, lg.iter().map(|g| g.into_affine()).collect());
     }
 
     /// This function creates SRS instance for circuits with number of rows up to `depth`.

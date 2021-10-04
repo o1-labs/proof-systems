@@ -27,13 +27,14 @@ use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::iter::Iterator;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
