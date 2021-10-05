@@ -20,6 +20,10 @@ pub struct ProofEvaluations<Field> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Field,
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Field,
 }
 
 impl<F: FftField> ProofEvaluations<Vec<F>> {
@@ -28,6 +32,8 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
+            generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
+            poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
         }
     }
 }
