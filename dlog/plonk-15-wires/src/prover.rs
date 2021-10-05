@@ -136,7 +136,7 @@ where
         // generic
         let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
         // poseidon
-        let (pos4, pos8, posp) =
+        let (pos4, pos8) =
             index
                 .cs
                 .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alphas[range::PSDN]);
@@ -154,7 +154,7 @@ where
         let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &doub8)));
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &genp)
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
