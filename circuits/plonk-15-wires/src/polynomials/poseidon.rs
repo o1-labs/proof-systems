@@ -56,14 +56,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> (
         Evaluations<F, D<F>>,
         Evaluations<F, D<F>>,
-        DensePolynomial<F>,
     ) {
         // if this gate is not used, return zero polynomials
         if self.psm.is_zero() {
             return (
                 self.zero4.clone(),
                 self.zero8.clone(),
-                DensePolynomial::<F>::zero(),
             );
         }
 
@@ -152,16 +150,26 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
-        let rc = alp
-            .iter()
-            .enumerate()
+        let mut p4 = lhs;
+        for (round, als) in alp.iter().enumerate() {
+            for (col, a) in als.iter().enumerate() {
+                p4 += &self.coefficients4[round * SPONGE_WIDTH + col].scale(*a)
+            }
+        }
+        /*
             .fold(DensePolynomial::<F>::zero(), |acc0, (round, als)| {
                 als.iter()
                     .enumerate()
-                    .fold(acc0, |acc, (col, a)| &acc + &self.rcm[round][col].scale(*a))
+                    .fold(acc0, |acc, (col, a)| &acc + &self.coefficientsm[round * SPONGE_WIDTH + col].scale(*a))
             });
+            */
 
-        (&self.ps4 * &lhs, &self.ps8 * &rhs, rc)
+        p4 *= &self.ps4;
+
+        let mut p8 = rhs;
+        p8 *= &self.ps8;
+
+        (p4, p8)
         /*
         (
             &self.ps4 * &polys.d4.next.w.iter().zip(alpha[0..COLUMNS].iter()).map(|(p, a)| p.scale(-*a)).
@@ -218,7 +226,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // TODO(mimoo): how is that useful? we already have access to these
         for i in 0..COLUMNS {
-            res.push(alpha[i]);
+            res.push(evals[0].poseidon_selector * alpha[i]);
         }
         res
     }
@@ -230,13 +238,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         params: &ArithmeticSpongeParams<F>,
         alpha: &[F],
     ) -> DensePolynomial<F> {
-        let scalars = Self::psdn_scalars(evals, params, alpha)[0];
-        self.rcm
+        let scalars = Self::psdn_scalars(evals, params, alpha);
+        self.coefficientsm
             .iter()
-            .flatten()
-            .zip(alpha[0..COLUMNS].iter())
+            .zip(scalars[1..].iter())
             .map(|(r, a)| r.scale(*a))
-            .fold(self.psm.scale(scalars), |x, y| &x + &y)
+            .fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
     }
 }
 
@@ -339,8 +346,8 @@ mod tests {
 
         // compute quotient by dividing with vanishing polynomial
         let lagrange = cs.evaluate(&witness, &DensePolynomial::zero());
-        let (pos4, pos8, posp) = cs.psdn_quot(&lagrange, &cs.fr_sponge_params, &alphas);
-        let t_before_division = &(&pos4.interpolate() + &pos8.interpolate()) + &posp;
+        let (pos4, pos8) = cs.psdn_quot(&lagrange, &cs.fr_sponge_params, &alphas);
+        let t_before_division = &pos4.interpolate() + &pos8.interpolate();
         let (t, rem) = t_before_division
             .divide_by_vanishing_poly(cs.domain.d1)
             .unwrap();
@@ -357,12 +364,16 @@ mod tests {
                 z: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
                 lookup: None,
+                generic_selector: Fp::zero(),
+                poseidon_selector: cs.psm.evaluate(&zeta),
             },
             ProofEvaluations {
                 w: w_zeta_omega,
                 z: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
                 lookup: None,
+                generic_selector: Fp::zero(),
+                poseidon_selector: cs.psm.evaluate(&zeta_omega),
             },
         ];
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));

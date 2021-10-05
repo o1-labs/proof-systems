@@ -33,6 +33,10 @@ pub struct ProofEvaluations<Field> {
     pub s: [Field; PERMUTS - 1],
     /// lookup-related evalutions
     pub lookup: Option<LookupEvaluations<Field>>,
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Field,
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Field,
 }
 
 impl<F: FftField> ProofEvaluations<Vec<F>> {
@@ -48,7 +52,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
                         aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
                         sorted: l.sorted.iter().map(|x| DensePolynomial::eval_polynomial(x, pt)).collect(),
                     }
-                })
+                }),
+            generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
+            poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
         }
     }
 }

@@ -384,7 +384,7 @@ where
         // generic
         let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
         // poseidon
-        let (pos4, pos8, posp) =
+        let (pos4, pos8) =
             index
                 .cs
                 .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alphas[range::PSDN]);
@@ -427,7 +427,7 @@ where
             };
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &genp)
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
@@ -475,6 +475,8 @@ where
             w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
             z: z.eval(zeta, index.max_poly_size),
             lookup: lookup_evals(zeta),
+            generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
+            poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
         };
         let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| {
@@ -483,6 +485,8 @@ where
             w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
             z: z.eval(zeta_omega, index.max_poly_size),
             lookup: lookup_evals(zeta_omega),
+            generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
+            poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
         };
 
         drop(lookup_aggreg_coeffs);
@@ -510,6 +514,8 @@ where
                             sorted: l.sorted.iter().map(|p| DensePolynomial::eval_polynomial(p, e1)).collect(),
                         }
                     }),
+                generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
+                poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
             })
             .collect::<Vec<_>>();
 
@@ -518,7 +524,7 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w)
+            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index.cs.psdn_lnrz(
                     &evals,
                     &index.cs.fr_sponge_params,

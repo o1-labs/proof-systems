@@ -12,6 +12,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedDensePolynomial;
+use crate::gates::generic::{MUL_COEFF, CONSTANT_COEFF};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
@@ -21,47 +22,51 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: &DensePolynomial<F>,
     ) -> (Evaluations<F, D<F>>, DensePolynomial<F>) {
         // w[0](x) * w[1](x) * qml(x)
-        let multiplication = &(&witness_d4[0] * &witness_d4[1]) * &self.qml;
+        let mut multiplication = &witness_d4[0] * &witness_d4[1];
+        multiplication *= &self.coefficients4[MUL_COEFF];
 
         // presence of left, right, and output wire
         // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
-        let mut wires = self.zero4.clone();
-        for (w, q) in witness_d4.iter().zip(self.qwl.iter()) {
-            wires += &(w * q);
+        let mut eval_part = multiplication;
+        for (w, q) in witness_d4.iter().zip(self.coefficients4.iter()).take(GENERICS) {
+            eval_part += &(w * q);
         }
+        eval_part += &self.coefficients4[CONSTANT_COEFF];
+        eval_part *= &self.generic4;
 
         // return in lagrange and monomial form for optimization purpose
-        let eval_part = &multiplication + &wires;
-        let poly_part = &self.qc + public;
+        let poly_part = public.clone();
         (eval_part, poly_part)
     }
 
-    /// produces w[0](zeta) * w[1](zeta), w[0](zeta), w[1](zeta), w[2](zeta), 1
-    pub fn gnrc_scalars(w_zeta: &[F; COLUMNS]) -> Vec<F> {
-        let mut res = vec![w_zeta[0] * &w_zeta[1]];
-        for i in 0..GENERICS {
-            res.push(w_zeta[i]);
-        }
+    /// produces
+    /// generic(zeta) * w[0](zeta) * w[1](zeta),
+    /// generic(zeta) * w[0](zeta),
+    /// generic(zeta) * w[1](zeta),
+    /// generic(zeta) * w[2](zeta)
+    pub fn gnrc_scalars(w_zeta: &[F; COLUMNS], generic_zeta: F) -> Vec<F> {
+        let mut res = vec![generic_zeta * w_zeta[0] * &w_zeta[1]];
+        res.extend((0..GENERICS).map(|i| generic_zeta * w_zeta[i]));
         return res;
     }
 
     /// generic constraint linearization poly contribution computation
-    pub fn gnrc_lnrz(&self, w_zeta: &[F; COLUMNS]) -> DensePolynomial<F> {
-        let scalars = Self::gnrc_scalars(w_zeta);
+    pub fn gnrc_lnrz(&self, w_zeta: &[F; COLUMNS], generic_zeta: F) -> DensePolynomial<F> {
+        let scalars = Self::gnrc_scalars(w_zeta, generic_zeta);
 
         // w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2]
         let mut res = self
-            .qwm
+            .coefficientsm
             .iter()
             .zip(scalars[1..].iter())
             .map(|(q, s)| q.scale(*s))
             .fold(DensePolynomial::<F>::zero(), |x, y| &x + &y);
 
         // multiplication
-        res += &self.qmm.scale(scalars[0]);
+        res += &self.coefficientsm[MUL_COEFF].scale(scalars[0]);
 
         // constant selector
-        res += &self.qc;
+        res += &self.coefficientsm[CONSTANT_COEFF].scale(generic_zeta);
 
         // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
         res
@@ -74,32 +79,31 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: &DensePolynomial<F>,
     ) -> bool {
         // multiplication
-        let multiplication = &(&witness[0] * &witness[1]) * &self.qmm;
+        let multiplication = &(&witness[0] * &witness[1]) * &self.coefficientsm[MUL_COEFF];
 
         // addition (of left, right, output wires)
-        if self.qwm.len() != GENERICS {
-            return false;
-        }
         let mut wires = DensePolynomial::zero();
-        for (w, q) in witness.iter().zip(self.qwm.iter()) {
+        for (w, q) in witness.iter().zip(self.coefficientsm.iter()).take(GENERICS) {
             wires += &(w * q);
         }
 
         // compute f
         let mut f = &multiplication + &wires;
-        f += &self.qc;
+        f += &self.coefficientsm[CONSTANT_COEFF];
+        f = &f * &self.genericm;
         f += public;
 
         // verify that each row evaluates to zero
         let values: Vec<_> = witness
             .iter()
-            .zip(self.qwl.iter())
+            .zip(self.coefficients4.iter())
+            .take(GENERICS)
             .map(|(w, q)| (w, q.interpolate_by_ref()))
             .collect();
 
         //
         for (row, elem) in self.domain.d1.elements().enumerate() {
-            let qc = self.qc.evaluate(&elem);
+            let qc = self.coefficientsm[CONSTANT_COEFF].evaluate(&elem);
 
             // qc check
             if qc != F::zero() {
@@ -121,7 +125,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 }
                 println!(
                     "  q_M = {} | mul = {}",
-                    self.qmm.evaluate(&elem),
+                    self.coefficientsm[MUL_COEFF].evaluate(&elem),
                     multiplication.evaluate(&elem)
                 );
                 println!("  q_C = {}", qc);
@@ -227,7 +231,9 @@ mod tests {
 
         // compute linearization f(z)
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
-        let f = cs.gnrc_lnrz(&w_zeta);
+        let generic_zeta = cs.genericm.evaluate(&zeta);
+
+        let f = cs.gnrc_lnrz(&w_zeta, generic_zeta);
         let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)
