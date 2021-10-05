@@ -162,8 +162,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .fold(DensePolynomial::<F>::zero(), |acc0, (round, als)| {
                 als.iter()
                     .enumerate()
-                    .fold(acc0, |acc, (col, a)| &acc + &self.rcm[round][col].scale(*a))
+                    .fold(acc0, |acc, (col, a)| &acc + &self.coefficientsm[round * SPONGE_WIDTH + col].scale(*a))
             });
+        let rc = &rc * &self.psm;
 
         (&self.ps4 * &lhs, &self.ps8 * &rhs, rc)
         /*
@@ -222,7 +223,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // TODO(mimoo): how is that useful? we already have access to these
         for i in 0..COLUMNS {
-            res.push(alpha[i]);
+            res.push(evals[0].poseidon_selector * alpha[i]);
         }
         res
     }
@@ -234,13 +235,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         params: &ArithmeticSpongeParams<F>,
         alpha: &[F],
     ) -> DensePolynomial<F> {
-        let scalars = Self::psdn_scalars(evals, params, alpha)[0];
-        self.rcm
+        let scalars = Self::psdn_scalars(evals, params, alpha);
+        self.coefficientsm
             .iter()
-            .flatten()
-            .zip(alpha[0..COLUMNS].iter())
+            .zip(scalars[1..].iter())
             .map(|(r, a)| r.scale(*a))
-            .fold(self.psm.scale(scalars), |x, y| &x + &y)
+            .fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
     }
 }
 
@@ -360,11 +360,15 @@ mod tests {
                 w: w_zeta,
                 z: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
+                generic_selector: Fp::zero(),
+                poseidon_selector: cs.psm.evaluate(&zeta),
             },
             ProofEvaluations {
                 w: w_zeta_omega,
                 z: Fp::zero(),
                 s: [Fp::zero(); PERMUTS - 1],
+                generic_selector: Fp::zero(),
+                poseidon_selector: cs.psm.evaluate(&zeta_omega),
             },
         ];
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
