@@ -88,12 +88,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // compute f
         let mut f = &multiplication + &wires;
         f += &self.coefficientsm[CONSTANT_COEFF];
+        f = &f * &self.genericm;
         f += public;
 
         // verify that each row evaluates to zero
         let values: Vec<_> = witness
             .iter()
             .zip(self.coefficients4.iter())
+            .take(GENERICS)
             .map(|(w, q)| (w, q.interpolate_by_ref()))
             .collect();
 

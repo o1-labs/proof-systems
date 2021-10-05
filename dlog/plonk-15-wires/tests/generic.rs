@@ -18,7 +18,7 @@ use oracle::{
 use plonk_15_wires_circuits::{
     gate::CircuitGate,
     nolookup::constraints::ConstraintSystem,
-    wires::{Wire, COLUMNS},
+    wires::{Wire, COLUMNS, GENERICS},
 };
 use plonk_15_wires_protocol_dlog::{
     index::{Index, SRSSpec},
@@ -42,10 +42,9 @@ fn test_generic_gate() {
     let wires = Wire::new(abs_row);
 
     let (on, off) = (Fp::one(), Fp::zero());
-    let qw: [Fp; COLUMNS] = [
+    let qw: [Fp; GENERICS] = [
         /* left for addition */ off, /* right for addition */ off,
         /* output */ on, /* the rest of the columns don't matter */
-        off, off, off, off, off, off, off, off, off, off, off, off,
     ];
     let multiplication = on;
     let constant = off;
