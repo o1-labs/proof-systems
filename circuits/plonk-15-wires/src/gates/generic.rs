@@ -13,8 +13,7 @@ pub const MUL_COEFF: usize = GENERICS;
 pub const CONSTANT_COEFF: usize = GENERICS + 1;
 
 impl<F: FftField> CircuitGate<F> {
-    // TODO(mimoo): why qw is length 15 if the polynomial side only uses 3?
-    pub fn create_generic(row: usize, wires: GateWires, qw: [F; COLUMNS], qm: F, qc: F) -> Self {
+    pub fn create_generic(row: usize, wires: GateWires, qw: [F; GENERICS], qm: F, qc: F) -> Self {
         let mut c = qw.to_vec();
         c.push(qm);
         c.push(qc);
@@ -31,7 +30,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_generic_add(row: usize, wires: GateWires) -> Self {
         let on = F::one();
         let off = F::zero();
-        let qw: [F; COLUMNS] = array_init(|col| {
+        let qw: [F; GENERICS] = array_init(|col| {
             if col < 2 {
                 on
             } else if col == 2 {
@@ -47,7 +46,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_generic_mul(row: usize, wires: GateWires) -> Self {
         let on = F::one();
         let off = F::zero();
-        let qw: [F; COLUMNS] = array_init(|col| if col == 2 { on } else { off });
+        let qw: [F; GENERICS] = array_init(|col| if col == 2 { on } else { off });
         Self::create_generic(row, wires, qw, -on, off)
     }
 
@@ -55,7 +54,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_generic_const(row: usize, wires: GateWires, constant: F) -> Self {
         let on = F::one();
         let off = F::zero();
-        let qw: [F; COLUMNS] = array_init(|col| if col == 0 { on } else { off });
+        let qw: [F; GENERICS] = array_init(|col| if col == 0 { on } else { off });
         Self::create_generic(row, wires, qw, off, -constant)
     }
 
@@ -63,7 +62,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_generic_public(row: usize, wires: GateWires) -> Self {
         let on = F::one();
         let off = F::zero();
-        let qw: [F; COLUMNS] = array_init(|col| if col == 0 { on } else { off });
+        let qw: [F; GENERICS] = array_init(|col| if col == 0 { on } else { off });
         Self::create_generic(row, wires, qw, off, off)
     }
 
@@ -76,8 +75,8 @@ impl<F: FftField> CircuitGate<F> {
         let right = this[1];
 
         // selector vectors
-        let mul_selector = self.c[COLUMNS];
-        let constant_selector = self.c[COLUMNS + 1];
+        let mul_selector = self.c[MUL_COEFF];
+        let constant_selector = self.c[CONSTANT_COEFF];
 
         // constants
         let zero = F::zero();
