@@ -53,61 +53,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
     }
 }
 
-#[derive(Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
-pub struct CamlProofEvaluations<Fs> {
-    pub w: (Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs, Fs),
-    pub z: Fs,
-    pub t: Fs,
-    pub f: Fs,
-    pub s: (Fs, Fs, Fs, Fs, Fs),
-}
-
-#[cfg(feature = "ocaml_types")]
-unsafe impl<Fs: ocaml::ToValue> ocaml::ToValue for ProofEvaluations<Fs> {
-    fn to_value(self) -> ocaml::Value {
-        ocaml::ToValue::to_value(CamlProofEvaluations {
-            w: {
-                let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = self.w;
-                (
-                    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
-                )
-            },
-            z: self.z,
-            t: self.t,
-            f: self.f,
-            s: {
-                let [s0, s1, s2, s3, s4] = self.s;
-                (s0, s1, s2, s3, s4)
-            },
-        })
-    }
-}
-
-#[cfg(feature = "ocaml_types")]
-unsafe impl<Fs: ocaml::FromValue> ocaml::FromValue for ProofEvaluations<Fs> {
-    fn from_value(v: ocaml::Value) -> Self {
-        let evals: CamlProofEvaluations<Fs> = ocaml::FromValue::from_value(v);
-        ProofEvaluations {
-            w: {
-                let (w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14) = evals.w;
-                [
-                    w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
-                ]
-            },
-            z: evals.z,
-            t: evals.t,
-            f: evals.f,
-            s: {
-                let (s0, s1, s2, s3, s4) = evals.s;
-                [s0, s1, s2, s3, s4]
-            },
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::ToValue, ocaml::FromValue))]
 pub struct RandomOracles<F: Field> {
     pub joint_combiner: Option<(ScalarChallenge<F>, F)>,
     pub beta: F,
@@ -137,6 +83,188 @@ impl<F: Field> Default for RandomOracles<F> {
             v_chal: c,
             u_chal: c,
             joint_combiner: None,
+        }
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use ocaml_gen::OcamlGen;
+    use oracle::sponge::caml::CamlScalarChallenge;
+
+    //
+    // ProofEvaluations<F> <-> CamlProofEvaluations<CamlF>
+    //
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlProofEvaluations<CamlF> {
+        pub w: (
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+        ),
+        pub z: Vec<CamlF>,
+        pub s: (
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+        ),
+    }
+
+    impl<F, CamlF> From<ProofEvaluations<Vec<F>>> for CamlProofEvaluations<CamlF>
+    where
+        F: Clone,
+        CamlF: From<F>,
+    {
+        fn from(pe: ProofEvaluations<Vec<F>>) -> Self {
+            let w = (
+                pe.w[0].iter().cloned().map(Into::into).collect(),
+                pe.w[1].iter().cloned().map(Into::into).collect(),
+                pe.w[2].iter().cloned().map(Into::into).collect(),
+                pe.w[3].iter().cloned().map(Into::into).collect(),
+                pe.w[4].iter().cloned().map(Into::into).collect(),
+                pe.w[5].iter().cloned().map(Into::into).collect(),
+                pe.w[6].iter().cloned().map(Into::into).collect(),
+                pe.w[7].iter().cloned().map(Into::into).collect(),
+                pe.w[8].iter().cloned().map(Into::into).collect(),
+                pe.w[9].iter().cloned().map(Into::into).collect(),
+                pe.w[10].iter().cloned().map(Into::into).collect(),
+                pe.w[11].iter().cloned().map(Into::into).collect(),
+                pe.w[12].iter().cloned().map(Into::into).collect(),
+                pe.w[13].iter().cloned().map(Into::into).collect(),
+                pe.w[14].iter().cloned().map(Into::into).collect(),
+            );
+            let s = (
+                pe.s[0].iter().cloned().map(Into::into).collect(),
+                pe.s[1].iter().cloned().map(Into::into).collect(),
+                pe.s[2].iter().cloned().map(Into::into).collect(),
+                pe.s[3].iter().cloned().map(Into::into).collect(),
+                pe.s[4].iter().cloned().map(Into::into).collect(),
+                pe.s[5].iter().cloned().map(Into::into).collect(),
+            );
+            Self {
+                w,
+                z: pe.z.into_iter().map(Into::into).collect(),
+                s,
+            }
+        }
+    }
+
+    impl<F, CamlF> Into<ProofEvaluations<Vec<F>>> for CamlProofEvaluations<CamlF>
+    where
+        CamlF: Into<F>,
+    {
+        fn into(self) -> ProofEvaluations<Vec<F>> {
+            let w = [
+                self.w.0.into_iter().map(Into::into).collect(),
+                self.w.1.into_iter().map(Into::into).collect(),
+                self.w.2.into_iter().map(Into::into).collect(),
+                self.w.3.into_iter().map(Into::into).collect(),
+                self.w.4.into_iter().map(Into::into).collect(),
+                self.w.5.into_iter().map(Into::into).collect(),
+                self.w.6.into_iter().map(Into::into).collect(),
+                self.w.7.into_iter().map(Into::into).collect(),
+                self.w.8.into_iter().map(Into::into).collect(),
+                self.w.9.into_iter().map(Into::into).collect(),
+                self.w.10.into_iter().map(Into::into).collect(),
+                self.w.11.into_iter().map(Into::into).collect(),
+                self.w.12.into_iter().map(Into::into).collect(),
+                self.w.13.into_iter().map(Into::into).collect(),
+                self.w.14.into_iter().map(Into::into).collect(),
+            ];
+            let s = [
+                self.s.0.into_iter().map(Into::into).collect(),
+                self.s.1.into_iter().map(Into::into).collect(),
+                self.s.2.into_iter().map(Into::into).collect(),
+                self.s.3.into_iter().map(Into::into).collect(),
+                self.s.4.into_iter().map(Into::into).collect(),
+                self.s.5.into_iter().map(Into::into).collect(),
+            ];
+            ProofEvaluations {
+                w,
+                z: self.z.into_iter().map(Into::into).collect(),
+                s,
+            }
+        }
+    }
+
+    //
+    // RandomOracles<F> <-> CamlRandomOracles<CamlF>
+    //
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlRandomOracles<CamlF> {
+        pub beta: CamlF,
+        pub gamma: CamlF,
+        pub alpha_chal: CamlScalarChallenge<CamlF>,
+        pub alpha: CamlF,
+        pub zeta: CamlF,
+        pub v: CamlF,
+        pub u: CamlF,
+        pub zeta_chal: CamlScalarChallenge<CamlF>,
+        pub v_chal: CamlScalarChallenge<CamlF>,
+        pub u_chal: CamlScalarChallenge<CamlF>,
+    }
+
+    impl<F, CamlF> From<RandomOracles<F>> for CamlRandomOracles<CamlF>
+    where
+        F: Field,
+        CamlF: From<F>,
+    {
+        fn from(ro: RandomOracles<F>) -> Self {
+            Self {
+                beta: ro.beta.into(),
+                gamma: ro.gamma.into(),
+                alpha_chal: ro.alpha_chal.into(),
+                alpha: ro.alpha.into(),
+                zeta: ro.zeta.into(),
+                v: ro.v.into(),
+                u: ro.u.into(),
+                zeta_chal: ro.zeta_chal.into(),
+                v_chal: ro.v_chal.into(),
+                u_chal: ro.u_chal.into(),
+            }
+        }
+    }
+
+    impl<F, CamlF> Into<RandomOracles<F>> for CamlRandomOracles<CamlF>
+    where
+        CamlF: Into<F>,
+        F: Field,
+    {
+        fn into(self) -> RandomOracles<F> {
+            RandomOracles {
+                beta: self.beta.into(),
+                gamma: self.gamma.into(),
+                alpha_chal: self.alpha_chal.into(),
+                alpha: self.alpha.into(),
+                zeta: self.zeta.into(),
+                v: self.v.into(),
+                u: self.u.into(),
+                zeta_chal: self.zeta_chal.into(),
+                v_chal: self.v_chal.into(),
+                u_chal: self.u_chal.into(),
+            }
         }
     }
 }
