@@ -13,9 +13,8 @@ use commitment_dlog::{
     srs::SRS,
     CommitmentField,
 };
-use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants15W, SpongeConstants};
+use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
-    gates::poseidon::ROUNDS_PER_ROW,
     nolookup::constraints::{zk_w3, ConstraintSystem},
     wires::*,
 };
@@ -93,16 +92,12 @@ pub struct VerifierIndex<'a, G: CommitmentCurve> {
     // index polynomial commitments
     /// permutation commitment array
     pub sigma_comm: [PolyComm<G>; PERMUTS],
-    /// wire commitment array
-    pub qw_comm: [PolyComm<G>; GENERICS],
-    /// multiplication commitment
-    pub qm_comm: PolyComm<G>,
-    /// constant wire commitment
-    pub qc_comm: PolyComm<G>,
+    /// coefficient commitment array
+    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    /// coefficient commitment array
+    pub generic_comm: PolyComm<G>,
 
     // poseidon polynomial commitments
-    /// round constant polynomial commitment array
-    pub rcm_comm: [[PolyComm<G>; PlonkSpongeConstants15W::SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial commitment
     pub psm_comm: PolyComm<G>,
 
@@ -146,13 +141,9 @@ where
             domain: self.cs.domain.d1,
 
             sigma_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.sigmam[i], None)),
-            qw_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.qwm[i], None)),
-            qm_comm: srs.get_ref().commit_non_hiding(&self.cs.qmm, None),
-            qc_comm: srs.get_ref().commit_non_hiding(&self.cs.qc, None),
+            generic_comm: srs.get_ref().commit_non_hiding(&self.cs.genericm, None),
+            coefficients_comm: array_init(|i| srs.get_ref().commit_non_hiding(&self.cs.coefficientsm[i], None)),
 
-            rcm_comm: array_init(|i| {
-                array_init(|j| srs.get_ref().commit_non_hiding(&self.cs.rcm[i][j], None))
-            }),
             psm_comm: srs.get_ref().commit_non_hiding(&self.cs.psm, None),
 
             add_comm: srs.get_ref().commit_non_hiding(&self.cs.addm, None),
