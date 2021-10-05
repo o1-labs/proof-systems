@@ -9,6 +9,9 @@ use crate::wires::{GateWires, COLUMNS, GENERICS};
 use ark_ff::FftField;
 use array_init::array_init;
 
+pub const MUL_COEFF: usize = GENERICS;
+pub const CONSTANT_COEFF: usize = GENERICS + 1;
+
 impl<F: FftField> CircuitGate<F> {
     // TODO(mimoo): why qw is length 15 if the polynomial side only uses 3?
     pub fn create_generic(row: usize, wires: GateWires, qw: [F; COLUMNS], qm: F, qc: F) -> Self {
@@ -101,5 +104,13 @@ impl<F: FftField> CircuitGate<F> {
 
         // all good
         return Ok(());
+    }
+
+    pub fn generic(&self) -> F {
+        if self.typ == GateType::Generic {
+            F::one()
+        } else {
+            F::zero()
+        }
     }
 }
