@@ -17,6 +17,7 @@ use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
     nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
     wires::*,
+    gates::generic::{MUL_COEFF, CONSTANT_COEFF},
 };
 use rand::thread_rng;
 
@@ -385,12 +386,12 @@ where
                 )];
 
                 // generic
-                commitments_part.push(&index.qm_comm);
-                commitments_part.extend(index.qw_comm.iter().map(|c| c).collect::<Vec<_>>());
-                scalars_part.extend(&ConstraintSystem::gnrc_scalars(&evals[0].w));
+                commitments_part.push(&index.coefficients_comm[MUL_COEFF]);
+                commitments_part.extend(index.coefficients_comm.iter().take(GENERICS).map(|c| c).collect::<Vec<_>>());
+                scalars_part.extend(&ConstraintSystem::gnrc_scalars(&evals[0].w, evals[0].generic_selector));
 
-                commitments_part.push(&index.qc_comm);
-                scalars_part.push(Fr::<G>::one());
+                commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
+                scalars_part.push(evals[0].generic_selector);
 
                 // poseidon
                 scalars_part.extend(&ConstraintSystem::psdn_scalars(
@@ -401,9 +402,8 @@ where
                 commitments_part.push(&index.psm_comm);
                 commitments_part.extend(
                     index
-                        .rcm_comm
+                        .coefficients_comm
                         .iter()
-                        .flatten()
                         .map(|c| c)
                         .collect::<Vec<_>>(),
                 );
