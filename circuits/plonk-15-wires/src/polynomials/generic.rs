@@ -22,7 +22,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: &DensePolynomial<F>,
     ) -> (Evaluations<F, D<F>>, DensePolynomial<F>) {
         // w[0](x) * w[1](x) * qml(x)
-        let multiplication = &(&witness_d4[0] * &witness_d4[1]) * &self.coefficients4[MUL_COEFF];
+        let mut multiplication = &witness_d4[0] * &witness_d4[1];
+        multiplication *= &self.coefficients4[MUL_COEFF];
 
         // presence of left, right, and output wire
         // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
@@ -30,10 +31,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         for (w, q) in witness_d4.iter().zip(self.coefficients4.iter()).take(GENERICS) {
             eval_part += &(w * q);
         }
+        eval_part += &self.coefficients4[CONSTANT_COEFF];
         eval_part *= &self.generic4;
 
         // return in lagrange and monomial form for optimization purpose
-        let poly_part = &(&self.coefficientsm[CONSTANT_COEFF] * &self.genericm) + public;
+        let poly_part = public.clone();
         (eval_part, poly_part)
     }
 
