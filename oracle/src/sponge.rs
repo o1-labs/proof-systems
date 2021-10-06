@@ -141,7 +141,9 @@ where
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
-                panic!("sponge got zero curve point");
+                // absorb a fake point (0, 0)
+                let zero = P::BaseField::zero();
+                self.sponge.absorb(&[zero, zero]);
             } else {
                 self.sponge.absorb(&[g.x]);
                 self.sponge.absorb(&[g.y]);
@@ -188,7 +190,13 @@ where
 
     fn digest(mut self) -> P::ScalarField {
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
-        P::ScalarField::from_repr(x.into()).expect("the sponge code has a bug")
+        // Returns zero for values that are too large.
+        // This means that there is a bias for the value zero (in one of the curve).
+        // An attacker could try to target that seed, in order to predict the challenges u and v produced by the Fr-Sponge.
+        // This would allow the attacker to mess with the result of the aggregated evaluation proof.
+        // Previously the attacker's odds were 1/q, now it's (q-p)/q.
+        // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
+        P::ScalarField::from_repr(x.into()).unwrap_or(P::ScalarField::zero())
     }
 
     fn challenge(&mut self) -> P::ScalarField {
