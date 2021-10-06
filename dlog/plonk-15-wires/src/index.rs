@@ -70,28 +70,38 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // index polynomial commitments
     /// permutation commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// wire commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub qw_comm: [PolyComm<G>; GENERICS],
     /// multiplication commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub qm_comm: PolyComm<G>,
     /// constant wire commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub qc_comm: PolyComm<G>,
 
     // poseidon polynomial commitments
     /// round constant polynomial commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub rcm_comm: [[PolyComm<G>; PlonkSpongeConstants15W::SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub psm_comm: PolyComm<G>,
 
     // ECC arithmetic polynomial commitments
     /// EC addition selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub add_comm: PolyComm<G>,
     /// EC doubling selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub double_comm: PolyComm<G>,
     /// EC variable base scalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub mul_comm: PolyComm<G>,
     /// endoscalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub emul_comm: PolyComm<G>,
 
     /// wire coordinate shifts
