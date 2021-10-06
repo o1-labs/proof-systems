@@ -43,7 +43,7 @@ pub struct ConstraintSystem<F: FftField> {
     /// coefficients polynomials in coefficient form
     pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
-    pub coefficients4: [E<F, D<F>>; COLUMNS],
+    pub coefficients8: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
     // ---------------------------------------
@@ -354,7 +354,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                     domain.d1)
                 .interpolate()
             });
-        let coefficients4 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d4));
+        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
+        let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
         let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
@@ -429,7 +430,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             genericm,
             generic4,
             coefficientsm,
-            coefficients4,
+            coefficients8,
             ps4,
             ps8,
             psm,
