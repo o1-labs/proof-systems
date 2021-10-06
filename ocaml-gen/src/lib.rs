@@ -8,23 +8,24 @@
 //!
 //! // initialize your environment
 //! let env = &mut Env::default();
+//! let w = &mut std::io::stdout();
 //!
 //! // we need to create fake generic placeholders for generic structs
 //! decl_fake_generic!(T1, 0);
 //! decl_fake_generic!(T2, 1);
 //!
 //! // declare a module Types containing a bunch of types
-//! decl_module!(env, "Types", {
-//!     decl_type!(env, CamlScalarChallenge::<T1>);
+//! decl_module!(w, env, "Types", {
+//!     decl_type!(w, env, CamlScalarChallenge::<T1>);
 //!     // you can also rename a type
-//!     decl_type!(env, CamlRandomOracles::<T1> => "random_oracles");
+//!     decl_type!(w, env, CamlRandomOracles::<T1> => "random_oracles");
 //! });
 //!
-//! decl_module!(env, "BigInt256", {
-//!     decl_type!(env, CamlBigInteger256 => "t");
+//! decl_module!(w, env, "BigInt256", {
+//!     decl_type!(w, env, CamlBigInteger256 => "t");
 //!     // you will have to import all (*) so that this can find
 //!     // the underlying function called `caml_of_numeral_to_ocaml`
-//!     decl_func!(env, caml_of_numeral => "of_numeral");
+//!     decl_func!(w, env, caml_of_numeral => "of_numeral");
 //! });
 //! ```
 //!
@@ -107,6 +108,11 @@ impl Env {
         format!("module {} = struct ", mod_name)
     }
 
+    /// how deeply nested are we currently? (default is 0)
+    pub fn nested(&self) -> usize {
+        self.current_module.len()
+    }
+
     /// go back up one module
     pub fn parent(&mut self) -> String {
         self.current_module
@@ -160,40 +166,69 @@ pub trait OCamlDesc {
 /// Creates a module
 #[macro_export]
 macro_rules! decl_module {
-    ($env:expr, $name:expr, $b:block) => {{
-        println!("{}", $env.new_module($name));
+    ($w:expr, $env:expr, $name:expr, $b:block) => {{
+        use std::io::Write;
+        write!($w, "{}{}\n", format_args!("{: >1$}", "", $env.nested() * 2), $env.new_module($name)).unwrap();
         $b
-        println!("{}", $env.parent());
+        write!($w, "{}{}\n\n", format_args!("{: >1$}", "", $env.nested() * 2 - 2), $env.parent()).unwrap();
     }}
 }
 
 /// Declares the binding for a given function
 #[macro_export]
 macro_rules! decl_func {
-    ($env:expr, $func:ident) => {{
+    ($w:expr, $env:expr, $func:ident) => {{
+        use std::io::Write;
         let f = concat_idents!($func, _to_ocaml);
         let binding = f($env, None);
-        println!("{}", binding);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            binding,
+        )
+        .unwrap();
     }};
     // rename
-    ($env:expr, $func:ident => $new:expr) => {{
+    ($w:expr, $env:expr, $func:ident => $new:expr) => {{
+        use std::io::Write;
         let f = concat_idents!($func, _to_ocaml);
         let binding = f($env, Some($new));
-        println!("{}", binding);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            binding,
+        )
+        .unwrap();
     }};
 }
 
 /// Declares the binding for a given type
 #[macro_export]
 macro_rules! decl_type {
-    ($env:expr, $ty:ty) => {{
+    ($w:expr, $env:expr, $ty:ty) => {{
+        use std::io::Write;
         let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None);
-        println!("{}", res);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            res,
+        )
+        .unwrap();
     }};
     // rename
-    ($env:expr, $ty:ty => $new:expr) => {{
+    ($w:expr, $env:expr, $ty:ty => $new:expr) => {{
+        use std::io::Write;
         let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new));
-        println!("{}", res);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            res,
+        )
+        .unwrap();
     }};
 }
 
