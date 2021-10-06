@@ -6,6 +6,7 @@ use array_init::array_init;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
+    PolyComm,
 };
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -22,7 +23,10 @@ use plonk_15_wires_circuits::{
     nolookup::constraints::ConstraintSystem,
     wires::{Wire, COLUMNS},
 };
-use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
+use plonk_15_wires_protocol_dlog::{
+    index::{Index, VerifierIndex},
+    prover::ProverProof,
+};
 use rand::{rngs::StdRng, SeedableRng};
 
 // aliases
@@ -172,12 +176,13 @@ fn test_index_serialization() {
 
     compare_cs(&cs, &decoded);
 
-    // create the index
+    // create the index and verifier index
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
     let srs = Rc::new(SRS::create(n));
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let verifier_index = index.verifier_index();
 
     // serialize the index
     let encoded = bincode::serialize(&index).unwrap();
@@ -187,4 +192,35 @@ fn test_index_serialization() {
     assert_eq!(index.max_poly_size, decoded.max_poly_size);
     assert_eq!(index.max_quot_size, decoded.max_quot_size);
     compare_cs(&index.cs, &decoded.cs);
+
+    // serialize a polycomm
+    let encoded = bincode::serialize(&verifier_index.qm_comm).unwrap();
+    let decoded: PolyComm<Affine> = bincode::deserialize(&encoded).unwrap();
+
+    // check if the serialization worked
+    fn compare_commitments(com1: &PolyComm<Affine>, com2: &PolyComm<Affine>) {
+        assert_eq!(com1.shifted, com2.shifted);
+        assert_eq!(com1.unshifted, com2.unshifted);
+    }
+
+    compare_commitments(&verifier_index.qm_comm, &decoded);
+
+    // serialize the verifier index
+    let encoded = bincode::serialize(&verifier_index).unwrap();
+    let decoded: VerifierIndex<Affine> = bincode::deserialize(&encoded).unwrap();
+
+    // check if the serialization worked on some of the fields
+    assert_eq!(verifier_index.max_poly_size, decoded.max_poly_size);
+    assert_eq!(verifier_index.max_quot_size, decoded.max_quot_size);
+    compare_commitments(&verifier_index.qm_comm, &decoded.qm_comm);
+    compare_commitments(&verifier_index.qc_comm, &decoded.qc_comm);
+    compare_commitments(&verifier_index.psm_comm, &decoded.psm_comm);
+    for (com1, com2) in verifier_index
+        .sigma_comm
+        .to_vec()
+        .iter()
+        .zip(decoded.sigma_comm.to_vec().iter())
+    {
+        compare_commitments(com1, com2);
+    }
 }
