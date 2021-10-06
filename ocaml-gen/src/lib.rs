@@ -1,4 +1,5 @@
 // TODO: get rid of nightly with https://github.com/dtolnay/paste ?
+#![deny(missing_docs)]
 
 //! Some doc is needed here.
 //!
