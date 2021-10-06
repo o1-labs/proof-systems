@@ -436,6 +436,8 @@ mod tests {
             h.insert(Column::Z);
             h.insert(Column::LookupAggreg);
             h.insert(Column::LookupTable);
+            h.insert(Column::Index(GateType::Poseidon));
+            h.insert(Column::Index(GateType::Generic));
             h
         };
 
