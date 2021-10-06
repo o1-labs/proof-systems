@@ -18,8 +18,8 @@ use commitment_dlog::commitment::{
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    expr::{Environment, Constants, l0_1},
-    polynomials::{chacha, lookup},
+    expr::{Environment, LookupEnvironment, Constants, l0_1},
+    polynomials::{chacha, lookup, poseidon},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
     gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
@@ -157,19 +157,16 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
 
-        let joint_combiner_ =
-            lookup_used.as_ref().map(|u| {
-                let s =
-                    match u {
-                        LookupsUsed::Joint =>
-                            ScalarChallenge(fq_sponge.challenge()),
-                        LookupsUsed::Single =>
-                            ScalarChallenge(Fr::<G>::zero())
-                    };
-                (s, s.to_field(&index.srs.get_ref().endo_r))
-            });
+        let joint_combiner_ = {
+            let s =
+                match lookup_used.as_ref() {
+                    None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
+                    Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+                };
+            (s, s.to_field(&index.srs.get_ref().endo_r))
+        };
 
-        let joint_combiner : Option<Fr<G>> = joint_combiner_.as_ref().map(|(_, x)| *x);
+        let joint_combiner : Fr<G> = joint_combiner_.1;
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
@@ -212,22 +209,26 @@ where
         // whether we should combine the scalars before the multi-exp or not, like computing
         // their average length or something like that.
 
-        let dummy_lookup_value: Option<_> =
-            joint_combiner.as_ref().map(|j| {
-                CombinedEntry(
-                    combine_table_entry(
-                        *j,
-                        index.cs.dummy_lookup_values[0].iter()))
-            });
+        let dummy_lookup_value = {
+            let x =
+                match lookup_used.as_ref() {
+                    None => Fr::<G>::zero(),
+                    Some(_) =>
+                        combine_table_entry(
+                            joint_combiner,
+                            index.cs.dummy_lookup_values[0].iter()),
+                };
+            CombinedEntry(x)
+        };
 
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
-            match &joint_combiner {
+            match lookup_used.as_ref() {
                 None => (None, None, None, None),
-                Some(joint_combiner) => {
+                Some(_) => {
                     let iter_lookup_table = || (0..n).map(|i| {
                         let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         CombinedEntry (
-                        combine_table_entry(*joint_combiner, row) )
+                        combine_table_entry(joint_combiner, row) )
                     });
 
 
@@ -236,13 +237,13 @@ where
                     // have to moved below this.
                     let lookup_sorted : Vec<Vec<CombinedEntry<Fr<G>>>> =
                         lookup::sorted(
-                            dummy_lookup_value.as_ref().unwrap().clone(),
+                            dummy_lookup_value.clone(),
                             iter_lookup_table,
                             index.cs.lookup_table_lengths[0],
                             d1,
                             &index.cs.gates,
                             &witness,
-                            *joint_combiner)?;
+                            joint_combiner)?;
 
                     let lookup_sorted : Vec<_> =
                         lookup_sorted.into_iter().map(|chunk| {
@@ -275,22 +276,22 @@ where
 
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
-            match (&joint_combiner, lookup_sorted) {
-                (None, None) => (None, None, None),
-                (Some(joint_combiner), Some(lookup_sorted)) => {
+            match lookup_sorted {
+                None => (None, None, None),
+                Some(lookup_sorted) => {
                     let iter_lookup_table = || (0..n).map(|i| {
                         let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
-                        combine_table_entry(*joint_combiner, row)
+                        combine_table_entry(joint_combiner, row)
                     });
 
                     let aggreg =
-                        lookup::aggregation(
-                            dummy_lookup_value.unwrap().0,
+                        lookup::aggregation::<_, Fr<G>, _>(
+                            dummy_lookup_value.0,
                             iter_lookup_table(),
                             d1,
                             &index.cs.gates,
                             &witness,
-                            *joint_combiner,
+                            joint_combiner,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -309,7 +310,6 @@ where
                     let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
                     (Some(coeffs), Some(comm), Some(evals8))
                 },
-                (Some(_), None) | (None, Some(_)) => panic!("unreachable")
             };
 
         // compute permutation aggregation polynomial
@@ -327,22 +327,30 @@ where
         let lagrange = index.cs.evaluate(&w, &z);
 
         let lookup_table_combined =
-            joint_combiner.as_ref().map(|j| {
+            lookup_used.as_ref().map(|_| {
                 let joint_table = &index.cs.lookup_tables8[0];
                 let mut res = joint_table[joint_table.len() - 1].clone();
                 for col in joint_table.iter().rev().skip(1) {
-                    res.evals.iter_mut().for_each(|e| *e *= j);
+                    res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
                     res += &col;
                 }
                 res
             });
 
-        // compute quotient polynomial
-        let env =
-            joint_combiner.as_ref()
-            .zip(lookup_table_combined.as_ref())
+        let lookup_env =
+            lookup_table_combined.as_ref()
             .zip(lookup_sorted8.as_ref())
-            .zip(lookup_aggreg8.as_ref()).map(|(((joint_combiner, lookup_table_combined), lookup_sorted), lookup_aggreg)| {
+            .zip(lookup_aggreg8.as_ref()).map(|((lookup_table_combined, lookup_sorted), lookup_aggreg)| {
+                LookupEnvironment {
+                    aggreg: &lookup_aggreg,
+                    sorted: &lookup_sorted,
+                    table: lookup_table_combined,
+                    selectors: &index.cs.lookup_selectors,
+                }
+            });
+
+        // compute quotient polynomial
+        let env = {
             let mut index_evals = HashMap::new();
                 use GateType::*;
                 index_evals.insert(Poseidon, &index.cs.ps8);
@@ -356,26 +364,24 @@ where
                     }
                 });
 
-                Environment {
-                    constants:
-                        Constants {
-                            alpha: alpha,
-                            beta: beta,
-                            gamma: gamma,
-                            joint_combiner: *joint_combiner,
-                        },
-                    witness: &lagrange.d8.this.w,
-                    zk_polynomial: &index.cs.zkpl,
-                    z: &lagrange.d8.this.z,
-                    l0_1: l0_1(d1),
-                    domain: index.cs.domain,
-                    lookup_aggreg: &lookup_aggreg,
-                    index: index_evals,
-                    lookup_sorted: &lookup_sorted,
-                    lookup_table: lookup_table_combined,
-                    lookup_selectors: &index.cs.lookup_selectors,
-                }
-            });
+            Environment {
+                constants:
+                    Constants {
+                        alpha: alpha,
+                        beta: beta,
+                        gamma: gamma,
+                        joint_combiner,
+                    },
+                witness: &lagrange.d8.this.w,
+                coefficient: &index.cs.coefficients8,
+                zk_polynomial: &index.cs.zkpl,
+                z: &lagrange.d8.this.z,
+                l0_1: l0_1(d1),
+                domain: index.cs.domain,
+                index: index_evals,
+                lookup: lookup_env,
+            }
+        };
 
         // permutation
         let (perm, bnd) = index
@@ -383,11 +389,6 @@ where
             .perm_quot(&lagrange, beta, gamma, &z, &alphas[range::PERM])?;
         // generic
         let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
-        // poseidon
-        let (pos4, pos8) =
-            index
-                .cs
-                .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alphas[range::PSDN]);
         // EC addition
         let add = index.cs.ecad_quot(&lagrange, &alphas[range::ADD]);
         // EC doubling
@@ -399,23 +400,24 @@ where
 
 
         // collect contribution evaluations
-        let t4 = &(&add + &mul4) + &(&pos4 + &(&gen + &doub4));
+        let t4 = &(&add + &mul4) + &(&gen + &doub4);
         let t4 =
-            match env.as_ref() {
+            match index.cs.chacha8.as_ref() {
                 None => t4,
-                Some(env) => {
-                    let chacha = chacha::constraint(range::CHACHA.start).evaluations(env);
+                Some(_) => {
+                    let chacha = chacha::constraint(range::CHACHA.start).evaluations(&env);
                     &t4 + &chacha
                 }
             };
-        let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &doub8)));
+        let mut t8 = &perm + &(&mul8 + &(&emul8 + &doub8));
 
         // quotient polynomial for lookup
         // lookup::constraints
+        t8 += &poseidon::constraint(&index.cs.fr_sponge_params).evaluations(&env);
         let (t4, t8) =
-            match &env {
+            match lookup_used {
                 None => (t4, t8),
-                Some(env) =>
+                Some(_) => {
                     combine_evaluations(
                         (t4, t8),
                         alpha,
@@ -423,8 +425,12 @@ where
                         lookup::constraints(
                             &index.cs.dummy_lookup_values[0],
                             d1)
-                        .iter().map(|e| e.evaluations(env)).collect())
+                        .iter().map(|e| e.evaluations(&env))
+                        .collect()
+                        )
+                }
             };
+
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &genp)
@@ -453,8 +459,7 @@ where
         let lookup_evals = |e: Fr<G>| {
             lookup_aggreg_coeffs.as_ref()
             .zip(lookup_sorted_coeffs.as_ref())
-            .zip(joint_combiner.as_ref())
-            .map(|((aggreg, sorted), joint_combiner)|
+            .map(|(aggreg, sorted)|
                 LookupEvaluations {
                     aggreg: aggreg.eval(e, index.max_poly_size),
                     sorted: sorted.iter().map(|c| c.eval(e, index.max_poly_size)).collect(),
@@ -524,12 +529,7 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
-                + &index.cs.psdn_lnrz(
-                    &evals,
-                    &index.cs.fr_sponge_params,
-                    &alphas[range::PSDN],
-                ))
+            let f = &(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index.cs.ecad_lnrz(&evals, &alphas[range::ADD]))
                 + &index.cs.double_lnrz(&evals, &alphas[range::DBL]))
                 + &index.cs.endomul_lnrz(&evals, &alphas[range::ENDML]))
@@ -538,17 +538,13 @@ where
                     .cs
                     .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);
 
-            let f =
-                match env.as_ref() {
-                    None => f,
-                    Some(env) => {
-                        let (_lin_constant, lin) =
-                            index
-                            .linearization
-                            .to_polynomial(env, zeta, evals);
-                        f + lin
-                    }
-                };
+            let f = {
+                let (_lin_constant, lin) =
+                    index
+                    .linearization
+                    .to_polynomial(&env, zeta, evals);
+                f + lin
+            };
 
             drop(env);
             drop(lookup_sorted8);
