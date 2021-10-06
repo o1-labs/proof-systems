@@ -21,6 +21,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
     UVPolynomial,
 };
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use o1_utils::ExtendedDensePolynomial as _;
@@ -28,22 +29,33 @@ use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::iter::Iterator;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
+#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PolyComm<C> {
+pub struct PolyComm<C>
+where
+    C: CanonicalDeserialize + CanonicalSerialize,
+{
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub shifted: Option<C>,
 }
 
-impl<A: Copy> PolyComm<A> {
+impl<A: Copy> PolyComm<A>
+where
+    A: CanonicalDeserialize + CanonicalSerialize,
+{
     pub fn map<B, F>(&self, mut f: F) -> PolyComm<B>
     where
         F: FnMut(A) -> B,
+        B: CanonicalDeserialize + CanonicalSerialize,
     {
         let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
         let shifted = self.shifted.map(f);
@@ -51,7 +63,11 @@ impl<A: Copy> PolyComm<A> {
     }
 }
 
-impl<A: Copy, B: Copy> PolyComm<(A, B)> {
+impl<A: Copy, B: Copy> PolyComm<(A, B)>
+where
+    A: CanonicalDeserialize + CanonicalSerialize,
+    B: CanonicalDeserialize + CanonicalSerialize,
+{
     fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
         let a = self.map(|(x, _)| x);
         let b = self.map(|(_, y)| y);
