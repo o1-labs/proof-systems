@@ -1149,7 +1149,7 @@ pub mod caml {
         pub shifted: Option<CamlG>,
     }
 
-    //
+    // handy conversions
 
     impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
     where
@@ -1164,15 +1164,39 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> Into<PolyComm<G>> for CamlPolyComm<CamlG>
+    impl<'a, G, CamlG> From<&'a PolyComm<G>> for CamlPolyComm<CamlG>
     where
         G: AffineCurve,
-        CamlG: Into<G>,
+        CamlG: From<G> + From<&'a G>,
     {
-        fn into(self) -> PolyComm<G> {
+        fn from(polycomm: &'a PolyComm<G>) -> Self {
+            Self {
+                unshifted: polycomm.unshifted.iter().map(Into::into).collect(),
+                shifted: polycomm.shifted.as_ref().map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> From<CamlPolyComm<CamlG>> for PolyComm<G>
+    where
+        G: AffineCurve + From<CamlG>,
+    {
+        fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
-                unshifted: self.unshifted.into_iter().map(Into::into).collect(),
-                shifted: self.shifted.map(Into::into),
+                unshifted: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
+                shifted: camlpolycomm.shifted.map(Into::into),
+            }
+        }
+    }
+
+    impl<'a, G, CamlG> From<&'a CamlPolyComm<CamlG>> for PolyComm<G>
+    where
+        G: AffineCurve + From<&'a CamlG> + From<CamlG>,
+    {
+        fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
+            PolyComm {
+                unshifted: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+                shifted: camlpolycomm.shifted.as_ref().map(Into::into),
             }
         }
     }
