@@ -95,7 +95,8 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = SRS::create(n);
+    let mut srs = SRS::create(n);
+    srs.add_lagrange_basis(cs.domain.d1);
     let srs = SRSSpec::Use(&srs);
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
