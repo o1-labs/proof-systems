@@ -419,12 +419,12 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> Into<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G>
     where
         G: AffineCurve,
-        CamlPolyComm<CamlG>: Into<PolyComm<G>>,
+        PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
-        fn into(self) -> ProverCommitments<G> {
+        fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
             let (
                 w_comm0,
                 w_comm1,
@@ -441,7 +441,7 @@ pub mod caml {
                 w_comm12,
                 w_comm13,
                 w_comm14,
-            ) = self.w_comm;
+            ) = caml_prover_comm.w_comm;
             ProverCommitments {
                 w_comm: [
                     w_comm0.into(),
@@ -460,8 +460,8 @@ pub mod caml {
                     w_comm13.into(),
                     w_comm14.into(),
                 ],
-                z_comm: self.z_comm.into(),
-                t_comm: self.t_comm.into(),
+                z_comm: caml_prover_comm.z_comm.into(),
+                t_comm: caml_prover_comm.t_comm.into(),
             }
         }
     }
@@ -495,20 +495,19 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> Into<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for ProverProof<G>
     where
-        G: AffineCurve,
-        CamlG: Into<G>,
-        CamlF: Into<G::ScalarField>,
+        G: AffineCurve + From<CamlG>,
+        G::ScalarField: From<CamlF>,
     {
-        fn into(self) -> ProverProof<G> {
+        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> ProverProof<G> {
             ProverProof {
-                commitments: self.commitments.into(),
-                proof: self.proof.into(),
-                evals: [self.evals.0.into(), self.evals.1.into()],
-                ft_eval1: self.ft_eval1.into(),
-                public: self.public.into_iter().map(Into::into).collect(),
-                prev_challenges: self
+                commitments: caml_pp.commitments.into(),
+                proof: caml_pp.proof.into(),
+                evals: [caml_pp.evals.0.into(), caml_pp.evals.1.into()],
+                ft_eval1: caml_pp.ft_eval1.into(),
+                public: caml_pp.public.into_iter().map(Into::into).collect(),
+                prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
                     .map(|(v, c)| {
