@@ -25,28 +25,36 @@ pub struct Constants<F> {
     pub joint_combiner: F,
 }
 
+/// The polynomials specific to the lookup argument.
+///
+/// All are evaluations over the D8 domain
+pub struct LookupEnvironment<'a, F: FftField> {
+    /// The sorted lookup table polynomials.
+    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
+    /// The lookup aggregation polynomials.
+    pub aggreg: &'a Evaluations<F, D<F>>,
+    /// The lookup-type selector polynomials.
+    pub selectors: &'a Vec<Evaluations<F, D<F>>>,
+    /// The evaluations of the combined lookup table polynomial.
+    pub table: &'a Evaluations<F, D<F>>,
+}
+
 /// The collection of polynomials (all in evaluation form) and constants
 /// required to evaluate an expression as a polynomial.
 ///
-/// All are evaluations over the D8 domain
+/// All are evaluations.
 pub struct Environment<'a, F : FftField> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
+    /// The coefficient column polynomials
+    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The polynomial which vanishes on the last 3 elements of the domain.
     /// Used for ZK blinding.
     pub zk_polynomial: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
-    /// The sorted lookup table polynomials.
-    pub lookup_sorted: &'a Vec<Evaluations<F, D<F>>>,
-    /// The lookup aggregation polynomials.
-    pub lookup_aggreg: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
     pub index: HashMap<GateType, &'a Evaluations<F, D<F>>>,
-    /// The lookup-type selector polynomials.
-    pub lookup_selectors: &'a Vec<Evaluations<F, D<F>>>,
-    /// The evaluations of the combined lookup table polynomial.
-    pub lookup_table: &'a Evaluations<F, D<F>>,
     /// The value `prod_{j != 1} (1 - omega^j)`, used for efficiently
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
@@ -54,26 +62,28 @@ pub struct Environment<'a, F : FftField> {
     pub constants: Constants<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
+    /// Lookup specific polynomials
+    pub lookup: Option<LookupEnvironment<'a, F>>,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
         use Column::*;
-        let e =
-            match col {
-                LookupKindIndex(i) => &self.lookup_selectors[*i],
-                Witness(i) => &self.witness[*i],
-                Z => self.z,
-                LookupSorted(i) => &self.lookup_sorted[*i],
-                LookupAggreg => self.lookup_aggreg,
-                LookupTable => self.lookup_table,
-                Index(t) =>
-                    match self.index.get(t) {
-                        None => return None,
-                        Some(e) => e,
-                    }
-            };
-        Some(e)
+        let lookup = self.lookup.as_ref();
+        match col {
+            Witness(i) => Some(&self.witness[*i]),
+            Coefficient(i) => Some(&self.coefficient[*i]),
+            Z => Some(&self.z),
+            LookupKindIndex(i) => lookup.map(|l| &l.selectors[*i]),
+            LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
+            LookupAggreg => lookup.map(|l| l.aggreg),
+            LookupTable => lookup.map(|l| l.table),
+            Index(t) =>
+                match self.index.get(t) {
+                    None => return None,
+                    Some(e) => Some(e),
+                }
+        }
     }
 }
 
@@ -107,6 +117,15 @@ pub enum Column {
     LookupTable,
     LookupKindIndex(usize),
     Index(GateType),
+    Coefficient(usize),
+}
+
+impl Column {
+    fn domain(&self) -> Domain {
+        match self {
+            _ => Domain::D8,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -298,29 +317,25 @@ pub enum PolishToken<F> {
 fn evaluate_variable<'a, 'b, 'c, F: Field>(evals: &'a [ProofEvaluations<F>], v: &'b Variable) -> Result<F, &'c str> {
     let evals = &evals[curr_or_next(v.row)];
     use Column::*;
-    let l =
-        match &evals.lookup {
-            Some(l) => l,
-            None => return Err("Lookup should not have been used")
-        };
-    let x =
-        match v.col {
-            Witness(i) => evals.w[i],
-            Z => evals.z,
-            LookupSorted(i) => l.sorted[i],
-            LookupAggreg => l.aggreg,
-            LookupTable => l.table,
-            LookupKindIndex(_) | Index(_) =>
-                return Err("Cannot get index evaluation (should have been linearized away)")
-        };
-    Ok(x)
+    let l = evals.lookup.as_ref().ok_or("Lookup should not have been used");
+    match v.col {
+        Witness(i) => Ok(evals.w[i]),
+        Z => Ok(evals.z),
+        LookupSorted(i) => l.map(|l| l.sorted[i]),
+        LookupAggreg => l.map(|l| l.aggreg),
+        LookupTable => l.map(|l| l.table),
+        Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
+        Index(GateType::Generic) => Ok(evals.generic_selector),
+        Coefficient(_) | LookupKindIndex(_) | Index(_) =>
+            Err("Cannot get index evaluation (should have been linearized away)")
+    }
 }
 
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate(
+    pub fn evaluate<'c>(
         toks: &Vec<PolishToken<F>>, d: D<F>, pt: F,
-        evals: &[ProofEvaluations<F>], c: &Constants<F>) -> Option<F> {
+        evals: &[ProofEvaluations<F>], c: &Constants<F>) -> Result<F, &'c str> {
         let mut stack = vec![];
         let mut cache : Vec<F> = vec![];
 
@@ -338,25 +353,25 @@ impl<F: FftField> PolishToken<F> {
                 Cell(v) =>
                     match evaluate_variable(evals, v) {
                         Ok(x) => stack.push(x),
-                        Err(_) => return None
+                        Err(e) => return Err(e)
                     },
                 Pow(n) => {
                     let i = stack.len() - 1;
                     stack[i] = stack[i].pow(&[*n as u64]);
                 },
                 Add => {
-                    let y = stack.pop()?;
-                    let x = stack.pop()?;
+                    let y = stack.pop().ok_or("Empty stack")?;
+                    let x = stack.pop().ok_or("Empty stack")?;
                     stack.push(x + y);
                 },
                 Mul => {
-                    let y = stack.pop()?;
-                    let x = stack.pop()?;
+                    let y = stack.pop().ok_or("Empty stack")?;
+                    let x = stack.pop().ok_or("Empty stack")?;
                     stack.push(x * y);
                 },
                 Sub => {
-                    let y = stack.pop()?;
-                    let x = stack.pop()?;
+                    let y = stack.pop().ok_or("Empty stack")?;
+                    let x = stack.pop().ok_or("Empty stack")?;
                     stack.push(x - y);
                 },
                 Store => {
@@ -370,7 +385,7 @@ impl<F: FftField> PolishToken<F> {
         }
 
         assert_eq!(stack.len(), 1);
-        Some(stack[0])
+        Ok(stack[0])
     }
 }
 
@@ -557,6 +572,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let n = res_domain.1.size as usize;
                 let scale = (d as usize) / (res_domain.0 as usize);
+                assert!(scale != 0);
                 let v: Vec<_> = (0..n).into_par_iter().map(|i| {
                     x + evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
                 }).collect();
@@ -577,6 +593,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
             | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
+                assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -584,7 +601,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
+                assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
+                assert!(scale2 != 0);
 
                 let n = res_domain.1.size as usize;
                 let v: Vec<_> = (0..n).into_par_iter().map(|i| {
@@ -618,12 +637,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
+                assert!(scale != 0);
                 EvalResult::init(
                     res_domain,
                     |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x)
             },
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
+                assert!(scale != 0);
                 EvalResult::init(
                     res_domain,
                     |i| x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
@@ -635,6 +656,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals }) => {
                 let scale = (d_sub as usize) / (d as usize);
+                assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
                 });
@@ -642,6 +664,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             }
             (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
+                assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -649,7 +672,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
+                assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
+                assert!(scale2 != 0);
 
                 EvalResult::init(
                     res_domain,
@@ -684,6 +709,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             SubEvals { evals, domain: d, shift:s } => {
                 let scale = (d as usize) / (res_domain.0 as usize);
+                assert!(scale != 0);
                 Self::init(
                     res_domain,
                     |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square())
@@ -753,6 +779,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) |
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
+                assert!(scale != 0);
                 EvalResult::init(
                     res_domain,
                     |i| x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
@@ -765,6 +792,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
             | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
                 let scale = (d_sub as usize) / (d as usize);
+                assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
@@ -772,7 +800,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
+                assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
+                assert!(scale2 != 0);
 
                 EvalResult::init(
                     res_domain,
@@ -889,7 +919,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
-            Cache(_, e) => e.evaluate_constants_(c),
+            Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
         }
     }
 
@@ -996,7 +1026,15 @@ impl<F: FftField> Expr<F> {
                 panic!("constraint had degree {} > 8", deg);
             };
 
-        match self.evaluations_(d, env) {
+        let mut cache = HashMap::new();
+
+        let evals =
+            match self.evaluations_helper(&mut cache, d, env) {
+                Either::Left(x) => x,
+                Either::Right(id) => cache.get(&id).unwrap().clone(),
+            };
+
+        match evals {
             EvalResult::Evals { evals, domain } => {
                 assert_eq!(domain, d);
                 evals
@@ -1006,6 +1044,7 @@ impl<F: FftField> Expr<F> {
             EvalResult::SubEvals { evals, domain: d_sub, shift: s } => {
                 let res_domain = get_domain(d, env);
                 let scale = (d_sub as usize) / (d as usize);
+                assert!(scale != 0);
                 EvalResult::init_(
                     (d, res_domain),
                     |i| evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()])
@@ -1018,15 +1057,6 @@ impl<F: FftField> Expr<F> {
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
         env: & Environment<'a, F>) -> Either<EvalResult<'a, F>, CacheId> where 'a: 'b {
-
-        /*
-        let value = |cache: &HashMap<CacheId, EvalResult<'a, F>>, v: Either<EvalResult<'a, F>, CacheId>| {
-            // TODO: Don't clone when unnecessary.
-            match v {
-                Either::Left(x) => x,
-                Either::Right(id) => cache.get(&id).unwrap().clone(),
-            }
-        }; */
 
         let get = |cache: &'b HashMap<CacheId, EvalResult<'a, F>>, id: &CacheId| -> Option<EvalResult<'b, F>> {
             cache.get(id).map(|e| {
@@ -1043,13 +1073,19 @@ impl<F: FftField> Expr<F> {
         let res : EvalResult<'a, F> =
             match self {
                 Expr::Cache(id, e) => {
-                    match e.evaluations_helper(cache, d, env) {
-                        Either::Left(es) => {
-                            cache.insert(*id, es);
-                        },
-                        Either::Right(_) => {}
-                    };
-                    return Either::Right(*id)
+                    match cache.get(id) {
+                        Some(_) => {
+                            return Either::Right(*id) },
+                        None => {
+                            match e.evaluations_helper(cache, d, env) {
+                                Either::Left(es) => {
+                                    cache.insert(*id, es);
+                                },
+                                Either::Right(_) => {}
+                            };
+                            return Either::Right(*id)
+                        }
+                    }
                 },
                 Expr::Pow(x, p) => {
                     let x = x.evaluations_helper(cache, d, env);
@@ -1064,7 +1100,9 @@ impl<F: FftField> Expr<F> {
                         shift: 0,
                         evals: env.zk_polynomial
                     },
-                Expr::Constant(x) => EvalResult::Constant(*x),
+                Expr::Constant(x) => {
+                    EvalResult::Constant(*x)
+                },
                 Expr::UnnormalizedLagrangeBasis(i) =>
                     EvalResult::Evals {
                         domain: d,
@@ -1078,7 +1116,7 @@ impl<F: FftField> Expr<F> {
                         }
                     };
                     EvalResult::SubEvals { 
-                        domain: Domain::D8,
+                        domain: col.domain(),
                         shift: curr_or_next(*row),
                         evals
                     }
@@ -1104,53 +1142,6 @@ impl<F: FftField> Expr<F> {
                 },
             };
         Either::Left(res)
-    }
-
-    fn evaluations_<'a>(&self, d: Domain, env: & Environment<'a, F>) -> EvalResult<'a, F> {
-        let mut cache = HashMap::new();
-        let res = self.evaluations_helper(&mut cache, d, env);
-        match res {
-            Either::Left(x) => x,
-            Either::Right(id) => cache.get(&id).unwrap().clone(),
-        }
-        /*
-        match self {
-            Expr::Pow(x, p) => x.evaluations_(d, env).pow(*p, (d, get_domain(d, env))),
-            Expr::ZkPolynomial =>
-                EvalResult::SubEvals { 
-                    domain: Domain::D8,
-                    shift: 0,
-                    evals: env.zk_polynomial
-                },
-            Expr::Constant(x) => EvalResult::Constant(*x),
-            Expr::UnnormalizedLagrangeBasis(i) =>
-                EvalResult::Evals {
-                    domain: d,
-                    evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env)
-                },
-            Expr::Cell(Variable { col, row }) => {
-                let evals : &'a Evaluations<F, D<F>> = {
-                    match env.get_column(col) {
-                        None => return EvalResult::Constant(F::zero()),
-                        Some(e) => e
-                    }
-                };
-                EvalResult::SubEvals { 
-                    domain: Domain::D8,
-                    shift: curr_or_next(*row),
-                    evals
-                }
-            },
-            Expr::BinOp(Op2::Mul, e1, e2) => {
-                e1.evaluations_(d, env).mul(e2.evaluations_(d, env), (d, get_domain(d, env)))
-            },
-            Expr::BinOp(Op2::Add, e1, e2) => {
-                e1.evaluations_(d, env).add(e2.evaluations_(d, env), (d, get_domain(d, env)))
-            },
-            Expr::BinOp(Op2::Sub, e1, e2) => {
-                e1.evaluations_(d, env).sub(e2.evaluations_(d, env), (d, get_domain(d, env)))
-            },
-        } */
     }
 }
 
@@ -1199,6 +1190,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         (PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, &cs).unwrap(), p)
     }
 }
+
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
