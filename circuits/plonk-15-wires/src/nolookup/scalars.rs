@@ -61,7 +61,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
 
 #[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field> {
-    pub joint_combiner: Option<(ScalarChallenge<F>, F)>,
+    pub joint_combiner: (ScalarChallenge<F>, F),
     pub beta: F,
     pub gamma: F,
     pub alpha_chal: ScalarChallenge<F>,
@@ -88,7 +88,7 @@ impl<F: Field> Default for RandomOracles<F> {
             zeta_chal: c,
             v_chal: c,
             u_chal: c,
-            joint_combiner: None,
+            joint_combiner: (c, F::zero()),
         }
     }
 }
