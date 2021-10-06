@@ -15,8 +15,8 @@ use commitment_dlog::{
 };
 use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
-    polynomials::{chacha, lookup},
-    gate::{LookupInfo, LookupsUsed},
+    polynomials::{chacha, lookup, poseidon},
+    gate::{GateType, LookupInfo, LookupsUsed},
     expr::{PolishToken, Expr, Column, Linearization},
     nolookup::constraints::{zk_w3, ConstraintSystem},
     wires::*,
@@ -226,21 +226,29 @@ where
                 h.insert(Z);
                 h.insert(LookupAggreg);
                 h.insert(LookupTable);
+                h.insert(Index(GateType::Poseidon));
+                h.insert(Index(GateType::Generic));
                 h
             };
-            if lookup_used.is_some() {
-                (chacha::constraint(super::range::CHACHA.start)
-                    + Expr::combine_constraints(2 + super::range::CHACHA.end,
-                        lookup::constraints(
-                            &cs.dummy_lookup_values[0], cs.domain.d1)))
-                .linearize(evaluated_cols)
-                .unwrap()
-            } else {
-                Linearization {
-                    constant_term: 0.into(),
-                    index_terms: vec![]
-                }
-            }
+            let expr = poseidon::constraint(&cs.fr_sponge_params);
+            let expr =
+                if lookup_used.is_some() {
+                    expr +
+                        Expr::combine_constraints(
+                            2 + super::range::CHACHA.end,
+                            lookup::constraints(&cs.dummy_lookup_values[0],
+                                                cs.domain.d1))
+                } else {
+                    expr
+                };
+            let expr =
+                if cs.chacha8.is_some() {
+                    expr + chacha::constraint(super::range::CHACHA.start)
+                } else {
+                    expr
+                };
+
+            expr.linearize(evaluated_cols).unwrap()
         };
 
         Index {
