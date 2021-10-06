@@ -1159,7 +1159,7 @@ pub mod caml {
 
     // polynomial commitment
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
         pub shifted: Option<CamlG>,

@@ -19,7 +19,7 @@ serde_with = "1.10.0"
 mina-curves = { path = "../curves" }
 
 # for ocaml
-ocaml = { version = "0.22.1", optional = true }
+ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml-gen", optional = true }
 syn = { version = "1.0.76", optional = true }
 

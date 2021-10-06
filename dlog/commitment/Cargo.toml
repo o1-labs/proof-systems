@@ -24,7 +24,7 @@ mina-curves = { path = "../../curves" }
 o1-utils = { path = "../../utils" }
 oracle = { path = "../../oracle" }
 
-ocaml = { version = "0.22.1", optional = true }
+ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../../ocaml-gen", optional = true }
 
 [features]

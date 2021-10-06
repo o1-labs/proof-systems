@@ -199,7 +199,7 @@ where
     G: CommitmentCurve,
 {
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
-    pub fn from_file<GAffineOther>(
+    pub fn from_file(
         srs: Rc<SRS<G>>,
         path: &Path,
         offset: Option<u64>,
@@ -207,11 +207,7 @@ where
         endo: G::ScalarField,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
-    ) -> Result<Self, String>
-    where
-        GAffineOther: CommitmentCurve,
-        GAffineOther::BaseField: PrimeField,
-    {
+    ) -> Result<Self, String> {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
 
@@ -238,6 +234,7 @@ where
 
         Ok(verifier_index)
     }
+
     /// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
     // TODO: append should be a bool, not an option
     pub fn to_file(&self, path: &Path, append: Option<bool>) -> Result<(), String> {

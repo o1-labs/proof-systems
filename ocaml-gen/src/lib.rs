@@ -78,12 +78,19 @@ impl Env {
             name
         ));
 
-        let type_path = type_path.join(".");
-        let current_module = self.current_module.join(".");
-        if type_path == current_module {
+        // path resolution
+        let mut current = self.current_module.clone();
+        current.reverse();
+        let path: Vec<&str> = type_path
+            .into_iter()
+            .skip_while(|&p| Some(*p) == current.pop())
+            .map(|&p| p)
+            .collect();
+
+        if path.is_empty() {
             type_name.to_string()
         } else {
-            format!("{}.{}", type_path, type_name)
+            format!("{}.{}", path.join("."), type_name)
         }
     }
 
