@@ -1,3 +1,8 @@
+#![deny(missing_docs)]
+
+//! ocaml-derive adds a number of derives to make ocaml-gen easier to use.
+//! Refer to the [ocaml-gen] documentation.
+
 extern crate proc_macro;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
