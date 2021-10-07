@@ -1,35 +1,6 @@
 // TODO: get rid of nightly with https://github.com/dtolnay/paste ?
 #![deny(missing_docs)]
-
-//! Some doc is needed here.
-//!
-//! ```
-//! // the bindings are printed out for now
-//! println!("(* this file is generated automatically *)\n");
-//!
-//! // initialize your environment
-//! let env = &mut Env::default();
-//! let w = &mut std::io::stdout();
-//!
-//! // we need to create fake generic placeholders for generic structs
-//! decl_fake_generic!(T1, 0);
-//! decl_fake_generic!(T2, 1);
-//!
-//! // declare a module Types containing a bunch of types
-//! decl_module!(w, env, "Types", {
-//!     decl_type!(w, env, CamlScalarChallenge::<T1>);
-//!     // you can also rename a type
-//!     decl_type!(w, env, CamlRandomOracles::<T1> => "random_oracles");
-//! });
-//!
-//! decl_module!(w, env, "BigInt256", {
-//!     decl_type!(w, env, CamlBigInteger256 => "t");
-//!     // you will have to import all (*) so that this can find
-//!     // the underlying function called `caml_of_numeral_to_ocaml`
-//!     decl_func!(w, env, caml_of_numeral => "of_numeral");
-//! });
-//! ```
-//!
+#![doc = include_str!("../README.md")]
 
 extern crate ocaml_derive;
 use std::collections::{hash_map::Entry, HashMap};
