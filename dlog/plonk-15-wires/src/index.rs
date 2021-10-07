@@ -15,7 +15,7 @@ use commitment_dlog::{
 };
 use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
-    polynomials::{chacha, lookup, poseidon},
+    polynomials::{chacha, lookup, poseidon, varbasemul},
     gate::{GateType, LookupInfo, LookupsUsed},
     expr::{PolishToken, Expr, Column, Linearization},
     nolookup::constraints::{zk_w3, ConstraintSystem},
@@ -230,7 +230,7 @@ where
                 h.insert(Index(GateType::Generic));
                 h
             };
-            let expr = poseidon::constraint(&cs.fr_sponge_params);
+            let expr = poseidon::constraint(&cs.fr_sponge_params) + varbasemul::constraint(super::range::MUL.start);
             let expr =
                 if lookup_used.is_some() {
                     expr +
