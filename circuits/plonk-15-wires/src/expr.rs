@@ -8,6 +8,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use CurrOrNext::*;
 use rayon::prelude::*;
+use std::iter::FromIterator;
 
 use crate::wires::COLUMNS;
 use crate::domains::EvaluationDomains;
@@ -284,6 +285,7 @@ impl Op2 {
 pub enum Expr<C> {
     Constant(C),
     Cell(Variable),
+    Double(Box<Expr<C>>),
     BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
     ZkPolynomial,
     /// UnnormalizedLagrangeBasis(i) is
@@ -304,6 +306,7 @@ pub enum PolishToken<F> {
     JointCombiner,
     Literal(F),
     Cell(Variable),
+    Dup,
     Pow(usize),
     Add,
     Mul,
@@ -315,7 +318,7 @@ pub enum PolishToken<F> {
 }
 
 fn evaluate_variable<'a, 'b, 'c, F: Field>(evals: &'a [ProofEvaluations<F>], v: &'b Variable) -> Result<F, &'c str> {
-    let evals = &evals[curr_or_next(v.row)];
+    let evals = &evals[v.row.shift()];
     use Column::*;
     let l = evals.lookup.as_ref().ok_or("Lookup should not have been used");
     match v.col {
@@ -350,6 +353,7 @@ impl<F: FftField> PolishToken<F> {
                 UnnormalizedLagrangeBasis(i) =>
                     stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
                 Literal(x) => stack.push(*x),
+                Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) =>
                     match evaluate_variable(evals, v) {
                         Ok(x) => stack.push(x),
@@ -395,6 +399,10 @@ impl<C> Expr<C> {
         Expr::Cell(Variable { col, row })
     }
 
+    pub fn double(self) -> Self {
+        Expr::Double(Box::new(self))
+    }
+
     /// Convenience function for constructing constant expressions.
     pub fn constant(c: C) -> Expr<C> {
         Expr::Constant(c)
@@ -403,6 +411,7 @@ impl<C> Expr<C> {
     fn degree(&self, d1_size: usize) -> usize {
         use Expr::*;
         match self {
+            Double(x) => x.degree(d1_size),
             Constant(_) => 0,
             ZkPolynomial => 3,
             UnnormalizedLagrangeBasis(_) => d1_size,
@@ -832,13 +841,6 @@ fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     }
 }
 
-fn curr_or_next(row: CurrOrNext) -> usize {
-    match row {
-        Curr => 0,
-        Next => 1
-    }
-}
-
 impl<F: FftField> Expr<ConstantExpr<F>> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
@@ -856,6 +858,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
 
     fn to_polish_(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F>>) {
         match self {
+            Expr::Double(x) => {
+                x.to_polish_(cache, res);
+                res.push(PolishToken::Dup);
+                res.push(PolishToken::Add);
+            },
             Expr::Pow(x, d) => {
                 x.to_polish_(cache, res);
                 res.push(PolishToken::Pow(*d))
@@ -911,6 +918,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         use Expr::*;
         // TODO: Use cache
         match self {
+            Double(x) => x.evaluate_constants_(c).double(),
             Pow(x, d) => x.evaluate_constants_(c).pow(*d),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
@@ -938,6 +946,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         c: &Constants<F>) -> Result<F, &str> {
         use Expr::*;
         match self {
+            Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
             Constant(x) => Ok(x.value(c)),
             Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow(&[*p as u64])),
             BinOp(Op2::Mul, x, y) => {
@@ -988,6 +997,7 @@ impl<F: FftField> Expr<F> {
         match self {
             Constant(x) => Ok(*x),
             Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow(&[*p as u64])),
+            Double(x) => x.evaluate(d, pt, evals).map(|x| x.double()),
             BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
@@ -1072,6 +1082,31 @@ impl<F: FftField> Expr<F> {
 
         let res : EvalResult<'a, F> =
             match self {
+                Expr::Double(x) => {
+                    let dom = (d, get_domain(d, env));
+
+                    let x = x.evaluations_helper(cache, d, env);
+                    let res =
+                        match x {
+                            Either::Left(x) => {
+                                let xx = ||
+                                    match &x {
+                                        EvalResult::Constant(x) => EvalResult::Constant(*x),
+                                        EvalResult::SubEvals { domain, shift, evals } =>
+                                            EvalResult::SubEvals { domain: *domain, shift: *shift, evals },
+                                        EvalResult::Evals { domain, evals } =>
+                                            EvalResult::SubEvals { domain: *domain, shift: 0, evals }
+                                    };
+                                xx().add(xx(), dom)
+                            },
+                            Either::Right(id) => {
+                                let x1 = get(cache, &id).unwrap();
+                                let x2 = get(cache, &id).unwrap();
+                                x1.add(x2, dom)
+                            }
+                        };
+                    return Either::Left(res);
+                },
                 Expr::Cache(id, e) => {
                     match cache.get(id) {
                         Some(_) => {
@@ -1117,7 +1152,7 @@ impl<F: FftField> Expr<F> {
                     };
                     EvalResult::SubEvals { 
                         domain: col.domain(),
-                        shift: curr_or_next(*row),
+                        shift: row.shift(),
                         evals
                     }
                 },
@@ -1271,6 +1306,9 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
                 }
                 acc
             },
+            Double(e) =>
+                HashMap::from_iter(
+                    e.monomials().into_iter().map(|(m, c)| (m, c.double()))),
             Cache(_, e) => e.monomials(),
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
             ZkPolynomial => constant(ZkPolynomial),
@@ -1571,6 +1609,7 @@ impl<F: fmt::Display> fmt::Display for Expr<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Expr::*;
         match self {
+            Double(x) => write!(f, "(2 * {})", x)?,
             Constant(x) => write!(f, "{}", x)?,
             Cell(v) => write!(f, "Cell({:?})", *v)?,
             UnnormalizedLagrangeBasis(i) => write!(f, "UnnormalizedLagrangeBasis({})", *i)?,
