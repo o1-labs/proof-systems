@@ -15,16 +15,10 @@ and
 for details.
 *****************************************************************************************************************/
 
-use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::polynomial::WitnessOverDomains;
 use crate::gate::{CurrOrNext, GateType};
-use ark_ff::{FftField, SquareRootField, Zero, One};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-use crate::expr::{E, Variable, Column, ConstantExpr as C, Cache};
+use ark_ff::{FftField, One};
+use crate::expr::{E, Variable, Column, Cache};
 use crate::wires::COLUMNS;
-use itertools::Itertools;
 
 type CurveVar = (Variable, Variable);
 
