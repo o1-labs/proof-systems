@@ -16,6 +16,7 @@ blake2 = "0.9.1"
 rand = "0.8.0"
 num-derive = "0.3"
 num-traits = "0.2"
+itertools = "0.10.1"
 
 mina-curves = { path = "../../curves" }
 o1-utils = { path = "../../utils" }
@@ -23,9 +24,6 @@ oracle = { path = "../../oracle" }
 
 ocaml = { version = "0.22.1", optional = true }
 ocaml-gen = { path = "../../ocaml-gen", optional = true }
-
-[dev-dependencies]
-itertools = "0.10.1"
 
 [features]
 ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]
