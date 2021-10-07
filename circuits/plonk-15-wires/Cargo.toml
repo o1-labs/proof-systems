@@ -1,0 +1,31 @@
+[package]
+name = "plonk_15_wires_circuits"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
+rand_core = { version = "0.5" }
+array-init = { version = "1.0.0" }
+rayon = { version = "1" }
+blake2 = "0.9.1"
+rand = "0.8.0"
+num-derive = "0.3"
+num-traits = "0.2"
+
+mina-curves = { path = "../../curves" }
+o1-utils = { path = "../../utils" }
+oracle = { path = "../../oracle" }
+
+ocaml = { version = "0.22.1", optional = true }
+ocaml-gen = { path = "../../ocaml-gen", optional = true }
+
+[dev-dependencies]
+itertools = "0.10.1"
+
+[features]
+ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]

@@ -15,8 +15,8 @@ use ark_poly::{
 };
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
-use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants, SpongeConstants};
-use oracle::utils::EvalUtils;
+use o1_utils::ExtendedEvaluations;
+use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstantsBasic, SpongeConstants};
 
 #[derive(Clone)]
 pub struct ConstraintSystem<F: FftField> {
@@ -36,7 +36,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub qc: DensePolynomial<F>,  // constant wire polynomial
 
     // poseidon selector polynomials
-    pub rcm: [DensePolynomial<F>; PlonkSpongeConstants::SPONGE_WIDTH], // round constant polynomials
+    pub rcm: [DensePolynomial<F>; PlonkSpongeConstantsBasic::SPONGE_WIDTH], // round constant polynomials
     pub psm: DensePolynomial<F>, // poseidon constraint selector polynomial
 
     // EC point addition constraint polynomials

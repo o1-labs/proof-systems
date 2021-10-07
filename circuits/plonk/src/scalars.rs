@@ -6,7 +6,8 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 use ark_ff::{FftField, Field};
 use ark_poly::univariate::DensePolynomial;
-use oracle::{sponge::ScalarChallenge, utils::PolyUtils};
+use o1_utils::ExtendedDensePolynomial as _;
+use oracle::sponge::ScalarChallenge;
 
 #[derive(Clone)]
 pub struct ProofEvaluations<Fs> {
@@ -74,13 +75,14 @@ impl<F: Field> RandomOracles<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use ocaml_gen::OcamlGen;
     use oracle::sponge::caml::CamlScalarChallenge;
 
     //
     // ProofEvaluations<F> <-> CamlProofEvaluations<CamlF>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlProofEvaluations<F> {
         pub l: Vec<F>,
         pub r: Vec<F>,
@@ -132,7 +134,7 @@ pub mod caml {
     // RandomOracles<F> <-> CamlRandomOracles<CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlRandomOracles<CamlF> {
         pub beta: CamlF,
         pub gamma: CamlF,

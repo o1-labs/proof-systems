@@ -15,7 +15,8 @@ use ark_poly::{
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, utils::PolyUtils, FqSponge};
+use o1_utils::ExtendedDensePolynomial;
+use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_circuits::{
     constraints::ConstraintSystem,
     scalars::{ProofEvaluations, RandomOracles},
@@ -433,6 +434,7 @@ where
 pub mod caml {
     use super::*;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    use ocaml_gen::OcamlGen;
     use plonk_circuits::scalars::caml::CamlProofEvaluations;
 
     //
@@ -440,7 +442,7 @@ pub mod caml {
     //
 
     /// The ocaml type for ProverCommitments
-    #[derive(ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlProverCommitments<CamlG> {
         pub l_comm: CamlPolyComm<CamlG>,
         pub r_comm: CamlPolyComm<CamlG>,
@@ -485,7 +487,7 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,

@@ -8,7 +8,8 @@ pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
 
 const HIGH_ENTROPY_LIMBS: usize = 2;
 
-// A challenge which is used as a scalar on a group element in the verifier
+// TODO: move to a different file / module
+/// A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
 pub struct ScalarChallenge<F>(pub F);
 
@@ -29,8 +30,7 @@ fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
 impl<F: PrimeField> ScalarChallenge<F> {
     pub fn to_field(&self, endo_coeff: &F) -> F {
         let length_in_bits: u64 = (64 * CHALLENGE_LENGTH_IN_LIMBS) as u64;
-        let ScalarChallenge(x) = self;
-        let rep = x.into_repr();
+        let rep = self.0.into_repr();
         let r = rep.as_ref();
 
         let mut a: F = (2 as u64).into();
@@ -141,7 +141,9 @@ where
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
-                panic!("sponge got zero curve point");
+                // absorb a fake point (0, 0)
+                let zero = P::BaseField::zero();
+                self.sponge.absorb(&[zero, zero]);
             } else {
                 self.sponge.absorb(&[g.x]);
                 self.sponge.absorb(&[g.y]);
@@ -188,7 +190,13 @@ where
 
     fn digest(mut self) -> P::ScalarField {
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
-        P::ScalarField::from_repr(x.into()).expect("the sponge code has a bug")
+        // Returns zero for values that are too large.
+        // This means that there is a bias for the value zero (in one of the curve).
+        // An attacker could try to target that seed, in order to predict the challenges u and v produced by the Fr-Sponge.
+        // This would allow the attacker to mess with the result of the aggregated evaluation proof.
+        // Previously the attacker's odds were 1/q, now it's (q-p)/q.
+        // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
+        P::ScalarField::from_repr(x.into()).unwrap_or(P::ScalarField::zero())
     }
 
     fn challenge(&mut self) -> P::ScalarField {
@@ -207,12 +215,13 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use ocaml_gen::OcamlGen;
 
     //
     // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlScalarChallenge<CamlF>(pub CamlF);
 
     impl<F, CamlF> From<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>

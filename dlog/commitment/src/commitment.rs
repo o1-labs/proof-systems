@@ -21,7 +21,9 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
+use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
+use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
@@ -30,6 +32,7 @@ use std::iter::Iterator;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+/// A polynomial commitment.
 #[derive(Clone, Debug)]
 pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
@@ -60,21 +63,87 @@ pub fn shift_scalar<F: PrimeField>(x: F) -> F {
     x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
 
+impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+    type Output = PolyComm<C>;
+
+    fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
+        let mut unshifted = vec![];
+        let n1 = self.unshifted.len();
+        let n2 = other.unshifted.len();
+        for i in 0..std::cmp::max(n1, n2) {
+            let pt = if i < n1 && i < n2 {
+                self.unshifted[i] + other.unshifted[i]
+            } else if i < n1 {
+                self.unshifted[i]
+            } else {
+                other.unshifted[i]
+            };
+            unshifted.push(pt);
+        }
+        let shifted = match (self.shifted, other.shifted) {
+            (None, _) => other.shifted,
+            (_, None) => self.shifted,
+            (Some(p1), Some(p2)) => Some(p1 + p2),
+        };
+        PolyComm { unshifted, shifted }
+    }
+}
+
+impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+    type Output = PolyComm<C>;
+
+    fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
+        let mut unshifted = vec![];
+        let n1 = self.unshifted.len();
+        let n2 = other.unshifted.len();
+        for i in 0..std::cmp::max(n1, n2) {
+            let pt = if i < n1 && i < n2 {
+                self.unshifted[i] + (-other.unshifted[i])
+            } else if i < n1 {
+                self.unshifted[i]
+            } else {
+                other.unshifted[i]
+            };
+            unshifted.push(pt);
+        }
+        let shifted = match (self.shifted, other.shifted) {
+            (None, _) => other.shifted,
+            (_, None) => self.shifted,
+            (Some(p1), Some(p2)) => Some(p1 + (-p2)),
+        };
+        PolyComm { unshifted, shifted }
+    }
+}
+
 impl<C: AffineCurve> PolyComm<C> {
+    pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
+        PolyComm {
+            unshifted: self
+                .unshifted
+                .iter()
+                .map(|g| g.mul(c).into_affine())
+                .collect(),
+            shifted: self.shifted.map(|g| g.mul(c).into_affine()),
+        }
+    }
+
     pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
+        assert_eq!(com.len(), elm.len());
         PolyComm::<C> {
             shifted: {
-                if com.len() == 0 || elm.len() == 0 || com[0].shifted == None {
+                let pairs = com
+                    .iter()
+                    .zip(elm.iter())
+                    .filter_map(|(c, s)| match c.shifted {
+                        Some(c) => Some((c, s)),
+                        None => None,
+                    })
+                    .collect::<Vec<_>>();
+                if pairs.len() == 0 {
                     None
                 } else {
-                    let points = com
-                        .iter()
-                        .map(|c| {
-                            assert!(c.shifted.is_some());
-                            c.shifted.unwrap()
-                        })
-                        .collect::<Vec<_>>();
-                    let scalars = elm.iter().map(|s| s.into_repr()).collect::<Vec<_>>();
+                    let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
+                    let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
                     Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
                 }
             },
@@ -160,6 +229,7 @@ where
     }
 }
 
+/// Returns the product of all the field elements belonging to an iterator.
 pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     let mut res = F::one();
     for x in xs {
@@ -168,6 +238,9 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     res
 }
 
+/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...
+/// It's "step 8: Define the univariate polynomial" of
+/// appendix A.2 of https://eprint.iacr.org/2020/499
 pub fn b_poly<F: Field>(chals: &Vec<F>, x: F) -> F {
     let k = chals.len();
 
@@ -184,7 +257,6 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     let rounds = chals.len();
     let s_length = 1 << rounds;
     let mut s = vec![F::one(); s_length];
-    s[0] = F::one();
     let mut k: usize = 0;
     let mut pow: usize = 1;
     for i in 1..s_length {
@@ -195,25 +267,31 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     s
 }
 
+// TODO: move to utils
+/// Returns ceil(log2(d)) but panics if d = 0.
 pub fn ceil_log2(d: usize) -> usize {
+    assert!(d != 0);
     let mut pow2 = 1;
     let mut ceil_log2 = 0;
     while d > pow2 {
         ceil_log2 += 1;
-        pow2 *= 2;
+        pow2 = match pow2.checked_mul(2) {
+            Some(x) => x,
+            None => break,
+        }
     }
     ceil_log2
 }
 
+/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).
 fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     let mut acc = F::one();
-    (0..d)
-        .map(|_| {
-            let r = acc;
-            acc *= &x;
-            r
-        })
-        .collect()
+    let mut res = vec![];
+    for _ in 1..=d {
+        res.push(acc);
+        acc *= x;
+    }
+    res
 }
 
 fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
@@ -294,10 +372,16 @@ fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) ->
     G::of_coordinates(x, y)
 }
 
+/// Computes the linearization of the evaluations of a (potentially split) polynomial.
+/// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,
+/// and the columns represent potential segments (if a polynomial was split in several parts).
+/// Note that if one of the polynomial comes specified with a degree bound,
+/// the evaluation for the last segment is potentially shifted to meet the proof.
 pub fn combined_inner_product<G: CommitmentCurve>(
     evaluation_points: &[Fr<G>],
     xi: &Fr<G>,
     r: &Fr<G>,
+    // TODO(mimoo): needs a type that can get you evaluations or segments
     polys: &Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)>,
     srs_length: usize,
 ) -> Fr<G> {
@@ -342,6 +426,7 @@ impl<G: CommitmentCurve> SRS<G>
 where
     G::ScalarField: CommitmentField,
 {
+    /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
@@ -351,6 +436,7 @@ where
         self.mask(self.commit_non_hiding(plnm, max), rng)
     }
 
+    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
     fn mask(
         &self,
         c: PolyComm<G>,
@@ -371,16 +457,72 @@ where
         .unzip()
     }
 
-    // This function commits a polynomial against URS instance
-    //     plnm: polynomial to commit to with max size of sections
-    //     max: maximal degree of the polynomial, if none, no degree bound
-    //     RETURN: tuple of: unbounded commitment vector, optional bounded commitment
+    /// This function commits a polynomial using the SRS' basis of size `n`.
+    /// - `plnm`: polynomial to commit to with max size of sections
+    /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
+    /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
+    /// as well as an optional bounded commitment (if `max` is set).
+    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
     pub fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+        Self::commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+    }
+
+    fn commit_helper(
+        scalars: &[Fr<G>],
+        basis: &[G],
+        is_zero: bool,
+        max: Option<usize>,
+    ) -> PolyComm<G> {
+        let n = basis.len();
+        let p = scalars.len();
+
+        // committing all the segments without shifting
+        let unshifted = if is_zero {
+            Vec::new()
+        } else {
+            (0..p / n + if p % n != 0 { 1 } else { 0 })
+                .map(|i| {
+                    VariableBaseMSM::multi_scalar_mul(
+                        basis,
+                        &scalars[i * n..p]
+                            .iter()
+                            .map(|s| s.into_repr())
+                            .collect::<Vec<_>>(),
+                    )
+                    .into_affine()
+                })
+                .collect()
+        };
+
+        // committing only last segment shifted to the right edge of SRS
+        let shifted = match max {
+            None => None,
+            Some(max) => {
+                let start = max - (max % n);
+                if is_zero || start >= p {
+                    Some(G::zero())
+                } else if max % n == 0 {
+                    None
+                } else {
+                    Some(
+                        VariableBaseMSM::multi_scalar_mul(
+                            &basis[n - (max % n)..],
+                            &scalars[start..p]
+                                .iter()
+                                .map(|s| s.into_repr())
+                                .collect::<Vec<_>>(),
+                        )
+                        .into_affine(),
+                    )
+                }
+            }
+        };
+
+        PolyComm::<G> { unshifted, shifted }
     }
 
     pub fn commit_evaluations_non_hiding(
@@ -394,7 +536,7 @@ where
             None => panic!("lagrange bases for size {} not found", domain.size()),
             Some(v) => &v[..],
         };
-        commit_helper(&plnm.evals[..], basis, is_zero, max)
+        Self::commit_helper(&plnm.evals[..], basis, is_zero, max)
     }
 
     pub fn commit_evaluations(
@@ -407,16 +549,17 @@ where
         self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
     }
 
-    // This function opens polynomial commitments in batch
-    //     plnms: batch of polynomials to open commitments for with, optionally, max degrees
-    //     elm: evaluation point vector to open the commitments at
-    //     polyscale: polynomial scaling factor for opening commitments in batch
-    //     evalscale: eval scaling factor for opening commitments in batch
-    //     oracle_params: parameters for the random oracle argument
-    //     RETURN: commitment opening proof
+    /// This function opens polynomial commitments in batch
+    ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    ///     elm: evaluation point vector to open the commitments at
+    ///     polyscale: polynomial scaling factor for opening commitments in batch
+    ///     evalscale: eval scaling factor for opening commitments in batch
+    ///     oracle_params: parameters for the random oracle argument
+    ///     RETURN: commitment opening proof
     pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
+        // TODO(mimoo): create a type for that entry
         plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
         elm: &Vec<Fr<G>>,      // vector of evaluation points
         polyscale: Fr<G>,      // scaling factor for polynoms
@@ -432,7 +575,6 @@ where
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
-
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
@@ -637,23 +779,23 @@ where
         }
     }
 
-    // This function verifies batch of batched polynomial commitment opening proofs
-    //     batch: batch of batched polynomial commitment opening proofs
-    //          vector of evaluation points
-    //          polynomial scaling factor for this batched openinig proof
-    //          eval scaling factor for this batched openinig proof
-    //          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
-    //          opening proof for this batched opening
-    //     oracle_params: parameters for the random oracle argument
-    //     randomness source context
-    //     RETURN: verification status
+    /// This function verifies batch of batched polynomial commitment opening proofs
+    ///     batch: batch of batched polynomial commitment opening proofs
+    ///          vector of evaluation points
+    ///          polynomial scaling factor for this batched openinig proof
+    ///          eval scaling factor for this batched openinig proof
+    ///          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees
+    ///          opening proof for this batched opening
+    ///     oracle_params: parameters for the random oracle argument
+    ///     randomness source context
+    ///     RETURN: verification status
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         batch: &mut Vec<(
             EFqSponge,
             Vec<Fr<G>>, // vector of evaluation points
-            Fr<G>,      // scaling factor for polynoms
+            Fr<G>,      // scaling factor for polynomials
             Fr<G>,      // scaling factor for evaluation point powers
             Vec<(
                 &PolyComm<G>,     // polycommitment
@@ -841,6 +983,7 @@ where
             rand_base_i *= &rand_base;
             sg_rand_base_i *= &sg_rand_base;
         }
+
         // verify the equation
         let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
         VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
@@ -855,111 +998,6 @@ fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
     res
 }
 
-pub trait Utils<F: Field> {
-    fn scale(&self, elm: F) -> Self;
-    fn shiftr(&self, size: usize) -> Self;
-    fn eval_polynomial(coeffs: &[F], x: F) -> F;
-    fn eval(&self, elm: F, size: usize) -> Vec<F>;
-}
-
-impl<F: Field> Utils<F> for DensePolynomial<F> {
-    fn eval_polynomial(coeffs: &[F], x: F) -> F {
-        let mut res = F::zero();
-        for c in coeffs.iter().rev() {
-            res *= &x;
-            res += c;
-        }
-        res
-    }
-
-    // This function "scales" (multiplies) polynomaial with a scalar
-    // It is implemented to have the desired functionality for DensePolynomial
-    fn scale(&self, elm: F) -> Self {
-        let mut result = self.clone();
-        for coeff in &mut result.coeffs {
-            *coeff *= &elm
-        }
-        result
-    }
-
-    fn shiftr(&self, size: usize) -> Self {
-        let mut result = vec![F::zero(); size];
-        result.extend(self.coeffs.clone());
-        DensePolynomial::<F>::from_coefficients_vec(result)
-    }
-
-    // This function evaluates polynomial in chunks
-    fn eval(&self, elm: F, size: usize) -> Vec<F> {
-        (0..self.coeffs.len())
-            .step_by(size)
-            .map(|i| {
-                Self::from_coefficients_slice(
-                    &self.coeffs[i..if i + size > self.coeffs.len() {
-                        self.coeffs.len()
-                    } else {
-                        i + size
-                    }],
-                )
-                .evaluate(&elm)
-            })
-            .collect()
-    }
-}
-
-fn commit_helper<G: CommitmentCurve>(
-    scalars: &[Fr<G>],
-    basis: &[G],
-    is_zero: bool,
-    max: Option<usize>,
-) -> PolyComm<G> {
-    let n = basis.len();
-    let p = scalars.len();
-
-    // committing all the segments without shifting
-    let unshifted = if is_zero {
-        Vec::new()
-    } else {
-        (0..p / n + if p % n != 0 { 1 } else { 0 })
-            .map(|i| {
-                VariableBaseMSM::multi_scalar_mul(
-                    basis,
-                    &scalars[i * n..p]
-                        .iter()
-                        .map(|s| s.into_repr())
-                        .collect::<Vec<_>>(),
-                )
-                .into_affine()
-            })
-            .collect()
-    };
-
-    // committing only last segment shifted to the right edge of SRS
-    let shifted = match max {
-        None => None,
-        Some(max) => {
-            let start = max - (max % n);
-            if is_zero || start >= p {
-                Some(G::zero())
-            } else if max % n == 0 {
-                None
-            } else {
-                Some(
-                    VariableBaseMSM::multi_scalar_mul(
-                        &basis[n - (max % n)..],
-                        &scalars[start..p]
-                            .iter()
-                            .map(|s| s.into_repr())
-                            .collect::<Vec<_>>(),
-                    )
-                    .into_affine(),
-                )
-            }
-        }
-    };
-
-    PolyComm::<G> { unshifted, shifted }
-}
-
 //
 // Tests
 //
@@ -967,12 +1005,31 @@ fn commit_helper<G: CommitmentCurve>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::srs::SRS;
+    use ark_poly::Polynomial;
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
-    use oracle::poseidon::PlonkSpongeConstants as SC;
+    use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
     use oracle::{pasta::fq::params as spongeFqParams, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
+
+    #[test]
+    fn test_log2() {
+        let tests = [
+            (1, 0),
+            (2, 1),
+            (3, 2),
+            (9, 4),
+            (15, 4),
+            (15430, 14),
+            (usize::MAX, 64),
+        ];
+        for (d, expected_res) in tests.iter() {
+            let res = ceil_log2(*d);
+            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
+        }
+    }
 
     #[test]
     fn test_lagrange_commitments() {
@@ -1081,10 +1138,11 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use ocaml_gen::OcamlGen;
 
     // polynomial commitment
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
         pub shifted: Option<CamlG>,
@@ -1120,7 +1178,7 @@ pub mod caml {
 
     // opening proof
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlOpeningProof<G, F> {
         pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
         pub delta: G,

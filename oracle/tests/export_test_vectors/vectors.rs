@@ -1,28 +1,26 @@
+use super::Mode;
+use ark_ff::{fields::PrimeField as _, UniformRand as _};
+use ark_serialize::CanonicalSerialize as _;
+use mina_curves::pasta::Fp;
+use num_bigint::BigUint;
+use oracle::poseidon::ArithmeticSponge as Poseidon;
 use oracle::poseidon::Sponge as _;
 use rand::prelude::*;
 use rand::Rng;
-use num_bigint::BigUint;
 use serde::Serialize;
-
-use super::Mode;
 
 //
 // generate different test vectors depending on features
 //
 
-use mina_curves::pasta::Fp;
-use algebra::{fields::PrimeField as _, CanonicalSerialize as _, UniformRand as _};
-
-use oracle::poseidon::ArithmeticSponge as Poseidon;
-
 #[cfg(feature = "3w")]
-use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstants};
+use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstantsBasic};
 
 #[cfg(feature = "5w")]
 use oracle::{pasta::fp5 as Parameters, poseidon::PlonkSpongeConstants5W as PlonkSpongeConstants};
 
 #[cfg(feature = "3")]
-use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3 as PlonkSpongeConstants};
+use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3W as PlonkSpongeConstants};
 
 //
 // structs
@@ -46,7 +44,7 @@ pub struct TestVector {
 
 // calls the poseidon hash function with the `input` and returns a digest
 fn poseidon(input: &[Fp]) -> Fp {
-    let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new(Parameters::params());
+    let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
     s.absorb(input);
     let output = s.squeeze();
     output
@@ -83,7 +81,7 @@ pub fn generate(mode: Mode) -> TestVectors {
                     .expect("canonical serialiation should work");
                 match mode {
                     Mode::Hex => hex::encode(&input_bytes),
-                    Mode::B10 => BigUint::from_bytes_le(&input_bytes).to_string()
+                    Mode::B10 => BigUint::from_bytes_le(&input_bytes).to_string(),
                 }
             })
             .collect();
@@ -111,8 +109,5 @@ pub fn generate(mode: Mode) -> TestVectors {
     };
 
     //
-    TestVectors {
-        name,
-        test_vectors,
-    }
+    TestVectors { name, test_vectors }
 }
