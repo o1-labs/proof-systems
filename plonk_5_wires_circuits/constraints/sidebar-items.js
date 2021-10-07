@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["zk_polynomial",""],["zk_w",""]],"struct":[["ConstraintSystem",""]]});

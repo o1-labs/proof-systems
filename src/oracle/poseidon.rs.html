@@ -258,6 +258,11 @@
 <span id="258">258</span>
 <span id="259">259</span>
 <span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This file implements Poseidon Hash Function primitive
@@ -279,24 +284,9 @@ This file implements Poseidon Hash Function primitive
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MarlinSpongeConstants</span> {}
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsBasic</span> {}
 
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">MarlinSpongeConstants</span> {
-    <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
-    <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">30</span>;
-    <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_BOX</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">17</span>;
-    <span class="kw">const</span> <span class="ident">FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
-    <span class="kw">const</span> <span class="ident">INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstants</span> {}
-
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstants</span> {
+<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsBasic</span> {
     <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">63</span>;
     <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
@@ -324,10 +314,25 @@ This file implements Poseidon Hash Function primitive
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstants3</span> {}
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstants3W</span> {}
 
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstants3</span> {
+<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstants3W</span> {
     <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">54</span>;
+    <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
+    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
+    <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
+    <span class="kw">const</span> <span class="ident">SPONGE_BOX</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">7</span>;
+    <span class="kw">const</span> <span class="ident">FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="kw">const</span> <span class="ident">INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstants15W</span> {}
+
+<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstants15W</span> {
+    <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">55</span>;
     <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
@@ -364,6 +369,7 @@ This file implements Poseidon Hash Function primitive
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">sponge_state</span>: <span class="ident">SpongeState</span>,
     <span class="ident">rate</span>: <span class="ident">usize</span>,
+    <span class="comment">// TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)</span>
     <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">constants</span>: <span class="ident">std::marker::PhantomData</span><span class="op">&lt;</span><span class="ident">SC</span><span class="op">&gt;</span>,
@@ -391,7 +397,11 @@ This file implements Poseidon Hash Function primitive
         };
     }
 
+    <span class="doccomment">/// Performs a single full round (given the round number) for the sponge.</span>
+    <span class="doccomment">/// Note that if INITIAL_ARK is set in the parameters, calling full round will not be enough to manually implement the sponge.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">full_round</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">r</span>: <span class="ident">usize</span>) {
+        <span class="comment">// TODO(mimoo): ideally this should be enforced in the type of the state itself</span>
+        <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">state</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">SC::SPONGE_WIDTH</span>);
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">state</span>.<span class="ident">len</span>() {
             <span class="self">self</span>.<span class="ident">state</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">sbox</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">state</span>[<span class="ident">i</span>]);
         }

@@ -1171,6 +1171,64 @@
 <span id="1171">1171</span>
 <span id="1172">1172</span>
 <span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
+<span id="1180">1180</span>
+<span id="1181">1181</span>
+<span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Dlog-based polynomial commitment schema.
@@ -1194,7 +1252,9 @@ The folowing functionality is implemented
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>,
     <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">UVPolynomial</span>,
 };
+<span class="kw">use</span> <span class="ident">core::ops</span>::{<span class="ident">Add</span>, <span class="ident">Sub</span>};
 <span class="kw">use</span> <span class="ident">groupmap</span>::{<span class="ident">BWParameters</span>, <span class="ident">GroupMap</span>};
+<span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span> <span class="kw">as</span> <span class="kw">_</span>;
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
 <span class="kw">use</span> <span class="ident">rand_core</span>::{<span class="ident">CryptoRng</span>, <span class="ident">RngCore</span>};
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
@@ -1203,6 +1263,7 @@ The folowing functionality is implemented
 <span class="kw">type</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
 <span class="kw">type</span> <span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
 
+<span class="doccomment">/// A polynomial commitment.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">unshifted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>,
@@ -1233,21 +1294,87 @@ The folowing functionality is implemented
     <span class="ident">x</span> <span class="op">-</span> <span class="ident">two</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::Params::MODULUS_BITS</span> <span class="kw">as</span> <span class="ident">u64</span>])
 }
 
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">Add</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>;
+
+    <span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let</span> <span class="ident">n1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
+        <span class="kw">let</span> <span class="ident">n2</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">std::cmp::max</span>(<span class="ident">n1</span>, <span class="ident">n2</span>) {
+            <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">n1</span> <span class="op">&amp;&amp;</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">n2</span> {
+                <span class="self">self</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>] <span class="op">+</span> <span class="ident">other</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>]
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">n1</span> {
+                <span class="self">self</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>]
+            } <span class="kw">else</span> {
+                <span class="ident">other</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>]
+            };
+            <span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">pt</span>);
+        }
+        <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> (<span class="self">self</span>.<span class="ident">shifted</span>, <span class="ident">other</span>.<span class="ident">shifted</span>) {
+            (<span class="prelude-val">None</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">other</span>.<span class="ident">shifted</span>,
+            (<span class="kw">_</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">shifted</span>,
+            (<span class="prelude-val">Some</span>(<span class="ident">p1</span>), <span class="prelude-val">Some</span>(<span class="ident">p2</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">p1</span> <span class="op">+</span> <span class="ident">p2</span>),
+        };
+        <span class="ident">PolyComm</span> { <span class="ident">unshifted</span>, <span class="ident">shifted</span> }
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">Sub</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>;
+
+    <span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let</span> <span class="ident">n1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
+        <span class="kw">let</span> <span class="ident">n2</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">std::cmp::max</span>(<span class="ident">n1</span>, <span class="ident">n2</span>) {
+            <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">n1</span> <span class="op">&amp;&amp;</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">n2</span> {
+                <span class="self">self</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>] <span class="op">+</span> (<span class="op">-</span><span class="ident">other</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>])
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">n1</span> {
+                <span class="self">self</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>]
+            } <span class="kw">else</span> {
+                <span class="ident">other</span>.<span class="ident">unshifted</span>[<span class="ident">i</span>]
+            };
+            <span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">pt</span>);
+        }
+        <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> (<span class="self">self</span>.<span class="ident">shifted</span>, <span class="ident">other</span>.<span class="ident">shifted</span>) {
+            (<span class="prelude-val">None</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">other</span>.<span class="ident">shifted</span>,
+            (<span class="kw">_</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">shifted</span>,
+            (<span class="prelude-val">Some</span>(<span class="ident">p1</span>), <span class="prelude-val">Some</span>(<span class="ident">p2</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">p1</span> <span class="op">+</span> (<span class="op">-</span><span class="ident">p2</span>)),
+        };
+        <span class="ident">PolyComm</span> { <span class="ident">unshifted</span>, <span class="ident">shifted</span> }
+    }
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">c</span>: <span class="ident">C::ScalarField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+        <span class="ident">PolyComm</span> {
+            <span class="ident">unshifted</span>: <span class="self">self</span>
+                .<span class="ident">unshifted</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">mul</span>(<span class="ident">c</span>).<span class="ident">into_affine</span>())
+                .<span class="ident">collect</span>(),
+            <span class="ident">shifted</span>: <span class="self">self</span>.<span class="ident">shifted</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">mul</span>(<span class="ident">c</span>).<span class="ident">into_affine</span>()),
+        }
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">multi_scalar_mul</span>(<span class="ident">com</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">elm</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">C::ScalarField</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="macro">assert_eq!</span>(<span class="ident">com</span>.<span class="ident">len</span>(), <span class="ident">elm</span>.<span class="ident">len</span>());
         <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
             <span class="ident">shifted</span>: {
-                <span class="kw">if</span> <span class="ident">com</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">elm</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">com</span>[<span class="number">0</span>].<span class="ident">shifted</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">None</span> {
+                <span class="kw">let</span> <span class="ident">pairs</span> <span class="op">=</span> <span class="ident">com</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">zip</span>(<span class="ident">elm</span>.<span class="ident">iter</span>())
+                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">c</span>.<span class="ident">shifted</span> {
+                        <span class="prelude-val">Some</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>((<span class="ident">c</span>, <span class="ident">s</span>)),
+                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                    })
+                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+                <span class="kw">if</span> <span class="ident">pairs</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
                     <span class="prelude-val">None</span>
                 } <span class="kw">else</span> {
-                    <span class="kw">let</span> <span class="ident">points</span> <span class="op">=</span> <span class="ident">com</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-                            <span class="macro">assert!</span>(<span class="ident">c</span>.<span class="ident">shifted</span>.<span class="ident">is_some</span>());
-                            <span class="ident">c</span>.<span class="ident">shifted</span>.<span class="ident">unwrap</span>()
-                        })
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-                    <span class="kw">let</span> <span class="ident">scalars</span> <span class="op">=</span> <span class="ident">elm</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">into_repr</span>()).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+                    <span class="kw">let</span> <span class="ident">points</span> <span class="op">=</span> <span class="ident">pairs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">c</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+                    <span class="kw">let</span> <span class="ident">scalars</span> <span class="op">=</span> <span class="ident">pairs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">s</span>.<span class="ident">into_repr</span>()).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
                     <span class="prelude-val">Some</span>(<span class="ident">VariableBaseMSM::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">scalars</span>).<span class="ident">into_affine</span>())
                 }
             },
@@ -1333,6 +1460,7 @@ The folowing functionality is implemented
     }
 }
 
+<span class="doccomment">/// Returns the product of all the field elements belonging to an iterator.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">product</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">xs</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">F::one</span>();
     <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="ident">xs</span> {
@@ -1341,6 +1469,9 @@ The folowing functionality is implemented
     <span class="ident">res</span>
 }
 
+<span class="doccomment">/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...</span>
+<span class="doccomment">/// It&#39;s &quot;step 8: Define the univariate polynomial&quot; of</span>
+<span class="doccomment">/// appendix A.2 of https://eprint.iacr.org/2020/499</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">b_poly</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">chals</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
     <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">chals</span>.<span class="ident">len</span>();
 
@@ -1357,7 +1488,6 @@ The folowing functionality is implemented
     <span class="kw">let</span> <span class="ident">rounds</span> <span class="op">=</span> <span class="ident">chals</span>.<span class="ident">len</span>();
     <span class="kw">let</span> <span class="ident">s_length</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">rounds</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">s_length</span>];
-    <span class="ident">s</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">F::one</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">k</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pow</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="ident">s_length</span> {
@@ -1368,25 +1498,31 @@ The folowing functionality is implemented
     <span class="ident">s</span>
 }
 
+<span class="comment">// TODO: move to utils</span>
+<span class="doccomment">/// Returns ceil(log2(d)) but panics if d = 0.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ceil_log2</span>(<span class="ident">d</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="macro">assert!</span>(<span class="ident">d</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pow2</span> <span class="op">=</span> <span class="number">1</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ceil_log2</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">while</span> <span class="ident">d</span> <span class="op">&gt;</span> <span class="ident">pow2</span> {
         <span class="ident">ceil_log2</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">pow2</span> <span class="kw-2">*</span><span class="op">=</span> <span class="number">2</span>;
+        <span class="ident">pow2</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pow2</span>.<span class="ident">checked_mul</span>(<span class="number">2</span>) {
+            <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">x</span>,
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+        }
     }
     <span class="ident">ceil_log2</span>
 }
 
+<span class="doccomment">/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).</span>
 <span class="kw">fn</span> <span class="ident">pows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">d</span>: <span class="ident">usize</span>, <span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">F::one</span>();
-    (<span class="number">0</span>..<span class="ident">d</span>)
-        .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">acc</span>;
-            <span class="ident">acc</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">x</span>;
-            <span class="ident">r</span>
-        })
-        .<span class="ident">collect</span>()
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">1</span>..<span class="op">=</span><span class="ident">d</span> {
+        <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">acc</span>);
+        <span class="ident">acc</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">x</span>;
+    }
+    <span class="ident">res</span>
 }
 
 <span class="kw">fn</span> <span class="ident">squeeze_prechallenge</span><span class="op">&lt;</span><span class="ident">Fq</span>: <span class="ident">Field</span>, <span class="ident">G</span>, <span class="ident">Fr</span>: <span class="ident">SquareRootField</span>, <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&gt;</span><span class="op">&gt;</span>(
@@ -1467,10 +1603,16 @@ The folowing functionality is implemented
     <span class="ident">G::of_coordinates</span>(<span class="ident">x</span>, <span class="ident">y</span>)
 }
 
+<span class="doccomment">/// Computes the linearization of the evaluations of a (potentially split) polynomial.</span>
+<span class="doccomment">/// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,</span>
+<span class="doccomment">/// and the columns represent potential segments (if a polynomial was split in several parts).</span>
+<span class="doccomment">/// Note that if one of the polynomial comes specified with a degree bound,</span>
+<span class="doccomment">/// the evaluation for the last segment is potentially shifted to meet the proof.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combined_inner_product</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>(
     <span class="ident">evaluation_points</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>],
     <span class="ident">xi</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
     <span class="ident">r</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+    <span class="comment">// TODO(mimoo): needs a type that can get you evaluations or segments</span>
     <span class="ident">polys</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="ident">srs_length</span>: <span class="ident">usize</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
@@ -1515,6 +1657,7 @@ The folowing functionality is implemented
 <span class="kw">where</span>
     <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
 {
+    <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple commitments.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1524,6 +1667,7 @@ The folowing functionality is implemented
         <span class="self">self</span>.<span class="ident">mask</span>(<span class="self">self</span>.<span class="ident">commit_non_hiding</span>(<span class="ident">plnm</span>, <span class="ident">max</span>), <span class="ident">rng</span>)
     }
 
+    <span class="doccomment">/// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `&lt;a, G&gt;` into `(&lt;a, G&gt; + wH, w)` with a random `w` per commitment.</span>
     <span class="kw">fn</span> <span class="ident">mask</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">c</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
@@ -1544,16 +1688,72 @@ The folowing functionality is implemented
         .<span class="ident">unzip</span>()
     }
 
-    <span class="comment">// This function commits a polynomial against URS instance</span>
-    <span class="comment">//     plnm: polynomial to commit to with max size of sections</span>
-    <span class="comment">//     max: maximal degree of the polynomial, if none, no degree bound</span>
-    <span class="comment">//     RETURN: tuple of: unbounded commitment vector, optional bounded commitment</span>
+    <span class="doccomment">/// This function commits a polynomial using the SRS&#39; basis of size `n`.</span>
+    <span class="doccomment">/// - `plnm`: polynomial to commit to with max size of sections</span>
+    <span class="doccomment">/// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound</span>
+    <span class="doccomment">/// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),</span>
+    <span class="doccomment">/// as well as an optional bounded commitment (if `max` is set).</span>
+    <span class="doccomment">/// Note that a maximum degree cannot (and doesn&#39;t need to) be enforced via a shift if `max` is a multiple of `n`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_non_hiding</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-        <span class="ident">commit_helper</span>(<span class="kw-2">&amp;</span><span class="ident">plnm</span>.<span class="ident">coeffs</span>[..], <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">g</span>[..], <span class="ident">plnm</span>.<span class="ident">is_zero</span>(), <span class="ident">max</span>)
+        <span class="ident"><span class="self">Self</span>::commit_helper</span>(<span class="kw-2">&amp;</span><span class="ident">plnm</span>.<span class="ident">coeffs</span>[..], <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">g</span>[..], <span class="ident">plnm</span>.<span class="ident">is_zero</span>(), <span class="ident">max</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">commit_helper</span>(
+        <span class="ident">scalars</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>],
+        <span class="ident">basis</span>: <span class="kw-2">&amp;</span>[<span class="ident">G</span>],
+        <span class="ident">is_zero</span>: <span class="ident">bool</span>,
+        <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">basis</span>.<span class="ident">len</span>();
+        <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">scalars</span>.<span class="ident">len</span>();
+
+        <span class="comment">// committing all the segments without shifting</span>
+        <span class="kw">let</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_zero</span> {
+            <span class="ident">Vec::new</span>()
+        } <span class="kw">else</span> {
+            (<span class="number">0</span>..<span class="ident">p</span> <span class="op">/</span> <span class="ident">n</span> <span class="op">+</span> <span class="kw">if</span> <span class="ident">p</span> <span class="op">%</span> <span class="ident">n</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> })
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                    <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(
+                        <span class="ident">basis</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">scalars</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">n</span>..<span class="ident">p</span>]
+                            .<span class="ident">iter</span>()
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">into_repr</span>())
+                            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                    )
+                    .<span class="ident">into_affine</span>()
+                })
+                .<span class="ident">collect</span>()
+        };
+
+        <span class="comment">// committing only last segment shifted to the right edge of SRS</span>
+        <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">max</span> {
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">max</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">max</span> <span class="op">-</span> (<span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span>);
+                <span class="kw">if</span> <span class="ident">is_zero</span> <span class="op">|</span><span class="op">|</span> <span class="ident">start</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">p</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">G::zero</span>())
+                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                    <span class="prelude-val">None</span>
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Some</span>(
+                        <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(
+                            <span class="kw-2">&amp;</span><span class="ident">basis</span>[<span class="ident">n</span> <span class="op">-</span> (<span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span>)..],
+                            <span class="kw-2">&amp;</span><span class="ident">scalars</span>[<span class="ident">start</span>..<span class="ident">p</span>]
+                                .<span class="ident">iter</span>()
+                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">into_repr</span>())
+                                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                        )
+                        .<span class="ident">into_affine</span>(),
+                    )
+                }
+            }
+        };
+
+        <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> { <span class="ident">unshifted</span>, <span class="ident">shifted</span> }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_evaluations_non_hiding</span>(
@@ -1567,7 +1767,7 @@ The folowing functionality is implemented
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;lagrange bases for size {} not found&quot;</span>, <span class="ident">domain</span>.<span class="ident">size</span>()),
             <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">v</span>[..],
         };
-        <span class="ident">commit_helper</span>(<span class="kw-2">&amp;</span><span class="ident">plnm</span>.<span class="ident">evals</span>[..], <span class="ident">basis</span>, <span class="ident">is_zero</span>, <span class="ident">max</span>)
+        <span class="ident"><span class="self">Self</span>::commit_helper</span>(<span class="kw-2">&amp;</span><span class="ident">plnm</span>.<span class="ident">evals</span>[..], <span class="ident">basis</span>, <span class="ident">is_zero</span>, <span class="ident">max</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_evaluations</span>(
@@ -1580,16 +1780,17 @@ The folowing functionality is implemented
         <span class="self">self</span>.<span class="ident">mask</span>(<span class="self">self</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">plnm</span>, <span class="ident">max</span>), <span class="ident">rng</span>)
     }
 
-    <span class="comment">// This function opens polynomial commitments in batch</span>
-    <span class="comment">//     plnms: batch of polynomials to open commitments for with, optionally, max degrees</span>
-    <span class="comment">//     elm: evaluation point vector to open the commitments at</span>
-    <span class="comment">//     polyscale: polynomial scaling factor for opening commitments in batch</span>
-    <span class="comment">//     evalscale: eval scaling factor for opening commitments in batch</span>
-    <span class="comment">//     oracle_params: parameters for the random oracle argument</span>
-    <span class="comment">//     RETURN: commitment opening proof</span>
+    <span class="doccomment">/// This function opens polynomial commitments in batch</span>
+    <span class="doccomment">///     plnms: batch of polynomials to open commitments for with, optionally, max degrees</span>
+    <span class="doccomment">///     elm: evaluation point vector to open the commitments at</span>
+    <span class="doccomment">///     polyscale: polynomial scaling factor for opening commitments in batch</span>
+    <span class="doccomment">///     evalscale: eval scaling factor for opening commitments in batch</span>
+    <span class="doccomment">///     oracle_params: parameters for the random oracle argument</span>
+    <span class="doccomment">///     RETURN: commitment opening proof</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">open</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">RNG</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
+        <span class="comment">// TODO(mimoo): create a type for that entry</span>
         <span class="ident">plnms</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>, <span class="comment">// vector of polynomial with optional degree bound and commitment randomness</span>
         <span class="ident">elm</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,      <span class="comment">// vector of evaluation points</span>
         <span class="ident">polyscale</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for polynoms</span>
@@ -1605,7 +1806,6 @@ The folowing functionality is implemented
         <span class="kw">let</span> <span class="ident">padded_length</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">rounds</span>;
 
         <span class="comment">// TODO: Trim this to the degree of the largest polynomial</span>
-
         <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">padded_length</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">clone</span>();
         <span class="ident">g</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="ident">G::zero</span>(); <span class="ident">padding</span>]);
@@ -1810,23 +2010,23 @@ The folowing functionality is implemented
         }
     }
 
-    <span class="comment">// This function verifies batch of batched polynomial commitment opening proofs</span>
-    <span class="comment">//     batch: batch of batched polynomial commitment opening proofs</span>
-    <span class="comment">//          vector of evaluation points</span>
-    <span class="comment">//          polynomial scaling factor for this batched openinig proof</span>
-    <span class="comment">//          eval scaling factor for this batched openinig proof</span>
-    <span class="comment">//          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees</span>
-    <span class="comment">//          opening proof for this batched opening</span>
-    <span class="comment">//     oracle_params: parameters for the random oracle argument</span>
-    <span class="comment">//     randomness source context</span>
-    <span class="comment">//     RETURN: verification status</span>
+    <span class="doccomment">/// This function verifies batch of batched polynomial commitment opening proofs</span>
+    <span class="doccomment">///     batch: batch of batched polynomial commitment opening proofs</span>
+    <span class="doccomment">///          vector of evaluation points</span>
+    <span class="doccomment">///          polynomial scaling factor for this batched openinig proof</span>
+    <span class="doccomment">///          eval scaling factor for this batched openinig proof</span>
+    <span class="doccomment">///          batch/vector of polycommitments (opened in this batch), evaluation vectors and, optionally, max degrees</span>
+    <span class="doccomment">///          opening proof for this batched opening</span>
+    <span class="doccomment">///     oracle_params: parameters for the random oracle argument</span>
+    <span class="doccomment">///     randomness source context</span>
+    <span class="doccomment">///     RETURN: verification status</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">RNG</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
         <span class="ident">batch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span>(
             <span class="ident">EFqSponge</span>,
             <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// vector of evaluation points</span>
-            <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for polynoms</span>
+            <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for polynomials</span>
             <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for evaluation point powers</span>
             <span class="ident">Vec</span><span class="op">&lt;</span>(
                 <span class="kw-2">&amp;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,     <span class="comment">// polycommitment</span>
@@ -2014,6 +2214,7 @@ The folowing functionality is implemented
             <span class="ident">rand_base_i</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">rand_base</span>;
             <span class="ident">sg_rand_base_i</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">sg_rand_base</span>;
         }
+
         <span class="comment">// verify the equation</span>
         <span class="kw">let</span> <span class="ident">scalars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">scalars</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_repr</span>()).<span class="ident">collect</span>();
         <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">scalars</span>) <span class="op">=</span><span class="op">=</span> <span class="ident">G::Projective::zero</span>()
@@ -2028,111 +2229,6 @@ The folowing functionality is implemented
     <span class="ident">res</span>
 }
 
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Utils</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">elm</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">shiftr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">eval_polynomial</span>(<span class="ident">coeffs</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span>;
-    <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">elm</span>: <span class="ident">F</span>, <span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Utils</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">eval_polynomial</span>(<span class="ident">coeffs</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">coeffs</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
-            <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">x</span>;
-            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="ident">c</span>;
-        }
-        <span class="ident">res</span>
-    }
-
-    <span class="comment">// This function &quot;scales&quot; (multiplies) polynomaial with a scalar</span>
-    <span class="comment">// It is implemented to have the desired functionality for DensePolynomial</span>
-    <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">elm</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">clone</span>();
-        <span class="kw">for</span> <span class="ident">coeff</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">result</span>.<span class="ident">coeffs</span> {
-            <span class="kw-2">*</span><span class="ident">coeff</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">elm</span>
-        }
-        <span class="ident">result</span>
-    }
-
-    <span class="kw">fn</span> <span class="ident">shiftr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">size</span>];
-        <span class="ident">result</span>.<span class="ident">extend</span>(<span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">clone</span>());
-        <span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::from_coefficients_vec</span>(<span class="ident">result</span>)
-    }
-
-    <span class="comment">// This function evaluates polynomial in chunks</span>
-    <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">elm</span>: <span class="ident">F</span>, <span class="ident">size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        (<span class="number">0</span>..<span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>())
-            .<span class="ident">step_by</span>(<span class="ident">size</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="ident"><span class="self">Self</span>::from_coefficients_slice</span>(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">i</span>..<span class="kw">if</span> <span class="ident">i</span> <span class="op">+</span> <span class="ident">size</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
-                        <span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>()
-                    } <span class="kw">else</span> {
-                        <span class="ident">i</span> <span class="op">+</span> <span class="ident">size</span>
-                    }],
-                )
-                .<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elm</span>)
-            })
-            .<span class="ident">collect</span>()
-    }
-}
-
-<span class="kw">fn</span> <span class="ident">commit_helper</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>(
-    <span class="ident">scalars</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>],
-    <span class="ident">basis</span>: <span class="kw-2">&amp;</span>[<span class="ident">G</span>],
-    <span class="ident">is_zero</span>: <span class="ident">bool</span>,
-    <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">basis</span>.<span class="ident">len</span>();
-    <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">scalars</span>.<span class="ident">len</span>();
-
-    <span class="comment">// committing all the segments without shifting</span>
-    <span class="kw">let</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_zero</span> {
-        <span class="ident">Vec::new</span>()
-    } <span class="kw">else</span> {
-        (<span class="number">0</span>..<span class="ident">p</span> <span class="op">/</span> <span class="ident">n</span> <span class="op">+</span> <span class="kw">if</span> <span class="ident">p</span> <span class="op">%</span> <span class="ident">n</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> })
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(
-                    <span class="ident">basis</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">scalars</span>[<span class="ident">i</span> <span class="op">*</span> <span class="ident">n</span>..<span class="ident">p</span>]
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">into_repr</span>())
-                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
-                )
-                .<span class="ident">into_affine</span>()
-            })
-            .<span class="ident">collect</span>()
-    };
-
-    <span class="comment">// committing only last segment shifted to the right edge of SRS</span>
-    <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">max</span> {
-        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-        <span class="prelude-val">Some</span>(<span class="ident">max</span>) <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">max</span> <span class="op">-</span> (<span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span>);
-            <span class="kw">if</span> <span class="ident">is_zero</span> <span class="op">|</span><span class="op">|</span> <span class="ident">start</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">p</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">G::zero</span>())
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-                <span class="prelude-val">None</span>
-            } <span class="kw">else</span> {
-                <span class="prelude-val">Some</span>(
-                    <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(
-                        <span class="kw-2">&amp;</span><span class="ident">basis</span>[<span class="ident">n</span> <span class="op">-</span> (<span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span>)..],
-                        <span class="kw-2">&amp;</span><span class="ident">scalars</span>[<span class="ident">start</span>..<span class="ident">p</span>]
-                            .<span class="ident">iter</span>()
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">into_repr</span>())
-                            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
-                    )
-                    .<span class="ident">into_affine</span>(),
-                )
-            }
-        }
-    };
-
-    <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> { <span class="ident">unshifted</span>, <span class="ident">shifted</span> }
-}
-
 <span class="comment">//</span>
 <span class="comment">// Tests</span>
 <span class="comment">//</span>
@@ -2140,12 +2236,31 @@ The folowing functionality is implemented
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::srs::SRS</span>;
+    <span class="kw">use</span> <span class="ident">ark_poly::Polynomial</span>;
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">VestaG</span>};
-    <span class="kw">use</span> <span class="ident">oracle::poseidon::PlonkSpongeConstants</span> <span class="kw">as</span> <span class="ident">SC</span>;
+    <span class="kw">use</span> <span class="ident">oracle::poseidon::PlonkSpongeConstantsBasic</span> <span class="kw">as</span> <span class="ident">SC</span>;
     <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">pasta::fq::params</span> <span class="kw">as</span> <span class="ident">spongeFqParams</span>, <span class="ident">sponge::DefaultFqSponge</span>};
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">test_log2</span>() {
+        <span class="kw">let</span> <span class="ident">tests</span> <span class="op">=</span> [
+            (<span class="number">1</span>, <span class="number">0</span>),
+            (<span class="number">2</span>, <span class="number">1</span>),
+            (<span class="number">3</span>, <span class="number">2</span>),
+            (<span class="number">9</span>, <span class="number">4</span>),
+            (<span class="number">15</span>, <span class="number">4</span>),
+            (<span class="number">15430</span>, <span class="number">14</span>),
+            (<span class="ident">usize::MAX</span>, <span class="number">64</span>),
+        ];
+        <span class="kw">for</span> (<span class="ident">d</span>, <span class="ident">expected_res</span>) <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
+            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="kw-2">*</span><span class="ident">d</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;ceil(log2({})) = {}, expected = {}&quot;</span>, <span class="ident">d</span>, <span class="ident">res</span>, <span class="ident">expected_res</span>);
+        }
+    }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_lagrange_commitments</span>() {
@@ -2254,10 +2369,11 @@ The folowing functionality is implemented
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
 
     <span class="comment">// polynomial commitment</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">unshifted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">shifted</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
@@ -2293,7 +2409,7 @@ The folowing functionality is implemented
 
     <span class="comment">// opening proof</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>, <span class="comment">// vector of rounds of L &amp; R commitments</span>
         <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">G</span>,

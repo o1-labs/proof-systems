@@ -188,6 +188,8 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk prover polynomial evaluations primitive.
@@ -196,7 +198,8 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>};
 <span class="kw">use</span> <span class="ident">ark_poly::univariate::DensePolynomial</span>;
-<span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">utils::PolyUtils</span>};
+<span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span> <span class="kw">as</span> <span class="kw">_</span>;
+<span class="kw">use</span> <span class="ident">oracle::sponge::ScalarChallenge</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Fs</span><span class="op">&gt;</span> {
@@ -264,13 +267,14 @@ This source file implements Plonk prover polynomial evaluations primitive.
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
     <span class="kw">use</span> <span class="ident">oracle::sponge::caml::CamlScalarChallenge</span>;
 
     <span class="comment">//</span>
     <span class="comment">// ProofEvaluations&lt;F&gt; &lt;-&gt; CamlProofEvaluations&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">l</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">r</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -322,7 +326,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
     <span class="comment">// RandomOracles&lt;F&gt; &lt;-&gt; CamlRandomOracles&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">beta</span>: <span class="ident">CamlF</span>,
         <span class="kw">pub</span> <span class="ident">gamma</span>: <span class="ident">CamlF</span>,

@@ -31,6 +31,9 @@
 <span id="31">31</span>
 <span id="32">32</span>
 <span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements the random oracle argument API.
@@ -40,9 +43,12 @@ This source file implements the random oracle argument API.
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>};
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 
+<span class="comment">// TODO(mimoo): move this out of oracle</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProofError</span> {
     <span class="ident">WitnessCsInconsistent</span>,
+    <span class="comment">// TODO(mimoo): once this is moved, error can be propagated here</span>
+    <span class="ident">WitnessGateError</span>,
     <span class="ident">DomainCreation</span>,
     <span class="ident">PolyDivision</span>,
     <span class="ident">PolyCommit</span>,
@@ -61,7 +67,7 @@ This source file implements the random oracle argument API.
 <span class="comment">// Implement `Display` for ProofError</span>
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ProofError</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
-        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({})&quot;</span>, <span class="self">self</span>)
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({:?})&quot;</span>, <span class="self">self</span>)
     }
 }
 </code></pre></div>

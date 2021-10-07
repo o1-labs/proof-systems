@@ -233,6 +233,15 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>, <span class="ident">SpongeConstants</span>};
 <span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">short_weierstrass_jacobian::GroupAffine</span>, <span class="ident">SWModelParameters</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">FpParameters</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
@@ -243,7 +252,8 @@
 
 <span class="kw">const</span> <span class="ident">HIGH_ENTROPY_LIMBS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
 
-<span class="comment">// A challenge which is used as a scalar on a group element in the verifier</span>
+<span class="comment">// TODO: move to a different file / module</span>
+<span class="doccomment">/// A challenge which is used as a scalar on a group element in the verifier</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw">pub</span> <span class="ident">F</span>);
 
@@ -264,8 +274,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">endo_coeff</span>: <span class="kw-2">&amp;</span><span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
         <span class="kw">let</span> <span class="ident">length_in_bits</span>: <span class="ident">u64</span> <span class="op">=</span> (<span class="number">64</span> <span class="op">*</span> <span class="ident">CHALLENGE_LENGTH_IN_LIMBS</span>) <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">let</span> <span class="ident">ScalarChallenge</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="self">self</span>;
-        <span class="kw">let</span> <span class="ident">rep</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">into_repr</span>();
+        <span class="kw">let</span> <span class="ident">rep</span> <span class="op">=</span> <span class="self">self</span>.<span class="number">0</span>.<span class="ident">into_repr</span>();
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">rep</span>.<span class="ident">as_ref</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">a</span>: <span class="ident">F</span> <span class="op">=</span> (<span class="number">2</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">into</span>();
@@ -376,7 +385,9 @@
         <span class="self">self</span>.<span class="ident">last_squeezed</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">g</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="ident">g</span>.<span class="ident">infinity</span> {
-                <span class="macro">panic!</span>(<span class="string">&quot;sponge got zero curve point&quot;</span>);
+                <span class="comment">// absorb a fake point (0, 0)</span>
+                <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">P::BaseField::zero</span>();
+                <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">zero</span>, <span class="ident">zero</span>]);
             } <span class="kw">else</span> {
                 <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">g</span>.<span class="ident">x</span>]);
                 <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">g</span>.<span class="ident">y</span>]);
@@ -423,7 +434,13 @@
 
     <span class="kw">fn</span> <span class="ident">digest</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">P::ScalarField</span> {
         <span class="kw">let</span> <span class="ident">x</span>: <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">squeeze_field</span>().<span class="ident">into_repr</span>();
-        <span class="ident">P::ScalarField::from_repr</span>(<span class="ident">x</span>.<span class="ident">into</span>()).<span class="ident">expect</span>(<span class="string">&quot;the sponge code has a bug&quot;</span>)
+        <span class="comment">// Returns zero for values that are too large.</span>
+        <span class="comment">// This means that there is a bias for the value zero (in one of the curve).</span>
+        <span class="comment">// An attacker could try to target that seed, in order to predict the challenges u and v produced by the Fr-Sponge.</span>
+        <span class="comment">// This would allow the attacker to mess with the result of the aggregated evaluation proof.</span>
+        <span class="comment">// Previously the attacker&#39;s odds were 1/q, now it&#39;s (q-p)/q.</span>
+        <span class="comment">// Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.</span>
+        <span class="ident">P::ScalarField::from_repr</span>(<span class="ident">x</span>.<span class="ident">into</span>()).<span class="ident">unwrap_or</span>(<span class="ident">P::ScalarField::zero</span>())
     }
 
     <span class="kw">fn</span> <span class="ident">challenge</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">P::ScalarField</span> {
@@ -442,12 +459,13 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
 
     <span class="comment">//</span>
     <span class="comment">// ScalarChallenge&lt;F&gt; &lt;-&gt; CamlScalarChallenge&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>(<span class="kw">pub</span> <span class="ident">CamlF</span>);
 
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>

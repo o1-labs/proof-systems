@@ -11,13 +11,23 @@
 <span id="11">11</span>
 <span id="12">12</span>
 <span id="13">13</span>
-</pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">combine</span>;
-<span class="kw">mod</span> <span class="ident">qnr_field</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">qnr_field</span>::<span class="kw-2">*</span>;
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">mina_curves::pasta</span>;
+
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">chunked</span>;
+<span class="kw">mod</span> <span class="ident">combine</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">commitment</span>;
+<span class="kw">mod</span> <span class="ident">qnr_field</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">srs</span>;
 
-<span class="kw">use</span> <span class="ident">mina_curves::pasta</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">commitment::PolyComm</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">qnr_field</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Fields that can be used for commitments</span>
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">CommitmentField</span>: <span class="ident">QnrField</span> {}
 

@@ -160,7 +160,7 @@ This source file implements Plonk Protocol Index primitive.
     <span class="ident">srs</span>::{<span class="ident">SRSSpec</span>, <span class="ident">SRSValue</span>},
     <span class="ident">CommitmentField</span>,
 };
-<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstants</span>, <span class="ident">SpongeConstants</span>};
+<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsBasic</span>, <span class="ident">SpongeConstants</span>};
 <span class="kw">use</span> <span class="ident">plonk_circuits::constraints</span>::{<span class="ident">zk_w</span>, <span class="ident">ConstraintSystem</span>};
 
 <span class="kw">type</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
@@ -284,7 +284,7 @@ This source file implements Plonk Protocol Index primitive.
         }
         <span class="ident">cs</span>.<span class="ident">endo</span> <span class="op">=</span> <span class="ident">endo_q</span>;
         <span class="ident">Index</span> {
-            <span class="ident">max_quot_size</span>: <span class="ident">PlonkSpongeConstants::SPONGE_BOX</span> <span class="op">*</span> (<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="number">1</span>),
+            <span class="ident">max_quot_size</span>: <span class="ident">PlonkSpongeConstantsBasic::SPONGE_BOX</span> <span class="op">*</span> (<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="number">1</span>),
             <span class="ident">fq_sponge_params</span>,
             <span class="ident">max_poly_size</span>,
             <span class="ident">srs</span>,

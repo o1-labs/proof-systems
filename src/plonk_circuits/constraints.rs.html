@@ -407,8 +407,8 @@ This source file implements Plonk circuit constraint primitive.
 };
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">blake2</span>::{<span class="ident">Blake2b</span>, <span class="ident">Digest</span>};
-<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstants</span>, <span class="ident">SpongeConstants</span>};
-<span class="kw">use</span> <span class="ident">oracle::utils::EvalUtils</span>;
+<span class="kw">use</span> <span class="ident">o1_utils::ExtendedEvaluations</span>;
+<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsBasic</span>, <span class="ident">SpongeConstants</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
@@ -428,7 +428,7 @@ This source file implements Plonk circuit constraint primitive.
     <span class="kw">pub</span> <span class="ident">qc</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,  <span class="comment">// constant wire polynomial</span>
 
     <span class="comment">// poseidon selector polynomials</span>
-    <span class="kw">pub</span> <span class="ident">rcm</span>: [<span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PlonkSpongeConstants::SPONGE_WIDTH</span>], <span class="comment">// round constant polynomials</span>
+    <span class="kw">pub</span> <span class="ident">rcm</span>: [<span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PlonkSpongeConstantsBasic::SPONGE_WIDTH</span>], <span class="comment">// round constant polynomials</span>
     <span class="kw">pub</span> <span class="ident">psm</span>: <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// poseidon constraint selector polynomial</span>
 
     <span class="comment">// EC point addition constraint polynomials</span>

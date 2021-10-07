@@ -91,7 +91,7 @@ This source file implements permutation constraint polynomial.
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::scalars</span>::{<span class="ident">ProofEvaluations</span>, <span class="ident">RandomOracles</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
-<span class="kw">use</span> <span class="ident">oracle::utils</span>::{<span class="ident">EvalUtils</span>, <span class="ident">PolyUtils</span>};
+<span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">ExtendedEvaluations</span>, <span class="ident">ExtendedDensePolynomial</span>};
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="comment">// permutation quotient poly contribution computation</span>

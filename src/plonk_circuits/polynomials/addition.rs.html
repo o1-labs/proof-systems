@@ -98,7 +98,7 @@ Constraint equations on wires l, r, o, l_next, r_next, o_next where
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::scalars::ProofEvaluations</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
-<span class="kw">use</span> <span class="ident">oracle::utils</span>::{<span class="ident">EvalUtils</span>, <span class="ident">PolyUtils</span>};
+<span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">ExtendedEvaluations</span>, <span class="ident">ExtendedDensePolynomial</span>};
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="comment">// EC Affine addition constraint quotient poly contribution computation</span>

@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["pasta",""],["poseidon",""],["rndoracle",""],["sponge",""],["utils",""]],"trait":[["FqSponge",""]]});
+initSidebarItems({"mod":[["pasta",""],["poseidon",""],["rndoracle",""],["sponge",""]],"trait":[["FqSponge",""]]});

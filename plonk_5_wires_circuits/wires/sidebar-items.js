@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["COLUMNS",""],["WIRES",""]],"struct":[["Wire",""]],"type":[["GateWires",""]]});
