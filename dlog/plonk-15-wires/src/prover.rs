@@ -18,8 +18,8 @@ use commitment_dlog::commitment::{
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    expr::{Environment, LookupEnvironment, Constants, l0_1},
-    polynomials::{chacha, lookup, poseidon},
+    expr::{E, Environment, LookupEnvironment, Constants, l0_1},
+    polynomials::{chacha, lookup, poseidon, varbasemul},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
     gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
@@ -394,13 +394,14 @@ where
         // EC doubling
         let (doub4, doub8) = index.cs.double_quot(&lagrange, &alphas[range::DBL]);
         // endoscaling
-        let mul8 = index.cs.endomul_quot(&lagrange, &alphas[range::ENDML]);
+        let emul8 = index.cs.endomul_quot(&lagrange, &alphas[range::ENDML]);
         // scalar multiplication
-        let (mul4, emul8) = index.cs.vbmul_quot(&lagrange, &alphas[range::MUL]);
-
+        let mul8 =
+            varbasemul::constraint(range::MUL.start)
+            .evaluations(&env);
 
         // collect contribution evaluations
-        let t4 = &(&add + &mul4) + &(&gen + &doub4);
+        let t4 = &add + &(&gen + &doub4);
         let t4 =
             match index.cs.chacha8.as_ref() {
                 None => t4,
@@ -529,11 +530,10 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
+            let f = &(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index.cs.ecad_lnrz(&evals, &alphas[range::ADD]))
                 + &index.cs.double_lnrz(&evals, &alphas[range::DBL]))
                 + &index.cs.endomul_lnrz(&evals, &alphas[range::ENDML]))
-                + &index.cs.vbmul_lnrz(&evals, &alphas[range::MUL]))
                 + &index
                     .cs
                     .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);
