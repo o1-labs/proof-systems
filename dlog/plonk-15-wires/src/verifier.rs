@@ -447,8 +447,6 @@ where
                 // EC variable base scalar multiplication
 
     /*
-                s.push(ConstraintSystem::vbmul_scalars(&evals, &alpha[range::MUL]));
-                p.push(&index.mul_comm);
 
                 let f_comm = PolyComm::multi_scalar_mul(&p, &s);
 
@@ -499,9 +497,6 @@ where
                 {
                     return Err(ProofError::ProofVerification);
                 } */
-
-                scalars_part.push(ConstraintSystem::vbmul_scalars(&evals, &alphas[range::MUL]));
-                commitments_part.push(&index.mul_comm);
 
                 {
                     let constants =
