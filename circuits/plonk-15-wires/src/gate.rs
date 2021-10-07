@@ -19,6 +19,15 @@ pub enum CurrOrNext {
     Next,
 }
 
+impl CurrOrNext {
+    pub fn shift(&self) -> usize {
+        match self {
+            CurrOrNext::Curr => 0,
+            CurrOrNext::Next => 1,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct LocalPosition {
     pub row: CurrOrNext,
