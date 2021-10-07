@@ -85,8 +85,6 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Poseidon selector polynomials
     // -----------------------------
-    /// poseidon selector over domain.d4
-    pub ps4: E<F, D<F>>,
     /// poseidon selector over domain.d8
     pub ps8: E<F, D<F>>,
 
@@ -98,8 +96,6 @@ pub struct ConstraintSystem<F: FftField> {
     pub doubl8: E<F, D<F>>,
     /// EC point doubling selector evaluations w over domain.d4
     pub doubl4: E<F, D<F>>,
-    /// scalar multiplication selector evaluations over domain.d4
-    pub mull4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
     pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
@@ -357,14 +353,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
-        let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         // ECC arithmetic constraint polynomials
         let addl = addm.evaluate_over_domain_by_ref(domain.d4);
         let doubl8 = doublem.evaluate_over_domain_by_ref(domain.d8);
         let doubl4 = doublem.evaluate_over_domain_by_ref(domain.d4);
-        let mull4 = mulm.evaluate_over_domain_by_ref(domain.d4);
         let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
         let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
 
@@ -431,7 +425,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             generic4,
             coefficientsm,
             coefficients8,
-            ps4,
             ps8,
             psm,
             addl,
@@ -439,7 +432,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             doubl8,
             doubl4,
             doublem,
-            mull4,
             mull8,
             mulm,
             emull,
