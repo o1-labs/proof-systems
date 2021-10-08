@@ -124,7 +124,7 @@ pub trait OCamlBinding {
     /// will generate the OCaml bindings for a type (called root type).
     /// It takes the current environment [Env],
     /// as well as an optional name (if you wish to rename the type in OCaml).
-    fn ocaml_binding(env: &mut Env, rename: Option<&'static str>) -> String;
+    fn ocaml_binding(env: &mut Env, rename: Option<&'static str>, new_type: bool) -> String;
 }
 
 /// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.
@@ -149,7 +149,7 @@ pub trait OCamlDesc {
 macro_rules! decl_module {
     ($w:expr, $env:expr, $name:expr, $b:block) => {{
         use std::io::Write;
-        write!($w, "{}{}\n", format_args!("{: >1$}", "", $env.nested() * 2), $env.new_module($name)).unwrap();
+        write!($w, "\n{}{}\n", format_args!("{: >1$}", "", $env.nested() * 2), $env.new_module($name)).unwrap();
         $b
         write!($w, "{}{}\n\n", format_args!("{: >1$}", "", $env.nested() * 2 - 2), $env.parent()).unwrap();
     }}
@@ -190,7 +190,7 @@ macro_rules! decl_func {
 macro_rules! decl_type {
     ($w:expr, $env:expr, $ty:ty) => {{
         use std::io::Write;
-        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None);
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None, true);
         write!(
             $w,
             "{}{}\n",
@@ -202,7 +202,7 @@ macro_rules! decl_type {
     // rename
     ($w:expr, $env:expr, $ty:ty => $new:expr) => {{
         use std::io::Write;
-        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new));
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new), true);
         write!(
             $w,
             "{}{}\n",
@@ -213,7 +213,23 @@ macro_rules! decl_type {
     }};
 }
 
-/// Creates a fake generic
+/// Declares a new OCaml type that is made of other types
+#[macro_export]
+macro_rules! decl_type_alias {
+    ($w:expr, $env:expr, $new:expr => $ty:ty) => {{
+        use std::io::Write;
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new), false);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            res,
+        )
+        .unwrap();
+    }};
+}
+
+/// Creates a fake generic. This is a necessary hack, at the moment, to declare types (with the [decl_type] macro) that have generic parameters.
 #[macro_export]
 macro_rules! decl_fake_generic {
     ($name:ident, $i:expr) => {
