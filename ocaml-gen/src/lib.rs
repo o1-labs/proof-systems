@@ -6,7 +6,6 @@ extern crate ocaml_derive;
 use std::collections::{hash_map::Entry, HashMap};
 
 pub use const_random::const_random;
-use convert_case::{Case, Casing};
 pub use ocaml_derive::*;
 
 pub mod conv;
@@ -75,10 +74,14 @@ impl Env {
 
     /// create a module and enters it
     pub fn new_module(&mut self, mod_name: &'static str) -> String {
-        let camelized = mod_name.to_case(Case::Pascal); // Pascal = CamelCase
-        if camelized != mod_name {
+        let first_letter = mod_name
+            .chars()
+            .next()
+            .expect("module name cannot be empty");
+        if first_letter.to_uppercase().to_string() != first_letter.to_string() {
             panic!(
-                "ocaml-gen: OCaml uses CamelCase for module names, you provided: {}, and we expected: {}", mod_name, camelized
+                "ocaml-gen: OCaml module names start with an uppercase, you provided: {}",
+                mod_name
             );
         }
 
