@@ -19,8 +19,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_quot(
         &self,
         witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
-        public: &DensePolynomial<F>,
-    ) -> (Evaluations<F, D<F>>, DensePolynomial<F>) {
+    ) -> Evaluations<F, D<F>> {
         // w[0](x) * w[1](x) * qml(x)
         let mut multiplication = &witness_d4[0] * &witness_d4[1];
         multiplication *= &self.coefficients4[MUL_COEFF];
@@ -34,9 +33,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         eval_part += &self.coefficients4[CONSTANT_COEFF];
         eval_part *= &self.generic4;
 
-        // return in lagrange and monomial form for optimization purpose
-        let poly_part = public.clone();
-        (eval_part, poly_part)
+        eval_part
     }
 
     /// produces
