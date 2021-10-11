@@ -116,7 +116,7 @@ This source file implements Plonk generic constraint gate primitive.
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="comment">// TODO(mimoo): why qw is length 15 if the polynomial side only uses 3?</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>], <span class="ident">qm</span>: <span class="ident">F</span>, <span class="ident">qc</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>], <span class="ident">qm</span>: <span class="ident">F</span>, <span class="ident">qc</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">qw</span>.<span class="ident">to_vec</span>();
         <span class="ident">c</span>.<span class="ident">push</span>(<span class="ident">qm</span>);
         <span class="ident">c</span>.<span class="ident">push</span>(<span class="ident">qc</span>);
@@ -130,13 +130,13 @@ This source file implements Plonk generic constraint gate primitive.
     }
 
     <span class="doccomment">/// creates an addition gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_add</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_add</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
         <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
             <span class="kw">if</span> <span class="ident">col</span> <span class="op">&lt;</span> <span class="number">2</span> {
                 <span class="ident">on</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">=</span><span class="op">=</span> <span class="number">2</span> {
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">2</span> {
                 <span class="op">-</span><span class="ident">on</span>
             } <span class="kw">else</span> {
                 <span class="ident">off</span>
@@ -146,32 +146,32 @@ This source file implements Plonk generic constraint gate primitive.
     }
 
     <span class="doccomment">/// creates a multiplication gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_mul</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_mul</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">=</span><span class="op">=</span> <span class="number">2</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">2</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
         <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">row</span>, <span class="ident">wires</span>, <span class="ident">qw</span>, <span class="op">-</span><span class="ident">on</span>, <span class="ident">off</span>)
     }
 
     <span class="doccomment">/// creates a constant gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_const</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">constant</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_const</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">constant</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
         <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">row</span>, <span class="ident">wires</span>, <span class="ident">qw</span>, <span class="ident">off</span>, <span class="op">-</span><span class="ident">constant</span>)
     }
 
     <span class="doccomment">/// creates a public input gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_public</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_public</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
         <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">row</span>, <span class="ident">wires</span>, <span class="ident">qw</span>, <span class="ident">off</span>, <span class="ident">off</span>)
     }
 
     <span class="doccomment">/// verifies that the generic gate constraints are solved by the witness</span>
     <span class="comment">// TODO(mimoo): this is not going to work for public inputs no?</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_generic</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_generic</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="comment">// assignments</span>
         <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="self">self</span>.<span class="ident">row</span>]);
         <span class="kw">let</span> <span class="ident">left</span> <span class="op">=</span> <span class="ident">this</span>[<span class="number">0</span>];

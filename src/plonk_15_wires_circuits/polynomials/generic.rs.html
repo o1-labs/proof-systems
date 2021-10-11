@@ -256,7 +256,7 @@ This source file implements generic constraint polynomials.
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">witness_d4</span>: <span class="kw-2">&amp;</span>[<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">public</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
+    ) -&gt; (<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
         <span class="comment">// w[0](x) * w[1](x) * qml(x)</span>
         <span class="kw">let</span> <span class="ident">multiplication</span> <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">witness_d4</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness_d4</span>[<span class="number">1</span>]) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qml</span>;
 
@@ -274,7 +274,7 @@ This source file implements generic constraint polynomials.
     }
 
     <span class="doccomment">/// produces w[0](zeta) * w[1](zeta), w[0](zeta), w[1](zeta), w[2](zeta), 1</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_scalars</span>(<span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_scalars</span>(<span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">w_zeta</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">w_zeta</span>[<span class="number">1</span>]];
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">GENERICS</span> {
             <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">w_zeta</span>[<span class="ident">i</span>]);
@@ -283,7 +283,7 @@ This source file implements generic constraint polynomials.
     }
 
     <span class="doccomment">/// generic constraint linearization poly contribution computation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">scalars</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::gnrc_scalars</span>(<span class="ident">w_zeta</span>);
 
         <span class="comment">// w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2]</span>
@@ -309,7 +309,7 @@ This source file implements generic constraint polynomials.
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">public</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    ) -&gt; <span class="ident">bool</span> {
         <span class="comment">// multiplication</span>
         <span class="kw">let</span> <span class="ident">multiplication</span> <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="number">1</span>]) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qmm</span>;
 
@@ -369,8 +369,8 @@ This source file implements generic constraint polynomials.
 
         <span class="comment">// verify that it is divisible by Z_H (remove when that passes)</span>
         <span class="kw">let</span> (<span class="ident">_t</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">f</span>.<span class="ident">divide_by_vanishing_poly</span>(<span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">x</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="bool-val">false</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="bool-val">false</span>,
         };
         <span class="ident">res</span>.<span class="ident">is_zero</span>()
     }
@@ -434,7 +434,7 @@ This source file implements generic constraint polynomials.
         <span class="ident">witness</span>[<span class="ident">left</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="number">19u32</span>.<span class="ident">into</span>();
 
         <span class="comment">// make sure we&#39;re done filling the witness correctly</span>
-        <span class="macro">assert!</span>(<span class="ident">gates_row</span>.<span class="ident">next</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">witness_row</span>.<span class="ident">next</span>());
+        <span class="macro">assert!</span>(<span class="ident">gates_row</span>.<span class="ident">next</span>() <span class="op">==</span> <span class="ident">witness_row</span>.<span class="ident">next</span>());
         <span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>).<span class="ident">unwrap</span>();
 
         <span class="comment">// generate witness polynomials</span>
@@ -469,7 +469,7 @@ This source file implements generic constraint polynomials.
 
         <span class="comment">// check that f(z) = t(z) * Z_H(z)</span>
         <span class="kw">let</span> <span class="ident">z_h_zeta</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">zeta</span>);
-        <span class="macro">assert!</span>(<span class="ident">f_zeta</span> <span class="op">=</span><span class="op">=</span> <span class="ident">t_zeta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">z_h_zeta</span>);
+        <span class="macro">assert!</span>(<span class="ident">f_zeta</span> <span class="op">==</span> <span class="ident">t_zeta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">z_h_zeta</span>);
     }
 }
 </code></pre></div>

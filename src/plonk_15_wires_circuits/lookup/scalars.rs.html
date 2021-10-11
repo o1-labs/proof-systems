@@ -79,7 +79,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combine</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pt</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combine</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pt</span>: <span class="ident">F</span>) -&gt; <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="ident">ProofEvaluations</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
             <span class="ident">pe</span>: <span class="ident">PE</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::combine</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pe</span>, <span class="ident">pt</span>),
             <span class="ident">l</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">l</span>, <span class="ident">pt</span>),
@@ -102,7 +102,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>() -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">po</span>: <span class="ident">RO</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::default</span>(),
             <span class="ident">beta</span>: <span class="ident">F::zero</span>(),

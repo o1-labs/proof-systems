@@ -500,7 +500,7 @@ This source file implements zk-proof batch verifier functionality.
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">evaluation_points</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>],
         <span class="ident">evlp</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">prev_challenges</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">chals</span>, <span class="ident">_poly</span>)<span class="op">|</span> {
@@ -512,20 +512,20 @@ This source file implements zk-proof batch verifier functionality.
                 (<span class="number">0</span>..<span class="number">2</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
                         <span class="kw">let</span> <span class="ident">full</span> <span class="op">=</span> <span class="ident">b_poly</span>(<span class="kw-2">&amp;</span><span class="ident">chals</span>, <span class="ident">evaluation_points</span>[<span class="ident">i</span>]);
-                        <span class="kw">if</span> <span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="op">=</span><span class="op">=</span> <span class="ident">b_len</span> {
+                        <span class="kw">if</span> <span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="op">==</span> <span class="ident">b_len</span> {
                             <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">full</span>];
                         }
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">betaacc</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
                         <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> (<span class="ident">index</span>.<span class="ident">max_poly_size</span>..<span class="ident">b_len</span>)
                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">b_j</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">b</span> {
-                                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="prelude-val">None</span> =&gt; {
                                         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">b_poly_coefficients</span>(<span class="kw-2">&amp;</span><span class="ident">chals</span>);
                                         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">t</span>[<span class="ident">j</span>];
                                         <span class="ident">b</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>);
                                         <span class="ident">res</span>
                                     }
-                                    <span class="prelude-val">Some</span>(<span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">b</span>[<span class="ident">j</span>],
+                                    <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>[<span class="ident">j</span>],
                                 };
 
                                 <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">betaacc</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">b_j</span>;
@@ -545,7 +545,7 @@ This source file implements zk-proof batch verifier functionality.
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">p_comm</span>: <span class="kw-2">&amp;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (
+    ) -&gt; (
         <span class="ident">EFqSponge</span>,
         <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -729,8 +729,8 @@ This source file implements zk-proof batch verifier functionality.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">EFrSponge</span>: <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
         <span class="ident">proofs</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">proofs</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">proofs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
         }
 
@@ -921,8 +921,8 @@ This source file implements zk-proof batch verifier functionality.
         }
 
         <span class="kw">match</span> <span class="ident">srs</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="kw">_</span><span class="op">&gt;</span>(<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">batch</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">thread_rng</span>()) {
-            <span class="bool-val">false</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::OpenProof</span>),
-            <span class="bool-val">true</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+            <span class="bool-val">false</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ProofError::OpenProof</span>),
+            <span class="bool-val">true</span> =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
         }
     }
 }

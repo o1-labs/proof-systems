@@ -156,7 +156,7 @@
 <span class="comment">//</span>
 
 <span class="comment">// calls the poseidon hash function with the `input` and returns a digest</span>
-<span class="kw">fn</span> <span class="ident">poseidon</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Fp</span> {
+<span class="kw">fn</span> <span class="ident">poseidon</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>]) -&gt; <span class="ident">Fp</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">PlonkSpongeConstantsBasic</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">Parameters::params</span>());
     <span class="ident">s</span>.<span class="ident">absorb</span>(<span class="ident">input</span>);
     <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">squeeze</span>();
@@ -164,7 +164,7 @@
 }
 
 <span class="comment">// generates a vector of `length` field elements</span>
-<span class="kw">fn</span> <span class="ident">rand_fields</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">impl</span> <span class="ident">Rng</span>, <span class="ident">length</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">rand_fields</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">impl</span> <span class="ident">Rng</span>, <span class="ident">length</span>: <span class="ident">u8</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fields</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
         <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">Fp::rand</span>(<span class="ident">rng</span>);
@@ -174,7 +174,7 @@
 }
 
 <span class="comment">// creates a set of test vectors</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">mode</span>: <span class="ident">Mode</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TestVectors</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">mode</span>: <span class="ident">Mode</span>) -&gt; <span class="ident">TestVectors</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rand::rngs::StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_vectors</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
@@ -193,8 +193,8 @@
                     .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">input_bytes</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;canonical serialiation should work&quot;</span>);
                 <span class="kw">match</span> <span class="ident">mode</span> {
-                    <span class="ident">Mode::Hex</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>),
-                    <span class="ident">Mode::B10</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">BigUint::from_bytes_le</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>).<span class="ident">to_string</span>(),
+                    <span class="ident">Mode::Hex</span> =&gt; <span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>),
+                    <span class="ident">Mode::B10</span> =&gt; <span class="ident">BigUint::from_bytes_le</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>).<span class="ident">to_string</span>(),
                 }
             })
             .<span class="ident">collect</span>();

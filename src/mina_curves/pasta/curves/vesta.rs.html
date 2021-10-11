@@ -85,7 +85,7 @@
         (<span class="ident">G_GENERATOR_X</span>, <span class="ident">G_GENERATOR_Y</span>);
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">mul_by_a</span>(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::BaseField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::BaseField</span> {
+    <span class="kw">fn</span> <span class="ident">mul_by_a</span>(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::BaseField</span>) -&gt; <span class="ident"><span class="self">Self</span>::BaseField</span> {
         <span class="ident"><span class="self">Self</span>::BaseField::zero</span>()
     }
 }

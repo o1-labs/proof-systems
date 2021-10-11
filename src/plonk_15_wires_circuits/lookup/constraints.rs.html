@@ -178,7 +178,7 @@ This source file implements Plonk circuit constraint primitive.
     <span class="kw">pub</span> <span class="ident">l18</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// 1-st Lagrange evaluated over domain.d8</span>
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_w1</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_w1</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">F</span> {
     <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> <span class="number">1</span>])
 }
 
@@ -188,7 +188,7 @@ This source file implements Plonk circuit constraint primitive.
         <span class="kw-2">mut</span> <span class="ident">tbl</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">fr_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
         <span class="ident">public</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="kw">if</span> <span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">tbl</span>.<span class="ident">len</span>() {
             <span class="ident">gates</span>.<span class="ident">len</span>()
         } <span class="kw">else</span> {
@@ -259,7 +259,7 @@ This source file implements Plonk circuit constraint primitive.
         })
     }
     <span class="comment">// evaluate lookup polynomials over domains</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">polys</span>: <span class="kw-2">&amp;</span><span class="ident">LookupPolys</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LookupShifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">polys</span>: <span class="kw-2">&amp;</span><span class="ident">LookupPolys</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">LookupShifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="ident">polys</span>.<span class="ident">l</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d8</span>);
         <span class="kw">let</span> <span class="ident">lw</span> <span class="op">=</span> <span class="ident">polys</span>.<span class="ident">lw</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d8</span>);
         <span class="kw">let</span> <span class="ident">h1</span> <span class="op">=</span> <span class="ident">polys</span>.<span class="ident">h1</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d8</span>);

@@ -1229,6 +1229,47 @@
 <span id="1229">1229</span>
 <span id="1230">1230</span>
 <span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
+<span id="1234">1234</span>
+<span id="1235">1235</span>
+<span id="1236">1236</span>
+<span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Dlog-based polynomial commitment schema.
@@ -1252,28 +1293,41 @@ The folowing functionality is implemented
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>,
     <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">UVPolynomial</span>,
 };
+<span class="kw">use</span> <span class="ident">ark_serialize</span>::{<span class="ident">CanonicalDeserialize</span>, <span class="ident">CanonicalSerialize</span>};
 <span class="kw">use</span> <span class="ident">core::ops</span>::{<span class="ident">Add</span>, <span class="ident">Sub</span>};
 <span class="kw">use</span> <span class="ident">groupmap</span>::{<span class="ident">BWParameters</span>, <span class="ident">GroupMap</span>};
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span> <span class="kw">as</span> <span class="kw">_</span>;
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
 <span class="kw">use</span> <span class="ident">rand_core</span>::{<span class="ident">CryptoRng</span>, <span class="ident">RngCore</span>};
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">std::iter::Iterator</span>;
 
 <span class="kw">type</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
 <span class="kw">type</span> <span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
 
 <span class="doccomment">/// A polynomial commitment.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">C</span>: <span class="ident">CanonicalDeserialize</span> <span class="op">+</span> <span class="ident">CanonicalSerialize</span>,
+{
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">unshifted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">shifted</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">A</span>: <span class="ident">CanonicalDeserialize</span> <span class="op">+</span> <span class="ident">CanonicalSerialize</span>,
+{
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map</span><span class="op">&lt;</span><span class="ident">B</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">A</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">B</span>,
+        <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="ident">A</span>) -&gt; <span class="ident">B</span>,
+        <span class="ident">B</span>: <span class="ident">CanonicalDeserialize</span> <span class="op">+</span> <span class="ident">CanonicalSerialize</span>,
     {
         <span class="kw">let</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">f</span>(<span class="kw-2">*</span><span class="ident">x</span>)).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">shifted</span>.<span class="ident">map</span>(<span class="ident">f</span>);
@@ -1281,15 +1335,19 @@ The folowing functionality is implemented
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span>, <span class="ident">B</span>: <span class="ident">Copy</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span>(<span class="ident">A</span>, <span class="ident">B</span>)<span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">unzip</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">Copy</span>, <span class="ident">B</span>: <span class="ident">Copy</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span>(<span class="ident">A</span>, <span class="ident">B</span>)<span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">A</span>: <span class="ident">CanonicalDeserialize</span> <span class="op">+</span> <span class="ident">CanonicalSerialize</span>,
+    <span class="ident">B</span>: <span class="ident">CanonicalDeserialize</span> <span class="op">+</span> <span class="ident">CanonicalSerialize</span>,
+{
+    <span class="kw">fn</span> <span class="ident">unzip</span>(<span class="self">self</span>) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">x</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">x</span>);
         <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">y</span>)<span class="op">|</span> <span class="ident">y</span>);
         (<span class="ident">a</span>, <span class="ident">b</span>)
     }
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shift_scalar</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shift_scalar</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
     <span class="kw">let</span> <span class="ident">two</span>: <span class="ident">F</span> <span class="op">=</span> (<span class="number">2</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">into</span>();
     <span class="ident">x</span> <span class="op">-</span> <span class="ident">two</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::Params::MODULUS_BITS</span> <span class="kw">as</span> <span class="ident">u64</span>])
 }
@@ -1297,7 +1355,7 @@ The folowing functionality is implemented
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">Add</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">add</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">n1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="ident">n2</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
@@ -1312,9 +1370,9 @@ The folowing functionality is implemented
             <span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">pt</span>);
         }
         <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> (<span class="self">self</span>.<span class="ident">shifted</span>, <span class="ident">other</span>.<span class="ident">shifted</span>) {
-            (<span class="prelude-val">None</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">other</span>.<span class="ident">shifted</span>,
-            (<span class="kw">_</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">shifted</span>,
-            (<span class="prelude-val">Some</span>(<span class="ident">p1</span>), <span class="prelude-val">Some</span>(<span class="ident">p2</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">p1</span> <span class="op">+</span> <span class="ident">p2</span>),
+            (<span class="prelude-val">None</span>, <span class="kw">_</span>) =&gt; <span class="ident">other</span>.<span class="ident">shifted</span>,
+            (<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; <span class="self">self</span>.<span class="ident">shifted</span>,
+            (<span class="prelude-val">Some</span>(<span class="ident">p1</span>), <span class="prelude-val">Some</span>(<span class="ident">p2</span>)) =&gt; <span class="prelude-val">Some</span>(<span class="ident">p1</span> <span class="op">+</span> <span class="ident">p2</span>),
         };
         <span class="ident">PolyComm</span> { <span class="ident">unshifted</span>, <span class="ident">shifted</span> }
     }
@@ -1323,7 +1381,7 @@ The folowing functionality is implemented
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">Sub</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">sub</span>(<span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unshifted</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">n1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="ident">n2</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>();
@@ -1338,16 +1396,16 @@ The folowing functionality is implemented
             <span class="ident">unshifted</span>.<span class="ident">push</span>(<span class="ident">pt</span>);
         }
         <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> (<span class="self">self</span>.<span class="ident">shifted</span>, <span class="ident">other</span>.<span class="ident">shifted</span>) {
-            (<span class="prelude-val">None</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">other</span>.<span class="ident">shifted</span>,
-            (<span class="kw">_</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">shifted</span>,
-            (<span class="prelude-val">Some</span>(<span class="ident">p1</span>), <span class="prelude-val">Some</span>(<span class="ident">p2</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">p1</span> <span class="op">+</span> (<span class="op">-</span><span class="ident">p2</span>)),
+            (<span class="prelude-val">None</span>, <span class="kw">_</span>) =&gt; <span class="ident">other</span>.<span class="ident">shifted</span>,
+            (<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; <span class="self">self</span>.<span class="ident">shifted</span>,
+            (<span class="prelude-val">Some</span>(<span class="ident">p1</span>), <span class="prelude-val">Some</span>(<span class="ident">p2</span>)) =&gt; <span class="prelude-val">Some</span>(<span class="ident">p1</span> <span class="op">+</span> (<span class="op">-</span><span class="ident">p2</span>)),
         };
         <span class="ident">PolyComm</span> { <span class="ident">unshifted</span>, <span class="ident">shifted</span> }
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">c</span>: <span class="ident">C::ScalarField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">c</span>: <span class="ident">C::ScalarField</span>) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
         <span class="ident">PolyComm</span> {
             <span class="ident">unshifted</span>: <span class="self">self</span>
                 .<span class="ident">unshifted</span>
@@ -1358,7 +1416,7 @@ The folowing functionality is implemented
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">multi_scalar_mul</span>(<span class="ident">com</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">elm</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">C::ScalarField</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">multi_scalar_mul</span>(<span class="ident">com</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">elm</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">C::ScalarField</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="macro">assert_eq!</span>(<span class="ident">com</span>.<span class="ident">len</span>(), <span class="ident">elm</span>.<span class="ident">len</span>());
         <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
             <span class="ident">shifted</span>: {
@@ -1366,11 +1424,11 @@ The folowing functionality is implemented
                     .<span class="ident">iter</span>()
                     .<span class="ident">zip</span>(<span class="ident">elm</span>.<span class="ident">iter</span>())
                     .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">c</span>.<span class="ident">shifted</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>((<span class="ident">c</span>, <span class="ident">s</span>)),
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                        <span class="prelude-val">Some</span>(<span class="ident">c</span>) =&gt; <span class="prelude-val">Some</span>((<span class="ident">c</span>, <span class="ident">s</span>)),
+                        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
                     })
                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-                <span class="kw">if</span> <span class="ident">pairs</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="ident">pairs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
                     <span class="prelude-val">None</span>
                 } <span class="kw">else</span> {
                     <span class="kw">let</span> <span class="ident">points</span> <span class="op">=</span> <span class="ident">pairs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">c</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
@@ -1379,7 +1437,7 @@ The folowing functionality is implemented
                 }
             },
             <span class="ident">unshifted</span>: {
-                <span class="kw">if</span> <span class="ident">com</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">elm</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="ident">com</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">elm</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
                     <span class="ident">Vec::new</span>()
                 } <span class="kw">else</span> {
                     <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Iterator::max</span>(<span class="ident">com</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>())).<span class="ident">unwrap</span>();
@@ -1423,7 +1481,7 @@ The folowing functionality is implemented
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prechallenges</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">_t</span> <span class="op">=</span> <span class="ident">sponge</span>.<span class="ident">challenge_fq</span>();
         <span class="self">self</span>.<span class="ident">lr</span>
             .<span class="ident">iter</span>()
@@ -1439,7 +1497,7 @@ The folowing functionality is implemented
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endo_r</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Challenges</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Challenges</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">chal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">lr</span>
             .<span class="ident">iter</span>()
@@ -1461,7 +1519,7 @@ The folowing functionality is implemented
 }
 
 <span class="doccomment">/// Returns the product of all the field elements belonging to an iterator.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">product</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">xs</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">product</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">xs</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">F</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">F::one</span>();
     <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="ident">xs</span> {
         <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">x</span>;
@@ -1472,7 +1530,7 @@ The folowing functionality is implemented
 <span class="doccomment">/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...</span>
 <span class="doccomment">/// It&#39;s &quot;step 8: Define the univariate polynomial&quot; of</span>
 <span class="doccomment">/// appendix A.2 of https://eprint.iacr.org/2020/499</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">b_poly</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">chals</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">b_poly</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">chals</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
     <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">chals</span>.<span class="ident">len</span>();
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pow_twos</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">x</span>];
@@ -1484,15 +1542,15 @@ The folowing functionality is implemented
     <span class="ident">product</span>((<span class="number">0</span>..<span class="ident">k</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> (<span class="ident">F::one</span>() <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="ident">chals</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">pow_twos</span>[<span class="ident">k</span> <span class="op">-</span> <span class="number">1</span> <span class="op">-</span> <span class="ident">i</span>]))))
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">b_poly_coefficients</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">chals</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">b_poly_coefficients</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">chals</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">rounds</span> <span class="op">=</span> <span class="ident">chals</span>.<span class="ident">len</span>();
     <span class="kw">let</span> <span class="ident">s_length</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">rounds</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::one</span>(); <span class="ident">s_length</span>];
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">k</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pow</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="ident">s_length</span> {
-        <span class="ident">k</span> <span class="op">+</span><span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="ident">pow</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
-        <span class="ident">pow</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="ident">pow</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
+        <span class="ident">k</span> <span class="op">+</span><span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="ident">pow</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
+        <span class="ident">pow</span> <span class="op">&lt;</span><span class="op">&lt;</span><span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">==</span> <span class="ident">pow</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="number">0</span> };
         <span class="ident">s</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">s</span>[<span class="ident">i</span> <span class="op">-</span> (<span class="ident">pow</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">1</span>)] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">chals</span>[<span class="ident">rounds</span> <span class="op">-</span> <span class="number">1</span> <span class="op">-</span> (<span class="ident">k</span> <span class="op">-</span> <span class="number">1</span>)];
     }
     <span class="ident">s</span>
@@ -1500,22 +1558,22 @@ The folowing functionality is implemented
 
 <span class="comment">// TODO: move to utils</span>
 <span class="doccomment">/// Returns ceil(log2(d)) but panics if d = 0.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ceil_log2</span>(<span class="ident">d</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ceil_log2</span>(<span class="ident">d</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
     <span class="macro">assert!</span>(<span class="ident">d</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pow2</span> <span class="op">=</span> <span class="number">1</span>;
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ceil_log2</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">while</span> <span class="ident">d</span> <span class="op">&gt;</span> <span class="ident">pow2</span> {
         <span class="ident">ceil_log2</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
         <span class="ident">pow2</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pow2</span>.<span class="ident">checked_mul</span>(<span class="number">2</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">x</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">break</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="kw">break</span>,
         }
     }
     <span class="ident">ceil_log2</span>
 }
 
 <span class="doccomment">/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).</span>
-<span class="kw">fn</span> <span class="ident">pows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">d</span>: <span class="ident">usize</span>, <span class="ident">x</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">pows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">d</span>: <span class="ident">usize</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">F::one</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">1</span>..<span class="op">=</span><span class="ident">d</span> {
@@ -1527,7 +1585,7 @@ The folowing functionality is implemented
 
 <span class="kw">fn</span> <span class="ident">squeeze_prechallenge</span><span class="op">&lt;</span><span class="ident">Fq</span>: <span class="ident">Field</span>, <span class="ident">G</span>, <span class="ident">Fr</span>: <span class="ident">SquareRootField</span>, <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&gt;</span><span class="op">&gt;</span>(
     <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&gt;</span> {
+) -&gt; <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&gt;</span> {
     <span class="ident">ScalarChallenge</span>(<span class="ident">sponge</span>.<span class="ident">challenge</span>())
 }
 
@@ -1539,7 +1597,7 @@ The folowing functionality is implemented
 <span class="op">&gt;</span>(
     <span class="ident">endo_r</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span>,
     <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Fr</span> {
+) -&gt; <span class="ident">Fr</span> {
     <span class="ident">squeeze_prechallenge</span>(<span class="ident">sponge</span>).<span class="ident">to_field</span>(<span class="ident">endo_r</span>)
 }
 
@@ -1547,11 +1605,11 @@ The folowing functionality is implemented
     <span class="kw">type</span> <span class="ident">Params</span>: <span class="ident">SWModelParameters</span>;
     <span class="kw">type</span> <span class="ident">Map</span>: <span class="ident">GroupMap</span><span class="op">&lt;</span><span class="ident"><span class="self">Self</span>::BaseField</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">to_coordinates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">of_coordinates</span>(<span class="ident">x</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident">y</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span>;
+    <span class="kw">fn</span> <span class="ident">to_coordinates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">of_coordinates</span>(<span class="ident">x</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident">y</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>) -&gt; <span class="self">Self</span>;
 
     <span class="comment">// Combine where x1 = one</span>
-    <span class="kw">fn</span> <span class="ident">combine_one</span>(<span class="ident">g1</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">g2</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">combine_one</span>(<span class="ident">g1</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">g2</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::combine::window_combine</span>(<span class="ident">g1</span>, <span class="ident">g2</span>, <span class="ident"><span class="self">Self</span>::ScalarField::one</span>(), <span class="ident">x2</span>)
     }
 
@@ -1560,7 +1618,7 @@ The folowing functionality is implemented
         <span class="ident">g2</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
         <span class="ident">x1</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>,
         <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::combine::window_combine</span>(<span class="ident">g1</span>, <span class="ident">g2</span>, <span class="ident">x1</span>, <span class="ident">x2</span>)
     }
 }
@@ -1572,7 +1630,7 @@ The folowing functionality is implemented
     <span class="kw">type</span> <span class="ident">Params</span> <span class="op">=</span> <span class="ident">P</span>;
     <span class="kw">type</span> <span class="ident">Map</span> <span class="op">=</span> <span class="ident">BWParameters</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">to_coordinates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">to_coordinates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">infinity</span> {
             <span class="prelude-val">None</span>
         } <span class="kw">else</span> {
@@ -1580,11 +1638,11 @@ The folowing functionality is implemented
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">of_coordinates</span>(<span class="ident">x</span>: <span class="ident">P::BaseField</span>, <span class="ident">y</span>: <span class="ident">P::BaseField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">of_coordinates</span>(<span class="ident">x</span>: <span class="ident">P::BaseField</span>, <span class="ident">y</span>: <span class="ident">P::BaseField</span>) -&gt; <span class="ident">SWJAffine</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span> {
         <span class="ident">SWJAffine</span>::<span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">x</span>, <span class="ident">y</span>, <span class="bool-val">false</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">combine_one</span>(<span class="ident">g1</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">g2</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">combine_one</span>(<span class="ident">g1</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">g2</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::combine::affine_window_combine_one</span>(<span class="ident">g1</span>, <span class="ident">g2</span>, <span class="ident">x2</span>)
     }
 
@@ -1593,12 +1651,12 @@ The folowing functionality is implemented
         <span class="ident">g2</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
         <span class="ident">x1</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>,
         <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::combine::affine_window_combine</span>(<span class="ident">g1</span>, <span class="ident">g2</span>, <span class="ident">x1</span>, <span class="ident">x2</span>)
     }
 }
 
-<span class="kw">fn</span> <span class="ident">to_group</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>(<span class="ident">m</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>, <span class="ident">t</span>: <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">G</span> {
+<span class="kw">fn</span> <span class="ident">to_group</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>(<span class="ident">m</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>, <span class="ident">t</span>: <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>) -&gt; <span class="ident">G</span> {
     <span class="kw">let</span> (<span class="ident">x</span>, <span class="ident">y</span>) <span class="op">=</span> <span class="ident">m</span>.<span class="ident">to_group</span>(<span class="ident">t</span>);
     <span class="ident">G::of_coordinates</span>(<span class="ident">x</span>, <span class="ident">y</span>)
 }
@@ -1615,7 +1673,7 @@ The folowing functionality is implemented
     <span class="comment">// TODO(mimoo): needs a type that can get you evaluations or segments</span>
     <span class="ident">polys</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="ident">srs_length</span>: <span class="ident">usize</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+) -&gt; <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">xi_i</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
 
@@ -1663,7 +1721,7 @@ The folowing functionality is implemented
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+    ) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">mask</span>(<span class="self">self</span>.<span class="ident">commit_non_hiding</span>(<span class="ident">plnm</span>, <span class="ident">max</span>), <span class="ident">rng</span>)
     }
 
@@ -1672,7 +1730,7 @@ The folowing functionality is implemented
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">c</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+    ) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="ident">c</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span>: <span class="ident">G</span><span class="op">|</span> {
             <span class="kw">if</span> <span class="ident">g</span>.<span class="ident">is_zero</span>() {
                 <span class="comment">// TODO: This leaks information when g is the identity!</span>
@@ -1698,7 +1756,7 @@ The folowing functionality is implemented
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::commit_helper</span>(<span class="kw-2">&amp;</span><span class="ident">plnm</span>.<span class="ident">coeffs</span>[..], <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">g</span>[..], <span class="ident">plnm</span>.<span class="ident">is_zero</span>(), <span class="ident">max</span>)
     }
 
@@ -1707,7 +1765,7 @@ The folowing functionality is implemented
         <span class="ident">basis</span>: <span class="kw-2">&amp;</span>[<span class="ident">G</span>],
         <span class="ident">is_zero</span>: <span class="ident">bool</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">basis</span>.<span class="ident">len</span>();
         <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">scalars</span>.<span class="ident">len</span>();
 
@@ -1731,12 +1789,12 @@ The folowing functionality is implemented
 
         <span class="comment">// committing only last segment shifted to the right edge of SRS</span>
         <span class="kw">let</span> <span class="ident">shifted</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">max</span> {
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">max</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">max</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">max</span> <span class="op">-</span> (<span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span>);
                 <span class="kw">if</span> <span class="ident">is_zero</span> <span class="op">|</span><span class="op">|</span> <span class="ident">start</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">p</span> {
                     <span class="prelude-val">Some</span>(<span class="ident">G::zero</span>())
-                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">max</span> <span class="op">%</span> <span class="ident">n</span> <span class="op">==</span> <span class="number">0</span> {
                     <span class="prelude-val">None</span>
                 } <span class="kw">else</span> {
                     <span class="prelude-val">Some</span>(
@@ -1761,11 +1819,11 @@ The folowing functionality is implemented
         <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">is_zero</span> <span class="op">=</span> <span class="ident">plnm</span>.<span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">is_zero</span>());
         <span class="kw">let</span> <span class="ident">basis</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">lagrange_bases</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>.<span class="ident">size</span>()) {
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;lagrange bases for size {} not found&quot;</span>, <span class="ident">domain</span>.<span class="ident">size</span>()),
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">v</span>[..],
+            <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;lagrange bases for size {} not found&quot;</span>, <span class="ident">domain</span>.<span class="ident">size</span>()),
+            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="kw-2">&amp;</span><span class="ident">v</span>[..],
         };
         <span class="ident"><span class="self">Self</span>::commit_helper</span>(<span class="kw-2">&amp;</span><span class="ident">plnm</span>.<span class="ident">evals</span>[..], <span class="ident">basis</span>, <span class="ident">is_zero</span>, <span class="ident">max</span>)
     }
@@ -1776,7 +1834,7 @@ The folowing functionality is implemented
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
+    ) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">mask</span>(<span class="self">self</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">plnm</span>, <span class="ident">max</span>), <span class="ident">rng</span>)
     }
 
@@ -1797,7 +1855,7 @@ The folowing functionality is implemented
         <span class="ident">evalscale</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for evaluation point powers</span>
         <span class="kw-2">mut</span> <span class="ident">sponge</span>: <span class="ident">EFqSponge</span>, <span class="comment">// sponge</span>
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RNG</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+    ) -&gt; <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">RNG</span>: <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>,
@@ -1818,7 +1876,7 @@ The folowing functionality is implemented
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scale</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
 
             <span class="comment">// iterating over polynomials in the batch</span>
-            <span class="kw">for</span> (<span class="ident">p_i</span>, <span class="ident">degree_bound</span>, <span class="ident">omegas</span>) <span class="kw">in</span> <span class="ident">plnms</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="number">0</span>.<span class="ident">is_zero</span>() <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span>) {
+            <span class="kw">for</span> (<span class="ident">p_i</span>, <span class="ident">degree_bound</span>, <span class="ident">omegas</span>) <span class="kw">in</span> <span class="ident">plnms</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="number">0</span>.<span class="ident">is_zero</span>() <span class="op">==</span> <span class="bool-val">false</span>) {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">j</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial</span>
@@ -1977,7 +2035,7 @@ The folowing functionality is implemented
             <span class="ident">g</span> <span class="op">=</span> <span class="ident">G::combine_one</span>(<span class="kw-2">&amp;</span><span class="ident">g_lo</span>, <span class="kw-2">&amp;</span><span class="ident">g_hi</span>, <span class="ident">u</span>);
         }
 
-        <span class="macro">assert!</span>(<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+        <span class="macro">assert!</span>(<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
         <span class="kw">let</span> <span class="ident">a0</span> <span class="op">=</span> <span class="ident">a</span>[<span class="number">0</span>];
         <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">b</span>[<span class="number">0</span>];
         <span class="kw">let</span> <span class="ident">g0</span> <span class="op">=</span> <span class="ident">g</span>[<span class="number">0</span>];
@@ -2036,7 +2094,7 @@ The folowing functionality is implemented
             <span class="kw-2">&amp;</span><span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="comment">// batched opening proof</span>
         )<span class="op">&gt;</span>,
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RNG</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>
+    ) -&gt; <span class="ident">bool</span>
     <span class="kw">where</span>
         <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">RNG</span>: <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>,
@@ -2194,7 +2252,7 @@ The folowing functionality is implemented
 
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">_m</span>) <span class="op">=</span> <span class="ident">shifted</span> {
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">comm_ch</span>) <span class="op">=</span> <span class="ident">comm</span>.<span class="ident">shifted</span> {
-                            <span class="kw">if</span> <span class="ident">comm_ch</span>.<span class="ident">is_zero</span>() <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span> {
+                            <span class="kw">if</span> <span class="ident">comm_ch</span>.<span class="ident">is_zero</span>() <span class="op">==</span> <span class="bool-val">false</span> {
                                 <span class="comment">// xi^i sum_j r^j elm_j^{N - m} f(elm_j)</span>
                                 <span class="ident">scalars</span>.<span class="ident">push</span>(<span class="ident">rand_base_i_c_i</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">xi_i</span>);
                                 <span class="ident">points</span>.<span class="ident">push</span>(<span class="ident">comm_ch</span>);
@@ -2217,11 +2275,11 @@ The folowing functionality is implemented
 
         <span class="comment">// verify the equation</span>
         <span class="kw">let</span> <span class="ident">scalars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">scalars</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">into_repr</span>()).<span class="ident">collect</span>();
-        <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">scalars</span>) <span class="op">=</span><span class="op">=</span> <span class="ident">G::Projective::zero</span>()
+        <span class="ident">VariableBaseMSM::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">points</span>, <span class="kw-2">&amp;</span><span class="ident">scalars</span>) <span class="op">==</span> <span class="ident">G::Projective::zero</span>()
     }
 }
 
-<span class="kw">fn</span> <span class="ident">inner_prod</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">xs</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">ys</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
+<span class="kw">fn</span> <span class="ident">inner_prod</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">xs</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">ys</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) -&gt; <span class="ident">F</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">F::zero</span>();
     <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">x</span>, <span class="ident">y</span>) <span class="kw">in</span> <span class="ident">xs</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">ys</span>) {
         <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>);
@@ -2326,7 +2384,7 @@ The folowing functionality is implemented
             <span class="ident">poly1</span>.<span class="ident">eval</span>(<span class="ident">elm</span>[<span class="number">1</span>], <span class="ident">srs</span>.<span class="ident">g</span>.<span class="ident">len</span>()),
         ];
 
-        <span class="kw">fn</span> <span class="ident">sum</span>(<span class="ident">c</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Fp</span> {
+        <span class="kw">fn</span> <span class="ident">sum</span>(<span class="ident">c</span>: <span class="kw-2">&amp;</span>[<span class="ident">Fp</span>]) -&gt; <span class="ident">Fp</span> {
             <span class="ident">c</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">Fp::zero</span>(), <span class="op">|</span><span class="ident">a</span>, <span class="kw-2">&amp;</span><span class="ident">b</span><span class="op">|</span> <span class="ident">a</span> <span class="op">+</span> <span class="ident">b</span>)
         }
 
@@ -2373,20 +2431,20 @@ The folowing functionality is implemented
 
     <span class="comment">// polynomial commitment</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">unshifted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">shifted</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
     }
 
-    <span class="comment">//</span>
+    <span class="comment">// handy conversions</span>
 
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
         <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">polycomm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">polycomm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
                 <span class="ident">unshifted</span>: <span class="ident">polycomm</span>.<span class="ident">unshifted</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">shifted</span>: <span class="ident">polycomm</span>.<span class="ident">shifted</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
@@ -2394,15 +2452,39 @@ The folowing functionality is implemented
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
-        <span class="ident">CamlG</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+        <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">G</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">polycomm</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+            <span class="self">Self</span> {
+                <span class="ident">unshifted</span>: <span class="ident">polycomm</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">shifted</span>: <span class="ident">polycomm</span>.<span class="ident">shifted</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>),
+            }
+        }
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">camlpolycomm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
             <span class="ident">PolyComm</span> {
-                <span class="ident">unshifted</span>: <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">shifted</span>: <span class="self">self</span>.<span class="ident">shifted</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
+                <span class="ident">unshifted</span>: <span class="ident">camlpolycomm</span>.<span class="ident">unshifted</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">shifted</span>: <span class="ident">camlpolycomm</span>.<span class="ident">shifted</span>.<span class="ident">map</span>(<span class="ident">Into::into</span>),
+            }
+        }
+    }
+
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+    {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">camlpolycomm</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>) -&gt; <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+            <span class="ident">PolyComm</span> {
+                <span class="ident">unshifted</span>: <span class="ident">camlpolycomm</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">shifted</span>: <span class="ident">camlpolycomm</span>.<span class="ident">shifted</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>),
             }
         }
     }
@@ -2424,7 +2506,7 @@ The folowing functionality is implemented
         <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">opening_proof</span>: <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">opening_proof</span>: <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
                 <span class="ident">lr</span>: <span class="ident">opening_proof</span>
                     .<span class="ident">lr</span>
@@ -2445,7 +2527,7 @@ The folowing functionality is implemented
         <span class="ident">CamlG</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
             <span class="ident">OpeningProof</span> {
                 <span class="ident">lr</span>: <span class="self">self</span>
                     .<span class="ident">lr</span>

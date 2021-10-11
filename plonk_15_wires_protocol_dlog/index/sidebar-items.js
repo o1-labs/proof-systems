@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["SRSSpec",""],["SRSValue",""]],"struct":[["Index",""],["VerifierIndex",""]]});
+initSidebarItems({"struct":[["Index","The index common to both the prover and verifier"],["VerifierIndex","The verifier index"]]});

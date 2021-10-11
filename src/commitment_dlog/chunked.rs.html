@@ -58,7 +58,7 @@
     <span class="doccomment">/// Multiplies each commitment chunk of f with powers of zeta^n</span>
     <span class="doccomment">/// Note that it ignores the shifted part.</span>
     <span class="comment">// TODO(mimoo): better name for this function</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunk_commitment</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">C::ScalarField</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunk_commitment</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">C::ScalarField</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">C::Projective::zero</span>();
         <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...</span>
         <span class="comment">// as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]</span>
@@ -82,7 +82,7 @@
     <span class="doccomment">/// Multiplies each blinding chunk of f with powers of zeta^n</span>
     <span class="doccomment">/// Note that it ignores the shifted part.</span>
     <span class="comment">// TODO(mimoo): better name for this function</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunk_blinding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chunk_blinding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">F::zero</span>();
         <span class="comment">// use Horner&#39;s to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...</span>
         <span class="comment">// as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]</span>

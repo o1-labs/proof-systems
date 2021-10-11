@@ -52,6 +52,39 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit gate wires primitive.
@@ -60,6 +93,7 @@ This source file implements Plonk circuit gate wires primitive.
 
 <span class="kw">use</span> <span class="ident">ark_ff::bytes</span>::{<span class="ident">FromBytes</span>, <span class="ident">ToBytes</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">IoResult</span>, <span class="ident">Write</span>};
 
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENERICS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
@@ -70,7 +104,8 @@ This source file implements Plonk circuit gate wires primitive.
 <span class="doccomment">/// Wire documents the other cell that is wired to this one.</span>
 <span class="doccomment">/// If the cell represents an internal wire, an input to the circuit,</span>
 <span class="doccomment">/// or a final output of the circuit, the cell references itself.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">proptest_derive::Arbitrary</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Wire</span> {
     <span class="comment">// TODO(mimoo): shouldn&#39;t we use u32 since we serialize them as u32?</span>
     <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">usize</span>,
@@ -79,7 +114,7 @@ This source file implements Plonk circuit gate wires primitive.
 
 <span class="kw">impl</span> <span class="ident">Wire</span> {
     <span class="doccomment">/// Creates a new set of wires for a given row.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">row</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> [<span class="self">Self</span>; <span class="ident">COLUMNS</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">row</span>: <span class="ident">usize</span>) -&gt; [<span class="self">Self</span>; <span class="ident">COLUMNS</span>] {
         <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="self">Self</span> { <span class="ident">row</span>, <span class="ident">col</span> })
     }
 }
@@ -91,7 +126,7 @@ This source file implements Plonk circuit gate wires primitive.
 
 <span class="kw">impl</span> <span class="ident">ToBytes</span> <span class="kw">for</span> <span class="ident">Wire</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IoResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">W</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         (<span class="self">self</span>.<span class="ident">row</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
         (<span class="self">self</span>.<span class="ident">col</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
@@ -100,10 +135,41 @@ This source file implements Plonk circuit gate wires primitive.
 
 <span class="kw">impl</span> <span class="ident">FromBytes</span> <span class="kw">for</span> <span class="ident">Wire</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">read</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IoResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">read</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">R</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">u32::read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">r</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">let</span> <span class="ident">col</span> <span class="op">=</span> <span class="ident">u32::read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">r</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">Wire</span> { <span class="ident">row</span>, <span class="ident">col</span> })
+    }
+}
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
+    <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlWire</span> {
+        <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">ocaml::Int</span>,
+        <span class="kw">pub</span> <span class="ident">col</span>: <span class="ident">ocaml::Int</span>,
+    }
+
+    <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Wire</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlWire</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">w</span>: <span class="ident">Wire</span>) -&gt; <span class="self">Self</span> {
+            <span class="self">Self</span> {
+                <span class="ident">row</span>: <span class="ident">w</span>.<span class="ident">row</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;usize -&gt; isize&quot;</span>),
+                <span class="ident">col</span>: <span class="ident">w</span>.<span class="ident">col</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;usize -&gt; isize&quot;</span>),
+            }
+        }
+    }
+
+    <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlWire</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Wire</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">w</span>: <span class="ident">CamlWire</span>) -&gt; <span class="self">Self</span> {
+            <span class="self">Self</span> {
+                <span class="ident">row</span>: <span class="ident">w</span>.<span class="ident">row</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;isize -&gt; usize&quot;</span>),
+                <span class="ident">col</span>: <span class="ident">w</span>.<span class="ident">col</span>.<span class="ident">try_into</span>().<span class="ident">expect</span>(<span class="string">&quot;isize -&gt; usize&quot;</span>),
+            }
+        }
     }
 }
 </code></pre></div>

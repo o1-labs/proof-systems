@@ -152,7 +152,7 @@ This source file implements Plonk constraint gate primitive.
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ToBytes</span> <span class="kw">for</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IoResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">w</span>: <span class="ident">W</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">typ</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="ident">ToPrimitive::to_u8</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">typ</span>).<span class="ident">unwrap</span>();
         <span class="ident">typ</span>.<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">wires</span>.<span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
@@ -167,11 +167,11 @@ This source file implements Plonk constraint gate primitive.
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">FromBytes</span> <span class="kw">for</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">read</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IoResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">read</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">R</span>) -&gt; <span class="ident">IoResult</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">u8::read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">r</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">FromPrimitive::from_u8</span>(<span class="ident">code</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">x</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Error::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;Invalid gate type&quot;</span>)),
+            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">x</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">Error::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;Invalid gate type&quot;</span>)),
         }<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="ident">GateWires::read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">r</span>)<span class="question-mark">?</span>;
@@ -188,7 +188,7 @@ This source file implements Plonk constraint gate primitive.
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="comment">// this function creates &quot;empty&quot; circuit gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Zero</span>,
             <span class="ident">c</span>: <span class="ident">Vec::new</span>(),
@@ -198,20 +198,20 @@ This source file implements Plonk constraint gate primitive.
 
     <span class="comment">// This function verifies the consistency of the wire</span>
     <span class="comment">// assignements (witness) against the constraints</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">next</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">next</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">typ</span> {
-            <span class="ident">GateType::Zero</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            <span class="ident">GateType::Generic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">witness</span>),
-            <span class="ident">GateType::Poseidon</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_poseidon</span>(<span class="ident">next</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
-            <span class="ident">GateType::Add1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_add1</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
-            <span class="ident">GateType::Add2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_add2</span>(<span class="ident">witness</span>),
-            <span class="ident">GateType::Vbmul1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_vbmul1</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
-            <span class="ident">GateType::Vbmul2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_vbmul2</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
-            <span class="ident">GateType::Vbmul3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_vbmul3</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
-            <span class="ident">GateType::Endomul1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_endomul1</span>(<span class="ident">next</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
-            <span class="ident">GateType::Endomul2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_endomul2</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
-            <span class="ident">GateType::Endomul3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_endomul3</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
-            <span class="ident">GateType::Endomul4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">verify_endomul4</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Zero</span> =&gt; <span class="bool-val">true</span>,
+            <span class="ident">GateType::Generic</span> =&gt; <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">witness</span>),
+            <span class="ident">GateType::Poseidon</span> =&gt; <span class="self">self</span>.<span class="ident">verify_poseidon</span>(<span class="ident">next</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">GateType::Add1</span> =&gt; <span class="self">self</span>.<span class="ident">verify_add1</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Add2</span> =&gt; <span class="self">self</span>.<span class="ident">verify_add2</span>(<span class="ident">witness</span>),
+            <span class="ident">GateType::Vbmul1</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul1</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Vbmul2</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul2</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Vbmul3</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul3</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Endomul1</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul1</span>(<span class="ident">next</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">GateType::Endomul2</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul2</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Endomul3</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul3</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
+            <span class="ident">GateType::Endomul4</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul4</span>(<span class="ident">next</span>, <span class="ident">witness</span>),
         }
     }
 }

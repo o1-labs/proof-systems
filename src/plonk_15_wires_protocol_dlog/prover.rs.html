@@ -519,7 +519,6 @@
 <span id="519">519</span>
 <span id="520">520</span>
 <span id="521">521</span>
-<span id="522">522</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -590,7 +589,7 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">for</span> <span class="ident">w</span> <span class="kw">in</span> <span class="ident">witness</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">n</span> {
@@ -623,10 +622,10 @@ This source file implements prover&#39;s zk-proof primitive.
 
         <span class="comment">// commit to the wire values</span>
         <span class="kw">let</span> <span class="ident">w_comm</span>: [(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>); <span class="ident">COLUMNS</span>] <span class="op">=</span>
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">w</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>, <span class="ident">rng</span>));
+            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">w</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>, <span class="ident">rng</span>));
 
         <span class="comment">// absorb the wire polycommitments into the argument</span>
-        <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="prelude-val">None</span>).<span class="ident">unshifted</span>);
+        <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="prelude-val">None</span>).<span class="ident">unshifted</span>);
         <span class="ident">w_comm</span>
             .<span class="ident">iter</span>()
             .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="number">0</span>.<span class="ident">unshifted</span>));
@@ -638,12 +637,12 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="comment">// compute permutation aggregation polynomial</span>
         <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">perm_aggreg</span>(<span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">beta</span>, <span class="kw-2">&amp;</span><span class="ident">gamma</span>, <span class="ident">rng</span>)<span class="question-mark">?</span>;
         <span class="comment">// commit to z</span>
-        <span class="kw">let</span> <span class="ident">z_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+        <span class="kw">let</span> <span class="ident">z_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
         <span class="comment">// absorb the z commitment into the argument and query alpha</span>
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">z_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
         <span class="kw">let</span> <span class="ident">alpha_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
-        <span class="kw">let</span> <span class="ident">alpha</span> <span class="op">=</span> <span class="ident">alpha_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">endo_r</span>);
+        <span class="kw">let</span> <span class="ident">alpha</span> <span class="op">=</span> <span class="ident">alpha_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
         <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">range::alpha_powers</span>(<span class="ident">alpha</span>);
 
         <span class="comment">// evaluate polynomials over domains</span>
@@ -679,14 +678,14 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">t</span>, <span class="ident">res</span>) <span class="op">=</span> (<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">t4</span>.<span class="ident">interpolate</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">t8</span>.<span class="ident">interpolate</span>()) <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">genp</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">posp</span>))
             .<span class="ident">divide_by_vanishing_poly</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>)
             .<span class="ident">map_or</span>(<span class="prelude-val">Err</span>(<span class="ident">ProofError::PolyDivision</span>), <span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="ident">s</span>))<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_zero</span>() <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span> {
+        <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_zero</span>() <span class="op">==</span> <span class="bool-val">false</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::PolyDivision</span>);
         }
 
         <span class="ident">t</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">bnd</span>;
 
         <span class="comment">// commit to t</span>
-        <span class="kw">let</span> <span class="ident">t_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+        <span class="kw">let</span> <span class="ident">t_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
         <span class="comment">// absorb the polycommitments into the argument and sample zeta</span>
         <span class="kw">let</span> <span class="ident">max_t_size</span> <span class="op">=</span> (<span class="ident">index</span>.<span class="ident">max_quot_size</span> <span class="op">+</span> <span class="ident">index</span>.<span class="ident">max_poly_size</span> <span class="op">-</span> <span class="number">1</span>) <span class="op">/</span> <span class="ident">index</span>.<span class="ident">max_poly_size</span>;
@@ -695,7 +694,7 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">dummy</span>; <span class="ident">max_t_size</span> <span class="op">-</span> <span class="ident">t_comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>()]);
 
         <span class="kw">let</span> <span class="ident">zeta_chal</span> <span class="op">=</span> <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>());
-        <span class="kw">let</span> <span class="ident">zeta</span> <span class="op">=</span> <span class="ident">zeta_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">endo_r</span>);
+        <span class="kw">let</span> <span class="ident">zeta</span> <span class="op">=</span> <span class="ident">zeta_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
         <span class="kw">let</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">group_gen</span>;
         <span class="kw">let</span> <span class="ident">zeta_omega</span> <span class="op">=</span> <span class="ident">zeta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">omega</span>;
 
@@ -771,9 +770,9 @@ This source file implements prover&#39;s zk-proof primitive.
 
         <span class="comment">// query opening scaler challenges</span>
         <span class="kw">let</span> <span class="ident">v_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">endo_r</span>);
+        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">v_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
         <span class="kw">let</span> <span class="ident">u_chal</span> <span class="op">=</span> <span class="ident">fr_sponge</span>.<span class="ident">challenge</span>();
-        <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">u_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">endo_r</span>);
+        <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">u_chal</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>);
 
         <span class="comment">// construct the proof</span>
         <span class="comment">// --------------------------------------------------------------------</span>
@@ -831,7 +830,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 <span class="ident">z_comm</span>: <span class="ident">z_comm</span>.<span class="number">0</span>,
                 <span class="ident">t_comm</span>: <span class="ident">t_comm</span>.<span class="number">0</span>,
             },
-            <span class="ident">proof</span>: <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">open</span>(
+            <span class="ident">proof</span>: <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">open</span>(
                 <span class="ident">group_map</span>,
                 <span class="ident">polynomials</span>,
                 <span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="ident">zeta</span>, <span class="ident">zeta_omega</span>],
@@ -914,7 +913,7 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
         <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">prover_comm</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">prover_comm</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="kw">let</span> [<span class="ident">w_comm0</span>, <span class="ident">w_comm1</span>, <span class="ident">w_comm2</span>, <span class="ident">w_comm3</span>, <span class="ident">w_comm4</span>, <span class="ident">w_comm5</span>, <span class="ident">w_comm6</span>, <span class="ident">w_comm7</span>, <span class="ident">w_comm8</span>, <span class="ident">w_comm9</span>, <span class="ident">w_comm10</span>, <span class="ident">w_comm11</span>, <span class="ident">w_comm12</span>, <span class="ident">w_comm13</span>, <span class="ident">w_comm14</span>] <span class="op">=</span>
                 <span class="ident">prover_comm</span>.<span class="ident">w_comm</span>;
             <span class="self">Self</span> {
@@ -941,12 +940,12 @@ This source file implements prover&#39;s zk-proof primitive.
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
-        <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_prover_comm</span>: <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>) -&gt; <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
             <span class="kw">let</span> (
                 <span class="ident">w_comm0</span>,
                 <span class="ident">w_comm1</span>,
@@ -963,7 +962,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 <span class="ident">w_comm12</span>,
                 <span class="ident">w_comm13</span>,
                 <span class="ident">w_comm14</span>,
-            ) <span class="op">=</span> <span class="self">self</span>.<span class="ident">w_comm</span>;
+            ) <span class="op">=</span> <span class="ident">caml_prover_comm</span>.<span class="ident">w_comm</span>;
             <span class="ident">ProverCommitments</span> {
                 <span class="ident">w_comm</span>: [
                     <span class="ident">w_comm0</span>.<span class="ident">into</span>(),
@@ -982,8 +981,8 @@ This source file implements prover&#39;s zk-proof primitive.
                     <span class="ident">w_comm13</span>.<span class="ident">into</span>(),
                     <span class="ident">w_comm14</span>.<span class="ident">into</span>(),
                 ],
-                <span class="ident">z_comm</span>: <span class="self">self</span>.<span class="ident">z_comm</span>.<span class="ident">into</span>(),
-                <span class="ident">t_comm</span>: <span class="self">self</span>.<span class="ident">t_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">z_comm</span>: <span class="ident">caml_prover_comm</span>.<span class="ident">z_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">t_comm</span>: <span class="ident">caml_prover_comm</span>.<span class="ident">t_comm</span>.<span class="ident">into</span>(),
             }
         }
     }
@@ -998,7 +997,7 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="ident">CamlG</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">CamlF</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pp</span>: <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pp</span>: <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
                 <span class="ident">commitments</span>: <span class="ident">pp</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
                 <span class="ident">proof</span>: <span class="ident">pp</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
@@ -1017,20 +1016,19 @@ This source file implements prover&#39;s zk-proof primitive.
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
-        <span class="ident">CamlG</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+        <span class="ident">G</span>: <span class="ident">AffineCurve</span> <span class="op">+</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+        <span class="ident">G::ScalarField</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">caml_pp</span>: <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
             <span class="ident">ProverProof</span> {
-                <span class="ident">commitments</span>: <span class="self">self</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
-                <span class="ident">proof</span>: <span class="self">self</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
-                <span class="ident">evals</span>: [<span class="self">self</span>.<span class="ident">evals</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="self">self</span>.<span class="ident">evals</span>.<span class="number">1</span>.<span class="ident">into</span>()],
-                <span class="ident">ft_eval1</span>: <span class="self">self</span>.<span class="ident">ft_eval1</span>.<span class="ident">into</span>(),
-                <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">prev_challenges</span>: <span class="self">self</span>
+                <span class="ident">commitments</span>: <span class="ident">caml_pp</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
+                <span class="ident">proof</span>: <span class="ident">caml_pp</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
+                <span class="ident">evals</span>: [<span class="ident">caml_pp</span>.<span class="ident">evals</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">caml_pp</span>.<span class="ident">evals</span>.<span class="number">1</span>.<span class="ident">into</span>()],
+                <span class="ident">ft_eval1</span>: <span class="ident">caml_pp</span>.<span class="ident">ft_eval1</span>.<span class="ident">into</span>(),
+                <span class="ident">public</span>: <span class="ident">caml_pp</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">prev_challenges</span>: <span class="ident">caml_pp</span>
                     .<span class="ident">prev_challenges</span>
                     .<span class="ident">into_iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">c</span>)<span class="op">|</span> {

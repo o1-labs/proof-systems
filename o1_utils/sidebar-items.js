@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["densepolynomial",""],["evaluations",""]]});
+initSidebarItems({"mod":[["dense_polynomial","This adds a few utility functions for the [DensePolynomial] arkworks type."],["evaluations","This adds a few utility functions for the [Evaluations] arkworks type."],["serialization","This adds a few utility functions for serializing and deserializing arkworks types that implement [CanonicalSerialize] and [CanonicalDeserialize]."]]});

@@ -233,7 +233,7 @@ Constraint vector format:
 
 <span class="doccomment">/// Given a Poseidon round from 0 to 4 (inclusive),</span>
 <span class="doccomment">/// returns the columns (as a range) that are used in this round.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">round_to_cols</span>(<span class="ident">i</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">round_to_cols</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">slot</span> <span class="op">=</span> <span class="ident">STATE_ORDER</span>[<span class="ident">i</span>];
     <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">slot</span> <span class="op">*</span> <span class="ident">SPONGE_WIDTH</span>;
     <span class="ident">start</span>..(<span class="ident">start</span> <span class="op">+</span> <span class="ident">SPONGE_WIDTH</span>)
@@ -245,7 +245,7 @@ Constraint vector format:
         <span class="ident">wires</span>: <span class="ident">GateWires</span>,
         <span class="comment">// Coefficients are passed in in the logical order</span>
         <span class="ident">c</span>: [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
             <span class="ident">row</span>,
             <span class="ident">typ</span>: <span class="ident">GateType::Poseidon</span>,
@@ -266,7 +266,7 @@ Constraint vector format:
         <span class="comment">// first and last row of the poseidon circuit (because they are used in the permutation)</span>
         <span class="ident">first_and_last_row</span>: [<span class="ident">GateWires</span>; <span class="number">2</span>],
         <span class="ident">round_constants</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">usize</span>) {
+    ) -&gt; (<span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">usize</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
         <span class="comment">// create the gates</span>
@@ -276,7 +276,7 @@ Constraint vector format:
 
         <span class="kw">for</span> (<span class="ident">abs_row</span>, <span class="ident">rel_row</span>) <span class="kw">in</span> <span class="ident">absolute_rows</span>.<span class="ident">zip</span>(<span class="ident">relative_rows</span>) {
             <span class="comment">// the 15 wires for this row</span>
-            <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">rel_row</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">let</span> <span class="ident">wires</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">rel_row</span> <span class="op">==</span> <span class="number">0</span> {
                 <span class="ident">first_and_last_row</span>[<span class="number">0</span>]
             } <span class="kw">else</span> {
                 <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">Wire</span> { <span class="ident">col</span>, <span class="ident">row</span>: <span class="ident">abs_row</span> })
@@ -305,7 +305,7 @@ Constraint vector format:
         <span class="comment">// TODO(mimoo): we should just pass two rows instead of the whole witness</span>
         <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="macro">ensure_eq!</span>(
             <span class="self">self</span>.<span class="ident">typ</span>,
             <span class="ident">GateType::Poseidon</span>,
@@ -355,8 +355,8 @@ Constraint vector format:
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ps</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">F</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">=</span><span class="op">=</span> <span class="ident">GateType::Poseidon</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ps</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Poseidon</span> {
             <span class="ident">F::one</span>()
         } <span class="kw">else</span> {
             <span class="ident">F::zero</span>()
@@ -364,10 +364,10 @@ Constraint vector format:
     }
 
     <span class="doccomment">/// round constant that are relevant for this specific gate</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">rc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>] {
         <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">round</span><span class="op">|</span> {
             <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">=</span><span class="op">=</span> <span class="ident">GateType::Poseidon</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Poseidon</span> {
                     <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">SPONGE_WIDTH</span> <span class="op">*</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">col</span>]
                 } <span class="kw">else</span> {
                     <span class="ident">F::zero</span>()
