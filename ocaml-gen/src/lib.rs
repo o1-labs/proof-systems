@@ -1,39 +1,11 @@
 // TODO: get rid of nightly with https://github.com/dtolnay/paste ?
-
-//! Some doc is needed here.
-//!
-//! ```
-//! // the bindings are printed out for now
-//! println!("(* this file is generated automatically *)\n");
-//!
-//! // initialize your environment
-//! let env = &mut Env::default();
-//!
-//! // we need to create fake generic placeholders for generic structs
-//! decl_fake_generic!(T1, 0);
-//! decl_fake_generic!(T2, 1);
-//!
-//! // declare a module Types containing a bunch of types
-//! decl_module!(env, "Types", {
-//!     decl_type!(env, CamlScalarChallenge::<T1>);
-//!     // you can also rename a type
-//!     decl_type!(env, CamlRandomOracles::<T1> => "random_oracles");
-//! });
-//!
-//! decl_module!(env, "BigInt256", {
-//!     decl_type!(env, CamlBigInteger256 => "t");
-//!     // you will have to import all (*) so that this can find
-//!     // the underlying function called `caml_of_numeral_to_ocaml`
-//!     decl_func!(env, caml_of_numeral => "of_numeral");
-//! });
-//! ```
-//!
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
 
 extern crate ocaml_derive;
 use std::collections::{hash_map::Entry, HashMap};
 
 pub use const_random::const_random;
-use convert_case::{Case, Casing};
 pub use ocaml_derive::*;
 
 pub mod conv;
@@ -63,7 +35,7 @@ impl Drop for Env {
 }
 
 impl Env {
-    /// Declares a new type. If the type was already declared, this will panic
+    /// Declares a new type. If the type was already declared, this will panic. If you are declaring a custom type, use [new_custom_type].
     pub fn new_type(&mut self, ty: u128, name: &'static str) {
         match self.locations.entry(ty) {
             Entry::Occupied(_) => panic!("ocaml-gen: cannot re-declare the same type twice"),
@@ -71,34 +43,55 @@ impl Env {
         };
     }
 
-    /// retrieves a type that was declared previously
-    pub fn get_type(&self, ty: u128) -> String {
-        let (type_path, type_name) = self
-            .locations
-            .get(&ty)
-            // not a great error, I know
-            .expect("ocaml-gen: the type hasn't been declared");
+    /// Declares a new custom type. Unlike [new_type] this can be called several times with the same type.
+    pub fn new_custom_type(&mut self, ty: u128, name: &'static str) {
+        self.locations
+            .insert(ty, (self.current_module.clone(), name));
+    }
 
-        let type_path = type_path.join(".");
-        let current_module = self.current_module.join(".");
-        if type_path == current_module {
+    /// retrieves a type that was declared previously
+    pub fn get_type(&self, ty: u128, name: &str) -> String {
+        let (type_path, type_name) = self.locations.get(&ty).expect(&format!(
+            "ocaml-gen: the type {} hasn't been declared",
+            name
+        ));
+
+        // path resolution
+        let mut current = self.current_module.clone();
+        current.reverse();
+        let path: Vec<&str> = type_path
+            .into_iter()
+            .skip_while(|&p| Some(*p) == current.pop())
+            .map(|&p| p)
+            .collect();
+
+        if path.is_empty() {
             type_name.to_string()
         } else {
-            format!("{}.{}", type_path, type_name)
+            format!("{}.{}", path.join("."), type_name)
         }
     }
 
     /// create a module and enters it
     pub fn new_module(&mut self, mod_name: &'static str) -> String {
-        let camelized = mod_name.to_case(Case::Pascal); // Pascal = CamelCase
-        if camelized != mod_name {
+        let first_letter = mod_name
+            .chars()
+            .next()
+            .expect("module name cannot be empty");
+        if first_letter.to_uppercase().to_string() != first_letter.to_string() {
             panic!(
-                "ocaml-gen: OCaml uses CamelCase for module names, you provided: {}, and we expected: {}", mod_name, camelized
+                "ocaml-gen: OCaml module names start with an uppercase, you provided: {}",
+                mod_name
             );
         }
 
         self.current_module.push(mod_name);
         format!("module {} = struct ", mod_name)
+    }
+
+    /// how deeply nested are we currently? (default is 0)
+    pub fn nested(&self) -> usize {
+        self.current_module.len()
     }
 
     /// go back up one module
@@ -131,7 +124,7 @@ pub trait OCamlBinding {
     /// will generate the OCaml bindings for a type (called root type).
     /// It takes the current environment [Env],
     /// as well as an optional name (if you wish to rename the type in OCaml).
-    fn ocaml_binding(env: &mut Env, rename: Option<&'static str>) -> String;
+    fn ocaml_binding(env: &mut Env, rename: Option<&'static str>, new_type: bool) -> String;
 }
 
 /// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.
@@ -154,44 +147,89 @@ pub trait OCamlDesc {
 /// Creates a module
 #[macro_export]
 macro_rules! decl_module {
-    ($env:expr, $name:expr, $b:block) => {{
-        println!("{}", $env.new_module($name));
+    ($w:expr, $env:expr, $name:expr, $b:block) => {{
+        use std::io::Write;
+        write!($w, "\n{}{}\n", format_args!("{: >1$}", "", $env.nested() * 2), $env.new_module($name)).unwrap();
         $b
-        println!("{}", $env.parent());
+        write!($w, "{}{}\n\n", format_args!("{: >1$}", "", $env.nested() * 2 - 2), $env.parent()).unwrap();
     }}
 }
 
 /// Declares the binding for a given function
 #[macro_export]
 macro_rules! decl_func {
-    ($env:expr, $func:ident) => {{
+    ($w:expr, $env:expr, $func:ident) => {{
+        use std::io::Write;
         let f = concat_idents!($func, _to_ocaml);
         let binding = f($env, None);
-        println!("{}", binding);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            binding,
+        )
+        .unwrap();
     }};
     // rename
-    ($env:expr, $func:ident => $new:expr) => {{
+    ($w:expr, $env:expr, $func:ident => $new:expr) => {{
+        use std::io::Write;
         let f = concat_idents!($func, _to_ocaml);
         let binding = f($env, Some($new));
-        println!("{}", binding);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            binding,
+        )
+        .unwrap();
     }};
 }
 
 /// Declares the binding for a given type
 #[macro_export]
 macro_rules! decl_type {
-    ($env:expr, $ty:ty) => {{
-        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None);
-        println!("{}", res);
+    ($w:expr, $env:expr, $ty:ty) => {{
+        use std::io::Write;
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None, true);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            res,
+        )
+        .unwrap();
     }};
     // rename
-    ($env:expr, $ty:ty => $new:expr) => {{
-        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new));
-        println!("{}", res);
+    ($w:expr, $env:expr, $ty:ty => $new:expr) => {{
+        use std::io::Write;
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new), true);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            res,
+        )
+        .unwrap();
     }};
 }
 
-/// Creates a fake generic
+/// Declares a new OCaml type that is made of other types
+#[macro_export]
+macro_rules! decl_type_alias {
+    ($w:expr, $env:expr, $new:expr => $ty:ty) => {{
+        use std::io::Write;
+        let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new), false);
+        write!(
+            $w,
+            "{}{}\n",
+            format_args!("{: >1$}", "", $env.nested() * 2),
+            res,
+        )
+        .unwrap();
+    }};
+}
+
+/// Creates a fake generic. This is a necessary hack, at the moment, to declare types (with the [decl_type] macro) that have generic parameters.
 #[macro_export]
 macro_rules! decl_fake_generic {
     ($name:ident, $i:expr) => {

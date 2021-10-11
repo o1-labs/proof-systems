@@ -12,6 +12,7 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::sponge::ScalarChallenge;
 
 #[derive(Clone)]
+// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
     pub w: [Field; COLUMNS],

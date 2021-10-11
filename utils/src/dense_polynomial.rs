@@ -1,5 +1,11 @@
+//! This adds a few utility functions for the [DensePolynomial] arkworks type.
+
 use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+
+//
+// ExtendedDensePolynomial trait
+//
 
 /// An extension for the [DensePolynomial] type.
 pub trait ExtendedDensePolynomial<F: Field> {
@@ -67,6 +73,10 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         DensePolynomial { coeffs }
     }
 }
+
+//
+// Tests
+//
 
 #[cfg(test)]
 mod tests {

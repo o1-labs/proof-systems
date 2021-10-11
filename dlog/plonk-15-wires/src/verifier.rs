@@ -31,25 +31,25 @@ where
     EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
 {
     /// A sponge that acts on the base field of a curve
-    fq_sponge: EFqSponge,
+    pub fq_sponge: EFqSponge,
     /// the last evaluation of the Fq-Sponge in this protocol
-    digest: Fr<G>,
+    pub digest: Fr<G>,
     /// the challenges produced in the protocol
-    oracles: RandomOracles<Fr<G>>,
+    pub oracles: RandomOracles<Fr<G>>,
     /// pre-computed powers of the alpha challenge
-    alphas: Vec<Fr<G>>,
+    pub alphas: Vec<Fr<G>>,
     /// public polynomial evaluations
-    p_eval: [Vec<Fr<G>>; 2],
+    pub p_eval: [Vec<Fr<G>>; 2],
     /// zeta^n and (zeta * omega)^n
-    powers_of_eval_points_for_chunks: [Fr<G>; 2],
+    pub powers_of_eval_points_for_chunks: [Fr<G>; 2],
     /// ?
-    polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
+    pub polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
     /// pre-computed zeta^n
-    zeta1: Fr<G>,
+    pub zeta1: Fr<G>,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
-    ft_eval0: Fr<G>,
+    pub ft_eval0: Fr<G>,
     /// ?
-    combined_inner_product: Fr<G>,
+    pub combined_inner_product: Fr<G>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -126,7 +126,7 @@ where
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-        let alpha = alpha_chal.to_field(&index.srs.get_ref().endo_r);
+        let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
@@ -138,7 +138,7 @@ where
         ]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
-        let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
+        let zeta = zeta_chal.to_field(&index.srs.endo_r);
         let digest = fq_sponge.clone().digest();
         let mut fr_sponge = {
             let mut s = EFrSponge::new(index.fr_sponge_params.clone());
@@ -199,9 +199,9 @@ where
 
         // query opening scalar challenges
         let v_chal = fr_sponge.challenge();
-        let v = v_chal.to_field(&index.srs.get_ref().endo_r);
+        let v = v_chal.to_field(&index.srs.endo_r);
         let u_chal = fr_sponge.challenge();
-        let u = u_chal.to_field(&index.srs.get_ref().endo_r);
+        let u = u_chal.to_field(&index.srs.endo_r);
 
         let ep = [zeta, zetaw];
 
@@ -286,7 +286,7 @@ where
             );
             es.push((vec![&ft_eval0, &ft_eval1], None));
 
-            combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.get_ref().g.len())
+            combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.g.len())
         };
 
         let oracles = RandomOracles {
@@ -330,9 +330,9 @@ where
         }
 
         // TODO: Account for the different SRS lengths
-        let srs = proofs[0].0.srs.get_ref();
+        let srs = &proofs[0].0.srs;
         for (index, _, _) in proofs.iter() {
-            assert_eq!(index.srs.get_ref().g.len(), srs.g.len());
+            assert_eq!(index.srs.g.len(), srs.g.len());
         }
 
         // Validate each proof separately (f(zeta) = t(zeta) * Z_H(zeta))

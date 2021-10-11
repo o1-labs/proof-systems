@@ -18,31 +18,44 @@ use ark_ec::{
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-    UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D, UVPolynomial,
 };
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::iter::Iterator;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
-#[derive(Clone, Debug)]
-pub struct PolyComm<C> {
+#[serde_as]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PolyComm<C>
+where
+    C: CanonicalDeserialize + CanonicalSerialize,
+{
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub shifted: Option<C>,
 }
 
-impl<A: Copy> PolyComm<A> {
+impl<A: Copy> PolyComm<A>
+where
+    A: CanonicalDeserialize + CanonicalSerialize,
+{
     pub fn map<B, F>(&self, mut f: F) -> PolyComm<B>
     where
         F: FnMut(A) -> B,
+        B: CanonicalDeserialize + CanonicalSerialize,
     {
         let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
         let shifted = self.shifted.map(f);
@@ -50,7 +63,11 @@ impl<A: Copy> PolyComm<A> {
     }
 }
 
-impl<A: Copy, B: Copy> PolyComm<(A, B)> {
+impl<A: Copy, B: Copy> PolyComm<(A, B)>
+where
+    A: CanonicalDeserialize + CanonicalSerialize,
+    B: CanonicalDeserialize + CanonicalSerialize,
+{
     fn unzip(self) -> (PolyComm<A>, PolyComm<B>) {
         let a = self.map(|(x, _)| x);
         let b = self.map(|(_, y)| y);
@@ -1142,13 +1159,13 @@ pub mod caml {
 
     // polynomial commitment
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
         pub shifted: Option<CamlG>,
     }
 
-    //
+    // handy conversions
 
     impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
     where
@@ -1163,15 +1180,39 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> Into<PolyComm<G>> for CamlPolyComm<CamlG>
+    impl<'a, G, CamlG> From<&'a PolyComm<G>> for CamlPolyComm<CamlG>
     where
         G: AffineCurve,
-        CamlG: Into<G>,
+        CamlG: From<G> + From<&'a G>,
     {
-        fn into(self) -> PolyComm<G> {
+        fn from(polycomm: &'a PolyComm<G>) -> Self {
+            Self {
+                unshifted: polycomm.unshifted.iter().map(Into::into).collect(),
+                shifted: polycomm.shifted.as_ref().map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> From<CamlPolyComm<CamlG>> for PolyComm<G>
+    where
+        G: AffineCurve + From<CamlG>,
+    {
+        fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
-                unshifted: self.unshifted.into_iter().map(Into::into).collect(),
-                shifted: self.shifted.map(Into::into),
+                unshifted: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
+                shifted: camlpolycomm.shifted.map(Into::into),
+            }
+        }
+    }
+
+    impl<'a, G, CamlG> From<&'a CamlPolyComm<CamlG>> for PolyComm<G>
+    where
+        G: AffineCurve + From<&'a CamlG> + From<CamlG>,
+    {
+        fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
+            PolyComm {
+                unshifted: camlpolycomm.unshifted.iter().map(Into::into).collect(),
+                shifted: camlpolycomm.shifted.as_ref().map(Into::into),
             }
         }
     }
