@@ -210,6 +210,47 @@ impl<F: Field> ConstantExpr<F> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct CacheId(usize);
+
+pub struct Cache {
+    next_id: usize
+}
+
+impl Cache {
+    pub fn new() -> Self {
+        Cache { next_id: 0 }
+    }
+
+    fn next_id(&mut self) -> CacheId {
+        let id = self.next_id;
+        self.next_id += 1;
+        CacheId(id)
+    }
+
+    pub fn cache<C>(&mut self, e: Expr<C>) -> Expr<C> {
+        Expr::Cache(self.next_id(), Box::new(e))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Op2 {
+    Add,
+    Mul,
+    Sub,
+}
+
+impl Op2 {
+    fn to_polish<A>(&self) -> PolishToken<A> {
+        use Op2::*;
+        match self {
+            Add => PolishToken::Add,
+            Mul => PolishToken::Mul,
+            Sub => PolishToken::Sub,
+        }
+    }
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -224,13 +265,13 @@ impl<F: Field> ConstantExpr<F> {
 pub enum Expr<C> {
     Constant(C),
     Cell(Variable),
-    Add(Box<Expr<C>>, Box<Expr<C>>),
-    Mul(Box<Expr<C>>, Box<Expr<C>>),
-    Sub(Box<Expr<C>>, Box<Expr<C>>),
+    BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
     ZkPolynomial,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
+    Pow(Box<Expr<C>>, usize),
+    Cache(CacheId, Box<Expr<C>>),
 }
 
 /// For efficiency of evaluation, we compile expressions to
@@ -249,7 +290,9 @@ pub enum PolishToken<F> {
     Mul,
     Sub,
     ZkPolynomial,
-    UnnormalizedLagrangeBasis(usize)
+    UnnormalizedLagrangeBasis(usize),
+    Store,
+    Load(usize),
 }
 
 fn evaluate_variable<'a, 'b, 'c, F: Field>(evals: &'a [ProofEvaluations<F>], v: &'b Variable) -> Result<F, &'c str> {
@@ -279,6 +322,7 @@ impl<F: FftField> PolishToken<F> {
         toks: &Vec<PolishToken<F>>, d: D<F>, pt: F,
         evals: &[ProofEvaluations<F>], c: &Constants<F>) -> Option<F> {
         let mut stack = vec![];
+        let mut cache : Vec<F> = vec![];
 
         for t in toks.iter() {
             use PolishToken::*;
@@ -315,6 +359,13 @@ impl<F: FftField> PolishToken<F> {
                     let x = stack.pop()?;
                     stack.push(x - y);
                 },
+                Store => {
+                    let x = stack[stack.len() - 1];
+                    cache.push(x);
+                },
+                Load(i) => {
+                    stack.push(cache[*i])
+                },
             }
         }
 
@@ -341,8 +392,10 @@ impl<C> Expr<C> {
             ZkPolynomial => 3,
             UnnormalizedLagrangeBasis(_) => d1_size,
             Cell(_) => d1_size,
-            Mul(x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
-            Sub(x, y) | Add(x, y) => std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size)),
+            BinOp(Op2::Mul, x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
+            BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size)),
+            Pow(e, d) => d * e.degree(d1_size),
+            Cache(_, e) => e.degree(d1_size)
         }
     }
 }
@@ -352,6 +405,7 @@ enum Domain {
     D1 = 1, D2 = 2, D4 = 4, D8 = 8
 }
 
+#[derive(Clone)]
 enum EvalResult<'a, F: FftField> {
     Constant(F),
     Evals { domain: Domain, evals: Evaluations<F, D<F>> },
@@ -490,7 +544,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn add(self, other: Self, res_domain: (Domain, D<F>)) -> Self {
+    fn add<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x + y),
@@ -550,7 +604,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn sub(self, other: Self, res_domain: (Domain, D<F>)) -> Self {
+    fn sub<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
@@ -564,13 +618,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             },
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                Self::init(
+                EvalResult::init(
                     res_domain,
                     |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x)
             },
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                Self::init(
+                EvalResult::init(
                     res_domain,
                     |i| x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
             },
@@ -597,7 +651,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
 
-                Self::init(
+                EvalResult::init(
                     res_domain,
                     |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
                     - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()])
@@ -605,7 +659,89 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn mul(self, other: Self, res_domain: (Domain, D<F>)) -> Self {
+    fn pow<'b>(self, d: usize, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
+        let mut acc = EvalResult::Constant(F::one());
+        for i in (0..64).rev() {
+            acc = acc.square(res_domain);
+
+            if (d >> i) & 1 == 1 {
+                // TODO: Avoid the unnecessary cloning
+                acc = acc.mul(self.clone(), res_domain)
+            }
+        }
+        acc
+    }
+
+    fn square(self, res_domain: (Domain, D<F>)) -> Self {
+        use EvalResult::*;
+        match self {
+            Constant(x) => Constant(x.square()),
+            Evals { domain, mut evals } => {
+                evals.evals.par_iter_mut().for_each(|e| {
+                    e.square_in_place();
+                });
+                Evals { domain, evals }
+            },
+            SubEvals { evals, domain: d, shift:s } => {
+                let scale = (d as usize) / (res_domain.0 as usize);
+                Self::init(
+                    res_domain,
+                    |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square())
+            },
+        }
+    }
+
+    /*
+    fn mul_ref(self, other: &Self, res_domain: (Domain, D<F>)) -> Self {
+        use EvalResult::*;
+        match (self, other) {
+            (Constant(x), Constant(y)) => Constant(x * y),
+            (Evals { domain, mut evals }, Constant(x)) => {
+                evals.evals.par_iter_mut().for_each(|e| *e *= x);
+                Evals { domain, evals }
+            }
+            (Constant(x), Evals { domain, evals }) => {
+                Self::init(
+                    res_domain,
+                    |i| x * evals.evals[i])
+            },
+            (SubEvals { evals, domain: d, shift:s }, &Constant(x))
+            | (Constant(x), &SubEvals { evals, domain: d, shift:s }) => {
+                let scale = (d as usize) / (res_domain.0 as usize);
+                Self::init(
+                    res_domain,
+                    |i| x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
+            },
+            (Evals { domain:d1, evals: mut es1 }, &Evals { domain:d2, evals: es2 }) => {
+                assert_eq!(d1, d2);
+                es1 *= &es2;
+                Evals { domain: d1, evals: es1 }
+            },
+            (Evals { domain: d, mut evals }, &SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
+                let scale = (d_sub as usize) / (d as usize);
+                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
+                    *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
+                });
+                Evals { evals, domain: d }
+            },
+            (SubEvals { domain: d_sub, shift: s, evals: es_sub }, &Evals { domain: d, evals }) => {
+                let scale = (d_sub as usize) / (d as usize);
+                Self::init(
+                    res_domain,
+                    |i| evals.evals[i] * es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()])
+            },
+            (SubEvals { domain: d1, shift: s1, evals: es1 }, &SubEvals { domain: d2, shift: s2, evals: es2 }) => {
+                let scale1 = (d1 as usize) / (res_domain.0 as usize);
+                let scale2 = (d2 as usize) / (res_domain.0 as usize);
+
+                Self::init(
+                    res_domain,
+                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] * es2.evals[(scale2 * i + (d2 as usize) * s2) % es1.evals.len()])
+            }
+        }
+    } */
+
+    fn mul<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x * y),
@@ -617,7 +753,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (SubEvals { evals, domain: d, shift:s }, Constant(x)) |
             (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
-                Self::init(
+                EvalResult::init(
                     res_domain,
                     |i| x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
             },
@@ -638,13 +774,24 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
 
-                Self::init(
+                EvalResult::init(
                     res_domain,
                     |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] * es2.evals[(scale2 * i + (d2 as usize) * s2) % es1.evals.len()])
             }
         }
     }
+
 }
+
+/*
+fn eval_result_op<'a, 'b, 'c, F: FftField>(op: Op2, dom: (Domain, D<F>), x: EvalResult<'a, F>, y: EvalResult<'b, F>) -> EvalResult<'c, F> {
+    match op {
+        Op2::Mul => x.mul(y, dom),
+        Op2::Add => x.add(y, dom),
+        Op2::Sub => x.sub(y, dom),
+    }
+}
+*/
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {
@@ -672,12 +819,17 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     /// Compile an expression to an RPN expression.
     pub fn to_polish(&self) -> Vec<PolishToken<F>> {
         let mut res = vec![];
-        self.to_polish_(&mut res);
+        let mut cache = HashMap::new();
+        self.to_polish_(&mut cache, &mut res);
         res
     }
 
-    fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
+    fn to_polish_(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F>>) {
         match self {
+            Expr::Pow(x, d) => {
+                x.to_polish_(cache, res);
+                res.push(PolishToken::Pow(*d))
+            },
             Expr::Constant(c) => {
                 c.to_polish_(res);
             },
@@ -690,20 +842,23 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Expr::UnnormalizedLagrangeBasis(i) => {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
             },
-            Expr::Add(x, y) => {
-                x.to_polish_(res);
-                y.to_polish_(res);
-                res.push(PolishToken::Add);
+            Expr::BinOp(op, x, y) => {
+                x.to_polish_(cache, res);
+                y.to_polish_(cache, res);
+                res.push(op.to_polish());
             },
-            Expr::Mul(x, y) => {
-                x.to_polish_(res);
-                y.to_polish_(res);
-                res.push(PolishToken::Mul);
-            },
-            Expr::Sub(x, y) => {
-                x.to_polish_(res);
-                y.to_polish_(res);
-                res.push(PolishToken::Sub);
+            Expr::Cache(id, e) => {
+                match cache.get(id) {
+                    Some(pos) =>
+                        // Already computed and stored this.
+                        res.push(PolishToken::Load(*pos)),
+                    None => {
+                        // Haven't computed this yet. Compute it, then store it.
+                        e.to_polish_(cache, res);
+                        res.push(PolishToken::Store);
+                        cache.insert(*id, cache.len());
+                    }
+                }
             },
         }
     }
@@ -724,14 +879,17 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
 
     fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F> {
         use Expr::*;
+        // TODO: Use cache
         match self {
+            Pow(x, d) => x.evaluate_constants_(c).pow(*d),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
             ZkPolynomial => ZkPolynomial,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
-            Add(x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
-            Mul(x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
-            Sub(x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c)
+            BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
+            BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
+            BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
+            Cache(_, e) => e.evaluate_constants_(c),
         }
     }
 
@@ -751,17 +909,18 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         use Expr::*;
         match self {
             Constant(x) => Ok(x.value(c)),
-            Mul(x, y) => {
+            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow(&[*p as u64])),
+            BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x * y)
             },
-            Add(x, y) => {
+            BinOp(Op2::Add, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x + y)
             },
-            Sub(x, y) => {
+            BinOp(Op2::Sub, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
@@ -770,6 +929,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) =>
                 Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
             Cell(v) => evaluate_variable(evals, v),
+            Cache(_, e) => e.evaluate_(d, pt, evals, c),
         }
     }
 
@@ -784,6 +944,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 }
 
+enum Either<A, B> {
+    Left(A),
+    Right(B)
+}
+
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
     pub fn evaluate(
@@ -792,17 +957,18 @@ impl<F: FftField> Expr<F> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
-            Mul(x, y) => {
+            Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow(&[*p as u64])),
+            BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x * y)
             },
-            Add(x, y) => {
+            BinOp(Op2::Add, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x + y)
             },
-            Sub(x, y) => {
+            BinOp(Op2::Sub, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
@@ -810,7 +976,8 @@ impl<F: FftField> Expr<F> {
             ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
             UnnormalizedLagrangeBasis(i) => 
                 Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
-            Cell(v) => evaluate_variable(evals, v)
+            Cell(v) => evaluate_variable(evals, v),
+            Cache(_, e) => e.evaluate(d, pt, evals),
         }
     }
 
@@ -846,8 +1013,109 @@ impl<F: FftField> Expr<F> {
         }
     }
 
+    fn evaluations_helper<'a, 'b>(
+        &self,
+        cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
+        d: Domain,
+        env: & Environment<'a, F>) -> Either<EvalResult<'a, F>, CacheId> where 'a: 'b {
+
+        /*
+        let value = |cache: &HashMap<CacheId, EvalResult<'a, F>>, v: Either<EvalResult<'a, F>, CacheId>| {
+            // TODO: Don't clone when unnecessary.
+            match v {
+                Either::Left(x) => x,
+                Either::Right(id) => cache.get(&id).unwrap().clone(),
+            }
+        }; */
+
+        let get = |cache: &'b HashMap<CacheId, EvalResult<'a, F>>, id: &CacheId| -> Option<EvalResult<'b, F>> {
+            cache.get(id).map(|e| {
+                match e {
+                    EvalResult::Constant(x) => EvalResult::Constant(*x),
+                    EvalResult::SubEvals { domain, shift, evals } =>
+                        EvalResult::SubEvals { domain: *domain, shift: *shift, evals },
+                    EvalResult::Evals { domain, evals } =>
+                        EvalResult::SubEvals { domain: *domain, shift: 0, evals }
+                }
+            })
+        };
+
+        let res : EvalResult<'a, F> =
+            match self {
+                Expr::Cache(id, e) => {
+                    match e.evaluations_helper(cache, d, env) {
+                        Either::Left(es) => {
+                            cache.insert(*id, es);
+                        },
+                        Either::Right(_) => {}
+                    };
+                    return Either::Right(*id)
+                },
+                Expr::Pow(x, p) => {
+                    let x = x.evaluations_helper(cache, d, env);
+                    match x {
+                        Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
+                        Either::Right(id) => get(cache, &id).unwrap().pow(*p, (d, get_domain(d, env))),
+                    }
+                },
+                Expr::ZkPolynomial =>
+                    EvalResult::SubEvals { 
+                        domain: Domain::D8,
+                        shift: 0,
+                        evals: env.zk_polynomial
+                    },
+                Expr::Constant(x) => EvalResult::Constant(*x),
+                Expr::UnnormalizedLagrangeBasis(i) =>
+                    EvalResult::Evals {
+                        domain: d,
+                        evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env)
+                    },
+                Expr::Cell(Variable { col, row }) => {
+                    let evals : &'a Evaluations<F, D<F>> = {
+                        match env.get_column(col) {
+                            None => return Either::Left(EvalResult::Constant(F::zero())),
+                            Some(e) => e
+                        }
+                    };
+                    EvalResult::SubEvals { 
+                        domain: Domain::D8,
+                        shift: curr_or_next(*row),
+                        evals
+                    }
+                },
+                Expr::BinOp(op, e1, e2) => {
+                    let dom = (d, get_domain(d, env));
+                    let f = |x: EvalResult<F>, y: EvalResult<F>| {
+                        match op {
+                            Op2::Mul => x.mul(y, dom),
+                            Op2::Add => x.add(y, dom),
+                            Op2::Sub => x.sub(y, dom),
+                        }
+                    };
+                    let e1 = e1.evaluations_helper(cache, d, env);
+                    let e2 = e2.evaluations_helper(cache, d, env);
+                    use Either::*;
+                    match (e1, e2) {
+                        (Left(e1), Left(e2)) => f(e1, e2),
+                        (Right(id1), Left(e2)) => f(get(cache, &id1).unwrap(), e2),
+                        (Left(e1), Right(id2)) => f(e1, get(cache, &id2).unwrap()),
+                        (Right(id1), Right(id2)) => f(get(cache, &id1).unwrap(), get(cache, &id2).unwrap()),
+                    }
+                },
+            };
+        Either::Left(res)
+    }
+
     fn evaluations_<'a>(&self, d: Domain, env: & Environment<'a, F>) -> EvalResult<'a, F> {
+        let mut cache = HashMap::new();
+        let res = self.evaluations_helper(&mut cache, d, env);
+        match res {
+            Either::Left(x) => x,
+            Either::Right(id) => cache.get(&id).unwrap().clone(),
+        }
+        /*
         match self {
+            Expr::Pow(x, p) => x.evaluations_(d, env).pow(*p, (d, get_domain(d, env))),
             Expr::ZkPolynomial =>
                 EvalResult::SubEvals { 
                     domain: Domain::D8,
@@ -873,16 +1141,16 @@ impl<F: FftField> Expr<F> {
                     evals
                 }
             },
-            Expr::Mul(e1, e2) => {
+            Expr::BinOp(Op2::Mul, e1, e2) => {
                 e1.evaluations_(d, env).mul(e2.evaluations_(d, env), (d, get_domain(d, env)))
             },
-            Expr::Add(e1, e2) => {
+            Expr::BinOp(Op2::Add, e1, e2) => {
                 e1.evaluations_(d, env).add(e2.evaluations_(d, env), (d, get_domain(d, env)))
             },
-            Expr::Sub(e1, e2) => {
+            Expr::BinOp(Op2::Sub, e1, e2) => {
                 e1.evaluations_(d, env).sub(e2.evaluations_(d, env), (d, get_domain(d, env)))
             },
-        }
+        } */
     }
 }
 
@@ -951,6 +1219,36 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     }
 }
 
+impl<F: One> Expr<F> {
+    /// Exponentiate an expression
+    pub fn pow(self, p: usize) -> Self {
+        use Expr::*;
+        if p == 0 {
+            return Constant(F::one());
+        }
+        Pow(Box::new(self), p)
+    }
+}
+
+type Monomials<F> = HashMap<Vec<Variable>, Expr<F>>;
+
+fn mul_monomials<F: Neg<Output=F> + Clone + One + Zero + PartialEq>(
+    e1: &Monomials<F>,
+    e2: &Monomials<F>) -> Monomials<F> {
+    let mut res : HashMap<_, Expr<F>> = HashMap::new();
+    for (m1, c1) in e1.iter() {
+        for (m2, c2) in e2.iter() {
+            let mut m = m1.clone();
+            m.extend(m2);
+            m.sort();
+            let c1c2 = c1.clone() * c2.clone();
+            let v = res.entry(m).or_insert(Expr::<F>::zero());
+            *v = v.clone() + c1c2;
+        }
+    }
+    res
+}
+
 impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
     fn monomials(&self) -> HashMap<Vec<Variable>, Expr<F>> {
         let sing = |v: Vec<Variable>, c: Expr<F>| {
@@ -961,11 +1259,32 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
         let constant = |e : Expr<F>| sing(vec![], e);
         use Expr::*;
         match self {
+            Pow(x, d) => {
+                // Run the multiplication logic with square and multiply
+                let mut acc = sing(vec![], Expr::<F>::one());
+                let mut acc_is_one = true;
+                let x = x.monomials();
+
+                for i in (0..64).rev() {
+                    if !acc_is_one {
+                        let acc2 = mul_monomials(&acc, &acc);
+                        acc = acc2;
+                    }
+
+                    if (d >> i) & 1 == 1 {
+                        let res = mul_monomials(&acc, &x);
+                        acc = res;
+                        acc_is_one = false;
+                    }
+                }
+                acc
+            },
+            Cache(_, e) => e.monomials(),
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
             ZkPolynomial => constant(ZkPolynomial),
             Constant(c) => constant(Constant(c.clone())),
             Cell(var) => sing(vec![*var], Constant(F::one())),
-            Add(e1, e2) => {
+            BinOp(Op2::Add, e1, e2) => {
                 let mut res = e1.monomials();
                 for (m, c) in e2.monomials() {
                     let v =
@@ -977,7 +1296,7 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
                 }
                 res
             },
-            Sub(e1, e2) => {
+            BinOp(Op2::Sub, e1, e2) => {
                 let mut res = e1.monomials();
                 for (m, c) in e2.monomials() {
                     let v =
@@ -989,21 +1308,10 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
                 }
                 res
             },
-            Mul(e1, e2) => {
+            BinOp(Op2::Mul, e1, e2) => {
                 let e1 = e1.monomials();
                 let e2 = e2.monomials();
-                let mut res : HashMap<_, Expr<F>> = HashMap::new();
-                for (m1, c1) in e1.iter() {
-                    for (m2, c2) in e2.iter() {
-                        let mut m = m1.clone();
-                        m.extend(m2);
-                        m.sort();
-                        let c1c2 = c1.clone() * c2.clone();
-                        let v = res.entry(m).or_insert(Self::zero());
-                        *v = v.clone() + c1c2;
-                    }
-                }
-                res
+                mul_monomials(&e1, &e2)
             }
         }
     }
@@ -1196,7 +1504,7 @@ impl<F : One + Neg<Output=F>> Neg for Expr<F> {
     fn neg(self) -> Expr<F> {
         match self {
             Expr::Constant(x) => Expr::Constant(x.neg()),
-            e => Expr::Mul(Box::new(Expr::Constant(F::one().neg())), Box::new(e))
+            e => Expr::BinOp(Op2::Mul, Box::new(Expr::Constant(F::one().neg())), Box::new(e))
         }
     }
 }
@@ -1210,7 +1518,7 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
         if other.is_zero() {
             return self;
         }
-        Expr::Add(Box::new(self), Box::new(other))
+        Expr::BinOp(Op2::Add, Box::new(self), Box::new(other))
     }
 }
 
@@ -1223,7 +1531,7 @@ impl<F: One + PartialEq> Mul<Expr<F>> for Expr<F> {
         if other.is_one() {
             return self;
         }
-        Expr::Mul(Box::new(self), Box::new(other))
+        Expr::BinOp(Op2::Mul, Box::new(self), Box::new(other))
     }
 }
 
@@ -1233,7 +1541,7 @@ impl<F: Zero> Sub<Expr<F>> for Expr<F> {
         if other.is_zero() {
             return self;
         }
-        Expr::Sub(Box::new(self), Box::new(other))
+        Expr::BinOp(Op2::Sub, Box::new(self), Box::new(other))
     }
 }
 
@@ -1275,9 +1583,11 @@ impl<F: fmt::Display> fmt::Display for Expr<F> {
             Cell(v) => write!(f, "Cell({:?})", *v)?,
             UnnormalizedLagrangeBasis(i) => write!(f, "UnnormalizedLagrangeBasis({})", *i)?,
             ZkPolynomial => write!(f, "ZkPolynomial")?,
-            Add(x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
-            Mul(x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
-            Sub(x, y) => write!(f, "({} - {})", x.as_ref(), y.as_ref())?,
+            BinOp(Op2::Add, x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
+            BinOp(Op2::Mul, x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
+            BinOp(Op2::Sub, x, y) => write!(f, "({} - {})", x.as_ref(), y.as_ref())?,
+            Pow(x, d) => write!(f, "({}^{})", x.as_ref(), d)?,
+            Cache(_, e) => e.fmt(f)?
         };
         Ok(())
     }
