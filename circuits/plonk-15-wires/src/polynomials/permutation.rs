@@ -5,7 +5,7 @@ This source file implements permutation constraint polynomials.
 *****************************************************************************************************************/
 
 use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::{ProofEvaluations, RandomOracles};
+use crate::nolookup::scalars::ProofEvaluations;
 use crate::polynomial::WitnessOverDomains;
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};

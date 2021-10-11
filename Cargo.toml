@@ -8,6 +8,8 @@ members = [
     "dlog/plonk",
     "dlog/plonk-15-wires",
     "groupmap",
+    "ocaml-gen",
+    "ocaml-gen/derive",
     "oracle",
     "utils",
 ]
