@@ -218,8 +218,8 @@ mod tests {
         let zeta = Fp::rand(rng);
 
         // compute quotient by dividing with vanishing polynomial
-        let (t1, t2) = cs.gnrc_quot(&witness_d4, &public);
-        let t_before_division = &t1.interpolate() + &t2;
+        let t1 = cs.gnrc_quot(&witness_d4);
+        let t_before_division = &t1.interpolate() + &public;
         let (t, rem) = t_before_division
             .divide_by_vanishing_poly(cs.domain.d1)
             .unwrap();
