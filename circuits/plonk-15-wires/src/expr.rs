@@ -717,56 +717,6 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    /*
-    fn mul_ref(self, other: &Self, res_domain: (Domain, D<F>)) -> Self {
-        use EvalResult::*;
-        match (self, other) {
-            (Constant(x), Constant(y)) => Constant(x * y),
-            (Evals { domain, mut evals }, Constant(x)) => {
-                evals.evals.par_iter_mut().for_each(|e| *e *= x);
-                Evals { domain, evals }
-            }
-            (Constant(x), Evals { domain, evals }) => {
-                Self::init(
-                    res_domain,
-                    |i| x * evals.evals[i])
-            },
-            (SubEvals { evals, domain: d, shift:s }, &Constant(x))
-            | (Constant(x), &SubEvals { evals, domain: d, shift:s }) => {
-                let scale = (d as usize) / (res_domain.0 as usize);
-                Self::init(
-                    res_domain,
-                    |i| x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
-            },
-            (Evals { domain:d1, evals: mut es1 }, &Evals { domain:d2, evals: es2 }) => {
-                assert_eq!(d1, d2);
-                es1 *= &es2;
-                Evals { domain: d1, evals: es1 }
-            },
-            (Evals { domain: d, mut evals }, &SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
-                let scale = (d_sub as usize) / (d as usize);
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
-                Evals { evals, domain: d }
-            },
-            (SubEvals { domain: d_sub, shift: s, evals: es_sub }, &Evals { domain: d, evals }) => {
-                let scale = (d_sub as usize) / (d as usize);
-                Self::init(
-                    res_domain,
-                    |i| evals.evals[i] * es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()])
-            },
-            (SubEvals { domain: d1, shift: s1, evals: es1 }, &SubEvals { domain: d2, shift: s2, evals: es2 }) => {
-                let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                let scale2 = (d2 as usize) / (res_domain.0 as usize);
-
-                Self::init(
-                    res_domain,
-                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] * es2.evals[(scale2 * i + (d2 as usize) * s2) % es1.evals.len()])
-            }
-        }
-    } */
-
     fn mul<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
@@ -812,16 +762,6 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 
 }
-
-/*
-fn eval_result_op<'a, 'b, 'c, F: FftField>(op: Op2, dom: (Domain, D<F>), x: EvalResult<'a, F>, y: EvalResult<'b, F>) -> EvalResult<'c, F> {
-    match op {
-        Op2::Mul => x.mul(y, dom),
-        Op2::Add => x.add(y, dom),
-        Op2::Sub => x.sub(y, dom),
-    }
-}
-*/
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {
