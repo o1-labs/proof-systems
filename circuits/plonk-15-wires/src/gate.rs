@@ -16,6 +16,15 @@ pub enum CurrOrNext {
     Next,
 }
 
+impl CurrOrNext {
+    pub fn shift(&self) -> usize {
+        match self {
+            CurrOrNext::Curr => 0,
+            CurrOrNext::Next => 1,
+        }
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Eq, Hash, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive, PartialOrd, Ord)]
 pub enum GateType {
