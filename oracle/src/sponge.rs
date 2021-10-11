@@ -11,7 +11,6 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 // TODO: move to a different file / module
 /// A challenge which is used as a scalar on a group element in the verifier
 #[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {
@@ -142,7 +141,9 @@ where
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
-                panic!("sponge got zero curve point");
+                // absorb a fake point (0, 0)
+                let zero = P::BaseField::zero();
+                self.sponge.absorb(&[zero, zero]);
             } else {
                 self.sponge.absorb(&[g.x]);
                 self.sponge.absorb(&[g.y]);
@@ -189,7 +190,13 @@ where
 
     fn digest(mut self) -> P::ScalarField {
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
-        P::ScalarField::from_repr(x.into()).expect("the sponge code has a bug")
+        // Returns zero for values that are too large.
+        // This means that there is a bias for the value zero (in one of the curve).
+        // An attacker could try to target that seed, in order to predict the challenges u and v produced by the Fr-Sponge.
+        // This would allow the attacker to mess with the result of the aggregated evaluation proof.
+        // Previously the attacker's odds were 1/q, now it's (q-p)/q.
+        // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
+        P::ScalarField::from_repr(x.into()).unwrap_or(P::ScalarField::zero())
     }
 
     fn challenge(&mut self) -> P::ScalarField {
@@ -198,5 +205,40 @@ where
 
     fn challenge_fq(&mut self) -> P::BaseField {
         self.squeeze_field()
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use ocaml_gen::OcamlGen;
+
+    //
+    // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
+    //
+
+    #[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlScalarChallenge<CamlF>(pub CamlF);
+
+    impl<F, CamlF> From<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
+    where
+        CamlF: From<F>,
+    {
+        fn from(sc: ScalarChallenge<F>) -> Self {
+            Self(sc.0.into())
+        }
+    }
+
+    impl<F, CamlF> Into<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>
+    where
+        CamlF: Into<F>,
+    {
+        fn into(self) -> ScalarChallenge<F> {
+            ScalarChallenge(self.0.into())
+        }
     }
 }

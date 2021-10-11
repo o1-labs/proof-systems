@@ -34,7 +34,6 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// A polynomial commitment.
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct PolyComm<C> {
     pub unshifted: Vec<C>,
     pub shifted: Option<C>,
@@ -152,7 +151,7 @@ impl<C: AffineCurve> PolyComm<C> {
                 if com.len() == 0 || elm.len() == 0 {
                     Vec::new()
                 } else {
-                    let n = com.iter().map(|c| c.unshifted.len()).max().unwrap();
+                    let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
                     (0..n)
                         .map(|i| {
                             let mut points = Vec::new();
@@ -173,7 +172,6 @@ impl<C: AffineCurve> PolyComm<C> {
 }
 
 #[derive(Clone, Debug)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml::IntoValue, ocaml::FromValue))]
 pub struct OpeningProof<G: AffineCurve> {
     pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
     pub delta: G,
@@ -1009,6 +1007,7 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
+    use ark_poly::Polynomial;
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
@@ -1129,5 +1128,104 @@ mod tests {
         )];
 
         assert!(srs.verify(&group_map, &mut batch, rng));
+    }
+}
+
+//
+// OCaml types
+//
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use ocaml_gen::OcamlGen;
+
+    // polynomial commitment
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlPolyComm<CamlG> {
+        pub unshifted: Vec<CamlG>,
+        pub shifted: Option<CamlG>,
+    }
+
+    //
+
+    impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+    {
+        fn from(polycomm: PolyComm<G>) -> Self {
+            Self {
+                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
+                shifted: polycomm.shifted.map(Into::into),
+            }
+        }
+    }
+
+    impl<G, CamlG> Into<PolyComm<G>> for CamlPolyComm<CamlG>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+    {
+        fn into(self) -> PolyComm<G> {
+            PolyComm {
+                unshifted: self.unshifted.into_iter().map(Into::into).collect(),
+                shifted: self.shifted.map(Into::into),
+            }
+        }
+    }
+
+    // opening proof
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlOpeningProof<G, F> {
+        pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
+        pub delta: G,
+        pub z1: F,
+        pub z2: F,
+        pub sg: G,
+    }
+
+    impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+    {
+        fn from(opening_proof: OpeningProof<G>) -> Self {
+            Self {
+                lr: opening_proof
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: opening_proof.delta.into(),
+                z1: opening_proof.z1.into(),
+                z2: opening_proof.z2.into(),
+                sg: opening_proof.sg.into(),
+            }
+        }
+    }
+
+    impl<G, CamlF, CamlG> Into<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: Into<G>,
+        CamlF: Into<G::ScalarField>,
+    {
+        fn into(self) -> OpeningProof<G> {
+            OpeningProof {
+                lr: self
+                    .lr
+                    .into_iter()
+                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .collect(),
+                delta: self.delta.into(),
+                z1: self.z1.into(),
+                z2: self.z2.into(),
+                sg: self.sg.into(),
+            }
+        }
     }
 }
