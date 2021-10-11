@@ -284,9 +284,9 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
 
             if new_type {
-                format!("type {} = {}", name, generics_ocaml)
+                format!("type nonrec {} = {}", name, generics_ocaml)
             } else {
-                format!("type {} = {}", rename.expect("type alias must have a name"), name)
+                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
             }
         }
     };
@@ -558,9 +558,9 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
 
             if new_type {
-                format!("type {} = {}", name, generics_ocaml)
+                format!("type nonrec {} = {}", name, generics_ocaml)
             } else {
-                format!("type {} = {}", rename.expect("type alias must have a name"), name)
+                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
             }
         }
     };
@@ -685,9 +685,9 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[]);
 
             if new_type {
-                format!("type {}", name)
+                format!("type nonrec {}", name)
             } else {
-                format!("type {} = {}", rename.expect("type alias must have a name"), name)
+                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
             }
         }
     };
