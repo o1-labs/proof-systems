@@ -4,7 +4,12 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use std::rc::Rc;
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Seek},
+    path::Path,
+    rc::Rc,
+};
 
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
@@ -18,11 +23,12 @@ use commitment_dlog::{
 use oracle::poseidon::{ArithmeticSpongeParams, PlonkSpongeConstants15W, SpongeConstants};
 use plonk_15_wires_circuits::{
     gates::poseidon::ROUNDS_PER_ROW,
-    nolookup::constraints::{zk_w3, ConstraintSystem},
+    nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     wires::*,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+use std::io::SeekFrom::Start;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -70,28 +76,38 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // index polynomial commitments
     /// permutation commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// wire commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub qw_comm: [PolyComm<G>; GENERICS],
     /// multiplication commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub qm_comm: PolyComm<G>,
     /// constant wire commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub qc_comm: PolyComm<G>,
 
     // poseidon polynomial commitments
     /// round constant polynomial commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub rcm_comm: [[PolyComm<G>; PlonkSpongeConstants15W::SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub psm_comm: PolyComm<G>,
 
     // ECC arithmetic polynomial commitments
     /// EC addition selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub add_comm: PolyComm<G>,
     /// EC doubling selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub double_comm: PolyComm<G>,
     /// EC variable base scalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub mul_comm: PolyComm<G>,
     /// endoscalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub emul_comm: PolyComm<G>,
 
     /// wire coordinate shifts
@@ -175,5 +191,61 @@ where
             srs,
             cs,
         }
+    }
+}
+
+impl<G> VerifierIndex<G>
+where
+    G: CommitmentCurve,
+{
+    /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
+    pub fn from_file(
+        srs: Rc<SRS<G>>,
+        path: &Path,
+        offset: Option<u64>,
+        // TODO: we shouldn't have to pass these
+        endo: G::ScalarField,
+        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+        fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    ) -> Result<Self, String> {
+        // open file
+        let file = File::open(path).map_err(|e| e.to_string())?;
+
+        // offset
+        let mut reader = BufReader::new(file);
+        match offset {
+            Some(offset) => {
+                reader.seek(Start(offset)).map_err(|e| e.to_string())?;
+            }
+            None => (),
+        };
+
+        // deserialize
+        let mut verifier_index: Self =
+            bincode::deserialize_from(&mut reader).map_err(|e| e.to_string())?;
+
+        // fill in the rest
+        verifier_index.srs = srs;
+        verifier_index.endo = endo;
+        verifier_index.fq_sponge_params = fq_sponge_params;
+        verifier_index.fr_sponge_params = fr_sponge_params;
+        verifier_index.w = zk_w3(verifier_index.domain);
+        verifier_index.zkpm = zk_polynomial(verifier_index.domain);
+
+        Ok(verifier_index)
+    }
+
+    /// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
+    // TODO: append should be a bool, not an option
+    pub fn to_file(&self, path: &Path, append: Option<bool>) -> Result<(), String> {
+        let append = append.unwrap_or(true);
+        let file = OpenOptions::new()
+            .append(append)
+            .open(path)
+            .map_err(|e| e.to_string())?;
+
+        let writer = BufWriter::new(file);
+
+        bincode::serialize_into(writer, self).map_err(|e| e.to_string())
     }
 }

@@ -30,25 +30,25 @@ where
     EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
 {
     /// A sponge that acts on the base field of a curve
-    fq_sponge: EFqSponge,
+    pub fq_sponge: EFqSponge,
     /// the last evaluation of the Fq-Sponge in this protocol
-    digest: Fr<G>,
+    pub digest: Fr<G>,
     /// the challenges produced in the protocol
-    oracles: RandomOracles<Fr<G>>,
+    pub oracles: RandomOracles<Fr<G>>,
     /// pre-computed powers of the alpha challenge
-    alphas: Vec<Fr<G>>,
+    pub alphas: Vec<Fr<G>>,
     /// public polynomial evaluations
-    p_eval: [Vec<Fr<G>>; 2],
+    pub p_eval: [Vec<Fr<G>>; 2],
     /// zeta^n and (zeta * omega)^n
-    powers_of_eval_points_for_chunks: [Fr<G>; 2],
+    pub powers_of_eval_points_for_chunks: [Fr<G>; 2],
     /// ?
-    polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
+    pub polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
     /// pre-computed zeta^n
-    zeta1: Fr<G>,
+    pub zeta1: Fr<G>,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
-    ft_eval0: Fr<G>,
+    pub ft_eval0: Fr<G>,
     /// ?
-    combined_inner_product: Fr<G>,
+    pub combined_inner_product: Fr<G>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>

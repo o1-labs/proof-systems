@@ -1,3 +1,8 @@
+#![deny(missing_docs)]
+
+//! ocaml-derive adds a number of derives to make ocaml-gen easier to use.
+//! Refer to the [ocaml-gen] documentation.
+
 extern crate proc_macro;
 use convert_case::{Case, Casing};
 use proc_macro::TokenStream;
@@ -262,12 +267,14 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
         fn ocaml_binding(
             env: &mut ::ocaml_gen::Env,
             rename: Option<&'static str>,
+            new_type: bool,
         ) -> String {
             // register the new type
-            let ty_name = rename.unwrap_or(#ocaml_name);
-            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            env.new_type(ty_id, ty_name);
-
+            if new_type {
+                let ty_name = rename.unwrap_or(#ocaml_name);
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_type(ty_id, ty_name);
+            }
 
             let global_generics: Vec<&str> = vec![#(#generics_str),*];
             let generics_ocaml = {
@@ -276,7 +283,11 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
 
-            format!("type {} = {}", name, generics_ocaml)
+            if new_type {
+                format!("type nonrec {} = {}", name, generics_ocaml)
+            } else {
+                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+            }
         }
     };
 
@@ -530,12 +541,14 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
         fn ocaml_binding(
             env: &mut ::ocaml_gen::Env,
             rename: Option<&'static str>,
+            new_type: bool,
         ) -> String {
             // register the new type
-            let ty_name = rename.unwrap_or(#ocaml_name);
-            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            env.new_type(ty_id, ty_name);
-
+            if new_type {
+                let ty_name = rename.unwrap_or(#ocaml_name);
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_type(ty_id, ty_name);
+            }
 
             let global_generics: Vec<&str> = vec![#(#generics_str),*];
             let generics_ocaml = {
@@ -544,7 +557,11 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
 
-            format!("type {} = {}", name, generics_ocaml)
+            if new_type {
+                format!("type nonrec {} = {}", name, generics_ocaml)
+            } else {
+                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+            }
         }
     };
 
@@ -656,13 +673,22 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
         fn ocaml_binding(
             env: &mut ::ocaml_gen::Env,
             rename: Option<&'static str>,
+            new_type: bool,
         ) -> String {
             // register the new type
-            let ty_name = rename.unwrap_or(#ocaml_name);
-            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-            env.new_type(ty_id, ty_name);
+            if new_type {
+                let ty_name = rename.unwrap_or(#ocaml_name);
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_custom_type(ty_id, ty_name);
+            }
+
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[]);
-            format!("type {}", name)
+
+            if new_type {
+                format!("type nonrec {}", name)
+            } else {
+                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+            }
         }
     };
 
