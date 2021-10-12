@@ -137,6 +137,10 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }
 
+/// Evaluates the polynomial
+/// ```
+/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+/// ```
 pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
@@ -146,7 +150,7 @@ pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
 /// Currently, we use k = 3 for 2 blinding factors,
-/// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73
+/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;

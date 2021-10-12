@@ -40,7 +40,7 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    /// Given a set of [witness] over an Add gate, verify that the constraints checks out.
+    /// Given a set of witness columns over an Add gate, verify that the constraints checks out.
     pub fn verify_add(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
 

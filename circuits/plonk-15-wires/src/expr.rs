@@ -230,14 +230,17 @@ impl<F: Field> ConstantExpr<F> {
     }
 }
 
+/// A key for a cached value
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CacheId(usize);
 
+/// A cache
 pub struct Cache {
     next_id: usize
 }
 
 impl Cache {
+    /// Create a new cache
     pub fn new() -> Self {
         Cache { next_id: 0 }
     }
@@ -248,11 +251,13 @@ impl Cache {
         CacheId(id)
     }
 
+    /// Cache the value of the given expression
     pub fn cache<C>(&mut self, e: Expr<C>) -> Expr<C> {
         Expr::Cache(self.next_id(), Box::new(e))
     }
 }
 
+/// A binary operation
 #[derive(Clone, Debug, PartialEq)]
 pub enum Op2 {
     Add,
@@ -431,6 +436,10 @@ enum Domain {
 enum EvalResult<'a, F: FftField> {
     Constant(F),
     Evals { domain: Domain, evals: Evaluations<F, D<F>> },
+    /// SubEvals is used to refer to evaluations that can be trivially obtained from a
+    /// borrowed evaluation. In this case, by taking a subset of the entries
+    /// (specifically when the borrowed `evals` is over a superset of `domain`)
+    /// and shifting them
     SubEvals { domain: Domain, shift: usize, evals : &'a Evaluations<F, D<F>> }
 }
 

@@ -36,7 +36,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         (eval_part, poly_part)
     }
 
-    /// produces w[0](zeta) * w[1](zeta), w[0](zeta), w[1](zeta), w[2](zeta), 1
+    /// produces `w[0](zeta) * w[1](zeta), w[0](zeta), w[1](zeta), w[2](zeta), 1`
     pub fn gnrc_scalars(w_zeta: &[F; COLUMNS]) -> Vec<F> {
         let mut res = vec![w_zeta[0] * &w_zeta[1]];
         for i in 0..GENERICS {

@@ -31,7 +31,7 @@ pub struct ProofEvaluations<Field> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
-    /// lookup-related evalutions
+    /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
 }
 
