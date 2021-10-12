@@ -522,55 +522,6 @@
 <span id="522">522</span>
 <span id="523">523</span>
 <span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -578,8 +529,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::domains::EvaluationDomains</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gates::poseidon</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate::CircuitGate</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::polynomial</span>::{<span class="ident">WitnessEvals</span>, <span class="ident">WitnessOverDomains</span>, <span class="ident">WitnessShifts</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
@@ -618,23 +568,23 @@ This source file implements Plonk circuit constraint primitive.
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">zkpm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 
+    <span class="comment">// Coefficient polynomials. These define constant that gates can use as they like.</span>
+    <span class="comment">// ---------------------------------------</span>
+
+    <span class="doccomment">/// coefficients polynomials in coefficient form</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">coefficientsm</span>: [<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+    <span class="doccomment">/// coefficients polynomials in evaluation form</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">coefficients4</span>: [<span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+
     <span class="comment">// Generic constraint selector polynomials</span>
     <span class="comment">// ---------------------------------------</span>
-    <span class="doccomment">/// linear wire constraint polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; GENERICS]&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">qwm</span>: [<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">GENERICS</span>],
-    <span class="doccomment">/// multiplication polynomial</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">qmm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// constant wire polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">qc</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">genericm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 
     <span class="comment">// Poseidon selector polynomials</span>
     <span class="comment">// -----------------------------</span>
-    <span class="doccomment">/// round constant polynomials</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[[o1_utils::serialization::SerdeAs; SPONGE_WIDTH]; ROUNDS_PER_ROW]&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">rcm</span>: [[<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>],
     <span class="doccomment">/// poseidon constraint selector polynomial</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">psm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -660,12 +610,9 @@ This source file implements Plonk circuit constraint primitive.
 
     <span class="comment">// Generic constraint selector polynomials</span>
     <span class="comment">// ---------------------------------------</span>
-    <span class="doccomment">/// left input wire polynomial over domain.d4</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;[o1_utils::serialization::SerdeAs; GENERICS]&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">qwl</span>: [<span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">GENERICS</span>],
     <span class="doccomment">/// multiplication evaluations over domain.d4</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">qml</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">generic4</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
     <span class="comment">// permutation polynomials</span>
     <span class="comment">// -----------------------</span>
@@ -838,36 +785,6 @@ This source file implements Plonk circuit constraint primitive.
         <span class="kw">let</span> <span class="ident">zkpm</span> <span class="op">=</span> <span class="ident">zk_polynomial</span>(<span class="ident">domain</span>.<span class="ident">d1</span>);
 
         <span class="comment">// compute generic constraint polynomials</span>
-        <span class="kw">let</span> <span class="ident">qwm</span>: [<span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">GENERICS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-                <span class="ident">gates</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Generic</span> {
-                            <span class="ident">gate</span>.<span class="ident">c</span>[<span class="ident">WIRES</span>[<span class="ident">i</span>]]
-                        } <span class="kw">else</span> {
-                            <span class="ident">F::zero</span>()
-                        }
-                    })
-                    .<span class="ident">collect</span>(),
-                <span class="ident">domain</span>.<span class="ident">d1</span>,
-            )
-            .<span class="ident">interpolate</span>()
-        });
-        <span class="kw">let</span> <span class="ident">qmm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-            <span class="ident">gates</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Generic</span> {
-                        <span class="ident">gate</span>.<span class="ident">c</span>[<span class="ident">COLUMNS</span>]
-                    } <span class="kw">else</span> {
-                        <span class="ident">F::zero</span>()
-                    }
-                })
-                .<span class="ident">collect</span>(),
-            <span class="ident">domain</span>.<span class="ident">d1</span>,
-        )
-        .<span class="ident">interpolate</span>();
 
         <span class="comment">// compute poseidon constraint polynomials</span>
         <span class="kw">let</span> <span class="ident">psm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
@@ -901,42 +818,29 @@ This source file implements Plonk circuit constraint primitive.
         <span class="kw">let</span> <span class="ident">sigmal8</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">sigmam</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>));
 
         <span class="comment">// generic constraint polynomials</span>
-        <span class="kw">let</span> <span class="ident">qwl</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">qwm</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>));
-        <span class="kw">let</span> <span class="ident">qml</span> <span class="op">=</span> <span class="ident">qmm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>);
-        <span class="kw">let</span> <span class="ident">qc</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-            <span class="ident">gates</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Generic</span> {
-                        <span class="ident">gate</span>.<span class="ident">c</span>[<span class="ident">COLUMNS</span> <span class="op">+</span> <span class="number">1</span>]
-                    } <span class="kw">else</span> {
-                        <span class="ident">F::zero</span>()
-                    }
-                })
-                .<span class="ident">collect</span>(),
+
+        <span class="kw">let</span> <span class="ident">genericm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
+            <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">gate</span>.<span class="ident">generic</span>()).<span class="ident">collect</span>(),
             <span class="ident">domain</span>.<span class="ident">d1</span>,
         )
         .<span class="ident">interpolate</span>();
+        <span class="kw">let</span> <span class="ident">generic4</span> <span class="op">=</span> <span class="ident">genericm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>);
 
-        <span class="comment">// poseidon constraint polynomials</span>
-        <span class="kw">let</span> <span class="ident">rcm</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">round</span><span class="op">|</span> {
-            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">coefficientsm</span>: [<span class="kw">_</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
+            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
                 <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-                    <span class="ident">gates</span>
-                        .<span class="ident">iter</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
-                            <span class="kw">if</span> <span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Poseidon</span> {
-                                <span class="ident">gate</span>.<span class="ident">rc</span>()[<span class="ident">round</span>][<span class="ident">col</span>]
-                            } <span class="kw">else</span> {
-                                <span class="ident">F::zero</span>()
-                            }
-                        })
-                        .<span class="ident">collect</span>(),
-                    <span class="ident">domain</span>.<span class="ident">d1</span>,
-                )
+                    <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
+                        <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">gate</span>.<span class="ident">c</span>.<span class="ident">len</span>() {
+                            <span class="ident">gate</span>.<span class="ident">c</span>[<span class="ident">i</span>]
+                        } <span class="kw">else</span> {
+                            <span class="ident">F::zero</span>()
+                        }
+                    })
+                    .<span class="ident">collect</span>(),
+                    <span class="ident">domain</span>.<span class="ident">d1</span>)
                 .<span class="ident">interpolate</span>()
-            })
-        });
+            });
+        <span class="kw">let</span> <span class="ident">coefficients4</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">coefficientsm</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>));
 
         <span class="kw">let</span> <span class="ident">ps4</span> <span class="op">=</span> <span class="ident">psm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>);
         <span class="kw">let</span> <span class="ident">ps8</span> <span class="op">=</span> <span class="ident">psm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
@@ -973,12 +877,10 @@ This source file implements Plonk circuit constraint primitive.
             <span class="ident">sigmal1</span>,
             <span class="ident">sigmal8</span>,
             <span class="ident">sigmam</span>,
-            <span class="ident">qwl</span>,
-            <span class="ident">qml</span>,
-            <span class="ident">qwm</span>,
-            <span class="ident">qmm</span>,
-            <span class="ident">qc</span>,
-            <span class="ident">rcm</span>,
+            <span class="ident">genericm</span>,
+            <span class="ident">generic4</span>,
+            <span class="ident">coefficientsm</span>,
+            <span class="ident">coefficients4</span>,
             <span class="ident">ps4</span>,
             <span class="ident">ps8</span>,
             <span class="ident">psm</span>,

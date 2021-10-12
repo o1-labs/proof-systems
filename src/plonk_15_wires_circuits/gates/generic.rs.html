@@ -103,6 +103,16 @@
 <span id="103">103</span>
 <span id="104">104</span>
 <span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk generic constraint gate primitive.
@@ -114,9 +124,11 @@ This source file implements Plonk generic constraint gate primitive.
 <span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MUL_COEFF</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">GENERICS</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTANT_COEFF</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">GENERICS</span> <span class="op">+</span> <span class="number">1</span>;
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="comment">// TODO(mimoo): why qw is length 15 if the polynomial side only uses 3?</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>], <span class="ident">qm</span>: <span class="ident">F</span>, <span class="ident">qc</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">GENERICS</span>], <span class="ident">qm</span>: <span class="ident">F</span>, <span class="ident">qc</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">qw</span>.<span class="ident">to_vec</span>();
         <span class="ident">c</span>.<span class="ident">push</span>(<span class="ident">qm</span>);
         <span class="ident">c</span>.<span class="ident">push</span>(<span class="ident">qc</span>);
@@ -133,7 +145,7 @@ This source file implements Plonk generic constraint gate primitive.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_add</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">GENERICS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
             <span class="kw">if</span> <span class="ident">col</span> <span class="op">&lt;</span> <span class="number">2</span> {
                 <span class="ident">on</span>
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">2</span> {
@@ -149,7 +161,7 @@ This source file implements Plonk generic constraint gate primitive.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_mul</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">2</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">GENERICS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">2</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
         <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">row</span>, <span class="ident">wires</span>, <span class="ident">qw</span>, <span class="op">-</span><span class="ident">on</span>, <span class="ident">off</span>)
     }
 
@@ -157,7 +169,7 @@ This source file implements Plonk generic constraint gate primitive.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_const</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">constant</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">GENERICS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
         <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">row</span>, <span class="ident">wires</span>, <span class="ident">qw</span>, <span class="ident">off</span>, <span class="op">-</span><span class="ident">constant</span>)
     }
 
@@ -165,7 +177,7 @@ This source file implements Plonk generic constraint gate primitive.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic_public</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">on</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="ident">off</span> <span class="op">=</span> <span class="ident">F::zero</span>();
-        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
+        <span class="kw">let</span> <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">GENERICS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">col</span> <span class="op">==</span> <span class="number">0</span> { <span class="ident">on</span> } <span class="kw">else</span> { <span class="ident">off</span> });
         <span class="ident"><span class="self">Self</span>::create_generic</span>(<span class="ident">row</span>, <span class="ident">wires</span>, <span class="ident">qw</span>, <span class="ident">off</span>, <span class="ident">off</span>)
     }
 
@@ -178,8 +190,8 @@ This source file implements Plonk generic constraint gate primitive.
         <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">this</span>[<span class="number">1</span>];
 
         <span class="comment">// selector vectors</span>
-        <span class="kw">let</span> <span class="ident">mul_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">COLUMNS</span>];
-        <span class="kw">let</span> <span class="ident">constant_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">COLUMNS</span> <span class="op">+</span> <span class="number">1</span>];
+        <span class="kw">let</span> <span class="ident">mul_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">MUL_COEFF</span>];
+        <span class="kw">let</span> <span class="ident">constant_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">CONSTANT_COEFF</span>];
 
         <span class="comment">// constants</span>
         <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
@@ -206,6 +218,14 @@ This source file implements Plonk generic constraint gate primitive.
 
         <span class="comment">// all good</span>
         <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generic</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Generic</span> {
+            <span class="ident">F::one</span>()
+        } <span class="kw">else</span> {
+            <span class="ident">F::zero</span>()
+        }
     }
 }
 </code></pre></div>

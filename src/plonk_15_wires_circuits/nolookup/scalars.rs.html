@@ -246,6 +246,12 @@
 <span id="246">246</span>
 <span id="247">247</span>
 <span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk prover polynomial evaluations primitive.
@@ -269,6 +275,10 @@ This source file implements Plonk prover polynomial evaluations primitive.
     <span class="doccomment">/// permutation polynomials</span>
     <span class="doccomment">/// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)</span>
     <span class="kw">pub</span> <span class="ident">s</span>: [<span class="ident">Field</span>; <span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>],
+    <span class="doccomment">/// evaluation of the generic selector polynomial</span>
+    <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Field</span>,
+    <span class="doccomment">/// evaluation of the poseidon selector polynomial</span>
+    <span class="kw">pub</span> <span class="ident">poseidon_selector</span>: <span class="ident">Field</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
@@ -277,6 +287,8 @@ This source file implements Plonk prover polynomial evaluations primitive.
             <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">s</span>[<span class="ident">i</span>], <span class="ident">pt</span>)),
             <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">w</span>[<span class="ident">i</span>], <span class="ident">pt</span>)),
             <span class="ident">z</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">z</span>, <span class="ident">pt</span>),
+            <span class="ident">generic_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">generic_selector</span>, <span class="ident">pt</span>),
+            <span class="ident">poseidon_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poseidon_selector</span>, <span class="ident">pt</span>),
         }
     }
 }
