@@ -1,9 +1,12 @@
+use std::rc::Rc;
+
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
+    PolyComm,
 };
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -18,10 +21,10 @@ use oracle::{
 use plonk_15_wires_circuits::{
     gate::CircuitGate,
     nolookup::constraints::ConstraintSystem,
-    wires::{Wire, COLUMNS},
+    wires::{Wire, COLUMNS, GENERICS},
 };
 use plonk_15_wires_protocol_dlog::{
-    index::{Index, SRSSpec},
+    index::{Index, VerifierIndex},
     prover::ProverProof,
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -32,8 +35,7 @@ type SpongeParams = PlonkSpongeConstants15W;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-#[test]
-fn test_generic_gate() {
+fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
     // circuit gates
     let mut gates = vec![];
     let mut abs_row = 0;
@@ -42,10 +44,9 @@ fn test_generic_gate() {
     let wires = Wire::new(abs_row);
 
     let (on, off) = (Fp::one(), Fp::zero());
-    let qw: [Fp; COLUMNS] = [
+    let qw: [Fp; GENERICS] = [
         /* left for addition */ off, /* right for addition */ off,
         /* output */ on, /* the rest of the columns don't matter */
-        off, off, off, off, off, off, off, off, off, off, off, off,
     ];
     let multiplication = on;
     let constant = off;
@@ -61,7 +62,15 @@ fn test_generic_gate() {
     // add a zero gate, just because
     let wires = Wire::new(abs_row);
     gates.push(CircuitGate::<Fp>::zero(abs_row, wires));
-    abs_row += 1;
+    //abs_row += 1;
+
+    //
+    gates
+}
+
+#[test]
+fn test_generic_gate() {
+    let gates = create_generic_circuit();
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); 2]);
@@ -80,8 +89,10 @@ fn test_generic_gate() {
     // zero gate
     row += 1;
 
-    //
-    assert_eq!(row, abs_row);
+    // check that witness is correctly formed
+    assert_eq!(row, gates.len());
+
+    // create and verify proof based on the witness
     verify_proof(gates, witness, 0);
 }
 
@@ -96,8 +107,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = SRS::create(n);
-    let srs = SRSSpec::Use(&srs);
+    let srs = Rc::new(SRS::create(n));
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
     // pad the witness
@@ -111,12 +121,12 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
 
     // previous opening for recursion
     let prev = {
-        let k = ceil_log2(index.srs.get_ref().g.len());
+        let k = ceil_log2(index.srs.g.len());
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.get_ref().commit_non_hiding(&b, None)
+            index.srs.commit_non_hiding(&b, None)
         };
         (chals, comm)
     };
@@ -136,4 +146,84 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
         .map(|proof| (&verifier_index, &lgr_comms, proof))
         .collect();
     ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
+}
+
+#[test]
+fn test_index_serialization() {
+    // create gates
+    let gates = create_generic_circuit();
+
+    // create the constraint system
+    let fp_sponge_params = oracle::pasta::fp::params();
+    let public = 0;
+    let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, public).unwrap();
+
+    // serialize the constraint system
+    let encoded = bincode::serialize(&cs).unwrap();
+    let decoded: ConstraintSystem<Fp> = bincode::deserialize(&encoded).unwrap();
+
+    // check if serialization worked on some of the fields
+    fn compare_cs(cs1: &ConstraintSystem<Fp>, cs2: &ConstraintSystem<Fp>) {
+        assert_eq!(cs1.public, cs2.public);
+        assert_eq!(cs1.domain.d1, cs2.domain.d1);
+        assert_eq!(cs1.gates[2].wires[2], cs2.gates[2].wires[2]);
+        assert_eq!(cs1.sigmam[0], cs2.sigmam[0]);
+        assert_eq!(cs1.zkpm, cs2.zkpm);
+        assert_eq!(cs1.sid[0], cs2.sid[0]);
+        assert_eq!(cs1.endo, cs2.endo);
+    }
+
+    compare_cs(&cs, &decoded);
+
+    // create the index and verifier index
+    let n = cs.domain.d1.size as usize;
+    let fq_sponge_params = oracle::pasta::fq::params();
+    let (endo_q, _endo_r) = endos::<Other>();
+    let srs = Rc::new(SRS::create(n));
+    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let verifier_index = index.verifier_index();
+
+    // serialize the index
+    let encoded = bincode::serialize(&index).unwrap();
+    let decoded: Index<Affine> = bincode::deserialize(&encoded).unwrap();
+
+    // check if serialization worked on some of the fields
+    assert_eq!(index.max_poly_size, decoded.max_poly_size);
+    assert_eq!(index.max_quot_size, decoded.max_quot_size);
+    compare_cs(&index.cs, &decoded.cs);
+
+    // serialize a polycomm
+    let encoded = bincode::serialize(&verifier_index.generic_comm).unwrap();
+    let decoded: PolyComm<Affine> = bincode::deserialize(&encoded).unwrap();
+
+    // check if the serialization worked
+    fn compare_commitments(com1: &PolyComm<Affine>, com2: &PolyComm<Affine>) {
+        assert_eq!(com1.shifted, com2.shifted);
+        assert_eq!(com1.unshifted, com2.unshifted);
+    }
+
+    compare_commitments(&verifier_index.generic_comm, &decoded);
+
+    // serialize the verifier index
+    let encoded = bincode::serialize(&verifier_index).unwrap();
+    let decoded: VerifierIndex<Affine> = bincode::deserialize(&encoded).unwrap();
+
+    // check if the serialization worked on some of the fields
+    assert_eq!(verifier_index.max_poly_size, decoded.max_poly_size);
+    assert_eq!(verifier_index.max_quot_size, decoded.max_quot_size);
+
+    for i in 0..COLUMNS {
+        compare_commitments(&verifier_index.coefficients_comm[i], &decoded.coefficients_comm[i]);
+    }
+
+    compare_commitments(&verifier_index.generic_comm, &decoded.generic_comm);
+    compare_commitments(&verifier_index.psm_comm, &decoded.psm_comm);
+    for (com1, com2) in verifier_index
+        .sigma_comm
+        .to_vec()
+        .iter()
+        .zip(decoded.sigma_comm.to_vec().iter())
+    {
+        compare_commitments(com1, com2);
+    }
 }
