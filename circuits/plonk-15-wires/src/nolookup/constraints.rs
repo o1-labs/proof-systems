@@ -5,8 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::gate::{CircuitGate, GateType};
-use crate::gates::poseidon::*;
+use crate::gate::CircuitGate;
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -45,23 +44,23 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpm: DP<F>,
 
+    // Coefficient polynomials. These define constant that gates can use as they like.
+    // ---------------------------------------
+
+    /// coefficients polynomials in coefficient form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficientsm: [DP<F>; COLUMNS],
+    /// coefficients polynomials in evaluation form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients4: [E<F, D<F>>; COLUMNS],
+
     // Generic constraint selector polynomials
     // ---------------------------------------
-    /// linear wire constraint polynomial
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; GENERICS]")]
-    pub qwm: [DP<F>; GENERICS],
-    /// multiplication polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub qmm: DP<F>,
-    /// constant wire polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub qc: DP<F>,
+    pub genericm: DP<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
-    /// round constant polynomials
-    #[serde_as(as = "[[o1_utils::serialization::SerdeAs; SPONGE_WIDTH]; ROUNDS_PER_ROW]")]
-    pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub psm: DP<F>,
@@ -87,12 +86,9 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Generic constraint selector polynomials
     // ---------------------------------------
-    /// left input wire polynomial over domain.d4
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; GENERICS]")]
-    pub qwl: [E<F, D<F>>; GENERICS],
     /// multiplication evaluations over domain.d4
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub qml: E<F, D<F>>,
+    pub generic4: E<F, D<F>>,
 
     // permutation polynomials
     // -----------------------
@@ -265,36 +261,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let zkpm = zk_polynomial(domain.d1);
 
         // compute generic constraint polynomials
-        let qwm: [DP<F>; GENERICS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if gate.typ == GateType::Generic {
-                            gate.c[WIRES[i]]
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
-        });
-        let qmm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if gate.typ == GateType::Generic {
-                        gate.c[COLUMNS]
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
 
         // compute poseidon constraint polynomials
         let psm = E::<F, D<F>>::from_vec_and_domain(
@@ -328,42 +294,29 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
         // generic constraint polynomials
-        let qwl = array_init(|i| qwm[i].evaluate_over_domain_by_ref(domain.d4));
-        let qml = qmm.evaluate_over_domain_by_ref(domain.d4);
-        let qc = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if gate.typ == GateType::Generic {
-                        gate.c[COLUMNS + 1]
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
+
+        let genericm = E::<F, D<F>>::from_vec_and_domain(
+            gates.iter().map(|gate| gate.generic()).collect(),
             domain.d1,
         )
         .interpolate();
+        let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
 
-        // poseidon constraint polynomials
-        let rcm = array_init(|round| {
-            array_init(|col| {
+        let coefficientsm: [_; COLUMNS] =
+            array_init(|i| {
                 E::<F, D<F>>::from_vec_and_domain(
-                    gates
-                        .iter()
-                        .map(|gate| {
-                            if gate.typ == GateType::Poseidon {
-                                gate.rc()[round][col]
-                            } else {
-                                F::zero()
-                            }
-                        })
-                        .collect(),
-                    domain.d1,
-                )
+                    gates.iter().map(|gate| {
+                        if i < gate.c.len() {
+                            gate.c[i]
+                        } else {
+                            F::zero()
+                        }
+                    })
+                    .collect(),
+                    domain.d1)
                 .interpolate()
-            })
-        });
+            });
+        let coefficients4 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d4));
 
         let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
@@ -400,12 +353,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             sigmal1,
             sigmal8,
             sigmam,
-            qwl,
-            qml,
-            qwm,
-            qmm,
-            qc,
-            rcm,
+            genericm,
+            generic4,
+            coefficientsm,
+            coefficients4,
             ps4,
             ps8,
             psm,

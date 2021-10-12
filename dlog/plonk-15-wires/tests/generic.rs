@@ -21,7 +21,7 @@ use oracle::{
 use plonk_15_wires_circuits::{
     gate::CircuitGate,
     nolookup::constraints::ConstraintSystem,
-    wires::{Wire, COLUMNS},
+    wires::{Wire, COLUMNS, GENERICS},
 };
 use plonk_15_wires_protocol_dlog::{
     index::{Index, VerifierIndex},
@@ -44,10 +44,9 @@ fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
     let wires = Wire::new(abs_row);
 
     let (on, off) = (Fp::one(), Fp::zero());
-    let qw: [Fp; COLUMNS] = [
+    let qw: [Fp; GENERICS] = [
         /* left for addition */ off, /* right for addition */ off,
         /* output */ on, /* the rest of the columns don't matter */
-        off, off, off, off, off, off, off, off, off, off, off, off,
     ];
     let multiplication = on;
     let constant = off;
@@ -194,7 +193,7 @@ fn test_index_serialization() {
     compare_cs(&index.cs, &decoded.cs);
 
     // serialize a polycomm
-    let encoded = bincode::serialize(&verifier_index.qm_comm).unwrap();
+    let encoded = bincode::serialize(&verifier_index.generic_comm).unwrap();
     let decoded: PolyComm<Affine> = bincode::deserialize(&encoded).unwrap();
 
     // check if the serialization worked
@@ -203,7 +202,7 @@ fn test_index_serialization() {
         assert_eq!(com1.unshifted, com2.unshifted);
     }
 
-    compare_commitments(&verifier_index.qm_comm, &decoded);
+    compare_commitments(&verifier_index.generic_comm, &decoded);
 
     // serialize the verifier index
     let encoded = bincode::serialize(&verifier_index).unwrap();
@@ -212,8 +211,12 @@ fn test_index_serialization() {
     // check if the serialization worked on some of the fields
     assert_eq!(verifier_index.max_poly_size, decoded.max_poly_size);
     assert_eq!(verifier_index.max_quot_size, decoded.max_quot_size);
-    compare_commitments(&verifier_index.qm_comm, &decoded.qm_comm);
-    compare_commitments(&verifier_index.qc_comm, &decoded.qc_comm);
+
+    for i in 0..COLUMNS {
+        compare_commitments(&verifier_index.coefficients_comm[i], &decoded.coefficients_comm[i]);
+    }
+
+    compare_commitments(&verifier_index.generic_comm, &decoded.generic_comm);
     compare_commitments(&verifier_index.psm_comm, &decoded.psm_comm);
     for (com1, com2) in verifier_index
         .sigma_comm

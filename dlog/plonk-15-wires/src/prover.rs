@@ -134,9 +134,9 @@ where
             .cs
             .perm_quot(&lagrange, beta, gamma, &z, &alphas[range::PERM])?;
         // generic
-        let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
+        let gen = index.cs.gnrc_quot(&lagrange.d4.this.w);
         // poseidon
-        let (pos4, pos8, posp) =
+        let (pos4, pos8) =
             index
                 .cs
                 .psdn_quot(&lagrange, &index.cs.fr_sponge_params, &alphas[range::PSDN]);
@@ -154,7 +154,7 @@ where
         let t8 = &perm + &(&mul8 + &(&emul8 + &(&pos8 + &doub8)));
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &p)
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
@@ -182,6 +182,8 @@ where
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
             z: z.eval(zeta, index.max_poly_size),
+            generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
+            poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
         };
         let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| {
@@ -189,6 +191,8 @@ where
             }),
             w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
             z: z.eval(zeta_omega, index.max_poly_size),
+            generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
+            poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
         };
 
         let chunked_evals = [chunked_evals_zeta.clone(), chunked_evals_zeta_omega.clone()];
@@ -205,12 +209,14 @@ where
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
+                generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
+                poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
             })
             .collect::<Vec<_>>();
 
         // compute and evaluate linearization polynomial
         let f_chunked = {
-            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w)
+            let f = &(&(&(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index.cs.psdn_lnrz(
                     &evals,
                     &index.cs.fr_sponge_params,
