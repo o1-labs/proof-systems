@@ -252,6 +252,27 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk prover polynomial evaluations primitive.
@@ -266,7 +287,18 @@ This source file implements Plonk prover polynomial evaluations primitive.
 <span class="kw">use</span> <span class="ident">oracle::sponge::ScalarChallenge</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// sorted lookup table polynomial</span>
+    <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// lookup aggregation polynomial</span>
+    <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">Field</span>,
+    <span class="comment">// TODO: May be possible to optimize this away?</span>
+    <span class="doccomment">/// lookup table polynomial</span>
+    <span class="kw">pub</span> <span class="ident">table</span>: <span class="ident">Field</span>,
+}
+
 <span class="comment">// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span> {
     <span class="doccomment">/// witness polynomials</span>
     <span class="kw">pub</span> <span class="ident">w</span>: [<span class="ident">Field</span>; <span class="ident">COLUMNS</span>],
@@ -275,6 +307,8 @@ This source file implements Plonk prover polynomial evaluations primitive.
     <span class="doccomment">/// permutation polynomials</span>
     <span class="doccomment">/// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)</span>
     <span class="kw">pub</span> <span class="ident">s</span>: [<span class="ident">Field</span>; <span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>],
+    <span class="doccomment">/// lookup-related evaluations</span>
+    <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupEvaluations</span><span class="op">&lt;</span><span class="ident">Field</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// evaluation of the generic selector polynomial</span>
     <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Field</span>,
     <span class="doccomment">/// evaluation of the poseidon selector polynomial</span>
@@ -287,6 +321,14 @@ This source file implements Plonk prover polynomial evaluations primitive.
             <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">s</span>[<span class="ident">i</span>], <span class="ident">pt</span>)),
             <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">w</span>[<span class="ident">i</span>], <span class="ident">pt</span>)),
             <span class="ident">z</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">z</span>, <span class="ident">pt</span>),
+            <span class="ident">lookup</span>:
+                <span class="self">self</span>.<span class="ident">lookup</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> {
+                    <span class="ident">LookupEvaluations</span> {
+                        <span class="ident">table</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">table</span>, <span class="ident">pt</span>),
+                        <span class="ident">aggreg</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">aggreg</span>, <span class="ident">pt</span>),
+                        <span class="ident">sorted</span>: <span class="ident">l</span>.<span class="ident">sorted</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="ident">x</span>, <span class="ident">pt</span>)).<span class="ident">collect</span>(),
+                    }
+                }),
             <span class="ident">generic_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">generic_selector</span>, <span class="ident">pt</span>),
             <span class="ident">poseidon_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">poseidon_selector</span>, <span class="ident">pt</span>),
         }

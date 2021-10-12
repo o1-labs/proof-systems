@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["GateType",""]],"struct":[["CircuitGate",""]]});
+initSidebarItems({"enum":[["CurrOrNext",""],["GateType",""]],"struct":[["CircuitGate",""]]});

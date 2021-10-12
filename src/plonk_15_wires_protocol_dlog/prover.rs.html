@@ -525,6 +525,9 @@
 <span id="525">525</span>
 <span id="526">526</span>
 <span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -709,6 +712,7 @@ This source file implements prover&#39;s zk-proof primitive.
             <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">sigmam</span>[<span class="number">0</span>..<span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>][<span class="ident">i</span>].<span class="ident">eval</span>(<span class="ident">zeta</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>)),
             <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w</span>[<span class="ident">i</span>].<span class="ident">eval</span>(<span class="ident">zeta</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>)),
             <span class="ident">z</span>: <span class="ident">z</span>.<span class="ident">eval</span>(<span class="ident">zeta</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>),
+            <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
             <span class="ident">generic_selector</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">genericm</span>.<span class="ident">eval</span>(<span class="ident">zeta</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>),
             <span class="ident">poseidon_selector</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">psm</span>.<span class="ident">eval</span>(<span class="ident">zeta</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>),
         };
@@ -718,6 +722,7 @@ This source file implements prover&#39;s zk-proof primitive.
             }),
             <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">w</span>[<span class="ident">i</span>].<span class="ident">eval</span>(<span class="ident">zeta_omega</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>)),
             <span class="ident">z</span>: <span class="ident">z</span>.<span class="ident">eval</span>(<span class="ident">zeta_omega</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>),
+            <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
             <span class="ident">generic_selector</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">genericm</span>.<span class="ident">eval</span>(<span class="ident">zeta_omega</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>),
             <span class="ident">poseidon_selector</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">psm</span>.<span class="ident">eval</span>(<span class="ident">zeta_omega</span>, <span class="ident">index</span>.<span class="ident">max_poly_size</span>),
         };
@@ -736,6 +741,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">s</span>[<span class="ident">i</span>], <span class="ident">e1</span>)),
                 <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">w</span>[<span class="ident">i</span>], <span class="ident">e1</span>)),
                 <span class="ident">z</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">z</span>, <span class="ident">e1</span>),
+                <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
                 <span class="ident">generic_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">generic_selector</span>, <span class="ident">e1</span>),
                 <span class="ident">poseidon_selector</span>: <span class="ident">DensePolynomial::eval_polynomial</span>(<span class="kw-2">&amp;</span><span class="ident">es</span>.<span class="ident">poseidon_selector</span>, <span class="ident">e1</span>),
             })

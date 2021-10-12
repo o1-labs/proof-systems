@@ -54,6 +54,10 @@
 <span id="54">54</span>
 <span id="55">55</span>
 <span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">Domain</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -65,28 +69,32 @@
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">d1</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size n</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">d2</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size 2n</span>
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">d4</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size 4n</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">d8</span>: <span class="ident">Domain</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="comment">// size 8n</span>
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Creates 3 evaluation domains `d1` (of size `n`), `d4` (of size `4n`),</span>
+    <span class="doccomment">/// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),</span>
     <span class="doccomment">/// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator</span>
-    <span class="doccomment">/// of `d4` is `g^2` and the generator of `d1` is `g^8`.</span>
+    <span class="doccomment">/// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.</span>
     <span class="comment">// TODO(mimoo): should we instead panic/return an error if any of these return None?</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::compute_size_of_domain</span>(<span class="ident">n</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">n</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">d2</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">2</span> <span class="op">*</span> <span class="ident">n</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">d4</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">4</span> <span class="op">*</span> <span class="ident">n</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">d8</span> <span class="op">=</span> <span class="ident">Domain</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="number">8</span> <span class="op">*</span> <span class="ident">n</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// ensure the relationship between the three domains in case the library&#39;s behavior changes</span>
-        <span class="macro">assert!</span>(<span class="ident">d4</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>]) <span class="op">==</span> <span class="ident">d1</span>.<span class="ident">group_gen</span>);
-        <span class="macro">assert!</span>(<span class="ident">d8</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>]) <span class="op">==</span> <span class="ident">d4</span>.<span class="ident">group_gen</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">d2</span>.<span class="ident">group_gen</span>.<span class="ident">square</span>(), <span class="ident">d1</span>.<span class="ident">group_gen</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">d4</span>.<span class="ident">group_gen</span>.<span class="ident">square</span>(), <span class="ident">d2</span>.<span class="ident">group_gen</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">d8</span>.<span class="ident">group_gen</span>.<span class="ident">square</span>(), <span class="ident">d4</span>.<span class="ident">group_gen</span>);
 
-        <span class="prelude-val">Some</span>(<span class="ident">EvaluationDomains</span> { <span class="ident">d1</span>, <span class="ident">d4</span>, <span class="ident">d8</span> })
+        <span class="prelude-val">Some</span>(<span class="ident">EvaluationDomains</span> { <span class="ident">d1</span>, <span class="ident">d2</span>, <span class="ident">d4</span>, <span class="ident">d8</span> })
     }
 }
 

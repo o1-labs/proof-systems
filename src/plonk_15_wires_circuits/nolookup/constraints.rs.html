@@ -522,6 +522,15 @@
 <span id="522">522</span>
 <span id="523">523</span>
 <span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -695,9 +704,18 @@ This source file implements Plonk circuit constraint primitive.
     <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> <span class="number">3</span>])
 }
 
+<span class="doccomment">/// Evaluates the polynomial</span>
+<span class="doccomment">/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_zk_polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">zk_w3</span>(<span class="ident">domain</span>);
+    <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
+    <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
+    (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w1</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w2</span>) <span class="op">*</span> (<span class="ident">x</span> <span class="op">-</span> <span class="ident">w3</span>)
+}
+
 <span class="doccomment">/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.</span>
 <span class="doccomment">/// Currently, we use k = 3 for 2 blinding factors,</span>
-<span class="doccomment">/// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73</span>
+<span class="doccomment">/// see &lt;https://www.plonk.cafe/t/noob-questions-plonk-paper/73&gt;</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_polynomial</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">zk_w3</span>(<span class="ident">domain</span>);
     <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
