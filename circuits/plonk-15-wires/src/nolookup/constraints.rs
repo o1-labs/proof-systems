@@ -172,9 +172,7 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
 }
 
 /// Evaluates the polynomial
-/// ```
 /// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-/// ```
 pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
