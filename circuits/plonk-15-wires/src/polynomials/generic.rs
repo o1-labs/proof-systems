@@ -38,7 +38,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let c = &self.coefficients8[CONSTANT_COEFF];
         eval_part.evals.par_iter_mut().enumerate().for_each(|(i, e)| *e += c[2 * i]);
 
-        // eval_part += &self.coefficients4[CONSTANT_COEFF];
         eval_part *= &self.generic4;
 
         eval_part
