@@ -239,6 +239,20 @@ pub struct Cache {
     next_id: usize
 }
 
+impl CacheId {
+    fn get_from<'a, 'b, F: FftField>(&self, cache: &'b HashMap<CacheId, EvalResult<'a, F>>) -> Option<EvalResult<'b, F>> {
+        cache.get(self).map(|e| {
+            match e {
+                EvalResult::Constant(x) => EvalResult::Constant(*x),
+                EvalResult::SubEvals { domain, shift, evals } =>
+                    EvalResult::SubEvals { domain: *domain, shift: *shift, evals },
+                EvalResult::Evals { domain, evals } =>
+                    EvalResult::SubEvals { domain: *domain, shift: 0, evals }
+            }
+        })
+    }
+}
+
 impl Cache {
     /// Create a new cache
     pub fn new() -> Self {
@@ -322,18 +336,20 @@ pub enum PolishToken<F> {
     Load(usize),
 }
 
-fn evaluate_variable<'a, 'b, 'c, F: Field>(evals: &'a [ProofEvaluations<F>], v: &'b Variable) -> Result<F, &'c str> {
-    let evals = &evals[v.row.shift()];
-    use Column::*;
-    let l = evals.lookup.as_ref().ok_or("Lookup should not have been used");
-    match v.col {
-        Witness(i) => Ok(evals.w[i]),
-        Z => Ok(evals.z),
-        LookupSorted(i) => l.map(|l| l.sorted[i]),
-        LookupAggreg => l.map(|l| l.aggreg),
-        LookupTable => l.map(|l| l.table),
-        Coefficient(_) | LookupKindIndex(_) | Index(_) =>
-            Err("Cannot get index evaluation (should have been linearized away)")
+impl Variable {
+    fn evaluate<'a, 'b, F: Field>(&self, evals: &'a [ProofEvaluations<F>]) -> Result<F, &'b str> {
+        let evals = &evals[self.row.shift()];
+        use Column::*;
+        let l = evals.lookup.as_ref().ok_or("Lookup should not have been used");
+        match self.col {
+            Witness(i) => Ok(evals.w[i]),
+            Z => Ok(evals.z),
+            LookupSorted(i) => l.map(|l| l.sorted[i]),
+            LookupAggreg => l.map(|l| l.aggreg),
+            LookupTable => l.map(|l| l.table),
+            Coefficient(_) | LookupKindIndex(_) | Index(_) =>
+                Err("Cannot get index evaluation (should have been linearized away)")
+        }
     }
 }
 
@@ -358,7 +374,7 @@ impl<F: FftField> PolishToken<F> {
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
                 Cell(v) =>
-                    match evaluate_variable(evals, v) {
+                    match v.evaluate(evals) {
                         Ok(x) => stack.push(x),
                         Err(e) => return Err(e)
                     },
@@ -924,7 +940,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
             UnnormalizedLagrangeBasis(i) =>
                 Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
-            Cell(v) => evaluate_variable(evals, v),
+            Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
         }
     }
@@ -973,7 +989,7 @@ impl<F: FftField> Expr<F> {
             ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
             UnnormalizedLagrangeBasis(i) => 
                 Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
-            Cell(v) => evaluate_variable(evals, v),
+            Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
         }
     }
@@ -1025,18 +1041,6 @@ impl<F: FftField> Expr<F> {
         d: Domain,
         env: & Environment<'a, F>) -> Either<EvalResult<'a, F>, CacheId> where 'a: 'b {
 
-        let get = |cache: &'b HashMap<CacheId, EvalResult<'a, F>>, id: &CacheId| -> Option<EvalResult<'b, F>> {
-            cache.get(id).map(|e| {
-                match e {
-                    EvalResult::Constant(x) => EvalResult::Constant(*x),
-                    EvalResult::SubEvals { domain, shift, evals } =>
-                        EvalResult::SubEvals { domain: *domain, shift: *shift, evals },
-                    EvalResult::Evals { domain, evals } =>
-                        EvalResult::SubEvals { domain: *domain, shift: 0, evals }
-                }
-            })
-        };
-
         let res : EvalResult<'a, F> =
             match self {
                 Expr::Double(x) => {
@@ -1057,8 +1061,8 @@ impl<F: FftField> Expr<F> {
                                 xx().add(xx(), dom)
                             },
                             Either::Right(id) => {
-                                let x1 = get(cache, &id).unwrap();
-                                let x2 = get(cache, &id).unwrap();
+                                let x1 = id.get_from(cache).unwrap();
+                                let x2 = id.get_from(cache).unwrap();
                                 x1.add(x2, dom)
                             }
                         };
@@ -1083,7 +1087,7 @@ impl<F: FftField> Expr<F> {
                     let x = x.evaluations_helper(cache, d, env);
                     match x {
                         Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
-                        Either::Right(id) => get(cache, &id).unwrap().pow(*p, (d, get_domain(d, env))),
+                        Either::Right(id) => id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env))),
                     }
                 },
                 Expr::ZkPolynomial =>
@@ -1127,9 +1131,9 @@ impl<F: FftField> Expr<F> {
                     use Either::*;
                     match (e1, e2) {
                         (Left(e1), Left(e2)) => f(e1, e2),
-                        (Right(id1), Left(e2)) => f(get(cache, &id1).unwrap(), e2),
-                        (Left(e1), Right(id2)) => f(e1, get(cache, &id2).unwrap()),
-                        (Right(id1), Right(id2)) => f(get(cache, &id1).unwrap(), get(cache, &id2).unwrap()),
+                        (Right(id1), Left(e2)) => f(id1.get_from(cache).unwrap(), e2),
+                        (Left(e1), Right(id2)) => f(e1, id2.get_from(cache).unwrap()),
+                        (Right(id1), Right(id2)) => f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap()),
                     }
                 },
             };
