@@ -21,7 +21,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use plonk_15_wires_protocol_dlog::{
-    index::{Index, SRSSpec},
+    index::{Index},
     prover::ProverProof,
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -108,7 +108,7 @@ fn varbase_mul_test() {
         let bits_msb: Vec<_> =
             bits_lsb.iter().take(num_bits).map(|x| *x).rev().collect();
 
-        let mut res =
+        let res =
             varbasemul::witness(
                 &mut witness,
                 i * rows_per_scalar,

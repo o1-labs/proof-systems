@@ -23,7 +23,7 @@ use plonk_15_wires_circuits::{
     nolookup::constraints::ConstraintSystem,
 };
 use plonk_15_wires_protocol_dlog::{
-    index::{Index, SRSSpec},
+    index::{Index},
     prover::ProverProof,
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -40,7 +40,7 @@ const PUBLIC: usize = 0;
 
 #[test]
 fn chacha_prover() {
-    let num_chachas = 16;
+    let num_chachas = 8;
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
     let max_size = 1 << ceil_log2(n_lower_bound);
@@ -126,144 +126,3 @@ fn chacha_prover() {
         }
     }
 }
-
-/*
-// creates a proof and verifies it
-fn positive(index: &Index<Affine>) {
-    // constant
-    let max_size = 1 << ceil_log2(N_LOWER_BOUND);
-
-    // set up
-    let rng = &mut StdRng::from_seed([0u8; 32]);
-    let params = oracle::pasta::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SpongeParams>::new(params);
-    let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let mut batch = Vec::new();
-
-    // debug
-    println!("{}{:?}", "Circuit size: ".yellow(), max_size);
-    println!("{}{:?}", "Polycommitment chunk size: ".yellow(), max_size);
-    println!(
-        "{}{:?}",
-        "Number oh Poseidon hashes in the circuit: ".yellow(),
-        NUM_POS
-    );
-    println!(
-        "{}{:?}",
-        "Full rounds: ".yellow(),
-        SpongeParams::ROUNDS_FULL
-    );
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::SPONGE_BOX);
-    println!("{}", "Base curve: vesta\n".green());
-    println!("{}", "Prover zk-proof computation".green());
-
-    let mut start = Instant::now();
-    for test in 0..1 {
-        // witness for Poseidon permutation custom constraints
-        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
-
-        // creates a random initial state
-        let init = vec![Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
-
-        // number of poseidon instances in the circuit
-        for h in 0..NUM_POS {
-            // index
-            // TODO: is the `+ 1` correct?
-            let first_row = h * (POS_ROWS_PER_HASH + 1);
-
-            // initialize the sponge in the circuit with our random state
-            let first_state_cols = &mut witness[round_to_cols(0)];
-            for state_idx in 0..SPONGE_WIDTH {
-                first_state_cols[state_idx][first_row] = init[state_idx];
-            }
-
-            // set the sponge state
-            sponge.state = init.clone();
-
-            // for the poseidon rows
-            for row_idx in 0..POS_ROWS_PER_HASH {
-                let row = row_idx + first_row;
-                for round in 0..ROUNDS_PER_ROW {
-                    // the last round makes use of the next row
-                    let maybe_next_row = if round == ROUNDS_PER_ROW - 1 {
-                        row + 1
-                    } else {
-                        row
-                    };
-
-                    //
-                    let abs_round = round + row_idx * ROUNDS_PER_ROW;
-
-                    // apply the sponge and record the result in the witness
-                    // (this won't work if the circuit has an INITIAL_ARK)
-                    assert!(!PlonkSpongeConstants15W::INITIAL_ARK);
-                    sponge.full_round(abs_round);
-
-                    // apply the sponge and record the result in the witness
-                    let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
-                    witness[cols_to_update]
-                        .iter_mut()
-                        .zip(sponge.state.iter())
-                        // update the state (last update is on the next row)
-                        .for_each(|(w, s)| w[maybe_next_row] = *s);
-                }
-            }
-        }
-
-        // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness).unwrap();
-
-        //
-        let prev = {
-            let k = ceil_log2(index.srs.get_ref().g.len());
-            let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-            let comm = {
-                let coeffs = b_poly_coefficients(&chals);
-                let b = DensePolynomial::from_coefficients_vec(coeffs);
-                index.srs.get_ref().commit_non_hiding(&b, None)
-            };
-
-            (chals, comm)
-        };
-
-        println!("n vs domain: {} {}", max_size, index.cs.domain.d1.size);
-
-        // add the proof to the batch
-        // TODO: create and verify should not take group_map, that should be during an init phase
-        batch.push(
-            ProverProof::create::<BaseSponge, ScalarSponge>(
-                &group_map,
-                &witness,
-                &index,
-                vec![prev],
-            )
-            .unwrap(),
-        );
-
-        print!("{:?}\r", test);
-        io::stdout().flush().unwrap();
-    }
-
-    // TODO: this should move to a bench
-    println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-
-    // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
-    let verifier_index = index.verifier_index();
-
-    let lgr_comms = vec![];
-    let batch: Vec<_> = batch
-        .iter()
-        .map(|proof| (&verifier_index, &lgr_comms, proof))
-        .collect();
-
-    // verify the proofs in batch
-    println!("{}", "Verifier zk-proofs verification".green());
-    start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
-        Ok(_) => {
-            println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());
-        }
-    }
-}
-*/
