@@ -482,18 +482,6 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             }
         }
         Fields::Unnamed(fields) => {
-            // TODO: when there's a single element,
-            // this will produce something like this:
-            //
-            // ```
-            // type ('field) scalar_challenge = 'field
-            // ```
-            //
-            // shouldn't we instead produce something like this?
-            //
-            // ```
-            // type ('field) scalar_challenge =  { inner: 'field }
-            // ```
             let mut punctured_generics: Vec<String> = vec![];
             let mut fields_to_call = vec![];
             for field in &fields.unnamed {
@@ -529,7 +517,17 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                     }
                 }
 
-                generics_ocaml.join(" * ")
+                // when there's a single element,
+                // this will produce something like this:
+                //
+                // ```
+                // type ('field) scalar_challenge =  { inner: 'field }
+                // ```
+                if generics_ocaml.len() == 1 {
+                    format!("{ inner: {} }", generics_ocaml[0])
+                } else {
+                    generics_ocaml.join(" * ")
+                }
             }
         }
         _ => panic!("only named, and unnamed field supported"),
