@@ -1,41 +1,34 @@
-/*****************************************************************************************************************
+//! This source file implements the arithmetization of plookup constraints 
+//!
+//! Because of our ZK-rows, we can't do the trick in the plookup paper of
+//! wrapping around to enforce consistency between the sorted lookup columns.
+//!
+//! Instead, we arrange the LookupSorted table into columns in a snake-shape.
+//!
+//! Like so,
+//! _   _
+//! | | | | |
+//! | | | | |
+//! |_| |_| |
+//!
+//! or, imagining the full sorted array is [ s0, ..., s8 ], like
+//!
+//! s0 s4 s4 s8
+//! s1 s3 s5 s7
+//! s2 s2 s6 s6
+//!
+//! So the direction ("increasing" or "decreasing" (relative to LookupTable)
+//! is 
+//! if i % 2 = 0 { Increasing } else { Decreasing }
+//!
+//! Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
+//! last element of LookupSorted(i) = last element of LookupSorted(i + 1),
+//! and if i % 2 = 1, we enforce that the
+//! first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
-This source file implements the arithmetization of plookup constraints 
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-Because of our ZK-rows, we can't do the trick in the plookup paper of
-wrapping around to enforce consistency between the sorted lookup columns.
-
-Instead, we arrange the LookupSorted table into columns in a snake-shape.
-
-Like so,
-   _   _
-| | | | |
-| | | | |
-|_| |_| |
-
-or, imagining the full sorted array is [ s0, ..., s8 ], like
-
-s0 s4 s4 s8
-s1 s3 s5 s7
-s2 s2 s6 s6
-
-So the direction ("increasing" or "decreasing" (relative to LookupTable)
-is 
-if i % 2 = 0 { Increasing } else { Decreasing }
-
-Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
-last element of LookupSorted(i) = last element of LookupSorted(i + 1),
-and if i % 2 = 1, we enforce that the
-first element of LookupSorted(i) = first element of LookupSorted(i + 1)
-
-*****************************************************************************************************************/
-
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::polynomial::WitnessOverDomains;
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-
-use ark_ff::{Field, SquareRootField, FftField, Zero, One};
+use ark_ff::{Field, FftField, Zero, One};
 use rand::Rng;
 use CurrOrNext::*;
 use std::collections::{HashMap};
@@ -44,7 +37,7 @@ use crate::{
     gate::{CircuitGate, LookupInfo, LocalPosition, CurrOrNext, SingleLookup, JointLookup},
 };
 use oracle::rndoracle::ProofError;
-use crate::expr::{E, Variable, Column, ConstantExpr as C};
+use crate::expr::{E, Variable, Column, ConstantExpr};
 
 // TODO: Update for multiple tables
 fn single_lookup<F: FftField>(s : &SingleLookup<F>) -> E<F> {
@@ -56,7 +49,7 @@ fn single_lookup<F: FftField>(s : &SingleLookup<F>) -> E<F> {
 
 fn joint_lookup<F: FftField>(j : &JointLookup<F>) -> E<F> {
     j.entry.iter().enumerate()
-        .map(|(i, s)| E::constant(C::JointCombiner.pow(i)) * single_lookup(s))
+        .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
 }
 
@@ -98,17 +91,11 @@ fn adjacent_pairs<A: Copy, I: Iterator<Item=A>>(i : I) -> AdjacentPairs<A, I> {
     AdjacentPairs { i, prev_second_component: None }
 }
 
-pub struct LookupWitness<F: FftField> {
-    // The lookups, sorted
-    pub sorted: Vec<Evaluations<F, D<F>>>,
-    // The lookups, in-order and with the product taken in each row
-    pub f_chunks: Vec<F>,
-}
+/// The number of random values to append to columns for zero-knowledge.
+pub const ZK_ROWS: usize = 3;
 
-pub const ZK_ROWS: usize = 2;
-
-// Pad with zeroes and then add 2 random elements in the last two
-// rows for zero knowledge.
+/// Pad with zeroes and then add 3 random elements in the last two
+/// rows for zero knowledge.
 pub fn zk_patch<R: Rng + ?Sized, F: FftField>(mut e : Vec<F>, d: D<F>, rng: &mut R) -> Evaluations<F, D<F>> {
     let n = d.size as usize;
     let k = e.len();
@@ -118,6 +105,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(mut e : Vec<F>, d: D<F>, rng: &mut
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
+/// Checks that all the lookup constraints are satisfied.
 pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: G,
@@ -257,13 +245,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     }
 }
 
-/*
-   Aggregration polyomial is the product of terms
-
-    (1 + beta) \prod_j (gamma + f_{i,j}) (gamma(1 + beta) + t_i + beta t_{i+1})
-    ---------------------------------------------------------------------------
-    \prod_j (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
-*/
+/// Computes the sorted lookup tables required by the lookup argument.
 pub fn sorted
     <'a
     , F: FftField
@@ -347,6 +329,13 @@ pub fn sorted
     Ok(sorted)
 }
 
+/// Computes the aggregation polyomial, whose kth entry is the product of terms
+/// 
+/// (1 + beta) \prod_j (gamma + f_{i,j}) (gamma(1 + beta) + t_i + beta t_{i+1})
+/// ---------------------------------------------------------------------------
+/// \prod_j (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
+///
+/// for i < k.
 pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     dummy_lookup_value: F,
     lookup_table: I,
@@ -429,6 +418,7 @@ pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     Ok(zk_patch(lookup_aggreg, d1, rng))
 }
 
+/// Specifies the lookup constraints as expressions.
 pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
@@ -455,18 +445,18 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     let one : E<F> = E::one();
     let non_lookup_indcator = one.clone() - lookup_indicator;
 
-    let dummy_lookup : C<F> =
+    let dummy_lookup : ConstantExpr<F> =
         dummy_lookup.iter().rev()
-        .fold(C::Literal(F::zero()), |acc, x| C::JointCombiner * acc + C::Literal(*x));
+        .fold(ConstantExpr::zero(), |acc, x| ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x));
 
-    let complements_with_beta_term: Vec<C<F>> = {
-        let mut v = vec![C::one()];
-        let x = C::Gamma + dummy_lookup;
+    let complements_with_beta_term: Vec<ConstantExpr<F>> = {
+        let mut v = vec![ConstantExpr::one()];
+        let x = ConstantExpr::Gamma + dummy_lookup;
         for i in 1..(lookup_info.max_per_row+1) {
             v.push(v[i - 1].clone() * x.clone())
         }
 
-        let beta1_per_row: C<F> = (C::one() + C::Beta).pow(lookup_info.max_per_row);
+        let beta1_per_row: ConstantExpr<F> = (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
         v.iter().map(|x| x.clone() * beta1_per_row.clone()).collect()
     };
 
@@ -480,7 +470,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
 
         spec
         .iter()
-        .map(|j| E::Constant(C::Gamma) + joint_lookup(j))
+        .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
         .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
     let f_chunk =
@@ -488,7 +478,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
         .map(|(i, spec)| {
             column(Column::LookupKindIndex(i)) * f_term(spec)
         }).fold(non_lookup_indcator * f_term(&vec![]), |acc, x| acc + x);
-    let gammabeta1 = || E::<F>::Constant(C::Gamma * (C::Beta + C::one()));
+    let gammabeta1 = || E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
     let ft_chunk = 
         f_chunk
         * (gammabeta1()
