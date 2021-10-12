@@ -515,7 +515,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
                 let mut missing_types: Vec<String> = vec![];
                 #(
-                    missing_types.push(&<#fields_to_call>::ocaml_desc(env, &global_generics));
+                    missing_types.push(<#fields_to_call as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics));
                 );*
 
                 for ty in punctured_generics {
