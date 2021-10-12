@@ -4,8 +4,8 @@ This source file implements non-special point Weierstrass curve additionconstrai
 
     ADD gate constrains
 
-        (x2 - x1) * (y3 + y1) - (y1 - y2) * (x1 - x3)
-        (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
+        (x1 - x3) * (y2 - y1) = (y3 + y1) * (x2 - x1)
+        (y2 - y1)^2 = (x1 + x2 + x3) * (x2 - x1)^2
         (x2 - x1) * r = 1
 
     The constrains above are derived from the following EC Affine arithmetic equations:
@@ -15,9 +15,14 @@ This source file implements non-special point Weierstrass curve additionconstrai
         (x1 - x3) * s = y3 + y1
 
         =>
+        s := (y2 - y1) / (x2 - x1)
+        s * s = x1 + x2 + x3
+        (x1 - x3) * s = y3 + y1
 
-        (x2 - x1) * (y3 + y1) = (y1 - y2) * (x1 - x3)
-        (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) = (y3 + y1) * (y3 + y1)
+        =>
+        x2 != x1
+        (y2 - y1)^2 = (x1 + x2 + x3) * (x2 - x1)^2
+        (x1 - x3) * (y2 - y1) = (y3 + y1) * (x2 - x1)
 
 *****************************************************************************************************************/
 
@@ -35,19 +40,29 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             return self.zero4.clone();
         }
         /*
-            (x2 - x1) * (y3 + y1) - (y2 - y1) * (x1 - x3)
-            (x1 + x2 + x3) * (x1 - x3) * (x1 - x3) - (y3 + y1) * (y3 + y1)
+            (x1 - x3) * (y2 - y1) = (y3 + y1) * (x2 - x1)
+            (y2 - y1)^2 = (x1 + x2 + x3) * (x2 - x1)^2
             (x2 - x1) * r = 1
         */
         let w = &polys.d4.this.w;
-        let y31 = &(&w[5] + &w[1]);
-        let x13 = &(&w[0] - &w[4]);
-        let x21 = &(&w[2] - &w[0]);
+        let x1 = &w[0];
+        let y1 = &w[1];
+        let x2 = &w[2];
+        let y2 = &w[3];
+        let x3 = &w[4];
+        let y3 = &w[5];
+        let r = &w[6];
+
+        let y21 = &(y2 - y1);
+        let x21 = &(x2 - x1);
+
+        let c1 = &(&(x1 - x3) * &y21) - &(&(y3 + y1) * x21);
+        let c2 = &y21.square() - &(&(&(x1 + x2) + x3) * &x21.square());
 
         let p = [
-            &(x21 * y31) - &(&(&w[3] - &w[1]) * x13),
-            &(&(&(&w[0] + &w[2]) + &w[4]) * &x13.pow(2)) - &y31.pow(2),
-            (&(x21 * &w[6]) - &self.l04),
+            c1,
+            c2,
+            (&(x21 * r) - &self.l04),
         ];
 
         &p.iter()
@@ -60,14 +75,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
     pub fn ecad_scalars(evals: &Vec<ProofEvaluations<F>>, alpha: &[F]) -> F {
         let w = evals[0].w;
-        let y31 = w[5] + &w[1];
-        let x13 = w[0] - &w[4];
-        let x21 = w[2] - &w[0];
+        let x1 = w[0];
+        let y1 = w[1];
+        let x2 = w[2];
+        let y2 = w[3];
+        let x3 = w[4];
+        let y3 = w[5];
+        let r = w[6];
+
+        let y21 = y2 - y1;
+        let x21 = x2 - x1;
+
+        let c1 = ((x1 - x3) * y21) - ((y3 + y1) * x21);
+        let c2 = y21.square() - (((x1 + x2) + x3) * x21.square());
 
         [
-            (x21 * y31) - &((w[3] - &w[1]) * x13),
-            (w[0] + &w[2] + &w[4]) * &x13.square() - &y31.square(),
-            x21 * &w[6] - &F::one(),
+            c1,
+            c2,
+            ((x21 * r) - F::one()),
         ]
         .iter()
         .zip(alpha.iter())
