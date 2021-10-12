@@ -20,8 +20,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_quot(
         &self,
         witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
-        public: &DensePolynomial<F>,
-    ) -> (Evaluations<F, D<F>>, DensePolynomial<F>) {
+    ) -> Evaluations<F, D<F>> {
         // w[0](x) * w[1](x) * qml(x)
         let mut multiplication = &witness_d4[0] * &witness_d4[1];
         let m8 = &self.coefficients8[MUL_COEFF];
@@ -42,9 +41,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // eval_part += &self.coefficients4[CONSTANT_COEFF];
         eval_part *= &self.generic4;
 
-        // return in lagrange and monomial form for optimization purpose
-        let poly_part = public.clone();
-        (eval_part, poly_part)
+        eval_part
     }
 
     /// produces
@@ -229,8 +226,8 @@ mod tests {
         let zeta = Fp::rand(rng);
 
         // compute quotient by dividing with vanishing polynomial
-        let (t1, t2) = cs.gnrc_quot(&witness_d4, &public);
-        let t_before_division = &t1.interpolate() + &t2;
+        let t1 = cs.gnrc_quot(&witness_d4);
+        let t_before_division = &t1.interpolate() + &public;
         let (t, rem) = t_before_division
             .divide_by_vanishing_poly(cs.domain.d1)
             .unwrap();

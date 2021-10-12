@@ -22,6 +22,7 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
 }
 
+// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
@@ -31,7 +32,7 @@ pub struct ProofEvaluations<Field> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
-    /// lookup-related evalutions
+    /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Field,

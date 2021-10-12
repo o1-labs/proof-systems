@@ -6,6 +6,7 @@ This source file implements Plonk circuit gate wires primitive.
 
 use ark_ff::bytes::{FromBytes, ToBytes};
 use array_init::array_init;
+use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
 pub const GENERICS: usize = 3;
@@ -16,7 +17,8 @@ pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1
 /// Wire documents the other cell that is wired to this one.
 /// If the cell represents an internal wire, an input to the circuit,
 /// or a final output of the circuit, the cell references itself.
-#[derive(Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub struct Wire {
     // TODO(mimoo): shouldn't we use u32 since we serialize them as u32?
     pub row: usize,
@@ -50,5 +52,36 @@ impl FromBytes for Wire {
         let row = u32::read(&mut r)? as usize;
         let col = u32::read(&mut r)? as usize;
         Ok(Wire { row, col })
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+    use ocaml_gen::OcamlGen;
+    use std::convert::TryInto;
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlWire {
+        pub row: ocaml::Int,
+        pub col: ocaml::Int,
+    }
+
+    impl From<Wire> for CamlWire {
+        fn from(w: Wire) -> Self {
+            Self {
+                row: w.row.try_into().expect("usize -> isize"),
+                col: w.col.try_into().expect("usize -> isize"),
+            }
+        }
+    }
+
+    impl From<CamlWire> for Wire {
+        fn from(w: CamlWire) -> Self {
+            Self {
+                row: w.row.try_into().expect("isize -> usize"),
+                col: w.col.try_into().expect("isize -> usize"),
+            }
+        }
     }
 }

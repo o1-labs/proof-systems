@@ -22,13 +22,10 @@ use plonk_15_wires_circuits::{
     gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
     nolookup::constraints::ConstraintSystem,
 };
-use plonk_15_wires_protocol_dlog::{
-    index::{Index, SRSSpec},
-    prover::ProverProof,
-};
+use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
-use std::time::Instant;
 use std::{io, io::Write};
+use std::{rc::Rc, time::Instant};
 
 // aliases
 
@@ -80,12 +77,12 @@ fn poseidon_vesta_15_wires() {
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let mut srs = SRS::create(max_size);
+    let mut srs = SRS::<Affine>::create(max_size);
     let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
     srs.add_lagrange_basis(cs.domain.d1);
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = SRSSpec::Use(&srs);
+    let srs = Rc::new(SRS::create(max_size));
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
@@ -179,12 +176,12 @@ fn positive(index: &Index<Affine>) {
 
         //
         let prev = {
-            let k = ceil_log2(index.srs.get_ref().g.len());
+            let k = ceil_log2(index.srs.g.len());
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let coeffs = b_poly_coefficients(&chals);
                 let b = DensePolynomial::from_coefficients_vec(coeffs);
-                index.srs.get_ref().commit_non_hiding(&b, None)
+                index.srs.commit_non_hiding(&b, None)
             };
 
             (chals, comm)

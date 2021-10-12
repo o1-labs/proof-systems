@@ -32,7 +32,7 @@ use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::time::Instant;
+use std::{rc::Rc, time::Instant};
 
 const PUBLIC: usize = 0;
 
@@ -80,7 +80,7 @@ fn varbase_mul_test() {
 
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = SRSSpec::Use(&srs);
+    let srs = Rc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 

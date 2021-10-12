@@ -27,7 +27,7 @@ use plonk_15_wires_protocol_dlog::{
     prover::ProverProof,
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::time::Instant;
+use std::{rc::Rc, time::Instant};
 use std::{io, io::Write};
 
 // aliases
@@ -84,7 +84,7 @@ fn chacha_prover() {
     let (endo_q, _endo_r) = endos::<Other>();
     let mut srs = SRS::create(max_size);
     srs.add_lagrange_basis(cs.domain.d1);
-    let srs = SRSSpec::Use(&srs);
+    let srs = Rc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 

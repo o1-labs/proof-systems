@@ -18,51 +18,66 @@ use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
 
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: FftField> {
     // Basics
     // ------
     /// number of public inputs
     pub public: usize,
     /// evaluation domains
+    #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
     pub domain: EvaluationDomains<F>,
     /// circuit gates
+    #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
     // Polynomials over the monomial base
     // ----------------------------------
     /// permutation polynomial array
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmam: [DP<F>; PERMUTS],
     /// zero-knowledge polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpm: DP<F>,
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
 
     /// coefficients polynomials in coefficient form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
     // ---------------------------------------
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub genericm: DP<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
     /// poseidon constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub psm: DP<F>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub addm: DP<F>,
     /// EC point doubling constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doublem: DP<F>,
     /// mulm constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mulm: DP<F>,
     /// emulm constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emulm: DP<F>,
 
     //
@@ -72,71 +87,96 @@ pub struct ConstraintSystem<F: FftField> {
     // Generic constraint selector polynomials
     // ---------------------------------------
     /// multiplication evaluations over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub generic4: E<F, D<F>>,
 
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal1: [E<F, D<F>>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
     /// poseidon selector over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ps8: E<F, D<F>>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition selector evaluations w over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub addl: E<F, D<F>>,
     /// EC point doubling selector evaluations w over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doubl8: E<F, D<F>>,
     /// EC point doubling selector evaluations w over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doubl4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emull: E<F, D<F>>,
     /// ChaCha indexes
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
     pub chacha8: Option<[E<F, D<F>>; 4]>,
 
     // Constant polynomials
     // --------------------
     /// 1-st Lagrange evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l1: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d4
     // TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l04: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l08: E<F, D<F>>,
     /// zero evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zero4: E<F, D<F>>,
     /// zero evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zero8: E<F, D<F>>,
     /// zero-knowledge polynomial over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpl: E<F, D<F>>,
 
     /// wire coordinate shifts
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
     /// coefficient for the group endomorphism
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
 
     /// random oracle argument parameters
+    #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 
     /// Lookup tables
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub dummy_lookup_values: Vec<Vec<F>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub lookup_tables: Vec<Vec<DP<F>>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_table_lengths: Vec<usize>,
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
     /// 1 at the rows where that pattern should be enforced, and 1 at
     /// all other rows.
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 }
 
@@ -145,6 +185,8 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }
 
+/// Evaluates the polynomial
+/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
@@ -154,7 +196,7 @@ pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
 /// Currently, we use k = 3 for 2 blinding factors,
-/// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73
+/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;

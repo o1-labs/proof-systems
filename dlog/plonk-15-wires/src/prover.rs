@@ -18,7 +18,7 @@ use commitment_dlog::commitment::{
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    expr::{E, Environment, LookupEnvironment, Constants, l0_1},
+    expr::{Environment, LookupEnvironment, Constants, l0_1},
     polynomials::{chacha, lookup, poseidon, varbasemul},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
@@ -136,7 +136,7 @@ where
                 let e =
                     Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                         witness[i].clone(), index.cs.domain.d1);
-                index.srs.get_ref().commit_evaluations(d1, &e, None, rng)
+                index.srs.commit_evaluations(d1, &e, None, rng)
             });
 
         // compute witness polynomials
@@ -149,7 +149,7 @@ where
         });
 
         // absorb the wire polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.get_ref().commit_non_hiding(&p, None).unshifted);
+        fq_sponge.absorb_g(&index.srs.commit_non_hiding(&p, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
@@ -163,7 +163,7 @@ where
                     None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
                     Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
                 };
-            (s, s.to_field(&index.srs.get_ref().endo_r))
+            (s, s.to_field(&index.srs.endo_r))
         };
 
         let joint_combiner : Fr<G> = joint_combiner_.1;
@@ -253,7 +253,7 @@ where
 
                     let comm : Vec<_> =
                         lookup_sorted.iter().map(|v|
-                                index.srs.get_ref().commit_evaluations(d1, v, None, rng))
+                                index.srs.commit_evaluations(d1, v, None, rng))
                         .collect();
                     let coeffs : Vec<_> =
                         // TODO: We can avoid storing these coefficients.
@@ -300,7 +300,7 @@ where
                         panic!("aggregation incorrect: {}", aggreg.evals[n-3]);
                     }
 
-                    let comm = index.srs.get_ref().commit_evaluations(d1, &aggreg, None, rng);
+                    let comm = index.srs.commit_evaluations(d1, &aggreg, None, rng);
                     fq_sponge.absorb_g(&comm.0.unshifted);
 
                     let coeffs = aggreg.interpolate();
@@ -315,12 +315,12 @@ where
         // compute permutation aggregation polynomial
         let z = index.cs.perm_aggreg(witness, &beta, &gamma, rng)?;
         // commit to z
-        let z_comm = index.srs.get_ref().commit(&z, None, rng);
+        let z_comm = index.srs.commit(&z, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-        let alpha = alpha_chal.to_field(&index.srs.get_ref().endo_r);
+        let alpha = alpha_chal.to_field(&index.srs.endo_r);
         let alphas = range::alpha_powers(alpha);
 
         // evaluate polynomials over domains
@@ -388,7 +388,7 @@ where
             .cs
             .perm_quot(&lagrange, beta, gamma, &z, &alphas[range::PERM])?;
         // generic
-        let (gen, genp) = index.cs.gnrc_quot(&lagrange.d4.this.w, &p);
+        let gen = index.cs.gnrc_quot(&lagrange.d4.this.w);
         // EC addition
         let add = index.cs.ecad_quot(&lagrange, &alphas[range::ADD]);
         // EC doubling
@@ -434,7 +434,7 @@ where
 
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &genp)
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &p)
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
         if res.is_zero() == false {
@@ -444,7 +444,7 @@ where
         t += &bnd;
 
         // commit to t
-        let t_comm = index.srs.get_ref().commit(&t, None, rng);
+        let t_comm = index.srs.commit(&t, None, rng);
 
         // absorb the polycommitments into the argument and sample zeta
         let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
@@ -453,7 +453,7 @@ where
         fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
-        let zeta = zeta_chal.to_field(&index.srs.get_ref().endo_r);
+        let zeta = zeta_chal.to_field(&index.srs.endo_r);
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * &omega;
 
@@ -577,9 +577,9 @@ where
 
         // query opening scaler challenges
         let v_chal = fr_sponge.challenge();
-        let v = v_chal.to_field(&index.srs.get_ref().endo_r);
+        let v = v_chal.to_field(&index.srs.endo_r);
         let u_chal = fr_sponge.challenge();
-        let u = u_chal.to_field(&index.srs.get_ref().endo_r);
+        let u = u_chal.to_field(&index.srs.endo_r);
 
         // construct the proof
         // --------------------------------------------------------------------
@@ -644,7 +644,7 @@ where
                         }
                     })
             },
-            proof: index.srs.get_ref().open(
+            proof: index.srs.open(
                 group_map,
                 polynomials,
                 &vec![zeta, zeta_omega],
@@ -754,12 +754,12 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> Into<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G>
     where
         G: AffineCurve,
-        CamlPolyComm<CamlG>: Into<PolyComm<G>>,
+        PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
-        fn into(self) -> ProverCommitments<G> {
+        fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
             let (
                 w_comm0,
                 w_comm1,
@@ -776,7 +776,7 @@ pub mod caml {
                 w_comm12,
                 w_comm13,
                 w_comm14,
-            ) = self.w_comm;
+            ) = caml_prover_comm.w_comm;
             ProverCommitments {
                 w_comm: [
                     w_comm0.into(),
@@ -795,8 +795,8 @@ pub mod caml {
                     w_comm13.into(),
                     w_comm14.into(),
                 ],
-                z_comm: self.z_comm.into(),
-                t_comm: self.t_comm.into(),
+                z_comm: caml_prover_comm.z_comm.into(),
+                t_comm: caml_prover_comm.t_comm.into(),
             }
         }
     }
@@ -830,20 +830,19 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> Into<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for ProverProof<G>
     where
-        G: AffineCurve,
-        CamlG: Into<G>,
-        CamlF: Into<G::ScalarField>,
+        G: AffineCurve + From<CamlG>,
+        G::ScalarField: From<CamlF>,
     {
-        fn into(self) -> ProverProof<G> {
+        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> ProverProof<G> {
             ProverProof {
-                commitments: self.commitments.into(),
-                proof: self.proof.into(),
-                evals: [self.evals.0.into(), self.evals.1.into()],
-                ft_eval1: self.ft_eval1.into(),
-                public: self.public.into_iter().map(Into::into).collect(),
-                prev_challenges: self
+                commitments: caml_pp.commitments.into(),
+                proof: caml_pp.proof.into(),
+                evals: [caml_pp.evals.0.into(), caml_pp.evals.1.into()],
+                ft_eval1: caml_pp.ft_eval1.into(),
+                public: caml_pp.public.into_iter().map(Into::into).collect(),
+                prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
                     .map(|(v, c)| {
