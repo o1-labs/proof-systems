@@ -348,6 +348,8 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i]),
             LookupAggreg => l.map(|l| l.aggreg),
             LookupTable => l.map(|l| l.table),
+            Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
+            Index(GateType::Generic) => Ok(evals.generic_selector),
             Coefficient(_) | LookupKindIndex(_) | Index(_) =>
                 Err("Cannot get index evaluation (should have been linearized away)")
         }
