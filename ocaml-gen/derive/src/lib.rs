@@ -521,10 +521,10 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                 // this will produce something like this:
                 //
                 // ```
-                // type ('field) scalar_challenge =  { inner: 'field }
+                // type ('field) scalar_challenge =  { inner: 'field } [@@boxed]
                 // ```
                 if generics_ocaml.len() == 1 {
-                    format!("{{ inner: {} }}", generics_ocaml[0])
+                    format!("{{ inner: {} }} [@@boxed]", generics_ocaml[0])
                 } else {
                     generics_ocaml.join(" * ")
                 }
