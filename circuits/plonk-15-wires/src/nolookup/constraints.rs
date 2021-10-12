@@ -5,8 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::gate::{CircuitGate, GateType};
-use crate::gates::poseidon::*;
+use crate::gate::CircuitGate;
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -19,50 +18,66 @@ use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
 
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: FftField> {
     // Basics
     // ------
     /// number of public inputs
     pub public: usize,
     /// evaluation domains
+    #[serde(bound = "EvaluationDomains<F>: Serialize + DeserializeOwned")]
     pub domain: EvaluationDomains<F>,
     /// circuit gates
+    #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
     // Polynomials over the monomial base
     // ----------------------------------
     /// permutation polynomial array
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmam: [DP<F>; PERMUTS],
     /// zero-knowledge polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpm: DP<F>,
+
+    // Coefficient polynomials. These define constant that gates can use as they like.
+    // ---------------------------------------
+
+    /// coefficients polynomials in coefficient form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficientsm: [DP<F>; COLUMNS],
+    /// coefficients polynomials in evaluation form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients4: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
     // ---------------------------------------
-    /// linear wire constraint polynomial
-    pub qwm: [DP<F>; GENERICS],
-    /// multiplication polynomial
-    pub qmm: DP<F>,
-    /// constant wire polynomial
-    pub qc: DP<F>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub genericm: DP<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
-    /// round constant polynomials
-    pub rcm: [[DP<F>; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     /// poseidon constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub psm: DP<F>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub addm: DP<F>,
     /// EC point doubling constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doublem: DP<F>,
     /// mulm constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mulm: DP<F>,
     /// emulm constraint selector polynomial
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emulm: DP<F>,
 
     //
@@ -71,64 +86,83 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Generic constraint selector polynomials
     // ---------------------------------------
-    /// left input wire polynomial over domain.d4
-    pub qwl: [E<F, D<F>>; GENERICS],
     /// multiplication evaluations over domain.d4
-    pub qml: E<F, D<F>>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic4: E<F, D<F>>,
 
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS]")]
     pub sigmal1: [Vec<F>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
 
     // Poseidon selector polynomials
     // -----------------------------
     /// poseidon selector over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ps4: E<F, D<F>>,
     /// poseidon selector over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ps8: E<F, D<F>>,
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
     /// EC point addition selector evaluations w over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub addl: E<F, D<F>>,
     /// EC point doubling selector evaluations w over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doubl8: E<F, D<F>>,
     /// EC point doubling selector evaluations w over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doubl4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mull4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emull: E<F, D<F>>,
 
     // Constant polynomials
     // --------------------
     /// 1-st Lagrange evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l1: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d4
     // TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l04: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l08: E<F, D<F>>,
     /// zero evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zero4: E<F, D<F>>,
     /// zero evaluated over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zero8: E<F, D<F>>,
     /// zero-knowledge polynomial over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpl: E<F, D<F>>,
 
     /// wire coordinate shifts
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
     /// coefficient for the group endomorphism
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
 
     /// random oracle argument parameters
+    #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 }
 
@@ -137,6 +171,8 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
 }
 
+/// Evaluates the polynomial
+/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
@@ -146,7 +182,7 @@ pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
 /// Currently, we use k = 3 for 2 blinding factors,
-/// see https://www.plonk.cafe/t/noob-questions-plonk-paper/73
+/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
     let w3 = zk_w3(domain);
     let w2 = domain.group_gen * w3;
@@ -234,36 +270,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let zkpm = zk_polynomial(domain.d1);
 
         // compute generic constraint polynomials
-        let qwm: [DP<F>; GENERICS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if gate.typ == GateType::Generic {
-                            gate.c[WIRES[i]]
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
-        });
-        let qmm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if gate.typ == GateType::Generic {
-                        gate.c[COLUMNS]
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
 
         // compute poseidon constraint polynomials
         let psm = E::<F, D<F>>::from_vec_and_domain(
@@ -297,42 +303,29 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
         // generic constraint polynomials
-        let qwl = array_init(|i| qwm[i].evaluate_over_domain_by_ref(domain.d4));
-        let qml = qmm.evaluate_over_domain_by_ref(domain.d4);
-        let qc = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if gate.typ == GateType::Generic {
-                        gate.c[COLUMNS + 1]
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
+
+        let genericm = E::<F, D<F>>::from_vec_and_domain(
+            gates.iter().map(|gate| gate.generic()).collect(),
             domain.d1,
         )
         .interpolate();
+        let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
 
-        // poseidon constraint polynomials
-        let rcm = array_init(|round| {
-            array_init(|col| {
+        let coefficientsm: [_; COLUMNS] =
+            array_init(|i| {
                 E::<F, D<F>>::from_vec_and_domain(
-                    gates
-                        .iter()
-                        .map(|gate| {
-                            if gate.typ == GateType::Poseidon {
-                                gate.rc()[round][col]
-                            } else {
-                                F::zero()
-                            }
-                        })
-                        .collect(),
-                    domain.d1,
-                )
+                    gates.iter().map(|gate| {
+                        if i < gate.c.len() {
+                            gate.c[i]
+                        } else {
+                            F::zero()
+                        }
+                    })
+                    .collect(),
+                    domain.d1)
                 .interpolate()
-            })
-        });
+            });
+        let coefficients4 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d4));
 
         let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
@@ -369,12 +362,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             sigmal1,
             sigmal8,
             sigmam,
-            qwl,
-            qml,
-            qwm,
-            qmm,
-            qc,
-            rcm,
+            genericm,
+            generic4,
+            coefficientsm,
+            coefficients4,
             ps4,
             ps8,
             psm,

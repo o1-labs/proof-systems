@@ -6,26 +6,35 @@ This source file implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};
-use ark_ff::{BigInteger, FromBytes, PrimeField, ToBytes};
-use ark_ec::{ProjectiveCurve, AffineCurve};
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::{BigInteger, PrimeField};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use blake2::{Blake2b, Digest};
 use groupmap::GroupMap;
-use std::io::{Read, Result as IoResult, Write};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 
-#[derive(Debug, Clone)]
+#[serde_as]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
     /// A group element used for blinding commitments
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub h: G,
+
+    // TODO: the following field should be separated, as they are optimization values
     /// Commitments to Lagrange bases, per domain size
+    #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<G>>,
     /// Coefficient for the curve endomorphism
+    #[serde(skip)]
     pub endo_r: G::ScalarField,
     /// Coefficient for the curve endomorphism
+    #[serde(skip)]
     pub endo_q: G::BaseField,
 }
 
@@ -82,7 +91,11 @@ where
     pub fn add_lagrange_basis(&mut self, domain: D<G::ScalarField>) {
         let n = domain.size();
         if n > self.g.len() {
-            panic!("add_lagrange_basis: Domain size {} larger than SRS size {}", n, self.g.len());
+            panic!(
+                "add_lagrange_basis: Domain size {} larger than SRS size {}",
+                n,
+                self.g.len()
+            );
         }
 
         if self.lagrange_bases.contains_key(&n) {
@@ -149,7 +162,8 @@ where
         domain.ifft_in_place(&mut lg);
 
         <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-        self.lagrange_bases.insert(n, lg.iter().map(|g| g.into_affine()).collect());
+        self.lagrange_bases
+            .insert(n, lg.iter().map(|g| g.into_affine()).collect());
     }
 
     /// This function creates SRS instance for circuits with number of rows up to `depth`.
@@ -180,69 +194,6 @@ where
             lagrange_bases: HashMap::new(),
             endo_r,
             endo_q,
-        }
-    }
-
-    pub fn write<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        u64::write(&(self.g.len() as u64), &mut writer)?;
-        for x in &self.g {
-            G::write(x, &mut writer)?;
-        }
-        G::write(&self.h, &mut writer)?;
-        Ok(())
-    }
-
-    pub fn read<R: Read>(mut reader: R) -> IoResult<Self> {
-        let n = u64::read(&mut reader)? as usize;
-        let mut g = vec![];
-        for _ in 0..n {
-            g.push(G::read(&mut reader)?);
-        }
-
-        let h = G::read(&mut reader)?;
-        let (endo_q, endo_r) = endos::<G>();
-        Ok(SRS {
-            g,
-            h,
-            lagrange_bases: HashMap::new(),
-            endo_r,
-            endo_q,
-        })
-    }
-}
-
-pub enum SRSValue<'a, G: CommitmentCurve> {
-    Value(SRS<G>),
-    Ref(&'a SRS<G>),
-}
-
-impl<'a, G: CommitmentCurve> SRSValue<'a, G> {
-    pub fn get_ref(&self) -> &SRS<G> {
-        match self {
-            SRSValue::Value(x) => &x,
-            SRSValue::Ref(x) => x,
-        }
-    }
-}
-
-pub enum SRSSpec<'a, G: CommitmentCurve> {
-    Use(&'a SRS<G>),
-    Generate(usize),
-}
-
-impl<'a, G: CommitmentCurve> SRSValue<'a, G>
-where
-    G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
-{
-    pub fn generate(size: usize) -> SRS<G> {
-        SRS::<G>::create(size)
-    }
-
-    pub fn create<'b>(spec: SRSSpec<'a, G>) -> SRSValue<'a, G> {
-        match spec {
-            SRSSpec::Use(x) => SRSValue::Ref(x),
-            SRSSpec::Generate(size) => SRSValue::Value(Self::generate(size)),
         }
     }
 }
