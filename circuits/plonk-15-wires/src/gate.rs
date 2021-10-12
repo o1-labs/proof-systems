@@ -15,6 +15,8 @@ use std::collections::{HashMap, HashSet};
 use ark_poly::{Radix2EvaluationDomain as D, Evaluations as E};
 use crate::domains::EvaluationDomains;
 
+/// A row accessible from a given row, corresponds to the fact that we open all polynomials
+/// at `zeta` **and** `omega * zeta`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum CurrOrNext {
     Curr,
@@ -22,6 +24,9 @@ pub enum CurrOrNext {
 }
 
 impl CurrOrNext {
+    /// Compute the offset corresponding to the `CurrOrNext` value.
+    /// - `Curr.shift() == 0`
+    /// - `Next.shift() == 1`
     pub fn shift(&self) -> usize {
         match self {
             CurrOrNext::Curr => 0,
@@ -30,12 +35,15 @@ impl CurrOrNext {
     }
 }
 
+/// A position in the circuit relative to a given row.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct LocalPosition {
     pub row: CurrOrNext,
     pub column: usize
 }
 
+/// Look up a single value in a lookup table. The value may be computed as a linear
+/// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
     table_id: usize,
@@ -43,11 +51,25 @@ pub struct SingleLookup<F> {
     pub value: Vec<(F, LocalPosition)>
 }
 
+/// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
+/// am using `[F; n]` to model a vector of length `n`).
+///
+/// For `i < n`, define `T_i := T.map(|t| t[i]).collect()`. In other words, the table
+/// obtained by taking the `ith` entry of each element of `T`.
+///
+/// In the lookup argument, we perform lookups in `T` by sampling a random challenge
+/// `joint_combiner`, and computing a "combined" lookup table `sum_{i < n} joint_combiner^i T_i`.
+///
+/// To check a vector's membership in this lookup table, we combine the values in that vector
+/// analogously using `joint_combiner`.
+///
+/// This function computes that combined value.
 pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item=&'a F>>(joint_combiner: F, v: I) ->F {
     v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
 }
 
 impl<F: Field> SingleLookup<F> {
+    /// Evaluate the linear combination specifying the lookup value to a field element.
     pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, eval: G) -> F {
         self.value.iter().fold(F::zero(), |acc, (c, p)| {
             acc + *c * eval(*p)
@@ -55,6 +77,7 @@ impl<F: Field> SingleLookup<F> {
     }
 }
 
+/// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
     pub entry: Vec<SingleLookup<F>>
@@ -62,6 +85,7 @@ pub struct JointLookup<F> {
 
 impl<F: Field> JointLookup<F> {
     // TODO: Support multiple tables
+    /// Evaluate the combined value of a joint-lookup.
     pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, joint_combiner: F, eval: &G) -> F {
         let mut res = F::zero();
         let mut c = F::one();
@@ -102,13 +126,21 @@ pub enum GateType {
     ChaChaFinal,
 }
 
+/// Describes the desired lookup configuration.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LookupInfo<F> {
-    pub max_per_row: usize,
-    pub max_joint_size: usize,
+    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
+    /// This is a vector of all the kinds of lookup constraints in this configuration.
     pub kinds: Vec<Vec<JointLookup<F>>>,
+    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
+    /// constraint (given as an index into `kinds`) that should be applied there, if any.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
-    pub empty: Vec<JointLookup<F>>,
+    /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
+    pub max_per_row: usize,
+    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
+    pub max_joint_size: usize,
+    /// An empty vector.
+    empty: Vec<JointLookup<F>>,
 }
 
 fn lookup_kinds<F: Field>() -> Vec<Vec<JointLookup<F>>> {
@@ -119,6 +151,8 @@ fn max_lookups_per_row<F>(kinds: &Vec<Vec<JointLookup<F>>>) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
 
+/// Specifies whether a constraint system uses joint lookups. Used to make sure we
+/// squeeze the challenge `joint_combiner` when needed, and not when not needed.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum LookupsUsed {
     Single,
@@ -126,6 +160,7 @@ pub enum LookupsUsed {
 }
 
 impl<F: FftField> LookupInfo<F> {
+    /// Create the default lookup configuration.
     pub fn create() -> Self {
         let kinds = lookup_kinds::<F>();
         let max_per_row = max_lookups_per_row(&kinds);
@@ -144,6 +179,7 @@ impl<F: FftField> LookupInfo<F> {
         }
     }
 
+    /// Check what kind of lookups, if any, are used by this circuit.
     pub fn lookup_used(&self, gates: &Vec<CircuitGate<F>>) -> Option<LookupsUsed> {
         let mut lookups_used = None;
         for g in gates.iter() {
@@ -162,6 +198,8 @@ impl<F: FftField> LookupInfo<F> {
         lookups_used
     }
 
+    /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
+    /// lookup kind should be enforced at a given row. This computes those selector polynomials.
     pub fn selector_polynomials<'a>(&'a self, domain: EvaluationDomains<F>, gates: &Vec<CircuitGate<F>>) -> Vec<E<F, D<F>>> {
         let n = domain.d1.size as usize;
         let mut res : Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
@@ -187,6 +225,7 @@ impl<F: FftField> LookupInfo<F> {
             .collect()
     }
 
+    /// For each row in the circuit, which lookup-constraints should be enforced at that row.
     pub fn by_row<'a>(&'a self, gates: &Vec<CircuitGate<F>>) -> Vec<&'a Vec<JointLookup<F>>> {
         let mut kinds = vec![&self.empty; gates.len() + 1];
         for i in 0..gates.len() {
