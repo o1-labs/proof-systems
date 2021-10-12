@@ -22,7 +22,6 @@ use commitment_dlog::{
 };
 use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
-    gates::poseidon::ROUNDS_PER_ROW,
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     wires::*,
 };
@@ -135,10 +134,10 @@ where
             domain: self.cs.domain.d1,
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
-            generic_comm: srs.commit_non_hiding(&self.cs.genericm, None),
-            coefficients_comm: array_init(|i| srs.commit_non_hiding(&self.cs.coefficientsm[i], None)),
+            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
+            coefficients_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.coefficientsm[i], None)),
 
-            psm_comm: srs.commit_non_hiding(&self.cs.psm, None),
+            psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
             add_comm: self.srs.commit_non_hiding(&self.cs.addm, None),
             double_comm: self.srs.commit_non_hiding(&self.cs.doublem, None),
