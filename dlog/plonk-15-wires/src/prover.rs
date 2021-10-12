@@ -182,6 +182,7 @@ where
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
             z: z.eval(zeta, index.max_poly_size),
+            lookup: None,
             generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
         };
@@ -191,6 +192,7 @@ where
             }),
             w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
             z: z.eval(zeta_omega, index.max_poly_size),
+            lookup: None,
             generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
         };
@@ -209,6 +211,7 @@ where
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
+                lookup: None,
                 generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                 poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
             })

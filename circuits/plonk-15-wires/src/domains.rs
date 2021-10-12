@@ -9,28 +9,32 @@ pub struct EvaluationDomains<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d1: Domain<F>, // size n
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub d2: Domain<F>, // size 2n
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d4: Domain<F>, // size 4n
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub d8: Domain<F>, // size 8n
 }
 
 impl<F: FftField> EvaluationDomains<F> {
-    /// Creates 3 evaluation domains `d1` (of size `n`), `d4` (of size `4n`),
+    /// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),
     /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
-    /// of `d4` is `g^2` and the generator of `d1` is `g^8`.
+    /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
     // TODO(mimoo): should we instead panic/return an error if any of these return None?
     pub fn create(n: usize) -> Option<Self> {
         let n = Domain::<F>::compute_size_of_domain(n)?;
 
         let d1 = Domain::<F>::new(n)?;
+        let d2 = Domain::<F>::new(2 * n)?;
         let d4 = Domain::<F>::new(4 * n)?;
         let d8 = Domain::<F>::new(8 * n)?;
 
         // ensure the relationship between the three domains in case the library's behavior changes
-        assert!(d4.group_gen.pow(&[4]) == d1.group_gen);
-        assert!(d8.group_gen.pow(&[2]) == d4.group_gen);
+        assert_eq!(d2.group_gen.square(), d1.group_gen);
+        assert_eq!(d4.group_gen.square(), d2.group_gen);
+        assert_eq!(d8.group_gen.square(), d4.group_gen);
 
-        Some(EvaluationDomains { d1, d4, d8 })
+        Some(EvaluationDomains { d1, d2, d4, d8 })
     }
 }
 

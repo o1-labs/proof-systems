@@ -12,7 +12,18 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::sponge::ScalarChallenge;
 
 #[derive(Clone)]
+pub struct LookupEvaluations<Field> {
+    /// sorted lookup table polynomial
+    pub sorted: Vec<Field>,
+    /// lookup aggregation polynomial
+    pub aggreg: Field,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    pub table: Field,
+}
+
 // TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+#[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
     pub w: [Field; COLUMNS],
@@ -21,6 +32,8 @@ pub struct ProofEvaluations<Field> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
+    /// lookup-related evaluations
+    pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
@@ -33,6 +46,14 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
+            lookup:
+                self.lookup.as_ref().map(|l| {
+                    LookupEvaluations {
+                        table: DensePolynomial::eval_polynomial(&l.table, pt),
+                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
+                        sorted: l.sorted.iter().map(|x| DensePolynomial::eval_polynomial(x, pt)).collect(),
+                    }
+                }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
         }

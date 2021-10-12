@@ -12,8 +12,23 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Error, ErrorKind, Read, Result as IoResult, Write};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum CurrOrNext {
+    Curr,
+    Next,
+}
+
+impl CurrOrNext {
+    pub fn shift(&self) -> usize {
+        match self {
+            CurrOrNext::Curr => 0,
+            CurrOrNext::Next => 1,
+        }
+    }
+}
+
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive, Serialize, Deserialize, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::OcamlEnum)
