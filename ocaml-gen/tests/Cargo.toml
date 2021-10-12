@@ -1,0 +1,14 @@
+[package]
+name = "ocamlgen_test_stubs"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[dependencies]
+ocaml = "0.22.2"
+# this is the only way I could make the dune rule (that builds this) work
+ocaml-gen = { git = "https://github.com/o1-labs/proof-systems.git", rev = "e7029eeb39c14da38fa430c6fe61f3e108489c11" }
+
+[workspace]
