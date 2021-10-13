@@ -47,24 +47,15 @@ fn ec_test() {
 
     let num_doubles = 100;
     let num_additions = 100;
+    let num_infs = 100;
 
     let mut gates = vec![];
 
-    for row in 0..num_doubles {
+    for row in 0..(num_doubles + num_additions + num_infs) {
         gates.push(
             CircuitGate {
                 row,
-                typ: GateType::Double,
-                wires: Wire::new(row),
-                c: vec![],
-            });
-    }
-
-    for row in num_doubles..(num_doubles + num_additions) {
-        gates.push(
-            CircuitGate {
-                row,
-                typ: GateType::Add,
+                typ: GateType::CompleteAdd,
                 wires: Wire::new(row),
                 c: vec![],
             });
@@ -93,6 +84,7 @@ fn ec_test() {
 
     let start = Instant::now();
     let mut g = Other::prime_subgroup_generator();
+
     for row in 0..num_doubles {
         let g2 = g + g;
         witness[0][row] = g.x;
@@ -103,23 +95,101 @@ fn ec_test() {
         g = g2;
     }
 
-    let mut p = Other::prime_subgroup_generator().into_projective().mul(
-        <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
-    let mut q = Other::prime_subgroup_generator().into_projective().mul(
-        <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
-    for row in num_doubles..(num_doubles + num_additions) {
+    let ps = {
+        let p = Other::prime_subgroup_generator().into_projective().mul(
+            <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
+        let mut res = vec![];
+        let mut acc = p;
+        for i in 0..num_additions {
+            res.push(acc);
+            acc = acc + p;
+        }
+        res
+    };
+
+    let qs = {
+        let q = Other::prime_subgroup_generator().into_projective().mul(
+            <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
+        let mut res = vec![];
+        let mut acc = q;
+        for i in 0..num_additions {
+            res.push(acc);
+            acc = acc + q;
+        }
+        res
+    };
+
+    for i in 0..num_doubles {
+        let p = ps[i];
+
+
+        let row = i;
+        let p2 = p + p;
+        let (x1, y1) = (p.x, p.y);
+        let x1_squared = x1.square();
+        // 2 * s * y1 = -3 * x1^2
+        let s = (x1_squared.double() + x1_squared) / y1.double();
+        witness[0][row] = p.x;
+        witness[1][row] = p.y;
+        witness[2][row] = p.x;
+        witness[3][row] = p.y;
+        witness[4][row] = p2.x;
+        witness[5][row] = p2.y;
+        witness[6][row] = F::zero();
+        witness[7][row] = F::one();
+        witness[8][row] = s;
+        witness[9][row] = F::zero();
+        witness[10][row] = F::zero();
+    }
+
+    for i in 0..num_additions {
+        let p = ps[i];
+        let q = qs[i];
+
+        let row = num_doubles + i;
+
         let pq = p + q;
-        let r = (q.x - p.x).inverse().unwrap();
+        let (x1, y1) = (p.x, p.y);
+        let (x2, y2) = (q.x, q.y);
+        // (x2 - x1) * s = y2 - y1
+        let s = (y2 - y1) / (x2 - x1);
+        witness[0][row] = x1;
+        witness[1][row] = y1;
+        witness[2][row] = x2;
+        witness[3][row] = y2;
+        witness[4][row] = pq.x;
+        witness[5][row] = pq.y;
+        witness[6][row] = F::zero();
+        witness[7][row] = F::zero();
+        witness[8][row] = s;
+        witness[9][row] = F::zero();
+        witness[10][row] = (x2 - x1).inverse().unwrap();
+    }
+
+    for i in 0..num_infs {
+        let p = ps[i];
+        let q = -p;
+
+        let row = num_doubles + num_additions + i;
+        let p2 = p + p;
+        let (x1, y1) = (p.x, p.y);
+        let x1_squared = x1.square();
+        // 2 * s * y1 = -3 * x1^2
+        let s = (x1_squared.double() + x1_squared) / y1.double();
         witness[0][row] = p.x;
         witness[1][row] = p.y;
         witness[2][row] = q.x;
         witness[3][row] = q.y;
-        witness[4][row] = pq.x;
-        witness[5][row] = pq.y;
-        witness[6][row] = r;
-        p = p + p;
-        q = q + q;
+        witness[4][row] = p2.x;
+        witness[5][row] = p2.y;
+        witness[6][row] = F::one();
+        witness[7][row] = F::one();
+        witness[8][row] = s;
+        witness[9][row] = (q.y - p.y).inverse().unwrap();
+        witness[10][row] = F::zero();
     }
+
+    index.cs.verify(&witness).unwrap();
 
     let start = Instant::now();
     let proof =
