@@ -46,9 +46,6 @@ fn chacha_prover() {
     let max_size = 1 << ceil_log2(n_lower_bound);
     println!("{} {}", n_lower_bound, max_size);
 
-    // we keep track of an absolute row, and relative row within a gadget
-    let mut abs_row = 0;
-
     let s0: Vec<u32> = vec![
        0x61707865, 0x3320646e, 0x79622d32, 0x6b206574,
        0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,

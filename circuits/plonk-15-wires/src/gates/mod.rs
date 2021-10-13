@@ -1,5 +1,3 @@
-pub mod addition;
-pub mod double;
 pub mod endosclmul;
 pub mod generic;
 pub mod poseidon;
