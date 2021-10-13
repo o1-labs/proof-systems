@@ -1,5 +1,3 @@
-#![feature(concat_idents)]
-
 use ocaml_gen::{decl_func, decl_type, Env};
 use ocamlgen_test_stubs::*;
 

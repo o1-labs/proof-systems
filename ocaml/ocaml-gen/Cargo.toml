@@ -11,3 +11,4 @@ ocaml-derive = { path = "./derive" }
 ocaml = { version = "0.22.2" }
 syn = "1.0.76"
 const-random = "0.1.13"
+paste = "1.0.5"

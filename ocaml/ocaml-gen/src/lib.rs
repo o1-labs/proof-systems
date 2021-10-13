@@ -7,6 +7,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 pub use const_random::const_random;
 pub use ocaml_derive::*;
+pub use paste::paste;
 
 pub mod conv;
 
@@ -160,8 +161,9 @@ macro_rules! decl_module {
 macro_rules! decl_func {
     ($w:expr, $env:expr, $func:ident) => {{
         use std::io::Write;
-        let f = concat_idents!($func, _to_ocaml);
-        let binding = f($env, None);
+        ::ocaml_gen::paste! {
+            let binding = [<$func _to_ocaml>]($env, None);
+        }
         write!(
             $w,
             "{}{}\n",
@@ -173,8 +175,9 @@ macro_rules! decl_func {
     // rename
     ($w:expr, $env:expr, $func:ident => $new:expr) => {{
         use std::io::Write;
-        let f = concat_idents!($func, _to_ocaml);
-        let binding = f($env, Some($new));
+        ::ocaml_gen::paste! {
+            let binding = [<$func _to_ocaml>]($env, Some($new));
+        }
         write!(
             $w,
             "{}{}\n",
