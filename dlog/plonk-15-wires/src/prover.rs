@@ -19,7 +19,7 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
     expr::{Environment, LookupEnvironment, Constants, l0_1},
-    polynomials::{chacha, lookup, poseidon, varbasemul},
+    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
     gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
@@ -354,8 +354,7 @@ where
             let mut index_evals = HashMap::new();
                 use GateType::*;
                 index_evals.insert(Poseidon, &index.cs.ps8);
-                index_evals.insert(Add, &index.cs.addl);
-                index_evals.insert(Double, &index.cs.doubl8);
+                index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
                 index_evals.insert(Vbmul, &index.cs.mull8);
                 index_evals.insert(Endomul, &index.cs.emull);
                 [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal].iter().enumerate().for_each(|(i, g)| {
@@ -390,9 +389,9 @@ where
         // generic
         let gen = index.cs.gnrc_quot(&lagrange.d4.this.w);
         // EC addition
-        let add = index.cs.ecad_quot(&lagrange, &alphas[range::ADD]);
-        // EC doubling
-        let (doub4, doub8) = index.cs.double_quot(&lagrange, &alphas[range::DBL]);
+        let (alphas_used, add_constraint) = complete_add::constraint(range::COMPLETE_ADD.start);
+        assert_eq!(alphas_used, range::COMPLETE_ADD.len());
+        let add4 = add_constraint.evaluations(&env);
         // endoscaling
         let emul8 = index.cs.endomul_quot(&lagrange, &alphas[range::ENDML]);
         // scalar multiplication
@@ -401,7 +400,11 @@ where
             .evaluations(&env);
 
         // collect contribution evaluations
-        let t4 = &add + &(&gen + &doub4);
+        let t4 = {
+            let mut t4 = gen;
+            t4 += &add4;
+            t4
+        };
         let t4 =
             match index.cs.chacha8.as_ref() {
                 None => t4,
@@ -410,7 +413,7 @@ where
                     &t4 + &chacha
                 }
             };
-        let mut t8 = &perm + &(&mul8 + &(&emul8 + &doub8));
+        let mut t8 = &perm + &(&mul8 + &emul8);
 
         // quotient polynomial for lookup
         // lookup::constraints
@@ -530,9 +533,7 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &(&(&(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
-                + &index.cs.ecad_lnrz(&evals, &alphas[range::ADD]))
-                + &index.cs.double_lnrz(&evals, &alphas[range::DBL]))
+            let f = &(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index.cs.endomul_lnrz(&evals, &alphas[range::ENDML]))
                 + &index
                     .cs

@@ -425,17 +425,6 @@ where
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars_part.push(evals[0].generic_selector);
 
-                // EC addition
-                scalars_part.push(ConstraintSystem::ecad_scalars(&evals, &alphas[range::ADD]));
-                commitments_part.push(&index.add_comm);
-
-                // EC doubling
-                scalars_part.push(ConstraintSystem::double_scalars(
-                    &evals,
-                    &alphas[range::DBL],
-                ));
-                commitments_part.push(&index.double_comm);
-
                 // variable base endoscalar multiplication
                 scalars_part.push(ConstraintSystem::endomul_scalars(
                     &evals,
@@ -553,8 +542,7 @@ where
                                 let c =
                                     match t {
                                         Zero | Generic => panic!("Selector for {:?} not defined", t),
-                                        Add => &index.add_comm,
-                                        Double => &index.double_comm,
+                                        CompleteAdd => &index.complete_add_comm,
                                         Vbmul => &index.mul_comm,
                                         Endomul => &index.emul_comm,
                                         Poseidon => &index.psm_comm,
