@@ -8,12 +8,11 @@ members = [
     "dlog/plonk",
     "dlog/plonk-15-wires",
     "groupmap",
-    "ocaml-gen",
-    "ocaml-gen/derive",
+    "ocaml/ocaml-gen",
+    "ocaml/ocaml-gen/derive",
     "oracle",
     "utils",
 ]
-exclude = [ "ocaml-gen/tests" ]
 
 [profile.release]
 lto = true

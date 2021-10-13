@@ -5,11 +5,14 @@
   ; this lib
   ../Cargo.toml
   lib.rs
-  (source_tree ../.cargo))
+  (source_tree ../.cargo)
+  ; ocaml-gen
+  (source_tree ../../ocaml-gen))
  (targets libocamlgen_test_stubs.a dllocamlgen_test_stubs.so)
  (action
   (progn
-   ; Build the Rust code
+   (run rm -rf ./target)
+   (run rm -rf ./Cargo.lock)
    (run sh -c "touch dllocamlgen_test_stubs.so")
    (run cargo +nightly build --release)
    (run sh -c "cp ../target/release/libocamlgen_test_stubs.a ."))))
@@ -19,13 +22,16 @@
 (rule
  (target bindings.ml)
  (deps
+  ; this lib
   ../Cargo.toml
   lib.rs
+  (source_tree ../.cargo)
+  ; this bin
   main.rs
-  (source_tree ../.cargo))
+  ; ocaml-gen
+  (source_tree ../../ocaml-gen))
  (action
   (progn
-   (run pwd)
    (run rm -rf ./target)
    (run rm -rf ./Cargo.lock)
    (with-stdout-to
