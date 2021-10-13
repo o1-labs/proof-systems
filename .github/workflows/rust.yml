@@ -19,10 +19,13 @@ jobs:
         run: |
           rustup component add rustfmt 
 
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install ocaml
+
       - name: build
         run: |
           cargo build
 
       - name: build ocaml types
         run: |
-          cargo build --features ocaml_type
+          cargo build --features ocaml_types
