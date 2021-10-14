@@ -425,68 +425,6 @@ where
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars_part.push(evals[0].generic_selector);
 
-                // variable base endoscalar multiplication
-                scalars_part.push(ConstraintSystem::endomul_scalars(
-                    &evals,
-                    index.endo,
-                    &alphas[range::ENDML],
-                ));
-                commitments_part.push(&index.emul_comm);
-
-                // EC variable base scalar multiplication
-
-    /*
-
-                let f_comm = PolyComm::multi_scalar_mul(&p, &s);
-
-                let f_eval =
-                    match constants {
-                        None => evals[0].f,
-                        Some(cs) => {
-                            evals[0].f +
-                            PolishToken::evaluate(
-                                &index.linearization.constant_term,
-                                index.domain, oracles.zeta,
-                                &evals, &cs).unwrap()
-                        }
-                    };
-
-                // check linearization polynomial evaluation consistency
-                let zeta1m1 = zeta1 - &Fr::<G>::one();
-                if (f_eval //evals[0].f
-                    + &(if p_eval[0].len() > 0 {
-                        p_eval[0][0]
-                    } else {
-                        Fr::<G>::zero()
-                    })
-                    - evals[0]
-                        .w
-                        .iter()
-                        .zip(evals[0].s.iter())
-                        .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
-                        .fold(
-                            (evals[0].w[PERMUTS - 1] + &oracles.gamma)
-                                * &evals[1].z
-                                * &alpha[range::PERM][0]
-                                * &zkp,
-                            |x, y| x * y,
-                        )
-                    + evals[0]
-                        .w
-                        .iter()
-                        .zip(index.shift.iter())
-                        .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
-                        .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y)
-                    - evals[0].t * &zeta1m1)
-                    * &(oracles.zeta - &index.w)
-                    * &(oracles.zeta - &Fr::<G>::one())
-                    != ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
-                        + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
-                        * &(Fr::<G>::one() - evals[0].z)
-                {
-                    return Err(ProofError::ProofVerification);
-                } */
-
                 {
                     let constants =
                         Constants {
