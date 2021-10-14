@@ -1,48 +1,121 @@
-/*****************************************************************************************************************
+//! This source file implements short Weierstrass curve endomorphism optimised variable base
+//! scalar multiplication custom Plonk polynomials.
+//!
+//! EVBSM gate constraints
+//!     b1*(b1-1) = 0
+//!     b2*(b2-1) = 0
+//!     b3*(b3-1) = 0
+//!     b4*(b4-1) = 0
+//!     ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
+//!     (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+//!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
+//!     ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
+//!     (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+//!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
+//!     n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+//!
+//! The constraints above are derived from the following EC Affine arithmetic equations:
+//!
+//!     (xq1 - xp) * s1 = yq1 - yp
+//!     (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+//!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+//!
+//!     (xq2 - xr) * s3 = yq2 - yr
+//!     (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+//!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 
-This source file implements short Weierstrass curve endomorphism optimised variable base
-scalar multiplication custom Plonk polynomials.
-
-EVBSM gate constraints
-    b1*(b1-1) = 0
-    b2*(b2-1) = 0
-    b3*(b3-1) = 0
-    b4*(b4-1) = 0
-    ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
-    (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-    (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
-    ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
-    (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-    (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
-    n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-
-The constraints above are derived from the following EC Affine arithmetic equations:
-
-    (xq1 - xp) * s1 = yq1 - yp
-    (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-    (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-
-    (xq2 - xr) * s3 = yq2 - yr
-    (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-    (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-
-*****************************************************************************************************************/
-
-use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::polynomial::WitnessOverDomains;
-use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use ark_ff::{Field, One};
 use crate::wires::COLUMNS;
-use rayon::prelude::*;
+use crate::expr::{E, Column, Cache};
+use crate::gate::{GateType, CurrOrNext};
+use CurrOrNext::*;
 
+/// The constraint for endoscaling.
+pub fn constraint<F: Field>(endo: F, alpha0: usize) -> E<F> {
+    let v = |c| E::cell(c, Curr);
+    let w = |i| v(Column::Witness(i));
+
+    let b1 = w(11);
+    let b2 = w(12);
+    let b3 = w(13);
+    let b4 = w(14);
+
+    let xt = w(0);
+    let yt = w(1);
+
+    let xs = E::cell(Column::Witness(4), Next);
+    let ys = E::cell(Column::Witness(5), Next);
+
+    let xp = w(4);
+    let yp = w(5);
+
+    let xr = w(7);
+    let yr = w(8);
+
+    let mut cache = Cache::new();
+
+    let s1 = w(9);
+    let s3 = w(10);
+
+    let xq1 = cache.cache((E::one() + b1.clone() * E::literal(endo - F::one()) ) * xt.clone());
+    let xq2 = cache.cache((E::one() + b3.clone() * E::literal(endo - F::one()) ) * xt.clone());
+
+    let yq1 = (b2.clone().double() - E::one())*yt.clone();
+    let yq2 = (b4.clone().double() - E::one())*yt.clone();
+
+    let s1_squared = cache.cache(s1.clone().square());
+    let s3_squared = cache.cache(s3.clone().square());
+
+    // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+    let n = w(6);
+    let n_constraint =
+        (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double() + b4.clone()
+        - E::cell(Column::Witness(6), Next);
+
+    let xp_xr = cache.cache(xp.clone() - xr.clone());
+    let xr_xs = cache.cache(xr.clone() - xs.clone());
+
+    let ys_yr = cache.cache(ys.clone() + yr.clone());
+    let yr_yp = cache.cache(yr.clone() + yp.clone());
+
+    let p = vec![
+        // verify booleanity of the scalar bits
+        b1.clone() - b1.square(),
+        b2.clone() - b2.square(),
+        b3.clone() - b3.square(),
+        b4.clone() - b4.square(),
+        // (xq1 - xp) * s1 = yq1 - yp
+        ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1.clone() - yp.clone()),
+        // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
+        (((xp.clone().double() - s1_squared.clone()) + xq1.clone()) * ((xp_xr.clone() * s1.clone()) + yr_yp.clone()))
+            -
+            (yp.clone().double() * xp_xr.clone()),
+        // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+        yr_yp.clone().square() - (xp_xr.clone().square() * ((s1_squared - xq1) + xr.clone())),
+        // (xq2 - xr) * s3 = yq2 - yr
+        ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2.clone() - yr.clone()),
+        // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
+        (((xr.clone().double() - s3_squared.clone()) + xq2.clone()) * ((xr_xs.clone() * s3) + ys_yr.clone()))
+            -
+            (yr.clone().double() * xr_xs.clone()),
+
+        // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
+        ys_yr.clone().square() - (xr_xs.clone().square() * ((s3_squared - xq2) + xs)),
+        n_constraint,
+    ];
+    E::combine_constraints(alpha0, p)
+    * E::cell(Column::Index(GateType::Endomul), Curr)
+}
+
+/// The result of performing an endoscaling: the accumulated curve point
+/// and scalar.
 pub struct EndoMulResult<F> {
     pub acc: (F, F),
     pub n: F,
 }
 
-pub fn witness<F: FftField + std::fmt::Display>(
+/// Generates the witness values for a series of endoscaling constraints.
+pub fn witness<F: Field + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     endo: F,
@@ -135,178 +208,5 @@ pub fn witness<F: FftField + std::fmt::Display>(
     EndoMulResult {
         acc,
         n: n_acc
-    }
-}
-
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    // endomorphism optimised scalar multiplication constraint quotient poly contribution computation
-    pub fn endomul_quot(&self, polys: &WitnessOverDomains<F>, alpha: &[F]) -> Evaluations<F, D<F>> {
-        if self.emulm.is_zero() {
-            return self.zero8.clone();
-        }
-
-        let this = &polys.d8.this.w;
-        let next = &polys.d8.next.w;
-
-        let b1 = &this[11];
-        let b2 = &this[12];
-        let b3 = &this[13];
-        let b4 = &this[14];
-
-        let xt = &this[0];
-        let yt = &this[1];
-
-        let xs = &next[4];
-        let ys = &next[5];
-
-        let xp = &this[4];
-        let yp = &this[5];
-
-        let xr = &this[7];
-        let yr = &this[8];
-
-        let s1 = &this[9];
-        let s3 = &this[10];
-
-        let xq1 = &(&(&self.l08 + &b1.scale(self.endo - F::one())) * &xt);
-        let xq2 = &(&(&self.l08 + &b3.scale(self.endo - F::one())) * &xt);
-
-        let yq1 = &(&(&(b2 + b2) - &self.l08)*yt);
-        let yq2 = &(&(&(b4 + b4) - &self.l08)*yt);
-
-        let s1_squared = &s1.square();
-        let s3_squared = &s3.square();
-
-        // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-        let n_constraint = {
-            let n = &this[6];
-            let mut res = n + n;
-            res += b1;
-            res.evals.par_iter_mut().for_each(|x| { x.double_in_place(); });
-            res += b2;
-            res.evals.par_iter_mut().for_each(|x| { x.double_in_place(); });
-            res += b3;
-            res.evals.par_iter_mut().for_each(|x| { x.double_in_place(); });
-            res += b4;
-            res -= &next[6];
-            res
-        };
-
-        let p = [
-            // verify booleanity of the scalar bits
-            b1 - &b1.square(),
-            b2 - &b2.square(),
-            b3 - &b3.square(),
-            b4 - &b4.square(),
-            // (xq1 - xp) * s1 = yq1 - yp
-            &(&(xq1 - xp) * s1) - &(yq1 - yp),
-            // (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-            &(&(&(&(xp + xp) - s1_squared) + xq1) * &(&(&(xp - xr) * s1) + &(yr + yp)))
-                -
-                &(&(yp + yp) * &(xp - xr)),
-            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-            &(yr + yp).square() - &(&(xp - xr).square() * &(&(s1_squared - xq1) + xr)),
-            // (xq2 - xr) * s3 = yq2 - yr
-            &(&(xq2 - xr) * s3) - &(yq2 - yr),
-            // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-            &(&(&(&(xr + xr) - s3_squared) + xq2) * &(&(&(xr - xs) * s3) + &(ys + yr)))
-                -
-                &(&(yr + yr) * &(xr - xs)),
-
-            // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-            &(ys + yr).square() - &(&(xr - xs).square() * &(&(s3_squared - xq2) + xs)),
-            n_constraint,
-        ];
-        &p.iter()
-            .skip(1)
-            .zip(alpha.iter().skip(1))
-            .map(|(p, a)| p.scale(*a))
-            .fold(p[0].scale(alpha[0]), |x, y| &x + &y)
-            * &self.emull
-    }
-
-    pub fn endomul_scalars(evals: &Vec<ProofEvaluations<F>>, endo: F, alpha: &[F]) -> F {
-        let this = &evals[0].w;
-        let next = &evals[1].w;
-
-        let b1 = this[11];
-        let b2 = this[12];
-        let b3 = this[13];
-        let b4 = this[14];
-
-        let xt = this[0];
-        let yt = this[1];
-
-        let xs = next[4];
-        let ys = next[5];
-
-        let xp = this[4];
-        let yp = this[5];
-
-        let xr = this[7];
-        let yr = this[8];
-
-        let s1 = this[9];
-        let s3 = this[10];
-
-        let xq1 = (F::one() + (b1 * (endo - F::one()))) * xt;
-        let xq2 = (F::one() + (b3 * (endo - F::one()))) * xt;
-
-        let yq1 = ((b2 + b2) - F::one())*yt;
-        let yq2 = ((b4 + b4) - F::one())*yt;
-
-        let s1_squared = s1.square();
-        let s3_squared = s3.square();
-
-        let n_constraint = {
-            let mut res = this[6].double();
-            res += b1;
-            res.double_in_place();
-            res += b2;
-            res.double_in_place();
-            res += b3;
-            res.double_in_place();
-            res += b4;
-            res -= next[6];
-            res
-        };
-
-        [
-            // verify booleanity of the scalar bits
-            b1 - b1.square(),
-            b2 - b2.square(),
-            b3 - b3.square(),
-            b4 - b4.square(),
-            ((xq1 - xp) * s1) - (yq1 - yp),
-            // (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
-            ((((xp + xp) - s1_squared) + xq1) * (((xp - xr) * s1) + (yr + yp)))
-                -
-                ((yp + yp) * (xp - xr)),
-            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-            (yr + yp).square() - ((xp - xr).square() * ((s1_squared - xq1) + xr)),
-            // (xq2 - xr) * s3 = yq2 - yr
-            ((xq2 - xr) * s3) - (yq2 - yr),
-            // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
-            ((((xr + xr) - s3_squared) + xq2) * (((xr - xs) * s3) + (ys + yr)))
-                -
-                ((yr + yr) * (xr - xs)),
-            // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-            (ys + yr).square() - ((xr - xs).square() * ((s3_squared - xq2) + xs)),
-            n_constraint,
-        ]
-        .iter()
-        .zip(alpha.iter())
-        .map(|(p, a)| *p * a)
-        .fold(F::zero(), |x, y| x + &y)
-    }
-
-    // endomorphism optimised scalar multiplication constraint linearization poly contribution computation
-    pub fn endomul_lnrz(
-        &self,
-        evals: &Vec<ProofEvaluations<F>>,
-        alpha: &[F],
-    ) -> DensePolynomial<F> {
-        self.emulm
-            .scale(Self::endomul_scalars(evals, self.endo, alpha))
     }
 }
