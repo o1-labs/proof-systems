@@ -39,7 +39,7 @@ where
     T: OCamlDesc,
 {
     fn ocaml_desc(env: &Env, generics: &[&str]) -> String {
-        format!("{} array", T::ocaml_desc(env, generics))
+        format!("({}) array", T::ocaml_desc(env, generics))
     }
 
     fn unique_id() -> u128 {
@@ -65,7 +65,7 @@ where
     T: OCamlDesc,
 {
     fn ocaml_desc(env: &Env, generics: &[&str]) -> String {
-        format!("{} option", T::ocaml_desc(env, generics))
+        format!("({}) option", T::ocaml_desc(env, generics))
     }
 
     fn unique_id() -> u128 {
