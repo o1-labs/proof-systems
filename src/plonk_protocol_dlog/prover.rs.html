@@ -1014,18 +1014,18 @@ This source file implements prover&#39;s zk-proof primitive.
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
-        <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cpc</span>: <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>) -&gt; <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
             <span class="ident">ProverCommitments</span> {
-                <span class="ident">l_comm</span>: <span class="self">self</span>.<span class="ident">l_comm</span>.<span class="ident">into</span>(),
-                <span class="ident">r_comm</span>: <span class="self">self</span>.<span class="ident">r_comm</span>.<span class="ident">into</span>(),
-                <span class="ident">o_comm</span>: <span class="self">self</span>.<span class="ident">o_comm</span>.<span class="ident">into</span>(),
-                <span class="ident">z_comm</span>: <span class="self">self</span>.<span class="ident">z_comm</span>.<span class="ident">into</span>(),
-                <span class="ident">t_comm</span>: <span class="self">self</span>.<span class="ident">t_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">l_comm</span>: <span class="ident">cpc</span>.<span class="ident">l_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">r_comm</span>: <span class="ident">cpc</span>.<span class="ident">r_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">o_comm</span>: <span class="ident">cpc</span>.<span class="ident">o_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">z_comm</span>: <span class="ident">cpc</span>.<span class="ident">z_comm</span>.<span class="ident">into</span>(),
+                <span class="ident">t_comm</span>: <span class="ident">cpc</span>.<span class="ident">t_comm</span>.<span class="ident">into</span>(),
             }
         }
     }
@@ -1068,19 +1068,19 @@ This source file implements prover&#39;s zk-proof primitive.
         }
     }
 
-    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>
+    <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">G</span>: <span class="ident">AffineCurve</span>,
-        <span class="ident">CamlG</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">CamlF</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>,
+        <span class="ident">G</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
+        <span class="ident">G::ScalarField</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
     {
-        <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">cpp</span>: <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="ident">ProverProof</span> {
-                <span class="ident">commitments</span>: <span class="self">self</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
-                <span class="ident">proof</span>: <span class="self">self</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
-                <span class="ident">evals</span>: [<span class="self">self</span>.<span class="ident">evals</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="self">self</span>.<span class="ident">evals</span>.<span class="number">1</span>.<span class="ident">into</span>()],
-                <span class="ident">public</span>: <span class="self">self</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
-                <span class="ident">prev_challenges</span>: <span class="self">self</span>
+                <span class="ident">commitments</span>: <span class="ident">cpp</span>.<span class="ident">commitments</span>.<span class="ident">into</span>(),
+                <span class="ident">proof</span>: <span class="ident">cpp</span>.<span class="ident">proof</span>.<span class="ident">into</span>(),
+                <span class="ident">evals</span>: [<span class="ident">cpp</span>.<span class="ident">evals</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">cpp</span>.<span class="ident">evals</span>.<span class="number">1</span>.<span class="ident">into</span>()],
+                <span class="ident">public</span>: <span class="ident">cpp</span>.<span class="ident">public</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">prev_challenges</span>: <span class="ident">cpp</span>
                     .<span class="ident">prev_challenges</span>
                     .<span class="ident">into_iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">c</span>)<span class="op">|</span> {
