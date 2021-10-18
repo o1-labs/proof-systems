@@ -487,6 +487,8 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
 
     let num_rows = d1.size as usize;
 
+    let num_lookup_rows = num_rows - ZK_ROWS - 1;
+
     // Because of our ZK-rows, we can't do the trick in the plookup paper of
     // wrapping around to enforce consistency between the sorted lookup columns.
     //
@@ -529,13 +531,11 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
-    let last_lookup_row_index = num_rows - 4;
-
     let compatibility_checks : Vec<_> = (0..lookup_info.max_per_row).map(|i| {
         let first_or_last =
             if i % 2 == 0 {
                 // Check compatibility of the last elements
-                last_lookup_row_index
+                num_lookup_rows
             } else {
                 // Check compatibility of the first elements
                 0
@@ -568,12 +568,12 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     */
 
     let mut res = vec![
-        E::ZkPolynomial * aggreg_equation,
+        E::VanishesOnLast4Rows * aggreg_equation,
         E::UnnormalizedLagrangeBasis(0) *
             (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the 3rd to last row (index = num_rows - 3), which
         // contains the full product, equals 1
-        E::UnnormalizedLagrangeBasis(last_lookup_row_index + 1) *
+        E::UnnormalizedLagrangeBasis(num_lookup_rows) *
             (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
     res.extend(compatibility_checks);
