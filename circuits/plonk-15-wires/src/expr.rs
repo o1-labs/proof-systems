@@ -25,6 +25,10 @@ pub struct Constants<F> {
     /// The challenge joint_combiner which is used to combine
     /// joint lookup tables.
     pub joint_combiner: F,
+    /// The endomorphism coefficient
+    pub endo_coefficient: F,
+    /// The MDS matrix
+    pub mds: Vec<Vec<F>>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -157,6 +161,11 @@ pub enum ConstantExpr<F> {
     Beta,
     Gamma,
     JointCombiner,
+    // TODO: EndoCoefficient and Mds differ from the other 4 base constants in
+    // that they are known at compile time. This should be extracted out into two
+    // separate constant expression types.
+    EndoCoefficient,
+    Mds { row: usize, col: usize },
     Literal(F),
     Pow(Box<ConstantExpr<F>>, usize),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -180,6 +189,12 @@ impl<F: Copy> ConstantExpr<F> {
             },
             ConstantExpr::JointCombiner => {
                 res.push(PolishToken::JointCombiner)
+            },
+            ConstantExpr::EndoCoefficient => {
+                res.push(PolishToken::EndoCoefficient)
+            },
+            ConstantExpr::Mds { row, col } => {
+                res.push(PolishToken::Mds { row: *row, col: *col })
             },
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
@@ -228,6 +243,8 @@ impl<F: Field> ConstantExpr<F> {
             Beta => c.beta,
             Gamma => c.gamma,
             JointCombiner => c.joint_combiner,
+            EndoCoefficient => c.endo_coefficient,
+            Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -335,6 +352,8 @@ pub enum PolishToken<F> {
     Beta,
     Gamma,
     JointCombiner,
+    EndoCoefficient,
+    Mds { row: usize, col: usize },
     Literal(F),
     Cell(Variable),
     Dup,
@@ -382,6 +401,8 @@ impl<F: FftField> PolishToken<F> {
                 Beta => stack.push(c.beta),
                 Gamma => stack.push(c.gamma),
                 JointCombiner => stack.push(c.joint_combiner),
+                EndoCoefficient => stack.push(c.endo_coefficient),
+                Mds { row, col } => stack.push(c.mds[*row][*col]),
                 ZkPolynomial => stack.push(eval_zk_polynomial(d, pt)),
                 UnnormalizedLagrangeBasis(i) =>
                     stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
@@ -1637,6 +1658,8 @@ impl<F: PrimeField> fmt::Display for ConstantExpr<F> {
             Beta => write!(f, "beta")?,
             Gamma => write!(f, "gamma")?,
             JointCombiner => write!(f, "joint_combiner")?,
+            EndoCoefficient => write!(f, "endo_coefficient")?,
+            Mds { row, col } => write!(f, "mds({}, {})", row, col)?,
             Literal(x) => write!(f, "field(\"0x{}\")", x.into_repr())?,
             Pow(x, n) => {
                 match x.as_ref() {
