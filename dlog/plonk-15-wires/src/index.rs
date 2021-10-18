@@ -223,12 +223,12 @@ where
                 h.insert(Index(GateType::Generic));
                 h
             };
-            let expr = poseidon::constraint(&cs.fr_sponge_params);
+            let expr = poseidon::constraint();
             let expr = expr + varbasemul::constraint(super::range::MUL.start);
             let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
             assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
             let expr = expr + complete_add;
-            let expr = expr + endosclmul::constraint(cs.endo, 2 + super::range::ENDML.start);
+            let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
             let expr =
                 if lookup_used.is_some() {
                     expr +

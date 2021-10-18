@@ -287,6 +287,8 @@ where
                     beta: beta,
                     gamma: gamma,
                     joint_combiner: joint_combiner.1,
+                    endo_coefficient: index.endo,
+                    mds: index.fr_sponge_params.mds.clone(),
                 };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -426,12 +428,15 @@ where
                 scalars_part.push(evals[0].generic_selector);
 
                 {
+                    // TODO: Reuse constants from oracles function
                     let constants =
                         Constants {
                             alpha: oracles.alpha,
                             beta: oracles.beta,
                             gamma: oracles.gamma,
                             joint_combiner: oracles.joint_combiner.1,
+                            endo_coefficient: index.endo,
+                            mds: index.fr_sponge_params.mds.clone(),
                         };
 
                     let s = &mut scalars_part;
