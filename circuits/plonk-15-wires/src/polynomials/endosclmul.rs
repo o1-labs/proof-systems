@@ -26,12 +26,12 @@
 
 use ark_ff::{Field, One};
 use crate::wires::COLUMNS;
-use crate::expr::{E, Column, Cache};
+use crate::expr::{E, Column, Cache, ConstantExpr};
 use crate::gate::{GateType, CurrOrNext};
 use CurrOrNext::*;
 
 /// The constraint for endoscaling.
-pub fn constraint<F: Field>(endo: F, alpha0: usize) -> E<F> {
+pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
 
@@ -57,8 +57,9 @@ pub fn constraint<F: Field>(endo: F, alpha0: usize) -> E<F> {
     let s1 = w(9);
     let s3 = w(10);
 
-    let xq1 = cache.cache((E::one() + b1.clone() * E::literal(endo - F::one()) ) * xt.clone());
-    let xq2 = cache.cache((E::one() + b3.clone() * E::literal(endo - F::one()) ) * xt.clone());
+    let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
+    let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+    let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1.clone()) * xt.clone());
 
     let yq1 = (b2.clone().double() - E::one())*yt.clone();
     let yq2 = (b4.clone().double() - E::one())*yt.clone();

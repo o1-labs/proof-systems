@@ -476,6 +476,8 @@ mod tests {
                 beta: F::rand(rng),
                 gamma: F::rand(rng),
                 joint_combiner: F::rand(rng),
+                endo_coefficient: F::zero(),
+                mds: vec![],
             };
 
         assert_eq!(

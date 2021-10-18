@@ -15,7 +15,7 @@ use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use oracle::poseidon::{sbox, ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants15W};
-use crate::expr::{E, Variable, Column, ConstantExpr as C, Cache};
+use crate::expr::{E, Variable, Column, ConstantExpr, Cache};
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
@@ -68,13 +68,18 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 // ...
 // The rth position in this array contains the alphas used for the equations that
 // constrain the values of the (r+1)th state.
-pub fn constraint<F: FftField + SquareRootField>(
-        params: &ArithmeticSpongeParams<F>,
-    ) -> E<F> {
+pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
     let mut res = vec![];
     let mut cache = Cache::new();
 
     let mut idx = 0;
+
+    let mds : Vec<Vec<_>> =
+        (0..SPONGE_WIDTH).map(|row| {
+            (0..SPONGE_WIDTH).map(|col| ConstantExpr::Mds { row, col })
+                .collect()
+        }).collect();
+
     for e in ROUND_EQUATIONS.iter() {
         let &RoundEquation { source, target: (target_row, target_round) } = e;
         let sboxed : Vec<_> =
@@ -92,8 +97,8 @@ pub fn constraint<F: FftField + SquareRootField>(
             E::cell(Column::Witness(col), target_row)
                 -
             sboxed.iter()
-            .zip(params.mds[j].iter())
-            .fold(rc, |acc, (x, c)| acc + E::literal(*c) * x.clone())
+            .zip(mds[j].iter())
+            .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
         }));
     }
     E::cell(Column::Index(GateType::Poseidon), Curr) *
