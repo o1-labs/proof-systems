@@ -625,20 +625,22 @@ where
             .map(|(p, n)| (p, None, non_hiding(*n)))
             .collect::<Vec<_>>();
         polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(vec![(&ft, None, blinding_ft)]);
+        polynomials.extend(vec![(&z, None, z_comm.1)]);
+        polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
+        polynomials.extend(vec![(&index.cs.psm, None, non_hiding(1))]);
         polynomials.extend(
             w.iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
         );
-        polynomials.extend(vec![(&z, None, z_comm.1)]);
         polynomials.extend(
             index.cs.sigmam[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-        polynomials.extend(vec![(&ft, None, blinding_ft)]);
 
         Ok(Self {
             commitments: ProverCommitments {
