@@ -190,7 +190,7 @@ pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
         let nyb = |t: u32, i: usize| f((t >> (4 * i)) & 0b1111);
 
         let top_bit = (((s[x] as u64) + (s[z] as u64)) >> 32) as u32;
-        let xprime = s[x] + s[z];
+        let xprime = u32::wrapping_add(s[x], s[z]);
         let y_xor_xprime = s[y] ^ xprime;
         let yprime = y_xor_xprime.rotate_left(k);
 
@@ -255,7 +255,7 @@ pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
 
 pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
     let mut line = |x, y, z, k| {
-        s[x] += s[z];
+        s[x] = u32::wrapping_add(s[x], s[z]);
         s[y] ^= s[x];
         let yy : u32 = s[y];
         s[y] = yy.rotate_left(k);
