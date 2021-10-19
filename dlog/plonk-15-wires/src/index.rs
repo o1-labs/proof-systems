@@ -22,7 +22,7 @@ use commitment_dlog::{
 };
 use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
-    polynomials::{chacha, lookup, poseidon, varbasemul},
+    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add},
     gate::{GateType, LookupInfo, LookupsUsed},
     expr::{PolishToken, Expr, Column, Linearization},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
@@ -100,10 +100,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     // ECC arithmetic polynomial commitments
     /// EC addition selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub add_comm: PolyComm<G>,
-    /// EC doubling selector polynomial commitment
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub double_comm: PolyComm<G>,
+    pub complete_add_comm: PolyComm<G>,
     /// EC variable base scalar multiplication selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub mul_comm: PolyComm<G>,
@@ -160,8 +157,7 @@ where
 
             psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
-            add_comm: self.srs.commit_non_hiding(&self.cs.addm, None),
-            double_comm: self.srs.commit_non_hiding(&self.cs.doublem, None),
+            complete_add_comm: self.srs.commit_non_hiding(&self.cs.complete_addm, None),
             mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
             emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
 
@@ -227,7 +223,11 @@ where
                 h.insert(Index(GateType::Generic));
                 h
             };
-            let expr = poseidon::constraint(&cs.fr_sponge_params) + varbasemul::constraint(super::range::MUL.start);
+            let expr = poseidon::constraint(&cs.fr_sponge_params);
+            let expr = expr + varbasemul::constraint(super::range::MUL.start);
+            let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
+            assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
+            let expr = expr + complete_add;
             let expr =
                 if lookup_used.is_some() {
                     expr +

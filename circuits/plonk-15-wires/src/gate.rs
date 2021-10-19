@@ -111,10 +111,8 @@ pub enum GateType {
     Generic,
     /// Poseidon permutation gate
     Poseidon,
-    /// EC addition in Affine form
-    Add,
-    /// EC point doubling in Affine form
-    Double,
+    /// Complete EC addition in Affine form
+    CompleteAdd,
     /// EC variable base scalar multiplication
     Vbmul,
     /// EC variable base scalar multiplication with group endomorphim optimization
@@ -406,8 +404,7 @@ impl<F: FftField> CircuitGate<F> {
             Zero => Ok(()),
             Generic => self.verify_generic(witness),
             Poseidon => self.verify_poseidon(witness, cs),
-            Add => self.verify_add(witness),
-            Double => self.verify_double(witness),
+            CompleteAdd => self.verify_complete_add(witness),
             Vbmul => self.verify_vbmul(witness),
             Endomul => self.verify_endomul(witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo")

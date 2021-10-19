@@ -124,6 +124,7 @@ pub enum Column {
 impl Column {
     fn domain(&self) -> Domain {
         match self {
+            Column::Index(GateType::CompleteAdd) => Domain::D4,
             _ => Domain::D8,
         }
     }
@@ -641,7 +642,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 let n = res_domain.1.size as usize;
                 let v: Vec<_> = (0..n).into_par_iter().map(|i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] 
+                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
                         + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
                 }).collect();
 
@@ -790,22 +791,15 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 EvalResult::init(
                     res_domain,
-                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] * es2.evals[(scale2 * i + (d2 as usize) * s2) % es1.evals.len()])
+                    |i| {
+                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                            * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    })
             }
         }
     }
 
 }
-
-/*
-fn eval_result_op<'a, 'b, 'c, F: FftField>(op: Op2, dom: (Domain, D<F>), x: EvalResult<'a, F>, y: EvalResult<'b, F>) -> EvalResult<'c, F> {
-    match op {
-        Op2::Mul => x.mul(y, dom),
-        Op2::Add => x.add(y, dom),
-        Op2::Sub => x.sub(y, dom),
-    }
-}
-*/
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {
@@ -814,6 +808,18 @@ fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
         Domain::D4 => env.domain.d4,
         Domain::D8 => env.domain.d8
     }
+}
+
+impl<F: Field> Expr<ConstantExpr<F>> {
+    /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
+    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
+    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
+        let zero = Expr::<ConstantExpr<F>>::zero();
+        cs.into_iter().zip(alpha0..).map(|(c, i)| {
+            Expr::Constant(ConstantExpr::Alpha.pow(i)) * c
+        }).fold(zero, |acc, x| acc + x)
+    }
+
 }
 
 impl<F: FftField> Expr<ConstantExpr<F>> {
@@ -873,15 +879,6 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 }
             },
         }
-    }
-
-    /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
-    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
-    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
-        let zero = Expr::<ConstantExpr<F>>::zero();
-        cs.into_iter().zip(alpha0..).map(|(c, i)| {
-            Expr::Constant(ConstantExpr::Alpha.pow(i)) * c
-        }).fold(zero, |acc, x| acc + x)
     }
 
     /// The expression `beta`.

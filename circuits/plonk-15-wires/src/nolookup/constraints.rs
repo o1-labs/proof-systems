@@ -69,10 +69,7 @@ pub struct ConstraintSystem<F: FftField> {
     // -----------------------------------
     /// EC point addition constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub addm: DP<F>,
-    /// EC point doubling constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub doublem: DP<F>,
+    pub complete_addm: DP<F>,
     /// mulm constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mulm: DP<F>,
@@ -110,15 +107,9 @@ pub struct ConstraintSystem<F: FftField> {
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
-    /// EC point addition selector evaluations w over domain.d4
+    /// EC point addition selector evaluations w over domain.d2
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub addl: E<F, D<F>>,
-    /// EC point doubling selector evaluations w over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub doubl8: E<F, D<F>>,
-    /// EC point doubling selector evaluations w over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub doubl4: E<F, D<F>>,
+    pub complete_addl4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mull8: E<F, D<F>>,
@@ -330,13 +321,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         .interpolate();
 
         // compute ECC arithmetic constraint polynomials
-        let addm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.add()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let doublem = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.double()).collect(),
+        let complete_addm = E::<F, D<F>>::from_vec_and_domain(
+            gates.iter().map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64)).collect(),
             domain.d1,
         )
         .interpolate();
@@ -423,11 +409,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         // ECC arithmetic constraint polynomials
-        let addl = addm.evaluate_over_domain_by_ref(domain.d4);
-        let doubl8 = doublem.evaluate_over_domain_by_ref(domain.d8);
-        let doubl4 = doublem.evaluate_over_domain_by_ref(domain.d4);
         let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
         let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
@@ -497,11 +481,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             coefficients8,
             ps8,
             psm,
-            addl,
-            addm,
-            doubl8,
-            doubl4,
-            doublem,
+            complete_addm,
+            complete_addl4,
             mull8,
             mulm,
             emull,
