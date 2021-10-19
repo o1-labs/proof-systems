@@ -1295,7 +1295,7 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
             Cell(v) => evaluated.contains(&v.col),
             Double(x) => x.is_constant(evaluated),
             BinOp(_, x, y) => x.is_constant(evaluated) && y.is_constant(evaluated),
-            ZkPolynomial => true,
+            VanishesOnLast4Rows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
         }
