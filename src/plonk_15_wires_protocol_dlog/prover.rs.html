@@ -856,6 +856,7 @@
 <span id="856">856</span>
 <span id="857">857</span>
 <span id="858">858</span>
+<span id="859">859</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -877,7 +878,7 @@ This source file implements prover&#39;s zk-proof primitive.
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">rndoracle::ProofError</span>, <span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
 <span class="kw">use</span> <span class="ident">plonk_15_wires_circuits</span>::{
     <span class="ident">expr</span>::{<span class="ident">Environment</span>, <span class="ident">LookupEnvironment</span>, <span class="ident">Constants</span>, <span class="ident">l0_1</span>},
-    <span class="ident">polynomials</span>::{<span class="ident">chacha</span>, <span class="ident">lookup</span>, <span class="ident">poseidon</span>, <span class="ident">varbasemul</span>},
+    <span class="ident">polynomials</span>::{<span class="ident">chacha</span>, <span class="ident">lookup</span>, <span class="ident">poseidon</span>, <span class="ident">varbasemul</span>, <span class="ident">complete_add</span>},
     <span class="ident">nolookup::scalars</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
     <span class="ident">wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>},
     <span class="ident">gate</span>::{<span class="ident">combine_table_entry</span>, <span class="ident">LookupsUsed</span>, <span class="ident">LookupInfo</span>, <span class="ident">GateType</span>},
@@ -1213,8 +1214,7 @@ This source file implements prover&#39;s zk-proof primitive.
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">index_evals</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
                 <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
                 <span class="ident">index_evals</span>.<span class="ident">insert</span>(<span class="ident">Poseidon</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">ps8</span>);
-                <span class="ident">index_evals</span>.<span class="ident">insert</span>(<span class="ident">Add</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">addl</span>);
-                <span class="ident">index_evals</span>.<span class="ident">insert</span>(<span class="ident">Double</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">doubl8</span>);
+                <span class="ident">index_evals</span>.<span class="ident">insert</span>(<span class="ident">CompleteAdd</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">complete_addl4</span>);
                 <span class="ident">index_evals</span>.<span class="ident">insert</span>(<span class="ident">Vbmul</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">mull8</span>);
                 <span class="ident">index_evals</span>.<span class="ident">insert</span>(<span class="ident">Endomul</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">emull</span>);
                 [<span class="ident">ChaCha0</span>, <span class="ident">ChaCha1</span>, <span class="ident">ChaCha2</span>, <span class="ident">ChaChaFinal</span>].<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">g</span>)<span class="op">|</span> {
@@ -1249,9 +1249,9 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="comment">// generic</span>
         <span class="kw">let</span> <span class="ident">gen</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gnrc_quot</span>(<span class="kw-2">&amp;</span><span class="ident">lagrange</span>.<span class="ident">d4</span>.<span class="ident">this</span>.<span class="ident">w</span>);
         <span class="comment">// EC addition</span>
-        <span class="kw">let</span> <span class="ident">add</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">ecad_quot</span>(<span class="kw-2">&amp;</span><span class="ident">lagrange</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::ADD</span>]);
-        <span class="comment">// EC doubling</span>
-        <span class="kw">let</span> (<span class="ident">doub4</span>, <span class="ident">doub8</span>) <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">double_quot</span>(<span class="kw-2">&amp;</span><span class="ident">lagrange</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::DBL</span>]);
+        <span class="kw">let</span> (<span class="ident">alphas_used</span>, <span class="ident">add_constraint</span>) <span class="op">=</span> <span class="ident">complete_add::constraint</span>(<span class="ident">range::COMPLETE_ADD</span>.<span class="ident">start</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">alphas_used</span>, <span class="ident">range::COMPLETE_ADD</span>.<span class="ident">len</span>());
+        <span class="kw">let</span> <span class="ident">add4</span> <span class="op">=</span> <span class="ident">add_constraint</span>.<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
         <span class="comment">// endoscaling</span>
         <span class="kw">let</span> <span class="ident">emul8</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">endomul_quot</span>(<span class="kw-2">&amp;</span><span class="ident">lagrange</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::ENDML</span>]);
         <span class="comment">// scalar multiplication</span>
@@ -1260,7 +1260,11 @@ This source file implements prover&#39;s zk-proof primitive.
             .<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
 
         <span class="comment">// collect contribution evaluations</span>
-        <span class="kw">let</span> <span class="ident">t4</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">add</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">gen</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">doub4</span>);
+        <span class="kw">let</span> <span class="ident">t4</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">t4</span> <span class="op">=</span> <span class="ident">gen</span>;
+            <span class="ident">t4</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">add4</span>;
+            <span class="ident">t4</span>
+        };
         <span class="kw">let</span> <span class="ident">t4</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">chacha8</span>.<span class="ident">as_ref</span>() {
                 <span class="prelude-val">None</span> =&gt; <span class="ident">t4</span>,
@@ -1269,7 +1273,7 @@ This source file implements prover&#39;s zk-proof primitive.
                     <span class="kw-2">&amp;</span><span class="ident">t4</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">chacha</span>
                 }
             };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">t8</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">perm</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">mul8</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">emul8</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">doub8</span>));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">t8</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">perm</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">mul8</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">emul8</span>);
 
         <span class="comment">// quotient polynomial for lookup</span>
         <span class="comment">// lookup::constraints</span>
@@ -1389,9 +1393,7 @@ This source file implements prover&#39;s zk-proof primitive.
             <span class="comment">// TODO: compute the linearization polynomial in evaluation form so</span>
             <span class="comment">// that we can drop the coefficient forms of the index polynomials from</span>
             <span class="comment">// the constraint system struct</span>
-            <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">w</span>, <span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">generic_selector</span>)
-                <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">ecad_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::ADD</span>]))
-                <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">double_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::DBL</span>]))
+            <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">w</span>, <span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">generic_selector</span>)
                 <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">endomul_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::ENDML</span>]))
                 <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">index</span>
                     .<span class="ident">cs</span>

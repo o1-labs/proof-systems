@@ -601,9 +601,6 @@
 <span id="601">601</span>
 <span id="602">602</span>
 <span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -717,10 +714,8 @@ This source file implements Plonk constraint gate primitive.
     <span class="ident">Generic</span>,
     <span class="doccomment">/// Poseidon permutation gate</span>
     <span class="ident">Poseidon</span>,
-    <span class="doccomment">/// EC addition in Affine form</span>
-    <span class="ident">Add</span>,
-    <span class="doccomment">/// EC point doubling in Affine form</span>
-    <span class="ident">Double</span>,
+    <span class="doccomment">/// Complete EC addition in Affine form</span>
+    <span class="ident">CompleteAdd</span>,
     <span class="doccomment">/// EC variable base scalar multiplication</span>
     <span class="ident">Vbmul</span>,
     <span class="doccomment">/// EC variable base scalar multiplication with group endomorphim optimization</span>
@@ -1012,8 +1007,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="ident">Zero</span> =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="ident">Generic</span> =&gt; <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">witness</span>),
             <span class="ident">Poseidon</span> =&gt; <span class="self">self</span>.<span class="ident">verify_poseidon</span>(<span class="ident">witness</span>, <span class="ident">cs</span>),
-            <span class="ident">Add</span> =&gt; <span class="self">self</span>.<span class="ident">verify_add</span>(<span class="ident">witness</span>),
-            <span class="ident">Double</span> =&gt; <span class="self">self</span>.<span class="ident">verify_double</span>(<span class="ident">witness</span>),
+            <span class="ident">CompleteAdd</span> =&gt; <span class="self">self</span>.<span class="ident">verify_complete_add</span>(<span class="ident">witness</span>),
             <span class="ident">Vbmul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">witness</span>),
             <span class="ident">Endomul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>(<span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;todo&quot;</span>)

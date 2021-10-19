@@ -640,25 +640,6 @@
 <span id="640">640</span>
 <span id="641">641</span>
 <span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -730,10 +711,7 @@ This source file implements Plonk circuit constraint primitive.
     <span class="comment">// -----------------------------------</span>
     <span class="doccomment">/// EC point addition constraint selector polynomial</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">addm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// EC point doubling constraint selector polynomial</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">doublem</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">complete_addm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="doccomment">/// mulm constraint selector polynomial</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">mulm</span>: <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -771,15 +749,9 @@ This source file implements Plonk circuit constraint primitive.
 
     <span class="comment">// ECC arithmetic selector polynomials</span>
     <span class="comment">// -----------------------------------</span>
-    <span class="doccomment">/// EC point addition selector evaluations w over domain.d4</span>
+    <span class="doccomment">/// EC point addition selector evaluations w over domain.d2</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">addl</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// EC point doubling selector evaluations w over domain.d8</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">doubl8</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="doccomment">/// EC point doubling selector evaluations w over domain.d4</span>
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">doubl4</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">complete_addl4</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// scalar multiplication selector evaluations over domain.d8</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">mull8</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -991,13 +963,8 @@ This source file implements Plonk circuit constraint primitive.
         .<span class="ident">interpolate</span>();
 
         <span class="comment">// compute ECC arithmetic constraint polynomials</span>
-        <span class="kw">let</span> <span class="ident">addm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-            <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">gate</span>.<span class="ident">add</span>()).<span class="ident">collect</span>(),
-            <span class="ident">domain</span>.<span class="ident">d1</span>,
-        )
-        .<span class="ident">interpolate</span>();
-        <span class="kw">let</span> <span class="ident">doublem</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-            <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">gate</span>.<span class="ident">double</span>()).<span class="ident">collect</span>(),
+        <span class="kw">let</span> <span class="ident">complete_addm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
+            <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">F::from</span>((<span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::CompleteAdd</span>) <span class="kw">as</span> <span class="ident">u64</span>)).<span class="ident">collect</span>(),
             <span class="ident">domain</span>.<span class="ident">d1</span>,
         )
         .<span class="ident">interpolate</span>();
@@ -1084,11 +1051,9 @@ This source file implements Plonk circuit constraint primitive.
         <span class="kw">let</span> <span class="ident">ps8</span> <span class="op">=</span> <span class="ident">psm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
 
         <span class="comment">// ECC arithmetic constraint polynomials</span>
-        <span class="kw">let</span> <span class="ident">addl</span> <span class="op">=</span> <span class="ident">addm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>);
-        <span class="kw">let</span> <span class="ident">doubl8</span> <span class="op">=</span> <span class="ident">doublem</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
-        <span class="kw">let</span> <span class="ident">doubl4</span> <span class="op">=</span> <span class="ident">doublem</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>);
         <span class="kw">let</span> <span class="ident">mull8</span> <span class="op">=</span> <span class="ident">mulm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
         <span class="kw">let</span> <span class="ident">emull</span> <span class="op">=</span> <span class="ident">emulm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>);
+        <span class="kw">let</span> <span class="ident">complete_addl4</span> <span class="op">=</span> <span class="ident">complete_addm</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d4</span>);
 
         <span class="comment">// constant polynomials</span>
         <span class="kw">let</span> <span class="ident">l1</span> <span class="op">=</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::zero</span>(), <span class="ident">F::one</span>()])
@@ -1158,11 +1123,8 @@ This source file implements Plonk circuit constraint primitive.
             <span class="ident">coefficients8</span>,
             <span class="ident">ps8</span>,
             <span class="ident">psm</span>,
-            <span class="ident">addl</span>,
-            <span class="ident">addm</span>,
-            <span class="ident">doubl8</span>,
-            <span class="ident">doubl4</span>,
-            <span class="ident">doublem</span>,
+            <span class="ident">complete_addm</span>,
+            <span class="ident">complete_addl4</span>,
             <span class="ident">mull8</span>,
             <span class="ident">mulm</span>,
             <span class="ident">emull</span>,

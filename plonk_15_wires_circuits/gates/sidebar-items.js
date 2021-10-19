@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["addition",""],["double",""],["endosclmul",""],["generic",""],["poseidon",""],["varbasemul",""]]});
+initSidebarItems({"mod":[["endosclmul",""],["generic",""],["poseidon",""],["varbasemul",""]]});
