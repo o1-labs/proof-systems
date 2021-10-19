@@ -21,7 +21,7 @@ We lay each line as two rows.
 
 Each line has the form 
 
-    x += z; y ^= x; x <<<= k
+    x += z; y ^= x; y <<<= k
 
 or without mutation,
     
@@ -50,7 +50,7 @@ along with the equations
 a' = sum_{i = 0}^7 (2^4)^i (a+b)_i;
 a + b = 2^32 (a+b)_8 + a';
 d = sum_{i = 0}^7 (2^4)^i d_i
-d' = sum_{i = 0}^7 (2^4)^{(i + 4) mod 4} (a+b)_i 
+d' = sum_{i = 0}^7 (2^4)^{(i + 4) mod 8} (a+b)_i
 
 The (i + 4) mod 8 rotates the nybbles left by 4, which means bit-rotating by 4*4 = 16
 as desired.
@@ -181,6 +181,19 @@ pub fn chacha20_gates() -> Vec<GateType> {
     gs
 }
 
+const CHACHA20_ROTATIONS: [u32; 4] = [16, 12, 8, 7];
+const CHACHA20_QRS : [[usize; 4]; 8] =
+    [
+        [0, 4,  8, 12],
+        [1, 5,  9, 13],
+        [2, 6, 10, 14],
+        [3, 7, 11, 15],
+        [0, 5, 10, 15],
+        [1, 6, 11, 12],
+        [2, 7,  8, 13],
+        [3, 4,  9, 14],
+    ];
+
 pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
     let mut rows = vec![];
 
@@ -234,20 +247,15 @@ pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
     };
 
     let mut qr = |a, b, c, d| {
-        line(a, d, b, 16);
-        line(c, b, d, 12);
-        line(a, d, b, 8);
-        line(c, b, d, 7);
+        line(a, d, b, CHACHA20_ROTATIONS[0]);
+        line(c, b, d, CHACHA20_ROTATIONS[1]);
+        line(a, d, b, CHACHA20_ROTATIONS[2]);
+        line(c, b, d, CHACHA20_ROTATIONS[3]);
     };
     for _ in 0..10 {
-        qr(0, 4,  8, 12);
-        qr(1, 5,  9, 13);
-        qr(2, 6, 10, 14);
-        qr(3, 7, 11, 15);
-        qr(0, 5, 10, 15);
-        qr(1, 6, 11, 12);
-        qr(2, 7,  8, 13);
-        qr(3, 4,  9, 14);
+        for [a, b, c, d] in CHACHA20_QRS {
+            qr(a, b, c, d);
+        }
     }
 
     rows
@@ -261,20 +269,15 @@ pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
         s[y] = yy.rotate_left(k);
     };
     let mut qr = |a, b, c, d| {
-        line(a, d, b, 16);
-        line(c, b, d, 12);
-        line(a, d, b, 8);
-        line(c, b, d, 7);
+        line(a, d, b, CHACHA20_ROTATIONS[0]);
+        line(c, b, d, CHACHA20_ROTATIONS[1]);
+        line(a, d, b, CHACHA20_ROTATIONS[2]);
+        line(c, b, d, CHACHA20_ROTATIONS[3]);
     };
     for _ in 0..10 {
-        qr(0, 4,  8, 12);
-        qr(1, 5,  9, 13);
-        qr(2, 6, 10, 14);
-        qr(3, 7, 11, 15);
-        qr(0, 5, 10, 15);
-        qr(1, 6, 11, 12);
-        qr(2, 7,  8, 13);
-        qr(3, 4,  9, 14);
+        for [a, b, c, d] in CHACHA20_QRS {
+            qr(a, b, c, d);
+        }
     }
     s
 }
