@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ProverCommitments",""],["ProverProof",""]]});
+initSidebarItems({"struct":[["LookupCommitments",""],["ProverCommitments",""],["ProverProof",""]]});

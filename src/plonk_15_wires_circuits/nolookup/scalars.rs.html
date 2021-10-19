@@ -335,6 +335,11 @@
 <span id="335">335</span>
 <span id="336">336</span>
 <span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk prover polynomial evaluations primitive.
@@ -400,6 +405,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="ident">joint_combiner</span>: (<span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">F</span>),
     <span class="kw">pub</span> <span class="ident">beta</span>: <span class="ident">F</span>,
     <span class="kw">pub</span> <span class="ident">gamma</span>: <span class="ident">F</span>,
     <span class="kw">pub</span> <span class="ident">alpha_chal</span>: <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -426,6 +432,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
             <span class="ident">zeta_chal</span>: <span class="ident">c</span>,
             <span class="ident">v_chal</span>: <span class="ident">c</span>,
             <span class="ident">u_chal</span>: <span class="ident">c</span>,
+            <span class="ident">joint_combiner</span>: (<span class="ident">c</span>, <span class="ident">F::zero</span>()),
         }
     }
 }
@@ -618,6 +625,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
+        <span class="kw">pub</span> <span class="ident">joint_combiner</span>: (<span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlF</span>),
         <span class="kw">pub</span> <span class="ident">beta</span>: <span class="ident">CamlF</span>,
         <span class="kw">pub</span> <span class="ident">gamma</span>: <span class="ident">CamlF</span>,
         <span class="kw">pub</span> <span class="ident">alpha_chal</span>: <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
@@ -637,6 +645,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
     {
         <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ro</span>: <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
             <span class="self">Self</span> {
+                <span class="ident">joint_combiner</span>: (<span class="ident">ro</span>.<span class="ident">joint_combiner</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">ro</span>.<span class="ident">joint_combiner</span>.<span class="number">1</span>.<span class="ident">into</span>()),
                 <span class="ident">beta</span>: <span class="ident">ro</span>.<span class="ident">beta</span>.<span class="ident">into</span>(),
                 <span class="ident">gamma</span>: <span class="ident">ro</span>.<span class="ident">gamma</span>.<span class="ident">into</span>(),
                 <span class="ident">alpha_chal</span>: <span class="ident">ro</span>.<span class="ident">alpha_chal</span>.<span class="ident">into</span>(),
@@ -658,6 +667,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
     {
         <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">RandomOracles</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
             <span class="ident">RandomOracles</span> {
+                <span class="ident">joint_combiner</span>: (<span class="self">self</span>.<span class="ident">joint_combiner</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="self">self</span>.<span class="ident">joint_combiner</span>.<span class="number">1</span>.<span class="ident">into</span>()),
                 <span class="ident">beta</span>: <span class="self">self</span>.<span class="ident">beta</span>.<span class="ident">into</span>(),
                 <span class="ident">gamma</span>: <span class="self">self</span>.<span class="ident">gamma</span>.<span class="ident">into</span>(),
                 <span class="ident">alpha_chal</span>: <span class="self">self</span>.<span class="ident">alpha_chal</span>.<span class="ident">into</span>(),

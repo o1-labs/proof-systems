@@ -320,8 +320,6 @@
 <span id="320">320</span>
 <span id="321">321</span>
 <span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk constraints.
@@ -427,9 +425,7 @@ The constraints above are derived from the following EC Affine arithmetic equati
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="comment">// TODO(mimoo): why is `wires` of size 3 if we only use 2?</span>
-    <span class="comment">// I think it&#39;s because we used to use 2</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_vbmul</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="kw-2">&amp;</span>[<span class="ident">GateWires</span>; <span class="number">3</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_vbmul</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="kw-2">&amp;</span>[<span class="ident">GateWires</span>; <span class="number">2</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[
             <span class="ident">CircuitGate</span> {
                 <span class="ident">row</span>,

@@ -1,1 +1,1 @@
-initSidebarItems({});
+initSidebarItems({"constant":[["ROUND_EQUATIONS",""]],"fn":[["constraint","poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`"]],"struct":[["RoundEquation","An equation of the form `(curr | next)[i] = round(curr[j])`"]]});

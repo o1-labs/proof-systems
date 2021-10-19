@@ -1587,8 +1587,19 @@
 <span id="1587">1587</span>
 <span id="1588">1588</span>
 <span id="1589">1589</span>
+<span id="1590">1590</span>
+<span id="1591">1591</span>
+<span id="1592">1592</span>
+<span id="1593">1593</span>
+<span id="1594">1594</span>
+<span id="1595">1595</span>
+<span id="1596">1596</span>
+<span id="1597">1597</span>
+<span id="1598">1598</span>
+<span id="1599">1599</span>
+<span id="1600">1600</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::scalars</span>::{<span class="ident">ProofEvaluations</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::constraints</span>::{<span class="ident">eval_zk_polynomial</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::constraints</span>::{<span class="ident">eval_vanishes_on_last_4_rows</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>, <span class="ident">One</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>};
@@ -1598,6 +1609,7 @@
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::iter::FromIterator</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires::COLUMNS</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::domains::EvaluationDomains</span>;
@@ -1638,9 +1650,8 @@
     <span class="kw">pub</span> <span class="ident">witness</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
     <span class="doccomment">/// The coefficient column polynomials</span>
     <span class="kw">pub</span> <span class="ident">coefficient</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
-    <span class="doccomment">/// The polynomial which vanishes on the last 3 elements of the domain.</span>
-    <span class="doccomment">/// Used for ZK blinding.</span>
-    <span class="kw">pub</span> <span class="ident">zk_polynomial</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The polynomial which vanishes on the last 4 elements of the domain.</span>
+    <span class="kw">pub</span> <span class="ident">vanishes_on_last_4_rows</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The permutation aggregation polynomial.</span>
     <span class="kw">pub</span> <span class="ident">z</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The index selector polynomials.</span>
@@ -1697,7 +1708,7 @@
     <span class="ident">res</span>
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="doccomment">/// A type representing one of the polynomials involved in the PLONK IOP.</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Column</span> {
     <span class="ident">Witness</span>(<span class="ident">usize</span>),
@@ -1718,7 +1729,7 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="doccomment">/// A type representing a variable which can appear in a constraint. It specifies a column</span>
 <span class="doccomment">/// and a relative position (Curr or Next)</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Variable</span> {
@@ -1883,7 +1894,7 @@
 <span class="doccomment">/// variables</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// - `Cell(v)` for `v : Variable`</span>
-<span class="doccomment">/// - ZkPolynomial</span>
+<span class="doccomment">/// - VanishesOnLast4Rows</span>
 <span class="doccomment">/// - UnnormalizedLagrangeBasis(i) for `i : usize`</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This represents a PLONK &quot;custom constraint&quot;, which enforces that</span>
@@ -1895,7 +1906,7 @@
     <span class="ident">Cell</span>(<span class="ident">Variable</span>),
     <span class="ident">Double</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>),
     <span class="ident">BinOp</span>(<span class="ident">Op2</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>),
-    <span class="ident">ZkPolynomial</span>,
+    <span class="ident">VanishesOnLast4Rows</span>,
     <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is</span>
     <span class="doccomment">/// (x^n - 1) / (x - omega^i)</span>
     <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">usize</span>),
@@ -1906,7 +1917,7 @@
 <span class="doccomment">/// For efficiency of evaluation, we compile expressions to</span>
 <span class="doccomment">/// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)</span>
 <span class="doccomment">/// expressions, which are vectors of the below tokens.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="ident">Alpha</span>,
     <span class="ident">Beta</span>,
@@ -1919,7 +1930,7 @@
     <span class="ident">Add</span>,
     <span class="ident">Mul</span>,
     <span class="ident">Sub</span>,
-    <span class="ident">ZkPolynomial</span>,
+    <span class="ident">VanishesOnLast4Rows</span>,
     <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">usize</span>),
     <span class="ident">Store</span>,
     <span class="ident">Load</span>(<span class="ident">usize</span>),
@@ -1936,6 +1947,8 @@
             <span class="ident">LookupSorted</span>(<span class="ident">i</span>) =&gt; <span class="ident">l</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">sorted</span>[<span class="ident">i</span>]),
             <span class="ident">LookupAggreg</span> =&gt; <span class="ident">l</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">aggreg</span>),
             <span class="ident">LookupTable</span> =&gt; <span class="ident">l</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">table</span>),
+            <span class="ident">Index</span>(<span class="ident">GateType::Poseidon</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">evals</span>.<span class="ident">poseidon_selector</span>),
+            <span class="ident">Index</span>(<span class="ident">GateType::Generic</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">evals</span>.<span class="ident">generic_selector</span>),
             <span class="ident">Coefficient</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">LookupKindIndex</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">Index</span>(<span class="kw">_</span>) =&gt;
                 <span class="prelude-val">Err</span>(<span class="string">&quot;Cannot get index evaluation (should have been linearized away)&quot;</span>)
         }
@@ -1957,7 +1970,7 @@
                 <span class="ident">Beta</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">beta</span>),
                 <span class="ident">Gamma</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">gamma</span>),
                 <span class="ident">JointCombiner</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">joint_combiner</span>),
-                <span class="ident">ZkPolynomial</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">eval_zk_polynomial</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
+                <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
                 <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt;
                     <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>]))),
                 <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="kw-2">*</span><span class="ident">x</span>),
@@ -2021,7 +2034,7 @@
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Double</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">degree</span>(<span class="ident">d1_size</span>),
             <span class="ident">Constant</span>(<span class="kw">_</span>) =&gt; <span class="number">0</span>,
-            <span class="ident">ZkPolynomial</span> =&gt; <span class="number">3</span>,
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="number">4</span>,
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="kw">_</span>) =&gt; <span class="ident">d1_size</span>,
             <span class="ident">Cell</span>(<span class="kw">_</span>) =&gt; <span class="ident">d1_size</span>,
             <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; (<span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">degree</span>(<span class="ident">d1_size</span>) <span class="op">+</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">degree</span>(<span class="ident">d1_size</span>),
@@ -2435,8 +2448,8 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
             <span class="ident">Expr::Cell</span>(<span class="ident">v</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::Cell</span>(<span class="kw-2">*</span><span class="ident">v</span>))
             },
-            <span class="ident">Expr::ZkPolynomial</span> =&gt; {
-                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::ZkPolynomial</span>);
+            <span class="ident">Expr::VanishesOnLast4Rows</span> =&gt; {
+                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::VanishesOnLast4Rows</span>);
             },
             <span class="ident">Expr::UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; {
                 <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::UnnormalizedLagrangeBasis</span>(<span class="kw-2">*</span><span class="ident">i</span>));
@@ -2484,7 +2497,7 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">d</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>).<span class="ident">pow</span>(<span class="kw-2">*</span><span class="ident">d</span>),
             <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="ident">Constant</span>(<span class="ident">x</span>.<span class="ident">value</span>(<span class="ident">c</span>)),
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">Cell</span>(<span class="kw-2">*</span><span class="ident">v</span>),
-            <span class="ident">ZkPolynomial</span> =&gt; <span class="ident">ZkPolynomial</span>,
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">VanishesOnLast4Rows</span>,
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="kw-2">*</span><span class="ident">i</span>),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>) <span class="op">+</span> <span class="ident">y</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>) <span class="op">*</span> <span class="ident">y</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>),
@@ -2526,7 +2539,7 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
                 <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>, <span class="ident">c</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="ident">x</span> <span class="op">-</span> <span class="ident">y</span>)
             },
-            <span class="ident">ZkPolynomial</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">eval_zk_polynomial</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt;
                 <span class="prelude-val">Ok</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>]))),
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">evaluate</span>(<span class="ident">evals</span>),
@@ -2575,7 +2588,7 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
                 <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="ident">x</span> <span class="op">-</span> <span class="ident">y</span>)
             },
-            <span class="ident">ZkPolynomial</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">eval_zk_polynomial</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; 
                 <span class="prelude-val">Ok</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>]))),
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">evaluate</span>(<span class="ident">evals</span>),
@@ -2679,11 +2692,11 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
                         <span class="ident">Either::Right</span>(<span class="ident">id</span>) =&gt; <span class="ident">id</span>.<span class="ident">get_from</span>(<span class="ident">cache</span>).<span class="ident">unwrap</span>().<span class="ident">pow</span>(<span class="kw-2">*</span><span class="ident">p</span>, (<span class="ident">d</span>, <span class="ident">get_domain</span>(<span class="ident">d</span>, <span class="ident">env</span>))),
                     }
                 },
-                <span class="ident">Expr::ZkPolynomial</span> =&gt;
+                <span class="ident">Expr::VanishesOnLast4Rows</span> =&gt;
                     <span class="ident">EvalResult::SubEvals</span> { 
                         <span class="ident">domain</span>: <span class="ident">Domain::D8</span>,
                         <span class="ident">shift</span>: <span class="number">0</span>,
-                        <span class="ident">evals</span>: <span class="ident">env</span>.<span class="ident">zk_polynomial</span>
+                        <span class="ident">evals</span>: <span class="ident">env</span>.<span class="ident">vanishes_on_last_4_rows</span>
                     },
                 <span class="ident">Expr::Constant</span>(<span class="ident">x</span>) =&gt; {
                     <span class="ident">EvalResult::Constant</span>(<span class="kw-2">*</span><span class="ident">x</span>)
@@ -2730,12 +2743,21 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="doccomment">/// A &quot;linearization&quot;, which is linear combination with `E` coefficients of</span>
 <span class="doccomment">/// columns.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">constant_term</span>: <span class="ident">E</span>,
     <span class="kw">pub</span> <span class="ident">index_terms</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Column</span>, <span class="ident">E</span>)<span class="op">&gt;</span>
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident">Linearization</span> {
+            <span class="ident">constant_term</span>: <span class="ident">E::default</span>(),
+            <span class="ident">index_terms</span>: <span class="macro">vec!</span>[],
+        }
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span> <span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">A</span><span class="op">&gt;</span> {
@@ -2861,7 +2883,7 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
                     <span class="ident">e</span>.<span class="ident">monomials</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">m</span>, <span class="ident">c</span>)<span class="op">|</span> (<span class="ident">m</span>, <span class="ident">c</span>.<span class="ident">double</span>()))),
             <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">monomials</span>(),
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="ident">constant</span>(<span class="ident">UnnormalizedLagrangeBasis</span>(<span class="kw-2">*</span><span class="ident">i</span>)),
-            <span class="ident">ZkPolynomial</span> =&gt; <span class="ident">constant</span>(<span class="ident">ZkPolynomial</span>),
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">constant</span>(<span class="ident">VanishesOnLast4Rows</span>),
             <span class="ident">Constant</span>(<span class="ident">c</span>) =&gt; <span class="ident">constant</span>(<span class="ident">Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>())),
             <span class="ident">Cell</span>(<span class="ident">var</span>) =&gt; <span class="ident">sing</span>(<span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">var</span>], <span class="ident">Constant</span>(<span class="ident">F::one</span>())),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">e1</span>, <span class="ident">e2</span>) =&gt; {
@@ -3163,7 +3185,7 @@ fn eval_result_op&lt;&#39;a, &#39;b, &#39;c, F: FftField&gt;(op: Op2, dom: (Doma
             <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>,
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Cell({:?})&quot;</span>, <span class="kw-2">*</span><span class="ident">v</span>)<span class="question-mark">?</span>,
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;UnnormalizedLagrangeBasis({})&quot;</span>, <span class="kw-2">*</span><span class="ident">i</span>)<span class="question-mark">?</span>,
-            <span class="ident">ZkPolynomial</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;ZkPolynomial&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;VanishesOnLast4Rows&quot;</span>)<span class="question-mark">?</span>,
             <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} + {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
             <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} * {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
             <span class="ident">BinOp</span>(<span class="ident">Op2::Sub</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} - {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,

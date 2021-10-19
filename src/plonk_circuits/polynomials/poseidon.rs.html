@@ -109,6 +109,8 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Posedon constraint polynomials.
@@ -121,7 +123,9 @@ This source file implements Posedon constraint polynomials.
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident">o1_utils</span>::{<span class="ident">ExtendedDensePolynomial</span>, <span class="ident">ExtendedEvaluations</span>};
-<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsBasic</span>};
+<span class="kw">use</span> <span class="ident">oracle</span>::{
+    <span class="ident">poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsBasic</span>},
+};
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {

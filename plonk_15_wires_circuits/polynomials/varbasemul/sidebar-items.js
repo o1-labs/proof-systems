@@ -1,1 +1,1 @@
-initSidebarItems({});
+initSidebarItems({"fn":[["constraint",""],["witness",""]],"struct":[["VarbaseMulResult",""]]});

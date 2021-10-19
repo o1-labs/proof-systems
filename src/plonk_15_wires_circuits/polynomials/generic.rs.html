@@ -238,6 +238,13 @@
 <span id="238">238</span>
 <span id="239">239</span>
 <span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements generic constraint polynomials.
@@ -253,6 +260,7 @@ This source file implements generic constraint polynomials.
 };
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gates::generic</span>::{<span class="ident">MUL_COEFF</span>, <span class="ident">CONSTANT_COEFF</span>};
+<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// generic constraint quotient poly contribution computation</span>
@@ -262,15 +270,21 @@ This source file implements generic constraint polynomials.
     ) -&gt; <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// w[0](x) * w[1](x) * qml(x)</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">multiplication</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">witness_d4</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness_d4</span>[<span class="number">1</span>];
-        <span class="ident">multiplication</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficients4</span>[<span class="ident">MUL_COEFF</span>];
+        <span class="kw">let</span> <span class="ident">m8</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">MUL_COEFF</span>];
+        <span class="ident">multiplication</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">e</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">m8</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>]);
 
         <span class="comment">// presence of left, right, and output wire</span>
         <span class="comment">// w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">eval_part</span> <span class="op">=</span> <span class="ident">multiplication</span>;
-        <span class="kw">for</span> (<span class="ident">w</span>, <span class="ident">q</span>) <span class="kw">in</span> <span class="ident">witness_d4</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">coefficients4</span>.<span class="ident">iter</span>()).<span class="ident">take</span>(<span class="ident">GENERICS</span>) {
-            <span class="ident">eval_part</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">w</span> <span class="op">*</span> <span class="ident">q</span>);
+        <span class="kw">for</span> (<span class="ident">w</span>, <span class="ident">q</span>) <span class="kw">in</span> <span class="ident">witness_d4</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">coefficients8</span>.<span class="ident">iter</span>()).<span class="ident">take</span>(<span class="ident">GENERICS</span>) {
+            <span class="ident">eval_part</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>()
+                .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="ident">w</span>.<span class="ident">evals</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="ident">q</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>])
+            <span class="comment">// eval_part += &amp;(w * q);</span>
         }
-        <span class="ident">eval_part</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficients4</span>[<span class="ident">CONSTANT_COEFF</span>];
+
+        <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">CONSTANT_COEFF</span>];
+        <span class="ident">eval_part</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="ident">c</span>[<span class="number">2</span> <span class="op">*</span> <span class="ident">i</span>]);
+
         <span class="ident">eval_part</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">generic4</span>;
 
         <span class="ident">eval_part</span>
@@ -333,7 +347,7 @@ This source file implements generic constraint polynomials.
         <span class="comment">// verify that each row evaluates to zero</span>
         <span class="kw">let</span> <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">witness</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">coefficients4</span>.<span class="ident">iter</span>())
+            .<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">coefficients8</span>.<span class="ident">iter</span>())
             .<span class="ident">take</span>(<span class="ident">GENERICS</span>)
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">q</span>)<span class="op">|</span> (<span class="ident">w</span>, <span class="ident">q</span>.<span class="ident">interpolate_by_ref</span>()))
             .<span class="ident">collect</span>();

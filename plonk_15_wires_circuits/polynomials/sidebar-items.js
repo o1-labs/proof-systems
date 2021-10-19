@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["addition",""],["double",""],["endosclmul",""],["generic",""],["lookup",""],["permutation",""],["poseidon",""],["tbllkp",""],["varbasemul",""]]});
+initSidebarItems({"mod":[["addition",""],["chacha",""],["double",""],["endosclmul",""],["generic",""],["lookup","This source file implements the arithmetization of plookup constraints "],["permutation",""],["poseidon",""],["varbasemul",""]]});
