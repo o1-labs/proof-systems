@@ -46,14 +46,15 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             s: array_init(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
             w: array_init(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
-            lookup:
-                self.lookup.as_ref().map(|l| {
-                    LookupEvaluations {
-                        table: DensePolynomial::eval_polynomial(&l.table, pt),
-                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
-                        sorted: l.sorted.iter().map(|x| DensePolynomial::eval_polynomial(x, pt)).collect(),
-                    }
-                }),
+            lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
+                table: DensePolynomial::eval_polynomial(&l.table, pt),
+                aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
+                sorted: l
+                    .sorted
+                    .iter()
+                    .map(|x| DensePolynomial::eval_polynomial(x, pt))
+                    .collect(),
+            }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
         }
@@ -105,7 +106,53 @@ pub mod caml {
     use oracle::sponge::caml::CamlScalarChallenge;
 
     //
-    // ProofEvaluations<F> <-> CamlProofEvaluations<CamlF>
+    // CamlLookupEvaluations<CamlF>
+    //
+
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    pub struct CamlLookupEvaluations<CamlF> {
+        pub sorted: Vec<Vec<CamlF>>,
+        pub aggreg: Vec<CamlF>,
+        pub table: Vec<CamlF>,
+    }
+
+    impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
+    where
+        F: Clone,
+        CamlF: From<F>,
+    {
+        fn from(le: LookupEvaluations<Vec<F>>) -> Self {
+            Self {
+                sorted: le
+                    .sorted
+                    .into_iter()
+                    .map(|x| x.into_iter().map(Into::into).collect())
+                    .collect(),
+                aggreg: le.aggreg.into_iter().map(Into::into).collect(),
+                table: le.table.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<CamlLookupEvaluations<CamlF>> for LookupEvaluations<Vec<F>>
+    where
+        F: From<CamlF> + Clone,
+    {
+        fn from(pe: CamlLookupEvaluations<CamlF>) -> Self {
+            Self {
+                sorted: pe
+                    .sorted
+                    .into_iter()
+                    .map(|x| x.into_iter().map(Into::into).collect())
+                    .collect(),
+                aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
+                table: pe.table.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    //
+    // CamlProofEvaluations<CamlF>
     //
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
@@ -136,7 +183,14 @@ pub mod caml {
             Vec<CamlF>,
             Vec<CamlF>,
         ),
+        pub lookup: Option<CamlLookupEvaluations<CamlF>>,
+        pub generic_selector: Vec<CamlF>,
+        pub poseidon_selector: Vec<CamlF>,
     }
+
+    //
+    // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
+    //
 
     impl<F, CamlF> From<ProofEvaluations<Vec<F>>> for CamlProofEvaluations<CamlF>
     where
@@ -173,44 +227,52 @@ pub mod caml {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),
                 s,
+                lookup: pe.lookup.map(|l| l.into()),
+                generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
+                poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
             }
         }
     }
 
-    impl<F, CamlF> Into<ProofEvaluations<Vec<F>>> for CamlProofEvaluations<CamlF>
+    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<Vec<F>>
     where
-        CamlF: Into<F>,
+        F: Clone,
+        F: From<CamlF>,
     {
-        fn into(self) -> ProofEvaluations<Vec<F>> {
+        fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {
             let w = [
-                self.w.0.into_iter().map(Into::into).collect(),
-                self.w.1.into_iter().map(Into::into).collect(),
-                self.w.2.into_iter().map(Into::into).collect(),
-                self.w.3.into_iter().map(Into::into).collect(),
-                self.w.4.into_iter().map(Into::into).collect(),
-                self.w.5.into_iter().map(Into::into).collect(),
-                self.w.6.into_iter().map(Into::into).collect(),
-                self.w.7.into_iter().map(Into::into).collect(),
-                self.w.8.into_iter().map(Into::into).collect(),
-                self.w.9.into_iter().map(Into::into).collect(),
-                self.w.10.into_iter().map(Into::into).collect(),
-                self.w.11.into_iter().map(Into::into).collect(),
-                self.w.12.into_iter().map(Into::into).collect(),
-                self.w.13.into_iter().map(Into::into).collect(),
-                self.w.14.into_iter().map(Into::into).collect(),
+                cpe.w.0.into_iter().map(Into::into).collect(),
+                cpe.w.1.into_iter().map(Into::into).collect(),
+                cpe.w.2.into_iter().map(Into::into).collect(),
+                cpe.w.3.into_iter().map(Into::into).collect(),
+                cpe.w.4.into_iter().map(Into::into).collect(),
+                cpe.w.5.into_iter().map(Into::into).collect(),
+                cpe.w.6.into_iter().map(Into::into).collect(),
+                cpe.w.7.into_iter().map(Into::into).collect(),
+                cpe.w.8.into_iter().map(Into::into).collect(),
+                cpe.w.9.into_iter().map(Into::into).collect(),
+                cpe.w.10.into_iter().map(Into::into).collect(),
+                cpe.w.11.into_iter().map(Into::into).collect(),
+                cpe.w.12.into_iter().map(Into::into).collect(),
+                cpe.w.13.into_iter().map(Into::into).collect(),
+                cpe.w.14.into_iter().map(Into::into).collect(),
             ];
             let s = [
-                self.s.0.into_iter().map(Into::into).collect(),
-                self.s.1.into_iter().map(Into::into).collect(),
-                self.s.2.into_iter().map(Into::into).collect(),
-                self.s.3.into_iter().map(Into::into).collect(),
-                self.s.4.into_iter().map(Into::into).collect(),
-                self.s.5.into_iter().map(Into::into).collect(),
+                cpe.s.0.into_iter().map(Into::into).collect(),
+                cpe.s.1.into_iter().map(Into::into).collect(),
+                cpe.s.2.into_iter().map(Into::into).collect(),
+                cpe.s.3.into_iter().map(Into::into).collect(),
+                cpe.s.4.into_iter().map(Into::into).collect(),
+                cpe.s.5.into_iter().map(Into::into).collect(),
             ];
-            ProofEvaluations {
+
+            Self {
                 w,
-                z: self.z.into_iter().map(Into::into).collect(),
+                z: cpe.z.into_iter().map(Into::into).collect(),
                 s,
+                lookup: cpe.lookup.map(|l| l.into()),
+                generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
+                poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
             }
         }
     }

@@ -467,18 +467,18 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> Into<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G>
     where
         G: AffineCurve,
-        CamlPolyComm<CamlG>: Into<PolyComm<G>>,
+        PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
-        fn into(self) -> ProverCommitments<G> {
+        fn from(cpc: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
             ProverCommitments {
-                l_comm: self.l_comm.into(),
-                r_comm: self.r_comm.into(),
-                o_comm: self.o_comm.into(),
-                z_comm: self.z_comm.into(),
-                t_comm: self.t_comm.into(),
+                l_comm: cpc.l_comm.into(),
+                r_comm: cpc.r_comm.into(),
+                o_comm: cpc.o_comm.into(),
+                z_comm: cpc.z_comm.into(),
+                t_comm: cpc.t_comm.into(),
             }
         }
     }
@@ -521,19 +521,19 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> Into<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for ProverProof<G>
     where
         G: AffineCurve,
-        CamlG: Into<G>,
-        CamlF: Into<G::ScalarField>,
+        G: From<CamlG>,
+        G::ScalarField: From<CamlF>,
     {
-        fn into(self) -> ProverProof<G> {
+        fn from(cpp: CamlProverProof<CamlG, CamlF>) -> Self {
             ProverProof {
-                commitments: self.commitments.into(),
-                proof: self.proof.into(),
-                evals: [self.evals.0.into(), self.evals.1.into()],
-                public: self.public.into_iter().map(Into::into).collect(),
-                prev_challenges: self
+                commitments: cpp.commitments.into(),
+                proof: cpp.proof.into(),
+                evals: [cpp.evals.0.into(), cpp.evals.1.into()],
+                public: cpp.public.into_iter().map(Into::into).collect(),
+                prev_challenges: cpp
                     .prev_challenges
                     .into_iter()
                     .map(|(v, c)| {

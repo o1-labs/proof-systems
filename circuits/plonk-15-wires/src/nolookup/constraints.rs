@@ -141,6 +141,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// zero-knowledge polynomial over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpl: E<F, D<F>>,
+    /// the polynomial that vanishes on the last four rows
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub vanishes_on_last_4_rows: E<F, D<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -183,6 +186,28 @@ pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
     (x - w1) * (x - w2) * (x - w3)
+}
+
+/// Evaluates the polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
+    let w4 = domain.group_gen.pow(&[domain.size - 4]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3) * (x - w4)
+}
+
+/// The polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DP<F> {
+    let x = DP::from_coefficients_slice(&[F::zero(), F::one()]);
+    let c = |a: F| DP::from_coefficients_slice(&[a]);
+    let w4 = domain.group_gen.pow(&[domain.size - 4]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
 }
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
@@ -402,6 +427,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
         let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
+        let vanishes_on_last_4_rows =
+            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
+
         // endo
         let endo = F::zero();
 
@@ -466,6 +494,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             zero8,
             zkpl,
             zkpm,
+            vanishes_on_last_4_rows,
             gates,
             shift,
             endo,

@@ -1,0 +1,31 @@
+name: Basic rust CI stuff
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+jobs:
+  run_checks:
+    runs-on: ubuntu-latest
+    name: Run some basic checks
+    steps:
+
+      - name: Checkout PR
+        uses: actions/checkout@v2
+
+      - name: Set up cargo/rust
+        run: |
+          rustup component add rustfmt 
+
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install ocaml
+
+      - name: build
+        run: |
+          cargo build
+
+      - name: build ocaml types
+        run: |
+          cargo build --features ocaml_types
