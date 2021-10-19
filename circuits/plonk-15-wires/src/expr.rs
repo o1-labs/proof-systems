@@ -806,23 +806,15 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 EvalResult::init(
                     res_domain,
-                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                    * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()])
+                    |i| {
+                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                            * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    })
             }
         }
     }
 
 }
-
-/*
-fn eval_result_op<'a, 'b, 'c, F: FftField>(op: Op2, dom: (Domain, D<F>), x: EvalResult<'a, F>, y: EvalResult<'b, F>) -> EvalResult<'c, F> {
-    match op {
-        Op2::Mul => x.mul(y, dom),
-        Op2::Add => x.add(y, dom),
-        Op2::Sub => x.sub(y, dom),
-    }
-}
-*/
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {

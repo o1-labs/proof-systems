@@ -10,12 +10,12 @@ use crate::gates::poseidon::*;
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
 use crate::wires::COLUMNS;
-use ark_ff::{FftField, SquareRootField, Zero};
+use ark_ff::{FftField, SquareRootField};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
-use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use o1_utils::ExtendedDensePolynomial;
 use oracle::poseidon::{sbox, ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants15W};
-use crate::expr::{E, Variable, Column, ConstantExpr as C, Cache};
+use crate::expr::{E, Column, Cache};
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
