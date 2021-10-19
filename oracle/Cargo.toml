@@ -20,7 +20,7 @@ mina-curves = { path = "../curves" }
 
 # for ocaml
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../ocaml-gen", optional = true }
+ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
 syn = { version = "1.0.76", optional = true }
 
 # for export_test_vectors

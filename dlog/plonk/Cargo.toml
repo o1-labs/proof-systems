@@ -24,7 +24,7 @@ oracle = { path = "../../oracle" }
 plonk_circuits = { path = "../../circuits/plonk" }
 
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../../ocaml-gen", optional = true }
+ocaml-gen = { path = "../../ocaml/ocaml-gen", optional = true }
 
 [features]
 

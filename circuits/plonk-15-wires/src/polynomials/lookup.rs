@@ -132,7 +132,7 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     }
 
     // Check sorting
-    let mut sorted_joined : Vec<F> = vec![];
+    let mut sorted_joined : Vec<F> = Vec::with_capacity((lookup_rows + 1) * sorted.len());
     for (i, s) in sorted.iter().enumerate() {
         let es = s.evals.iter().take(lookup_rows+1);
         if i % 2 == 0 {
@@ -294,7 +294,7 @@ pub fn sorted
     let sorted = {
         let mut sorted : Vec<Vec<E>> = vec![];
         for _ in 0..max_lookups_per_row + 1 {
-            sorted.push(vec![])
+            sorted.push(Vec::with_capacity(lookup_rows + 1))
         }
 
         let mut i = 0;
@@ -329,13 +329,30 @@ pub fn sorted
     Ok(sorted)
 }
 
-/// Computes the aggregation polyomial, whose kth entry is the product of terms
+/// Computes the aggregation polynomial for maximum n lookups per row, whose kth entry is the product of terms
 /// 
-/// (1 + beta) \prod_j (gamma + f_{i,j}) (gamma(1 + beta) + t_i + beta t_{i+1})
-/// ---------------------------------------------------------------------------
-/// \prod_j (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
+///  (gamma(1 + beta) + t_i + beta t_{i+1}) \prod_{0 <= j < n} ( (1 + beta) (gamma + f_{i,j}) )
+/// -------------------------------------------------------------------------------------------
+///  \prod_{0 <= j < n+1} (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
 ///
 /// for i < k.
+///
+/// t_i is the ith entry in the table, f_{i, j} is the jth lookup in the ith row of the witness
+///
+/// for every instance of a value in t_i and f_{i,j}, there is an instance of the same value in s_{i,j}
+/// s_{i,j} is sorted in the same order as t_i, increasing along the 'snake-shape'
+///
+/// whenever the same value is in s_{i,j} and s_{i+1,j}, that term in the denominator product becomes
+/// (1 + beta) (gamma + s_{i,j})
+/// this will cancel with the corresponding looked-up value in the witness (1 + beta) (gamma + f_{i,j})
+///
+/// whenever the values s_{i,j} and s_{i+1,j} differ, that term in the denominator product will cancel with some matching
+/// (gamma(1 + beta) + t_{i'} + beta t_{i'+1})
+/// because the sorting is the same in s and t.
+/// there will be exactly the same number of these as the number of values in t if f only contains values from t.
+///
+/// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
+/// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     dummy_lookup_value: F,
     lookup_table: I,
@@ -487,6 +504,8 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
 
     let num_rows = d1.size as usize;
 
+    let num_lookup_rows = num_rows - ZK_ROWS - 1;
+
     // Because of our ZK-rows, we can't do the trick in the plookup paper of
     // wrapping around to enforce consistency between the sorted lookup columns.
     //
@@ -529,13 +548,11 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
-    let last_lookup_row_index = num_rows - 4;
-
     let compatibility_checks : Vec<_> = (0..lookup_info.max_per_row).map(|i| {
         let first_or_last =
             if i % 2 == 0 {
                 // Check compatibility of the last elements
-                last_lookup_row_index
+                num_lookup_rows
             } else {
                 // Check compatibility of the first elements
                 0
@@ -568,12 +585,12 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     */
 
     let mut res = vec![
-        E::ZkPolynomial * aggreg_equation,
+        E::VanishesOnLast4Rows * aggreg_equation,
         E::UnnormalizedLagrangeBasis(0) *
             (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the 3rd to last row (index = num_rows - 3), which
         // contains the full product, equals 1
-        E::UnnormalizedLagrangeBasis(last_lookup_row_index + 1) *
+        E::UnnormalizedLagrangeBasis(num_lookup_rows) *
             (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
     res.extend(compatibility_checks);
