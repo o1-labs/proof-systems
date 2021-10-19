@@ -16,19 +16,13 @@ use crate::expr::{E, Column, Cache};
 use crate::wires::COLUMNS;
 
 
-// TODO
-// in double case,
-// s = 3 x1^2 / (2 y1)
-// y3 = -y1 + s(x1 - x3)
-//
-// in add case
-// y3 = -y1 + s(x1 - x3)
-
-// This enforces that
-//
-// r = (z = 0) ? 1 : 0
-//
-// additionally, if r == 0, then z_inv = 1 / z
+/// This enforces that
+///
+/// r = (z == 0) ? 1 : 0
+///
+/// Additionally, if r == 0, then z_inv = 1 / z.
+///
+/// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
 fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
     vec![
         z_inv * z.clone() - (E::one() - r.clone()),
@@ -44,11 +38,13 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 ///
 /// for addition and
 ///
-///   2 * s * y1 = -3 * x1^2
+///   2 * s * y1 = 3 * x1^2
 ///   s^2 = 2 x1 + x3
 ///   y3 = s (x1 - x3) - y1
 ///
 /// for doubling.
+///
+/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
 pub fn constraint<F: Field>(
     alpha0: usize,
     ) -> (usize, E<F>) {
@@ -83,7 +79,7 @@ pub fn constraint<F: Field>(
     // same_x is now constrained
     let mut res = zero_check(x21.clone(), x21_inv.clone(), same_x.clone());
 
-    // this constraints s so that
+    // this constrains s so that
     // if same_x:
     //   2 * s * y1 = 3 * x1^2
     // else:
@@ -103,7 +99,7 @@ pub fn constraint<F: Field>(
     // This constrains x3.
     res.push(x1.clone() + x2.clone() + x3.clone() - s.clone() * s.clone());
 
-    // Unconditionally onstrain
+    // Unconditionally constrain
     // y3 = -y1 + s(x1 - x3)
     //
     // This constrains y3.
@@ -160,7 +156,7 @@ pub fn constraint<F: Field>(
     //   We can set inf_z = 0 in this case.
     //
     // Case 2: [y1 != y2]
-    //   In this case, the expected result is 1 is x1 == x2, and 0 if x1 != x2.
+    //   In this case, the expected result is 1 if x1 == x2, and 0 if x1 != x2.
     //   I.e., inf = same_x.
     //
     //   y2 - y1 != 0, so the first equation implies same_x - inf = 0.
@@ -176,6 +172,7 @@ pub fn constraint<F: Field>(
 }
 
 impl<F: FftField> CircuitGate<F> {
+    /// Check the correctness of witness values for a complete-add gate.
     pub fn verify_complete_add(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         let row = self.row;
         let x1 = witness[0][row];

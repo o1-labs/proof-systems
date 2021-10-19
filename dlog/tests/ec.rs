@@ -127,7 +127,7 @@ fn ec_test() {
         let p2 = p + p;
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
-        // 2 * s * y1 = -3 * x1^2
+        // 2 * s * y1 = 3 * x1^2
         let s = (x1_squared.double() + x1_squared) / y1.double();
         witness[0][row] = p.x;
         witness[1][row] = p.y;
