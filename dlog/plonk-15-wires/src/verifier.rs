@@ -549,7 +549,7 @@ where
 
             // index commitments that use the coefficients
             polynomials.push((
-                &index.psm_comm,
+                &index.generic_comm,
                 proof.evals.iter().map(|e| &e.generic_selector).collect::<Vec<_>>(),
                 None,
             ));
