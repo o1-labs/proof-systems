@@ -338,8 +338,6 @@
 <span id="338">338</span>
 <span id="339">339</span>
 <span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk prover polynomial evaluations primitive.
@@ -525,7 +523,6 @@ This source file implements Plonk prover polynomial evaluations primitive.
             <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
             <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
         ),
-        <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">generic_selector</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">poseidon_selector</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
     }
@@ -569,7 +566,6 @@ This source file implements Plonk prover polynomial evaluations primitive.
                 <span class="ident">w</span>,
                 <span class="ident">z</span>: <span class="ident">pe</span>.<span class="ident">z</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">s</span>,
-                <span class="ident">lookup</span>: <span class="ident">pe</span>.<span class="ident">lookup</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">into</span>()),
                 <span class="ident">generic_selector</span>: <span class="ident">pe</span>.<span class="ident">generic_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">poseidon_selector</span>: <span class="ident">pe</span>.<span class="ident">poseidon_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             }
@@ -612,7 +608,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
                 <span class="ident">w</span>,
                 <span class="ident">z</span>: <span class="ident">cpe</span>.<span class="ident">z</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">s</span>,
-                <span class="ident">lookup</span>: <span class="ident">cpe</span>.<span class="ident">lookup</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">into</span>()),
+                <span class="ident">lookup</span>: <span class="prelude-val">None</span>,
                 <span class="ident">generic_selector</span>: <span class="ident">cpe</span>.<span class="ident">generic_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
                 <span class="ident">poseidon_selector</span>: <span class="ident">cpe</span>.<span class="ident">poseidon_selector</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             }
