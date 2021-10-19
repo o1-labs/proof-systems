@@ -13,6 +13,7 @@ use ark_poly::{
 };
 use o1_utils::ExtendedDensePolynomial;
 use crate::gates::generic::{MUL_COEFF, CONSTANT_COEFF};
+use rayon::prelude::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
@@ -22,15 +23,21 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     ) -> Evaluations<F, D<F>> {
         // w[0](x) * w[1](x) * qml(x)
         let mut multiplication = &witness_d4[0] * &witness_d4[1];
-        multiplication *= &self.coefficients4[MUL_COEFF];
+        let m8 = &self.coefficients8[MUL_COEFF];
+        multiplication.evals.par_iter_mut().enumerate().for_each(|(i, e)| *e *= m8[2 * i]);
 
         // presence of left, right, and output wire
         // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
         let mut eval_part = multiplication;
-        for (w, q) in witness_d4.iter().zip(self.coefficients4.iter()).take(GENERICS) {
-            eval_part += &(w * q);
+        for (w, q) in witness_d4.iter().zip(self.coefficients8.iter()).take(GENERICS) {
+            eval_part.evals.par_iter_mut().enumerate()
+                .for_each(|(i, e)| *e += w.evals[i] * q[2 * i])
+            // eval_part += &(w * q);
         }
-        eval_part += &self.coefficients4[CONSTANT_COEFF];
+
+        let c = &self.coefficients8[CONSTANT_COEFF];
+        eval_part.evals.par_iter_mut().enumerate().for_each(|(i, e)| *e += c[2 * i]);
+
         eval_part *= &self.generic4;
 
         eval_part
@@ -93,7 +100,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // verify that each row evaluates to zero
         let values: Vec<_> = witness
             .iter()
-            .zip(self.coefficients4.iter())
+            .zip(self.coefficients8.iter())
             .take(GENERICS)
             .map(|(w, q)| (w, q.interpolate_by_ref()))
             .collect();

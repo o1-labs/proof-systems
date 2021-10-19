@@ -1,0 +1,13 @@
+[package]
+name = "ocamlgen_test_stubs"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+crate-type = ["lib", "staticlib"]
+
+[dependencies]
+ocaml = "0.22.2"
+ocaml-gen = { path = "../ocaml-gen" }
+
+[workspace]

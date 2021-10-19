@@ -1,5 +1,5 @@
 use crate::nolookup::scalars::{ProofEvaluations};
-use crate::nolookup::constraints::{eval_zk_polynomial};
+use crate::nolookup::constraints::{eval_vanishes_on_last_4_rows};
 use ark_ff::{FftField, Field, Zero, One};
 use ark_poly::{univariate::DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D};
 use crate::gate::{GateType, CurrOrNext};
@@ -9,6 +9,7 @@ use std::fmt;
 use CurrOrNext::*;
 use rayon::prelude::*;
 use std::iter::FromIterator;
+use serde::{Deserialize, Serialize};
 
 use crate::wires::COLUMNS;
 use crate::domains::EvaluationDomains;
@@ -49,9 +50,8 @@ pub struct Environment<'a, F : FftField> {
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
     pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The polynomial which vanishes on the last 3 elements of the domain.
-    /// Used for ZK blinding.
-    pub zk_polynomial: &'a Evaluations<F, D<F>>,
+    /// The polynomial which vanishes on the last 4 elements of the domain.
+    pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
@@ -108,7 +108,7 @@ pub fn l0_1<F:FftField>(d: D<F>) -> F {
     res
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
     Witness(usize),
@@ -124,12 +124,13 @@ pub enum Column {
 impl Column {
     fn domain(&self) -> Domain {
         match self {
+            Column::Index(GateType::CompleteAdd) => Domain::D4,
             _ => Domain::D8,
         }
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
 pub struct Variable {
@@ -294,7 +295,7 @@ impl Op2 {
 /// variables
 ///
 /// - `Cell(v)` for `v : Variable`
-/// - ZkPolynomial
+/// - VanishesOnLast4Rows
 /// - UnnormalizedLagrangeBasis(i) for `i : usize`
 ///
 /// This represents a PLONK "custom constraint", which enforces that
@@ -306,7 +307,7 @@ pub enum Expr<C> {
     Cell(Variable),
     Double(Box<Expr<C>>),
     BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
-    ZkPolynomial,
+    VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
@@ -317,7 +318,7 @@ pub enum Expr<C> {
 /// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum PolishToken<F> {
     Alpha,
     Beta,
@@ -330,7 +331,7 @@ pub enum PolishToken<F> {
     Add,
     Mul,
     Sub,
-    ZkPolynomial,
+    VanishesOnLast4Rows,
     UnnormalizedLagrangeBasis(usize),
     Store,
     Load(usize),
@@ -347,6 +348,8 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i]),
             LookupAggreg => l.map(|l| l.aggreg),
             LookupTable => l.map(|l| l.table),
+            Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
+            Index(GateType::Generic) => Ok(evals.generic_selector),
             Coefficient(_) | LookupKindIndex(_) | Index(_) =>
                 Err("Cannot get index evaluation (should have been linearized away)")
         }
@@ -368,7 +371,7 @@ impl<F: FftField> PolishToken<F> {
                 Beta => stack.push(c.beta),
                 Gamma => stack.push(c.gamma),
                 JointCombiner => stack.push(c.joint_combiner),
-                ZkPolynomial => stack.push(eval_zk_polynomial(d, pt)),
+                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) =>
                     stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
                 Literal(x) => stack.push(*x),
@@ -432,7 +435,7 @@ impl<C> Expr<C> {
         match self {
             Double(x) => x.degree(d1_size),
             Constant(_) => 0,
-            ZkPolynomial => 3,
+            VanishesOnLast4Rows => 4,
             UnnormalizedLagrangeBasis(_) => d1_size,
             Cell(_) => d1_size,
             BinOp(Op2::Mul, x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
@@ -639,7 +642,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 let n = res_domain.1.size as usize;
                 let v: Vec<_> = (0..n).into_par_iter().map(|i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] 
+                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
                         + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
                 }).collect();
 
@@ -788,22 +791,15 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
                 EvalResult::init(
                     res_domain,
-                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()] * es2.evals[(scale2 * i + (d2 as usize) * s2) % es1.evals.len()])
+                    |i| {
+                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                            * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    })
             }
         }
     }
 
 }
-
-/*
-fn eval_result_op<'a, 'b, 'c, F: FftField>(op: Op2, dom: (Domain, D<F>), x: EvalResult<'a, F>, y: EvalResult<'b, F>) -> EvalResult<'c, F> {
-    match op {
-        Op2::Mul => x.mul(y, dom),
-        Op2::Add => x.add(y, dom),
-        Op2::Sub => x.sub(y, dom),
-    }
-}
-*/
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {
@@ -812,6 +808,18 @@ fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
         Domain::D4 => env.domain.d4,
         Domain::D8 => env.domain.d8
     }
+}
+
+impl<F: Field> Expr<ConstantExpr<F>> {
+    /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
+    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
+    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
+        let zero = Expr::<ConstantExpr<F>>::zero();
+        cs.into_iter().zip(alpha0..).map(|(c, i)| {
+            Expr::Constant(ConstantExpr::Alpha.pow(i)) * c
+        }).fold(zero, |acc, x| acc + x)
+    }
+
 }
 
 impl<F: FftField> Expr<ConstantExpr<F>> {
@@ -846,8 +854,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Expr::Cell(v) => {
                 res.push(PolishToken::Cell(*v))
             },
-            Expr::ZkPolynomial => {
-                res.push(PolishToken::ZkPolynomial);
+            Expr::VanishesOnLast4Rows => {
+                res.push(PolishToken::VanishesOnLast4Rows);
             },
             Expr::UnnormalizedLagrangeBasis(i) => {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
@@ -873,15 +881,6 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         }
     }
 
-    /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
-    /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
-    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
-        let zero = Expr::<ConstantExpr<F>>::zero();
-        cs.into_iter().zip(alpha0..).map(|(c, i)| {
-            Expr::Constant(ConstantExpr::Alpha.pow(i)) * c
-        }).fold(zero, |acc, x| acc + x)
-    }
-
     /// The expression `beta`.
     pub fn beta() -> Self {
         Expr::Constant(ConstantExpr::Beta)
@@ -895,7 +894,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Pow(x, d) => x.evaluate_constants_(c).pow(*d),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
-            ZkPolynomial => ZkPolynomial,
+            VanishesOnLast4Rows => VanishesOnLast4Rows,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
             BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
@@ -937,7 +936,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
             },
-            ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
+            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
             UnnormalizedLagrangeBasis(i) =>
                 Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
             Cell(v) => v.evaluate(evals),
@@ -986,7 +985,7 @@ impl<F: FftField> Expr<F> {
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
             },
-            ZkPolynomial => Ok(eval_zk_polynomial(d, pt)),
+            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
             UnnormalizedLagrangeBasis(i) => 
                 Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
             Cell(v) => v.evaluate(evals),
@@ -1090,11 +1089,11 @@ impl<F: FftField> Expr<F> {
                         Either::Right(id) => id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env))),
                     }
                 },
-                Expr::ZkPolynomial =>
+                Expr::VanishesOnLast4Rows =>
                     EvalResult::SubEvals { 
                         domain: Domain::D8,
                         shift: 0,
-                        evals: env.zk_polynomial
+                        evals: env.vanishes_on_last_4_rows
                     },
                 Expr::Constant(x) => {
                     EvalResult::Constant(*x)
@@ -1141,12 +1140,21 @@ impl<F: FftField> Expr<F> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 /// A "linearization", which is linear combination with `E` coefficients of
 /// columns.
 pub struct Linearization<E> {
     pub constant_term: E,
     pub index_terms: Vec<(Column, E)>
+}
+
+impl<E: Default> Default for Linearization<E> {
+    fn default() -> Self {
+        Linearization {
+            constant_term: E::default(),
+            index_terms: vec![],
+        }
+    }
 }
 
 impl<A> Linearization<A> {
@@ -1272,7 +1280,7 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
                     e.monomials().into_iter().map(|(m, c)| (m, c.double()))),
             Cache(_, e) => e.monomials(),
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
-            ZkPolynomial => constant(ZkPolynomial),
+            VanishesOnLast4Rows => constant(VanishesOnLast4Rows),
             Constant(c) => constant(Constant(c.clone())),
             Cell(var) => sing(vec![*var], Constant(F::one())),
             BinOp(Op2::Add, e1, e2) => {
@@ -1574,7 +1582,7 @@ impl<F: fmt::Display> fmt::Display for Expr<F> {
             Constant(x) => write!(f, "{}", x)?,
             Cell(v) => write!(f, "Cell({:?})", *v)?,
             UnnormalizedLagrangeBasis(i) => write!(f, "UnnormalizedLagrangeBasis({})", *i)?,
-            ZkPolynomial => write!(f, "ZkPolynomial")?,
+            VanishesOnLast4Rows => write!(f, "VanishesOnLast4Rows")?,
             BinOp(Op2::Add, x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
             BinOp(Op2::Mul, x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
             BinOp(Op2::Sub, x, y) => write!(f, "({} - {})", x.as_ref(), y.as_ref())?,

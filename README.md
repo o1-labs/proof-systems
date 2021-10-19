@@ -1,21 +1,20 @@
+# Proof Systems
+
 This repository contains various zk-SNARK protocol implementations for recursive SNARK composition.
 
-## Bazel 
-
-Build all targets: `$ bazel build //...` (note: three dots)
-
-If you change any dependencies in the `Cargo.toml` files:
-
-1. update `bzl/cargo/Cargo.toml` to list all deps and versions
-2. `cd bzl/cargo`
-   a. `cargo generate-lockfile`
-   b. `cargo raze`
-
-You may also have to change the `deps` attribute of build targets in
-BUILD.bazel. For example, if you add a dependency on the `ocaml`
-package to Cargo.toml, you would add `//bzl/cargo:ocaml` to the deps
-attribute.
-
-If you change features, you need to edit the `crate_features`
-attribute of the BUILD.bazel file accordingly.
-
+```
+proof-systems/
+├── circuits/ # the circuit and gate relevant code of PLONK
+│   ├── plonk/ # the first version of our PLONK
+│   └── plonk-15-wires/ # the latest PLONK (TODO: rename to kimchi)
+├── curves/ # our curves (for now just the pasta curves)
+├── dlog/ # the protocols
+│   ├── commitment/ # polynomial commitment code, TODO: move this
+│   ├── plonk/ # the first version of our PLONK
+│   ├── plonk-15-wires/ # the latest PLONK (TODO: rename to kimchi)
+│   └── tests/ # common tests, TODO: move this within each protocol
+├── groupmap/ # TODO: description
+├── ocaml-gen/ # ocaml bindings generator tool
+├── oracle/ # implementation of the poseidon hash function
+└── utils/ # collection of useful functions and traits
+```

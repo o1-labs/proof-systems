@@ -103,9 +103,7 @@ use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {
-    // TODO(mimoo): why is `wires` of size 3 if we only use 2?
-    // I think it's because we used to use 2
-    pub fn create_vbmul(row: usize, wires: &[GateWires; 3]) -> Vec<Self> {
+    pub fn create_vbmul(row: usize, wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
                 row,
