@@ -15,6 +15,8 @@ use commitment_dlog::commitment::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
+    expr::{Constants, PolishToken, Column},
+    gate::{GateType, LookupsUsed},
     nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
     wires::*,
     gates::generic::{MUL_COEFF, CONSTANT_COEFF},
@@ -119,9 +121,26 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
+        let joint_combiner = {
+            let s =
+                match index.lookup_used.as_ref() {
+                    None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
+                    Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+                };
+            (s, s.to_field(&index.srs.endo_r))
+        };
+
+        self.commitments.lookup.iter().for_each(|l| {
+            l.sorted.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+        });
+
         // sample beta, gamma oracles
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();
+
+        self.commitments.lookup.iter().for_each(|l| {
+            fq_sponge.absorb_g(&l.aggreg.unshifted);
+        });
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
@@ -262,6 +281,18 @@ where
 
             ft_eval0 += nominator * &denominator;
 
+            let cs =
+                Constants {
+                    alpha: alpha,
+                    beta: beta,
+                    gamma: gamma,
+                    joint_combiner: joint_combiner.1,
+                };
+            ft_eval0 -= PolishToken::evaluate(
+                &index.linearization.constant_term,
+                index.domain, zeta,
+                &evals, &cs).unwrap();
+
             ft_eval0
         };
 
@@ -300,6 +331,7 @@ where
             zeta_chal,
             v_chal,
             u_chal,
+            joint_combiner,
         };
 
         OraclesResult {
@@ -393,21 +425,6 @@ where
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars_part.push(evals[0].generic_selector);
 
-                // poseidon
-                scalars_part.extend(&ConstraintSystem::psdn_scalars(
-                    &evals,
-                    &index.fr_sponge_params,
-                    &alphas[range::PSDN],
-                ));
-                commitments_part.push(&index.psm_comm);
-                commitments_part.extend(
-                    index
-                        .coefficients_comm
-                        .iter()
-                        .map(|c| c)
-                        .collect::<Vec<_>>(),
-                );
-
                 // EC addition
                 scalars_part.push(ConstraintSystem::ecad_scalars(&evals, &alphas[range::ADD]));
                 commitments_part.push(&index.add_comm);
@@ -428,8 +445,130 @@ where
                 commitments_part.push(&index.emul_comm);
 
                 // EC variable base scalar multiplication
-                scalars_part.push(ConstraintSystem::vbmul_scalars(&evals, &alphas[range::MUL]));
-                commitments_part.push(&index.mul_comm);
+
+    /*
+
+                let f_comm = PolyComm::multi_scalar_mul(&p, &s);
+
+                let f_eval =
+                    match constants {
+                        None => evals[0].f,
+                        Some(cs) => {
+                            evals[0].f +
+                            PolishToken::evaluate(
+                                &index.linearization.constant_term,
+                                index.domain, oracles.zeta,
+                                &evals, &cs).unwrap()
+                        }
+                    };
+
+                // check linearization polynomial evaluation consistency
+                let zeta1m1 = zeta1 - &Fr::<G>::one();
+                if (f_eval //evals[0].f
+                    + &(if p_eval[0].len() > 0 {
+                        p_eval[0][0]
+                    } else {
+                        Fr::<G>::zero()
+                    })
+                    - evals[0]
+                        .w
+                        .iter()
+                        .zip(evals[0].s.iter())
+                        .map(|(w, s)| (oracles.beta * s) + w + &oracles.gamma)
+                        .fold(
+                            (evals[0].w[PERMUTS - 1] + &oracles.gamma)
+                                * &evals[1].z
+                                * &alpha[range::PERM][0]
+                                * &zkp,
+                            |x, y| x * y,
+                        )
+                    + evals[0]
+                        .w
+                        .iter()
+                        .zip(index.shift.iter())
+                        .map(|(w, s)| oracles.gamma + &(oracles.beta * &oracles.zeta * s) + w)
+                        .fold(alpha[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y)
+                    - evals[0].t * &zeta1m1)
+                    * &(oracles.zeta - &index.w)
+                    * &(oracles.zeta - &Fr::<G>::one())
+                    != ((zeta1m1 * &alpha[range::PERM][1] * &(oracles.zeta - &index.w))
+                        + (zeta1m1 * &alpha[range::PERM][2] * &(oracles.zeta - &Fr::<G>::one())))
+                        * &(Fr::<G>::one() - evals[0].z)
+                {
+                    return Err(ProofError::ProofVerification);
+                } */
+
+                {
+                    let constants =
+                        Constants {
+                            alpha: oracles.alpha,
+                            beta: oracles.beta,
+                            gamma: oracles.gamma,
+                            joint_combiner: oracles.joint_combiner.1,
+                        };
+
+                    let s = &mut scalars_part;
+                    let p = &mut commitments_part;
+                    index.linearization.index_terms.iter().for_each(|(c, e)| {
+                        let e = PolishToken::evaluate(e, index.domain, oracles.zeta, &evals, &constants).unwrap();
+                        let l = proof.commitments.lookup.as_ref();
+                        use Column::*;
+                        match c {
+                            Witness(i) => {
+                                s.push(e);
+                                p.push(&proof.commitments.w_comm[*i])
+                            },
+                            Coefficient(i) => {
+                                s.push(e);
+                                p.push(&index.coefficients_comm[*i])
+                            },
+                            Z => {
+                                s.push(e);
+                                p.push(&proof.commitments.z_comm);
+                            },
+                            LookupSorted(i) => {
+                                s.push(e);
+                                p.push(&l.unwrap().sorted[*i])
+                            },
+                            LookupAggreg => {
+                                s.push(e);
+                                p.push(&l.unwrap().aggreg)
+                            },
+                            LookupKindIndex(i) => {
+                                s.push(e);
+                                p.push(&index.lookup_selectors[*i]);
+                            },
+                            LookupTable => {
+                                let mut j = Fr::<G>::one();
+                                s.push(e);
+                                p.push(&index.lookup_tables[0][0]);
+                                for t in index.lookup_tables[0].iter().skip(1) {
+                                    j *= constants.joint_combiner;
+                                    s.push(e * j);
+                                    p.push(t);
+                                }
+                            },
+                            Index(t) => {
+                                use GateType::*;
+                                let c =
+                                    match t {
+                                        Zero | Generic => panic!("Selector for {:?} not defined", t),
+                                        Add => &index.add_comm,
+                                        Double => &index.double_comm,
+                                        Vbmul => &index.mul_comm,
+                                        Endomul => &index.emul_comm,
+                                        Poseidon => &index.psm_comm,
+                                        ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
+                                        ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
+                                        ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
+                                        ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                                    };
+                                s.push(e);
+                                p.push(c);
+                            }
+                        }
+                    });
+                }
 
                 // MSM
                 PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)

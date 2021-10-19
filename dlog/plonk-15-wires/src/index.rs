@@ -22,6 +22,9 @@ use commitment_dlog::{
 };
 use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
+    polynomials::{chacha, lookup, poseidon, varbasemul},
+    gate::{GateType, LookupInfo, LookupsUsed},
+    expr::{PolishToken, Expr, Column, Linearization},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     wires::*,
 };
@@ -42,6 +45,11 @@ where
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
+
+    pub lookup_used: Option<LookupsUsed>,
+
+    #[serde(skip)]
+    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -103,6 +111,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub emul_comm: PolyComm<G>,
 
+    /// Chacha polynomial commitments
+    pub chacha_comm: Option<[PolyComm<G>; 4]>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [Fr<G>; PERMUTS],
@@ -117,6 +128,14 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub endo: Fr<G>,
 
+    pub lookup_used: Option<LookupsUsed>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_selectors: Vec<PolyComm<G>>,
+    #[serde(skip)]
+    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+
     // random oracle argument parameters
     #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
@@ -130,8 +149,10 @@ where
     G::ScalarField: CommitmentField,
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
+        let domain = self.cs.domain.d1;
+        // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
-            domain: self.cs.domain.d1,
+            domain,
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
@@ -144,6 +165,18 @@ where
             mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
             emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
 
+            chacha_comm:
+                self.cs.chacha8.as_ref()
+                .map(|c| array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))),
+            lookup_selectors:
+                self.cs.lookup_selectors.iter()
+                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                .collect(),
+            lookup_tables:
+                self.cs.lookup_tables8.iter()
+                .map(|v| v.iter().map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)).collect())
+                .collect(),
+
             w: zk_w3(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
@@ -152,6 +185,8 @@ where
             max_quot_size: self.max_quot_size,
             zkpm: self.cs.zkpm.clone(),
             shift: self.cs.shift,
+            linearization: self.linearization.clone(),
+            lookup_used: self.lookup_used,
             srs: Rc::clone(&self.srs),
         }
     }
@@ -171,6 +206,48 @@ where
             );
         }
         cs.endo = endo_q;
+
+        let lookup_info = LookupInfo::<Fr<G>>::create();
+        let lookup_used = lookup_info.lookup_used(&cs.gates);
+
+        let linearization = {
+            let evaluated_cols = {
+                let mut h = std::collections::HashSet::new();
+                use Column::*;
+                for i in 0..COLUMNS {
+                    h.insert(Witness(i));
+                }
+                for i in 0..(lookup_info.max_per_row + 1) {
+                    h.insert(LookupSorted(i));
+                }
+                h.insert(Z);
+                h.insert(LookupAggreg);
+                h.insert(LookupTable);
+                h.insert(Index(GateType::Poseidon));
+                h.insert(Index(GateType::Generic));
+                h
+            };
+            let expr = poseidon::constraint(&cs.fr_sponge_params) + varbasemul::constraint(super::range::MUL.start);
+            let expr =
+                if lookup_used.is_some() {
+                    expr +
+                        Expr::combine_constraints(
+                            2 + super::range::CHACHA.end,
+                            lookup::constraints(&cs.dummy_lookup_values[0],
+                                                cs.domain.d1))
+                } else {
+                    expr
+                };
+            let expr =
+                if cs.chacha8.is_some() {
+                    expr + chacha::constraint(super::range::CHACHA.start)
+                } else {
+                    expr
+                };
+
+            expr.linearize(evaluated_cols).unwrap()
+        };
+
         Index {
             // TODO(mimoo): re-order field like in the type def
             // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),
@@ -179,6 +256,8 @@ where
             max_poly_size,
             srs,
             cs,
+            lookup_used,
+            linearization: linearization.map(|e| e.to_polish())
         }
     }
 }
@@ -209,6 +288,7 @@ where
             None => (),
         };
 
+        /*
         // deserialize
         let mut verifier_index: Self =
             bincode::deserialize_from(&mut reader).map_err(|e| e.to_string())?;
@@ -222,6 +302,8 @@ where
         verifier_index.zkpm = zk_polynomial(verifier_index.domain);
 
         Ok(verifier_index)
+        */
+        panic!("TODO")
     }
 
     /// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
@@ -235,6 +317,7 @@ where
 
         let writer = BufWriter::new(file);
 
-        bincode::serialize_into(writer, self).map_err(|e| e.to_string())
+        panic!("TODO")
+        // bincode::serialize_into(writer, self).map_err(|e| e.to_string())
     }
 }

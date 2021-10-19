@@ -63,6 +63,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
 
 #[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field> {
+    pub joint_combiner: (ScalarChallenge<F>, F),
     pub beta: F,
     pub gamma: F,
     pub alpha_chal: ScalarChallenge<F>,
@@ -89,6 +90,7 @@ impl<F: Field> Default for RandomOracles<F> {
             zeta_chal: c,
             v_chal: c,
             u_chal: c,
+            joint_combiner: (c, F::zero()),
         }
     }
 }
@@ -281,6 +283,7 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
     pub struct CamlRandomOracles<CamlF> {
+        pub joint_combiner: (CamlScalarChallenge<CamlF>, CamlF),
         pub beta: CamlF,
         pub gamma: CamlF,
         pub alpha_chal: CamlScalarChallenge<CamlF>,
@@ -300,6 +303,7 @@ pub mod caml {
     {
         fn from(ro: RandomOracles<F>) -> Self {
             Self {
+                joint_combiner: (ro.joint_combiner.0.into(), ro.joint_combiner.1.into()),
                 beta: ro.beta.into(),
                 gamma: ro.gamma.into(),
                 alpha_chal: ro.alpha_chal.into(),
@@ -321,6 +325,7 @@ pub mod caml {
     {
         fn into(self) -> RandomOracles<F> {
             RandomOracles {
+                joint_combiner: (self.joint_combiner.0.into(), self.joint_combiner.1.into()),
                 beta: self.beta.into(),
                 gamma: self.gamma.into(),
                 alpha_chal: self.alpha_chal.into(),

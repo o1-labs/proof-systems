@@ -70,6 +70,10 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
             scale *= zeta_n;
         }
 
+        while coeffs.last().map_or(false, |c| c.is_zero()) {
+            coeffs.pop();
+        }
+
         DensePolynomial { coeffs }
     }
 }

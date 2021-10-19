@@ -12,6 +12,7 @@ rayon = { version = "1" }
 array-init = "1.0.0"
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
+ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 
 commitment_dlog = { path = "commitment" }
 groupmap = { path = "../groupmap" }

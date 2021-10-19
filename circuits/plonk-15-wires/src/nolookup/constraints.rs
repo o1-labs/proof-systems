@@ -5,7 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::gate::CircuitGate;
+use crate::gate::{LookupInfo, CircuitGate, GateType};
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -52,7 +52,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficients4: [E<F, D<F>>; COLUMNS],
+    pub coefficients8: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
     // ---------------------------------------
@@ -93,8 +93,8 @@ pub struct ConstraintSystem<F: FftField> {
     // permutation polynomials
     // -----------------------
     /// permutation polynomial array evaluations over domain d1
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS]")]
-    pub sigmal1: [Vec<F>; PERMUTS],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub sigmal1: [E<F, D<F>>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal8: [E<F, D<F>>; PERMUTS],
@@ -104,9 +104,6 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Poseidon selector polynomials
     // -----------------------------
-    /// poseidon selector over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub ps4: E<F, D<F>>,
     /// poseidon selector over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ps8: E<F, D<F>>,
@@ -122,15 +119,15 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point doubling selector evaluations w over domain.d4
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub doubl4: E<F, D<F>>,
-    /// scalar multiplication selector evaluations over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub mull4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub mull8: E<F, D<F>>,
     /// endoscalar multiplication selector evaluations over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emull: E<F, D<F>>,
+    /// ChaCha indexes
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
+    pub chacha8: Option<[E<F, D<F>>; 4]>,
 
     // Constant polynomials
     // --------------------
@@ -153,6 +150,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// zero-knowledge polynomial over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpl: E<F, D<F>>,
+    /// the polynomial that vanishes on the last four rows
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub vanishes_on_last_4_rows: E<F, D<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -164,6 +164,23 @@ pub struct ConstraintSystem<F: FftField> {
     /// random oracle argument parameters
     #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
+
+    /// Lookup tables
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub dummy_lookup_values: Vec<Vec<F>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub lookup_tables: Vec<Vec<DP<F>>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub lookup_table_lengths: Vec<usize>,
+
+    /// Lookup selectors:
+    /// For each kind of lookup-pattern, we have a selector that's
+    /// 1 at the rows where that pattern should be enforced, and 1 at
+    /// all other rows.
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub lookup_selectors: Vec<E<F, D<F>>>,
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
@@ -178,6 +195,28 @@ pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
     (x - w1) * (x - w2) * (x - w3)
+}
+
+/// Evaluates the polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
+    let w4 = domain.group_gen.pow(&[domain.size - 4]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3) * (x - w4)
+}
+
+/// The polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DP<F> {
+    let x = DP::from_coefficients_slice(&[F::zero(), F::one()]);
+    let c = |a: F| DP::from_coefficients_slice(&[a]);
+    let w4 = domain.group_gen.pow(&[domain.size - 4]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
 }
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
@@ -214,6 +253,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
+        lookup_tables: Vec< Vec<Vec<F>> >,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
@@ -259,8 +299,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
+        let sigmal1 : [_ ; PERMUTS] = {
+            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+            [ E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
+              E::<F, D<F>>::from_vec_and_domain(s6, domain.d1) ]
+        };
+
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(sigmal1[i].clone(), domain.d1).interpolate()
+            sigmal1[i].clone().interpolate()
         });
 
         let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?
@@ -311,6 +362,47 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         .interpolate();
         let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
 
+        let chacha8 = {
+            use GateType::*;
+            let has_chacha_gate =
+                gates.iter().any(|gate| {
+                    match gate.typ {
+                        ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => true,
+                        _ => false
+                    }
+                });
+            if !has_chacha_gate {
+                None
+            } else {
+                let a : [_; 4] =
+                    array_init(|i| {
+                        let g =
+                            match i {
+                                0 => ChaCha0,
+                                1 => ChaCha1,
+                                2 => ChaCha2,
+                                3 => ChaChaFinal,
+                                _ => panic!("Invalid index")
+                            };
+                        E::<F, D<F>>::from_vec_and_domain(
+                            gates
+                                .iter()
+                                .map(|gate| {
+                                    if gate.typ == g {
+                                        F::one()
+                                    } else {
+                                        F::zero()
+                                    }
+                                })
+                                .collect(),
+                            domain.d1)
+                            .interpolate()
+                            .evaluate_over_domain(domain.d8)
+                    });
+                Some(a)
+            }
+        };
+
         let coefficientsm: [_; COLUMNS] =
             array_init(|i| {
                 E::<F, D<F>>::from_vec_and_domain(
@@ -325,22 +417,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                     domain.d1)
                 .interpolate()
             });
-        let coefficients4 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d4));
+        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
+        let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
-        let ps4 = psm.evaluate_over_domain_by_ref(domain.d4);
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         // ECC arithmetic constraint polynomials
         let addl = addm.evaluate_over_domain_by_ref(domain.d4);
         let doubl8 = doublem.evaluate_over_domain_by_ref(domain.d8);
         let doubl4 = doublem.evaluate_over_domain_by_ref(domain.d4);
-        let mull4 = mulm.evaluate_over_domain_by_ref(domain.d4);
         let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
         let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
+        // TODO: These are all unnecessary. Remove
         let l04 =
             E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
         let l08 =
@@ -351,11 +443,48 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
         let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
+        let vanishes_on_last_4_rows =
+            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
+
         // endo
         let endo = F::zero();
 
+        let lookup_table_lengths: Vec<_> = lookup_tables.iter().map(|v| v[0].len()).collect();
+        let dummy_lookup_values : Vec<Vec<F>> =
+            lookup_tables.iter()
+            .map(|cols| cols.iter().map(|c| c[c.len() - 1]).collect())
+            .collect();
+
+        let lookup_tables : Vec<Vec<DP<F>>> =
+            lookup_tables
+            .into_iter()
+            .zip(dummy_lookup_values.iter())
+            .map(|(t, dummy)| {
+                t.into_iter().enumerate().map(|(i, mut col)| {
+                    let d = dummy[i];
+                    col.extend((0..(n - col.len())).map(|_| d));
+                    E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate()
+                }).collect()
+            }).collect();
+        let lookup_tables8 = lookup_tables.iter().map(|t| {
+            t.iter().map(|col| col.evaluate_over_domain_by_ref(domain.d8)).collect()
+        }).collect();
+
+        let lookup_info = LookupInfo::<F>::create();
+
         // return result
         Some(ConstraintSystem {
+            chacha8,
+            lookup_selectors:
+                if lookup_info.lookup_used(&gates).is_some() {
+                    LookupInfo::<F>::create().selector_polynomials(domain, &gates)
+                } else {
+                    vec![]
+                },
+            dummy_lookup_values,
+            lookup_table_lengths,
+            lookup_tables8,
+            lookup_tables,
             domain,
             public,
             sid,
@@ -365,8 +494,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             genericm,
             generic4,
             coefficientsm,
-            coefficients4,
-            ps4,
+            coefficients8,
             ps8,
             psm,
             addl,
@@ -374,7 +502,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             doubl8,
             doubl4,
             doublem,
-            mull4,
             mull8,
             mulm,
             emull,
@@ -386,6 +513,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             zero8,
             zkpl,
             zkpm,
+            vanishes_on_last_4_rows,
             gates,
             shift,
             endo,
@@ -520,7 +648,7 @@ pub mod tests {
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
         }
     }
 

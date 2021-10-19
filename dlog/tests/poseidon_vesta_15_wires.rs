@@ -77,10 +77,12 @@ fn poseidon_vesta_15_wires() {
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(gates, fp_sponge_params, PUBLIC).unwrap();
+    let mut srs = SRS::<Affine>::create(max_size);
+    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
+    srs.add_lagrange_basis(cs.domain.d1);
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = Rc::new(SRS::create(max_size));
+    let srs = Rc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
@@ -185,7 +187,7 @@ fn positive(index: &Index<Affine>) {
             (chals, comm)
         };
 
-        println!("n vs domain{} {}", max_size, index.cs.domain.d1.size);
+        println!("n vs domain: {} {}", max_size, index.cs.domain.d1.size);
 
         // add the proof to the batch
         // TODO: create and verify should not take group_map, that should be during an init phase
