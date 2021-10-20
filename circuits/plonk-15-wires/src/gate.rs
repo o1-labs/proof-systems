@@ -565,7 +565,7 @@ mod tests {
             println!("decoded gate: {:?}", decoded);
             prop_assert_eq!(cg.row, decoded.row);
             prop_assert_eq!(cg.typ, decoded.typ);
-            for i in 0..COLUMNS {
+            for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);
             }
             prop_assert_eq!(cg.c, decoded.c);

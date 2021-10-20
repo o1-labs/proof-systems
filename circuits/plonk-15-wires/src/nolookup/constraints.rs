@@ -583,7 +583,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         for (row, gate) in self.gates.iter().enumerate() {
             // check if wires are connected
-            for col in 0..COLUMNS {
+            for col in 0..PERMUTS {
                 let wire = gate.wires[col];
                 if witness[col][row] != witness[wire.col][wire.row] {
                     return Err(GateError::DisconnectedWires(
