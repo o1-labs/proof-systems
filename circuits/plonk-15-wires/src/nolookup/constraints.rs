@@ -5,7 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::gate::{LookupInfo, CircuitGate, GateType};
+use crate::gate::{CircuitGate, GateType, LookupInfo};
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -46,7 +46,6 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
-
     /// coefficients polynomials in coefficient form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficientsm: [DP<F>; COLUMNS],
@@ -244,7 +243,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec< Vec<Vec<F>> >,
+        lookup_tables: Vec<Vec<Vec<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
@@ -290,20 +289,20 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
-        let sigmal1 : [_ ; PERMUTS] = {
+        let sigmal1: [_; PERMUTS] = {
             let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [ E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
-              E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
-              E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
-              E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
-              E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
-              E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
-              E::<F, D<F>>::from_vec_and_domain(s6, domain.d1) ]
+            [
+                E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
+            ]
         };
 
-        let sigmam: [DP<F>; PERMUTS] = array_init(|i| {
-            sigmal1[i].clone().interpolate()
-        });
+        let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
 
         let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?
         sid.append(&mut s);
@@ -322,7 +321,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // compute ECC arithmetic constraint polynomials
         let complete_addm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64)).collect(),
+            gates
+                .iter()
+                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64))
+                .collect(),
             domain.d1,
         )
         .interpolate();
@@ -350,49 +352,40 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         let chacha8 = {
             use GateType::*;
-            let has_chacha_gate =
-                gates.iter().any(|gate| {
-                    match gate.typ {
-                        ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => true,
-                        _ => false
-                    }
-                });
+            let has_chacha_gate = gates.iter().any(|gate| match gate.typ {
+                ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => true,
+                _ => false,
+            });
             if !has_chacha_gate {
                 None
             } else {
-                let a : [_; 4] =
-                    array_init(|i| {
-                        let g =
-                            match i {
-                                0 => ChaCha0,
-                                1 => ChaCha1,
-                                2 => ChaCha2,
-                                3 => ChaChaFinal,
-                                _ => panic!("Invalid index")
-                            };
-                        E::<F, D<F>>::from_vec_and_domain(
-                            gates
-                                .iter()
-                                .map(|gate| {
-                                    if gate.typ == g {
-                                        F::one()
-                                    } else {
-                                        F::zero()
-                                    }
-                                })
-                                .collect(),
-                            domain.d1)
-                            .interpolate()
-                            .evaluate_over_domain(domain.d8)
-                    });
+                let a: [_; 4] = array_init(|i| {
+                    let g = match i {
+                        0 => ChaCha0,
+                        1 => ChaCha1,
+                        2 => ChaCha2,
+                        3 => ChaChaFinal,
+                        _ => panic!("Invalid index"),
+                    };
+                    E::<F, D<F>>::from_vec_and_domain(
+                        gates
+                            .iter()
+                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                            .collect(),
+                        domain.d1,
+                    )
+                    .interpolate()
+                    .evaluate_over_domain(domain.d8)
+                });
                 Some(a)
             }
         };
 
-        let coefficientsm: [_; COLUMNS] =
-            array_init(|i| {
-                E::<F, D<F>>::from_vec_and_domain(
-                    gates.iter().map(|gate| {
+        let coefficientsm: [_; COLUMNS] = array_init(|i| {
+            E::<F, D<F>>::from_vec_and_domain(
+                gates
+                    .iter()
+                    .map(|gate| {
                         if i < gate.c.len() {
                             gate.c[i]
                         } else {
@@ -400,9 +393,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                         }
                     })
                     .collect(),
-                    domain.d1)
-                .interpolate()
-            });
+                domain.d1,
+            )
+            .interpolate()
+        });
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
@@ -434,37 +428,44 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let endo = F::zero();
 
         let lookup_table_lengths: Vec<_> = lookup_tables.iter().map(|v| v[0].len()).collect();
-        let dummy_lookup_values : Vec<Vec<F>> =
-            lookup_tables.iter()
+        let dummy_lookup_values: Vec<Vec<F>> = lookup_tables
+            .iter()
             .map(|cols| cols.iter().map(|c| c[c.len() - 1]).collect())
             .collect();
 
-        let lookup_tables : Vec<Vec<DP<F>>> =
-            lookup_tables
+        let lookup_tables: Vec<Vec<DP<F>>> = lookup_tables
             .into_iter()
             .zip(dummy_lookup_values.iter())
             .map(|(t, dummy)| {
-                t.into_iter().enumerate().map(|(i, mut col)| {
-                    let d = dummy[i];
-                    col.extend((0..(n - col.len())).map(|_| d));
-                    E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate()
-                }).collect()
-            }).collect();
-        let lookup_tables8 = lookup_tables.iter().map(|t| {
-            t.iter().map(|col| col.evaluate_over_domain_by_ref(domain.d8)).collect()
-        }).collect();
+                t.into_iter()
+                    .enumerate()
+                    .map(|(i, mut col)| {
+                        let d = dummy[i];
+                        col.extend((0..(n - col.len())).map(|_| d));
+                        E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate()
+                    })
+                    .collect()
+            })
+            .collect();
+        let lookup_tables8 = lookup_tables
+            .iter()
+            .map(|t| {
+                t.iter()
+                    .map(|col| col.evaluate_over_domain_by_ref(domain.d8))
+                    .collect()
+            })
+            .collect();
 
         let lookup_info = LookupInfo::<F>::create();
 
         // return result
         Some(ConstraintSystem {
             chacha8,
-            lookup_selectors:
-                if lookup_info.lookup_used(&gates).is_some() {
-                    LookupInfo::<F>::create().selector_polynomials(domain, &gates)
-                } else {
-                    vec![]
-                },
+            lookup_selectors: if lookup_info.lookup_used(&gates).is_some() {
+                LookupInfo::<F>::create().selector_polynomials(domain, &gates)
+            } else {
+                vec![]
+            },
             dummy_lookup_values,
             lookup_table_lengths,
             lookup_tables8,

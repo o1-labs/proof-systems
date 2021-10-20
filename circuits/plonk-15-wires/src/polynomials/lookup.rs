@@ -1,4 +1,4 @@
-//! This source file implements the arithmetization of plookup constraints 
+//! This source file implements the arithmetization of plookup constraints
 //!
 //! Because of our ZK-rows, we can't do the trick in the plookup paper of
 //! wrapping around to enforce consistency between the sorted lookup columns.
@@ -18,7 +18,7 @@
 //! s2 s2 s6 s6
 //!
 //! So the direction ("increasing" or "decreasing" (relative to LookupTable)
-//! is 
+//! is
 //! if i % 2 = 0 { Increasing } else { Decreasing }
 //!
 //! Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
@@ -28,55 +28,62 @@
 
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use ark_ff::{Field, FftField, Zero, One};
-use rand::Rng;
-use CurrOrNext::*;
-use std::collections::{HashMap};
+use crate::expr::{Column, ConstantExpr, Variable, E};
 use crate::{
-    wires::{COLUMNS},
-    gate::{CircuitGate, LookupInfo, LocalPosition, CurrOrNext, SingleLookup, JointLookup},
+    gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
+    wires::COLUMNS,
 };
+use ark_ff::{FftField, Field, One, Zero};
 use oracle::rndoracle::ProofError;
-use crate::expr::{E, Variable, Column, ConstantExpr};
+use rand::Rng;
+use std::collections::HashMap;
+use CurrOrNext::*;
 
 // TODO: Update for multiple tables
-fn single_lookup<F: FftField>(s : &SingleLookup<F>) -> E<F> {
+fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
     // Combine the linear combination.
-    s.value.iter().map(|(c, pos)| {
-        E::literal(*c) * E::Cell(Variable { col: Column::Witness(pos.column), row: pos.row })
-    }).fold(E::zero(), |acc, e| acc + e)
+    s.value
+        .iter()
+        .map(|(c, pos)| {
+            E::literal(*c)
+                * E::Cell(Variable {
+                    col: Column::Witness(pos.column),
+                    row: pos.row,
+                })
+        })
+        .fold(E::zero(), |acc, e| acc + e)
 }
 
-fn joint_lookup<F: FftField>(j : &JointLookup<F>) -> E<F> {
-    j.entry.iter().enumerate()
+fn joint_lookup<F: FftField>(j: &JointLookup<F>) -> E<F> {
+    j.entry
+        .iter()
+        .enumerate()
         .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
 }
 
-struct AdjacentPairs<A, I: Iterator<Item=A>> {
+struct AdjacentPairs<A, I: Iterator<Item = A>> {
     prev_second_component: Option<A>,
-    i: I
+    i: I,
 }
 
-impl<A: Copy, I: Iterator<Item=A>> Iterator for AdjacentPairs<A, I> {
+impl<A: Copy, I: Iterator<Item = A>> Iterator for AdjacentPairs<A, I> {
     type Item = (A, A);
 
     fn next(&mut self) -> Option<(A, A)> {
         match self.prev_second_component {
-            Some(x) => {
-                match self.i.next() {
-                    None => None,
-                    Some(y) => {
-                        self.prev_second_component = Some(y);
-                        Some((x, y))
-                    }
+            Some(x) => match self.i.next() {
+                None => None,
+                Some(y) => {
+                    self.prev_second_component = Some(y);
+                    Some((x, y))
                 }
             },
             None => {
                 let x = self.i.next();
                 let y = self.i.next();
                 match (x, y) {
-                    (None, _) | (_ , None) => None,
+                    (None, _) | (_, None) => None,
                     (Some(x), Some(y)) => {
                         self.prev_second_component = Some(y);
                         Some((x, y))
@@ -87,8 +94,11 @@ impl<A: Copy, I: Iterator<Item=A>> Iterator for AdjacentPairs<A, I> {
     }
 }
 
-fn adjacent_pairs<A: Copy, I: Iterator<Item=A>>(i : I) -> AdjacentPairs<A, I> {
-    AdjacentPairs { i, prev_second_component: None }
+fn adjacent_pairs<A: Copy, I: Iterator<Item = A>>(i: I) -> AdjacentPairs<A, I> {
+    AdjacentPairs {
+        i,
+        prev_second_component: None,
+    }
 }
 
 /// The number of random values to append to columns for zero-knowledge.
@@ -96,7 +106,11 @@ pub const ZK_ROWS: usize = 3;
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
-pub fn zk_patch<R: Rng + ?Sized, F: FftField>(mut e : Vec<F>, d: D<F>, rng: &mut R) -> Evaluations<F, D<F>> {
+pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
+    mut e: Vec<F>,
+    d: D<F>,
+    rng: &mut R,
+) -> Evaluations<F, D<F>> {
     let n = d.size as usize;
     let k = e.len();
     assert!(k <= n - ZK_ROWS);
@@ -106,7 +120,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(mut e : Vec<F>, d: D<F>, rng: &mut
 }
 
 /// Checks that all the lookup constraints are satisfied.
-pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
+pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: G,
     lookup_table_entries: usize,
@@ -115,8 +129,10 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     sorted: &Vec<Evaluations<F, D<F>>>,
-    ) -> () {
-    sorted.iter().for_each(|s| assert_eq!(d1.size, s.domain().size));
+) -> () {
+    sorted
+        .iter()
+        .for_each(|s| assert_eq!(d1.size, s.domain().size));
     let n = d1.size as usize;
     let lookup_rows = n - ZK_ROWS - 1;
 
@@ -132,9 +148,9 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     }
 
     // Check sorting
-    let mut sorted_joined : Vec<F> = Vec::with_capacity((lookup_rows + 1) * sorted.len());
+    let mut sorted_joined: Vec<F> = Vec::with_capacity((lookup_rows + 1) * sorted.len());
     for (i, s) in sorted.iter().enumerate() {
-        let es = s.evals.iter().take(lookup_rows+1);
+        let es = s.evals.iter().take(lookup_rows + 1);
         if i % 2 == 0 {
             sorted_joined.extend(es)
         } else {
@@ -154,7 +170,7 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
     let by_row = lookup_info.by_row(gates);
 
     // Compute lookups||table and check multiset equality
-    let sorted_counts : HashMap<F, usize> = {
+    let sorted_counts: HashMap<F, usize> = {
         let mut counts = HashMap::new();
         for (i, s) in sorted.iter().enumerate() {
             if i % 2 == 0 {
@@ -170,13 +186,16 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
         counts
     };
 
-    let mut all_lookups : HashMap<F, usize> = HashMap::new();
-    lookup_table().take(lookup_rows).for_each(|t| {
-        *all_lookups.entry(t).or_insert(0) += 1
-    });
+    let mut all_lookups: HashMap<F, usize> = HashMap::new();
+    lookup_table()
+        .take(lookup_rows)
+        .for_each(|t| *all_lookups.entry(t).or_insert(0) += 1);
     for (i, spec) in by_row.iter().take(lookup_rows).enumerate() {
-        let eval = |pos : LocalPosition| -> F {
-            let row = match pos.row { Curr => i, Next => i + 1 };
+        let eval = |pos: LocalPosition| -> F {
+            let row = match pos.row {
+                Curr => i,
+                Next => i + 1,
+            };
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
@@ -189,7 +208,8 @@ pub fn verify<F: FftField, I: Iterator<Item= F>, G: Fn() -> I>(
 
     assert_eq!(
         all_lookups.iter().fold(0, |acc, (_, v)| acc + v),
-        sorted_counts.iter().fold(0, |acc, (_, v)| acc + v));
+        sorted_counts.iter().fold(0, |acc, (_, v)| acc + v)
+    );
 
     for (k, v) in all_lookups.iter() {
         let s = sorted_counts.get(k).unwrap_or(&0);
@@ -209,7 +229,12 @@ pub trait Entry {
     type Field: Field;
     type Params;
 
-    fn evaluate(p: & Self::Params, j: &JointLookup<Self::Field>, witness: &[Vec<Self::Field>; COLUMNS], row: usize) -> Self;
+    fn evaluate(
+        p: &Self::Params,
+        j: &JointLookup<Self::Field>,
+        witness: &[Vec<Self::Field>; COLUMNS],
+        row: usize,
+    ) -> Self;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -218,9 +243,17 @@ impl<F: Field> Entry for CombinedEntry<F> {
     type Field = F;
     type Params = F;
 
-    fn evaluate(joint_combiner: &F, j: &JointLookup<F>, witness: &[Vec<F>; COLUMNS], row: usize) -> CombinedEntry<F> {
-        let eval = |pos : LocalPosition| -> F {
-            let row = match pos.row { Curr => row, Next => row + 1 };
+    fn evaluate(
+        joint_combiner: &F,
+        j: &JointLookup<F>,
+        witness: &[Vec<F>; COLUMNS],
+        row: usize,
+    ) -> CombinedEntry<F> {
+        let eval = |pos: LocalPosition| -> F {
+            let row = match pos.row {
+                Curr => row,
+                Next => row + 1,
+            };
             witness[pos.column][row]
         };
 
@@ -235,9 +268,17 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     type Field = F;
     type Params = ();
 
-    fn evaluate(_: &(), j: &JointLookup<F>, witness: &[Vec<F>; COLUMNS], row: usize) -> UncombinedEntry<F> {
-        let eval = |pos : LocalPosition| -> F {
-            let row = match pos.row { Curr => row, Next => row + 1 };
+    fn evaluate(
+        _: &(),
+        j: &JointLookup<F>,
+        witness: &[Vec<F>; COLUMNS],
+        row: usize,
+    ) -> UncombinedEntry<F> {
+        let eval = |pos: LocalPosition| -> F {
+            let row = match pos.row {
+                Curr => row,
+                Next => row + 1,
+            };
             witness[pos.column][row]
         };
 
@@ -246,13 +287,13 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 }
 
 /// Computes the sorted lookup tables required by the lookup argument.
-pub fn sorted
-    <'a
-    , F: FftField
-    , E: Entry<Field=F> + Eq + std::hash::Hash + Clone
-    , I: Iterator<Item= E>
-    , G: Fn() -> I >
-    (
+pub fn sorted<
+    'a,
+    F: FftField,
+    E: Entry<Field = F> + Eq + std::hash::Hash + Clone,
+    I: Iterator<Item = E>,
+    G: Fn() -> I,
+>(
     // TODO: Multiple tables
     dummy_lookup_value: E,
     lookup_table: G,
@@ -261,14 +302,12 @@ pub fn sorted
     gates: &Vec<CircuitGate<F>>,
     witness: &[Vec<F>; COLUMNS],
     params: E::Params,
-    )
-    -> Result<Vec<Vec<E>>, ProofError>
-{
+) -> Result<Vec<Vec<E>>, ProofError> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
     let n = d1.size as usize;
-    let mut counts : HashMap<E, usize> = HashMap::new();
+    let mut counts: HashMap<E, usize> = HashMap::new();
 
     let lookup_rows = n - ZK_ROWS - 1;
     let lookup_info = LookupInfo::<F>::create();
@@ -292,18 +331,17 @@ pub fn sorted
     }
 
     let sorted = {
-        let mut sorted : Vec<Vec<E>> = vec![];
+        let mut sorted: Vec<Vec<E>> = vec![];
         for _ in 0..max_lookups_per_row + 1 {
             sorted.push(Vec::with_capacity(lookup_rows + 1))
         }
 
         let mut i = 0;
         for t in lookup_table().take(lookup_table_entries) {
-            let t_count = 
-                match counts.get(&t) {
-                    None => return Err(ProofError::ValueNotInTable),
-                    Some(x) => *x
-                };
+            let t_count = match counts.get(&t) {
+                None => return Err(ProofError::ValueNotInTable),
+                Some(x) => *x,
+            };
             for j in 0..t_count {
                 let idx = i + j;
                 let col = idx / lookup_rows;
@@ -330,7 +368,7 @@ pub fn sorted
 }
 
 /// Computes the aggregation polynomial for maximum n lookups per row, whose kth entry is the product of terms
-/// 
+///
 ///  (gamma(1 + beta) + t_i + beta t_{i+1}) \prod_{0 <= j < n} ( (1 + beta) (gamma + f_{i,j}) )
 /// -------------------------------------------------------------------------------------------
 ///  \prod_{0 <= j < n+1} (gamma(1 + beta) + s_{i,j} + beta s_{i+1,j})
@@ -353,7 +391,7 @@ pub fn sorted
 ///
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
-pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
+pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
@@ -364,8 +402,7 @@ pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     gamma: F,
     sorted: &Vec<Evaluations<F, D<F>>>,
     rng: &mut R,
-    ) -> Result<Evaluations<F, D<F>>, ProofError>  
-{
+) -> Result<Evaluations<F, D<F>>, ProofError> {
     let n = d1.size as usize;
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
@@ -373,15 +410,18 @@ pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     let mut lookup_aggreg = vec![F::one()];
 
     lookup_aggreg.extend((0..lookup_rows).map(|row| {
-        sorted.iter().enumerate().map(|(i, s)| {
-            let (i1, i2) =
-                if i % 2 == 0 {
+        sorted
+            .iter()
+            .enumerate()
+            .map(|(i, s)| {
+                let (i1, i2) = if i % 2 == 0 {
                     (row, row + 1)
                 } else {
                     (row + 1, row)
                 };
-            gammabeta1 + s[i1] + beta * s[i2]
-        }).fold(F::one(), |acc, x| acc * x)
+                gammabeta1 + s[i1] + beta * s[i2]
+            })
+            .fold(F::one(), |acc, x| acc * x)
     }));
     ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
 
@@ -391,46 +431,51 @@ pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item=F>>(
     let complements_with_beta_term = {
         let mut v = vec![F::one()];
         let x = gamma + dummy_lookup_value;
-        for i in 1..(max_lookups_per_row+1) {
+        for i in 1..(max_lookups_per_row + 1) {
             v.push(v[i - 1] * x)
         }
 
-        let beta1_per_row = beta1.pow(&[ max_lookups_per_row as u64]);
+        let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
         v.iter_mut().for_each(|x| *x *= beta1_per_row);
 
         v
     };
 
-    adjacent_pairs(lookup_table).take(lookup_rows)
-        .zip(lookup_info.by_row(gates)).enumerate().for_each(| (i, ((t0, t1), spec) ) | {
-        let f_chunk = {
-            let eval = |pos : LocalPosition| -> F {
-                let row = match pos.row { Curr => i, Next => i + 1 };
-                witness[pos.column][row]
+    adjacent_pairs(lookup_table)
+        .take(lookup_rows)
+        .zip(lookup_info.by_row(gates))
+        .enumerate()
+        .for_each(|(i, ((t0, t1), spec))| {
+            let f_chunk = {
+                let eval = |pos: LocalPosition| -> F {
+                    let row = match pos.row {
+                        Curr => i,
+                        Next => i + 1,
+                    };
+                    witness[pos.column][row]
+                };
+
+                let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
+
+                // This recomputes `joint_lookup.evaluate` on all the rows, which
+                // is also computed in `sorted`. It should pretty cheap relative to
+                // the whole cost of the prover, and saves us
+                // `max_lookups_per_row (=4) * n` field elements of
+                // memory.
+                spec.iter().fold(padding, |acc, j| {
+                    acc * (gamma + j.evaluate(joint_combiner, &eval))
+                })
             };
 
-            let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
-
-            // This recomputes `joint_lookup.evaluate` on all the rows, which
-            // is also computed in `sorted`. It should pretty cheap relative to
-            // the whole cost of the prover, and saves us 
-            // `max_lookups_per_row (=4) * n` field elements of
-            // memory.
-            spec.iter()
-            .fold(padding, |acc, j| {
-                acc * (gamma + j.evaluate(joint_combiner, &eval))
-            })
-        };
-
-        // At this point, lookup_aggreg[i + 1] contains 1/s_chunk
-        // f_chunk / s_chunk
-        lookup_aggreg[i + 1] *= f_chunk;
-        // f_chunk * t_chunk / s_chunk
-        lookup_aggreg[i + 1] *= gammabeta1 + t0 + beta * t1;
-        let prev = lookup_aggreg[i];
-        // prev * f_chunk * t_chunk / s_chunk
-        lookup_aggreg[i + 1] *= prev;
-    });
+            // At this point, lookup_aggreg[i + 1] contains 1/s_chunk
+            // f_chunk / s_chunk
+            lookup_aggreg[i + 1] *= f_chunk;
+            // f_chunk * t_chunk / s_chunk
+            lookup_aggreg[i + 1] *= gammabeta1 + t0 + beta * t1;
+            let prev = lookup_aggreg[i];
+            // prev * f_chunk * t_chunk / s_chunk
+            lookup_aggreg[i + 1] *= prev;
+        });
 
     Ok(zk_patch(lookup_aggreg, d1, rng))
 }
@@ -443,9 +488,9 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     // Another important thing to note is that there are no lookups permitted
     // in the 3rd to last row.
     //
-    // This is because computing the lookup-product requires 
+    // This is because computing the lookup-product requires
     // num_lookup_rows + 1
-    // rows, so we need to have 
+    // rows, so we need to have
     // num_lookup_rows + 1 = n - 2 (the last 2 being reserved for the zero-knowledge random
     // values) and thus
     //
@@ -454,27 +499,35 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
 
     let column = |col: Column| E::cell(col, Curr);
 
-    let lookup_indicator =
-        lookup_info.kinds.iter().enumerate().map(|(i, _)| {
-            column(Column::LookupKindIndex(i))
-        }).fold(E::zero(), |acc: E<F>, x| acc + x);
+    let lookup_indicator = lookup_info
+        .kinds
+        .iter()
+        .enumerate()
+        .map(|(i, _)| column(Column::LookupKindIndex(i)))
+        .fold(E::zero(), |acc: E<F>, x| acc + x);
 
-    let one : E<F> = E::one();
+    let one: E<F> = E::one();
     let non_lookup_indcator = one.clone() - lookup_indicator;
 
-    let dummy_lookup : ConstantExpr<F> =
-        dummy_lookup.iter().rev()
-        .fold(ConstantExpr::zero(), |acc, x| ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x));
+    let dummy_lookup: ConstantExpr<F> = dummy_lookup
+        .iter()
+        .rev()
+        .fold(ConstantExpr::zero(), |acc, x| {
+            ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x)
+        });
 
     let complements_with_beta_term: Vec<ConstantExpr<F>> = {
         let mut v = vec![ConstantExpr::one()];
         let x = ConstantExpr::Gamma + dummy_lookup;
-        for i in 1..(lookup_info.max_per_row+1) {
+        for i in 1..(lookup_info.max_per_row + 1) {
             v.push(v[i - 1].clone() * x.clone())
         }
 
-        let beta1_per_row: ConstantExpr<F> = (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
-        v.iter().map(|x| x.clone() * beta1_per_row.clone()).collect()
+        let beta1_per_row: ConstantExpr<F> =
+            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
+        v.iter()
+            .map(|x| x.clone() * beta1_per_row.clone())
+            .collect()
     };
 
     // This is set up so that on rows that have lookups, chunk will be equal
@@ -485,22 +538,22 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
         assert!(spec.len() <= lookup_info.max_per_row);
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
-        spec
-        .iter()
-        .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
-        .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
+        spec.iter()
+            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
+            .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
-    let f_chunk =
-        lookup_info.kinds.iter().enumerate()
-        .map(|(i, spec)| {
-            column(Column::LookupKindIndex(i)) * f_term(spec)
-        }).fold(non_lookup_indcator * f_term(&vec![]), |acc, x| acc + x);
-    let gammabeta1 = || E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
-    let ft_chunk = 
-        f_chunk
+    let f_chunk = lookup_info
+        .kinds
+        .iter()
+        .enumerate()
+        .map(|(i, spec)| column(Column::LookupKindIndex(i)) * f_term(spec))
+        .fold(non_lookup_indcator * f_term(&vec![]), |acc, x| acc + x);
+    let gammabeta1 =
+        || E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
+    let ft_chunk = f_chunk
         * (gammabeta1()
-             + E::cell(Column::LookupTable, Curr)
-             + E::beta() * E::cell(Column::LookupTable, Next));
+            + E::cell(Column::LookupTable, Curr)
+            + E::beta() * E::cell(Column::LookupTable, Next));
 
     let num_rows = d1.size as usize;
 
@@ -524,7 +577,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     // s2 s2 s6 s6
     //
     // So the direction ("increasing" or "decreasing" (relative to LookupTable)
-    // is 
+    // is
     // if i % 2 = 0 { Increasing } else { Decreasing }
     //
     // Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
@@ -532,42 +585,39 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
     // and if i % 2 = 1, we enforce that the
     // first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
-    let s_chunk =
-        (0..(lookup_info.max_per_row + 1))
+    let s_chunk = (0..(lookup_info.max_per_row + 1))
         .map(|i| {
-                let (s1, s2) =
-                if i % 2 == 0 {
-                    (Curr, Next)
-                } else {
-                    (Next, Curr)
-                };
+            let (s1, s2) = if i % 2 == 0 {
+                (Curr, Next)
+            } else {
+                (Next, Curr)
+            };
 
-                gammabeta1()
+            gammabeta1()
                 + E::cell(Column::LookupSorted(i), s1)
                 + E::beta() * E::cell(Column::LookupSorted(i), s2)
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
-    let compatibility_checks : Vec<_> = (0..lookup_info.max_per_row).map(|i| {
-        let first_or_last =
-            if i % 2 == 0 {
+    let compatibility_checks: Vec<_> = (0..lookup_info.max_per_row)
+        .map(|i| {
+            let first_or_last = if i % 2 == 0 {
                 // Check compatibility of the last elements
                 num_lookup_rows
             } else {
                 // Check compatibility of the first elements
                 0
             };
-        E::UnnormalizedLagrangeBasis(first_or_last) *
-            (column(Column::LookupSorted(i)) - 
-                column(Column::LookupSorted(i + 1)))
-    }).collect();
+            E::UnnormalizedLagrangeBasis(first_or_last)
+                * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)))
+        })
+        .collect();
 
-    let aggreg_equation =
-        E::cell(Column::LookupAggreg, Next) * s_chunk
+    let aggreg_equation = E::cell(Column::LookupAggreg, Next) * s_chunk
         - E::cell(Column::LookupAggreg, Curr) * ft_chunk;
 
     /*
-        aggreg.next = 
+        aggreg.next =
         aggreg.curr
         * f_chunk
         * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
@@ -586,12 +636,11 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
 
     let mut res = vec![
         E::VanishesOnLast4Rows * aggreg_equation,
-        E::UnnormalizedLagrangeBasis(0) *
-            (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the 3rd to last row (index = num_rows - 3), which
         // contains the full product, equals 1
-        E::UnnormalizedLagrangeBasis(num_lookup_rows) *
-            (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        E::UnnormalizedLagrangeBasis(num_lookup_rows)
+            * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
     res.extend(compatibility_checks);
     res
