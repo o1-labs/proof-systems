@@ -384,44 +384,6 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: FftField> FromBytes for CircuitGate<F> {
-    #[inline]
-    fn read<R: Read>(mut r: R) -> IoResult<Self> {
-        let row = u32::read(&mut r)? as usize;
-        let code = u8::read(&mut r)?;
-        let typ = match FromPrimitive::from_u8(code) {
-            Some(x) => Ok(x),
-            None => Err(Error::new(ErrorKind::Other, "Invalid gate type")),
-        }?;
-
-        let wires = [
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-            Wire::read(&mut r)?,
-        ];
-
-        let c_len = u8::read(&mut r)?;
-        let mut c = vec![];
-        for _ in 0..c_len {
-            c.push(F::read(&mut r)?);
-        }
-
-        Ok(CircuitGate { row, typ, wires, c })
-    }
-}
-
 impl<F: FftField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(row: usize, wires: GateWires) -> Self {
