@@ -85,16 +85,6 @@ fn ec_test() {
     let start = Instant::now();
     let mut g = Other::prime_subgroup_generator();
 
-    for row in 0..num_doubles {
-        let g2 = g + g;
-        witness[0][row] = g.x;
-        witness[1][row] = g.y;
-        witness[2][row] = g2.x;
-        witness[3][row] = g2.y;
-        witness[4][row] = g.y.inverse().unwrap();
-        g = g2;
-    }
-
     let ps = {
         let p = Other::prime_subgroup_generator().into_projective().mul(
             <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
@@ -121,7 +111,6 @@ fn ec_test() {
 
     for i in 0..num_doubles {
         let p = ps[i];
-
 
         let row = i;
         let p2 = p + p;
