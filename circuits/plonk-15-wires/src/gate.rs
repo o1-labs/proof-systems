@@ -416,6 +416,7 @@ impl<F: FftField> CircuitGate<F> {
 pub mod caml {
     use super::*;
     use crate::wires::caml::CamlWire;
+    use itertools::Itertools;
     use ocaml_gen::OcamlGen;
     use std::convert::TryInto;
 
@@ -424,14 +425,6 @@ pub mod caml {
         pub row: ocaml::Int,
         pub typ: GateType,
         pub wires: (
-            CamlWire,
-            CamlWire,
-            CamlWire,
-            CamlWire,
-            CamlWire,
-            CamlWire,
-            CamlWire,
-            CamlWire,
             CamlWire,
             CamlWire,
             CamlWire,
@@ -489,36 +482,19 @@ pub mod caml {
     }
 
     /// helper to convert array to tuple (OCaml doesn't have fixed-size arrays)
-    fn array_to_tuple<T1, T2>(
-        a: [T1; 15],
-    ) -> (T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2, T2)
+    fn array_to_tuple<T1, T2>(a: [T1; PERMUTS]) -> (T2, T2, T2, T2, T2, T2, T2)
     where
         T1: Clone,
         T2: From<T1>,
     {
-        (
-            a[0].clone().into(),
-            a[1].clone().into(),
-            a[2].clone().into(),
-            a[3].clone().into(),
-            a[4].clone().into(),
-            a[5].clone().into(),
-            a[6].clone().into(),
-            a[7].clone().into(),
-            a[8].clone().into(),
-            a[9].clone().into(),
-            a[10].clone().into(),
-            a[11].clone().into(),
-            a[12].clone().into(),
-            a[13].clone().into(),
-            a[14].clone().into(),
-        )
+        std::array::IntoIter::new(a)
+            .map(Into::into)
+            .next_tuple()
+            .expect("bug in array_to_tuple")
     }
 
     /// helper to convert tuple to array (OCaml doesn't have fixed-size arrays)
-    fn tuple_to_array<T1, T2>(
-        a: (T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1, T1),
-    ) -> [T2; 15]
+    fn tuple_to_array<T1, T2>(a: (T1, T1, T1, T1, T1, T1, T1)) -> [T2; PERMUTS]
     where
         T2: From<T1>,
     {
@@ -530,14 +506,6 @@ pub mod caml {
             a.4.into(),
             a.5.into(),
             a.6.into(),
-            a.7.into(),
-            a.8.into(),
-            a.9.into(),
-            a.10.into(),
-            a.11.into(),
-            a.12.into(),
-            a.13.into(),
-            a.14.into(),
         ]
     }
 }
