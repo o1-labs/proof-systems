@@ -173,6 +173,78 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_selectors: Vec<E<F, D<F>>>,
 }
 
+/// Shifts represent the shifts required in the permutation argument of PLONK
+pub struct Shifts<F> {
+    /// The coefficients k that create a coset when multiplied with the generator of our domain.
+    shifts: [F; PERMUTS],
+    /// A matrix that maps all cells coordinates {col, row} to their shifted field element.
+    /// For example the cell {col:2, row:1} will map to omega * k2,
+    /// which lives in map[2][1]
+    map: [Vec<F>; PERMUTS],
+}
+
+impl<F> Shifts<F>
+where
+    F: FftField + SquareRootField,
+{
+    /// Generates the shifts for a given domain
+    pub fn new(domain: &D<F>) -> Self {
+        let mut shifts = [F::zero(); PERMUTS];
+
+        // first shift is the identity
+        shifts[0] = F::one();
+
+        // sample the other shifts
+        let mut i: u32 = 7;
+        for idx in 1..(PERMUTS) {
+            let mut o = Self::sample(&domain, &mut i);
+            while shifts.iter().filter(|&r| o == *r).count() > 0 {
+                o = Self::sample(&domain, &mut i);
+            }
+            shifts[idx] = o;
+        }
+
+        // create a map of cells to their shifted value
+        let map: [Vec<F>; PERMUTS] =
+            array_init(|i| domain.elements().map(|elm| shifts[i] * &elm).collect());
+
+        //
+        Self { shifts, map }
+    }
+
+    /// sample coordinate shifts deterministically
+    fn sample(domain: &D<F>, i: &mut u32) -> F {
+        let mut h = Blake2b::new();
+        h.update(
+            &{
+                *i += 1;
+                *i
+            }
+            .to_be_bytes(),
+        );
+        let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
+        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
+            let mut h = Blake2b::new();
+            h.update(
+                &{
+                    *i += 1;
+                    *i
+                }
+                .to_be_bytes(),
+            );
+            r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
+        }
+        r
+    }
+
+    /// Returns the field element that represents a position
+    fn cell_to_field(&self, &Wire { row, col }: &Wire) -> F {
+        self.map[col][row]
+    }
+}
+
+///
+
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow(&[domain.size - 3])
@@ -252,17 +324,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
         // see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        // TODO: hardcode this value somewhere
         let domain = EvaluationDomains::<F>::create(gates.len() + 3)?;
         assert!(domain.d1.size > 3);
 
         // pre-compute all the elements
         let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
 
-        // sample the coordinate shifts
-        // TODO(mimoo): should we check that the shifts are all different?
-        let shift = Self::sample_shifts(&domain.d1, PERMUTS - 1);
-        let shift: [F; PERMUTS] = array_init(|i| if i == 0 { F::one() } else { shift[i - 1] });
-
+        // pad the rows: add zero gates to reach the domain size
         let n = domain.d1.size();
         let mut padding = (gates.len()..n)
             .map(|i| {
@@ -277,15 +346,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
-        let s: [std::vec::Vec<F>; PERMUTS] =
-            array_init(|i| domain.d1.elements().map(|elm| shift[i] * &elm).collect());
-        let mut sigmal1 = s.clone();
+        // sample the coordinate shifts
+        // TODO(mimoo): should we check that the shifts are all different?
+        let shifts = Shifts::new(&domain.d1);
 
         // compute permutation polynomials
+        let mut sigmal1: [Vec<F>; PERMUTS] =
+            array_init(|_| vec![F::zero(); domain.d1.size as usize]);
+
         for (row, gate) in gates.iter().enumerate() {
-            for col in 0..PERMUTS {
-                let wire = gate.wires[col];
-                sigmal1[col][row] = s[wire.col][wire.row];
+            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
+                sigma[row] = shifts.cell_to_field(cell);
             }
         }
 
@@ -497,7 +568,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             zkpm,
             vanishes_on_last_4_rows,
             gates,
-            shift,
+            shift: shifts.shifts,
             endo,
             fr_sponge_params,
         })
@@ -538,44 +609,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // all good!
         return Ok(());
-    }
-
-    /// sample coordinate shifts deterministically
-    pub fn sample_shift(domain: &D<F>, i: &mut u32) -> F {
-        let mut h = Blake2b::new();
-        h.update(
-            &{
-                *i += 1;
-                *i
-            }
-            .to_be_bytes(),
-        );
-        let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
-        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
-            let mut h = Blake2b::new();
-            h.update(
-                &{
-                    *i += 1;
-                    *i
-                }
-                .to_be_bytes(),
-            );
-            r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
-        }
-        r
-    }
-
-    pub fn sample_shifts(domain: &D<F>, len: usize) -> Vec<F> {
-        let mut i: u32 = 7;
-        let mut shifts = Vec::with_capacity(len);
-        while shifts.len() < len {
-            let mut o = Self::sample_shift(&domain, &mut i);
-            while shifts.iter().filter(|&r| o == *r).count() > 0 {
-                o = Self::sample_shift(&domain, &mut i)
-            }
-            shifts.push(o)
-        }
-        shifts
     }
 
     /// evaluate witness polynomials over domains
