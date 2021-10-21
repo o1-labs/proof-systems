@@ -142,7 +142,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
             );*
 
             // get name
-            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id(false);
             let name = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
@@ -159,8 +159,17 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
     //
 
     let unique_id = quote! {
-        fn unique_id() -> u128 {
-            ::ocaml_gen::const_random!(u128)
+        fn unique_id(stop_here: bool) -> u128 {
+            // this struct's unique id
+            let mut unique_id = ::ocaml_gen::const_random!(u128);
+
+            // XOR in the type parameters' unique ids
+            let mut generics_ocaml: Vec<String> = vec![];
+            #(
+                unique_id ^= <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id(stop_here);
+            );*
+
+            unique_id
         }
     };
 
@@ -269,11 +278,9 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
             new_type: bool,
         ) -> String {
             // register the new type
-            if new_type {
-                let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_type(ty_id, ty_name);
-            }
+            let ty_name = rename.unwrap_or(#ocaml_name);
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id(false);
+            env.new_type(ty_id, ty_name);
 
             let global_generics: Vec<&str> = vec![#(#generics_str),*];
             let generics_ocaml = {
@@ -393,7 +400,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             );*
 
             // get name
-            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id(false);
             let name = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
@@ -410,8 +417,17 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     //
 
     let unique_id = quote! {
-        fn unique_id() -> u128 {
-            ::ocaml_gen::const_random!(u128)
+        fn unique_id(stop_here: bool) -> u128 {
+            // this struct's unique id
+            let mut unique_id = ::ocaml_gen::const_random!(u128);
+
+            // XOR in the type parameters' unique ids
+            let mut generics_ocaml: Vec<String> = vec![];
+            #(
+                unique_id ^= <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id(stop_here);
+            );*
+
+            unique_id
         }
     };
 
@@ -539,11 +555,9 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             new_type: bool,
         ) -> String {
             // register the new type
-            if new_type {
-                let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_type(ty_id, ty_name);
-            }
+            let ty_name = rename.unwrap_or(#ocaml_name);
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id(false);
+            env.new_type(ty_id, ty_name);
 
             let global_generics: Vec<&str> = vec![#(#generics_str),*];
             let generics_ocaml = {
@@ -643,7 +657,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
 
     let ocaml_desc = quote! {
         fn ocaml_desc(env: &::ocaml_gen::Env, _generics: &[&str]) -> String {
-            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+            let type_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id(false);
             env.get_type(type_id, #name_str)
         }
     };
@@ -652,9 +666,32 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     // unique_id
     //
 
+    // we generate the unique_id based on this struct's unique id as well as the unique ids of its concrete type parameters.
+    // this is so that we can distinguish between different declaration of the same custom types but using different type parameters.
+    // see https://github.com/o1-labs/proof-systems/issues/172
+
+    let generics_ident: Vec<_> = item_struct
+        .generics
+        .params
+        .iter()
+        .filter_map(|g| match g {
+            GenericParam::Type(t) => Some(&t.ident),
+            _ => None,
+        })
+        .collect();
+
     let unique_id = quote! {
-        fn unique_id() -> u128 {
-            ::ocaml_gen::const_random!(u128)
+        fn unique_id(stop_here: bool) -> u128 {
+            // this struct's unique id
+            let mut unique_id = ::ocaml_gen::const_random!(u128);
+
+            // XOR in the type parameters' unique ids
+            let mut generics_ocaml: Vec<String> = vec![];
+            #(
+                unique_id ^= <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id(stop_here);
+            );*
+
+            unique_id
         }
     };
 
