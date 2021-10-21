@@ -102,14 +102,13 @@ impl<F: Field> Default for RandomOracles<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use ocaml_gen::OcamlGen;
     use oracle::sponge::caml::CamlScalarChallenge;
 
     //
     // CamlLookupEvaluations<CamlF>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlLookupEvaluations<CamlF> {
         pub sorted: Vec<Vec<CamlF>>,
         pub aggreg: Vec<CamlF>,
@@ -155,7 +154,7 @@ pub mod caml {
     // CamlProofEvaluations<CamlF>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
         pub w: (
             Vec<CamlF>,
@@ -279,7 +278,7 @@ pub mod caml {
     // RandomOracles<F> <-> CamlRandomOracles<CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRandomOracles<CamlF> {
         pub joint_combiner: (CamlScalarChallenge<CamlF>, CamlF),
         pub beta: CamlF,

@@ -434,7 +434,6 @@ where
 pub mod caml {
     use super::*;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
-    use ocaml_gen::OcamlGen;
     use plonk_circuits::scalars::caml::CamlProofEvaluations;
 
     //
@@ -442,7 +441,7 @@ pub mod caml {
     //
 
     /// The ocaml type for ProverCommitments
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
         pub l_comm: CamlPolyComm<CamlG>,
         pub r_comm: CamlPolyComm<CamlG>,
@@ -487,7 +486,7 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
