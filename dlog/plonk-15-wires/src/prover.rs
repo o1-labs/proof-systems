@@ -682,10 +682,9 @@ where
 pub mod caml {
     use super::*;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
-    use ocaml_gen::OcamlGen;
     use plonk_15_wires_circuits::nolookup::scalars::caml::CamlProofEvaluations;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
@@ -696,7 +695,7 @@ pub mod caml {
         pub prev_challenges: Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
     }
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
         // polynomial commitments
         pub w_comm: (
