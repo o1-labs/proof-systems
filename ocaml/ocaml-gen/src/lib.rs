@@ -118,9 +118,9 @@ impl Env {
 //
 
 /// OCamlBinding is the trait implemented by types to generate their OCaml bindings.
-/// It is usually derived automatically via the [OcamlGen] macro,
-/// or the [OCamlCustomType] macro for custom types.
-/// For functions, refer to the [ocaml_gen] macro.
+/// It is usually derived automatically via the [Struct] macro,
+/// or the [CustomType] macro for custom types.
+/// For functions, refer to the [func] macro.
 pub trait OCamlBinding {
     /// will generate the OCaml bindings for a type (called root type).
     /// It takes the current environment [Env],
@@ -129,8 +129,8 @@ pub trait OCamlBinding {
 }
 
 /// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.
-/// It is usually derived automatically via the [OcamlGen] macro,
-/// or the [OCamlCustomType] macro for custom types.
+/// It is usually derived automatically via the [Struct] macro,
+/// or the [CustomType] macro for custom types.
 pub trait OCamlDesc {
     /// describes the type in OCaml, given the current environment [Env]
     /// and the list of generic type parameters of the root type

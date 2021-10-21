@@ -1164,11 +1164,10 @@ mod tests {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use ocaml_gen::OcamlGen;
 
     // polynomial commitment
 
-    #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
         pub shifted: Option<CamlG>,
@@ -1228,7 +1227,7 @@ pub mod caml {
 
     // opening proof
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlOpeningProof<G, F> {
         pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
         pub delta: G,
