@@ -215,13 +215,12 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use ocaml_gen::OcamlGen;
 
     //
     // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
     //
 
-    #[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlScalarChallenge<CamlF>(pub CamlF);
 
     impl<F, CamlF> From<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>

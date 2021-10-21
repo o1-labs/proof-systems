@@ -58,10 +58,9 @@ impl FromBytes for Wire {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use ocaml_gen::OcamlGen;
     use std::convert::TryInto;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlWire {
         pub row: ocaml::Int,
         pub col: ocaml::Int,

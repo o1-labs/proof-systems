@@ -49,44 +49,38 @@ decl_module!(w, env, "ImportantType", {
 To allow the previous example to work, you must derive the correct functions on your types and functions.
 To do that, you can use the [ocaml-derive](./derive) crate.
 
-To allow generation of bindings on structs, use [OCamlGen]():
+To allow generation of bindings on structs, use [Struct]():
 
 ```rust
-use ocaml_gen::OcamlGen;
-
-#[OcamlGen]
+#[ocaml_gen::Struct]
 struct MyType {
   // ...
 }
 ```
 
-To allow generation of bindings on enums, use [OcamlEnum]():
+To allow generation of bindings on enums, use [ocaml_gen::Enum]():
 
 ```rust
-use ocaml_gen::OcamlEnum;
-
-#[OcamlEnum]
+#[ocaml_gen::Enum]
 enum MyType {
   // ...
 }
 ```
 
-To allow generation of bindings on functions, use [ocaml_gen]():
+To allow generation of bindings on functions, use [ocaml_gen::func]():
 
 ```rust
-#[ocaml_gen]
+#[ocaml_gen::func]
 #[ocaml::func] // if you use the crate ocaml-rs' macro, it must appear after
 pub fn your_function(arg1: String) {
   //...
 }
 ```
 
-To allow generation of bindings on custom types, use [OCamlCustomType]():
+To allow generation of bindings on custom types, use [ocaml_gen::CustomType]():
 
 ```rust
-use ocaml_gen::OCamlCustomType;
-
-#[OCamlCustomType]
+#[ocaml_gen::CustomType]
 struct MyCustomType {
   // ...
 }
