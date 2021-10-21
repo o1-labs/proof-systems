@@ -674,7 +674,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             if new_type {
                 let ty_name = rename.unwrap_or(#ocaml_name);
                 let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_custom_type(ty_id, ty_name);
+                env.new_type(ty_id, ty_name);
             }
 
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[]);

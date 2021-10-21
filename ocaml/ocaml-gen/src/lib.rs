@@ -44,12 +44,6 @@ impl Env {
         };
     }
 
-    /// Declares a new custom type. Unlike [new_type] this can be called several times with the same type.
-    pub fn new_custom_type(&mut self, ty: u128, name: &'static str) {
-        self.locations
-            .insert(ty, (self.current_module.clone(), name));
-    }
-
     /// retrieves a type that was declared previously
     pub fn get_type(&self, ty: u128, name: &str) -> String {
         let (type_path, type_name) = self.locations.get(&ty).expect(&format!(
