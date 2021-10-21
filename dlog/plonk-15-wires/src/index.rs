@@ -8,7 +8,7 @@ use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek},
     path::Path,
-    rc::Rc,
+    sync::Arc,
 };
 
 use ark_ec::AffineCurve;
@@ -20,12 +20,12 @@ use commitment_dlog::{
     srs::SRS,
     CommitmentField,
 };
-use oracle::poseidon::{ArithmeticSpongeParams};
+use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_15_wires_circuits::{
-    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add},
+    expr::{Column, Expr, Linearization, PolishToken},
     gate::{GateType, LookupInfo, LookupsUsed},
-    expr::{PolishToken, Expr, Column, Linearization},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
+    polynomials::{chacha, complete_add, lookup, poseidon, varbasemul},
     wires::*,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -53,7 +53,7 @@ where
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Rc<SRS<G>>,
+    pub srs: Arc<SRS<G>>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -79,7 +79,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Rc<SRS<G>>,
+    pub srs: Arc<SRS<G>>,
 
     // index polynomial commitments
     /// permutation commitment array
@@ -153,7 +153,9 @@ where
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
-            coefficients_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.coefficientsm[i], None)),
+            coefficients_comm: array_init(|i| {
+                self.srs.commit_non_hiding(&self.cs.coefficientsm[i], None)
+            }),
 
             psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
@@ -161,16 +163,24 @@ where
             mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
             emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
 
-            chacha_comm:
-                self.cs.chacha8.as_ref()
-                .map(|c| array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))),
-            lookup_selectors:
-                self.cs.lookup_selectors.iter()
+            chacha_comm: self.cs.chacha8.as_ref().map(|c| {
+                array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
+            }),
+            lookup_selectors: self
+                .cs
+                .lookup_selectors
+                .iter()
                 .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                 .collect(),
-            lookup_tables:
-                self.cs.lookup_tables8.iter()
-                .map(|v| v.iter().map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)).collect())
+            lookup_tables: self
+                .cs
+                .lookup_tables8
+                .iter()
+                .map(|v| {
+                    v.iter()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                        .collect()
+                })
                 .collect(),
 
             w: zk_w3(self.cs.domain.d1),
@@ -183,7 +193,7 @@ where
             shift: self.cs.shift,
             linearization: self.linearization.clone(),
             lookup_used: self.lookup_used,
-            srs: Rc::clone(&self.srs),
+            srs: Arc::clone(&self.srs),
         }
     }
 
@@ -192,7 +202,7 @@ where
         mut cs: ConstraintSystem<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
         endo_q: Fr<G>,
-        srs: Rc<SRS<G>>,
+        srs: Arc<SRS<G>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
         if cs.public > 0 {
@@ -225,25 +235,23 @@ where
             };
             let expr = poseidon::constraint(&cs.fr_sponge_params);
             let expr = expr + varbasemul::constraint(super::range::MUL.start);
-            let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
+            let (alphas_used, complete_add) =
+                complete_add::constraint(super::range::COMPLETE_ADD.start);
             assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
             let expr = expr + complete_add;
-            let expr =
-                if lookup_used.is_some() {
-                    expr +
-                        Expr::combine_constraints(
-                            2 + super::range::CHACHA.end,
-                            lookup::constraints(&cs.dummy_lookup_values[0],
-                                                cs.domain.d1))
-                } else {
-                    expr
-                };
-            let expr =
-                if cs.chacha8.is_some() {
-                    expr + chacha::constraint(super::range::CHACHA.start)
-                } else {
-                    expr
-                };
+            let expr = if lookup_used.is_some() {
+                expr + Expr::combine_constraints(
+                    2 + super::range::CHACHA.end,
+                    lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1),
+                )
+            } else {
+                expr
+            };
+            let expr = if cs.chacha8.is_some() {
+                expr + chacha::constraint(super::range::CHACHA.start)
+            } else {
+                expr
+            };
 
             expr.linearize(evaluated_cols).unwrap()
         };
@@ -257,7 +265,7 @@ where
             srs,
             cs,
             lookup_used,
-            linearization: linearization.map(|e| e.to_polish())
+            linearization: linearization.map(|e| e.to_polish()),
         }
     }
 }
@@ -268,7 +276,7 @@ where
 {
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
     pub fn from_file(
-        srs: Rc<SRS<G>>,
+        srs: Arc<SRS<G>>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
