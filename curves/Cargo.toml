@@ -1,7 +1,7 @@
 [package]
 name = "mina-curves"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 ark-ec = { version = "0.3.0", features = ["parallel"] }
