@@ -22,7 +22,7 @@ use commitment_dlog::{
 };
 use oracle::poseidon::{ArithmeticSpongeParams};
 use plonk_15_wires_circuits::{
-    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endosclmul},
+    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endosclmul, endomul_scalar},
     gate::{GateType, LookupInfo, LookupsUsed},
     expr::{PolishToken, ConstantExpr, Expr, Column, Linearization},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
@@ -107,6 +107,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// endoscalar multiplication selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub emul_comm: PolyComm<G>,
+    /// endoscalar multiplication scalar computation selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub endomul_scalar_comm: PolyComm<G>,
 
     /// Chacha polynomial commitments
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
@@ -160,6 +163,9 @@ where
             complete_add_comm: self.srs.commit_non_hiding(&self.cs.complete_addm, None),
             mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
             emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
+
+            endomul_scalar_comm:
+                self.srs.commit_evaluations_non_hiding(domain, &self.cs.endomul_scalar8, None),
 
             chacha_comm:
                 self.cs.chacha8.as_ref()
@@ -229,6 +235,7 @@ where
             assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
             let expr = expr + complete_add;
             let expr = expr + endosclmul::constraint(cs.endo, 2 + super::range::ENDML.start);
+            let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
             let expr =
                 if lookup_used.is_some() {
                     expr +

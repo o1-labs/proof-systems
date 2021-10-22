@@ -117,6 +117,8 @@ pub enum GateType {
     Vbmul,
     /// EC variable base scalar multiplication with group endomorphim optimization
     Endomul,
+    /// Gate for computing the scalar corresponding to an endoscaling
+    EndomulScalar,
     /// ChaCha
     ChaCha0,
     ChaCha1,
@@ -407,6 +409,7 @@ impl<F: FftField> CircuitGate<F> {
             CompleteAdd => self.verify_complete_add(witness),
             Vbmul => self.verify_vbmul(witness),
             Endomul => self.verify_endomul(witness, cs),
+            EndomulScalar => self.verify_endomul_scalar(witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo")
         }
     }

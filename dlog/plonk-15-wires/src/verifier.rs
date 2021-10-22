@@ -483,6 +483,7 @@ where
                                         CompleteAdd => &index.complete_add_comm,
                                         Vbmul => &index.mul_comm,
                                         Endomul => &index.emul_comm,
+                                        EndomulScalar => &index.endomul_scalar_comm,
                                         Poseidon => &index.psm_comm,
                                         ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
                                         ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],

@@ -76,6 +76,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// emulm constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emulm: DP<F>,
+    /// endomul scalar computation
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub endomul_scalarm: DP<F>,
 
     //
     // Polynomials over lagrange base
@@ -107,7 +110,7 @@ pub struct ConstraintSystem<F: FftField> {
 
     // ECC arithmetic selector polynomials
     // -----------------------------------
-    /// EC point addition selector evaluations w over domain.d2
+    /// EC point addition selector evaluations w over domain.d4
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub complete_addl4: E<F, D<F>>,
     /// scalar multiplication selector evaluations over domain.d8
@@ -119,6 +122,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// ChaCha indexes
     #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
     pub chacha8: Option<[E<F, D<F>>; 4]>,
+    /// EC point addition selector evaluations w over domain.d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub endomul_scalar8: E<F, D<F>>,
 
     // Constant polynomials
     // --------------------
@@ -336,6 +342,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             domain.d1,
         )
         .interpolate();
+        let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
+            gates.iter().map(|gate| F::from((gate.typ == GateType::EndomulScalar) as u64)).collect(),
+            domain.d1,
+        )
+        .interpolate();
 
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
@@ -411,6 +422,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // ECC arithmetic constraint polynomials
         let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
         let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
         // constant polynomials
@@ -469,6 +481,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_table_lengths,
             lookup_tables8,
             lookup_tables,
+            endomul_scalar8,
+            endomul_scalarm,
             domain,
             public,
             sid,
