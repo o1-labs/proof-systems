@@ -173,7 +173,8 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_selectors: Vec<E<F, D<F>>>,
 }
 
-/// Shifts represent the shifts required in the permutation argument of PLONK
+/// Shifts represent the shifts required in the permutation argument of PLONK.
+/// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {
     /// The coefficients k that create a coset when multiplied with the generator of our domain.
     shifts: [F; PERMUTS],
@@ -197,11 +198,12 @@ where
         // sample the other shifts
         let mut i: u32 = 7;
         for idx in 1..(PERMUTS) {
-            let mut o = Self::sample(&domain, &mut i);
-            while shifts.iter().filter(|&r| o == *r).count() > 0 {
-                o = Self::sample(&domain, &mut i);
+            let mut shift = Self::sample(&domain, &mut i);
+            // they have to be distincts
+            while shifts.contains(&shift) {
+                shift = Self::sample(&domain, &mut i);
             }
-            shifts[idx] = o;
+            shifts[idx] = shift;
         }
 
         // create a map of cells to their shifted value
@@ -213,28 +215,23 @@ where
     }
 
     /// sample coordinate shifts deterministically
-    fn sample(domain: &D<F>, i: &mut u32) -> F {
+    fn sample(domain: &D<F>, input: &mut u32) -> F {
         let mut h = Blake2b::new();
-        h.update(
-            &{
-                *i += 1;
-                *i
-            }
-            .to_be_bytes(),
-        );
-        let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
-        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
+
+        *input += 1;
+        h.update(&input.to_be_bytes());
+
+        let mut shift = F::from_random_bytes(&h.finalize()[..31])
+            .expect("our field elements fit in more than 31 bytes");
+
+        while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
             let mut h = Blake2b::new();
-            h.update(
-                &{
-                    *i += 1;
-                    *i
-                }
-                .to_be_bytes(),
-            );
-            r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
+            *input += 1;
+            h.update(&input.to_be_bytes());
+            shift = F::from_random_bytes(&h.finalize()[..31])
+                .expect("our field elements fit in more than 31 bytes");
         }
-        r
+        shift
     }
 
     /// Returns the field element that represents a position
@@ -347,7 +344,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gates.append(&mut padding);
 
         // sample the coordinate shifts
-        // TODO(mimoo): should we check that the shifts are all different?
         let shifts = Shifts::new(&domain.d1);
 
         // compute permutation polynomials
