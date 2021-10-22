@@ -63,13 +63,6 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let xs : [_; 8] = array_init(|i| w(6 + i));
 
     let mut cache = Cache::new();
-    /*
-    let x_powers : [[_; 4]; 8] = array_init(|i| {
-        let x = xs[i];
-        let x2 = cache.cache(x.clone().square());
-        let x3 = cache.cache(x2) * x.clone();
-        [ E::one(), x, x2, x3 ]
-    }); */
 
     let polynomial = |coeffs: &[F], x: &E<F>| -> E<F> {
         coeffs.iter().rev().fold(
@@ -121,11 +114,6 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
 
     let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_repr()).take(num_bits).collect();
     let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
-    /*
-    let nybbles_msb: Vec<_> =
-        (0..(num_bits/2)).rev()
-        .map(|i| F::from(bits_lsb[2*i] as u64) + F::from(bits_lsb[2*i + 1] as u64).double())
-        .collect(); */
 
     let mut a = F::from(2u64);
     let mut b = F::from(2u64);
