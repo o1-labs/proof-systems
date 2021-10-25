@@ -214,6 +214,11 @@ where
         Self { shifts, map }
     }
 
+    /// retrieve the shifts
+    pub fn shifts(&self) -> &[F; PERMUTS] {
+        &self.shifts
+    }
+
     /// sample coordinate shifts deterministically
     fn sample(domain: &D<F>, input: &mut u32) -> F {
         let mut h = Blake2b::new();
