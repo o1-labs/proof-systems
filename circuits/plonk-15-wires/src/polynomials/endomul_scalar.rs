@@ -1,9 +1,9 @@
 use crate::gate::{CircuitGate, GateType, CurrOrNext};
 use crate::{
     nolookup::constraints::ConstraintSystem,
-    wires::{GateWires, COLUMNS},
+    wires::COLUMNS,
 };
-use ark_ff::{Field, One, Zero, FftField, PrimeField, BitIteratorLE};
+use ark_ff::{Field, Zero, FftField, PrimeField, BitIteratorLE};
 use array_init::array_init;
 use crate::expr::{E, Column, Cache};
 
@@ -11,8 +11,32 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
         &self,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
+        ensure_eq!(
+            self.typ,
+            GateType::EndomulScalar,
+            "incorrect gate type (should be EndomulScalar)"
+        );
+
+        let row = self.row;
+        let n0 = witness[0][row];
+        let n8 = witness[1][row];
+        let a0 = witness[2][row];
+        let b0 = witness[3][row];
+        let a8 = witness[4][row];
+        let b8 = witness[5][row];
+
+        let xs : [_; 8] = array_init(|i| witness[6 + i][row]);
+
+        let n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x);
+        let a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + a_func(*x));
+        let b8_expected = xs.iter().fold(b0, |acc, x| acc.double() + b_func(*x));
+
+        ensure_eq!(a8, a8_expected, "a8 incorrect");
+        ensure_eq!(b8, b8_expected, "b8 incorrect");
+        ensure_eq!(n8, n8_expected, "n8 incorrect");
+
         Ok(())
     }
 }
@@ -122,20 +146,6 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let one = F::one();
     let neg_one = -one;
 
-    let a_func = |x: F| -> F {
-        if x == F::from(0u64) {
-            F::zero()
-        } else if x == F::from(1u64) {
-            F::zero()
-        } else if x == F::from(2u64) {
-            -F::one()
-        } else if x == F::from(3u64) {
-            F::one()
-        } else {
-            panic!("a_func")
-        }
-    };
-
     for i in 0..rows {
         let row = row0 + i;
         w[0][row] = n;
@@ -178,6 +188,34 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     a * endo_scalar + b
 }
 
+fn a_func<F: Field>(x: F) -> F {
+    if x == F::from(0u64) {
+        F::zero()
+    } else if x == F::from(1u64) {
+        F::zero()
+    } else if x == F::from(2u64) {
+        -F::one()
+    } else if x == F::from(3u64) {
+        F::one()
+    } else {
+        panic!("a_func")
+    }
+}
+
+fn b_func<F: Field>(x: F) -> F {
+    if x == F::from(0u64) {
+        -F::one()
+    } else if x == F::from(1u64) {
+        F::one()
+    } else if x == F::from(2u64) {
+        F::zero()
+    } else if x == F::from(3u64) {
+        F::zero()
+    } else {
+        panic!("a_func")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,20 +241,8 @@ mod tests {
     // Test equivalence of the "a function" in its lookup table,
     // logical, and polynomial forms.
     #[test]
-    fn a_func() {
-        let f1 = |x: F| -> F {
-            if x == F::from(0u64) {
-                F::zero()
-            } else if x == F::from(1u64) {
-                F::zero()
-            } else if x == F::from(2u64) {
-                -F::one()
-            } else if x == F::from(3u64) {
-                F::one()
-            } else {
-                panic!("a_func")
-            }
-        };
+    fn a_func_test() {
+        let f1 = |x: F| a_func(x);
 
         let f2 = |x: F| -> F {
             let bits_le = x.into_repr().to_bits_le();
@@ -247,20 +273,8 @@ mod tests {
     // Test equivalence of the "b function" in its lookup table,
     // logical, and polynomial forms.
     #[test]
-    fn b_func() {
-        let f1 = |x: F| -> F {
-            if x == F::from(0u64) {
-                -F::one()
-            } else if x == F::from(1u64) {
-                F::one()
-            } else if x == F::from(2u64) {
-                F::zero()
-            } else if x == F::from(3u64) {
-                F::zero()
-            } else {
-                panic!("a_func")
-            }
-        };
+    fn b_func_test() {
+        let f1 = |x: F| b_func(x);
 
         let f2 = |x: F| -> F {
             let bits_le = x.into_repr().to_bits_le();
