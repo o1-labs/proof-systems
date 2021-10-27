@@ -30,8 +30,8 @@ impl<F: FftField> CircuitGate<F> {
         let xs : [_; 8] = array_init(|i| witness[6 + i][row]);
 
         let n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x);
-        let a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + a_func(*x));
-        let b8_expected = xs.iter().fold(b0, |acc, x| acc.double() + b_func(*x));
+        let a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + c_func(*x));
+        let b8_expected = xs.iter().fold(b0, |acc, x| acc.double() + d_func(*x));
 
         ensure_eq!(a8, a8_expected, "a8 incorrect");
         ensure_eq!(b8, b8_expected, "b8 incorrect");
@@ -57,22 +57,24 @@ impl<F: FftField> CircuitGate<F> {
 ///
 /// which checks that a value is a nybble.
 ///
-/// a_func(x), defined by
-/// - a_func(0) = 0
-/// - a_func(1) = 0
-/// - a_func(2) = -1
-/// - a_func(3) = 1
+/// c_func(x), defined by
+/// - c_func(0) = 0
+/// - c_func(1) = 0
+/// - c_func(2) = -1
+/// - c_func(3) = 1
 ///
 /// and given by 2/3*x^3 - 5/2*x^2 + 11/6*x
 ///
-/// b_func(x), defined by
-/// - b_func(0) = -1
-/// - b_func(1) = 1
-/// - b_func(2) = 0
-/// - b_func(3) = 0
+/// d_func(x), defined by
+/// - d_func(0) = -1
+/// - d_func(1) = 1
+/// - d_func(2) = 0
+/// - d_func(3) = 0
 ///
-/// and given by 2/3*x^3 - 7/2*x^2 + 29/6*x - 1 = a_func + (-x^2 + 3x - 1)
+/// and given by 2/3*x^3 - 7/2*x^2 + 29/6*x - 1 = c_func + (-x^2 + 3x - 1)
 ///
+/// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
+/// [this paper](https://eprint.iacr.org/2019/1021.pdf).
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let v = |c| E::cell(c, CurrOrNext::Curr);
     let w = |i| v(Column::Witness(i));
@@ -104,13 +106,19 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let nybble = |x: &E<F>| polynomial(&nybble_over_x_coeffs[..], x) * x.clone();
     let b_minus_a_coeffs = [ -F::one(), F::from(3u64), -F::one() ];
 
-    let a_funcs : [_; 8] = array_init(|i| cache.cache(polynomial(&a_coeffs[..], &xs[i])));
-    let b_funcs : [_; 8] = array_init(|i| a_funcs[i].clone() + polynomial(&b_minus_a_coeffs[..], &xs[i]));
+    let c_funcs : [_; 8] = array_init(|i| cache.cache(polynomial(&a_coeffs[..], &xs[i])));
+    let d_funcs : [_; 8] = array_init(|i| c_funcs[i].clone() + polynomial(&b_minus_a_coeffs[..], &xs[i]));
 
     let n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x.clone());
 
-    let a8_expected = a_funcs.iter().fold(a0, |acc, ax| acc.double() + ax.clone());
-    let b8_expected = b_funcs.iter().fold(b0, |acc, bx| acc.double() + bx.clone());
+    // This is iterating 
+    //
+    // a = 2 a + c
+    // b = 2 b + d
+    //
+    // as in the paper.
+    let a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
+    let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
 
     let mut constraints = 
         vec![
@@ -172,7 +180,7 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
             } else {
                 a += s;
             }
-            assert_eq!(a, a_prev + a_func(nybble));
+            assert_eq!(a, a_prev + c_func(nybble));
 
             n.double_in_place().double_in_place();
             n += nybble;
@@ -188,7 +196,7 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     a * endo_scalar + b
 }
 
-fn a_func<F: Field>(x: F) -> F {
+fn c_func<F: Field>(x: F) -> F {
     if x == F::from(0u64) {
         F::zero()
     } else if x == F::from(1u64) {
@@ -198,11 +206,11 @@ fn a_func<F: Field>(x: F) -> F {
     } else if x == F::from(3u64) {
         F::one()
     } else {
-        panic!("a_func")
+        panic!("c_func")
     }
 }
 
-fn b_func<F: Field>(x: F) -> F {
+fn d_func<F: Field>(x: F) -> F {
     if x == F::from(0u64) {
         -F::one()
     } else if x == F::from(1u64) {
@@ -212,7 +220,7 @@ fn b_func<F: Field>(x: F) -> F {
     } else if x == F::from(3u64) {
         F::zero()
     } else {
-        panic!("a_func")
+        panic!("c_func")
     }
 }
 
@@ -238,11 +246,11 @@ mod tests {
         -F::one() * x2 + F::from(3u64) * x - F::one()
     }
 
-    // Test equivalence of the "a function" in its lookup table,
+    // Test equivalence of the "c function" in its lookup table,
     // logical, and polynomial forms.
     #[test]
-    fn a_func_test() {
-        let f1 = |x: F| a_func(x);
+    fn c_func_test() {
+        let f1 = |x: F| c_func(x);
 
         let f2 = |x: F| -> F {
             let bits_le = x.into_repr().to_bits_le();
@@ -273,8 +281,8 @@ mod tests {
     // Test equivalence of the "b function" in its lookup table,
     // logical, and polynomial forms.
     #[test]
-    fn b_func_test() {
-        let f1 = |x: F| b_func(x);
+    fn d_func_test() {
+        let f1 = |x: F| d_func(x);
 
         let f2 = |x: F| -> F {
             let bits_le = x.into_repr().to_bits_le();
