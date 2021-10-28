@@ -1489,7 +1489,7 @@ The folowing functionality is implemented
 {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prechallenges</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
+        <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
     ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">_t</span> <span class="op">=</span> <span class="ident">sponge</span>.<span class="ident">challenge_fq</span>();
         <span class="self">self</span>.<span class="ident">lr</span>
@@ -1505,7 +1505,7 @@ The folowing functionality is implemented
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">challenges</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">endo_r</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
+        <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
     ) -&gt; <span class="ident">Challenges</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">chal</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">lr</span>
@@ -1519,7 +1519,7 @@ The folowing functionality is implemented
 
         <span class="kw">let</span> <span class="ident">chal_inv</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">chal</span>.<span class="ident">clone</span>();
-            <span class="ident">ark_ff::batch_inversion</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cs</span>);
+            <span class="ident">ark_ff::batch_inversion</span>(<span class="kw-2">&amp;mut</span> <span class="ident">cs</span>);
             <span class="ident">cs</span>
         };
 
@@ -1593,7 +1593,7 @@ The folowing functionality is implemented
 }
 
 <span class="kw">fn</span> <span class="ident">squeeze_prechallenge</span><span class="op">&lt;</span><span class="ident">Fq</span>: <span class="ident">Field</span>, <span class="ident">G</span>, <span class="ident">Fr</span>: <span class="ident">SquareRootField</span>, <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&gt;</span><span class="op">&gt;</span>(
-    <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
+    <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
 ) -&gt; <span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&gt;</span> {
     <span class="ident">ScalarChallenge</span>(<span class="ident">sponge</span>.<span class="ident">challenge</span>())
 }
@@ -1605,7 +1605,7 @@ The folowing functionality is implemented
     <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&gt;</span>,
 <span class="op">&gt;</span>(
     <span class="ident">endo_r</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span>,
-    <span class="ident">sponge</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EFqSponge</span>,
+    <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
 ) -&gt; <span class="ident">Fr</span> {
     <span class="ident">squeeze_prechallenge</span>(<span class="ident">sponge</span>).<span class="ident">to_field</span>(<span class="ident">endo_r</span>)
 }
@@ -1729,7 +1729,7 @@ The folowing functionality is implemented
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-        <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
+        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
     ) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">mask</span>(<span class="self">self</span>.<span class="ident">commit_non_hiding</span>(<span class="ident">plnm</span>, <span class="ident">max</span>), <span class="ident">rng</span>)
     }
@@ -1738,7 +1738,7 @@ The folowing functionality is implemented
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mask</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">c</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
-        <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
+        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
     ) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="ident">c</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span>: <span class="ident">G</span><span class="op">|</span> {
             <span class="kw">if</span> <span class="ident">g</span>.<span class="ident">is_zero</span>() {
@@ -1851,7 +1851,7 @@ The folowing functionality is implemented
         <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">plnm</span>: <span class="kw-2">&amp;</span><span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">max</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
-        <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
+        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> (<span class="kw">impl</span> <span class="ident">RngCore</span> <span class="op">+</span> <span class="ident">CryptoRng</span>),
     ) -&gt; (<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">mask</span>(<span class="self">self</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="ident">plnm</span>, <span class="ident">max</span>), <span class="ident">rng</span>)
     }
@@ -1872,7 +1872,7 @@ The folowing functionality is implemented
         <span class="ident">polyscale</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for polynoms</span>
         <span class="ident">evalscale</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for evaluation point powers</span>
         <span class="kw-2">mut</span> <span class="ident">sponge</span>: <span class="ident">EFqSponge</span>, <span class="comment">// sponge</span>
-        <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RNG</span>,
+        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RNG</span>,
     ) -&gt; <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -2020,7 +2020,7 @@ The folowing functionality is implemented
             <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="ident">l</span>]);
             <span class="ident">sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span>[<span class="ident">r</span>]);
 
-            <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">squeeze_challenge</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">endo_r</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sponge</span>);
+            <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">squeeze_challenge</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">endo_r</span>, <span class="kw-2">&amp;mut</span> <span class="ident">sponge</span>);
             <span class="kw">let</span> <span class="ident">u_inv</span> <span class="op">=</span> <span class="ident">u</span>.<span class="ident">inverse</span>().<span class="ident">unwrap</span>();
 
             <span class="ident">chals</span>.<span class="ident">push</span>(<span class="ident">u</span>);
@@ -2099,7 +2099,7 @@ The folowing functionality is implemented
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="ident">RNG</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
-        <span class="ident">batch</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span>(
+        <span class="ident">batch</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span>(
             <span class="ident">EFqSponge</span>,
             <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="comment">// vector of evaluation points</span>
             <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,      <span class="comment">// scaling factor for polynomials</span>
@@ -2111,7 +2111,7 @@ The folowing functionality is implemented
             )<span class="op">&gt;</span>,
             <span class="kw-2">&amp;</span><span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="comment">// batched opening proof</span>
         )<span class="op">&gt;</span>,
-        <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RNG</span>,
+        <span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="ident">RNG</span>,
     ) -&gt; <span class="ident">bool</span>
     <span class="kw">where</span>
         <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -2376,7 +2376,7 @@ The folowing functionality is implemented
 
         <span class="comment">// create an SRS</span>
         <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">VestaG</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="number">20</span>);
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
+        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
 
         <span class="comment">// commit the two polynomials (and upperbound the second one)</span>
         <span class="kw">let</span> <span class="ident">commitment</span> <span class="op">=</span> <span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">poly1</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
@@ -2434,7 +2434,7 @@ The folowing functionality is implemented
             <span class="kw-2">&amp;</span><span class="ident">opening_proof</span>,
         )];
 
-        <span class="macro">assert!</span>(<span class="ident">srs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">batch</span>, <span class="ident">rng</span>));
+        <span class="macro">assert!</span>(<span class="ident">srs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="kw-2">&amp;mut</span> <span class="ident">batch</span>, <span class="ident">rng</span>));
     }
 }
 

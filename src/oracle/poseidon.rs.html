@@ -352,8 +352,8 @@ This file implements Poseidon Hash Function primitive
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Sponge</span><span class="op">&lt;</span><span class="ident">Input</span>: <span class="ident">Field</span>, <span class="ident">Digest</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Input</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span>;
-    <span class="kw">fn</span> <span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="kw-2">&amp;</span>[<span class="ident">Input</span>]);
-    <span class="kw">fn</span> <span class="ident">squeeze</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">Digest</span>;
+    <span class="kw">fn</span> <span class="ident">absorb</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="kw-2">&amp;</span>[<span class="ident">Input</span>]);
+    <span class="kw">fn</span> <span class="ident">squeeze</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">Digest</span>;
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sbox</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
@@ -386,7 +386,7 @@ This file implements Poseidon Hash Function primitive
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span> <span class="ident">ArithmeticSponge</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">apply_mds_matrix</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+    <span class="kw">fn</span> <span class="ident">apply_mds_matrix</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">SC::FULL_MDS</span> {
             <span class="self">self</span>.<span class="ident">params</span>
                 .<span class="ident">mds</span>
@@ -409,7 +409,7 @@ This file implements Poseidon Hash Function primitive
 
     <span class="doccomment">/// Performs a single full round (given the round number) for the sponge.</span>
     <span class="doccomment">/// Note that if INITIAL_ARK is set in the parameters, calling full round will not be enough to manually implement the sponge.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">full_round</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">r</span>: <span class="ident">usize</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">full_round</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">r</span>: <span class="ident">usize</span>) {
         <span class="comment">// TODO(mimoo): ideally this should be enforced in the type of the state itself</span>
         <span class="macro">assert!</span>(<span class="self">self</span>.<span class="ident">state</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">SC::SPONGE_WIDTH</span>);
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">state</span>.<span class="ident">len</span>() {
@@ -421,7 +421,7 @@ This file implements Poseidon Hash Function primitive
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">half_rounds</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+    <span class="kw">fn</span> <span class="ident">half_rounds</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::HALF_ROUNDS_FULL</span> {
             <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="ident">r</span>].<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                 <span class="self">self</span>.<span class="ident">state</span>[<span class="ident">i</span>].<span class="ident">add_assign</span>(<span class="ident">x</span>);
@@ -457,7 +457,7 @@ This file implements Poseidon Hash Function primitive
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">poseidon_block_cipher</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+    <span class="kw">fn</span> <span class="ident">poseidon_block_cipher</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="ident">SC::HALF_ROUNDS_FULL</span> <span class="op">==</span> <span class="number">0</span> {
             <span class="kw">if</span> <span class="ident">SC::INITIAL_ARK</span> <span class="op">==</span> <span class="bool-val">true</span> {
                 <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
@@ -497,7 +497,7 @@ This file implements Poseidon Hash Function primitive
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) {
+    <span class="kw">fn</span> <span class="ident">absorb</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>]) {
         <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="ident">x</span>.<span class="ident">iter</span>() {
             <span class="kw">match</span> <span class="self">self</span>.<span class="ident">sponge_state</span> {
                 <span class="ident">SpongeState::Absorbed</span>(<span class="ident">n</span>) =&gt; {
@@ -518,7 +518,7 @@ This file implements Poseidon Hash Function primitive
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">squeeze</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">fn</span> <span class="ident">squeeze</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">F</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">sponge_state</span> {
             <span class="ident">SpongeState::Squeezed</span>(<span class="ident">n</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">n</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">rate</span> {

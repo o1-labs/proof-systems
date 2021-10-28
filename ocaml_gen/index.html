@@ -5,10 +5,10 @@ Refer to the rustdoc for more information.</p>
 <p>Here’s an example of generating some bindings:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// initialize your environment</span>
-<span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Env::default</span>();
+<span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Env::default</span>();
 
 <span class="comment">// choose where you want to write the bindings</span>
-<span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::io::stdout</span>();
+<span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">std::io::stdout</span>();
 
 <span class="comment">// we need to create fake generic placeholders for generic structs</span>
 <span class="macro">decl_fake_generic!</span>(<span class="ident">T1</span>, <span class="number">0</span>);

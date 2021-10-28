@@ -287,7 +287,7 @@ This source file implements the Marlin structured reference string primitive
 
     <span class="doccomment">/// Compute commitments to the lagrange basis corresponding to the given domain and</span>
     <span class="doccomment">/// cache them in the SRS</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_lagrange_basis</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_lagrange_basis</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">G::ScalarField</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">size</span>();
         <span class="kw">if</span> <span class="ident">n</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() {
             <span class="macro">panic!</span>(
@@ -358,7 +358,7 @@ This source file implements the Marlin structured reference string primitive
         <span class="comment">// vector self.g[0..n].</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective</span><span class="op">&gt;</span> <span class="op">=</span>
             <span class="self">self</span>.<span class="ident">g</span>[<span class="number">0</span>..<span class="ident">n</span>].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">g</span><span class="op">|</span> <span class="ident">g</span>.<span class="ident">into_projective</span>()).<span class="ident">collect</span>();
-        <span class="ident">domain</span>.<span class="ident">ifft_in_place</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">lg</span>);
+        <span class="ident">domain</span>.<span class="ident">ifft_in_place</span>(<span class="kw-2">&amp;mut</span> <span class="ident">lg</span>);
 
         <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::Projective::batch_normalization</span>(<span class="ident">lg</span>.<span class="ident">as_mut_slice</span>());
         <span class="self">self</span>.<span class="ident">lagrange_bases</span>

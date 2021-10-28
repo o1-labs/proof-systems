@@ -104,7 +104,7 @@
         <span class="ident">S</span>: <span class="ident">serde::Serializer</span>,
     {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">val</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">bytes</span>)
+        <span class="ident">val</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">bytes</span>)
             .<span class="ident">map_err</span>(<span class="ident">serde::ser::Error::custom</span>)<span class="question-mark">?</span>;
 
         <span class="ident">Bytes::serialize_as</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>, <span class="ident">serializer</span>)
@@ -118,7 +118,7 @@
         <span class="ident">D</span>: <span class="ident">serde::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
     {
         <span class="kw">let</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Bytes::deserialize_as</span>(<span class="ident">deserializer</span>)<span class="question-mark">?</span>;
-        <span class="ident">T::deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[..]).<span class="ident">map_err</span>(<span class="ident">serde::de::Error::custom</span>)
+        <span class="ident">T::deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[..]).<span class="ident">map_err</span>(<span class="ident">serde::de::Error::custom</span>)
     }
 }
 
@@ -141,7 +141,7 @@
         <span class="ident">S</span>: <span class="ident">serde::Serializer</span>,
     {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="ident">val</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">bytes</span>)
+        <span class="ident">val</span>.<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">bytes</span>)
             .<span class="ident">map_err</span>(<span class="ident">serde::ser::Error::custom</span>)<span class="question-mark">?</span>;
 
         <span class="ident">Bytes::serialize_as</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>, <span class="ident">serializer</span>)
@@ -157,7 +157,7 @@
         <span class="ident">D</span>: <span class="ident">serde::Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
     {
         <span class="kw">let</span> <span class="ident">bytes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Bytes::deserialize_as</span>(<span class="ident">deserializer</span>)<span class="question-mark">?</span>;
-        <span class="ident">T::deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[..]).<span class="ident">map_err</span>(<span class="ident">serde::de::Error::custom</span>)
+        <span class="ident">T::deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="kw-2">&amp;</span><span class="ident">bytes</span>[..]).<span class="ident">map_err</span>(<span class="ident">serde::de::Error::custom</span>)
     }
 }
 </code></pre></div>

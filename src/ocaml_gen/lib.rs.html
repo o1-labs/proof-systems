@@ -279,7 +279,7 @@
 
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Env</span> {
     <span class="doccomment">/// This makes sure that we close our OCaml modules (with the keyword `end`)</span>
-    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+    <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">is_empty</span>() {
             <span class="macro">panic!</span>(<span class="string">&quot;you must call .root() on the environment to finalize the generation. You are currently still nested: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">current_module</span>);
         }
@@ -288,7 +288,7 @@
 
 <span class="kw">impl</span> <span class="ident">Env</span> {
     <span class="doccomment">/// Declares a new type. If the type was already declared, this will panic. If you are declaring a custom type, use [new_custom_type].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_type</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_type</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">locations</span>.<span class="ident">entry</span>(<span class="ident">ty</span>) {
             <span class="ident">Entry::Occupied</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;ocaml-gen: cannot re-declare the same type twice&quot;</span>),
             <span class="ident">Entry::Vacant</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">insert</span>((<span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">clone</span>(), <span class="ident">name</span>)),
@@ -296,7 +296,7 @@
     }
 
     <span class="doccomment">/// Declares a new custom type. Unlike [new_type] this can be called several times with the same type.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_custom_type</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_custom_type</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) {
         <span class="self">self</span>.<span class="ident">locations</span>
             .<span class="ident">insert</span>(<span class="ident">ty</span>, (<span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">clone</span>(), <span class="ident">name</span>));
     }
@@ -325,7 +325,7 @@
     }
 
     <span class="doccomment">/// create a module and enters it</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_module</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mod_name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) -&gt; <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_module</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">mod_name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">let</span> <span class="ident">first_letter</span> <span class="op">=</span> <span class="ident">mod_name</span>
             .<span class="ident">chars</span>()
             .<span class="ident">next</span>()
@@ -347,7 +347,7 @@
     }
 
     <span class="doccomment">/// go back up one module</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parent</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parent</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="self">self</span>.<span class="ident">current_module</span>
             .<span class="ident">pop</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;ocaml-gen: you are already at the root&quot;</span>);
@@ -355,7 +355,7 @@
     }
 
     <span class="doccomment">/// you can call this to go back to the root and finalize the generation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">root</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">root</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">String::new</span>();
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">current_module</span> {
             <span class="ident">res</span>.<span class="ident">push_str</span>(<span class="string">&quot;end\n&quot;</span>);
@@ -376,7 +376,7 @@
     <span class="doccomment">/// will generate the OCaml bindings for a type (called root type).</span>
     <span class="doccomment">/// It takes the current environment [Env],</span>
     <span class="doccomment">/// as well as an optional name (if you wish to rename the type in OCaml).</span>
-    <span class="kw">fn</span> <span class="ident">ocaml_binding</span>(<span class="ident">env</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Env</span>, <span class="ident">rename</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">new_type</span>: <span class="ident">bool</span>) -&gt; <span class="ident">String</span>;
+    <span class="kw">fn</span> <span class="ident">ocaml_binding</span>(<span class="ident">env</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Env</span>, <span class="ident">rename</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span>, <span class="ident">new_type</span>: <span class="ident">bool</span>) -&gt; <span class="ident">String</span>;
 }
 
 <span class="doccomment">/// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.</span>

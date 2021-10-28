@@ -918,7 +918,7 @@ This source file implements Plonk circuit constraint primitive.
                 )
             })
             .<span class="ident">collect</span>();
-        <span class="ident">gates</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">padding</span>);
+        <span class="ident">gates</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">padding</span>);
 
         <span class="kw">let</span> <span class="ident">s</span>: [<span class="ident">std::vec::Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>] <span class="op">=</span>
             <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">elements</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">elm</span><span class="op">|</span> <span class="ident">shift</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">elm</span>).<span class="ident">collect</span>());
@@ -948,7 +948,7 @@ This source file implements Plonk circuit constraint primitive.
         });
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">sid</span>[<span class="number">0</span>..<span class="number">2</span>].<span class="ident">to_vec</span>(); <span class="comment">// TODO(mimoo): why do we do that?</span>
-        <span class="ident">sid</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">s</span>);
+        <span class="ident">sid</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">s</span>);
 
         <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3</span>
         <span class="kw">let</span> <span class="ident">zkpm</span> <span class="op">=</span> <span class="ident">zk_polynomial</span>(<span class="ident">domain</span>.<span class="ident">d1</span>);
@@ -1182,7 +1182,7 @@ This source file implements Plonk circuit constraint primitive.
     }
 
     <span class="doccomment">/// sample coordinate shifts deterministically</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sample_shift</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">i</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">u32</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sample_shift</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">i</span>: <span class="kw-2">&amp;mut</span> <span class="ident">u32</span>) -&gt; <span class="ident">F</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b::new</span>();
         <span class="ident">h</span>.<span class="ident">update</span>(
             <span class="kw-2">&amp;</span>{
@@ -1210,9 +1210,9 @@ This source file implements Plonk circuit constraint primitive.
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">shifts</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">len</span>);
         <span class="kw">while</span> <span class="ident">shifts</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">len</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">i</span>);
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
             <span class="kw">while</span> <span class="ident">shifts</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">r</span><span class="op">|</span> <span class="ident">o</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">r</span>).<span class="ident">count</span>() <span class="op">&gt;</span> <span class="number">0</span> {
-                <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">i</span>)
+                <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>)
             }
             <span class="ident">shifts</span>.<span class="ident">push</span>(<span class="ident">o</span>)
         }

@@ -618,7 +618,7 @@ This source file implements zk-proof batch verifier functionality.
         (<span class="number">0</span>..<span class="self">self</span>.<span class="ident">public</span>.<span class="ident">len</span>())
             .<span class="ident">zip</span>(<span class="ident">w</span>.<span class="ident">iter</span>())
             .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">w</span>)<span class="op">|</span> <span class="ident">lagrange</span>.<span class="ident">push</span>(<span class="ident">zetaw</span> <span class="op">-</span> <span class="ident">w</span>));
-        <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">lagrange</span>);
+        <span class="ident">ark_ff::batch_inversion</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="ident">lagrange</span>);
 
         <span class="comment">// evaluate public input polynomials</span>
         <span class="comment">// NOTE: this works only in the case when the poly segment size is not smaller than that of the domain</span>
@@ -920,7 +920,7 @@ This source file implements zk-proof batch verifier functionality.
             <span class="macro">assert_eq!</span>(<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">get_ref</span>().<span class="ident">g</span>.<span class="ident">len</span>(), <span class="ident">srs</span>.<span class="ident">g</span>.<span class="ident">len</span>());
         }
 
-        <span class="kw">match</span> <span class="ident">srs</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="kw">_</span><span class="op">&gt;</span>(<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">batch</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">thread_rng</span>()) {
+        <span class="kw">match</span> <span class="ident">srs</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="kw">_</span><span class="op">&gt;</span>(<span class="ident">group_map</span>, <span class="kw-2">&amp;mut</span> <span class="ident">batch</span>, <span class="kw-2">&amp;mut</span> <span class="ident">thread_rng</span>()) {
             <span class="bool-val">false</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ProofError::OpenProof</span>),
             <span class="bool-val">true</span> =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
         }

@@ -987,7 +987,7 @@ This source file implements prover&#39;s zk-proof primitive.
         )
         .<span class="ident">interpolate</span>();
 
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">thread_rng</span>();
+        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">thread_rng</span>();
 
         <span class="comment">// commit to the wire values</span>
         <span class="kw">let</span> <span class="ident">w_comm</span>: [(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>); <span class="ident">COLUMNS</span>] <span class="op">=</span>

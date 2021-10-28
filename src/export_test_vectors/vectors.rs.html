@@ -164,7 +164,7 @@
 }
 
 <span class="comment">// generates a vector of `length` field elements</span>
-<span class="kw">fn</span> <span class="ident">rand_fields</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw">impl</span> <span class="ident">Rng</span>, <span class="ident">length</span>: <span class="ident">u8</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">rand_fields</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;mut</span> <span class="kw">impl</span> <span class="ident">Rng</span>, <span class="ident">length</span>: <span class="ident">u8</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fields</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">length</span> {
         <span class="kw">let</span> <span class="ident">fe</span> <span class="op">=</span> <span class="ident">Fp::rand</span>(<span class="ident">rng</span>);
@@ -175,13 +175,13 @@
 
 <span class="comment">// creates a set of test vectors</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">mode</span>: <span class="ident">Mode</span>) -&gt; <span class="ident">TestVectors</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rand::rngs::StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">test_vectors</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
     <span class="comment">// generate inputs of different lengths</span>
     <span class="kw">for</span> <span class="ident">length</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">6</span> {
         <span class="comment">// generate input &amp; hash</span>
-        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">rand_fields</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rng</span>, <span class="ident">length</span>);
+        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">rand_fields</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>, <span class="ident">length</span>);
         <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">poseidon</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>);
 
         <span class="comment">// serialize input &amp; output</span>
@@ -190,7 +190,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">elem</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input_bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                 <span class="ident">elem</span>.<span class="ident">into_repr</span>()
-                    .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">input_bytes</span>)
+                    .<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">input_bytes</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;canonical serialiation should work&quot;</span>);
                 <span class="kw">match</span> <span class="ident">mode</span> {
                     <span class="ident">Mode::Hex</span> =&gt; <span class="ident">hex::encode</span>(<span class="kw-2">&amp;</span><span class="ident">input_bytes</span>),
@@ -201,7 +201,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output_bytes</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="ident">output</span>
             .<span class="ident">into_repr</span>()
-            .<span class="ident">serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">output_bytes</span>)
+            .<span class="ident">serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">output_bytes</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;canonical serialization should work&quot;</span>);
 
         <span class="comment">// add vector</span>
