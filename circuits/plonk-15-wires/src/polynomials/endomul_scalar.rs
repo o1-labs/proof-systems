@@ -1,11 +1,8 @@
-use crate::gate::{CircuitGate, GateType, CurrOrNext};
-use crate::{
-    nolookup::constraints::ConstraintSystem,
-    wires::COLUMNS,
-};
-use ark_ff::{Field, Zero, FftField, PrimeField, BitIteratorLE};
+use crate::expr::{Cache, Column, E};
+use crate::gate::{CircuitGate, CurrOrNext, GateType};
+use crate::{nolookup::constraints::ConstraintSystem, wires::COLUMNS};
+use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
-use crate::expr::{E, Column, Cache};
 
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
@@ -27,7 +24,7 @@ impl<F: FftField> CircuitGate<F> {
         let a8 = witness[4][row];
         let b8 = witness[5][row];
 
-        let xs : [_; 8] = array_init(|i| witness[6 + i][row]);
+        let xs: [_; 8] = array_init(|i| witness[6 + i][row]);
 
         let n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x);
         let a8_expected = xs.iter().fold(a0, |acc, x| acc.double() + c_func(*x));
@@ -41,21 +38,30 @@ impl<F: FftField> CircuitGate<F> {
     }
 }
 
+fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
+    coeffs
+        .iter()
+        .rev()
+        .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(*c))
+}
+
 /// The constraint for the endomul scalar computation
 ///
-/// We lay it out as 
+/// We lay it out as
 ///
-///    0    1    2    3    4    5    6    7    8    9    10   11   12   13   14
-///    n0   n8   a0   b0   a8   b8   x0   x1   x2   x3   x4   x5   x6   x7
+/// <pre>
+/// 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14
+/// n0   n8   a0   b0   a8   b8   x0   x1   x2   x3   x4   x5   x6   x7
+/// </pre>
 ///
 /// We use several functions obtained by lagrange interpolation:
 ///
-/// nybble(x) 
+/// crumb(x)
 /// = x (x - 1) (x - 2) (x - 3)
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 ///
-/// which checks that a value is a nybble.
+/// which checks that a value is a crumb (2-bit chunk).
 ///
 /// c_func(x), defined by
 /// - c_func(0) = 0
@@ -75,6 +81,13 @@ impl<F: FftField> CircuitGate<F> {
 ///
 /// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
 /// [this paper](https://eprint.iacr.org/2019/1021.pdf).
+///
+/// These polynomials can be generated using sage like
+/// <pre>
+/// R = PolynomialRing(QQ, 'x')
+/// c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
+/// d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
+/// </pre>
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let v = |c| E::cell(c, CurrOrNext::Curr);
     let w = |i| v(Column::Witness(i));
@@ -86,32 +99,30 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let a8 = w(4);
     let b8 = w(5);
 
-    let xs : [_; 8] = array_init(|i| w(6 + i));
+    let xs: [_; 8] = array_init(|i| w(6 + i));
 
     let mut cache = Cache::new();
 
-    let polynomial = |coeffs: &[F], x: &E<F>| -> E<F> {
-        coeffs.iter().rev().fold(
-            E::zero(), |acc, c| acc * x.clone() + E::literal(*c))
-    };
-
-    let a_coeffs = [
+    let c_coeffs = [
         F::zero(),
         F::from(11u64) / F::from(6u64),
         -F::from(5u64) / F::from(2u64),
-        F::from(2u64) / F::from(3u64)
+        F::from(2u64) / F::from(3u64),
     ];
 
-    let nybble_over_x_coeffs = [ -F::from(6u64), F::from(11u64), -F::from(6u64), F::one() ];
-    let nybble = |x: &E<F>| polynomial(&nybble_over_x_coeffs[..], x) * x.clone();
-    let b_minus_a_coeffs = [ -F::one(), F::from(3u64), -F::one() ];
+    let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
+    let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
+    let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
-    let c_funcs : [_; 8] = array_init(|i| cache.cache(polynomial(&a_coeffs[..], &xs[i])));
-    let d_funcs : [_; 8] = array_init(|i| c_funcs[i].clone() + polynomial(&b_minus_a_coeffs[..], &xs[i]));
+    let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
+    let d_funcs: [_; 8] =
+        array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
-    let n8_expected = xs.iter().fold(n0, |acc, x| acc.double().double() + x.clone());
+    let n8_expected = xs
+        .iter()
+        .fold(n0, |acc, x| acc.double().double() + x.clone());
 
-    // This is iterating 
+    // This is iterating
     //
     // a = 2 a + c
     // b = 2 b + d
@@ -120,16 +131,10 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
     let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
 
-    let mut constraints = 
-        vec![
-            n8_expected - n8,
-            a8_expected - a8,
-            b8_expected - b8
-        ];
-    constraints.extend(xs.iter().map(nybble));
+    let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
+    constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints)
-        * v(Column::Index(GateType::EndomulScalar)) 
+    E::combine_constraints(alpha0, constraints) * v(Column::Index(GateType::EndomulScalar))
 }
 
 pub fn witness<F: PrimeField + std::fmt::Display>(
@@ -137,9 +142,10 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     row0: usize,
     x: F,
     endo_scalar: F,
-    num_bits: usize) -> F {
-    let nybbles_per_row = 8;
-    let bits_per_row = 2 * nybbles_per_row;
+    num_bits: usize,
+) -> F {
+    let crumbs_per_row = 8;
+    let bits_per_row = 2 * crumbs_per_row;
     assert_eq!(num_bits % bits_per_row, 0);
 
     let rows = num_bits / bits_per_row;
@@ -160,14 +166,14 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
         w[2][row] = a;
         w[3][row] = b;
 
-        for j in 0..nybbles_per_row {
+        for j in 0..crumbs_per_row {
             let bit = bits_per_row * i + 2 * j;
 
             let b0 = *bits_msb[bit + 1];
             let b1 = *bits_msb[bit];
 
-            let nybble = F::from(b0 as u64) + F::from(b1 as u64).double();
-            w[6 + j][row] = nybble;
+            let crumb = F::from(b0 as u64) + F::from(b1 as u64).double();
+            w[6 + j][row] = crumb;
 
             a.double_in_place();
             b.double_in_place();
@@ -180,10 +186,10 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
             } else {
                 a += s;
             }
-            assert_eq!(a, a_prev + c_func(nybble));
+            assert_eq!(a, a_prev + c_func(crumb));
 
             n.double_in_place().double_in_place();
-            n += nybble;
+            n += crumb;
         }
 
         w[1][row] = n;
@@ -228,20 +234,19 @@ fn d_func<F: Field>(x: F) -> F {
 mod tests {
     use super::*;
 
-    use ark_ff::{Field, PrimeField, One, Zero, BigInteger};
-    use mina_curves::pasta::{fp::{Fp as F}};
+    use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
+    use mina_curves::pasta::fp::Fp as F;
 
     // 2/3*x^3 - 5/2*x^2 + 11/6*x
-    fn a_poly(x: F) -> F {
+    fn c_poly(x: F) -> F {
         let x2 = x.square();
         let x3 = x * x2;
-        (F::from(2u64) / F::from(3u64)) * x3
-            - (F::from(5u64) / F::from(2u64)) * x2
+        (F::from(2u64) / F::from(3u64)) * x3 - (F::from(5u64) / F::from(2u64)) * x2
             + (F::from(11u64) / F::from(6u64)) * x
     }
 
     // -x^2 + 3x - 1
-    fn b_minus_a_poly(x: F) -> F {
+    fn d_minus_c_poly(x: F) -> F {
         let x2 = x.square();
         -F::one() * x2 + F::from(3u64) * x - F::one()
     }
@@ -272,7 +277,7 @@ mod tests {
             let x = F::from(x);
             let y1 = f1(x);
             let y2 = f2(x);
-            let y3 = a_poly(x);
+            let y3 = c_poly(x);
             assert_eq!(y1, y2);
             assert_eq!(y2, y3);
         }
@@ -304,7 +309,7 @@ mod tests {
             let x = F::from(x);
             let y1 = f1(x);
             let y2 = f2(x);
-            let y3 = a_poly(x) + b_minus_a_poly(x);
+            let y3 = c_poly(x) + d_minus_c_poly(x);
             assert_eq!(y1, y2);
             assert_eq!(y2, y3);
         }
