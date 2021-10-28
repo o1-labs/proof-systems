@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::sync::Arc;
 
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -109,7 +109,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     let (endo_q, _endo_r) = endos::<Other>();
     let mut srs = SRS::create(n);
     srs.add_lagrange_basis(cs.domain.d1);
-    let srs = Rc::new(srs);
+    let srs = Arc::new(srs);
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
     // pad the witness
@@ -182,7 +182,7 @@ fn test_index_serialization() {
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = Rc::new(SRS::create(n));
+    let srs = Arc::new(SRS::create(n));
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
     let verifier_index = index.verifier_index();
 

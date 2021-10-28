@@ -295,8 +295,9 @@ where
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
+
                     drop(lookup_sorted);
-                    if aggreg.evals[n - 3] != Fr::<G>::one() {
+                    if aggreg.evals[n - 4] != Fr::<G>::one() {
                         panic!("aggregation incorrect: {}", aggreg.evals[n-3]);
                     }
 
@@ -375,7 +376,7 @@ where
                     },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                zk_polynomial: &index.cs.zkpl,
+                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(d1),
                 domain: index.cs.domain,
@@ -806,6 +807,7 @@ pub mod caml {
                 ],
                 z_comm: caml_prover_comm.z_comm.into(),
                 t_comm: caml_prover_comm.t_comm.into(),
+                lookup: None,
             }
         }
     }

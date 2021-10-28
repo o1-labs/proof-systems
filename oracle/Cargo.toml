@@ -1,7 +1,7 @@
 [package]
 name = "oracle"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 [lib]
 path = "src/lib.rs"
@@ -20,7 +20,7 @@ mina-curves = { path = "../curves" }
 
 # for ocaml
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../ocaml-gen", optional = true }
+ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
 syn = { version = "1.0.76", optional = true }
 
 # for export_test_vectors

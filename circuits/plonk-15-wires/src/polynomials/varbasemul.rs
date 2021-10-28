@@ -53,7 +53,6 @@ fn single_bit_witness<F: FftField>(
     let s1_value =
                   (input_value.1 - (base_value.1 * (b_value.double() - F::one()))) / (input_value.0 - base_value.0);
 
-    // let s1_value = (input_value.0 - base_value.0) / (input_value.1 - (b_value.double() - F::one()) * base_value.1);
     set(s1, s1_value);
 
     let s1_squared = s1_value.square();
@@ -119,54 +118,52 @@ fn single_bit<F: FftField>(
 }
 
 struct Layout {
-    accs: Vec<(Variable, Variable)>,
-    bits: Vec<Variable>,
-    ss: Vec<Variable>,
+    accs: [(Variable, Variable); 6],
+    bits: [Variable; 5],
+    ss: [Variable; 5],
     base: (Variable, Variable),
     n_prev: Variable,
     n_next: Variable,
 }
 
-impl Layout {
-    fn new() -> Layout {
-        // We lay things out like
-        // 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14
-        // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
-        // x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
-        let v = |row, col| Variable { row, col: Column::Witness(col) };
-
-        use CurrOrNext::*;
-        Layout {
-            accs: vec![
-                (v(Curr, 2), v(Curr, 3)),
-                (v(Curr, 7), v(Curr, 8)),
-                (v(Curr, 9), v(Curr, 10)),
-                (v(Curr, 11), v(Curr, 12)),
-                (v(Curr, 13), v(Curr, 14)),
-                (v(Next, 0), v(Next, 1))
-            ],
-            bits: vec![
-                v(Next, 2),
-                v(Next, 3),
-                v(Next, 4),
-                v(Next, 5),
-                v(Next, 6)
-            ],
-
-            ss: vec! [
-                v(Next, 7),
-                v(Next, 8),
-                v(Next, 9),
-                v(Next, 10),
-                v(Next, 11),
-            ],
-
-            base: (v(Curr, 0), v(Curr, 1)),
-            n_prev: v(Curr, 4),
-            n_next: v(Curr, 5),
-        }
-    }
+// We lay things out like
+// 0   1   2   3   4   5   6   7   8   9   10  11  12  13  14
+// xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
+// x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
+const fn v(row: CurrOrNext, col: usize) -> Variable {
+    Variable { row, col: Column::Witness(col) }
 }
+
+use CurrOrNext::*;
+const LAYOUT: Layout = Layout {
+    accs: [
+        (v(Curr, 2), v(Curr, 3)),
+        (v(Curr, 7), v(Curr, 8)),
+        (v(Curr, 9), v(Curr, 10)),
+        (v(Curr, 11), v(Curr, 12)),
+        (v(Curr, 13), v(Curr, 14)),
+        (v(Next, 0), v(Next, 1))
+    ],
+    bits: [
+        v(Next, 2),
+        v(Next, 3),
+        v(Next, 4),
+        v(Next, 5),
+        v(Next, 6)
+    ],
+
+    ss: [
+        v(Next, 7),
+        v(Next, 8),
+        v(Next, 9),
+        v(Next, 10),
+        v(Next, 11),
+    ],
+
+    base: (v(Curr, 0), v(Curr, 1)),
+    n_prev: v(Curr, 4),
+    n_next: v(Curr, 5),
+};
 
 pub struct VarbaseMulResult<F> {
     pub acc: (F, F),
@@ -180,7 +177,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     bits: &Vec<bool>,
     acc0: (F, F)) -> VarbaseMulResult<F> {
 
-    let l = Layout::new();
+    let l = LAYOUT;
     let bits: Vec<_> = bits.iter().map(|b| F::from(*b as u64)).collect();
     let bits_per_chunk = 5;
     assert_eq!(bits_per_chunk * (bits.len() / bits_per_chunk), bits.len());
@@ -213,7 +210,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
 }
 
 pub fn constraint<F: FftField>(alpha0 : usize) -> E<F> {
-    let Layout { base, accs, bits, ss, n_prev, n_next } = Layout::new();
+    let Layout { base, accs, bits, ss, n_prev, n_next } = LAYOUT;
 
     let mut c = Cache::new();
 
