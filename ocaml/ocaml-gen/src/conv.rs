@@ -123,7 +123,7 @@ where
 {
     fn ocaml_desc(env: &Env, generics: &[&str]) -> String {
         let v = vec![T1::ocaml_desc(env, generics), T2::ocaml_desc(env, generics)];
-        v.join(" * ")
+        format!("({})", v.join(" * "))
     }
 
     fn unique_id() -> u128 {
@@ -184,7 +184,7 @@ where
             T14::ocaml_desc(env, generics),
             T15::ocaml_desc(env, generics),
         ];
-        v.join(" * ")
+        format!("({})", v.join(" * "))
     }
 
     fn unique_id() -> u128 {
@@ -210,7 +210,7 @@ where
             T5::ocaml_desc(env, generics),
             T6::ocaml_desc(env, generics),
         ];
-        v.join(" * ")
+        format!("({})", v.join(" * "))
     }
 
     fn unique_id() -> u128 {
