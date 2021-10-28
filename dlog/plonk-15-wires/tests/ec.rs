@@ -1,38 +1,35 @@
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
+use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, Field, PrimeField, BitIteratorLE, UniformRand, Zero, One};
-use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D, EvaluationDomain};
-use plonk_15_wires_circuits::{
-    polynomials::endosclmul,
-    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
-    expr::{PolishToken, Constants, Expr, Column, Linearization},
-    gates::poseidon::ROUNDS_PER_ROW,
-    nolookup::constraints::{zk_w3, ConstraintSystem},
-    nolookup::scalars::{ProofEvaluations, LookupEvaluations},
-    wires::*,
-};
+use groupmap::GroupMap;
 use mina_curves::pasta::{
-    fp::{Fp as F},
+    fp::Fp as F,
     pallas::{Affine as Other, Projective as OtherProjective},
     vesta::{Affine, VestaParameters},
 };
-use plonk_15_wires_protocol_dlog::{
-    index::{Index},
-    prover::ProverProof,
-};
-use rand::{rngs::StdRng, SeedableRng};
-use array_init::array_init;
-use std::fmt::{Formatter, Display};
-use groupmap::GroupMap;
 use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
-    sponge::{ScalarChallenge, DefaultFqSponge, DefaultFrSponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-use std::{rc::Rc, time::Instant};
+use plonk_15_wires_circuits::{
+    expr::{Column, Constants, Expr, Linearization, PolishToken},
+    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
+    gates::poseidon::ROUNDS_PER_ROW,
+    nolookup::constraints::{zk_w3, ConstraintSystem},
+    nolookup::scalars::{LookupEvaluations, ProofEvaluations},
+    polynomials::endosclmul,
+    wires::*,
+};
+use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
+use rand::{rngs::StdRng, SeedableRng};
+use std::fmt::{Display, Formatter};
+use std::{sync::Arc, time::Instant};
 
 const PUBLIC: usize = 0;
 
@@ -52,17 +49,15 @@ fn ec_test() {
     let mut gates = vec![];
 
     for row in 0..(num_doubles + num_additions + num_infs) {
-        gates.push(
-            CircuitGate {
-                row,
-                typ: GateType::CompleteAdd,
-                wires: Wire::new(row),
-                c: vec![],
-            });
+        gates.push(CircuitGate {
+            row,
+            typ: GateType::CompleteAdd,
+            wires: Wire::new(row),
+            c: vec![],
+        });
     }
 
-    let cs = ConstraintSystem::<F>::create(
-        gates, vec![], fp_sponge_params, PUBLIC).unwrap();
+    let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
     let n = cs.domain.d1.size as usize;
 
     let mut srs = SRS::create(cs.domain.d1.size as usize);
@@ -70,7 +65,7 @@ fn ec_test() {
 
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, endo_r) = endos::<Other>();
-    let srs = Rc::new(srs);
+    let srs = Arc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
@@ -86,8 +81,10 @@ fn ec_test() {
     let mut g = Other::prime_subgroup_generator();
 
     let ps = {
-        let p = Other::prime_subgroup_generator().into_projective().mul(
-            <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
+        let p = Other::prime_subgroup_generator()
+            .into_projective()
+            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+            .into_affine();
         let mut res = vec![];
         let mut acc = p;
         for i in 0..num_additions {
@@ -98,8 +95,10 @@ fn ec_test() {
     };
 
     let qs = {
-        let q = Other::prime_subgroup_generator().into_projective().mul(
-            <Other as AffineCurve>::ScalarField::rand(rng).into_repr()).into_affine();
+        let q = Other::prime_subgroup_generator()
+            .into_projective()
+            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+            .into_affine();
         let mut res = vec![];
         let mut acc = q;
         for i in 0..num_additions {
@@ -182,11 +181,8 @@ fn ec_test() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(
-            &group_map,
-            &witness,
-            &index,
-            vec![]).unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![])
+            .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
@@ -198,4 +194,3 @@ fn ec_test() {
         }
     }
 }
-

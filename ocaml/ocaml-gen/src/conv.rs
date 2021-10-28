@@ -123,7 +123,7 @@ where
 {
     fn ocaml_desc(env: &Env, generics: &[&str]) -> String {
         let v = vec![T1::ocaml_desc(env, generics), T2::ocaml_desc(env, generics)];
-        v.join(" * ")
+        format!("({})", v.join(" * "))
     }
 
     fn unique_id() -> u128 {
@@ -184,7 +184,7 @@ where
             T14::ocaml_desc(env, generics),
             T15::ocaml_desc(env, generics),
         ];
-        v.join(" * ")
+        format!("({})", v.join(" * "))
     }
 
     fn unique_id() -> u128 {
@@ -209,6 +209,34 @@ where
             T4::ocaml_desc(env, generics),
             T5::ocaml_desc(env, generics),
             T6::ocaml_desc(env, generics),
+        ];
+        format!("({})", v.join(" * "))
+    }
+
+    fn unique_id() -> u128 {
+        const_random!(u128)
+    }
+}
+
+impl<T1, T2, T3, T4, T5, T6, T7> OCamlDesc for (T1, T2, T3, T4, T5, T6, T7)
+where
+    T1: OCamlDesc,
+    T2: OCamlDesc,
+    T3: OCamlDesc,
+    T4: OCamlDesc,
+    T5: OCamlDesc,
+    T6: OCamlDesc,
+    T7: OCamlDesc,
+{
+    fn ocaml_desc(env: &Env, generics: &[&str]) -> String {
+        let v = vec![
+            T1::ocaml_desc(env, generics),
+            T2::ocaml_desc(env, generics),
+            T3::ocaml_desc(env, generics),
+            T4::ocaml_desc(env, generics),
+            T5::ocaml_desc(env, generics),
+            T6::ocaml_desc(env, generics),
+            T7::ocaml_desc(env, generics),
         ];
         v.join(" * ")
     }
