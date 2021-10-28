@@ -32,7 +32,7 @@ use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
     sponge::{ScalarChallenge, DefaultFqSponge, DefaultFrSponge},
 };
-use std::{rc::Rc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 const PUBLIC: usize = 0;
 
@@ -78,7 +78,7 @@ fn endomul_scalar_test() {
     let (endo_q, endo_r) = endos::<Other>();
     let (_, endo_scalar_coeff) = endos::<Affine>();
 
-    let srs = Rc::new(srs);
+    let srs = Arc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
