@@ -109,6 +109,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub emul_comm: PolyComm<G>,
 
     /// Chacha polynomial commitments
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
     /// wire coordinate shifts
@@ -296,7 +297,6 @@ where
             None => (),
         };
 
-        /*
         // deserialize
         let mut verifier_index: Self =
             bincode::deserialize_from(&mut reader).map_err(|e| e.to_string())?;
@@ -310,8 +310,6 @@ where
         verifier_index.zkpm = zk_polynomial(verifier_index.domain);
 
         Ok(verifier_index)
-        */
-        panic!("TODO")
     }
 
     /// Writes a [VerifierIndex] to a file, potentially appending it to the already-existing content (if append is set to true)
@@ -325,7 +323,6 @@ where
 
         let writer = BufWriter::new(file);
 
-        panic!("TODO")
-        // bincode::serialize_into(writer, self).map_err(|e| e.to_string())
+        bincode::serialize_into(writer, self).map_err(|e| e.to_string())
     }
 }

@@ -27,7 +27,7 @@ pub struct Wire {
 
 impl Wire {
     /// Creates a new set of wires for a given row.
-    pub fn new(row: usize) -> [Self; COLUMNS] {
+    pub fn new(row: usize) -> [Self; PERMUTS] {
         array_init(|col| Self { row, col })
     }
 }
@@ -35,7 +35,7 @@ impl Wire {
 /// GateWires document the wiring of a gate. More specifically, each value either
 /// represents the same cell (row and column) or a different cell in another row.
 /// (This is to help the permutation argument.)
-pub type GateWires = [Wire; COLUMNS];
+pub type GateWires = [Wire; PERMUTS];
 
 impl ToBytes for Wire {
     #[inline]
