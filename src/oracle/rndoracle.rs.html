@@ -35,6 +35,7 @@
 <span id="35">35</span>
 <span id="36">36</span>
 <span id="37">37</span>
+<span id="38">38</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements the random oracle argument API.
@@ -47,6 +48,7 @@ This source file implements the random oracle argument API.
 <span class="comment">// TODO(mimoo): move this out of oracle</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProofError</span> {
+    <span class="ident">NoRoomForZkInWitness</span>,
     <span class="ident">WitnessCsInconsistent</span>,
     <span class="comment">// TODO(mimoo): once this is moved, error can be propagated here</span>
     <span class="ident">WitnessGateError</span>,

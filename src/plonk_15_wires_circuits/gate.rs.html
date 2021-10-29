@@ -1070,7 +1070,7 @@ This source file implements Plonk constraint gate primitive.
         <span class="ident">T1</span>: <span class="ident">Clone</span>,
         <span class="ident">T2</span>: <span class="ident">From</span><span class="op">&lt;</span><span class="ident">T1</span><span class="op">&gt;</span>,
     {
-        <span class="ident">std::array::IntoIter::new</span>(<span class="ident">a</span>)
+        <span class="ident">a</span>.<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="ident">Into::into</span>)
             .<span class="ident">next_tuple</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;bug in array_to_tuple&quot;</span>)

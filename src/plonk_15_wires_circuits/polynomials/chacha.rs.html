@@ -555,9 +555,6 @@
 <span id="555">555</span>
 <span id="556">556</span>
 <span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements the cha-cha constraints, which are rather simple
@@ -995,16 +992,13 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::polynomials::chacha::constraint</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">Expr</span>, <span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
-        <span class="ident">gate</span>::{<span class="ident">LookupInfo</span>, <span class="ident">LookupsUsed</span>},
-        <span class="ident">gates::poseidon::ROUNDS_PER_ROW</span>,
-        <span class="ident">nolookup::constraints</span>::{<span class="ident">zk_w3</span>, <span class="ident">ConstraintSystem</span>},
+        <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">PolishToken</span>},
+        <span class="ident">gate::LookupInfo</span>,
         <span class="ident">nolookup::scalars</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
-        <span class="ident">polynomials</span>::{<span class="ident">chacha</span>, <span class="ident">lookup</span>},
         <span class="ident">wires</span>::<span class="kw-2">*</span>,
     };
     <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
-    <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
+    <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
@@ -1051,10 +1045,10 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
 
         <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">constraint</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="number">10</span>);
         <span class="kw">let</span> <span class="ident">linearized</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">linearize</span>(<span class="ident">evaluated_cols</span>).<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">expr_polish</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">to_polish</span>();
+        <span class="kw">let</span> <span class="ident">_expr_polish</span> <span class="op">=</span> <span class="ident">expr</span>.<span class="ident">to_polish</span>();
         <span class="kw">let</span> <span class="ident">linearized_polish</span> <span class="op">=</span> <span class="ident">linearized</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_polish</span>());
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
+        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">StdRng::from_seed</span>([<span class="number">0u8</span>; <span class="number">32</span>]);
 
         <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">D::new</span>(<span class="number">1024</span>).<span class="ident">unwrap</span>();
 

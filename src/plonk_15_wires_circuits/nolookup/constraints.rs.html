@@ -692,6 +692,25 @@
 <span id="692">692</span>
 <span id="693">693</span>
 <span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -714,6 +733,16 @@ This source file implements Plonk circuit constraint primitive.
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+
+<span class="comment">//</span>
+<span class="comment">// Constants</span>
+<span class="comment">//</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ZK_ROWS</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">3</span>;
+
+<span class="comment">//</span>
+<span class="comment">// ConstraintSystem</span>
+<span class="comment">//</span>
 
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -949,7 +978,7 @@ This source file implements Plonk circuit constraint primitive.
 
 <span class="doccomment">/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zk_w3</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">F</span> {
-    <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> <span class="number">3</span>])
+    <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span>)])
 }
 
 <span class="doccomment">/// Evaluates the polynomial</span>
@@ -964,7 +993,7 @@ This source file implements Plonk circuit constraint primitive.
 <span class="doccomment">/// Evaluates the polynomial</span>
 <span class="doccomment">/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_vanishes_on_last_4_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> <span class="number">4</span>]);
+    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)]);
     <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w4</span>;
     <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
     <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
@@ -976,7 +1005,7 @@ This source file implements Plonk circuit constraint primitive.
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">vanishes_on_last_4_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::zero</span>(), <span class="ident">F::one</span>()]);
     <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="op">|</span><span class="ident">a</span>: <span class="ident">F</span><span class="op">|</span> <span class="ident">DP::from_coefficients_slice</span>(<span class="kw-2">&amp;</span>[<span class="ident">a</span>]);
-    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> <span class="number">4</span>]);
+    <span class="kw">let</span> <span class="ident">w4</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">domain</span>.<span class="ident">size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="op">+</span> <span class="number">1</span>)]);
     <span class="kw">let</span> <span class="ident">w3</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w4</span>;
     <span class="kw">let</span> <span class="ident">w2</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w3</span>;
     <span class="kw">let</span> <span class="ident">w1</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">group_gen</span> <span class="op">*</span> <span class="ident">w2</span>;
@@ -1026,9 +1055,8 @@ This source file implements Plonk circuit constraint primitive.
 
         <span class="comment">// +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial</span>
         <span class="comment">// see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk</span>
-        <span class="comment">// TODO: hardcode this value somewhere</span>
-        <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">3</span>)<span class="question-mark">?</span>;
-        <span class="macro">assert!</span>(<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="op">&gt;</span> <span class="number">3</span>);
+        <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span>)<span class="question-mark">?</span>;
+        <span class="macro">assert!</span>(<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">ZK_ROWS</span>);
 
         <span class="comment">// pre-compute all the elements</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">elements</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">elm</span><span class="op">|</span> <span class="ident">elm</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
@@ -1293,6 +1321,15 @@ This source file implements Plonk circuit constraint primitive.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">GateError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">left_wire</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::one</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>()];
 
+        <span class="comment">// pad the witness</span>
+        <span class="kw">let</span> <span class="ident">pad</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">-</span> <span class="ident">witness</span>[<span class="number">0</span>].<span class="ident">len</span>()];
+        <span class="kw">let</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="ident">i</span>].<span class="ident">to_vec</span>();
+            <span class="ident">w</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">pad</span>);
+            <span class="ident">w</span>
+        });
+
+        <span class="comment">// check each rows&#39; wiring</span>
         <span class="kw">for</span> (<span class="ident">row</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="comment">// check if wires are connected</span>
             <span class="kw">for</span> <span class="ident">col</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">PERMUTS</span> {
@@ -1315,7 +1352,8 @@ This source file implements Plonk circuit constraint primitive.
                 }
             }
 
-            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="self">self</span>)
+            <span class="comment">// check the gate&#39;s satisfiability</span>
+            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="self">self</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">GateError::Custom</span> { <span class="ident">row</span>, <span class="ident">err</span> })<span class="question-mark">?</span>;
         }
 

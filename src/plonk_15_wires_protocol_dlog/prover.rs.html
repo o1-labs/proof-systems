@@ -870,6 +870,35 @@
 <span id="870">870</span>
 <span id="871">871</span>
 <span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
+<span id="877">877</span>
+<span id="878">878</span>
+<span id="879">879</span>
+<span id="880">880</span>
+<span id="881">881</span>
+<span id="882">882</span>
+<span id="883">883</span>
+<span id="884">884</span>
+<span id="885">885</span>
+<span id="886">886</span>
+<span id="887">887</span>
+<span id="888">888</span>
+<span id="889">889</span>
+<span id="890">890</span>
+<span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -879,6 +908,7 @@ This source file implements prover&#39;s zk-proof primitive.
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">index::Index</span>, <span class="ident">range</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plonk_sponge::FrSponge</span>;
 <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
+<span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">UVPolynomial</span>,
@@ -890,6 +920,7 @@ This source file implements prover&#39;s zk-proof primitive.
 <span class="kw">use</span> <span class="ident">lookup::CombinedEntry</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">rndoracle::ProofError</span>, <span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
+<span class="kw">use</span> <span class="ident">plonk_15_wires_circuits::nolookup::constraints::ZK_ROWS</span>;
 <span class="kw">use</span> <span class="ident">plonk_15_wires_circuits</span>::{
     <span class="ident">expr</span>::{<span class="ident">l0_1</span>, <span class="ident">Constants</span>, <span class="ident">Environment</span>, <span class="ident">LookupEnvironment</span>},
     <span class="ident">gate</span>::{<span class="ident">combine_table_entry</span>, <span class="ident">GateType</span>, <span class="ident">LookupInfo</span>, <span class="ident">LookupsUsed</span>},
@@ -897,7 +928,6 @@ This source file implements prover&#39;s zk-proof primitive.
     <span class="ident">polynomials</span>::{<span class="ident">chacha</span>, <span class="ident">complete_add</span>, <span class="ident">endomul_scalar</span>, <span class="ident">endosclmul</span>, <span class="ident">lookup</span>, <span class="ident">poseidon</span>, <span class="ident">varbasemul</span>},
     <span class="ident">wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>},
 };
-<span class="kw">use</span> <span class="ident">rand::thread_rng</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">type</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
@@ -977,18 +1007,42 @@ This source file implements prover&#39;s zk-proof primitive.
     <span class="comment">//     RETURN: prover&#39;s zk-proof</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">EFrSponge</span>: <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
-        <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+        <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
-        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="kw">for</span> <span class="ident">w</span> <span class="kw">in</span> <span class="ident">witness</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">n</span> {
+        <span class="kw">let</span> <span class="ident">d1_size</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
+        <span class="comment">// TODO: rng should be passed as arg</span>
+        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::OsRng</span>;
+
+        <span class="comment">// double-check the witness</span>
+        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+            <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>).<span class="ident">expect</span>(<span class="string">&quot;incorrect witness&quot;</span>);
+        }
+
+        <span class="comment">// ensure we have room for the zero-knowledge rows</span>
+        <span class="kw">let</span> <span class="ident">length_witness</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>].<span class="ident">len</span>();
+        <span class="kw">let</span> <span class="ident">length_padding</span> <span class="op">=</span> <span class="ident">d1_size</span>
+            .<span class="ident">checked_sub</span>(<span class="ident">length_witness</span>)
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">ProofError::NoRoomForZkInWitness</span>)<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="ident">length_padding</span> <span class="op">&lt;</span> <span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::NoRoomForZkInWitness</span>);
+        }
+
+        <span class="comment">// pad and add zero-knowledge rows to the witness columns</span>
+        <span class="kw">for</span> <span class="ident">w</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">witness</span> {
+            <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">length_witness</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::WitnessCsInconsistent</span>);
             }
+
+            <span class="comment">// padding</span>
+            <span class="ident">w</span>.<span class="ident">extend</span>(<span class="ident">std::iter::repeat</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()).<span class="ident">take</span>(<span class="ident">length_padding</span>));
+
+            <span class="comment">// zk-rows</span>
+            <span class="kw">for</span> <span class="ident">row</span> <span class="kw">in</span> <span class="ident">w</span>.<span class="ident">iter_mut</span>().<span class="ident">rev</span>().<span class="ident">take</span>(<span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span>) {
+                <span class="kw-2">*</span><span class="ident">row</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::rand</span>(<span class="ident">rng</span>);
+            }
         }
-        <span class="comment">//if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};</span>
 
         <span class="comment">// the transcript of the random oracle non-interactive argument</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fq_sponge</span> <span class="op">=</span> <span class="ident">EFqSponge::new</span>(<span class="ident">index</span>.<span class="ident">fq_sponge_params</span>.<span class="ident">clone</span>());
@@ -1001,15 +1055,15 @@ This source file implements prover&#39;s zk-proof primitive.
         )
         .<span class="ident">interpolate</span>();
 
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">thread_rng</span>();
-
         <span class="comment">// commit to the wire values</span>
         <span class="kw">let</span> <span class="ident">w_comm</span>: [(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>); <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
                 <span class="ident">witness</span>[<span class="ident">i</span>].<span class="ident">clone</span>(),
                 <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
             );
-            <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations</span>(<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>)
+            <span class="ident">index</span>
+                .<span class="ident">srs</span>
+                .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>)
         });
 
         <span class="comment">// compute witness polynomials</span>
@@ -1096,7 +1150,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 <span class="prelude-val">None</span> =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
                 <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">iter_lookup_table</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> {
-                        (<span class="number">0</span>..<span class="ident">n</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                        (<span class="number">0</span>..<span class="ident">d1_size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
                             <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_tables8</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">evals</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span>]);
                             <span class="ident">CombinedEntry</span>(<span class="ident">combine_table_entry</span>(<span class="ident">joint_combiner</span>, <span class="ident">row</span>))
                         })
@@ -1109,7 +1163,7 @@ This source file implements prover&#39;s zk-proof primitive.
                         <span class="ident">dummy_lookup_value</span>.<span class="ident">clone</span>(),
                         <span class="ident">iter_lookup_table</span>,
                         <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_table_lengths</span>[<span class="number">0</span>],
-                        <span class="ident">d1</span>,
+                        <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
                         <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gates</span>,
                         <span class="kw-2">&amp;</span><span class="ident">witness</span>,
                         <span class="ident">joint_combiner</span>,
@@ -1119,13 +1173,17 @@ This source file implements prover&#39;s zk-proof primitive.
                         .<span class="ident">into_iter</span>()
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">chunk</span><span class="op">|</span> {
                             <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">chunk</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>).<span class="ident">collect</span>();
-                            <span class="ident">lookup::zk_patch</span>(<span class="ident">v</span>, <span class="ident">d1</span>, <span class="ident">rng</span>)
+                            <span class="ident">lookup::zk_patch</span>(<span class="ident">v</span>, <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="ident">rng</span>)
                         })
                         .<span class="ident">collect</span>();
 
                     <span class="kw">let</span> <span class="ident">comm</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lookup_sorted</span>
                         .<span class="ident">iter</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations</span>(<span class="ident">d1</span>, <span class="ident">v</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>))
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
+                            <span class="ident">index</span>
+                                .<span class="ident">srs</span>
+                                .<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="ident">v</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>)
+                        })
                         .<span class="ident">collect</span>();
                     <span class="kw">let</span> <span class="ident">coeffs</span> : <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
                         <span class="comment">// TODO: We can avoid storing these coefficients.</span>
@@ -1151,7 +1209,7 @@ This source file implements prover&#39;s zk-proof primitive.
             <span class="kw">match</span> <span class="ident">lookup_sorted</span> {
                 <span class="prelude-val">None</span> =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
                 <span class="prelude-val">Some</span>(<span class="ident">lookup_sorted</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">iter_lookup_table</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> (<span class="number">0</span>..<span class="ident">n</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">iter_lookup_table</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> (<span class="number">0</span>..<span class="ident">d1_size</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
                         <span class="kw">let</span> <span class="ident">row</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">lookup_tables8</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="op">&amp;</span> <span class="ident">e</span>.<span class="ident">evals</span>[<span class="number">8</span> <span class="op">*</span> <span class="ident">i</span>]);
                         <span class="ident">combine_table_entry</span>(<span class="ident">joint_combiner</span>, <span class="ident">row</span>)
                     });
@@ -1160,7 +1218,7 @@ This source file implements prover&#39;s zk-proof primitive.
                         <span class="ident">lookup::aggregation</span>::<span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span>(
                             <span class="ident">dummy_lookup_value</span>.<span class="number">0</span>,
                             <span class="ident">iter_lookup_table</span>(),
-                            <span class="ident">d1</span>,
+                            <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
                             <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gates</span>,
                             <span class="kw-2">&amp;</span><span class="ident">witness</span>,
                             <span class="ident">joint_combiner</span>,
@@ -1169,11 +1227,11 @@ This source file implements prover&#39;s zk-proof primitive.
                             <span class="ident">rng</span>)<span class="question-mark">?</span>;
 
                     <span class="ident">drop</span>(<span class="ident">lookup_sorted</span>);
-                    <span class="kw">if</span> <span class="ident">aggreg</span>.<span class="ident">evals</span>[<span class="ident">n</span> <span class="op">-</span> <span class="number">4</span>] <span class="op">!</span><span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>() {
-                        <span class="macro">panic!</span>(<span class="string">&quot;aggregation incorrect: {}&quot;</span>, <span class="ident">aggreg</span>.<span class="ident">evals</span>[<span class="ident">n</span><span class="op">-</span><span class="number">3</span>]);
+                    <span class="kw">if</span> <span class="ident">aggreg</span>.<span class="ident">evals</span>[<span class="ident">d1_size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="number">1</span>)] <span class="op">!</span><span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>() {
+                        <span class="macro">panic!</span>(<span class="string">&quot;aggregation incorrect: {}&quot;</span>, <span class="ident">aggreg</span>.<span class="ident">evals</span>[<span class="ident">d1_size</span><span class="op">-</span>(<span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="number">1</span>)]);
                     }
 
-                    <span class="kw">let</span> <span class="ident">comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations</span>(<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">aggreg</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
+                    <span class="kw">let</span> <span class="ident">comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>, <span class="kw-2">&amp;</span><span class="ident">aggreg</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
                     <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">comm</span>.<span class="number">0</span>.<span class="ident">unshifted</span>);
 
                     <span class="kw">let</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="ident">aggreg</span>.<span class="ident">interpolate</span>();
@@ -1186,7 +1244,7 @@ This source file implements prover&#39;s zk-proof primitive.
             };
 
         <span class="comment">// compute permutation aggregation polynomial</span>
-        <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">perm_aggreg</span>(<span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">beta</span>, <span class="kw-2">&amp;</span><span class="ident">gamma</span>, <span class="ident">rng</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">perm_aggreg</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">beta</span>, <span class="kw-2">&amp;</span><span class="ident">gamma</span>, <span class="ident">rng</span>)<span class="question-mark">?</span>;
         <span class="comment">// commit to z</span>
         <span class="kw">let</span> <span class="ident">z_comm</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="ident">z</span>, <span class="prelude-val">None</span>, <span class="ident">rng</span>);
 
@@ -1253,7 +1311,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 <span class="ident">coefficient</span>: <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">coefficients8</span>,
                 <span class="ident">vanishes_on_last_4_rows</span>: <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">vanishes_on_last_4_rows</span>,
                 <span class="ident">z</span>: <span class="kw-2">&amp;</span><span class="ident">lagrange</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">z</span>,
-                <span class="ident">l0_1</span>: <span class="ident">l0_1</span>(<span class="ident">d1</span>),
+                <span class="ident">l0_1</span>: <span class="ident">l0_1</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>),
                 <span class="ident">domain</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>,
                 <span class="ident">index</span>: <span class="ident">index_evals</span>,
                 <span class="ident">lookup</span>: <span class="ident">lookup_env</span>,
@@ -1312,7 +1370,7 @@ This source file implements prover&#39;s zk-proof primitive.
                 (<span class="ident">t4</span>, <span class="ident">t8</span>),
                 <span class="ident">alpha</span>,
                 <span class="ident">alphas</span>[<span class="ident">alphas</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>],
-                <span class="ident">lookup::constraints</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">dummy_lookup_values</span>[<span class="number">0</span>], <span class="ident">d1</span>)
+                <span class="ident">lookup::constraints</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">dummy_lookup_values</span>[<span class="number">0</span>], <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>)
                     .<span class="ident">iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>))
                     .<span class="ident">collect</span>(),
@@ -1478,8 +1536,8 @@ This source file implements prover&#39;s zk-proof primitive.
                 )
             })
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-        <span class="kw">let</span> <span class="ident">non_hiding</span> <span class="op">=</span> <span class="op">|</span><span class="ident">n</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">PolyComm</span> {
-            <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">n</span>],
+        <span class="kw">let</span> <span class="ident">non_hiding</span> <span class="op">=</span> <span class="op">|</span><span class="ident">d1_size</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">PolyComm</span> {
+            <span class="ident">unshifted</span>: <span class="macro">vec!</span>[<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">d1_size</span>],
             <span class="ident">shifted</span>: <span class="prelude-val">None</span>,
         };
 
@@ -1499,7 +1557,7 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="comment">// construct evaluation proof</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">polynomials</span> <span class="op">=</span> <span class="ident">polys</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">p</span>, <span class="ident">n</span>)<span class="op">|</span> (<span class="ident">p</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="kw-2">*</span><span class="ident">n</span>)))
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">p</span>, <span class="ident">d1_size</span>)<span class="op">|</span> (<span class="ident">p</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="kw-2">*</span><span class="ident">d1_size</span>)))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="prelude-val">None</span>, <span class="ident">non_hiding</span>(<span class="number">1</span>))]);
         <span class="ident">polynomials</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span><span class="ident">ft</span>, <span class="prelude-val">None</span>, <span class="ident">blinding_ft</span>)]);
