@@ -308,8 +308,8 @@ where
         };
 
         // deserialize
-        let mut verifier_index: Self =
-            bincode::deserialize_from(&mut reader).map_err(|e| e.to_string())?;
+        let mut verifier_index = Self::deserialize(&mut rmp_serde::Deserializer::new(reader))
+            .map_err(|e| e.to_string())?;
 
         // fill in the rest
         verifier_index.srs = srs;
@@ -333,6 +333,7 @@ where
 
         let writer = BufWriter::new(file);
 
-        bincode::serialize_into(writer, self).map_err(|e| e.to_string())
+        self.serialize(&mut rmp_serde::Serializer::new(writer))
+            .map_err(|e| e.to_string())
     }
 }
