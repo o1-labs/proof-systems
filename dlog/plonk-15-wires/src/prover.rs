@@ -19,7 +19,7 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
     expr::{Environment, LookupEnvironment, Constants, l0_1},
-    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endosclmul},
+    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endomul_scalar, endosclmul},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
     gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
@@ -358,6 +358,7 @@ where
                 index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
                 index_evals.insert(Vbmul, &index.cs.mull8);
                 index_evals.insert(Endomul, &index.cs.emull);
+                index_evals.insert(EndomulScalar, &index.cs.endomul_scalar8);
                 [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal].iter().enumerate().for_each(|(i, g)| {
                     if let Some(c) = &index.cs.chacha8 {
                         index_evals.insert(*g, &c[i]);
@@ -410,6 +411,10 @@ where
         let emul8 = endosclmul::constraint(2 + range::ENDML.start).evaluations(&env);
         t8 += &emul8;
         drop(emul8);
+        // endoscaling scalar computation
+        let emulscalar8 = endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
+        t8 += &emulscalar8;
+        drop(emulscalar8);
         // poseidon
         let pos8 = poseidon::constraint().evaluations(&env);
         t8 += &pos8;
