@@ -16,7 +16,7 @@ use ark_poly::{
 use ark_poly::{Polynomial, UVPolynomial};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use oracle::rndoracle::ProofError;
-use rand::rngs::ThreadRng;
+use rand::{CryptoRng, RngCore};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
@@ -122,7 +122,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         witness: &[Vec<F>; COLUMNS],
         beta: &F,
         gamma: &F,
-        rng: &mut ThreadRng,
+        rng: &mut (impl RngCore + CryptoRng),
     ) -> Result<DensePolynomial<F>, ProofError> {
         let n = self.domain.d1.size as usize;
 

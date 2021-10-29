@@ -1,4 +1,4 @@
-use ark_ff::{BigInteger256, PrimeField, UniformRand};
+use ark_ff::{BigInteger256, PrimeField};
 use ark_serialize::CanonicalDeserialize as _;
 use mina_curves::pasta::Fp;
 use oracle::poseidon::Sponge as _;

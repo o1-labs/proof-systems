@@ -493,7 +493,7 @@ pub mod caml {
         T1: Clone,
         T2: From<T1>,
     {
-        std::array::IntoIter::new(a)
+        a.into_iter()
             .map(Into::into)
             .next_tuple()
             .expect("bug in array_to_tuple")

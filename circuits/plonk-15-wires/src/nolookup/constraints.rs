@@ -21,6 +21,16 @@ use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
+//
+// Constants
+//
+
+pub const ZK_ROWS: u64 = 3;
+
+//
+// ConstraintSystem
+//
+
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: FftField> {
@@ -255,7 +265,7 @@ where
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - 3])
+    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
 }
 
 /// Evaluates the polynomial
@@ -270,7 +280,7 @@ pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow(&[domain.size - 4]);
+    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -282,7 +292,7 @@ pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
 pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DP<F> {
     let x = DP::from_coefficients_slice(&[F::zero(), F::one()]);
     let c = |a: F| DP::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow(&[domain.size - 4]);
+    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -332,9 +342,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
         // see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
-        // TODO: hardcode this value somewhere
-        let domain = EvaluationDomains::<F>::create(gates.len() + 3)?;
-        assert!(domain.d1.size > 3);
+        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+        assert!(domain.d1.size > ZK_ROWS);
 
         // pre-compute all the elements
         let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
@@ -599,6 +608,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), GateError> {
         let left_wire = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
 
+        // pad the witness
+        let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
+        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
+            let mut w = witness[i].to_vec();
+            w.extend_from_slice(&pad);
+            w
+        });
+
+        // check each rows' wiring
         for (row, gate) in self.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
@@ -621,7 +639,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 }
             }
 
-            gate.verify(witness, &self)
+            // check the gate's satisfiability
+            gate.verify(&witness, &self)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 

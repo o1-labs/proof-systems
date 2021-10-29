@@ -7,6 +7,7 @@ This source file implements prover's zk-proof primitive.
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
+use ark_ff::UniformRand;
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
@@ -18,6 +19,7 @@ use commitment_dlog::commitment::{
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
+use plonk_15_wires_circuits::nolookup::constraints::ZK_ROWS;
 use plonk_15_wires_circuits::{
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
@@ -25,7 +27,6 @@ use plonk_15_wires_circuits::{
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::{COLUMNS, PERMUTS},
 };
-use rand::thread_rng;
 use std::collections::HashMap;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -105,18 +106,42 @@ where
     //     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
-        witness: &[Vec<Fr<G>>; COLUMNS],
+        mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
-        let d1 = index.cs.domain.d1;
-        let n = index.cs.domain.d1.size as usize;
-        for w in witness.iter() {
-            if w.len() != n {
+        let d1_size = index.cs.domain.d1.size as usize;
+        // TODO: rng should be passed as arg
+        let rng = &mut rand::rngs::OsRng;
+
+        // double-check the witness
+        if cfg!(test) {
+            index.cs.verify(&witness).expect("incorrect witness");
+        }
+
+        // ensure we have room for the zero-knowledge rows
+        let length_witness = witness[0].len();
+        let length_padding = d1_size
+            .checked_sub(length_witness)
+            .ok_or_else(|| ProofError::NoRoomForZkInWitness)?;
+        if length_padding < ZK_ROWS as usize {
+            return Err(ProofError::NoRoomForZkInWitness);
+        }
+
+        // pad and add zero-knowledge rows to the witness columns
+        for w in &mut witness {
+            if w.len() != length_witness {
                 return Err(ProofError::WitnessCsInconsistent);
             }
+
+            // padding
+            w.extend(std::iter::repeat(Fr::<G>::zero()).take(length_padding));
+
+            // zk-rows
+            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+                *row = Fr::<G>::rand(rng);
+            }
         }
-        //if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -129,15 +154,15 @@ where
         )
         .interpolate();
 
-        let rng = &mut thread_rng();
-
         // commit to the wire values
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
             let e = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             );
-            index.srs.commit_evaluations(d1, &e, None, rng)
+            index
+                .srs
+                .commit_evaluations(index.cs.domain.d1, &e, None, rng)
         });
 
         // compute witness polynomials
@@ -224,7 +249,7 @@ where
                 None => (None, None, None, None),
                 Some(_) => {
                     let iter_lookup_table = || {
-                        (0..n).map(|i| {
+                        (0..d1_size).map(|i| {
                             let row = index.cs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
@@ -237,7 +262,7 @@ where
                         dummy_lookup_value.clone(),
                         iter_lookup_table,
                         index.cs.lookup_table_lengths[0],
-                        d1,
+                        index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
                         joint_combiner,
@@ -247,13 +272,17 @@ where
                         .into_iter()
                         .map(|chunk| {
                             let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                            lookup::zk_patch(v, d1, rng)
+                            lookup::zk_patch(v, index.cs.domain.d1, rng)
                         })
                         .collect();
 
                     let comm: Vec<_> = lookup_sorted
                         .iter()
-                        .map(|v| index.srs.commit_evaluations(d1, v, None, rng))
+                        .map(|v| {
+                            index
+                                .srs
+                                .commit_evaluations(index.cs.domain.d1, v, None, rng)
+                        })
                         .collect();
                     let coeffs : Vec<_> =
                         // TODO: We can avoid storing these coefficients.
@@ -279,7 +308,7 @@ where
             match lookup_sorted {
                 None => (None, None, None),
                 Some(lookup_sorted) => {
-                    let iter_lookup_table = || (0..n).map(|i| {
+                    let iter_lookup_table = || (0..d1_size).map(|i| {
                         let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
@@ -288,7 +317,7 @@ where
                         lookup::aggregation::<_, Fr<G>, _>(
                             dummy_lookup_value.0,
                             iter_lookup_table(),
-                            d1,
+                            index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
                             joint_combiner,
@@ -297,11 +326,11 @@ where
                             rng)?;
 
                     drop(lookup_sorted);
-                    if aggreg.evals[n - 4] != Fr::<G>::one() {
-                        panic!("aggregation incorrect: {}", aggreg.evals[n-3]);
+                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != Fr::<G>::one() {
+                        panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
                     }
 
-                    let comm = index.srs.commit_evaluations(d1, &aggreg, None, rng);
+                    let comm = index.srs.commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
                     fq_sponge.absorb_g(&comm.0.unshifted);
 
                     let coeffs = aggreg.interpolate();
@@ -314,7 +343,7 @@ where
             };
 
         // compute permutation aggregation polynomial
-        let z = index.cs.perm_aggreg(witness, &beta, &gamma, rng)?;
+        let z = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
         // commit to z
         let z_comm = index.srs.commit(&z, None, rng);
 
@@ -381,7 +410,7 @@ where
                 coefficient: &index.cs.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
-                l0_1: l0_1(d1),
+                l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
@@ -440,7 +469,7 @@ where
                 (t4, t8),
                 alpha,
                 alphas[alphas.len() - 1],
-                lookup::constraints(&index.cs.dummy_lookup_values[0], d1)
+                lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1)
                     .iter()
                     .map(|e| e.evaluations(&env))
                     .collect(),
@@ -606,8 +635,8 @@ where
                 )
             })
             .collect::<Vec<_>>();
-        let non_hiding = |n: usize| PolyComm {
-            unshifted: vec![Fr::<G>::zero(); n],
+        let non_hiding = |d1_size: usize| PolyComm {
+            unshifted: vec![Fr::<G>::zero(); d1_size],
             shifted: None,
         };
 
@@ -627,7 +656,7 @@ where
         // construct evaluation proof
         let mut polynomials = polys
             .iter()
-            .map(|(p, n)| (p, None, non_hiding(*n)))
+            .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
         polynomials.extend(vec![(&p, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);

@@ -10,6 +10,7 @@ use std::fmt;
 // TODO(mimoo): move this out of oracle
 #[derive(Debug, Clone, Copy)]
 pub enum ProofError {
+    NoRoomForZkInWitness,
     WitnessCsInconsistent,
     // TODO(mimoo): once this is moved, error can be propagated here
     WitnessGateError,
