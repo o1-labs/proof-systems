@@ -130,9 +130,9 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
                 .collect()
         } else {
             vec![
-                self.state[0] + &self.state[2],
-                self.state[0] + &self.state[1],
-                self.state[1] + &self.state[2],
+                self.state[0] + self.state[2],
+                self.state[0] + self.state[1],
+                self.state[1] + self.state[2],
             ]
         };
     }
