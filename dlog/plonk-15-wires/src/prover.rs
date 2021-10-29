@@ -371,6 +371,8 @@ where
                         beta: beta,
                         gamma: gamma,
                         joint_combiner,
+                        endo_coefficient: index.cs.endo,
+                        mds: index.cs.fr_sponge_params.mds.clone(),
                     },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -405,11 +407,11 @@ where
         t8 += &mul8;
         drop(mul8);
         // endoscaling
-        let emul8 = endosclmul::constraint(index.cs.endo, 2 + range::ENDML.start).evaluations(&env);
+        let emul8 = endosclmul::constraint(2 + range::ENDML.start).evaluations(&env);
         t8 += &emul8;
         drop(emul8);
         // poseidon
-        let pos8 = poseidon::constraint(&index.cs.fr_sponge_params).evaluations(&env);
+        let pos8 = poseidon::constraint().evaluations(&env);
         t8 += &pos8;
         drop(pos8);
 
