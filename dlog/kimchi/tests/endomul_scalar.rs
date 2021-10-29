@@ -6,6 +6,7 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
+use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::{
     gate::{CircuitGate, GateType},
     nolookup::constraints::ConstraintSystem,
@@ -21,7 +22,6 @@ use oracle::{
     poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{sync::Arc, time::Instant};
 
@@ -90,13 +90,7 @@ fn endomul_scalar_test() {
 
         assert_eq!(
             ScalarChallenge(x).to_field(&endo_scalar_coeff),
-            endomul_scalar::witness(
-                &mut witness,
-                i * rows_per_scalar,
-                x,
-                endo_scalar_coeff,
-                num_bits
-            )
+            endomul_scalar::witness(&mut witness, x, endo_scalar_coeff, num_bits)
         );
     }
 

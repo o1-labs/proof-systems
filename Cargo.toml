@@ -6,7 +6,7 @@ members = [
     "dlog",
     "dlog/commitment",
     "dlog/plonk",
-    "dlog/plonk-15-wires",
+    "dlog/kimchi",
     "groupmap",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",

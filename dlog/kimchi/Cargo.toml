@@ -1,5 +1,5 @@
 [package]
-name = "plonk_15_wires_protocol_dlog"
+name = "kimchi"
 version = "0.1.0"
 edition = "2021"
 

@@ -268,7 +268,7 @@ impl GateType {
     /// Currently there is only the lookup pattern used in the ChaCha rows, and it
     /// is applied to each ChaCha row and its successor.
     ///
-    /// See circuits/plonk-15-wires/src/polynomials/chacha.rs for an explanation of
+    /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
         let curr_row = |column| LocalPosition {

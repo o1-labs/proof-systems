@@ -22,7 +22,7 @@ use oracle::{
     poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
+use kimchi::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{sync::Arc, time::Instant};
 

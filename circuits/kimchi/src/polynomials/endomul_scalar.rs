@@ -164,7 +164,6 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
 
 pub fn witness<F: PrimeField + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
-    row0: usize,
     x: F,
     endo_scalar: F,
     num_bits: usize,
@@ -217,8 +216,6 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
         w[5].push(b);
 
         w[14].push(F::zero()); // unused
-
-        row += 1;
     }
 
     assert_eq!(x, n);

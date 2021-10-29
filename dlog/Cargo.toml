@@ -22,4 +22,4 @@ oracle = { path = "../oracle" }
 plonk_protocol_dlog = { path = "plonk" }
 plonk_circuits = { path = "../circuits/plonk" }
 kimchi-circuits = { path = "../circuits/kimchi" }
-plonk_15_wires_protocol_dlog = { path = "plonk-15-wires" }
+kimchi = { path = "kimchi" }
