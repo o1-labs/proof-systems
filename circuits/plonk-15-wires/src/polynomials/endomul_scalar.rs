@@ -89,17 +89,17 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
 /// </pre>
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    let v = |c| E::cell(c, CurrOrNext::Curr);
-    let w = |i| v(Column::Witness(i));
+    let curr_row = |c| E::cell(c, CurrOrNext::Curr);
+    let witness_column = |i| curr_row(Column::Witness(i));
 
-    let n0 = w(0);
-    let n8 = w(1);
-    let a0 = w(2);
-    let b0 = w(3);
-    let a8 = w(4);
-    let b8 = w(5);
+    let n0 = witness_column(0);
+    let n8 = witness_column(1);
+    let a0 = witness_column(2);
+    let b0 = witness_column(3);
+    let a8 = witness_column(4);
+    let b8 = witness_column(5);
 
-    let xs: [_; 8] = array_init(|i| w(6 + i));
+    let xs: [_; 8] = array_init(|i| witness_column(6 + i));
 
     let mut cache = Cache::new();
 
@@ -134,7 +134,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints) * v(Column::Index(GateType::EndomulScalar))
+    E::combine_constraints(alpha0, constraints) * curr_row(Column::Index(GateType::EndomulScalar))
 }
 
 pub fn witness<F: PrimeField + std::fmt::Display>(
@@ -148,8 +148,6 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let bits_per_row = 2 * crumbs_per_row;
     assert_eq!(num_bits % bits_per_row, 0);
 
-    let rows = num_bits / bits_per_row;
-
     let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_repr()).take(num_bits).collect();
     let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
 
@@ -160,17 +158,16 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let one = F::one();
     let neg_one = -one;
 
-    for i in 0..rows {
+    for (i, row_bits) in bits_msb[..].chunks(bits_per_row).enumerate() {
         let row = row0 + i;
         w[0][row] = n;
         w[2][row] = a;
         w[3][row] = b;
 
-        for j in 0..crumbs_per_row {
-            let bit = bits_per_row * i + 2 * j;
+        for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
 
-            let b0 = *bits_msb[bit + 1];
-            let b1 = *bits_msb[bit];
+            let b0 = *crumb_bits[1];
+            let b1 = *crumb_bits[0];
 
             let crumb = F::from(b0 as u64) + F::from(b1 as u64).double();
             w[6 + j][row] = crumb;

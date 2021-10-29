@@ -410,9 +410,9 @@ where
         t8 += &emul8;
         drop(emul8);
         // endoscaling scalar computation
-        let emul8 = endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
-        t8 += &emul8;
-        drop(emul8);
+        let emulscalar8 = endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
+        t8 += &emulscalar8;
+        drop(emulscalar8);
         // poseidon
         let pos8 = poseidon::constraint(&index.cs.fr_sponge_params).evaluations(&env);
         t8 += &pos8;
