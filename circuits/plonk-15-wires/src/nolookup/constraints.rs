@@ -608,6 +608,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), GateError> {
         let left_wire = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
 
+        // pad the witness
+        let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
+        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
+            let mut w = witness[i].to_vec();
+            w.extend_from_slice(&pad);
+            w
+        });
+
+        // check each rows' wiring
         for (row, gate) in self.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
@@ -630,7 +639,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 }
             }
 
-            gate.verify(witness, &self)
+            // check the gate's satisfiability
+            gate.verify(&witness, &self)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 

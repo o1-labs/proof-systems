@@ -7,6 +7,7 @@ This source file implements prover's zk-proof primitive.
 pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
+use ark_ff::UniformRand;
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
@@ -18,6 +19,7 @@ use commitment_dlog::commitment::{
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
+use plonk_15_wires_circuits::nolookup::constraints::ZK_ROWS;
 use plonk_15_wires_circuits::{
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
@@ -25,7 +27,6 @@ use plonk_15_wires_circuits::{
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::{COLUMNS, PERMUTS},
 };
-use rand::thread_rng;
 use std::collections::HashMap;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -105,17 +106,42 @@ where
     //     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
-        witness: &[Vec<Fr<G>>; COLUMNS],
+        mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
-        for w in witness.iter() {
-            if w.len() != n {
         let d1_size = index.cs.domain.d1.size as usize;
+        // TODO: rng should be passed as arg
+        let rng = &mut rand::rngs::OsRng;
+
+        // double-check the witness
+        if cfg!(test) {
+            index.cs.verify(&witness).expect("incorrect witness");
+        }
+
+        // ensure we have room for the zero-knowledge rows
+        let length_witness = witness[0].len();
+        let length_padding = d1_size
+            .checked_sub(length_witness)
+            .ok_or_else(|| ProofError::NoRoomForZkInWitness)?;
+        if length_padding < ZK_ROWS as usize {
+            return Err(ProofError::NoRoomForZkInWitness);
+        }
+
+        // pad and add zero-knowledge rows to the witness columns
+        for w in &mut witness {
+            if w.len() != length_witness {
                 return Err(ProofError::WitnessCsInconsistent);
             }
+
+            // padding
+            w.extend(std::iter::repeat(Fr::<G>::zero()).take(length_padding));
+
+            // zk-rows
+            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+                *row = Fr::<G>::rand(rng);
+            }
         }
-        //if index.cs.verify(witness) != true {return Err(ProofError::WitnessCsInconsistent)};
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -127,8 +153,6 @@ where
             index.cs.domain.d1,
         )
         .interpolate();
-
-        let rng = &mut thread_rng();
 
         // commit to the wire values
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
@@ -319,7 +343,7 @@ where
             };
 
         // compute permutation aggregation polynomial
-        let z = index.cs.perm_aggreg(witness, &beta, &gamma, rng)?;
+        let z = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
         // commit to z
         let z_comm = index.srs.commit(&z, None, rng);
 
