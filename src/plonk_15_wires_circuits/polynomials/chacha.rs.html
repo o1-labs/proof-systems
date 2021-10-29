@@ -510,6 +510,54 @@
 <span id="510">510</span>
 <span id="511">511</span>
 <span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements the cha-cha constraints, which are rather simple
@@ -531,12 +579,12 @@ c&#39;&#39; = c&#39; + d&#39;&#39;; b&#39;&#39; = (c&#39;&#39; ^ b&#39;) &lt;&lt
 
 We lay each line as two rows.
 
-Each line has the form 
+Each line has the form
 
     x += z; y ^= x; y &lt;&lt;&lt;= k
 
 or without mutation,
-    
+
     x&#39; = x + z; y&#39; = (y ^ x&#39;) &lt;&lt;&lt; k
 
 which we abbreviate as
@@ -638,12 +686,10 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
 
 *****************************************************************************************************************/</span>
 
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">FftField</span>, <span class="ident">Zero</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">Column</span>, <span class="ident">ConstantExpr</span> <span class="kw">as</span> <span class="ident">C</span>, <span class="ident">E</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">gate</span>::{<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>},
-};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">E</span>, <span class="ident">ConstantExpr</span> <span class="kw">as</span> <span class="ident">C</span>, <span class="ident">Column</span>};
 
 <span class="comment">// The lookup table for 4-bit xor.</span>
 <span class="comment">// Note that it is constructed so that (0, 0, 0) is the last position in the table.</span>
@@ -651,10 +697,10 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
 <span class="comment">// This is because tables are extended to the full size of a column (essentially)</span>
 <span class="comment">// by padding them with their final value. And, having the value (0, 0, 0) here means</span>
 <span class="comment">// that when we commit to this table and use the dummy value in the `lookup_sorted`</span>
-<span class="comment">// columns, those entries that have the dummy value of </span>
+<span class="comment">// columns, those entries that have the dummy value of</span>
 <span class="comment">//</span>
 <span class="comment">// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0</span>
-<span class="comment">// </span>
+<span class="comment">//</span>
 <span class="comment">// will translate into a scalar multiplication by 0, which is free.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">xor_table</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="macro">vec!</span>[]; <span class="number">3</span>];
@@ -694,23 +740,22 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
 }
 
 <span class="kw">const</span> <span class="ident">CHACHA20_ROTATIONS</span>: [<span class="ident">u32</span>; <span class="number">4</span>] <span class="op">=</span> [<span class="number">16</span>, <span class="number">12</span>, <span class="number">8</span>, <span class="number">7</span>];
-<span class="kw">const</span> <span class="ident">CHACHA20_QRS</span> : [[<span class="ident">usize</span>; <span class="number">4</span>]; <span class="number">8</span>] <span class="op">=</span>
-    [
-        [<span class="number">0</span>, <span class="number">4</span>,  <span class="number">8</span>, <span class="number">12</span>],
-        [<span class="number">1</span>, <span class="number">5</span>,  <span class="number">9</span>, <span class="number">13</span>],
-        [<span class="number">2</span>, <span class="number">6</span>, <span class="number">10</span>, <span class="number">14</span>],
-        [<span class="number">3</span>, <span class="number">7</span>, <span class="number">11</span>, <span class="number">15</span>],
-        [<span class="number">0</span>, <span class="number">5</span>, <span class="number">10</span>, <span class="number">15</span>],
-        [<span class="number">1</span>, <span class="number">6</span>, <span class="number">11</span>, <span class="number">12</span>],
-        [<span class="number">2</span>, <span class="number">7</span>,  <span class="number">8</span>, <span class="number">13</span>],
-        [<span class="number">3</span>, <span class="number">4</span>,  <span class="number">9</span>, <span class="number">14</span>],
-    ];
+<span class="kw">const</span> <span class="ident">CHACHA20_QRS</span>: [[<span class="ident">usize</span>; <span class="number">4</span>]; <span class="number">8</span>] <span class="op">=</span> [
+    [<span class="number">0</span>, <span class="number">4</span>, <span class="number">8</span>, <span class="number">12</span>],
+    [<span class="number">1</span>, <span class="number">5</span>, <span class="number">9</span>, <span class="number">13</span>],
+    [<span class="number">2</span>, <span class="number">6</span>, <span class="number">10</span>, <span class="number">14</span>],
+    [<span class="number">3</span>, <span class="number">7</span>, <span class="number">11</span>, <span class="number">15</span>],
+    [<span class="number">0</span>, <span class="number">5</span>, <span class="number">10</span>, <span class="number">15</span>],
+    [<span class="number">1</span>, <span class="number">6</span>, <span class="number">11</span>, <span class="number">12</span>],
+    [<span class="number">2</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">13</span>],
+    [<span class="number">3</span>, <span class="number">4</span>, <span class="number">9</span>, <span class="number">14</span>],
+];
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">chacha20_rows</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">s0</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rows</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">s0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">line</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>:<span class="ident">usize</span>, <span class="ident">y</span>:<span class="ident">usize</span>, <span class="ident">z</span>:<span class="ident">usize</span>, <span class="ident">k</span>:<span class="ident">u32</span><span class="op">|</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">line</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="ident">usize</span>, <span class="ident">y</span>: <span class="ident">usize</span>, <span class="ident">z</span>: <span class="ident">usize</span>, <span class="ident">k</span>: <span class="ident">u32</span><span class="op">|</span> {
         <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="ident">u32</span><span class="op">|</span> <span class="ident">F::from</span>(<span class="ident">t</span>);
         <span class="kw">let</span> <span class="ident">nyb</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="ident">u32</span>, <span class="ident">i</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">f</span>((<span class="ident">t</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span>)) <span class="op">&amp;</span> <span class="number">0b1111</span>);
 
@@ -726,16 +771,38 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
             <span class="kw">if</span> <span class="ident">k</span> <span class="op">==</span> <span class="number">7</span> { <span class="ident">y_xor_xprime</span>.<span class="ident">rotate_left</span>(<span class="number">16</span>) } <span class="kw">else</span> { <span class="ident">yprime</span> };
 
         <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
-            <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">x</span>]), <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">y</span>]), <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">z</span>]),
-            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>), 
-            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">0</span>), <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">1</span>), <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">2</span>), <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">3</span>), 
-            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">0</span>), <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">1</span>), <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">2</span>), <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">3</span>), 
+            <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">x</span>]),
+            <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">y</span>]),
+            <span class="ident">f</span>(<span class="ident">s</span>[<span class="ident">z</span>]),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">0</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">1</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">2</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">3</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">0</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">1</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">2</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">3</span>),
         ]);
         <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
-            <span class="ident">f</span>(<span class="ident">xprime</span>), <span class="ident">f</span>(<span class="ident">yprime_in_row</span>), <span class="ident">f</span>(<span class="ident">top_bit</span>),
-            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>), 
-            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">4</span>), <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">5</span>), <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">6</span>), <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">7</span>), 
-            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">4</span>), <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">5</span>), <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">6</span>), <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">7</span>), 
+            <span class="ident">f</span>(<span class="ident">xprime</span>),
+            <span class="ident">f</span>(<span class="ident">yprime_in_row</span>),
+            <span class="ident">f</span>(<span class="ident">top_bit</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>),
+            <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">4</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">5</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">6</span>),
+            <span class="ident">nyb</span>(<span class="ident">xprime</span>, <span class="number">7</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">4</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">5</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">6</span>),
+            <span class="ident">nyb</span>(<span class="ident">s</span>[<span class="ident">y</span>], <span class="number">7</span>),
         ]);
 
         <span class="ident">s</span>[<span class="ident">x</span>] <span class="op">=</span> <span class="ident">xprime</span>;
@@ -745,15 +812,37 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
             <span class="kw">let</span> <span class="ident">lo</span> <span class="op">=</span> <span class="op">|</span><span class="ident">t</span>: <span class="ident">u32</span>, <span class="ident">i</span>: <span class="ident">usize</span><span class="op">|</span> <span class="ident">f</span>((<span class="ident">t</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span>)) <span class="op">&amp;</span> <span class="number">1</span>);
             <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
                 <span class="ident">f</span>(<span class="ident">yprime</span>),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>), 
-                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>), <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>), <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>), <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>), 
-                <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">0</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">1</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">2</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">3</span>),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
             ]);
             <span class="ident">rows</span>.<span class="ident">push</span>(<span class="macro">vec!</span>[
                 <span class="ident">F::zero</span>(),
-                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>), <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>), 
-                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>), <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>), <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>), <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>), 
-                <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(), <span class="ident">F::zero</span>(),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>),
+                <span class="ident">nyb</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">4</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">5</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">6</span>),
+                <span class="ident">lo</span>(<span class="ident">y_xor_xprime</span>, <span class="number">7</span>),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
+                <span class="ident">F::zero</span>(),
             ]);
         }
     };
@@ -777,7 +866,7 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">line</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">z</span>, <span class="ident">k</span><span class="op">|</span> {
         <span class="ident">s</span>[<span class="ident">x</span>] <span class="op">=</span> <span class="ident">u32::wrapping_add</span>(<span class="ident">s</span>[<span class="ident">x</span>], <span class="ident">s</span>[<span class="ident">z</span>]);
         <span class="ident">s</span>[<span class="ident">y</span>] <span class="op">^</span><span class="op">=</span> <span class="ident">s</span>[<span class="ident">x</span>];
-        <span class="kw">let</span> <span class="ident">yy</span> : <span class="ident">u32</span> <span class="op">=</span> <span class="ident">s</span>[<span class="ident">y</span>];
+        <span class="kw">let</span> <span class="ident">yy</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">s</span>[<span class="ident">y</span>];
         <span class="ident">s</span>[<span class="ident">y</span>] <span class="op">=</span> <span class="ident">yy</span>.<span class="ident">rotate_left</span>(<span class="ident">k</span>);
     };
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">qr</span> <span class="op">=</span> <span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span><span class="op">|</span> {
@@ -801,19 +890,22 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
     <span class="comment">// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,</span>
     <span class="comment">// like y^x&#39; or x+z</span>
     <span class="kw">let</span> <span class="ident">chunks_over_2_rows</span> <span class="op">=</span> <span class="op">|</span><span class="ident">col_offset</span>: <span class="ident">usize</span><span class="op">|</span> -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> {
-        (<span class="number">0</span>..<span class="number">8</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">4</span> { <span class="ident">Curr</span> } <span class="kw">else</span> { <span class="ident">Next</span> };
-            <span class="ident">w</span>(<span class="ident">col_offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">%</span> <span class="number">4</span>), <span class="ident">r</span>)
-        }).<span class="ident">collect</span>()
+        (<span class="number">0</span>..<span class="number">8</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">4</span> { <span class="ident">Curr</span> } <span class="kw">else</span> { <span class="ident">Next</span> };
+                <span class="ident">w</span>(<span class="ident">col_offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">%</span> <span class="number">4</span>), <span class="ident">r</span>)
+            })
+            .<span class="ident">collect</span>()
     };
 
-    <span class="kw">let</span> <span class="ident">boolean</span> <span class="op">=</span> <span class="op">|</span><span class="ident">b</span> : <span class="kw-2">&amp;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">b</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">b</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">b</span>.<span class="ident">clone</span>();
+    <span class="kw">let</span> <span class="ident">boolean</span> <span class="op">=</span> <span class="op">|</span><span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">b</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">b</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">b</span>.<span class="ident">clone</span>();
 
     <span class="kw">let</span> <span class="ident">combine_nybbles</span> <span class="op">=</span> <span class="op">|</span><span class="ident">ns</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">|</span> -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="ident">ns</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>().<span class="ident">fold</span>(<span class="ident">E::zero</span>(),
-            <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, (<span class="ident">i</span>, <span class="ident">t</span>)<span class="op">|</span> {
+        <span class="ident">ns</span>.<span class="ident">into_iter</span>()
+            .<span class="ident">enumerate</span>()
+            .<span class="ident">fold</span>(<span class="ident">E::zero</span>(), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, (<span class="ident">i</span>, <span class="ident">t</span>)<span class="op">|</span> {
                 <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::from</span>(<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="number">4</span> <span class="op">*</span> <span class="ident">i</span>)) <span class="op">*</span> <span class="ident">t</span>
-            }) 
+            })
     };
 
     <span class="comment">// Constraints for the line L(x, x&#39;, y, y&#39;, z, k), where k = 4 * nybble_rotation</span>
@@ -848,7 +940,8 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
                 <span class="ident">combine_nybbles</span>(<span class="ident">y_nybbles</span>) <span class="op">-</span> <span class="ident">y</span>,
                 <span class="comment">// y&#39; = (y ^ x&#39;) &lt;&lt;&lt; 4 * nybble_rotation</span>
                 <span class="ident">combine_nybbles</span>(<span class="ident">y_xor_xprime_rotated</span>) <span class="op">-</span> <span class="ident">yprime</span>,
-            ])
+            ],
+        )
     };
 
     <span class="kw">let</span> <span class="ident">chacha_final</span> <span class="op">=</span> {
@@ -860,21 +953,19 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
 
         <span class="comment">// (y xor xprime) &lt;&lt;&lt; 7</span>
         <span class="comment">// per the comment at the top of the file</span>
-        <span class="kw">let</span> <span class="ident">y_xor_xprime_rotated</span> : <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
-            [<span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>].<span class="ident">iter</span>()
+        <span class="kw">let</span> <span class="ident">y_xor_xprime_rotated</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> [<span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>]
+            .<span class="ident">iter</span>()
             .<span class="ident">zip</span>([<span class="number">6</span>, <span class="number">7</span>, <span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>].<span class="ident">iter</span>())
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">i</span>, <span class="kw-2">&amp;</span><span class="ident">j</span>)<span class="op">|</span> -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-                <span class="ident">E::from</span>(<span class="number">8</span>) <span class="op">*</span> <span class="ident">low_bits</span>[<span class="ident">i</span>].<span class="ident">clone</span>() <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">C::Literal</span>(<span class="ident">one_half</span>)) <span class="op">*</span> (
-                   <span class="ident">y_xor_xprime_nybbles</span>[<span class="ident">j</span>].<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">low_bits</span>[<span class="ident">j</span>].<span class="ident">clone</span>())
-            }).<span class="ident">collect</span>();
+                <span class="ident">E::from</span>(<span class="number">8</span>) <span class="op">*</span> <span class="ident">low_bits</span>[<span class="ident">i</span>].<span class="ident">clone</span>()
+                    <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">C::Literal</span>(<span class="ident">one_half</span>))
+                        <span class="op">*</span> (<span class="ident">y_xor_xprime_nybbles</span>[<span class="ident">j</span>].<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">low_bits</span>[<span class="ident">j</span>].<span class="ident">clone</span>())
+            })
+            .<span class="ident">collect</span>();
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">low_bits</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">boolean</span>).<span class="ident">collect</span>();
-        <span class="ident">constraints</span>.<span class="ident">push</span>(
-            <span class="ident">combine_nybbles</span>(<span class="ident">y_xor_xprime_rotated</span>) <span class="op">-</span> <span class="ident">yprime</span>);
-        <span class="ident">E::combine_constraints</span>(
-            <span class="ident">alpha0</span>,
-            <span class="ident">constraints</span>)
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">low_bits</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">boolean</span>).<span class="ident">collect</span>();
+        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">combine_nybbles</span>(<span class="ident">y_xor_xprime_rotated</span>) <span class="op">-</span> <span class="ident">yprime</span>);
+        <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">constraints</span>)
     };
 
     <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="op">|</span><span class="ident">g</span>: <span class="ident">GateType</span><span class="op">|</span> <span class="ident">E::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">g</span>), <span class="ident">Curr</span>);
@@ -894,28 +985,30 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
         <span class="comment">// all the relevant values, and the xors, and then do</span>
         <span class="comment">// the shifting using a ChaChaFinal gate.</span>
         <span class="ident">index</span>(<span class="ident">ChaChaFinal</span>) <span class="op">*</span> <span class="ident">chacha_final</span>,
-    ].<span class="ident">into_iter</span>().<span class="ident">fold</span>(<span class="number">0</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>)
+    ]
+    .<span class="ident">into_iter</span>()
+    .<span class="ident">fold</span>(<span class="number">0</span>.<span class="ident">into</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>)
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
-    <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">EvaluationDomain</span>};
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::polynomials::chacha::constraint</span>;
     <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">polynomials</span>::{<span class="ident">chacha</span>, <span class="ident">lookup</span>},
+        <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">Expr</span>, <span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
         <span class="ident">gate</span>::{<span class="ident">LookupInfo</span>, <span class="ident">LookupsUsed</span>},
-        <span class="ident">expr</span>::{<span class="ident">PolishToken</span>, <span class="ident">Constants</span>, <span class="ident">Expr</span>, <span class="ident">Column</span>, <span class="ident">Linearization</span>},
         <span class="ident">gates::poseidon::ROUNDS_PER_ROW</span>,
         <span class="ident">nolookup::constraints</span>::{<span class="ident">zk_w3</span>, <span class="ident">ConstraintSystem</span>},
-        <span class="ident">nolookup::scalars</span>::{<span class="ident">ProofEvaluations</span>, <span class="ident">LookupEvaluations</span>},
+        <span class="ident">nolookup::scalars</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
+        <span class="ident">polynomials</span>::{<span class="ident">chacha</span>, <span class="ident">lookup</span>},
         <span class="ident">wires</span>::<span class="kw-2">*</span>,
     };
-    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp</span>::{<span class="ident">Fp</span> <span class="kw">as</span> <span class="ident">F</span>};
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::polynomials::chacha::constraint</span>;
-    <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
+    <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
+    <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-    <span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Formatter</span>, <span class="ident">Display</span>};
+    <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
+    <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
+    <span class="kw">use</span> <span class="ident">std::fmt</span>::{<span class="ident">Display</span>, <span class="ident">Formatter</span>};
 
     <span class="kw">struct</span> <span class="ident">Polish</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>);
     <span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Polish</span> {
@@ -927,7 +1020,7 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
                     <span class="ident">PolishToken::Add</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;+, &quot;</span>)<span class="question-mark">?</span>,
                     <span class="ident">PolishToken::Mul</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;*, &quot;</span>)<span class="question-mark">?</span>,
                     <span class="ident">PolishToken::Sub</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;-, &quot;</span>)<span class="question-mark">?</span>,
-                    <span class="ident">x</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>
+                    <span class="ident">x</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:?}, &quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>,
                 }
             }
             <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;]&quot;</span>)<span class="question-mark">?</span>;
@@ -966,54 +1059,57 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
         <span class="kw">let</span> <span class="ident">d</span> <span class="op">=</span> <span class="ident">D::new</span>(<span class="number">1024</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="ident">pt</span> <span class="op">=</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">eval</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> {
-            <span class="ident">ProofEvaluations</span> {
-                <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
-                <span class="ident">z</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
-                <span class="ident">generic_selector</span>: <span class="ident">F::zero</span>(),
-                <span class="ident">poseidon_selector</span>: <span class="ident">F::zero</span>(),
-                <span class="ident">lookup</span>:
-                    <span class="prelude-val">Some</span>(
-                        <span class="ident">LookupEvaluations</span> {
-                            <span class="ident">sorted</span>: 
-                                (<span class="number">0</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)).<span class="ident">collect</span>(),
-                            <span class="ident">aggreg</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                            <span class="ident">table</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>)
-                        })
-            }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">eval</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span> <span class="ident">ProofEvaluations</span> {
+            <span class="ident">w</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
+            <span class="ident">z</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+            <span class="ident">s</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)),
+            <span class="ident">generic_selector</span>: <span class="ident">F::zero</span>(),
+            <span class="ident">poseidon_selector</span>: <span class="ident">F::zero</span>(),
+            <span class="ident">lookup</span>: <span class="prelude-val">Some</span>(<span class="ident">LookupEvaluations</span> {
+                <span class="ident">sorted</span>: (<span class="number">0</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>))
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>))
+                    .<span class="ident">collect</span>(),
+                <span class="ident">aggreg</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+                <span class="ident">table</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+            }),
         };
         <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">eval</span>(), <span class="ident">eval</span>()];
 
-        <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span>
-            <span class="ident">Constants</span> {
-                <span class="ident">alpha</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">beta</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">gamma</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">joint_combiner</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
-                <span class="ident">endo_coefficient</span>: <span class="ident">F::zero</span>(),
-                <span class="ident">mds</span>: <span class="macro">vec!</span>[],
-            };
+        <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span> <span class="ident">Constants</span> {
+            <span class="ident">alpha</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+            <span class="ident">beta</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+            <span class="ident">gamma</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+            <span class="ident">joint_combiner</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+            <span class="ident">endo_coefficient</span>: <span class="ident">F::zero</span>(),
+            <span class="ident">mds</span>: <span class="macro">vec!</span>[],
+        };
 
         <span class="macro">assert_eq!</span>(
-            <span class="ident">linearized</span>.<span class="ident">constant_term</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>(),
-            <span class="ident">PolishToken::evaluate</span>(
-                <span class="kw-2">&amp;</span><span class="ident">linearized_polish</span>.<span class="ident">constant_term</span>,
-                <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>());
+            <span class="ident">linearized</span>
+                .<span class="ident">constant_term</span>
+                .<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>)
+                .<span class="ident">unwrap</span>(),
+            <span class="ident">PolishToken::evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">linearized_polish</span>.<span class="ident">constant_term</span>, <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>)
+                .<span class="ident">unwrap</span>()
+        );
 
-        <span class="ident">linearized</span>.<span class="ident">index_terms</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">linearized_polish</span>.<span class="ident">index_terms</span>.<span class="ident">iter</span>()).<span class="ident">for_each</span>(<span class="op">|</span>((<span class="ident">c1</span>, <span class="ident">e1</span>), (<span class="ident">c2</span>, <span class="ident">e2</span>))<span class="op">|</span> {
-            <span class="macro">assert_eq!</span>(<span class="ident">c1</span>, <span class="ident">c2</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;{:?} ?&quot;</span>, <span class="ident">c1</span>);
-            <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
-            <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">PolishToken::evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">e2</span>, <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
-            <span class="kw">if</span> <span class="ident">x1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">x2</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;e1: {}&quot;</span>, <span class="ident">e1</span>);
-                <span class="macro">println!</span>(<span class="string">&quot;e2: {}&quot;</span>, <span class="ident">Polish</span>(<span class="ident">e2</span>.<span class="ident">clone</span>()));
-                <span class="macro">println!</span>(<span class="string">&quot;Polish evaluation differed for {:?}: {} != {}&quot;</span>, <span class="ident">c1</span>, <span class="ident">x1</span>, <span class="ident">x2</span>);
-            } <span class="kw">else</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;{:?} OK&quot;</span>, <span class="ident">c1</span>);
-            }
-        });
+        <span class="ident">linearized</span>
+            .<span class="ident">index_terms</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">zip</span>(<span class="ident">linearized_polish</span>.<span class="ident">index_terms</span>.<span class="ident">iter</span>())
+            .<span class="ident">for_each</span>(<span class="op">|</span>((<span class="ident">c1</span>, <span class="ident">e1</span>), (<span class="ident">c2</span>, <span class="ident">e2</span>))<span class="op">|</span> {
+                <span class="macro">assert_eq!</span>(<span class="ident">c1</span>, <span class="ident">c2</span>);
+                <span class="macro">println!</span>(<span class="string">&quot;{:?} ?&quot;</span>, <span class="ident">c1</span>);
+                <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
+                <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">PolishToken::evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">e2</span>, <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
+                <span class="kw">if</span> <span class="ident">x1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">x2</span> {
+                    <span class="macro">println!</span>(<span class="string">&quot;e1: {}&quot;</span>, <span class="ident">e1</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;e2: {}&quot;</span>, <span class="ident">Polish</span>(<span class="ident">e2</span>.<span class="ident">clone</span>()));
+                    <span class="macro">println!</span>(<span class="string">&quot;Polish evaluation differed for {:?}: {} != {}&quot;</span>, <span class="ident">c1</span>, <span class="ident">x1</span>, <span class="ident">x2</span>);
+                } <span class="kw">else</span> {
+                    <span class="macro">println!</span>(<span class="string">&quot;{:?} OK&quot;</span>, <span class="ident">c1</span>);
+                }
+            });
 
         <span class="comment">/*
         assert_eq!(

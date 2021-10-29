@@ -223,23 +223,35 @@
 <span id="223">223</span>
 <span id="224">224</span>
 <span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This implements a complete EC addition gate.</span>
 <span class="doccomment">//! The layout is</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! 0   1   2   3   4   5   6   7      8   9      10      11   12   13   14</span>
 <span class="doccomment">//! x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! where </span>
+<span class="doccomment">//! where</span>
 <span class="doccomment">//! - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.</span>
 <span class="doccomment">//! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.</span>
 <span class="doccomment">//! The rest of the values are inaccessible from the permutation argument, but</span>
 <span class="doccomment">//! - `same_x` is a boolean that is true iff `x1 == x2`.</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>};
-<span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">FftField</span>, <span class="ident">One</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">E</span>, <span class="ident">Column</span>, <span class="ident">Cache</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">E</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires::COLUMNS</span>;
-
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>};
+<span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// This enforces that</span>
 <span class="doccomment">///</span>
@@ -249,10 +261,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.</span>
 <span class="kw">fn</span> <span class="ident">zero_check</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">z</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">z_inv</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">r</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="macro">vec!</span>[
-        <span class="ident">z_inv</span> <span class="op">*</span> <span class="ident">z</span>.<span class="ident">clone</span>() <span class="op">-</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">r</span>.<span class="ident">clone</span>()),
-        <span class="ident">r</span> <span class="op">*</span> <span class="ident">z</span>
-    ]
+    <span class="macro">vec!</span>[<span class="ident">z_inv</span> <span class="op">*</span> <span class="ident">z</span>.<span class="ident">clone</span>() <span class="op">-</span> (<span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">r</span>.<span class="ident">clone</span>()), <span class="ident">r</span> <span class="op">*</span> <span class="ident">z</span>]
 }
 
 <span class="doccomment">/// This function uses the constraints</span>
@@ -270,9 +279,7 @@
 <span class="doccomment">/// for doubling.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(
-    <span class="ident">alpha0</span>: <span class="ident">usize</span>,
-    ) -&gt; (<span class="ident">usize</span>, <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
     <span class="comment">// This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints</span>
     <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">E::cell</span>(<span class="ident">c</span>, <span class="ident">Curr</span>);
     <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">v</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>));
@@ -349,7 +356,7 @@
     <span class="comment">//</span>
     <span class="comment">// inf = same_x * (1 - Y) = same_x - Y same_x</span>
     <span class="comment">//</span>
-    <span class="comment">// rearranging gives </span>
+    <span class="comment">// rearranging gives</span>
     <span class="comment">//</span>
     <span class="comment">// Y same_x = same_x - inf</span>
     <span class="comment">//</span>
@@ -370,7 +377,7 @@
     <span class="comment">// (y2 - y1) inf_z = inf</span>
     <span class="comment">//</span>
     <span class="comment">// Let&#39;s check that these equations are correct.</span>
-    <span class="comment">// </span>
+    <span class="comment">//</span>
     <span class="comment">// Case 1: [y1 == y2]</span>
     <span class="comment">//   In this case the expected result is inf = 0, since for the result to be the point at</span>
     <span class="comment">//   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order</span>
@@ -393,7 +400,10 @@
     <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">y21</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">same_x</span> <span class="op">-</span> <span class="ident">inf</span>.<span class="ident">clone</span>()));
     <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">y21</span> <span class="op">*</span> <span class="ident">inf_z</span> <span class="op">-</span> <span class="ident">inf</span>);
 
-    (<span class="ident">res</span>.<span class="ident">len</span>(), <span class="ident">v</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CompleteAdd</span>)) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>))
+    (
+        <span class="ident">res</span>.<span class="ident">len</span>(),
+        <span class="ident">v</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CompleteAdd</span>)) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>),
+    )
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -420,14 +430,22 @@
 
         <span class="kw">if</span> <span class="ident">same_x</span> <span class="op">==</span> <span class="ident">F::one</span>() {
             <span class="kw">let</span> <span class="ident">x1_squared</span> <span class="op">=</span> <span class="ident">x1</span>.<span class="ident">square</span>();
-            <span class="macro">ensure_eq!</span>((<span class="ident">s</span> <span class="op">+</span> <span class="ident">s</span>) <span class="op">*</span> <span class="ident">y1</span>, (<span class="ident">x1_squared</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x1_squared</span>), <span class="string">&quot;double s wrong&quot;</span>);
+            <span class="macro">ensure_eq!</span>(
+                (<span class="ident">s</span> <span class="op">+</span> <span class="ident">s</span>) <span class="op">*</span> <span class="ident">y1</span>,
+                (<span class="ident">x1_squared</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">x1_squared</span>),
+                <span class="string">&quot;double s wrong&quot;</span>
+            );
         } <span class="kw">else</span> {
             <span class="macro">ensure_eq!</span>((<span class="ident">x2</span> <span class="op">-</span> <span class="ident">x1</span>) <span class="op">*</span> <span class="ident">s</span>, <span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>, <span class="string">&quot;add s wrong&quot;</span>);
         }
 
         <span class="macro">ensure_eq!</span>(<span class="ident">s</span>.<span class="ident">square</span>(), <span class="ident">x1</span> <span class="op">+</span> <span class="ident">x2</span> <span class="op">+</span> <span class="ident">x3</span>, <span class="string">&quot;x3 wrong&quot;</span>);
         <span class="kw">let</span> <span class="ident">expected_y3</span> <span class="op">=</span> <span class="ident">s</span> <span class="op">*</span> (<span class="ident">x1</span> <span class="op">-</span> <span class="ident">x3</span>) <span class="op">-</span> <span class="ident">y1</span>;
-        <span class="macro">ensure_eq!</span>(<span class="ident">y3</span>, <span class="ident">expected_y3</span>, <span class="macro">format!</span>(<span class="string">&quot;y3 wrong {}: (expected {}, got {})&quot;</span>, <span class="ident">row</span>, <span class="ident">expected_y3</span>, <span class="ident">y3</span>));
+        <span class="macro">ensure_eq!</span>(
+            <span class="ident">y3</span>,
+            <span class="ident">expected_y3</span>,
+            <span class="macro">format!</span>(<span class="string">&quot;y3 wrong {}: (expected {}, got {})&quot;</span>, <span class="ident">row</span>, <span class="ident">expected_y3</span>, <span class="ident">y3</span>)
+        );
 
         <span class="kw">let</span> <span class="ident">not_same_y</span> <span class="op">=</span> <span class="ident">F::from</span>((<span class="ident">y1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">y2</span>) <span class="kw">as</span> <span class="ident">u64</span>);
         <span class="macro">ensure_eq!</span>(<span class="ident">inf</span>, <span class="ident">same_x</span> <span class="op">*</span> <span class="ident">not_same_y</span>, <span class="string">&quot;inf wrong&quot;</span>);
@@ -435,14 +453,22 @@
         <span class="kw">if</span> <span class="ident">y1</span> <span class="op">==</span> <span class="ident">y2</span> {
             <span class="macro">ensure_eq!</span>(<span class="ident">inf_z</span>, <span class="ident">F::zero</span>(), <span class="string">&quot;wrong inf z (y1 == y2)&quot;</span>);
         } <span class="kw">else</span> {
-            <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">same_x</span> <span class="op">==</span> <span class="ident">F::one</span>() { (<span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>() } <span class="kw">else</span> { <span class="ident">F::zero</span>() };
+            <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">same_x</span> <span class="op">==</span> <span class="ident">F::one</span>() {
+                (<span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>()
+            } <span class="kw">else</span> {
+                <span class="ident">F::zero</span>()
+            };
             <span class="macro">ensure_eq!</span>(<span class="ident">inf_z</span>, <span class="ident">a</span>, <span class="string">&quot;wrong inf z (y1 != y2)&quot;</span>);
         }
 
         <span class="kw">if</span> <span class="ident">x1</span> <span class="op">==</span> <span class="ident">x2</span> {
             <span class="macro">ensure_eq!</span>(<span class="ident">x21_inv</span>, <span class="ident">F::zero</span>(), <span class="string">&quot;wrong x21_inv (x1 == x2)&quot;</span>);
         } <span class="kw">else</span> {
-            <span class="macro">ensure_eq!</span>(<span class="ident">x21_inv</span>, (<span class="ident">x2</span> <span class="op">-</span> <span class="ident">x1</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>(), <span class="string">&quot;wrong x21_inv (x1 != x2)&quot;</span>);
+            <span class="macro">ensure_eq!</span>(
+                <span class="ident">x21_inv</span>,
+                (<span class="ident">x2</span> <span class="op">-</span> <span class="ident">x1</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>(),
+                <span class="string">&quot;wrong x21_inv (x1 != x2)&quot;</span>
+            );
         }
 
         <span class="prelude-val">Ok</span>(())

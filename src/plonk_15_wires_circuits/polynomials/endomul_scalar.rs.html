@@ -336,7 +336,6 @@
 <span id="336">336</span>
 <span id="337">337</span>
 <span id="338">338</span>
-<span id="339">339</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">E</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">nolookup::constraints::ConstraintSystem</span>, <span class="ident">wires::COLUMNS</span>};
@@ -529,7 +528,6 @@
         <span class="ident">w</span>[<span class="number">3</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">b</span>;
 
         <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">crumb_bits</span>) <span class="kw">in</span> <span class="ident">row_bits</span>.<span class="ident">chunks</span>(<span class="number">2</span>).<span class="ident">enumerate</span>() {
-
             <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">crumb_bits</span>[<span class="number">1</span>];
             <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">crumb_bits</span>[<span class="number">0</span>];
 

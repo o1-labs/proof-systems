@@ -689,6 +689,9 @@
 <span id="689">689</span>
 <span id="690">690</span>
 <span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -1108,7 +1111,10 @@ This source file implements Plonk circuit constraint primitive.
         )
         .<span class="ident">interpolate</span>();
         <span class="kw">let</span> <span class="ident">endomul_scalarm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-            <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">F::from</span>((<span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::EndomulScalar</span>) <span class="kw">as</span> <span class="ident">u64</span>)).<span class="ident">collect</span>(),
+            <span class="ident">gates</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">F::from</span>((<span class="ident">gate</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::EndomulScalar</span>) <span class="kw">as</span> <span class="ident">u64</span>))
+                .<span class="ident">collect</span>(),
             <span class="ident">domain</span>.<span class="ident">d1</span>,
         )
         .<span class="ident">interpolate</span>();

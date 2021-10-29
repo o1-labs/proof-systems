@@ -170,14 +170,19 @@
 <span id="170">170</span>
 <span id="171">171</span>
 <span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Posedon constraint polynomials.
 
 *****************************************************************************************************************/</span>
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">E</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
-<span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gates::poseidon</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::constraints::ConstraintSystem</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::scalars::ProofEvaluations</span>;
@@ -186,8 +191,8 @@ This source file implements Posedon constraint polynomials.
 <span class="kw">use</span> <span class="ident">ark_poly::univariate::DensePolynomial</span>;
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
-<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">SpongeConstants</span>, <span class="ident">PlonkSpongeConstants15W</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">E</span>, <span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">Cache</span>};
+<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">sbox</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstants15W</span>, <span class="ident">SpongeConstants</span>};
+<span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// An equation of the form `(curr | next)[i] = round(curr[j])`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RoundEquation</span> {
@@ -246,20 +251,26 @@ This source file implements Posedon constraint polynomials.
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idx</span> <span class="op">=</span> <span class="number">0</span>;
 
-    <span class="kw">let</span> <span class="ident">mds</span> : <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span>
-        (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">row</span><span class="op">|</span> {
-            (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">ConstantExpr::Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> })
+    <span class="kw">let</span> <span class="ident">mds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>)
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">row</span><span class="op">|</span> {
+            (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">ConstantExpr::Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> })
                 .<span class="ident">collect</span>()
-        }).<span class="ident">collect</span>();
+        })
+        .<span class="ident">collect</span>();
 
     <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">ROUND_EQUATIONS</span>.<span class="ident">iter</span>() {
-        <span class="kw">let</span> <span class="kw-2">&amp;</span><span class="ident">RoundEquation</span> { <span class="ident">source</span>, <span class="ident">target</span>: (<span class="ident">target_row</span>, <span class="ident">target_round</span>) } <span class="op">=</span> <span class="ident">e</span>;
-        <span class="kw">let</span> <span class="ident">sboxed</span> : <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
-            <span class="ident">round_to_cols</span>(<span class="ident">source</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="kw-2">&amp;</span><span class="ident">RoundEquation</span> {
+            <span class="ident">source</span>,
+            <span class="ident">target</span>: (<span class="ident">target_row</span>, <span class="ident">target_round</span>),
+        } <span class="op">=</span> <span class="ident">e</span>;
+        <span class="kw">let</span> <span class="ident">sboxed</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="ident">source</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
                 <span class="ident">cache</span>.<span class="ident">cache</span>(
-                    <span class="ident">E::cell</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>), <span class="ident">Curr</span>)
-                    .<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstants15W::SPONGE_BOX</span>))
-            }).<span class="ident">collect</span>();
+                    <span class="ident">E::cell</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>), <span class="ident">Curr</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstants15W::SPONGE_BOX</span>),
+                )
+            })
+            .<span class="ident">collect</span>();
 
         <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">round_to_cols</span>(<span class="ident">target_round</span>).<span class="ident">enumerate</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">j</span>, <span class="ident">col</span>)<span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">E::cell</span>(<span class="ident">Column::Coefficient</span>(<span class="ident">idx</span>), <span class="ident">Curr</span>);
@@ -267,14 +278,13 @@ This source file implements Posedon constraint polynomials.
             <span class="ident">idx</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
 
             <span class="ident">E::cell</span>(<span class="ident">Column::Witness</span>(<span class="ident">col</span>), <span class="ident">target_row</span>)
-                <span class="op">-</span>
-            <span class="ident">sboxed</span>.<span class="ident">iter</span>()
-            .<span class="ident">zip</span>(<span class="ident">mds</span>[<span class="ident">j</span>].<span class="ident">iter</span>())
-            .<span class="ident">fold</span>(<span class="ident">rc</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">x</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>())
+                <span class="op">-</span> <span class="ident">sboxed</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">zip</span>(<span class="ident">mds</span>[<span class="ident">j</span>].<span class="ident">iter</span>())
+                    .<span class="ident">fold</span>(<span class="ident">rc</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">x</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>())
         }));
     }
-    <span class="ident">E::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::Poseidon</span>), <span class="ident">Curr</span>) <span class="op">*</span>
-    <span class="ident">E::combine_constraints</span>(<span class="number">0</span>, <span class="ident">res</span>)
+    <span class="ident">E::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::Poseidon</span>), <span class="ident">Curr</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="number">0</span>, <span class="ident">res</span>)
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
