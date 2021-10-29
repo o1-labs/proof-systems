@@ -1,9 +1,7 @@
-use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
-    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
+    commitment::{ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
@@ -13,7 +11,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
+    poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use plonk_15_wires_circuits::wires::{Wire, COLUMNS};
@@ -21,8 +19,6 @@ use plonk_15_wires_circuits::{
     gate::CircuitGate, nolookup::constraints::ConstraintSystem, polynomials::chacha,
 };
 use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
-use rand::{rngs::StdRng, SeedableRng};
-use std::{io, io::Write};
 use std::{sync::Arc, time::Instant};
 
 // aliases
@@ -86,10 +82,10 @@ fn chacha_prover() {
     for _ in 0..num_chachas {
         rows.extend(chacha::chacha20_rows::<Fp>(s0.clone()))
     }
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
-    for (i, r) in rows.into_iter().enumerate() {
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
+    for r in rows.into_iter() {
         for (col, c) in r.into_iter().enumerate() {
-            witness[col][i] = c;
+            witness[col].push(c);
         }
     }
 
@@ -97,7 +93,7 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![])
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
             .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
