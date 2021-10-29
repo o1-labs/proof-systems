@@ -610,7 +610,6 @@
 <span id="610">610</span>
 <span id="611">611</span>
 <span id="612">612</span>
-<span id="613">613</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements zk-proof batch verifier functionality.
@@ -1151,20 +1150,29 @@ This source file implements zk-proof batch verifier functionality.
             <span class="comment">// public input commitment</span>
             <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="ident">p_comm</span>, <span class="ident">p_eval</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(), <span class="prelude-val">None</span>));
 
+            <span class="comment">// ft commitment (chunks of it)</span>
+            <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="kw-2">&amp;</span><span class="ident">ft_comm</span>, <span class="macro">vec!</span>[<span class="ident">ft_eval0</span>, <span class="ident">ft_eval1</span>], <span class="prelude-val">None</span>));
+
+            <span class="comment">// permutation commitment</span>
+            <span class="ident">polynomials</span>.<span class="ident">push</span>((
+                <span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">commitments</span>.<span class="ident">z_comm</span>,
+                <span class="ident">proof</span>.<span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">z</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                <span class="prelude-val">None</span>,
+            ));
+
+            <span class="comment">// index commitments that use the coefficients</span>
+            <span class="ident">polynomials</span>.<span class="ident">push</span>((
+                <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">generic_comm</span>,
+                <span class="ident">proof</span>.<span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">generic_selector</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                <span class="prelude-val">None</span>,
+            ));
+            <span class="ident">polynomials</span>.<span class="ident">push</span>((
+                <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">psm_comm</span>,
+                <span class="ident">proof</span>.<span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">poseidon_selector</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
+                <span class="prelude-val">None</span>,
+            ));
+
             <span class="comment">// witness commitments</span>
-            <span class="comment">/*
-            let mut w_comm = vec![];
-            for w in proof.commitments.w_comm.iter() {
-                let mut ee = vec![];
-                for i in 0..COLUMNS {
-                    for e in proof.evals {
-                        ee.push(e.w[i])
-                    }
-                }
-                let ee = e.
-                w_comm.push((w, ee, None));
-            }
-            */</span>
             <span class="ident">polynomials</span>.<span class="ident">extend</span>(
                 <span class="ident">proof</span>
                     .<span class="ident">commitments</span>
@@ -1180,13 +1188,6 @@ This source file implements zk-proof batch verifier functionality.
                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
             );
 
-            <span class="comment">// permutation commitment</span>
-            <span class="ident">polynomials</span>.<span class="ident">push</span>((
-                <span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">commitments</span>.<span class="ident">z_comm</span>,
-                <span class="ident">proof</span>.<span class="ident">evals</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span>.<span class="ident">z</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
-                <span class="prelude-val">None</span>,
-            ));
-
             <span class="comment">// sigma commitments</span>
             <span class="ident">polynomials</span>.<span class="ident">extend</span>(
                 <span class="ident">index</span>
@@ -1201,9 +1202,6 @@ This source file implements zk-proof batch verifier functionality.
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">e</span>)<span class="op">|</span> (<span class="ident">c</span>, <span class="ident">e</span>.<span class="ident">clone</span>(), <span class="prelude-val">None</span>))
                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>(),
             );
-
-            <span class="comment">// ft commitment (chunks of it)</span>
-            <span class="ident">polynomials</span>.<span class="ident">push</span>((<span class="kw-2">&amp;</span><span class="ident">ft_comm</span>, <span class="macro">vec!</span>[<span class="ident">ft_eval0</span>, <span class="ident">ft_eval1</span>], <span class="prelude-val">None</span>));
 
             <span class="comment">// prepare for the opening proof verification</span>
             <span class="kw">let</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">group_gen</span>;
