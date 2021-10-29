@@ -508,6 +508,8 @@
 <span id="508">508</span>
 <span id="509">509</span>
 <span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements the cha-cha constraints, which are rather simple
@@ -989,6 +991,8 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
                 <span class="ident">beta</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
                 <span class="ident">gamma</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
                 <span class="ident">joint_combiner</span>: <span class="ident">F::rand</span>(<span class="ident">rng</span>),
+                <span class="ident">endo_coefficient</span>: <span class="ident">F::zero</span>(),
+                <span class="ident">mds</span>: <span class="macro">vec!</span>[],
             };
 
         <span class="macro">assert_eq!</span>(

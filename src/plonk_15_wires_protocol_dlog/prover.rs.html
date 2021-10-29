@@ -863,6 +863,8 @@
 <span id="863">863</span>
 <span id="864">864</span>
 <span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -1236,6 +1238,8 @@ This source file implements prover&#39;s zk-proof primitive.
                         <span class="ident">beta</span>: <span class="ident">beta</span>,
                         <span class="ident">gamma</span>: <span class="ident">gamma</span>,
                         <span class="ident">joint_combiner</span>,
+                        <span class="ident">endo_coefficient</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">endo</span>,
+                        <span class="ident">mds</span>: <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">mds</span>.<span class="ident">clone</span>(),
                     },
                 <span class="ident">witness</span>: <span class="kw-2">&amp;</span><span class="ident">lagrange</span>.<span class="ident">d8</span>.<span class="ident">this</span>.<span class="ident">w</span>,
                 <span class="ident">coefficient</span>: <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">coefficients8</span>,
@@ -1270,11 +1274,11 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="ident">t8</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">mul8</span>;
         <span class="ident">drop</span>(<span class="ident">mul8</span>);
         <span class="comment">// endoscaling</span>
-        <span class="kw">let</span> <span class="ident">emul8</span> <span class="op">=</span> <span class="ident">endosclmul::constraint</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">endo</span>, <span class="number">2</span> <span class="op">+</span> <span class="ident">range::ENDML</span>.<span class="ident">start</span>).<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
+        <span class="kw">let</span> <span class="ident">emul8</span> <span class="op">=</span> <span class="ident">endosclmul::constraint</span>(<span class="number">2</span> <span class="op">+</span> <span class="ident">range::ENDML</span>.<span class="ident">start</span>).<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
         <span class="ident">t8</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">emul8</span>;
         <span class="ident">drop</span>(<span class="ident">emul8</span>);
         <span class="comment">// poseidon</span>
-        <span class="kw">let</span> <span class="ident">pos8</span> <span class="op">=</span> <span class="ident">poseidon::constraint</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>).<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
+        <span class="kw">let</span> <span class="ident">pos8</span> <span class="op">=</span> <span class="ident">poseidon::constraint</span>().<span class="ident">evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
         <span class="ident">t8</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">pos8</span>;
         <span class="ident">drop</span>(<span class="ident">pos8</span>);
 

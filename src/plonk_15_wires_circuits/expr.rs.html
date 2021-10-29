@@ -1676,6 +1676,29 @@
 <span id="1676">1676</span>
 <span id="1677">1677</span>
 <span id="1678">1678</span>
+<span id="1679">1679</span>
+<span id="1680">1680</span>
+<span id="1681">1681</span>
+<span id="1682">1682</span>
+<span id="1683">1683</span>
+<span id="1684">1684</span>
+<span id="1685">1685</span>
+<span id="1686">1686</span>
+<span id="1687">1687</span>
+<span id="1688">1688</span>
+<span id="1689">1689</span>
+<span id="1690">1690</span>
+<span id="1691">1691</span>
+<span id="1692">1692</span>
+<span id="1693">1693</span>
+<span id="1694">1694</span>
+<span id="1695">1695</span>
+<span id="1696">1696</span>
+<span id="1697">1697</span>
+<span id="1698">1698</span>
+<span id="1699">1699</span>
+<span id="1700">1700</span>
+<span id="1701">1701</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::scalars</span>::{<span class="ident">ProofEvaluations</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::constraints</span>::{<span class="ident">eval_vanishes_on_last_4_rows</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">PrimeField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>, <span class="ident">One</span>};
@@ -1703,6 +1726,10 @@
     <span class="doccomment">/// The challenge joint_combiner which is used to combine</span>
     <span class="doccomment">/// joint lookup tables.</span>
     <span class="kw">pub</span> <span class="ident">joint_combiner</span>: <span class="ident">F</span>,
+    <span class="doccomment">/// The endomorphism coefficient</span>
+    <span class="kw">pub</span> <span class="ident">endo_coefficient</span>: <span class="ident">F</span>,
+    <span class="doccomment">/// The MDS matrix</span>
+    <span class="kw">pub</span> <span class="ident">mds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// The polynomials specific to the lookup argument.</span>
@@ -1834,6 +1861,11 @@
     <span class="ident">Beta</span>,
     <span class="ident">Gamma</span>,
     <span class="ident">JointCombiner</span>,
+    <span class="comment">// TODO: EndoCoefficient and Mds differ from the other 4 base constants in</span>
+    <span class="comment">// that they are known at compile time. This should be extracted out into two</span>
+    <span class="comment">// separate constant expression types.</span>
+    <span class="ident">EndoCoefficient</span>,
+    <span class="ident">Mds</span> { <span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span> },
     <span class="ident">Literal</span>(<span class="ident">F</span>),
     <span class="ident">Pow</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">usize</span>),
     <span class="comment">// TODO: I think having separate Add, Sub, Mul constructors is faster than</span>
@@ -1857,6 +1889,12 @@
             },
             <span class="ident">ConstantExpr::JointCombiner</span> =&gt; {
                 <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::JointCombiner</span>)
+            },
+            <span class="ident">ConstantExpr::EndoCoefficient</span> =&gt; {
+                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::EndoCoefficient</span>)
+            },
+            <span class="ident">ConstantExpr::Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; {
+                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::Mds</span> { <span class="ident">row</span>: <span class="kw-2">*</span><span class="ident">row</span>, <span class="ident">col</span>: <span class="kw-2">*</span><span class="ident">col</span> })
             },
             <span class="ident">ConstantExpr::Add</span>(<span class="ident">x</span>, <span class="ident">y</span>) =&gt; {
                 <span class="ident">x</span>.<span class="ident">as_ref</span>().<span class="ident">to_polish_</span>(<span class="ident">res</span>);
@@ -1905,6 +1943,8 @@
             <span class="ident">Beta</span> =&gt; <span class="ident">c</span>.<span class="ident">beta</span>,
             <span class="ident">Gamma</span> =&gt; <span class="ident">c</span>.<span class="ident">gamma</span>,
             <span class="ident">JointCombiner</span> =&gt; <span class="ident">c</span>.<span class="ident">joint_combiner</span>,
+            <span class="ident">EndoCoefficient</span> =&gt; <span class="ident">c</span>.<span class="ident">endo_coefficient</span>,
+            <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="ident">c</span>.<span class="ident">mds</span>[<span class="kw-2">*</span><span class="ident">row</span>][<span class="kw-2">*</span><span class="ident">col</span>],
             <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="kw-2">*</span><span class="ident">x</span>,
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">p</span>) =&gt; <span class="ident">x</span>.<span class="ident">value</span>(<span class="ident">c</span>).<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">p</span> <span class="kw">as</span> <span class="ident">u64</span>]),
             <span class="ident">Mul</span>(<span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="ident">x</span>.<span class="ident">value</span>(<span class="ident">c</span>) <span class="op">*</span> <span class="ident">y</span>.<span class="ident">value</span>(<span class="ident">c</span>),
@@ -2012,6 +2052,8 @@
     <span class="ident">Beta</span>,
     <span class="ident">Gamma</span>,
     <span class="ident">JointCombiner</span>,
+    <span class="ident">EndoCoefficient</span>,
+    <span class="ident">Mds</span> { <span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">col</span>: <span class="ident">usize</span> },
     <span class="ident">Literal</span>(<span class="ident">F</span>),
     <span class="ident">Cell</span>(<span class="ident">Variable</span>),
     <span class="ident">Dup</span>,
@@ -2059,6 +2101,8 @@
                 <span class="ident">Beta</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">beta</span>),
                 <span class="ident">Gamma</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">gamma</span>),
                 <span class="ident">JointCombiner</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">joint_combiner</span>),
+                <span class="ident">EndoCoefficient</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">endo_coefficient</span>),
+                <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">c</span>.<span class="ident">mds</span>[<span class="kw-2">*</span><span class="ident">row</span>][<span class="kw-2">*</span><span class="ident">col</span>]),
                 <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">eval_vanishes_on_last_4_rows</span>(<span class="ident">d</span>, <span class="ident">pt</span>)),
                 <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt;
                     <span class="ident">stack</span>.<span class="ident">push</span>(<span class="ident">d</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">pt</span>) <span class="op">/</span> (<span class="ident">pt</span> <span class="op">-</span> <span class="ident">d</span>.<span class="ident">group_gen</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">i</span> <span class="kw">as</span> <span class="ident">u64</span>]))),
@@ -3306,6 +3350,8 @@
             <span class="ident">Beta</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;beta&quot;</span>)<span class="question-mark">?</span>,
             <span class="ident">Gamma</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;gamma&quot;</span>)<span class="question-mark">?</span>,
             <span class="ident">JointCombiner</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;joint_combiner&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">EndoCoefficient</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;endo_coefficient&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;mds({}, {})&quot;</span>, <span class="ident">row</span>, <span class="ident">col</span>)<span class="question-mark">?</span>,
             <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, <span class="ident">x</span>.<span class="ident">into_repr</span>())<span class="question-mark">?</span>,
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">n</span>) =&gt; {
                 <span class="kw">match</span> <span class="ident">x</span>.<span class="ident">as_ref</span>() {
