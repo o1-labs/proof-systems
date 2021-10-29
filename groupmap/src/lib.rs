@@ -88,18 +88,14 @@ fn potential_xs<G: SWModelParameters>(
 /// TODO: what about sign?
 pub fn get_y<G: SWModelParameters>(x: G::BaseField) -> Option<G::BaseField> {
     let fx = curve_eqn::<G>(x);
-    if let Some(y) = fx.sqrt() {
-        Some(y)
-    } else {
-        None
-    }
+    fx.sqrt()
 }
 
 fn get_xy<G: SWModelParameters>(
     params: &BWParameters<G>,
     t: G::BaseField,
 ) -> (G::BaseField, G::BaseField) {
-    let xvec = potential_xs(&params, t);
+    let xvec = potential_xs(params, t);
     for x in xvec.iter() {
         match get_y::<G>(*x) {
             Some(y) => return (*x, y),
@@ -117,7 +113,7 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
         let (u, fu) = find_first(G::BaseField::one(), |u| {
             let fu: G::BaseField = curve_eqn::<G>(u);
             if fu.is_zero() {
-                return None;
+                None
             } else {
                 Some((u, fu))
             }
@@ -153,13 +149,13 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
             })
             .collect();
 
-        let mut alphas: Vec<G::BaseField> = t2_alpha_invs.iter().map(|(_, a)| a.clone()).collect();
+        let mut alphas: Vec<G::BaseField> = t2_alpha_invs.iter().map(|(_, a)| *a).collect();
         ark_ff::batch_inversion::<G::BaseField>(&mut alphas);
 
         let potential_xs = t2_alpha_invs
             .iter()
             .zip(alphas)
-            .map(|((t2, _), alpha)| potential_xs_helper(self, t2.clone(), alpha.clone()));
+            .map(|((t2, _), alpha)| potential_xs_helper(self, *t2, alpha));
         potential_xs.collect()
     }
 

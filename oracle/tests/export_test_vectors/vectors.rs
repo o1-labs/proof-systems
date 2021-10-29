@@ -46,8 +46,8 @@ pub struct TestVector {
 fn poseidon(input: &[Fp]) -> Fp {
     let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
     s.absorb(input);
-    let output = s.squeeze();
-    output
+    
+    s.squeeze()
 }
 
 // generates a vector of `length` field elements

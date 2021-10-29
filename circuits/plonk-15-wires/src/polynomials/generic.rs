@@ -63,7 +63,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_scalars(w_zeta: &[F; COLUMNS], generic_zeta: F) -> Vec<F> {
         let mut res = vec![generic_zeta * w_zeta[0] * &w_zeta[1]];
         res.extend((0..GENERICS).map(|i| generic_zeta * w_zeta[i]));
-        return res;
+        res
     }
 
     /// generic constraint linearization poly contribution computation
@@ -122,10 +122,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             let qc = self.coefficientsm[CONSTANT_COEFF].evaluate(&elem);
 
             // qc check
-            if qc != F::zero() {
-                if -qc != values[0].0.evaluate(&elem) {
-                    return false;
-                }
+            if qc != F::zero() && -qc != values[0].0.evaluate(&elem) {
+                return false;
             }
 
             //

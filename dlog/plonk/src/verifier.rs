@@ -47,7 +47,7 @@ where
 
                 (0..2)
                     .map(|i| {
-                        let full = b_poly(&chals, evaluation_points[i]);
+                        let full = b_poly(chals, evaluation_points[i]);
                         if index.max_poly_size == b_len {
                             return vec![full];
                         }
@@ -56,7 +56,7 @@ where
                             .map(|j| {
                                 let b_j = match &b {
                                     None => {
-                                        let t = b_poly_coefficients(&chals);
+                                        let t = b_poly_coefficients(chals);
                                         let res = t[j];
                                         b = Some(t);
                                         res
@@ -158,7 +158,7 @@ where
 
         // evaluate public input polynomials
         // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
-        let p_eval = if self.public.len() > 0 {
+        let p_eval = if !self.public.is_empty() {
             [
                 vec![
                     (self
@@ -213,10 +213,10 @@ where
         let combined_inner_product = {
             let mut es: Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys
                 .iter()
-                .map(|(_, e)| (e.iter().map(|x| x).collect(), None))
+                .map(|(_, e)| (e.iter().collect(), None))
                 .collect();
             es.extend(vec![
-                (p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+                (p_eval.iter().collect::<Vec<_>>(), None),
                 (self.evals.iter().map(|e| &e.l).collect::<Vec<_>>(), None),
                 (self.evals.iter().map(|e| &e.r).collect::<Vec<_>>(), None),
                 (self.evals.iter().map(|e| &e.o).collect::<Vec<_>>(), None),
@@ -266,7 +266,7 @@ where
         group_map: &G::Map,
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError> {
-        if proofs.len() == 0 {
+        if proofs.is_empty() {
             return Ok(true);
         }
 
@@ -279,7 +279,6 @@ where
                     &lgr_comm
                         .iter()
                         .take(proof.public.len())
-                        .map(|l| l)
                         .collect(),
                     &proof.public.iter().map(|s| -*s).collect(),
                 );
@@ -353,7 +352,7 @@ where
 
                 // check linearization polynomial evaluation consistency
                 if (evals[0].f
-                    + &(if p_eval[0].len() > 0 {
+                    + &(if !p_eval[0].is_empty() {
                         p_eval[0][0]
                     } else {
                         Fr::<G>::zero()
@@ -389,11 +388,11 @@ where
                 )| {
                     let mut polynoms = polys
                         .iter()
-                        .map(|(comm, evals)| (comm, evals.iter().map(|x| x).collect(), None))
+                        .map(|(comm, evals)| (comm, evals.iter().collect(), None))
                         .collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
                     polynoms.extend(vec![
-                        (p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None),
+                        (p_comm, p_eval.iter().collect::<Vec<_>>(), None),
                         (
                             &proof.commitments.l_comm,
                             proof.evals.iter().map(|e| &e.l).collect::<Vec<_>>(),

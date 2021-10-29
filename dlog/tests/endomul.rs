@@ -61,7 +61,7 @@ fn endomul_test() {
 
         let row = rows_per_scalar * s + chunks;
         gates.push(CircuitGate {
-            row: row,
+            row,
             typ: GateType::Zero,
             wires: Wire::new(row),
             c: vec![],
@@ -109,7 +109,7 @@ fn endomul_test() {
             (acc.x, acc.y)
         };
 
-        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).map(|x| *x).rev().collect();
+        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).copied().rev().collect();
 
         let res = endosclmul::witness(
             &mut witness,

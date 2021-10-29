@@ -204,7 +204,7 @@ impl<F: FftField> LookupInfo<F> {
 
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
                 if let Some(v) = self.kinds_map.get(&(typ, *r)) {
-                    if self.kinds[*v].len() > 0 {
+                    if !self.kinds[*v].is_empty() {
                         return Some(LookupsUsed::Joint);
                     } else {
                         lookups_used = Some(LookupsUsed::Single);
@@ -341,10 +341,10 @@ impl GateType {
         let lookup_kinds = Self::lookup_kinds::<F>();
         for (i, (_, locs)) in lookup_kinds.into_iter().enumerate() {
             for (g, r) in locs {
-                if res.contains_key(&(g, r)) {
-                    panic!("Multiple lookup patterns asserted on same row.")
+                if let std::collections::hash_map::Entry::Vacant(e) = res.entry((g, r)) {
+                    e.insert(i);
                 } else {
-                    res.insert((g, r), i);
+                    panic!("Multiple lookup patterns asserted on same row.")
                 }
             }
         }

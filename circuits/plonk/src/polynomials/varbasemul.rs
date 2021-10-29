@@ -23,7 +23,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
 
         // 2*xP - λ1^2 + xT
-        let tmp = &(&polys.d8.this.l.scale((2 as u64).into()) - &polys.d8.this.r.square())
+        let tmp = &(&polys.d8.this.l.scale(2_u64.into()) - &polys.d8.this.r.square())
             + &polys.d8.next.r;
 
         (
@@ -32,11 +32,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             +
             // (xP - xT) × λ1 - yP + (yT × (2*b - 1))
             &(&(&(&(&polys.d4.next.l - &polys.d4.this.l) * &polys.d4.next.r) - &polys.d4.next.o) +
-                &(&(polys.d4.this.o) * &(&polys.d4.this.r.scale((2 as u64).into()) - &self.l04))).scale(alpha[1]))
+                &(&(polys.d4.this.o) * &(&polys.d4.this.r.scale(2_u64.into()) - &self.l04))).scale(alpha[1]))
                 * &self.mul1l,
             &(&(
                 // (2*yP - (2*xP - λ1^2 + xT) × λ1)^2 - (λ1^2 - xT + xS) * (2*xP - λ1^2 + xT)^2
-                &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)).square()
+                &(&polys.d8.this.o.scale(2_u64.into()) - &(&tmp * &polys.d8.this.r)).square()
                     - &(&(&(&polys.d8.this.r.square() - &polys.d8.next.r) + &polys.d8.next.l)
                         * &tmp.square())
             )
@@ -44,7 +44,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 + &(
                     // (xP - xS) × (2*yP - (2*xP - λ1^2 + xT) × λ1) - (yS + yP) * (2*xP - λ1^2 + xT)
                     &(&(&polys.d8.this.l - &polys.d8.next.l)
-                        * &(&polys.d8.this.o.scale((2 as u64).into()) - &(&tmp * &polys.d8.this.r)))
+                        * &(&polys.d8.this.o.scale(2_u64.into()) - &(&tmp * &polys.d8.this.r)))
                         - &(&(&polys.d8.next.o + &polys.d8.this.o) * &tmp)
                 )
                     .scale(alpha[3]))

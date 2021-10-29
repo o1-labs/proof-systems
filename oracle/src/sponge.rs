@@ -14,7 +14,7 @@ const HIGH_ENTROPY_LIMBS: usize = 2;
 pub struct ScalarChallenge<F>(pub F);
 
 pub fn endo_coefficient<F: PrimeField>() -> F {
-    let p_minus_1_over_3 = ((F::zero() - &F::one()) / &(3 as u64).into()).into_repr();
+    let p_minus_1_over_3 = ((F::zero() - &F::one()) / &3_u64.into()).into_repr();
 
     let t = F::multiplicative_generator();
 
@@ -33,8 +33,8 @@ impl<F: PrimeField> ScalarChallenge<F> {
         let rep = self.0.into_repr();
         let r = rep.as_ref();
 
-        let mut a: F = (2 as u64).into();
-        let mut b: F = (2 as u64).into();
+        let mut a: F = 2_u64.into();
+        let mut b: F = 2_u64.into();
 
         let one = F::one();
         let neg_one = -one;
@@ -83,7 +83,7 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
             let last_squeezed = self.last_squeezed.clone();
             let (limbs, remaining) = last_squeezed.split_at(num_limbs);
             self.last_squeezed = remaining.to_vec();
-            Fr::from_repr(pack::<Fr::BigInt>(&limbs))
+            Fr::from_repr(pack::<Fr::BigInt>(limbs))
                 .expect("internal representation was not a valid field element")
         } else {
             let x = self.sponge.squeeze().into_repr();

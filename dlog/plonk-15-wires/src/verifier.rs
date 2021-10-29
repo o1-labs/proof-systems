@@ -74,7 +74,7 @@ where
 
                 (0..2)
                     .map(|i| {
-                        let full = b_poly(&chals, evaluation_points[i]);
+                        let full = b_poly(chals, evaluation_points[i]);
                         if index.max_poly_size == b_len {
                             return vec![full];
                         }
@@ -83,7 +83,7 @@ where
                             .map(|j| {
                                 let b_j = match &b {
                                     None => {
-                                        let t = b_poly_coefficients(&chals);
+                                        let t = b_poly_coefficients(chals);
                                         let res = t[j];
                                         b = Some(t);
                                         res
@@ -184,7 +184,7 @@ where
 
         // evaluate public input polynomials
         // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
-        let p_eval = if self.public.len() > 0 {
+        let p_eval = if !self.public.is_empty() {
             [
                 vec![
                     (self
@@ -260,7 +260,7 @@ where
                     |x, y| x * y,
                 );
 
-            ft_eval0 -= if p_eval[0].len() > 0 {
+            ft_eval0 -= if !p_eval[0].is_empty() {
                 p_eval[0][0]
             } else {
                 Fr::<G>::zero()
@@ -283,9 +283,9 @@ where
             ft_eval0 += nominator * &denominator;
 
             let cs = Constants {
-                alpha: alpha,
-                beta: beta,
-                gamma: gamma,
+                alpha,
+                beta,
+                gamma,
                 joint_combiner: joint_combiner.1,
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
@@ -307,9 +307,9 @@ where
             let ft_eval1 = vec![self.ft_eval1];
             let mut es: Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys
                 .iter()
-                .map(|(_, e)| (e.iter().map(|x| x).collect(), None))
+                .map(|(_, e)| (e.iter().collect(), None))
                 .collect();
-            es.push((p_eval.iter().map(|e| e).collect::<Vec<_>>(), None));
+            es.push((p_eval.iter().collect::<Vec<_>>(), None));
             es.extend(
                 (0..COLUMNS)
                     .map(|c| (self.evals.iter().map(|e| &e.w[c]).collect::<Vec<_>>(), None))
@@ -330,7 +330,7 @@ where
             beta,
             gamma,
             alpha_chal,
-            alpha: alpha,
+            alpha,
             zeta,
             v,
             u,
@@ -363,7 +363,7 @@ where
         proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError> {
         // if there's no proof to verify, return early
-        if proofs.len() == 0 {
+        if proofs.is_empty() {
             return Ok(true);
         }
 
@@ -382,7 +382,6 @@ where
                 &lgr_comm
                     .iter()
                     .take(proof.public.len())
-                    .map(|l| l)
                     .collect(),
                 &proof.public.iter().map(|s| -*s).collect(),
             );
@@ -430,7 +429,6 @@ where
                         .coefficients_comm
                         .iter()
                         .take(GENERICS)
-                        .map(|c| c)
                         .collect::<Vec<_>>(),
                 );
                 scalars_part.extend(&ConstraintSystem::gnrc_scalars(
@@ -551,14 +549,14 @@ where
             // recursion stuff
             let mut polynomials = polys
                 .iter()
-                .map(|(comm, evals)| (comm, evals.iter().map(|x| x).collect(), None))
+                .map(|(comm, evals)| (comm, evals.iter().collect(), None))
                 .collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
 
             // public input commitment
-            polynomials.push((p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None));
+            polynomials.push((p_comm, p_eval.iter().collect::<Vec<_>>(), None));
 
             // ft commitment (chunks of it)
-            polynomials.push((&ft_comm, vec![ft_eval0, ft_eval1], None));
+            polynomials.push((ft_comm, vec![ft_eval0, ft_eval1], None));
 
             // permutation commitment
             polynomials.push((

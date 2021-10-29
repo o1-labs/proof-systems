@@ -68,10 +68,10 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     let mut cache = Cache::new();
 
     let x21 = cache.cache(x2.clone() - x1.clone());
-    let y21 = cache.cache(y2.clone() - y1.clone());
+    let y21 = cache.cache(y2 - y1.clone());
 
     // same_x is now constrained
-    let mut res = zero_check(x21.clone(), x21_inv.clone(), same_x.clone());
+    let mut res = zero_check(x21.clone(), x21_inv, same_x.clone());
 
     // this constrains s so that
     // if same_x:
@@ -81,7 +81,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     {
         let x1_squared = cache.cache(x1.clone() * x1.clone());
         let dbl_case = s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
-        let add_case = x21.clone() * s.clone() - y21.clone();
+        let add_case = x21 * s.clone() - y21.clone();
 
         res.push(same_x.clone() * dbl_case + (E::one() - same_x.clone()) * add_case);
     }
@@ -91,7 +91,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     // s^2 = x1 + x2 + x3
     //
     // This constrains x3.
-    res.push(x1.clone() + x2.clone() + x3.clone() - s.clone() * s.clone());
+    res.push(x1.clone() + x2 + x3.clone() - s.clone() * s.clone());
 
     // Unconditionally constrain
     // y3 = -y1 + s(x1 - x3)

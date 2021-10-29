@@ -280,7 +280,7 @@ mod tests {
     // logical, and polynomial forms.
     #[test]
     fn c_func_test() {
-        let f1 = |x: F| c_func(x);
+        let f1 = c_func;
 
         let f2 = |x: F| -> F {
             let bits_le = x.into_repr().to_bits_le();
@@ -312,7 +312,7 @@ mod tests {
     // logical, and polynomial forms.
     #[test]
     fn d_func_test() {
-        let f1 = |x: F| d_func(x);
+        let f1 = d_func;
 
         let f2 = |x: F| -> F {
             let bits_le = x.into_repr().to_bits_le();

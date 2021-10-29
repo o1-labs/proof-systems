@@ -214,10 +214,10 @@ where
         // sample the other shifts
         let mut i: u32 = 7;
         for idx in 1..(PERMUTS) {
-            let mut shift = Self::sample(&domain, &mut i);
+            let mut shift = Self::sample(domain, &mut i);
             // they have to be distincts
             while shifts.contains(&shift) {
-                shift = Self::sample(&domain, &mut i);
+                shift = Self::sample(domain, &mut i);
             }
             shifts[idx] = shift;
         }
@@ -346,7 +346,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         assert!(domain.d1.size > ZK_ROWS);
 
         // pre-compute all the elements
-        let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
+        let mut sid = domain.d1.elements().collect::<Vec<_>>();
 
         // pad the rows: add zero gates to reach the domain size
         let n = domain.d1.size();
@@ -633,19 +633,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public {
-                if gate.c != left_wire {
-                    return Err(GateError::IncorrectPublic(row));
-                }
+            if row < self.public && gate.c != left_wire {
+                return Err(GateError::IncorrectPublic(row));
             }
 
             // check the gate's satisfiability
-            gate.verify(&witness, &self)
+            gate.verify(&witness, self)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
         // all good!
-        return Ok(());
+        Ok(())
     }
 
     /// evaluate witness polynomials over domains

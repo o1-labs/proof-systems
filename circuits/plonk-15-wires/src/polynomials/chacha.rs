@@ -538,7 +538,7 @@ mod tests {
                 assert_eq!(c1, c2);
                 println!("{:?} ?", c1);
                 let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
-                let x2 = PolishToken::evaluate(&e2, d, pt, &evals, &constants).unwrap();
+                let x2 = PolishToken::evaluate(e2, d, pt, &evals, &constants).unwrap();
                 if x1 != x2 {
                     println!("e1: {}", e1);
                     println!("e2: {}", Polish(e2.clone()));

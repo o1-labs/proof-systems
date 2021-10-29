@@ -31,9 +31,9 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
 
     for (i, d) in (0..len).step_by(2).zip(denominators.iter()) {
         let j = i / 2;
-        if p[i + 1].is_zero() == true {
+        if p[i + 1].is_zero() {
             p[j] = p[i];
-        } else if p[i].is_zero() == true {
+        } else if p[i].is_zero() {
             p[j] = p[i + 1];
         } else if p[i + 1].x == p[i].x && (p[i + 1].y != p[i].y || p[i + 1].y.is_zero()) {
             p[j] = SWJAffine::<P>::zero();
@@ -63,7 +63,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
 }
 
 fn batch_add_assign<P: SWModelParameters>(
-    mut denominators: &mut [P::BaseField],
+    denominators: &mut [P::BaseField],
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
@@ -84,14 +84,14 @@ fn batch_add_assign<P: SWModelParameters>(
         denominators[i] = d;
     }
 
-    ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
+    ark_ff::batch_inversion::<P::BaseField>(denominators);
 
     for (i, d) in (0..n).zip(denominators.iter()) {
         let p0 = v0[i];
         let p1 = v1[i];
 
-        if p1.is_zero() == true {
-        } else if p0.is_zero() == true {
+        if p1.is_zero() {
+        } else if p0.is_zero() {
             v0[i] = p1;
         } else if p1.x == p0.x && (p1.y != p0.y || p1.y == P::BaseField::zero()) {
             v0[i] = SWJAffine::<P>::zero();
@@ -166,8 +166,8 @@ fn affine_combine_base<P: SWModelParameters>(
 
         match (b1, b2) {
             (true, true) => batch_add_assign(&mut denominators, &mut p, &g1g2),
-            (false, true) => batch_add_assign(&mut denominators, &mut p, &g2),
-            (true, false) => batch_add_assign(&mut denominators, &mut p, &g1),
+            (false, true) => batch_add_assign(&mut denominators, &mut p, g2),
+            (true, false) => batch_add_assign(&mut denominators, &mut p, g1),
             (false, false) => (),
         }
     }
@@ -296,7 +296,7 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
         }
     }
 
-    batch_add_assign(&mut denominators, &mut p, &g1);
+    batch_add_assign(&mut denominators, &mut p, g1);
 
     p
 }
@@ -412,7 +412,7 @@ fn shamir_sum<G: AffineCurve>(
 }
 
 pub fn affine_shamir_window_table<P: SWModelParameters>(
-    mut denominators: &mut [P::BaseField],
+    denominators: &mut [P::BaseField],
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
 ) -> [Vec<SWJAffine<P>>; 15] {
@@ -449,51 +449,51 @@ pub fn affine_shamir_window_table<P: SWModelParameters>(
     assign(g01_00, g1);
 
     assign(g10_00, g1);
-    batch_add_assign(&mut denominators, g10_00, g1);
+    batch_add_assign(denominators, g10_00, g1);
 
     assign(g11_00, g10_00);
-    batch_add_assign(&mut denominators, g11_00, g1);
+    batch_add_assign(denominators, g11_00, g1);
 
     assign(g00_01, g2);
 
     assign(g01_01, g00_01);
-    batch_add_assign(&mut denominators, g01_01, g1);
+    batch_add_assign(denominators, g01_01, g1);
 
     assign(g10_01, g01_01);
-    batch_add_assign(&mut denominators, g10_01, g1);
+    batch_add_assign(denominators, g10_01, g1);
 
     assign(g11_01, g10_01);
-    batch_add_assign(&mut denominators, g11_01, g1);
+    batch_add_assign(denominators, g11_01, g1);
 
     assign(g00_10, g00_01);
-    batch_add_assign(&mut denominators, g00_10, g2);
+    batch_add_assign(denominators, g00_10, g2);
 
     assign(g01_10, g00_10);
-    batch_add_assign(&mut denominators, g01_10, g1);
+    batch_add_assign(denominators, g01_10, g1);
 
     assign(g10_10, g01_10);
-    batch_add_assign(&mut denominators, g10_10, g1);
+    batch_add_assign(denominators, g10_10, g1);
 
     assign(g11_10, g10_10);
-    batch_add_assign(&mut denominators, g11_10, g1);
+    batch_add_assign(denominators, g11_10, g1);
 
     assign(g00_11, g00_10);
-    batch_add_assign(&mut denominators, g00_11, g2);
+    batch_add_assign(denominators, g00_11, g2);
 
     assign(g01_11, g00_11);
-    batch_add_assign(&mut denominators, g01_11, g1);
+    batch_add_assign(denominators, g01_11, g1);
 
     assign(g10_11, g01_11);
-    batch_add_assign(&mut denominators, g10_11, g1);
+    batch_add_assign(denominators, g10_11, g1);
 
     assign(g11_11, g10_11);
-    batch_add_assign(&mut denominators, g11_11, g1);
+    batch_add_assign(denominators, g11_11, g1);
 
     res
 }
 
 pub fn affine_shamir_window_table_one<P: SWModelParameters>(
-    mut denominators: &mut [P::BaseField],
+    denominators: &mut [P::BaseField],
     g1: &[SWJAffine<P>],
 ) -> [Vec<SWJAffine<P>>; 3] {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
@@ -516,10 +516,10 @@ pub fn affine_shamir_window_table_one<P: SWModelParameters>(
     assign(g01, g1);
 
     assign(g10, g1);
-    batch_add_assign(&mut denominators, g10, g1);
+    batch_add_assign(denominators, g10, g1);
 
     assign(g11, g10);
-    batch_add_assign(&mut denominators, g11, g1);
+    batch_add_assign(denominators, g11, g1);
 
     res
 }

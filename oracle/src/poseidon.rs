@@ -189,7 +189,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
 
     fn poseidon_block_cipher(&mut self) {
         if SC::HALF_ROUNDS_FULL == 0 {
-            if SC::INITIAL_ARK == true {
+            if SC::INITIAL_ARK {
                 for (i, x) in self.params.round_constants[0].iter().enumerate() {
                     self.state[i].add_assign(x);
                 }

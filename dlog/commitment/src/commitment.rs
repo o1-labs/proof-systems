@@ -76,7 +76,7 @@ where
 }
 
 pub fn shift_scalar<F: PrimeField>(x: F) -> F {
-    let two: F = (2 as u64).into();
+    let two: F = 2_u64.into();
     x - two.pow(&[F::Params::MODULUS_BITS as u64])
 }
 
@@ -151,12 +151,9 @@ impl<C: AffineCurve> PolyComm<C> {
                 let pairs = com
                     .iter()
                     .zip(elm.iter())
-                    .filter_map(|(c, s)| match c.shifted {
-                        Some(c) => Some((c, s)),
-                        None => None,
-                    })
+                    .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
                     .collect::<Vec<_>>();
-                if pairs.len() == 0 {
+                if pairs.is_empty() {
                     None
                 } else {
                     let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
@@ -165,7 +162,7 @@ impl<C: AffineCurve> PolyComm<C> {
                 }
             },
             unshifted: {
-                if com.len() == 0 || elm.len() == 0 {
+                if com.is_empty() || elm.is_empty() {
                     Vec::new()
                 } else {
                     let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
@@ -405,7 +402,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     let mut res = Fr::<G>::zero();
     let mut xi_i = Fr::<G>::one();
 
-    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| evals_tr[0].len() > 0) {
+    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
         // transpose the evaluations
         let evals = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
@@ -614,7 +611,7 @@ where
             let mut scale = Fr::<G>::one();
 
             // iterating over polynomials in the batch
-            for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| p.0.is_zero() == false) {
+            for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
                 let mut offset = 0;
                 let mut j = 0;
                 // iterating over chunks of the polynomial
@@ -696,7 +693,7 @@ where
         assert!(padded_length >= a.len());
         a.extend(vec![Fr::<G>::zero(); padded_length - a.len()]);
 
-        let mut b = b_init.clone();
+        let mut b = b_init;
 
         let mut lr = vec![];
 
@@ -980,7 +977,7 @@ where
             {
                 let mut xi_i = Fr::<G>::one();
 
-                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| x.0.unshifted.len() > 0) {
+                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| !x.0.unshifted.is_empty()) {
                     // iterating over the polynomial segments
                     for comm_ch in comm.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * &xi_i);
@@ -990,7 +987,7 @@ where
 
                     if let Some(_m) = shifted {
                         if let Some(comm_ch) = comm.shifted {
-                            if comm_ch.is_zero() == false {
+                            if !comm_ch.is_zero() {
                                 // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
                                 scalars.push(rand_base_i_c_i * &xi_i);
                                 points.push(comm_ch);

@@ -63,7 +63,7 @@ fn varbase_mul_test() {
     }
 
     let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
-    let n = cs.domain.d1.size as usize;
+    let _n = cs.domain.d1.size as usize;
 
     let mut srs = SRS::create(cs.domain.d1.size as usize);
     srs.add_lagrange_basis(cs.domain.d1);
@@ -97,7 +97,7 @@ fn varbase_mul_test() {
         let acc = (g + g).into_affine();
         let acc = (acc.x, acc.y);
 
-        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).map(|x| *x).rev().collect();
+        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).copied().rev().collect();
 
         let res = varbasemul::witness(
             &mut witness,

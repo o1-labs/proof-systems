@@ -122,8 +122,7 @@ where
         // ensure we have room for the zero-knowledge rows
         let length_witness = witness[0].len();
         let length_padding = d1_size
-            .checked_sub(length_witness)
-            .ok_or_else(|| ProofError::NoRoomForZkInWitness)?;
+            .checked_sub(length_witness).ok_or(ProofError::NoRoomForZkInWitness)?;
         if length_padding < ZK_ROWS as usize {
             return Err(ProofError::NoRoomForZkInWitness);
         }
@@ -259,7 +258,7 @@ where
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
                     let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
-                        dummy_lookup_value.clone(),
+                        dummy_lookup_value,
                         iter_lookup_table,
                         index.cs.lookup_table_lengths[0],
                         index.cs.domain.d1,
@@ -361,7 +360,7 @@ where
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
-                res += &col;
+                res += col;
             }
             res
         });
@@ -372,8 +371,8 @@ where
             .zip(lookup_aggreg8.as_ref())
             .map(
                 |((lookup_table_combined, lookup_sorted), lookup_aggreg)| LookupEnvironment {
-                    aggreg: &lookup_aggreg,
-                    sorted: &lookup_sorted,
+                    aggreg: lookup_aggreg,
+                    sorted: lookup_sorted,
                     table: lookup_table_combined,
                     selectors: &index.cs.lookup_selectors,
                 },
@@ -399,9 +398,9 @@ where
 
             Environment {
                 constants: Constants {
-                    alpha: alpha,
-                    beta: beta,
-                    gamma: gamma,
+                    alpha,
+                    beta,
+                    gamma,
                     joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds: index.cs.fr_sponge_params.mds.clone(),
@@ -479,8 +478,8 @@ where
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &p)
             .divide_by_vanishing_poly(index.cs.domain.d1)
-            .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+            .map_or(Err(ProofError::PolyDivision), Ok)?;
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 
@@ -546,7 +545,7 @@ where
         drop(lookup_aggreg_coeffs);
         drop(lookup_sorted_coeffs);
 
-        let chunked_evals = [chunked_evals_zeta.clone(), chunked_evals_zeta_omega.clone()];
+        let chunked_evals = [chunked_evals_zeta, chunked_evals_zeta_omega];
 
         let zeta_n = zeta.pow(&[index.max_poly_size as u64]);
         let zeta_omega_n = zeta_omega.pow(&[index.max_poly_size as u64]);
@@ -582,7 +581,7 @@ where
             let f = &index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index
                     .cs
-                    .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);
+                    .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
 
             let f = {
                 let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);

@@ -134,7 +134,7 @@ impl<F: FftField> CircuitGate<F> {
         let xp = this[4];
         let yp = this[5];
         // TODO(mimoo): missing last constraint?
-        let n = this[6];
+        let _n = this[6];
         let xr = this[7];
         let yr = this[8];
         let s1 = this[9];
@@ -156,7 +156,7 @@ impl<F: FftField> CircuitGate<F> {
         let next_xp = next[4];
         let next_yp = next[5];
         // TODO(mimoo): missing ?
-        let next_n = next[6];
+        let _next_n = next[6];
         let next_xr = next[7];
         let next_yr = next[8];
         let next_xv = next[9];
