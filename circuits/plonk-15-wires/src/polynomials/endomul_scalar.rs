@@ -190,7 +190,6 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
         w[3][row] = b;
 
         for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
-
             let b0 = *crumb_bits[1];
             let b1 = *crumb_bits[0];
 

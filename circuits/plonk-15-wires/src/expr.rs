@@ -1,18 +1,20 @@
-use crate::nolookup::scalars::{ProofEvaluations};
-use crate::nolookup::constraints::{eval_vanishes_on_last_4_rows};
-use ark_ff::{FftField, PrimeField, Field, Zero, One};
-use ark_poly::{univariate::DensePolynomial, Evaluations, EvaluationDomain, Radix2EvaluationDomain as D};
-use crate::gate::{GateType, CurrOrNext};
-use std::ops::{Add, Sub, Mul, Neg};
+use crate::gate::{CurrOrNext, GateType};
+use crate::nolookup::constraints::eval_vanishes_on_last_4_rows;
+use crate::nolookup::scalars::ProofEvaluations;
+use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+};
+use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use CurrOrNext::*;
-use rayon::prelude::*;
 use std::iter::FromIterator;
-use serde::{Deserialize, Serialize};
+use std::ops::{Add, Mul, Neg, Sub};
+use CurrOrNext::*;
 
-use crate::wires::COLUMNS;
 use crate::domains::EvaluationDomains;
+use crate::wires::COLUMNS;
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
@@ -49,7 +51,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct Environment<'a, F : FftField> {
+pub struct Environment<'a, F: FftField> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
@@ -83,11 +85,10 @@ impl<'a, F: FftField> Environment<'a, F> {
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
-            Index(t) =>
-                match self.index.get(t) {
-                    None => return None,
-                    Some(e) => Some(e),
-                }
+            Index(t) => match self.index.get(t) {
+                None => return None,
+                Some(e) => Some(e),
+            },
         }
     }
 }
@@ -102,7 +103,7 @@ impl<'a, F: FftField> Environment<'a, F> {
 // L_i(x) = l_i(x) / l_i(omega^i)
 
 /// Computes `prod_{j != 1} (1 - omega^j)`
-pub fn l0_1<F:FftField>(d: D<F>) -> F {
+pub fn l0_1<F: FftField>(d: D<F>) -> F {
     let mut omega_j = d.group_gen;
     let mut res = F::one();
     for _ in 1..(d.size as usize) {
@@ -177,46 +178,35 @@ pub enum ConstantExpr<F> {
 impl<F: Copy> ConstantExpr<F> {
     fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
         match self {
-            ConstantExpr::Alpha => {
-                res.push(PolishToken::Alpha)
-            },
-            ConstantExpr::Beta => {
-                res.push(PolishToken::Beta)
-            },
-            ConstantExpr::Gamma => {
-                res.push(PolishToken::Gamma)
-            },
-            ConstantExpr::JointCombiner => {
-                res.push(PolishToken::JointCombiner)
-            },
-            ConstantExpr::EndoCoefficient => {
-                res.push(PolishToken::EndoCoefficient)
-            },
-            ConstantExpr::Mds { row, col } => {
-                res.push(PolishToken::Mds { row: *row, col: *col })
-            },
+            ConstantExpr::Alpha => res.push(PolishToken::Alpha),
+            ConstantExpr::Beta => res.push(PolishToken::Beta),
+            ConstantExpr::Gamma => res.push(PolishToken::Gamma),
+            ConstantExpr::JointCombiner => res.push(PolishToken::JointCombiner),
+            ConstantExpr::EndoCoefficient => res.push(PolishToken::EndoCoefficient),
+            ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds {
+                row: *row,
+                col: *col,
+            }),
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
                 res.push(PolishToken::Add)
-            },
+            }
             ConstantExpr::Mul(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
                 res.push(PolishToken::Mul)
-            },
+            }
             ConstantExpr::Sub(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
                 res.push(PolishToken::Sub)
-            },
-            ConstantExpr::Literal(x) => {
-                res.push(PolishToken::Literal(*x))
-            },
+            }
+            ConstantExpr::Literal(x) => res.push(PolishToken::Literal(*x)),
             ConstantExpr::Pow(x, n) => {
                 x.to_polish_(res);
                 res.push(PolishToken::Pow(*n))
-            },
+            }
         }
     }
 }
@@ -230,7 +220,7 @@ impl<F: Field> ConstantExpr<F> {
         use ConstantExpr::*;
         match self {
             Literal(x) => Literal(x.pow(&[p as u64])),
-            x => Pow(Box::new(x), p)
+            x => Pow(Box::new(x), p),
         }
     }
 
@@ -259,19 +249,30 @@ pub struct CacheId(usize);
 
 /// A cache
 pub struct Cache {
-    next_id: usize
+    next_id: usize,
 }
 
 impl CacheId {
-    fn get_from<'a, 'b, F: FftField>(&self, cache: &'b HashMap<CacheId, EvalResult<'a, F>>) -> Option<EvalResult<'b, F>> {
-        cache.get(self).map(|e| {
-            match e {
-                EvalResult::Constant(x) => EvalResult::Constant(*x),
-                EvalResult::SubEvals { domain, shift, evals } =>
-                    EvalResult::SubEvals { domain: *domain, shift: *shift, evals },
-                EvalResult::Evals { domain, evals } =>
-                    EvalResult::SubEvals { domain: *domain, shift: 0, evals }
-            }
+    fn get_from<'a, 'b, F: FftField>(
+        &self,
+        cache: &'b HashMap<CacheId, EvalResult<'a, F>>,
+    ) -> Option<EvalResult<'b, F>> {
+        cache.get(self).map(|e| match e {
+            EvalResult::Constant(x) => EvalResult::Constant(*x),
+            EvalResult::SubEvals {
+                domain,
+                shift,
+                evals,
+            } => EvalResult::SubEvals {
+                domain: *domain,
+                shift: *shift,
+                evals,
+            },
+            EvalResult::Evals { domain, evals } => EvalResult::SubEvals {
+                domain: *domain,
+                shift: 0,
+                evals,
+            },
         })
     }
 
@@ -370,7 +371,10 @@ impl Variable {
     fn evaluate<'a, 'b, F: Field>(&self, evals: &'a [ProofEvaluations<F>]) -> Result<F, &'b str> {
         let evals = &evals[self.row.shift()];
         use Column::*;
-        let l = evals.lookup.as_ref().ok_or("Lookup should not have been used");
+        let l = evals
+            .lookup
+            .as_ref()
+            .ok_or("Lookup should not have been used");
         match self.col {
             Witness(i) => Ok(evals.w[i]),
             Z => Ok(evals.z),
@@ -379,8 +383,9 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Coefficient(_) | LookupKindIndex(_) | Index(_) =>
+            Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
+            }
         }
     }
 }
@@ -388,10 +393,14 @@ impl Variable {
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate<'c>(
-        toks: &Vec<PolishToken<F>>, d: D<F>, pt: F,
-        evals: &[ProofEvaluations<F>], c: &Constants<F>) -> Result<F, &'c str> {
+        toks: &Vec<PolishToken<F>>,
+        d: D<F>,
+        pt: F,
+        evals: &[ProofEvaluations<F>],
+        c: &Constants<F>,
+    ) -> Result<F, &'c str> {
         let mut stack = vec![];
-        let mut cache : Vec<F> = vec![];
+        let mut cache: Vec<F> = vec![];
 
         for t in toks.iter() {
             use PolishToken::*;
@@ -403,41 +412,39 @@ impl<F: FftField> PolishToken<F> {
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                UnnormalizedLagrangeBasis(i) =>
-                    stack.push(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
+                UnnormalizedLagrangeBasis(i) => stack.push(
+                    d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])),
+                ),
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
-                Cell(v) =>
-                    match v.evaluate(evals) {
-                        Ok(x) => stack.push(x),
-                        Err(e) => return Err(e)
-                    },
+                Cell(v) => match v.evaluate(evals) {
+                    Ok(x) => stack.push(x),
+                    Err(e) => return Err(e),
+                },
                 Pow(n) => {
                     let i = stack.len() - 1;
                     stack[i] = stack[i].pow(&[*n as u64]);
-                },
+                }
                 Add => {
                     let y = stack.pop().ok_or("Empty stack")?;
                     let x = stack.pop().ok_or("Empty stack")?;
                     stack.push(x + y);
-                },
+                }
                 Mul => {
                     let y = stack.pop().ok_or("Empty stack")?;
                     let x = stack.pop().ok_or("Empty stack")?;
                     stack.push(x * y);
-                },
+                }
                 Sub => {
                     let y = stack.pop().ok_or("Empty stack")?;
                     let x = stack.pop().ok_or("Empty stack")?;
                     stack.push(x - y);
-                },
+                }
                 Store => {
                     let x = stack[stack.len() - 1];
                     cache.push(x);
-                },
-                Load(i) => {
-                    stack.push(cache[*i])
-                },
+                }
+                Load(i) => stack.push(cache[*i]),
             }
         }
 
@@ -448,7 +455,7 @@ impl<F: FftField> PolishToken<F> {
 
 impl<C> Expr<C> {
     /// Convenience function for constructing cell variables.
-    pub fn cell(col:Column, row: CurrOrNext) -> Expr<C> {
+    pub fn cell(col: Column, row: CurrOrNext) -> Expr<C> {
         Expr::Cell(Variable { col, row })
     }
 
@@ -475,31 +482,43 @@ impl<C> Expr<C> {
             Cell(_) => d1_size,
             Square(x) => 2 * x.degree(d1_size),
             BinOp(Op2::Mul, x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
-            BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size)),
+            BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => {
+                std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size))
+            }
             Pow(e, d) => d * e.degree(d1_size),
-            Cache(_, e) => e.degree(d1_size)
+            Cache(_, e) => e.degree(d1_size),
         }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
 enum Domain {
-    D1 = 1, D2 = 2, D4 = 4, D8 = 8
+    D1 = 1,
+    D2 = 2,
+    D4 = 4,
+    D8 = 8,
 }
 
 #[derive(Clone)]
 enum EvalResult<'a, F: FftField> {
     Constant(F),
-    Evals { domain: Domain, evals: Evaluations<F, D<F>> },
+    Evals {
+        domain: Domain,
+        evals: Evaluations<F, D<F>>,
+    },
     /// SubEvals is used to refer to evaluations that can be trivially obtained from a
     /// borrowed evaluation. In this case, by taking a subset of the entries
     /// (specifically when the borrowed `evals` is over a superset of `domain`)
     /// and shifting them
-    SubEvals { domain: Domain, shift: usize, evals : &'a Evaluations<F, D<F>> }
+    SubEvals {
+        domain: Domain,
+        shift: usize,
+        evals: &'a Evaluations<F, D<F>>,
+    },
 }
 
 /// Compute the powers of `x`, `x^0, ..., x^{n - 1}`
-pub fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
+pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
     if n == 0 {
         return vec![F::one()];
     } else if n == 1 {
@@ -524,7 +543,7 @@ pub fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
 //
 // For h in H, h != omega^i,
 // l_i(h) = 0.
-// l_i(omega^i) 
+// l_i(omega^i)
 // = prod_{j != i} (omega^i - omega^j)
 // = omega^{i (n - 1)} * prod_{j != i} (1 - omega^{j - i})
 // = omega^{i (n - 1)} * prod_{j != 0} (1 - omega^j)
@@ -546,19 +565,18 @@ pub fn pows<F: Field>(x: F, n : usize) -> Vec<F> {
 // = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 // = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 // = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-fn unnormalized_lagrange_evals<F:FftField>(
-    l0_1: F, 
-    i: usize, 
+fn unnormalized_lagrange_evals<F: FftField>(
+    l0_1: F,
+    i: usize,
     res_domain: Domain,
-    env: &Environment<F>) -> Evaluations<F, D<F>> {
-
-    let k =
-        match res_domain {
-            Domain::D1 => 1,
-            Domain::D2 => 2,
-            Domain::D4 => 4,
-            Domain::D8 => 8,
-        };
+    env: &Environment<F>,
+) -> Evaluations<F, D<F>> {
+    let k = match res_domain {
+        Domain::D1 => 1,
+        Domain::D2 => 2,
+        Domain::D4 => 4,
+        Domain::D8 => 8,
+    };
     let res_domain = get_domain(res_domain, env);
 
     let d1 = env.domain.d1;
@@ -576,8 +594,8 @@ fn unnormalized_lagrange_evals<F:FftField>(
     let omega_k_n_pows = pows(res_domain.group_gen.pow(&[n]), k);
     let omega_k_pows = pows(res_domain.group_gen, k);
 
-    let mut evals : Vec<F> = {
-        let mut v = vec![F::one(); k*(n as usize)];
+    let mut evals: Vec<F> = {
+        let mut v = vec![F::one(); k * (n as usize)];
         let mut omega_q = F::one();
         for q in 0..(n as usize) {
             // omega_q == omega^q
@@ -590,7 +608,7 @@ fn unnormalized_lagrange_evals<F:FftField>(
         v
     };
     // At this point, in the 0 mod k indices, we have dummy values,
-    // and in the other indices k*q + r, we have 
+    // and in the other indices k*q + r, we have
     // 1 / (omega^q omega_k^r - omega^i)
 
     // Set the 0 mod k indices
@@ -606,31 +624,33 @@ fn unnormalized_lagrange_evals<F:FftField>(
         }
     }
 
-    Evaluations::<F, D<F>>::from_vec_and_domain(
-        evals,
-        res_domain
-    )
+    Evaluations::<F, D<F>>::from_vec_and_domain(evals, res_domain)
 }
 
 impl<'a, F: FftField> EvalResult<'a, F> {
     fn init_<G: Sync + Send + Fn(usize) -> F>(
         res_domain: (Domain, D<F>),
-        g : G) -> Evaluations<F, D<F>> {
+        g: G,
+    ) -> Evaluations<F, D<F>> {
         let n = res_domain.1.size as usize;
         Evaluations::<F, D<F>>::from_vec_and_domain(
             (0..n).into_par_iter().map(g).collect(),
-            res_domain.1
+            res_domain.1,
         )
     }
 
-    fn init<G: Sync + Send + Fn(usize) -> F>(res_domain: (Domain, D<F>), g : G) -> Self {
+    fn init<G: Sync + Send + Fn(usize) -> F>(res_domain: (Domain, D<F>), g: G) -> Self {
         Self::Evals {
             domain: res_domain.0,
-            evals: Self::init_(res_domain, g)
+            evals: Self::init_(res_domain, g),
         }
     }
 
-    fn add<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
+    fn add<'b, 'c>(
+        self,
+        other: EvalResult<'b, F>,
+        res_domain: (Domain, D<F>),
+    ) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x + y),
@@ -638,94 +658,187 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             | (Constant(x), Evals { domain, mut evals }) => {
                 evals.evals.par_iter_mut().for_each(|e| *e += x);
                 Evals { domain, evals }
-            },
-            (SubEvals { evals, domain: d, shift:s }, Constant(x)) |
-            (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
+            }
+            (
+                SubEvals {
+                    evals,
+                    domain: d,
+                    shift: s,
+                },
+                Constant(x),
+            )
+            | (
+                Constant(x),
+                SubEvals {
+                    evals,
+                    domain: d,
+                    shift: s,
+                },
+            ) => {
                 let n = res_domain.1.size as usize;
                 let scale = (d as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
-                let v: Vec<_> = (0..n).into_par_iter().map(|i| {
-                    x + evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
-                }).collect();
+                let v: Vec<_> = (0..n)
+                    .into_par_iter()
+                    .map(|i| x + evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
+                    .collect();
                 Evals {
                     domain: res_domain.0,
-                    evals:
-                        Evaluations::<F, D<F>>::from_vec_and_domain(
-                            v,
-                            res_domain.1
-                        )
+                    evals: Evaluations::<F, D<F>>::from_vec_and_domain(v, res_domain.1),
                 }
-            },
-            (Evals { domain:d1, evals: mut es1 }, Evals { domain:d2, evals: es2 }) => {
+            }
+            (
+                Evals {
+                    domain: d1,
+                    evals: mut es1,
+                },
+                Evals {
+                    domain: d2,
+                    evals: es2,
+                },
+            ) => {
                 assert_eq!(d1, d2);
                 es1 += &es2;
-                Evals { domain: d1, evals: es1 }
-            },
-            (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
-            | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
+                Evals {
+                    domain: d1,
+                    evals: es1,
+                }
+            }
+            (
+                SubEvals {
+                    domain: d_sub,
+                    shift: s,
+                    evals: es_sub,
+                },
+                Evals {
+                    domain: d,
+                    mut evals,
+                },
+            )
+            | (
+                Evals {
+                    domain: d,
+                    mut evals,
+                },
+                SubEvals {
+                    domain: d_sub,
+                    shift: s,
+                    evals: es_sub,
+                },
+            ) => {
                 let scale = (d_sub as usize) / (d as usize);
                 assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
                 Evals { evals, domain: d }
-            },
-            (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
+            }
+            (
+                SubEvals {
+                    domain: d1,
+                    shift: s1,
+                    evals: es1,
+                },
+                SubEvals {
+                    domain: d2,
+                    shift: s2,
+                    evals: es2,
+                },
+            ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
                 assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
                 let n = res_domain.1.size as usize;
-                let v: Vec<_> = (0..n).into_par_iter().map(|i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
-                }).collect();
+                let v: Vec<_> = (0..n)
+                    .into_par_iter()
+                    .map(|i| {
+                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                            + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    })
+                    .collect();
 
                 Evals {
                     domain: res_domain.0,
-                    evals:
-                        Evaluations::<F, D<F>>::from_vec_and_domain(
-                            v,
-                            res_domain.1
-                        )
+                    evals: Evaluations::<F, D<F>>::from_vec_and_domain(v, res_domain.1),
                 }
             }
         }
     }
 
-    fn sub<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
+    fn sub<'b, 'c>(
+        self,
+        other: EvalResult<'b, F>,
+        res_domain: (Domain, D<F>),
+    ) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
             (Evals { domain, mut evals }, Constant(x)) => {
                 evals.evals.par_iter_mut().for_each(|e| *e -= x);
                 Evals { domain, evals }
-            },
+            }
             (Constant(x), Evals { domain, mut evals }) => {
                 evals.evals.par_iter_mut().for_each(|e| *e = x - *e);
                 Evals { domain, evals }
-            },
-            (SubEvals { evals, domain: d, shift:s }, Constant(x)) => {
+            }
+            (
+                SubEvals {
+                    evals,
+                    domain: d,
+                    shift: s,
+                },
+                Constant(x),
+            ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
-                EvalResult::init(
-                    res_domain,
-                    |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x)
-            },
-            (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
+                EvalResult::init(res_domain, |i| {
+                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x
+                })
+            }
+            (
+                Constant(x),
+                SubEvals {
+                    evals,
+                    domain: d,
+                    shift: s,
+                },
+            ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
-                EvalResult::init(
-                    res_domain,
-                    |i| x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
-            },
-            (Evals { domain:d1, evals: mut es1 }, Evals { domain:d2, evals: es2 }) => {
+                EvalResult::init(res_domain, |i| {
+                    x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                })
+            }
+            (
+                Evals {
+                    domain: d1,
+                    evals: mut es1,
+                },
+                Evals {
+                    domain: d2,
+                    evals: es2,
+                },
+            ) => {
                 assert_eq!(d1, d2);
                 es1 -= &es2;
-                Evals { domain: d1, evals: es1 }
-            },
-            (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals }) => {
+                Evals {
+                    domain: d1,
+                    evals: es1,
+                }
+            }
+            (
+                SubEvals {
+                    domain: d_sub,
+                    shift: s,
+                    evals: es_sub,
+                },
+                Evals {
+                    domain: d,
+                    mut evals,
+                },
+            ) => {
                 let scale = (d_sub as usize) / (d as usize);
                 assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
@@ -733,24 +846,45 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 });
                 Evals { evals, domain: d }
             }
-            (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
+            (
+                Evals {
+                    domain: d,
+                    mut evals,
+                },
+                SubEvals {
+                    domain: d_sub,
+                    shift: s,
+                    evals: es_sub,
+                },
+            ) => {
                 let scale = (d_sub as usize) / (d as usize);
                 assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
                 Evals { evals, domain: d }
-            },
-            (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
+            }
+            (
+                SubEvals {
+                    domain: d1,
+                    shift: s1,
+                    evals: es1,
+                },
+                SubEvals {
+                    domain: d2,
+                    shift: s2,
+                    evals: es2,
+                },
+            ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
                 assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                EvalResult::init(
-                    res_domain,
-                    |i| es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                    - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()])
+                EvalResult::init(res_domain, |i| {
+                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                        - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                })
             }
         }
     }
@@ -777,18 +911,26 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     e.square_in_place();
                 });
                 Evals { domain, evals }
-            },
-            SubEvals { evals, domain: d, shift:s } => {
+            }
+            SubEvals {
+                evals,
+                domain: d,
+                shift: s,
+            } => {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
-                EvalResult::init(
-                    res_domain,
-                    |i| evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square())
-            },
+                EvalResult::init(res_domain, |i| {
+                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square()
+                })
+            }
         }
     }
 
-    fn mul<'b, 'c>(self, other: EvalResult<'b, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
+    fn mul<'b, 'c>(
+        self,
+        other: EvalResult<'b, F>,
+        res_domain: (Domain, D<F>),
+    ) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x * y),
@@ -796,45 +938,99 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             | (Constant(x), Evals { domain, mut evals }) => {
                 evals.evals.par_iter_mut().for_each(|e| *e *= x);
                 Evals { domain, evals }
-            },
-            (SubEvals { evals, domain: d, shift:s }, Constant(x)) |
-            (Constant(x), SubEvals { evals, domain: d, shift:s }) => {
+            }
+            (
+                SubEvals {
+                    evals,
+                    domain: d,
+                    shift: s,
+                },
+                Constant(x),
+            )
+            | (
+                Constant(x),
+                SubEvals {
+                    evals,
+                    domain: d,
+                    shift: s,
+                },
+            ) => {
                 let scale = (d as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
-                EvalResult::init(
-                    res_domain,
-                    |i| x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
-            },
-            (Evals { domain:d1, evals: mut es1 }, Evals { domain:d2, evals: es2 }) => {
+                EvalResult::init(res_domain, |i| {
+                    x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                })
+            }
+            (
+                Evals {
+                    domain: d1,
+                    evals: mut es1,
+                },
+                Evals {
+                    domain: d2,
+                    evals: es2,
+                },
+            ) => {
                 assert_eq!(d1, d2);
                 es1 *= &es2;
-                Evals { domain: d1, evals: es1 }
-            },
-            (SubEvals { domain: d_sub, shift: s, evals: es_sub }, Evals { domain: d, mut evals })
-            | (Evals { domain: d, mut evals }, SubEvals { domain: d_sub, shift: s, evals: es_sub }) => {
+                Evals {
+                    domain: d1,
+                    evals: es1,
+                }
+            }
+            (
+                SubEvals {
+                    domain: d_sub,
+                    shift: s,
+                    evals: es_sub,
+                },
+                Evals {
+                    domain: d,
+                    mut evals,
+                },
+            )
+            | (
+                Evals {
+                    domain: d,
+                    mut evals,
+                },
+                SubEvals {
+                    domain: d_sub,
+                    shift: s,
+                    evals: es_sub,
+                },
+            ) => {
                 let scale = (d_sub as usize) / (d as usize);
                 assert!(scale != 0);
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
                 });
                 Evals { evals, domain: d }
-            },
-            (SubEvals { domain: d1, shift: s1, evals: es1 }, SubEvals { domain: d2, shift: s2, evals: es2 }) => {
+            }
+            (
+                SubEvals {
+                    domain: d1,
+                    shift: s1,
+                    evals: es1,
+                },
+                SubEvals {
+                    domain: d2,
+                    shift: s2,
+                    evals: es2,
+                },
+            ) => {
                 let scale1 = (d1 as usize) / (res_domain.0 as usize);
                 assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                EvalResult::init(
-                    res_domain,
-                    |i| {
-                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                            * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
-                    })
+                EvalResult::init(res_domain, |i| {
+                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
+                        * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                })
             }
         }
     }
-
 }
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
@@ -842,7 +1038,7 @@ fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
         Domain::D1 => env.domain.d1,
         Domain::D2 => env.domain.d2,
         Domain::D4 => env.domain.d4,
-        Domain::D8 => env.domain.d8
+        Domain::D8 => env.domain.d8,
     }
 }
 
@@ -857,11 +1053,11 @@ impl<F: Field> Expr<ConstantExpr<F>> {
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
-        cs.into_iter().zip(alpha0..).map(|(c, i)| {
-            Expr::Constant(ConstantExpr::Alpha.pow(i)) * c
-        }).fold(zero, |acc, x| acc + x)
+        cs.into_iter()
+            .zip(alpha0..)
+            .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i)) * c)
+            .fold(zero, |acc, x| acc + x)
     }
-
 }
 
 impl<F: FftField> Expr<ConstantExpr<F>> {
@@ -879,38 +1075,38 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 x.to_polish_(cache, res);
                 res.push(PolishToken::Dup);
                 res.push(PolishToken::Add);
-            },
+            }
             Expr::Square(x) => {
                 x.to_polish_(cache, res);
                 res.push(PolishToken::Dup);
                 res.push(PolishToken::Mul);
-            },
+            }
             Expr::Pow(x, d) => {
                 x.to_polish_(cache, res);
                 res.push(PolishToken::Pow(*d))
-            },
+            }
             Expr::Constant(c) => {
                 c.to_polish_(res);
-            },
-            Expr::Cell(v) => {
-                res.push(PolishToken::Cell(*v))
-            },
+            }
+            Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
             Expr::VanishesOnLast4Rows => {
                 res.push(PolishToken::VanishesOnLast4Rows);
-            },
+            }
             Expr::UnnormalizedLagrangeBasis(i) => {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
-            },
+            }
             Expr::BinOp(op, x, y) => {
                 x.to_polish_(cache, res);
                 y.to_polish_(cache, res);
                 res.push(op.to_polish());
-            },
+            }
             Expr::Cache(id, e) => {
                 match cache.get(id) {
                     Some(pos) =>
-                        // Already computed and stored this.
-                        res.push(PolishToken::Load(*pos)),
+                    // Already computed and stored this.
+                    {
+                        res.push(PolishToken::Load(*pos))
+                    }
                     None => {
                         // Haven't computed this yet. Compute it, then store it.
                         e.to_polish_(cache, res);
@@ -918,7 +1114,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                         cache.insert(*id, cache.len());
                     }
                 }
-            },
+            }
         }
     }
 
@@ -947,17 +1143,23 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
 
     /// Evaluate an expression as a field element against an environment.
     pub fn evaluate(
-        &self, d: D<F>, pt: F,
+        &self,
+        d: D<F>,
+        pt: F,
         evals: &[ProofEvaluations<F>],
-        env: &Environment<F>) -> Result<F, &str> {
+        env: &Environment<F>,
+    ) -> Result<F, &str> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
     /// Evaluate an expression as a field element against the constants.
     pub fn evaluate_(
-        &self, d: D<F>, pt: F,
+        &self,
+        d: D<F>,
+        pt: F,
         evals: &[ProofEvaluations<F>],
-        c: &Constants<F>) -> Result<F, &str> {
+        c: &Constants<F>,
+    ) -> Result<F, &str> {
         use Expr::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
@@ -967,21 +1169,22 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x * y)
-            },
+            }
             Square(x) => Ok(x.evaluate_(d, pt, evals, c)?.square()),
             BinOp(Op2::Add, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x + y)
-            },
+            }
             BinOp(Op2::Sub, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
-            },
+            }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) =>
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
+            UnnormalizedLagrangeBasis(i) => {
+                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
         }
@@ -1000,14 +1203,12 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
 
 enum Either<A, B> {
     Left(A),
-    Right(B)
+    Right(B),
 }
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(
-        &self, d: D<F>, pt: F,
-        evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
+    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1018,20 +1219,21 @@ impl<F: FftField> Expr<F> {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x * y)
-            },
+            }
             BinOp(Op2::Add, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x + y)
-            },
+            }
             BinOp(Op2::Sub, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
-            },
+            }
             VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => 
-                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64]))),
+            UnnormalizedLagrangeBasis(i) => {
+                Ok(d.evaluate_vanishing_polynomial(pt) / (pt - d.group_gen.pow(&[*i as u64])))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
         }
@@ -1041,39 +1243,40 @@ impl<F: FftField> Expr<F> {
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size as usize;
         let deg = self.degree(d1_size);
-        let d =
-            if deg <= d1_size {
-                Domain::D1
-            } else if deg <= 4 * d1_size {
-                Domain::D4
-            } else if deg <= 8 * d1_size {
-                Domain::D8
-            } else {
-                panic!("constraint had degree {} > 8", deg);
-            };
+        let d = if deg <= d1_size {
+            Domain::D1
+        } else if deg <= 4 * d1_size {
+            Domain::D4
+        } else if deg <= 8 * d1_size {
+            Domain::D8
+        } else {
+            panic!("constraint had degree {} > 8", deg);
+        };
 
         let mut cache = HashMap::new();
 
-        let evals =
-            match self.evaluations_helper(&mut cache, d, env) {
-                Either::Left(x) => x,
-                Either::Right(id) => cache.get(&id).unwrap().clone(),
-            };
+        let evals = match self.evaluations_helper(&mut cache, d, env) {
+            Either::Left(x) => x,
+            Either::Right(id) => cache.get(&id).unwrap().clone(),
+        };
 
         match evals {
             EvalResult::Evals { evals, domain } => {
                 assert_eq!(domain, d);
                 evals
-            },
-            EvalResult::Constant(x) => 
-                EvalResult::init_((d, get_domain(d, env)), |_| x),
-            EvalResult::SubEvals { evals, domain: d_sub, shift: s } => {
+            }
+            EvalResult::Constant(x) => EvalResult::init_((d, get_domain(d, env)), |_| x),
+            EvalResult::SubEvals {
+                evals,
+                domain: d_sub,
+                shift: s,
+            } => {
                 let res_domain = get_domain(d, env);
                 let scale = (d_sub as usize) / (d as usize);
                 assert!(scale != 0);
-                EvalResult::init_(
-                    (d, res_domain),
-                    |i| evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()])
+                EvalResult::init_((d, res_domain), |i| {
+                    evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
+                })
             }
         }
     }
@@ -1082,117 +1285,122 @@ impl<F: FftField> Expr<F> {
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
-        env: & Environment<'a, F>) -> Either<EvalResult<'a, F>, CacheId> where 'a: 'b {
-
+        env: &Environment<'a, F>,
+    ) -> Either<EvalResult<'a, F>, CacheId>
+    where
+        'a: 'b,
+    {
         let dom = (d, get_domain(d, env));
 
-        let res : EvalResult<'a, F> =
-            match self {
-                Expr::Square(x) =>
-                    match x.evaluations_helper(cache, d, env) {
-                        Either::Left(x) => x.square(dom),
-                        Either::Right(id) => id.get_from(cache).unwrap().square(dom),
-                    },
-                Expr::Double(x) => {
-                    let x = x.evaluations_helper(cache, d, env);
-                    let res =
-                        match x {
-                            Either::Left(x) => {
-                                let x =
-                                    match x {
-                                        EvalResult::Evals { domain, mut evals } => {
-                                            evals.evals.par_iter_mut().for_each(|x| { x.double_in_place(); });
-                                            return Either::Left(EvalResult::Evals { domain, evals })
-                                        },
-                                        x => x,
-                                    };
-                                let xx = ||
-                                    match &x {
-                                        EvalResult::Constant(x) => EvalResult::Constant(*x),
-                                        EvalResult::SubEvals { domain, shift, evals } =>
-                                            EvalResult::SubEvals { domain: *domain, shift: *shift, evals },
-                                        EvalResult::Evals { domain, evals } =>
-                                            EvalResult::SubEvals { domain: *domain, shift: 0, evals }
-                                    };
-                                xx().add(xx(), dom)
-                            },
-                            Either::Right(id) => {
-                                let x1 = id.get_from(cache).unwrap();
-                                let x2 = id.get_from(cache).unwrap();
-                                x1.add(x2, dom)
+        let res: EvalResult<'a, F> = match self {
+            Expr::Square(x) => match x.evaluations_helper(cache, d, env) {
+                Either::Left(x) => x.square(dom),
+                Either::Right(id) => id.get_from(cache).unwrap().square(dom),
+            },
+            Expr::Double(x) => {
+                let x = x.evaluations_helper(cache, d, env);
+                let res = match x {
+                    Either::Left(x) => {
+                        let x = match x {
+                            EvalResult::Evals { domain, mut evals } => {
+                                evals.evals.par_iter_mut().for_each(|x| {
+                                    x.double_in_place();
+                                });
+                                return Either::Left(EvalResult::Evals { domain, evals });
                             }
+                            x => x,
                         };
-                    return Either::Left(res);
-                },
-                Expr::Cache(id, e) => {
-                    match cache.get(id) {
-                        Some(_) => {
-                            return Either::Right(*id) },
-                        None => {
-                            match e.evaluations_helper(cache, d, env) {
-                                Either::Left(es) => {
-                                    cache.insert(*id, es);
-                                },
-                                Either::Right(_) => {}
-                            };
-                            return Either::Right(*id)
-                        }
+                        let xx = || match &x {
+                            EvalResult::Constant(x) => EvalResult::Constant(*x),
+                            EvalResult::SubEvals {
+                                domain,
+                                shift,
+                                evals,
+                            } => EvalResult::SubEvals {
+                                domain: *domain,
+                                shift: *shift,
+                                evals,
+                            },
+                            EvalResult::Evals { domain, evals } => EvalResult::SubEvals {
+                                domain: *domain,
+                                shift: 0,
+                                evals,
+                            },
+                        };
+                        xx().add(xx(), dom)
                     }
-                },
-                Expr::Pow(x, p) => {
-                    let x = x.evaluations_helper(cache, d, env);
-                    match x {
-                        Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
-                        Either::Right(id) => id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env))),
+                    Either::Right(id) => {
+                        let x1 = id.get_from(cache).unwrap();
+                        let x2 = id.get_from(cache).unwrap();
+                        x1.add(x2, dom)
                     }
-                },
-                Expr::VanishesOnLast4Rows =>
-                    EvalResult::SubEvals { 
-                        domain: Domain::D8,
-                        shift: 0,
-                        evals: env.vanishes_on_last_4_rows
-                    },
-                Expr::Constant(x) => {
-                    EvalResult::Constant(*x)
-                },
-                Expr::UnnormalizedLagrangeBasis(i) =>
-                    EvalResult::Evals {
-                        domain: d,
-                        evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env)
-                    },
-                Expr::Cell(Variable { col, row }) => {
-                    let evals : &'a Evaluations<F, D<F>> = {
-                        match env.get_column(col) {
-                            None => return Either::Left(EvalResult::Constant(F::zero())),
-                            Some(e) => e
+                };
+                return Either::Left(res);
+            }
+            Expr::Cache(id, e) => match cache.get(id) {
+                Some(_) => return Either::Right(*id),
+                None => {
+                    match e.evaluations_helper(cache, d, env) {
+                        Either::Left(es) => {
+                            cache.insert(*id, es);
                         }
+                        Either::Right(_) => {}
                     };
-                    EvalResult::SubEvals { 
-                        domain: col.domain(),
-                        shift: row.shift(),
-                        evals
+                    return Either::Right(*id);
+                }
+            },
+            Expr::Pow(x, p) => {
+                let x = x.evaluations_helper(cache, d, env);
+                match x {
+                    Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
+                    Either::Right(id) => {
+                        id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env)))
                     }
-                },
-                Expr::BinOp(op, e1, e2) => {
-                    let dom = (d, get_domain(d, env));
-                    let f = |x: EvalResult<F>, y: EvalResult<F>| {
-                        match op {
-                            Op2::Mul => x.mul(y, dom),
-                            Op2::Add => x.add(y, dom),
-                            Op2::Sub => x.sub(y, dom),
-                        }
-                    };
-                    let e1 = e1.evaluations_helper(cache, d, env);
-                    let e2 = e2.evaluations_helper(cache, d, env);
-                    use Either::*;
-                    match (e1, e2) {
-                        (Left(e1), Left(e2)) => f(e1, e2),
-                        (Right(id1), Left(e2)) => f(id1.get_from(cache).unwrap(), e2),
-                        (Left(e1), Right(id2)) => f(e1, id2.get_from(cache).unwrap()),
-                        (Right(id1), Right(id2)) => f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap()),
+                }
+            }
+            Expr::VanishesOnLast4Rows => EvalResult::SubEvals {
+                domain: Domain::D8,
+                shift: 0,
+                evals: env.vanishes_on_last_4_rows,
+            },
+            Expr::Constant(x) => EvalResult::Constant(*x),
+            Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
+                domain: d,
+                evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
+            },
+            Expr::Cell(Variable { col, row }) => {
+                let evals: &'a Evaluations<F, D<F>> = {
+                    match env.get_column(col) {
+                        None => return Either::Left(EvalResult::Constant(F::zero())),
+                        Some(e) => e,
                     }
-                },
-            };
+                };
+                EvalResult::SubEvals {
+                    domain: col.domain(),
+                    shift: row.shift(),
+                    evals,
+                }
+            }
+            Expr::BinOp(op, e1, e2) => {
+                let dom = (d, get_domain(d, env));
+                let f = |x: EvalResult<F>, y: EvalResult<F>| match op {
+                    Op2::Mul => x.mul(y, dom),
+                    Op2::Add => x.add(y, dom),
+                    Op2::Sub => x.sub(y, dom),
+                };
+                let e1 = e1.evaluations_helper(cache, d, env);
+                let e2 = e2.evaluations_helper(cache, d, env);
+                use Either::*;
+                match (e1, e2) {
+                    (Left(e1), Left(e2)) => f(e1, e2),
+                    (Right(id1), Left(e2)) => f(id1.get_from(cache).unwrap(), e2),
+                    (Left(e1), Right(id2)) => f(e1, id2.get_from(cache).unwrap()),
+                    (Right(id1), Right(id2)) => {
+                        f(id1.get_from(cache).unwrap(), id2.get_from(cache).unwrap())
+                    }
+                }
+            }
+        };
         Either::Left(res)
     }
 }
@@ -1202,7 +1410,7 @@ impl<F: FftField> Expr<F> {
 /// columns.
 pub struct Linearization<E> {
     pub constant_term: E,
-    pub index_terms: Vec<(Column, E)>
+    pub index_terms: Vec<(Column, E)>,
 }
 
 impl<E: Default> Default for Linearization<E> {
@@ -1219,7 +1427,7 @@ impl<A> Linearization<A> {
     pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B> {
         Linearization {
             constant_term: f(&self.constant_term),
-            index_terms: self.index_terms.iter().map(|(c, x)| (*c, f(x))).collect()
+            index_terms: self.index_terms.iter().map(|(c, x)| (*c, f(x))).collect(),
         }
     }
 }
@@ -1235,40 +1443,62 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(&self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
+    pub fn to_polynomial(
+        &self,
+        env: &Environment<F>,
+        pt: F,
+        evals: &[ProofEvaluations<F>],
+    ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size as usize;
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
             let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, &cs).unwrap();
-            let e = env.get_column(&idx).expect(&format!("Index polynomial {:?} not found", idx));
+            let e = env
+                .get_column(&idx)
+                .expect(&format!("Index polynomial {:?} not found", idx));
             let scale = e.evals.len() / n;
-            res.par_iter_mut().enumerate().for_each(|(i, r)| {
-                *r += c * e.evals[scale * i]
-            })
+            res.par_iter_mut()
+                .enumerate()
+                .for_each(|(i, r)| *r += c * e.evals[scale * i])
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
-        (PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, &cs).unwrap(), p)
+        (
+            PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, &cs).unwrap(),
+            p,
+        )
     }
 }
 
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(&self, env: &Environment<F>, pt: F, evals: &[ProofEvaluations<F>]) -> (F, DensePolynomial<F>) {
+    pub fn to_polynomial(
+        &self,
+        env: &Environment<F>,
+        pt: F,
+        evals: &[ProofEvaluations<F>],
+    ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size as usize;
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
             let c = c.evaluate_(env.domain.d1, pt, evals, &cs).unwrap();
-            let e = env.get_column(&idx).expect(&format!("Index polynomial {:?} not found", idx));
+            let e = env
+                .get_column(&idx)
+                .expect(&format!("Index polynomial {:?} not found", idx));
             let scale = e.evals.len() / n;
-            res.par_iter_mut().enumerate().for_each(|(i, r)| {
-                *r += c * e.evals[scale * i]
-            })
+            res.par_iter_mut()
+                .enumerate()
+                .for_each(|(i, r)| *r += c * e.evals[scale * i])
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
-        (self.constant_term.evaluate_(env.domain.d1, pt, evals, &cs).unwrap(), p)
+        (
+            self.constant_term
+                .evaluate_(env.domain.d1, pt, evals, &cs)
+                .unwrap(),
+            p,
+        )
     }
 }
 
@@ -1285,10 +1515,11 @@ impl<F: One> Expr<F> {
 
 type Monomials<F> = HashMap<Vec<Variable>, Expr<F>>;
 
-fn mul_monomials<F: Neg<Output=F> + Clone + One + Zero + PartialEq>(
+fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
     e1: &Monomials<F>,
-    e2: &Monomials<F>) -> Monomials<F> {
-    let mut res : HashMap<_, Expr<F>> = HashMap::new();
+    e2: &Monomials<F>,
+) -> Monomials<F> {
+    let mut res: HashMap<_, Expr<F>> = HashMap::new();
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
             let mut m = m1.clone();
@@ -1302,7 +1533,7 @@ fn mul_monomials<F: Neg<Output=F> + Clone + One + Zero + PartialEq>(
     res
 }
 
-impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
+impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     // TODO This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
@@ -1328,11 +1559,11 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
             h.insert(v, c);
             h
         };
-        let constant = |e : Expr<F>| sing(vec![], e);
+        let constant = |e: Expr<F>| sing(vec![], e);
         use Expr::*;
 
         if self.is_constant(ev) {
-            return constant(self.clone())
+            return constant(self.clone());
         }
 
         match self {
@@ -1355,10 +1586,10 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
                     }
                 }
                 acc
-            },
-            Double(e) =>
-                HashMap::from_iter(
-                    e.monomials(ev).into_iter().map(|(m, c)| (m, c.double()))),
+            }
+            Double(e) => {
+                HashMap::from_iter(e.monomials(ev).into_iter().map(|(m, c)| (m, c.double())))
+            }
             Cache(_, e) => e.monomials(ev),
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
             VanishesOnLast4Rows => constant(VanishesOnLast4Rows),
@@ -1367,36 +1598,34 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
             BinOp(Op2::Add, e1, e2) => {
                 let mut res = e1.monomials(ev);
                 for (m, c) in e2.monomials(ev) {
-                    let v =
-                        match res.remove(&m) {
-                            None => c,
-                            Some(v) => v + c
-                        };
+                    let v = match res.remove(&m) {
+                        None => c,
+                        Some(v) => v + c,
+                    };
                     res.insert(m, v);
                 }
                 res
-            },
+            }
             BinOp(Op2::Sub, e1, e2) => {
                 let mut res = e1.monomials(ev);
                 for (m, c) in e2.monomials(ev) {
-                    let v =
-                        match res.remove(&m) {
-                            None => -c, // Expr::constant(F::one()) * c,
-                            Some(v) => v - c
-                        };
+                    let v = match res.remove(&m) {
+                        None => -c, // Expr::constant(F::one()) * c,
+                        Some(v) => v - c,
+                    };
                     res.insert(m, v);
                 }
                 res
-            },
+            }
             BinOp(Op2::Mul, e1, e2) => {
                 let e1 = e1.monomials(ev);
                 let e2 = e2.monomials(ev);
                 mul_monomials(&e1, &e2)
-            },
+            }
             Square(x) => {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
-            },
+            }
         }
     }
 
@@ -1427,25 +1656,29 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
     /// compute it in that way. Instead, it computes it by reducing the expression into
     /// a sum of monomials with `F` coefficients, and then factors the monomials.
     pub fn linearize(&self, evaluated: HashSet<Column>) -> Result<Linearization<Expr<F>>, &str> {
-        let mut res : HashMap<Column, Expr<F>> = HashMap::new();
-        let mut constant_term : Expr<F> = Self::zero();
+        let mut res: HashMap<Column, Expr<F>> = HashMap::new();
+        let mut constant_term: Expr<F> = Self::zero();
         let monomials = self.monomials(&evaluated);
 
         for (m, c) in monomials {
-            let (evaluated, mut unevaluated) : (Vec<_>, _) = m.into_iter().partition(|v| evaluated.contains(&v.col));
+            let (evaluated, mut unevaluated): (Vec<_>, _) =
+                m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
             if unevaluated.len() == 0 {
                 constant_term = constant_term + c;
             } else if unevaluated.len() == 1 {
                 let var = unevaluated.remove(0);
                 match var.row {
-                    Next => return Err("Linearization failed (needed polynomial value at \"next\" row)"),
+                    Next => {
+                        return Err(
+                            "Linearization failed (needed polynomial value at \"next\" row)",
+                        )
+                    }
                     Curr => {
-                        let e =
-                            match res.remove(&var.col) {
-                                Some(v) => v + c,
-                                None => c
-                            };
+                        let e = match res.remove(&var.col) {
+                            Some(v) => v + c,
+                            None => c,
+                        };
                         res.insert(var.col, e);
                         // This code used to be
                         //
@@ -1460,12 +1693,14 @@ impl<F: Neg<Output=F> + Clone + One + Zero + PartialEq> Expr<F> {
                         // without calling remove.
                     }
                 }
-            }
-            else {
+            } else {
                 return Err("Linearization failed");
             }
         }
-        Ok(Linearization { constant_term, index_terms: res.into_iter().collect() })
+        Ok(Linearization {
+            constant_term,
+            index_terms: res.into_iter().collect(),
+        })
     }
 }
 
@@ -1479,7 +1714,7 @@ impl<F: Field> Zero for ConstantExpr<F> {
     fn is_zero(&self) -> bool {
         match self {
             ConstantExpr::Literal(x) => x.is_zero(),
-            _ => false
+            _ => false,
         }
     }
 }
@@ -1492,18 +1727,18 @@ impl<F: Field> One for ConstantExpr<F> {
     fn is_one(&self) -> bool {
         match self {
             ConstantExpr::Literal(x) => x.is_one(),
-            _ => false
+            _ => false,
         }
     }
 }
 
-impl<F : One + Neg<Output=F>> Neg for ConstantExpr<F> {
+impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
 
     fn neg(self) -> ConstantExpr<F> {
         match self {
             ConstantExpr::Literal(x) => ConstantExpr::Literal(x.neg()),
-            e => ConstantExpr::Mul(Box::new(ConstantExpr::Literal(F::one().neg())), Box::new(e))
+            e => ConstantExpr::Mul(Box::new(ConstantExpr::Literal(F::one().neg())), Box::new(e)),
         }
     }
 }
@@ -1516,11 +1751,11 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
             return other;
         }
         if other.is_zero() {
-            return self
+            return self;
         }
         match (self, other) {
             (Literal(x), Literal(y)) => Literal(x + y),
-            (x, y) => Add(Box::new(x), Box::new(y))
+            (x, y) => Add(Box::new(x), Box::new(y)),
         }
     }
 }
@@ -1530,11 +1765,11 @@ impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
     fn sub(self, other: Self) -> Self {
         use ConstantExpr::*;
         if other.is_zero() {
-            return self
+            return self;
         }
         match (self, other) {
             (Literal(x), Literal(y)) => Literal(x - y),
-            (x, y) => Sub(Box::new(x), Box::new(y))
+            (x, y) => Sub(Box::new(x), Box::new(y)),
         }
     }
 }
@@ -1551,7 +1786,7 @@ impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
         }
         match (self, other) {
             (Literal(x), Literal(y)) => Literal(x * y),
-            (x, y) => Mul(Box::new(x), Box::new(y))
+            (x, y) => Mul(Box::new(x), Box::new(y)),
         }
     }
 }
@@ -1564,7 +1799,7 @@ impl<F: Zero> Zero for Expr<F> {
     fn is_zero(&self) -> bool {
         match self {
             Expr::Constant(x) => x.is_zero(),
-            _ => false
+            _ => false,
         }
     }
 }
@@ -1577,18 +1812,22 @@ impl<F: One + PartialEq> One for Expr<F> {
     fn is_one(&self) -> bool {
         match self {
             Expr::Constant(x) => x.is_one(),
-            _ => false
+            _ => false,
         }
     }
 }
 
-impl<F : One + Neg<Output=F>> Neg for Expr<F> {
+impl<F: One + Neg<Output = F>> Neg for Expr<F> {
     type Output = Expr<F>;
 
     fn neg(self) -> Expr<F> {
         match self {
             Expr::Constant(x) => Expr::Constant(x.neg()),
-            e => Expr::BinOp(Op2::Mul, Box::new(Expr::Constant(F::one().neg())), Box::new(e))
+            e => Expr::BinOp(
+                Op2::Mul,
+                Box::new(Expr::Constant(F::one().neg())),
+                Box::new(e),
+            ),
         }
     }
 }
@@ -1630,13 +1869,13 @@ impl<F: Zero> Sub<Expr<F>> for Expr<F> {
 }
 
 impl<F: Field> From<u64> for Expr<F> {
-    fn from(x : u64) -> Self {
+    fn from(x: u64) -> Self {
         Expr::Constant(F::from(x))
     }
 }
 
 impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
-    fn from(x : u64) -> Self {
+    fn from(x: u64) -> Self {
         Expr::Constant(ConstantExpr::Literal(F::from(x)))
     }
 }
@@ -1652,11 +1891,9 @@ impl<F: PrimeField> fmt::Display for ConstantExpr<F> {
             EndoCoefficient => write!(f, "endo_coefficient")?,
             Mds { row, col } => write!(f, "mds({}, {})", row, col)?,
             Literal(x) => write!(f, "field(\"0x{}\")", x.into_repr())?,
-            Pow(x, n) => {
-                match x.as_ref() {
-                    Alpha => write!(f, "alpha_pow({})", n)?,
-                    x => write!(f, "pow({}, {})", x, n)?
-                }
+            Pow(x, n) => match x.as_ref() {
+                Alpha => write!(f, "alpha_pow({})", n)?,
+                x => write!(f, "pow({}, {})", x, n)?,
             },
             Add(x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
             Mul(x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
@@ -1666,7 +1903,10 @@ impl<F: PrimeField> fmt::Display for ConstantExpr<F> {
     }
 }
 
-fn to_string<F: Clone + fmt::Display>(cache: &mut HashMap<CacheId, Expr<F>>, e: & Expr<F>) -> String {
+fn to_string<F: Clone + fmt::Display>(
+    cache: &mut HashMap<CacheId, Expr<F>>,
+    e: &Expr<F>,
+) -> String {
     use Expr::*;
     match e {
         Double(x) => format!("double({})", to_string(cache, x)),
@@ -1674,9 +1914,21 @@ fn to_string<F: Clone + fmt::Display>(cache: &mut HashMap<CacheId, Expr<F>>, e: 
         Cell(v) => format!("cell({})", *v),
         UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
         VanishesOnLast4Rows => format!("vanishes_on_last_4_rows"),
-        BinOp(Op2::Add, x, y) => format!("({} + {})", to_string(cache, x.as_ref()), to_string(cache, y.as_ref())),
-        BinOp(Op2::Mul, x, y) => format!("({} * {})", to_string(cache, x.as_ref()), to_string(cache, y.as_ref())),
-        BinOp(Op2::Sub, x, y) => format!("({} - {})", to_string(cache, x.as_ref()), to_string(cache, y.as_ref())),
+        BinOp(Op2::Add, x, y) => format!(
+            "({} + {})",
+            to_string(cache, x.as_ref()),
+            to_string(cache, y.as_ref())
+        ),
+        BinOp(Op2::Mul, x, y) => format!(
+            "({} * {})",
+            to_string(cache, x.as_ref()),
+            to_string(cache, y.as_ref())
+        ),
+        BinOp(Op2::Sub, x, y) => format!(
+            "({} - {})",
+            to_string(cache, x.as_ref()),
+            to_string(cache, y.as_ref())
+        ),
         Pow(x, d) => format!("pow({}, {})", to_string(cache, x.as_ref()), d),
         Square(x) => format!("square({})", to_string(cache, x.as_ref())),
         Cache(id, e) => {

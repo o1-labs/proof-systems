@@ -15,11 +15,11 @@ use commitment_dlog::commitment::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
-    expr::{Constants, PolishToken, Column},
+    expr::{Column, Constants, PolishToken},
     gate::{GateType, LookupsUsed},
+    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
     nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
     wires::*,
-    gates::generic::{MUL_COEFF, CONSTANT_COEFF},
 };
 use rand::thread_rng;
 
@@ -122,16 +122,17 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
         let joint_combiner = {
-            let s =
-                match index.lookup_used.as_ref() {
-                    None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                    Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
-                };
+            let s = match index.lookup_used.as_ref() {
+                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            };
             (s, s.to_field(&index.srs.endo_r))
         };
 
         self.commitments.lookup.iter().for_each(|l| {
-            l.sorted.iter().for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+            l.sorted
+                .iter()
+                .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
         });
 
         // sample beta, gamma oracles
@@ -281,19 +282,22 @@ where
 
             ft_eval0 += nominator * &denominator;
 
-            let cs =
-                Constants {
-                    alpha: alpha,
-                    beta: beta,
-                    gamma: gamma,
-                    joint_combiner: joint_combiner.1,
-                    endo_coefficient: index.endo,
-                    mds: index.fr_sponge_params.mds.clone(),
-                };
+            let cs = Constants {
+                alpha: alpha,
+                beta: beta,
+                gamma: gamma,
+                joint_combiner: joint_combiner.1,
+                endo_coefficient: index.endo,
+                mds: index.fr_sponge_params.mds.clone(),
+            };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
-                index.domain, zeta,
-                &evals, &cs).unwrap();
+                index.domain,
+                zeta,
+                &evals,
+                &cs,
+            )
+            .unwrap();
 
             ft_eval0
         };
@@ -421,55 +425,71 @@ where
 
                 // generic
                 commitments_part.push(&index.coefficients_comm[MUL_COEFF]);
-                commitments_part.extend(index.coefficients_comm.iter().take(GENERICS).map(|c| c).collect::<Vec<_>>());
-                scalars_part.extend(&ConstraintSystem::gnrc_scalars(&evals[0].w, evals[0].generic_selector));
+                commitments_part.extend(
+                    index
+                        .coefficients_comm
+                        .iter()
+                        .take(GENERICS)
+                        .map(|c| c)
+                        .collect::<Vec<_>>(),
+                );
+                scalars_part.extend(&ConstraintSystem::gnrc_scalars(
+                    &evals[0].w,
+                    evals[0].generic_selector,
+                ));
 
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars_part.push(evals[0].generic_selector);
 
                 {
                     // TODO: Reuse constants from oracles function
-                    let constants =
-                        Constants {
-                            alpha: oracles.alpha,
-                            beta: oracles.beta,
-                            gamma: oracles.gamma,
-                            joint_combiner: oracles.joint_combiner.1,
-                            endo_coefficient: index.endo,
-                            mds: index.fr_sponge_params.mds.clone(),
-                        };
+                    let constants = Constants {
+                        alpha: oracles.alpha,
+                        beta: oracles.beta,
+                        gamma: oracles.gamma,
+                        joint_combiner: oracles.joint_combiner.1,
+                        endo_coefficient: index.endo,
+                        mds: index.fr_sponge_params.mds.clone(),
+                    };
 
                     let s = &mut scalars_part;
                     let p = &mut commitments_part;
                     index.linearization.index_terms.iter().for_each(|(c, e)| {
-                        let e = PolishToken::evaluate(e, index.domain, oracles.zeta, &evals, &constants).unwrap();
+                        let e = PolishToken::evaluate(
+                            e,
+                            index.domain,
+                            oracles.zeta,
+                            &evals,
+                            &constants,
+                        )
+                        .unwrap();
                         let l = proof.commitments.lookup.as_ref();
                         use Column::*;
                         match c {
                             Witness(i) => {
                                 s.push(e);
                                 p.push(&proof.commitments.w_comm[*i])
-                            },
+                            }
                             Coefficient(i) => {
                                 s.push(e);
                                 p.push(&index.coefficients_comm[*i])
-                            },
+                            }
                             Z => {
                                 s.push(e);
                                 p.push(&proof.commitments.z_comm);
-                            },
+                            }
                             LookupSorted(i) => {
                                 s.push(e);
                                 p.push(&l.unwrap().sorted[*i])
-                            },
+                            }
                             LookupAggreg => {
                                 s.push(e);
                                 p.push(&l.unwrap().aggreg)
-                            },
+                            }
                             LookupKindIndex(i) => {
                                 s.push(e);
                                 p.push(&index.lookup_selectors[*i]);
-                            },
+                            }
                             LookupTable => {
                                 let mut j = Fr::<G>::one();
                                 s.push(e);
@@ -479,22 +499,21 @@ where
                                     s.push(e * j);
                                     p.push(t);
                                 }
-                            },
+                            }
                             Index(t) => {
                                 use GateType::*;
-                                let c =
-                                    match t {
-                                        Zero | Generic => panic!("Selector for {:?} not defined", t),
-                                        CompleteAdd => &index.complete_add_comm,
-                                        Vbmul => &index.mul_comm,
-                                        Endomul => &index.emul_comm,
-                                        EndomulScalar => &index.endomul_scalar_comm,
-                                        Poseidon => &index.psm_comm,
-                                        ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
-                                        ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
-                                        ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
-                                        ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                                    };
+                                let c = match t {
+                                    Zero | Generic => panic!("Selector for {:?} not defined", t),
+                                    CompleteAdd => &index.complete_add_comm,
+                                    Vbmul => &index.mul_comm,
+                                    Endomul => &index.emul_comm,
+                                    EndomulScalar => &index.endomul_scalar_comm,
+                                    Poseidon => &index.psm_comm,
+                                    ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
+                                    ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
+                                    ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
+                                    ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                                };
                                 s.push(e);
                                 p.push(c);
                             }
@@ -551,12 +570,20 @@ where
             // index commitments that use the coefficients
             polynomials.push((
                 &index.generic_comm,
-                proof.evals.iter().map(|e| &e.generic_selector).collect::<Vec<_>>(),
+                proof
+                    .evals
+                    .iter()
+                    .map(|e| &e.generic_selector)
+                    .collect::<Vec<_>>(),
                 None,
             ));
             polynomials.push((
                 &index.psm_comm,
-                proof.evals.iter().map(|e| &e.poseidon_selector).collect::<Vec<_>>(),
+                proof
+                    .evals
+                    .iter()
+                    .map(|e| &e.poseidon_selector)
+                    .collect::<Vec<_>>(),
                 None,
             ));
 

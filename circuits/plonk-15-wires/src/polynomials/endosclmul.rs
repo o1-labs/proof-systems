@@ -29,10 +29,10 @@
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //! </pre>
 
-use ark_ff::{Field, One};
+use crate::expr::{Cache, Column, ConstantExpr, E};
+use crate::gate::{CurrOrNext, GateType};
 use crate::wires::COLUMNS;
-use crate::expr::{E, Column, Cache, ConstantExpr};
-use crate::gate::{GateType, CurrOrNext};
+use ark_ff::{Field, One};
 use CurrOrNext::*;
 
 /// The constraint for endoscaling.
@@ -66,16 +66,17 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
     let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1.clone()) * xt.clone());
 
-    let yq1 = (b2.clone().double() - E::one())*yt.clone();
-    let yq2 = (b4.clone().double() - E::one())*yt.clone();
+    let yq1 = (b2.clone().double() - E::one()) * yt.clone();
+    let yq2 = (b4.clone().double() - E::one()) * yt.clone();
 
     let s1_squared = cache.cache(s1.clone().square());
     let s3_squared = cache.cache(s3.clone().square());
 
     // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
     let n = w(6);
-    let n_constraint =
-        (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double() + b4.clone()
+    let n_constraint = (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone())
+        .double()
+        + b4.clone()
         - E::cell(Column::Witness(6), Next);
 
     let xp_xr = cache.cache(xp.clone() - xr.clone());
@@ -93,24 +94,22 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
         // (xq1 - xp) * s1 = yq1 - yp
         ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1.clone() - yp.clone()),
         // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
-        (((xp.clone().double() - s1_squared.clone()) + xq1.clone()) * ((xp_xr.clone() * s1.clone()) + yr_yp.clone()))
-            -
-            (yp.clone().double() * xp_xr.clone()),
+        (((xp.clone().double() - s1_squared.clone()) + xq1.clone())
+            * ((xp_xr.clone() * s1.clone()) + yr_yp.clone()))
+            - (yp.clone().double() * xp_xr.clone()),
         // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
         yr_yp.clone().square() - (xp_xr.clone().square() * ((s1_squared - xq1) + xr.clone())),
         // (xq2 - xr) * s3 = yq2 - yr
         ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2.clone() - yr.clone()),
         // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
-        (((xr.clone().double() - s3_squared.clone()) + xq2.clone()) * ((xr_xs.clone() * s3) + ys_yr.clone()))
-            -
-            (yr.clone().double() * xr_xs.clone()),
-
+        (((xr.clone().double() - s3_squared.clone()) + xq2.clone())
+            * ((xr_xs.clone() * s3) + ys_yr.clone()))
+            - (yr.clone().double() * xr_xs.clone()),
         // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
         ys_yr.clone().square() - (xr_xs.clone().square() * ((s3_squared - xq2) + xs)),
         n_constraint,
     ];
-    E::combine_constraints(alpha0, p)
-    * E::cell(Column::Index(GateType::Endomul), Curr)
+    E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::Endomul), Curr)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point
@@ -127,8 +126,8 @@ pub fn witness<F: Field + std::fmt::Display>(
     endo: F,
     base: (F, F),
     bits: &Vec<bool>,
-    acc0: (F, F)) -> EndoMulResult<F> {
-
+    acc0: (F, F),
+) -> EndoMulResult<F> {
     let bits_per_row = 4;
     let rows = bits.len() / 4;
     assert_eq!(0, bits.len() % 4);
@@ -150,7 +149,7 @@ pub fn witness<F: Field + std::fmt::Display>(
         let (xp, yp) = acc;
 
         let xq1 = (one + (endo - one) * b1) * xt;
-        let yq1 = (b2.double() - one)*yt;
+        let yq1 = (b2.double() - one) * yt;
 
         let s1 = (yq1 - yp) / (xq1 - xp);
         let s1_squared = s1.square();
@@ -165,17 +164,17 @@ pub fn witness<F: Field + std::fmt::Display>(
         //
         // => xr = s2^2 - s1^2 + xq
         // => yr = s2 * (xp - xr) - yp
-        let s2 = yp.double() / ( xp.double() + xq1 - s1_squared) - s1;
+        let s2 = yp.double() / (xp.double() + xq1 - s1_squared) - s1;
 
         // (xr, yr)
         let xr = xq1 + s2.square() - s1_squared;
         let yr = (xp - xr) * s2 - yp;
 
         let xq2 = (one + (endo - one) * b3) * xt;
-        let yq2 = (b4.double() - one)*yt;
+        let yq2 = (b4.double() - one) * yt;
         let s3 = (yq2 - yr) / (xq2 - xr);
         let s3_squared = s3.square();
-        let s4 = yr.double() / ( xr.double() + xq2 - s3_squared) - s3;
+        let s4 = yr.double() / (xr.double() + xq2 - s3_squared) - s3;
 
         let xs = xq2 + s4.square() - s3_squared;
         let ys = (xr - xs) * s4 - yr;
@@ -211,8 +210,5 @@ pub fn witness<F: Field + std::fmt::Display>(
     w[5][row0 + rows] = acc.1;
     w[6][row0 + rows] = n_acc;
 
-    EndoMulResult {
-        acc,
-        n: n_acc
-    }
+    EndoMulResult { acc, n: n_acc }
 }

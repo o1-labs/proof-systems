@@ -28,7 +28,7 @@ use ark_poly::{
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
-    srs::{SRS},
+    srs::SRS,
 };
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -42,7 +42,10 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use plonk_circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::GateWires};
-use plonk_protocol_dlog::{index::{SRSSpec, Index}, prover::ProverProof};
+use plonk_protocol_dlog::{
+    index::{Index, SRSSpec},
+    prover::ProverProof,
+};
 use rand::rngs::OsRng;
 use std::time::Instant;
 use std::{io, io::Write};
