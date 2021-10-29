@@ -47,21 +47,22 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 
 /// The constraint for the endomul scalar computation
 ///
-/// We lay it out as
+/// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
+/// [this paper](https://eprint.iacr.org/2019/1021.pdf).
 ///
-/// <pre>
-/// 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14
-/// n0   n8   a0   b0   a8   b8   x0   x1   x2   x3   x4   x5   x6   x7
-/// </pre>
+/// The state of the algorithm that's updated across iterations of the loop is (a, b).
+/// It's clear from that description of the algorithm that an iteration of the loop can
+/// be written as
 ///
-/// We use several functions obtained by lagrange interpolation:
+/// ```ignore
+/// (a, b, i) ->
+///   ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),
+///     2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
+/// ```
 ///
-/// crumb(x)
-/// = x (x - 1) (x - 2) (x - 3)
-/// = x^4 - 6*x^3 + 11*x^2 - 6*x
-/// = x *(x^3 - 6*x^2 + 11*x - 6)
-///
-/// which checks that a value is a crumb (2-bit chunk).
+/// for some functions c_func and d_func. If one works out what these functions are on
+/// every input (thinking of a two bit input as a number in {0, 1, 2, 3}), one finds they
+/// are given by
 ///
 /// c_func(x), defined by
 /// - c_func(0) = 0
@@ -69,25 +70,49 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// - c_func(2) = -1
 /// - c_func(3) = 1
 ///
-/// and given by 2/3*x^3 - 5/2*x^2 + 11/6*x
-///
 /// d_func(x), defined by
 /// - d_func(0) = -1
 /// - d_func(1) = 1
 /// - d_func(2) = 0
 /// - d_func(3) = 0
 ///
-/// and given by 2/3*x^3 - 7/2*x^2 + 29/6*x - 1 = c_func + (-x^2 + 3x - 1)
+/// One can then interpolate to find polynomials that implement these functions on {0, 1, 2, 3}.
 ///
-/// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
-/// [this paper](https://eprint.iacr.org/2019/1021.pdf).
-///
-/// These polynomials can be generated using sage like
-/// <pre>
+/// You can use sage, as
+/// ```ignore
 /// R = PolynomialRing(QQ, 'x')
 /// c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
 /// d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
+/// ```
+///
+/// Then, c_func is given by
+///
+/// ```ignore
+/// 2/3*x^3 - 5/2*x^2 + 11/6*x
+/// ```
+///
+/// and d_func is given by
+/// ```ignore
+/// 2/3*x^3 - 7/2*x^2 + 29/6*x - 1 = c_func + (-x^2 + 3x - 1)
+/// ```
+///
+/// We lay it out as
+///
+/// <pre>
+/// 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14
+/// n0   n8   a0   b0   a8   b8   x0   x1   x2   x3   x4   x5   x6   x7
 /// </pre>
+///
+/// where each `xi` is a two bit "crumb".
+///
+/// We also use a polynomial to check that each `xi` is indeed in {0, 1, 2, 3},
+///
+/// ```ignore
+/// crumb(x)
+/// = x (x - 1) (x - 2) (x - 3)
+/// = x^4 - 6*x^3 + 11*x^2 - 6*x
+/// = x *(x^3 - 6*x^2 + 11*x - 6)
+/// ```
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let curr_row = |c| E::cell(c, CurrOrNext::Curr);
     let witness_column = |i| curr_row(Column::Witness(i));
