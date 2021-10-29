@@ -5,6 +5,7 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
+use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::wires::{Wire, COLUMNS};
 use kimchi_circuits::{
     gate::CircuitGate, nolookup::constraints::ConstraintSystem, polynomials::chacha,
@@ -18,7 +19,6 @@ use oracle::{
     poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use kimchi::{index::Index, prover::ProverProof};
 use std::{sync::Arc, time::Instant};
 
 // aliases

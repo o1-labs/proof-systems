@@ -7,6 +7,7 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
+use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::wires::{Wire, COLUMNS};
 use kimchi_circuits::{
     gate::CircuitGate,
@@ -22,7 +23,6 @@ use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use kimchi::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{io, io::Write};
 use std::{sync::Arc, time::Instant};
