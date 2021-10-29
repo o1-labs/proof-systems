@@ -610,6 +610,7 @@
 <span id="610">610</span>
 <span id="611">611</span>
 <span id="612">612</span>
+<span id="613">613</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements zk-proof batch verifier functionality.
@@ -1100,6 +1101,7 @@ This source file implements zk-proof batch verifier functionality.
                                         <span class="ident">CompleteAdd</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">complete_add_comm</span>,
                                         <span class="ident">Vbmul</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">mul_comm</span>,
                                         <span class="ident">Endomul</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">emul_comm</span>,
+                                        <span class="ident">EndomulScalar</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">endomul_scalar_comm</span>,
                                         <span class="ident">Poseidon</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">psm_comm</span>,
                                         <span class="ident">ChaCha0</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">chacha_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()[<span class="number">0</span>],
                                         <span class="ident">ChaCha1</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">chacha_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()[<span class="number">1</span>],

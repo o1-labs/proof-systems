@@ -20,6 +20,7 @@
 <span id="20">20</span>
 <span id="21">21</span>
 <span id="22">22</span>
+<span id="23">23</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
 <span class="kw">use</span> <span class="ident">std::ops::Range</span>;
 
@@ -29,7 +30,8 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">COMPLETE_ADD</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">18</span>..<span class="number">25</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ENDML</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">25</span>..<span class="number">36</span>;
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MUL</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">36</span>..<span class="number">59</span>;
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHACHA</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">59</span>..(<span class="number">59</span><span class="op">+</span><span class="number">9</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ENDOMUL_SCALAR</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">59</span>..<span class="number">70</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CHACHA</span>: <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="op">=</span> <span class="number">70</span>..(<span class="number">70</span><span class="op">+</span><span class="number">9</span>);
 
 <span class="doccomment">/// Computes the powers of alpha, starting with alpha^2</span>
 <span class="comment">// TODO(mimoo): because of the way we do things, we never use alpha itself. This should instead return 1, alpha, alpha^2, etc. or better, an iterator</span>

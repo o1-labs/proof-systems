@@ -572,6 +572,9 @@
 <span id="572">572</span>
 <span id="573">573</span>
 <span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -707,6 +710,8 @@ This source file implements Plonk constraint gate primitive.
     <span class="ident">Vbmul</span>,
     <span class="doccomment">/// EC variable base scalar multiplication with group endomorphim optimization</span>
     <span class="ident">Endomul</span>,
+    <span class="doccomment">/// Gate for computing the scalar corresponding to an endoscaling</span>
+    <span class="ident">EndomulScalar</span>,
     <span class="doccomment">/// ChaCha</span>
     <span class="ident">ChaCha0</span>,
     <span class="ident">ChaCha1</span>,
@@ -984,6 +989,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="ident">CompleteAdd</span> =&gt; <span class="self">self</span>.<span class="ident">verify_complete_add</span>(<span class="ident">witness</span>),
             <span class="ident">Vbmul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">witness</span>),
             <span class="ident">Endomul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>(<span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">EndomulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>(<span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;todo&quot;</span>),
         }
     }
