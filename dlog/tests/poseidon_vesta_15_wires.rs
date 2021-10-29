@@ -121,7 +121,8 @@ fn positive(index: &Index<Affine>) {
     let mut start = Instant::now();
     for test in 0..1 {
         // witness for Poseidon permutation custom constraints
-        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); max_size]);
+        let mut witness_cols: [Vec<Fp>; COLUMNS] =
+            array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
 
         // creates a random initial state
         let init = vec![Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
@@ -129,11 +130,10 @@ fn positive(index: &Index<Affine>) {
         // number of poseidon instances in the circuit
         for h in 0..NUM_POS {
             // index
-            // TODO: is the `+ 1` correct?
             let first_row = h * (POS_ROWS_PER_HASH + 1);
 
             // initialize the sponge in the circuit with our random state
-            let first_state_cols = &mut witness[round_to_cols(0)];
+            let first_state_cols = &mut witness_cols[round_to_cols(0)];
             for state_idx in 0..SPONGE_WIDTH {
                 first_state_cols[state_idx][first_row] = init[state_idx];
             }
@@ -162,7 +162,7 @@ fn positive(index: &Index<Affine>) {
 
                     // apply the sponge and record the result in the witness
                     let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
-                    witness[cols_to_update]
+                    witness_cols[cols_to_update]
                         .iter_mut()
                         .zip(sponge.state.iter())
                         // update the state (last update is on the next row)
@@ -172,7 +172,7 @@ fn positive(index: &Index<Affine>) {
         }
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness).unwrap();
+        index.cs.verify(&witness_cols).unwrap();
 
         //
         let prev = {
@@ -194,7 +194,7 @@ fn positive(index: &Index<Affine>) {
         batch.push(
             ProverProof::create::<BaseSponge, ScalarSponge>(
                 &group_map,
-                &witness,
+                witness_cols,
                 &index,
                 vec![prev],
             )

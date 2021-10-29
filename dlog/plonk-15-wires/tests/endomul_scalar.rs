@@ -1,34 +1,28 @@
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
+use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand, Zero};
 use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
-    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
+    commitment::CommitmentCurve,
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp as F,
-    pallas::{Affine as Other, Projective as OtherProjective},
+    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
+    poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use plonk_15_wires_circuits::{
-    expr::{Column, Constants, Expr, Linearization, PolishToken},
-    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
-    gates::poseidon::ROUNDS_PER_ROW,
-    nolookup::constraints::{zk_w3, ConstraintSystem},
-    nolookup::scalars::{LookupEvaluations, ProofEvaluations},
+    gate::{CircuitGate, GateType},
+    nolookup::constraints::ConstraintSystem,
     polynomials::endomul_scalar,
     wires::*,
 };
 use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
-use std::fmt::{Display, Formatter};
 use std::{sync::Arc, time::Instant};
 
 const PUBLIC: usize = 0;
@@ -70,14 +64,14 @@ fn endomul_scalar_test() {
     srs.add_lagrange_basis(cs.domain.d1);
 
     let fq_sponge_params = oracle::pasta::fq::params();
-    let (endo_q, endo_r) = endos::<Other>();
+    let (endo_q, _endo_r) = endos::<Other>();
     let (_, endo_scalar_coeff) = endos::<Affine>();
 
     let srs = Arc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); n]);
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 
     let verifier_index = index.verifier_index();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -85,7 +79,7 @@ fn endomul_scalar_test() {
     let lgr_comms = vec![];
     let rng = &mut StdRng::from_seed([0; 32]);
 
-    let start = Instant::now();
+    //let start = Instant::now();
     for i in 0..num_scalars {
         let x = {
             let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
@@ -108,7 +102,7 @@ fn endomul_scalar_test() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![])
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
             .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 

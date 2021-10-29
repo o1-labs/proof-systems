@@ -6,7 +6,6 @@ use array_init::array_init;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
-    PolyComm,
 };
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -23,10 +22,7 @@ use plonk_15_wires_circuits::{
     nolookup::constraints::ConstraintSystem,
     wires::{Wire, COLUMNS, GENERICS},
 };
-use plonk_15_wires_protocol_dlog::{
-    index::{Index, VerifierIndex},
-    prover::ProverProof,
-};
+use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 
 // aliases
@@ -96,7 +92,7 @@ fn test_generic_gate() {
     verify_proof(gates, witness, 0);
 }
 
-fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], public: usize) {
+fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public: usize) {
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -111,12 +107,6 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     srs.add_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
-
-    // pad the witness
-    for v in witness.iter_mut() {
-        let padding = vec![Fp::zero(); n - v.len()];
-        v.extend(padding);
-    }
 
     // verify the circuit satisfiability by the computed witness
     index.cs.verify(&witness).unwrap();
@@ -136,7 +126,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, mut witness: [Vec<Fp>; COLUMNS], pu
     // add the proof to the batch
     let mut batch = Vec::new();
     batch.push(
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![prev])
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![prev])
             .unwrap(),
     );
 
