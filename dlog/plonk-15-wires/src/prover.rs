@@ -109,10 +109,9 @@ where
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
-        let d1 = index.cs.domain.d1;
-        let n = index.cs.domain.d1.size as usize;
         for w in witness.iter() {
             if w.len() != n {
+        let d1_size = index.cs.domain.d1.size as usize;
                 return Err(ProofError::WitnessCsInconsistent);
             }
         }
@@ -137,7 +136,9 @@ where
                 witness[i].clone(),
                 index.cs.domain.d1,
             );
-            index.srs.commit_evaluations(d1, &e, None, rng)
+            index
+                .srs
+                .commit_evaluations(index.cs.domain.d1, &e, None, rng)
         });
 
         // compute witness polynomials
@@ -224,7 +225,7 @@ where
                 None => (None, None, None, None),
                 Some(_) => {
                     let iter_lookup_table = || {
-                        (0..n).map(|i| {
+                        (0..d1_size).map(|i| {
                             let row = index.cs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
@@ -237,7 +238,7 @@ where
                         dummy_lookup_value.clone(),
                         iter_lookup_table,
                         index.cs.lookup_table_lengths[0],
-                        d1,
+                        index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
                         joint_combiner,
@@ -247,13 +248,17 @@ where
                         .into_iter()
                         .map(|chunk| {
                             let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                            lookup::zk_patch(v, d1, rng)
+                            lookup::zk_patch(v, index.cs.domain.d1, rng)
                         })
                         .collect();
 
                     let comm: Vec<_> = lookup_sorted
                         .iter()
-                        .map(|v| index.srs.commit_evaluations(d1, v, None, rng))
+                        .map(|v| {
+                            index
+                                .srs
+                                .commit_evaluations(index.cs.domain.d1, v, None, rng)
+                        })
                         .collect();
                     let coeffs : Vec<_> =
                         // TODO: We can avoid storing these coefficients.
@@ -279,7 +284,7 @@ where
             match lookup_sorted {
                 None => (None, None, None),
                 Some(lookup_sorted) => {
-                    let iter_lookup_table = || (0..n).map(|i| {
+                    let iter_lookup_table = || (0..d1_size).map(|i| {
                         let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
@@ -288,7 +293,7 @@ where
                         lookup::aggregation::<_, Fr<G>, _>(
                             dummy_lookup_value.0,
                             iter_lookup_table(),
-                            d1,
+                            index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
                             joint_combiner,
@@ -297,11 +302,11 @@ where
                             rng)?;
 
                     drop(lookup_sorted);
-                    if aggreg.evals[n - 4] != Fr::<G>::one() {
-                        panic!("aggregation incorrect: {}", aggreg.evals[n-3]);
+                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != Fr::<G>::one() {
+                        panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
                     }
 
-                    let comm = index.srs.commit_evaluations(d1, &aggreg, None, rng);
+                    let comm = index.srs.commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
                     fq_sponge.absorb_g(&comm.0.unshifted);
 
                     let coeffs = aggreg.interpolate();
@@ -381,7 +386,7 @@ where
                 coefficient: &index.cs.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
-                l0_1: l0_1(d1),
+                l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
@@ -440,7 +445,7 @@ where
                 (t4, t8),
                 alpha,
                 alphas[alphas.len() - 1],
-                lookup::constraints(&index.cs.dummy_lookup_values[0], d1)
+                lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1)
                     .iter()
                     .map(|e| e.evaluations(&env))
                     .collect(),
@@ -606,8 +611,8 @@ where
                 )
             })
             .collect::<Vec<_>>();
-        let non_hiding = |n: usize| PolyComm {
-            unshifted: vec![Fr::<G>::zero(); n],
+        let non_hiding = |d1_size: usize| PolyComm {
+            unshifted: vec![Fr::<G>::zero(); d1_size],
             shifted: None,
         };
 
@@ -627,7 +632,7 @@ where
         // construct evaluation proof
         let mut polynomials = polys
             .iter()
-            .map(|(p, n)| (p, None, non_hiding(*n)))
+            .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
         polynomials.extend(vec![(&p, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);

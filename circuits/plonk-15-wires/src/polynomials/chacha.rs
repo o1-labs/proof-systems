@@ -435,16 +435,13 @@ mod tests {
     use super::*;
     use crate::polynomials::chacha::constraint;
     use crate::{
-        expr::{Column, Constants, Expr, Linearization, PolishToken},
-        gate::{LookupInfo, LookupsUsed},
-        gates::poseidon::ROUNDS_PER_ROW,
-        nolookup::constraints::{zk_w3, ConstraintSystem},
+        expr::{Column, Constants, PolishToken},
+        gate::LookupInfo,
         nolookup::scalars::{LookupEvaluations, ProofEvaluations},
-        polynomials::{chacha, lookup},
         wires::*,
     };
     use ark_ff::UniformRand;
-    use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp as F;
     use rand::{rngs::StdRng, SeedableRng};
@@ -491,10 +488,10 @@ mod tests {
 
         let expr = constraint::<F>(10);
         let linearized = expr.linearize(evaluated_cols).unwrap();
-        let expr_polish = expr.to_polish();
+        let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());
 
-        let mut rng = &mut StdRng::from_seed([0u8; 32]);
+        let rng = &mut StdRng::from_seed([0u8; 32]);
 
         let d = D::new(1024).unwrap();
 
