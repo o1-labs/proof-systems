@@ -4,8 +4,8 @@ This source file implements Posedon constraint polynomials.
 
 *****************************************************************************************************************/
 
+use crate::expr::{Cache, Column, ConstantExpr, E};
 use crate::gate::{CurrOrNext, GateType};
-use CurrOrNext::*;
 use crate::gates::poseidon::*;
 use crate::nolookup::constraints::ConstraintSystem;
 use crate::nolookup::scalars::ProofEvaluations;
@@ -14,8 +14,8 @@ use ark_ff::{FftField, SquareRootField};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use o1_utils::ExtendedDensePolynomial;
-use oracle::poseidon::{sbox, ArithmeticSpongeParams, SpongeConstants, PlonkSpongeConstants15W};
-use crate::expr::{E, Column, ConstantExpr, Cache};
+use oracle::poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W, SpongeConstants};
+use CurrOrNext::*;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
@@ -74,20 +74,26 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
 
     let mut idx = 0;
 
-    let mds : Vec<Vec<_>> =
-        (0..SPONGE_WIDTH).map(|row| {
-            (0..SPONGE_WIDTH).map(|col| ConstantExpr::Mds { row, col })
+    let mds: Vec<Vec<_>> = (0..SPONGE_WIDTH)
+        .map(|row| {
+            (0..SPONGE_WIDTH)
+                .map(|col| ConstantExpr::Mds { row, col })
                 .collect()
-        }).collect();
+        })
+        .collect();
 
     for e in ROUND_EQUATIONS.iter() {
-        let &RoundEquation { source, target: (target_row, target_round) } = e;
-        let sboxed : Vec<_> =
-            round_to_cols(source).map(|i| {
+        let &RoundEquation {
+            source,
+            target: (target_row, target_round),
+        } = e;
+        let sboxed: Vec<_> = round_to_cols(source)
+            .map(|i| {
                 cache.cache(
-                    E::cell(Column::Witness(i), Curr)
-                    .pow(PlonkSpongeConstants15W::SPONGE_BOX))
-            }).collect();
+                    E::cell(Column::Witness(i), Curr).pow(PlonkSpongeConstants15W::SPONGE_BOX),
+                )
+            })
+            .collect();
 
         res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
             let rc = E::cell(Column::Coefficient(idx), Curr);
@@ -95,14 +101,13 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
             idx += 1;
 
             E::cell(Column::Witness(col), target_row)
-                -
-            sboxed.iter()
-            .zip(mds[j].iter())
-            .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
+                - sboxed
+                    .iter()
+                    .zip(mds[j].iter())
+                    .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
         }));
     }
-    E::cell(Column::Index(GateType::Poseidon), Curr) *
-    E::combine_constraints(0, res)
+    E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(0, res)
 }
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {

@@ -1,37 +1,34 @@
+use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
+use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
     commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
     srs::{endos, SRS},
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, Field, PrimeField, BitIteratorLE, UniformRand, Zero, One};
-use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D, EvaluationDomain};
-use plonk_15_wires_circuits::{
-    polynomials::endomul_scalar,
-    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
-    expr::{PolishToken, Constants, Expr, Column, Linearization},
-    gates::poseidon::ROUNDS_PER_ROW,
-    nolookup::constraints::{zk_w3, ConstraintSystem},
-    nolookup::scalars::{ProofEvaluations, LookupEvaluations},
-    wires::*,
-};
+use groupmap::GroupMap;
 use mina_curves::pasta::{
-    fp::{Fp as F},
+    fp::Fp as F,
     pallas::{Affine as Other, Projective as OtherProjective},
     vesta::{Affine, VestaParameters},
 };
-use plonk_15_wires_protocol_dlog::{
-    index::{Index},
-    prover::ProverProof,
-};
-use rand::{rngs::StdRng, SeedableRng};
-use array_init::array_init;
-use std::fmt::{Formatter, Display};
-use groupmap::GroupMap;
 use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
-    sponge::{ScalarChallenge, DefaultFqSponge, DefaultFrSponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
+use plonk_15_wires_circuits::{
+    expr::{Column, Constants, Expr, Linearization, PolishToken},
+    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
+    gates::poseidon::ROUNDS_PER_ROW,
+    nolookup::constraints::{zk_w3, ConstraintSystem},
+    nolookup::scalars::{LookupEvaluations, ProofEvaluations},
+    polynomials::endomul_scalar,
+    wires::*,
+};
+use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
+use rand::{rngs::StdRng, SeedableRng};
+use std::fmt::{Display, Formatter};
 use std::{sync::Arc, time::Instant};
 
 const PUBLIC: usize = 0;
@@ -57,18 +54,16 @@ fn endomul_scalar_test() {
     for s in 0..num_scalars {
         for i in 0..rows_per_scalar {
             let row = rows_per_scalar * s + i;
-            gates.push(
-                CircuitGate {
-                    row,
-                    typ: GateType::EndomulScalar,
-                    wires: Wire::new(row),
-                    c: vec![],
-                });
+            gates.push(CircuitGate {
+                row,
+                typ: GateType::EndomulScalar,
+                wires: Wire::new(row),
+                c: vec![],
+            });
         }
     }
 
-    let cs = ConstraintSystem::<F>::create(
-        gates, vec![], fp_sponge_params, PUBLIC).unwrap();
+    let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
     let n = cs.domain.d1.size as usize;
 
     let mut srs = SRS::create(cs.domain.d1.size as usize);
@@ -93,7 +88,9 @@ fn endomul_scalar_test() {
     let start = Instant::now();
     for i in 0..num_scalars {
         let x = {
-            let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr()).take(num_bits).collect();
+            let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
+                .take(num_bits)
+                .collect();
             F::from_repr(<F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..])).unwrap()
         };
 
@@ -104,16 +101,15 @@ fn endomul_scalar_test() {
                 i * rows_per_scalar,
                 x,
                 endo_scalar_coeff,
-                num_bits));
+                num_bits
+            )
+        );
     }
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(
-            &group_map,
-            &witness,
-            &index,
-            vec![]).unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![])
+            .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
@@ -125,5 +121,3 @@ fn endomul_scalar_test() {
         }
     }
 }
-
-

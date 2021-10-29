@@ -19,12 +19,12 @@ c'' = c' + d''; b'' = (c'' ^ b') <<< 7;
 
 We lay each line as two rows.
 
-Each line has the form 
+Each line has the form
 
     x += z; y ^= x; y <<<= k
 
 or without mutation,
-    
+
     x' = x + z; y' = (y ^ x') <<< k
 
 which we abbreviate as
@@ -126,12 +126,10 @@ And we'll check that y' is the sum of the shifted nybbles.
 
 *****************************************************************************************************************/
 
-use ark_ff::{Field, FftField, Zero};
+use crate::expr::{Column, ConstantExpr as C, E};
+use crate::gate::{CurrOrNext, GateType};
+use ark_ff::{FftField, Field, Zero};
 use CurrOrNext::*;
-use crate::{
-    gate::{GateType, CurrOrNext},
-};
-use crate::expr::{E, ConstantExpr as C, Column};
 
 // The lookup table for 4-bit xor.
 // Note that it is constructed so that (0, 0, 0) is the last position in the table.
@@ -139,10 +137,10 @@ use crate::expr::{E, ConstantExpr as C, Column};
 // This is because tables are extended to the full size of a column (essentially)
 // by padding them with their final value. And, having the value (0, 0, 0) here means
 // that when we commit to this table and use the dummy value in the `lookup_sorted`
-// columns, those entries that have the dummy value of 
+// columns, those entries that have the dummy value of
 //
 // 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
-// 
+//
 // will translate into a scalar multiplication by 0, which is free.
 pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
     let mut res = vec![vec![]; 3];
@@ -182,23 +180,22 @@ pub fn chacha20_gates() -> Vec<GateType> {
 }
 
 const CHACHA20_ROTATIONS: [u32; 4] = [16, 12, 8, 7];
-const CHACHA20_QRS : [[usize; 4]; 8] =
-    [
-        [0, 4,  8, 12],
-        [1, 5,  9, 13],
-        [2, 6, 10, 14],
-        [3, 7, 11, 15],
-        [0, 5, 10, 15],
-        [1, 6, 11, 12],
-        [2, 7,  8, 13],
-        [3, 4,  9, 14],
-    ];
+const CHACHA20_QRS: [[usize; 4]; 8] = [
+    [0, 4, 8, 12],
+    [1, 5, 9, 13],
+    [2, 6, 10, 14],
+    [3, 7, 11, 15],
+    [0, 5, 10, 15],
+    [1, 6, 11, 12],
+    [2, 7, 8, 13],
+    [3, 4, 9, 14],
+];
 
 pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
     let mut rows = vec![];
 
     let mut s = s0;
-    let mut line = |x:usize, y:usize, z:usize, k:u32| {
+    let mut line = |x: usize, y: usize, z: usize, k: u32| {
         let f = |t: u32| F::from(t);
         let nyb = |t: u32, i: usize| f((t >> (4 * i)) & 0b1111);
 
@@ -214,16 +211,38 @@ pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
             if k == 7 { y_xor_xprime.rotate_left(16) } else { yprime };
 
         rows.push(vec![
-            f(s[x]), f(s[y]), f(s[z]),
-            nyb(y_xor_xprime, 0), nyb(y_xor_xprime, 1), nyb(y_xor_xprime, 2), nyb(y_xor_xprime, 3), 
-            nyb(xprime, 0), nyb(xprime, 1), nyb(xprime, 2), nyb(xprime, 3), 
-            nyb(s[y], 0), nyb(s[y], 1), nyb(s[y], 2), nyb(s[y], 3), 
+            f(s[x]),
+            f(s[y]),
+            f(s[z]),
+            nyb(y_xor_xprime, 0),
+            nyb(y_xor_xprime, 1),
+            nyb(y_xor_xprime, 2),
+            nyb(y_xor_xprime, 3),
+            nyb(xprime, 0),
+            nyb(xprime, 1),
+            nyb(xprime, 2),
+            nyb(xprime, 3),
+            nyb(s[y], 0),
+            nyb(s[y], 1),
+            nyb(s[y], 2),
+            nyb(s[y], 3),
         ]);
         rows.push(vec![
-            f(xprime), f(yprime_in_row), f(top_bit),
-            nyb(y_xor_xprime, 4), nyb(y_xor_xprime, 5), nyb(y_xor_xprime, 6), nyb(y_xor_xprime, 7), 
-            nyb(xprime, 4), nyb(xprime, 5), nyb(xprime, 6), nyb(xprime, 7), 
-            nyb(s[y], 4), nyb(s[y], 5), nyb(s[y], 6), nyb(s[y], 7), 
+            f(xprime),
+            f(yprime_in_row),
+            f(top_bit),
+            nyb(y_xor_xprime, 4),
+            nyb(y_xor_xprime, 5),
+            nyb(y_xor_xprime, 6),
+            nyb(y_xor_xprime, 7),
+            nyb(xprime, 4),
+            nyb(xprime, 5),
+            nyb(xprime, 6),
+            nyb(xprime, 7),
+            nyb(s[y], 4),
+            nyb(s[y], 5),
+            nyb(s[y], 6),
+            nyb(s[y], 7),
         ]);
 
         s[x] = xprime;
@@ -233,15 +252,37 @@ pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
             let lo = |t: u32, i: usize| f((t >> (4 * i)) & 1);
             rows.push(vec![
                 f(yprime),
-                nyb(y_xor_xprime, 0), nyb(y_xor_xprime, 1), nyb(y_xor_xprime, 2), nyb(y_xor_xprime, 3), 
-                lo(y_xor_xprime, 0), lo(y_xor_xprime, 1), lo(y_xor_xprime, 2), lo(y_xor_xprime, 3), 
-                F::zero(), F::zero(), F::zero(), F::zero(), F::zero(), F::zero(),
+                nyb(y_xor_xprime, 0),
+                nyb(y_xor_xprime, 1),
+                nyb(y_xor_xprime, 2),
+                nyb(y_xor_xprime, 3),
+                lo(y_xor_xprime, 0),
+                lo(y_xor_xprime, 1),
+                lo(y_xor_xprime, 2),
+                lo(y_xor_xprime, 3),
+                F::zero(),
+                F::zero(),
+                F::zero(),
+                F::zero(),
+                F::zero(),
+                F::zero(),
             ]);
             rows.push(vec![
                 F::zero(),
-                nyb(y_xor_xprime, 4), nyb(y_xor_xprime, 5), nyb(y_xor_xprime, 6), nyb(y_xor_xprime, 7), 
-                lo(y_xor_xprime, 4), lo(y_xor_xprime, 5), lo(y_xor_xprime, 6), lo(y_xor_xprime, 7), 
-                F::zero(), F::zero(), F::zero(), F::zero(), F::zero(), F::zero(),
+                nyb(y_xor_xprime, 4),
+                nyb(y_xor_xprime, 5),
+                nyb(y_xor_xprime, 6),
+                nyb(y_xor_xprime, 7),
+                lo(y_xor_xprime, 4),
+                lo(y_xor_xprime, 5),
+                lo(y_xor_xprime, 6),
+                lo(y_xor_xprime, 7),
+                F::zero(),
+                F::zero(),
+                F::zero(),
+                F::zero(),
+                F::zero(),
+                F::zero(),
             ]);
         }
     };
@@ -265,7 +306,7 @@ pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
     let mut line = |x, y, z, k| {
         s[x] = u32::wrapping_add(s[x], s[z]);
         s[y] ^= s[x];
-        let yy : u32 = s[y];
+        let yy: u32 = s[y];
         s[y] = yy.rotate_left(k);
     };
     let mut qr = |a, b, c, d| {
@@ -289,19 +330,22 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     // 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
     // like y^x' or x+z
     let chunks_over_2_rows = |col_offset: usize| -> Vec<_> {
-        (0..8).map(|i| {
-            let r = if i < 4 { Curr } else { Next };
-            w(col_offset + (i % 4), r)
-        }).collect()
+        (0..8)
+            .map(|i| {
+                let r = if i < 4 { Curr } else { Next };
+                w(col_offset + (i % 4), r)
+            })
+            .collect()
     };
 
-    let boolean = |b : &E<F>| b.clone() * b.clone() - b.clone();
+    let boolean = |b: &E<F>| b.clone() * b.clone() - b.clone();
 
     let combine_nybbles = |ns: Vec<E<F>>| -> E<F> {
-        ns.into_iter().enumerate().fold(E::zero(),
-            |acc: E<F>, (i, t)| {
+        ns.into_iter()
+            .enumerate()
+            .fold(E::zero(), |acc: E<F>, (i, t)| {
                 acc + E::from(1 << (4 * i)) * t
-            }) 
+            })
     };
 
     // Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
@@ -336,7 +380,8 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
                 combine_nybbles(y_nybbles) - y,
                 // y' = (y ^ x') <<< 4 * nybble_rotation
                 combine_nybbles(y_xor_xprime_rotated) - yprime,
-            ])
+            ],
+        )
     };
 
     let chacha_final = {
@@ -348,21 +393,19 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
 
         // (y xor xprime) <<< 7
         // per the comment at the top of the file
-        let y_xor_xprime_rotated : Vec<_> =
-            [7, 0, 1, 2, 3, 4, 5, 6].iter()
+        let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
+            .iter()
             .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
             .map(|(&i, &j)| -> E<F> {
-                E::from(8) * low_bits[i].clone() + E::Constant(C::Literal(one_half)) * (
-                   y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
-            }).collect();
+                E::from(8) * low_bits[i].clone()
+                    + E::Constant(C::Literal(one_half))
+                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+            })
+            .collect();
 
-        let mut constraints: Vec<E<F>> =
-            low_bits.iter().map(boolean).collect();
-        constraints.push(
-            combine_nybbles(y_xor_xprime_rotated) - yprime);
-        E::combine_constraints(
-            alpha0,
-            constraints)
+        let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
+        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
+        E::combine_constraints(alpha0, constraints)
     };
 
     let index = |g: GateType| E::cell(Column::Index(g), Curr);
@@ -382,28 +425,30 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
         // all the relevant values, and the xors, and then do
         // the shifting using a ChaChaFinal gate.
         index(ChaChaFinal) * chacha_final,
-    ].into_iter().fold(0.into(), |acc, x| acc + x)
+    ]
+    .into_iter()
+    .fold(0.into(), |acc, x| acc + x)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_ff::UniformRand;
-    use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D, EvaluationDomain};
+    use crate::polynomials::chacha::constraint;
     use crate::{
-        polynomials::{chacha, lookup},
+        expr::{Column, Constants, Expr, Linearization, PolishToken},
         gate::{LookupInfo, LookupsUsed},
-        expr::{PolishToken, Constants, Expr, Column, Linearization},
         gates::poseidon::ROUNDS_PER_ROW,
         nolookup::constraints::{zk_w3, ConstraintSystem},
-        nolookup::scalars::{ProofEvaluations, LookupEvaluations},
+        nolookup::scalars::{LookupEvaluations, ProofEvaluations},
+        polynomials::{chacha, lookup},
         wires::*,
     };
-    use mina_curves::pasta::fp::{Fp as F};
-    use crate::polynomials::chacha::constraint;
-    use rand::{rngs::StdRng, SeedableRng};
+    use ark_ff::UniformRand;
+    use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Radix2EvaluationDomain as D};
     use array_init::array_init;
-    use std::fmt::{Formatter, Display};
+    use mina_curves::pasta::fp::Fp as F;
+    use rand::{rngs::StdRng, SeedableRng};
+    use std::fmt::{Display, Formatter};
 
     struct Polish(Vec<PolishToken<F>>);
     impl Display for Polish {
@@ -415,7 +460,7 @@ mod tests {
                     PolishToken::Add => write!(f, "+, ")?,
                     PolishToken::Mul => write!(f, "*, ")?,
                     PolishToken::Sub => write!(f, "-, ")?,
-                    x => write!(f, "{:?}, ", x)?
+                    x => write!(f, "{:?}, ", x)?,
                 }
             }
             write!(f, "]")?;
@@ -454,54 +499,57 @@ mod tests {
         let d = D::new(1024).unwrap();
 
         let pt = F::rand(rng);
-        let mut eval = || {
-            ProofEvaluations {
-                w: array_init(|_| F::rand(rng)),
-                z: F::rand(rng),
-                s: array_init(|_| F::rand(rng)),
-                generic_selector: F::zero(),
-                poseidon_selector: F::zero(),
-                lookup:
-                    Some(
-                        LookupEvaluations {
-                            sorted: 
-                                (0..(lookup_info.max_per_row + 1)).map(|_| F::rand(rng)).collect(),
-                            aggreg: F::rand(rng),
-                            table: F::rand(rng)
-                        })
-            }
+        let mut eval = || ProofEvaluations {
+            w: array_init(|_| F::rand(rng)),
+            z: F::rand(rng),
+            s: array_init(|_| F::rand(rng)),
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+            lookup: Some(LookupEvaluations {
+                sorted: (0..(lookup_info.max_per_row + 1))
+                    .map(|_| F::rand(rng))
+                    .collect(),
+                aggreg: F::rand(rng),
+                table: F::rand(rng),
+            }),
         };
         let evals = vec![eval(), eval()];
 
-        let constants =
-            Constants {
-                alpha: F::rand(rng),
-                beta: F::rand(rng),
-                gamma: F::rand(rng),
-                joint_combiner: F::rand(rng),
-                endo_coefficient: F::zero(),
-                mds: vec![],
-            };
+        let constants = Constants {
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
+            joint_combiner: F::rand(rng),
+            endo_coefficient: F::zero(),
+            mds: vec![],
+        };
 
         assert_eq!(
-            linearized.constant_term.evaluate_(d, pt, &evals, &constants).unwrap(),
-            PolishToken::evaluate(
-                &linearized_polish.constant_term,
-                d, pt, &evals, &constants).unwrap());
+            linearized
+                .constant_term
+                .evaluate_(d, pt, &evals, &constants)
+                .unwrap(),
+            PolishToken::evaluate(&linearized_polish.constant_term, d, pt, &evals, &constants)
+                .unwrap()
+        );
 
-        linearized.index_terms.iter().zip(linearized_polish.index_terms.iter()).for_each(|((c1, e1), (c2, e2))| {
-            assert_eq!(c1, c2);
-            println!("{:?} ?", c1);
-            let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
-            let x2 = PolishToken::evaluate(&e2, d, pt, &evals, &constants).unwrap();
-            if x1 != x2 {
-                println!("e1: {}", e1);
-                println!("e2: {}", Polish(e2.clone()));
-                println!("Polish evaluation differed for {:?}: {} != {}", c1, x1, x2);
-            } else {
-                println!("{:?} OK", c1);
-            }
-        });
+        linearized
+            .index_terms
+            .iter()
+            .zip(linearized_polish.index_terms.iter())
+            .for_each(|((c1, e1), (c2, e2))| {
+                assert_eq!(c1, c2);
+                println!("{:?} ?", c1);
+                let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
+                let x2 = PolishToken::evaluate(&e2, d, pt, &evals, &constants).unwrap();
+                if x1 != x2 {
+                    println!("e1: {}", e1);
+                    println!("e2: {}", Polish(e2.clone()));
+                    println!("Polish evaluation differed for {:?}: {} != {}", c1, x1, x2);
+                } else {
+                    println!("{:?} OK", c1);
+                }
+            });
 
         /*
         assert_eq!(

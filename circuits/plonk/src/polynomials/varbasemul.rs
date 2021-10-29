@@ -9,7 +9,7 @@ use crate::polynomial::WitnessOverDomains;
 use crate::scalars::ProofEvaluations;
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
-use o1_utils::{ExtendedEvaluations, ExtendedDensePolynomial};
+use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     // scalar multiplication constraint quotient poly contribution computation
