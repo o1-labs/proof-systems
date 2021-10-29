@@ -1,4 +1,5 @@
 pub mod endosclmul;
+pub mod endomul_scalar;
 pub mod generic;
 pub mod lookup;
 pub mod permutation;
