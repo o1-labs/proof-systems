@@ -49,18 +49,18 @@ fn potential_xs_helper<G: SWModelParameters>(
         temp.square_in_place(); // t2^2
         temp *= &alpha; // t2^2 * alpha
         temp *= &params.sqrt_neg_three_u_squared; // t2^2 * alpha * sqrt(-3u^2)
-        params.sqrt_neg_three_u_squared_minus_u_over_2 - &temp // sqrt(-3u^2-u/2) - t2^2 * alpha * sqrt(-3u^2)
+        params.sqrt_neg_three_u_squared_minus_u_over_2 - temp // sqrt(-3u^2-u/2) - t2^2 * alpha * sqrt(-3u^2)
     };
 
-    let x2 = -params.u - &x1;
+    let x2 = -params.u - x1;
 
     let x3 = {
-        let t2_plus_fu = t2 + &params.fu;
-        let t2_inv = alpha * &t2_plus_fu;
+        let t2_plus_fu = t2 + params.fu;
+        let t2_inv = alpha * t2_plus_fu;
         let mut temp = t2_plus_fu.square();
         temp *= &t2_inv;
         temp *= &params.inv_three_u_squared;
-        params.u - &temp
+        params.u - temp
     };
 
     [x1, x2, x3]
@@ -97,9 +97,8 @@ fn get_xy<G: SWModelParameters>(
 ) -> (G::BaseField, G::BaseField) {
     let xvec = potential_xs(params, t);
     for x in xvec.iter() {
-        match get_y::<G>(*x) {
-            Some(y) => return (*x, y),
-            None => (),
+        if let Some(y) = get_y::<G>(*x) {
+            return (*x, y);
         }
     }
     panic!("get_xy")
@@ -119,14 +118,14 @@ impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
             }
         });
 
-        let two = G::BaseField::one() + &G::BaseField::one();
-        let three = two + &G::BaseField::one();
+        let two = G::BaseField::one() + G::BaseField::one();
+        let three = two + G::BaseField::one();
 
-        let three_u_squared = u.square() * &three; // 3 * u^2
+        let three_u_squared = u.square() * three; // 3 * u^2
         let inv_three_u_squared = three_u_squared.inverse().unwrap(); // (3 * u^2)^-1
         let sqrt_neg_three_u_squared = (-three_u_squared).sqrt().unwrap();
         let two_inv = two.inverse().unwrap();
-        let sqrt_neg_three_u_squared_minus_u_over_2 = (sqrt_neg_three_u_squared - &u) * &two_inv;
+        let sqrt_neg_three_u_squared_minus_u_over_2 = (sqrt_neg_three_u_squared - u) * two_inv;
 
         BWParameters::<G> {
             u,
