@@ -18,7 +18,7 @@ use ark_ec::{
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};

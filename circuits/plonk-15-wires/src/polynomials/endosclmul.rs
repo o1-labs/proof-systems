@@ -2,6 +2,8 @@
 //! scalar multiplication custom Plonk polynomials.
 //!
 //! EVBSM gate constraints
+//!
+//! <pre>
 //!     b1*(b1-1) = 0
 //!     b2*(b2-1) = 0
 //!     b3*(b3-1) = 0
@@ -13,9 +15,11 @@
 //!     (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
 //!     n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+//! </pre>
 //!
 //! The constraints above are derived from the following EC Affine arithmetic equations:
 //!
+//! <pre>
 //!     (xq1 - xp) * s1 = yq1 - yp
 //!     (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
 //!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
@@ -23,6 +27,7 @@
 //!     (xq2 - xr) * s3 = yq2 - yr
 //!     (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
+//! </pre>
 
 use ark_ff::{Field, One};
 use crate::wires::COLUMNS;

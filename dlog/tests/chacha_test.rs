@@ -18,17 +18,12 @@ use oracle::{
 };
 use plonk_15_wires_circuits::wires::{Wire, COLUMNS};
 use plonk_15_wires_circuits::{
-    gate::CircuitGate,
-    polynomials::chacha,
-    nolookup::constraints::ConstraintSystem,
+    gate::CircuitGate, nolookup::constraints::ConstraintSystem, polynomials::chacha,
 };
-use plonk_15_wires_protocol_dlog::{
-    index::{Index},
-    prover::ProverProof,
-};
+use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
-use std::{rc::Rc, time::Instant};
 use std::{io, io::Write};
+use std::{sync::Arc, time::Instant};
 
 // aliases
 
@@ -47,16 +42,14 @@ fn chacha_prover() {
     println!("{} {}", n_lower_bound, max_size);
 
     let s0: Vec<u32> = vec![
-       0x61707865, 0x3320646e, 0x79622d32, 0x6b206574,
-       0x03020100, 0x07060504, 0x0b0a0908, 0x0f0e0d0c,
-       0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c,
-       0x00000001, 0x09000000, 0x4a000000, 0x00000000,
+        0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, 0x03020100, 0x07060504, 0x0b0a0908,
+        0x0f0e0d0c, 0x13121110, 0x17161514, 0x1b1a1918, 0x1f1e1d1c, 0x00000001, 0x09000000,
+        0x4a000000, 0x00000000,
     ];
     let expected_result: Vec<u32> = vec![
-       0x837778ab, 0xe238d763, 0xa67ae21e, 0x5950bb2f,
-       0xc4f2d0c7, 0xfc62bb2f, 0x8fa018fc, 0x3f5ec7b7,
-       0x335271c2, 0xf29489f3, 0xeabda8fc, 0x82e46ebd,
-       0xd19c12b4, 0xb04e16de, 0x9e83d0cb, 0x4e3c50a2,
+        0x837778ab, 0xe238d763, 0xa67ae21e, 0x5950bb2f, 0xc4f2d0c7, 0xfc62bb2f, 0x8fa018fc,
+        0x3f5ec7b7, 0x335271c2, 0xf29489f3, 0xeabda8fc, 0x82e46ebd, 0xd19c12b4, 0xb04e16de,
+        0x9e83d0cb, 0x4e3c50a2,
     ];
     assert_eq!(expected_result, chacha::chacha20(s0.clone()));
 
@@ -65,23 +58,27 @@ fn chacha_prover() {
     for _ in 0..num_chachas {
         gates.extend(chacha::chacha20_gates())
     }
-    let gates: Vec<CircuitGate<Fp>> = gates.into_iter().enumerate().map(|(i, typ)| {
-        CircuitGate {
+    let gates: Vec<CircuitGate<Fp>> = gates
+        .into_iter()
+        .enumerate()
+        .map(|(i, typ)| CircuitGate {
             typ,
             row: i,
             c: vec![],
-            wires: Wire::new(i)
-        }
-    }).collect();
+            wires: Wire::new(i),
+        })
+        .collect();
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(gates, vec![chacha::xor_table()], fp_sponge_params, PUBLIC).unwrap();
+    let cs =
+        ConstraintSystem::<Fp>::create(gates, vec![chacha::xor_table()], fp_sponge_params, PUBLIC)
+            .unwrap();
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
     let mut srs = SRS::create(max_size);
     srs.add_lagrange_basis(cs.domain.d1);
-    let srs = Rc::new(srs);
+    let srs = Arc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
@@ -100,13 +97,8 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(
-            &group_map,
-            &witness,
-            &index,
-            vec![],
-        )
-        .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, &witness, &index, vec![])
+            .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();

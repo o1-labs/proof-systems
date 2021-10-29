@@ -25,7 +25,7 @@ use plonk_15_wires_circuits::{
 use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{io, io::Write};
-use std::{rc::Rc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 // aliases
 
@@ -82,7 +82,7 @@ fn poseidon_vesta_15_wires() {
     srs.add_lagrange_basis(cs.domain.d1);
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
-    let srs = Rc::new(srs);
+    let srs = Arc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
