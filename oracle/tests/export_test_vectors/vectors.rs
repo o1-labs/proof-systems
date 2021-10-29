@@ -46,7 +46,7 @@ pub struct TestVector {
 fn poseidon(input: &[Fp]) -> Fp {
     let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
     s.absorb(input);
-    
+
     s.squeeze()
 }
 

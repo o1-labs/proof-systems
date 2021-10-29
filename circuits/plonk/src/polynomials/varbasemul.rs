@@ -23,8 +23,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         }
 
         // 2*xP - λ1^2 + xT
-        let tmp = &(&polys.d8.this.l.scale(2_u64.into()) - &polys.d8.this.r.square())
-            + &polys.d8.next.r;
+        let tmp =
+            &(&polys.d8.this.l.scale(2_u64.into()) - &polys.d8.this.r.square()) + &polys.d8.next.r;
 
         (
             // verify booleanity of the scalar bit

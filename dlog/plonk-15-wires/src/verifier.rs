@@ -379,10 +379,7 @@ where
         for (index, lgr_comm, proof) in proofs {
             // commit to public input polynomial
             let p_comm = PolyComm::<G>::multi_scalar_mul(
-                &lgr_comm
-                    .iter()
-                    .take(proof.public.len())
-                    .collect(),
+                &lgr_comm.iter().take(proof.public.len()).collect(),
                 &proof.public.iter().map(|s| -*s).collect(),
             );
 

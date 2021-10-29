@@ -122,7 +122,8 @@ where
         // ensure we have room for the zero-knowledge rows
         let length_witness = witness[0].len();
         let length_padding = d1_size
-            .checked_sub(length_witness).ok_or(ProofError::NoRoomForZkInWitness)?;
+            .checked_sub(length_witness)
+            .ok_or(ProofError::NoRoomForZkInWitness)?;
         if length_padding < ZK_ROWS as usize {
             return Err(ProofError::NoRoomForZkInWitness);
         }

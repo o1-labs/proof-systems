@@ -977,7 +977,8 @@ where
             {
                 let mut xi_i = Fr::<G>::one();
 
-                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| !x.0.unshifted.is_empty()) {
+                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| !x.0.unshifted.is_empty())
+                {
                     // iterating over the polynomial segments
                     for comm_ch in comm.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * &xi_i);

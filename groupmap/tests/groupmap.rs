@@ -4,7 +4,6 @@ use mina_curves::pasta::{
     Fq,
 };
 
-
 type G = VestaParameters;
 
 #[test]

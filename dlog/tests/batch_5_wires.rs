@@ -103,7 +103,6 @@ where
             );
             open += start.elapsed();
 
-            
             (sponge.clone(), x.clone(), polymask, evalmask, comm, proof)
         })
         .collect::<Vec<_>>();
@@ -119,13 +118,7 @@ where
                 proof
                     .4
                     .iter()
-                    .map(|poly| {
-                        (
-                            &(poly.0).0,
-                            poly.1.iter().collect::<Vec<_>>(),
-                            poly.2,
-                        )
-                    })
+                    .map(|poly| (&(poly.0).0, poly.1.iter().collect::<Vec<_>>(), poly.2))
                     .collect::<Vec<_>>(),
                 &proof.5,
             )

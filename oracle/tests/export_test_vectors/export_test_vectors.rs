@@ -51,7 +51,6 @@ fn main() {
                 Mode::Hex,
                 Mode::B10
             );
-            
         }
     }
 }
