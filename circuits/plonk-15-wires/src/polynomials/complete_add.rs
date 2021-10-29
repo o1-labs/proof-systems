@@ -4,17 +4,16 @@
 //! 0   1   2   3   4   5   6   7      8   9      10      11   12   13   14
 //! x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv
 //!
-//! where 
+//! where
 //! - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
 //! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
 //! The rest of the values are inaccessible from the permutation argument, but
 //! - `same_x` is a boolean that is true iff `x1 == x2`.
-use crate::gate::{CircuitGate, GateType, CurrOrNext};
-use CurrOrNext::*;
-use ark_ff::{Field, FftField, One};
-use crate::expr::{E, Column, Cache};
+use crate::expr::{Cache, Column, E};
+use crate::gate::{CircuitGate, CurrOrNext, GateType};
 use crate::wires::COLUMNS;
-
+use ark_ff::{FftField, Field, One};
+use CurrOrNext::*;
 
 /// This enforces that
 ///
@@ -24,10 +23,7 @@ use crate::wires::COLUMNS;
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
 fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
-    vec![
-        z_inv * z.clone() - (E::one() - r.clone()),
-        r * z
-    ]
+    vec![z_inv * z.clone() - (E::one() - r.clone()), r * z]
 }
 
 /// This function uses the constraints
@@ -45,9 +41,7 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-pub fn constraint<F: Field>(
-    alpha0: usize,
-    ) -> (usize, E<F>) {
+pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
@@ -124,7 +118,7 @@ pub fn constraint<F: Field>(
     //
     // inf = same_x * (1 - Y) = same_x - Y same_x
     //
-    // rearranging gives 
+    // rearranging gives
     //
     // Y same_x = same_x - inf
     //
@@ -145,7 +139,7 @@ pub fn constraint<F: Field>(
     // (y2 - y1) inf_z = inf
     //
     // Let's check that these equations are correct.
-    // 
+    //
     // Case 1: [y1 == y2]
     //   In this case the expected result is inf = 0, since for the result to be the point at
     //   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order
@@ -168,7 +162,10 @@ pub fn constraint<F: Field>(
     res.push(y21.clone() * (same_x - inf.clone()));
     res.push(y21 * inf_z - inf);
 
-    (res.len(), v(Column::Index(GateType::CompleteAdd)) * E::combine_constraints(alpha0, res))
+    (
+        res.len(),
+        v(Column::Index(GateType::CompleteAdd)) * E::combine_constraints(alpha0, res),
+    )
 }
 
 impl<F: FftField> CircuitGate<F> {
@@ -195,14 +192,22 @@ impl<F: FftField> CircuitGate<F> {
 
         if same_x == F::one() {
             let x1_squared = x1.square();
-            ensure_eq!((s + s) * y1, (x1_squared.double() + x1_squared), "double s wrong");
+            ensure_eq!(
+                (s + s) * y1,
+                (x1_squared.double() + x1_squared),
+                "double s wrong"
+            );
         } else {
             ensure_eq!((x2 - x1) * s, y2 - y1, "add s wrong");
         }
 
         ensure_eq!(s.square(), x1 + x2 + x3, "x3 wrong");
         let expected_y3 = s * (x1 - x3) - y1;
-        ensure_eq!(y3, expected_y3, format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3));
+        ensure_eq!(
+            y3,
+            expected_y3,
+            format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
+        );
 
         let not_same_y = F::from((y1 != y2) as u64);
         ensure_eq!(inf, same_x * not_same_y, "inf wrong");
@@ -210,14 +215,22 @@ impl<F: FftField> CircuitGate<F> {
         if y1 == y2 {
             ensure_eq!(inf_z, F::zero(), "wrong inf z (y1 == y2)");
         } else {
-            let a = if same_x == F::one() { (y2 - y1).inverse().unwrap() } else { F::zero() };
+            let a = if same_x == F::one() {
+                (y2 - y1).inverse().unwrap()
+            } else {
+                F::zero()
+            };
             ensure_eq!(inf_z, a, "wrong inf z (y1 != y2)");
         }
 
         if x1 == x2 {
             ensure_eq!(x21_inv, F::zero(), "wrong x21_inv (x1 == x2)");
         } else {
-            ensure_eq!(x21_inv, (x2 - x1).inverse().unwrap(), "wrong x21_inv (x1 != x2)");
+            ensure_eq!(
+                x21_inv,
+                (x2 - x1).inverse().unwrap(),
+                "wrong x21_inv (x1 != x2)"
+            );
         }
 
         Ok(())

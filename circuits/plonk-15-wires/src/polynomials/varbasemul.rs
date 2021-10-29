@@ -15,17 +15,17 @@ and
 for details.
 *****************************************************************************************************************/
 
+use crate::expr::{Cache, Column, Variable, E};
 use crate::gate::{CurrOrNext, GateType};
-use ark_ff::{FftField, One};
-use crate::expr::{E, Variable, Column, Cache};
 use crate::wires::COLUMNS;
+use ark_ff::{FftField, One};
 
 type CurveVar = (Variable, Variable);
 
 fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     match var.col {
         Column::Witness(i) => w[i][row0 + var.row.shift()] = x,
-        _ => panic!("Can only set witness columns")
+        _ => panic!("Can only set witness columns"),
     }
 }
 
@@ -39,8 +39,8 @@ fn single_bit_witness<F: FftField>(
     output: CurveVar,
     b_value: F,
     base_value: (F, F),
-    input_value: (F, F)) -> (F, F) {
-
+    input_value: (F, F),
+) -> (F, F) {
     let mut set = |var, x| set(w, row, var, x);
 
     set(b, b_value);
@@ -50,14 +50,15 @@ fn single_bit_witness<F: FftField>(
     set(base.0, base_value.0);
     set(base.1, base_value.1);
 
-    let s1_value =
-                  (input_value.1 - (base_value.1 * (b_value.double() - F::one()))) / (input_value.0 - base_value.0);
+    let s1_value = (input_value.1 - (base_value.1 * (b_value.double() - F::one())))
+        / (input_value.0 - base_value.0);
 
     set(s1, s1_value);
 
     let s1_squared = s1_value.square();
 
-    let s2 = input_value.1.double() / (input_value.0.double() + base_value.0 - s1_squared) - s1_value;
+    let s2 =
+        input_value.1.double() / (input_value.0.double() + base_value.0 - s1_squared) - s1_value;
     let out_x = base_value.0 + s2.square() - s1_squared;
     let out_y = (input_value.0 - out_x) * s2 - input_value.1;
     set(output.0, out_x);
@@ -71,14 +72,14 @@ fn single_bit<F: FftField>(
     base: CurveVar,
     s1: Variable,
     input: CurveVar,
-    output: CurveVar,) -> Vec<E<F>> {
+    output: CurveVar,
+) -> Vec<E<F>> {
     let v = |v| E::Cell(v);
     let double = |x: E<_>| x.clone() + x;
 
     let b_sign = double(v(b)) - E::one();
 
     let s1_squared = cache.cache(v(s1) * v(s1));
-
 
     // s1 = (input.y - (2b - 1) * base.y) / (input.x - base.x)
     // s2 = 2*input.y / (2*input.x + base.x – s1^2) - s1
@@ -108,12 +109,11 @@ fn single_bit<F: FftField>(
         // constrain s1:
         //   (input.x - base.x) * s1 = input.y – (2b-1)*base.y
         (v(input.0) - v(base.0)) * v(s1) - (v(input.1) - b_sign * v(base.1)),
-
         // constrain output.x
-        (u.clone() * u.clone()) - (t.clone() * t.clone()) * (v(output.0) - v(base.0) + s1_squared.clone()),
-
+        (u.clone() * u.clone())
+            - (t.clone() * t.clone()) * (v(output.0) - v(base.0) + s1_squared.clone()),
         // constrain output.y
-        (v(output.1) + v(input.1)) * t.clone() - (v(input.0) - v(output.0)) * u.clone()
+        (v(output.1) + v(input.1)) * t.clone() - (v(input.0) - v(output.0)) * u.clone(),
     ]
 }
 
@@ -131,7 +131,10 @@ struct Layout {
 // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
 // x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
 const fn v(row: CurrOrNext, col: usize) -> Variable {
-    Variable { row, col: Column::Witness(col) }
+    Variable {
+        row,
+        col: Column::Witness(col),
+    }
 }
 
 use CurrOrNext::*;
@@ -142,23 +145,11 @@ const LAYOUT: Layout = Layout {
         (v(Curr, 9), v(Curr, 10)),
         (v(Curr, 11), v(Curr, 12)),
         (v(Curr, 13), v(Curr, 14)),
-        (v(Next, 0), v(Next, 1))
+        (v(Next, 0), v(Next, 1)),
     ],
-    bits: [
-        v(Next, 2),
-        v(Next, 3),
-        v(Next, 4),
-        v(Next, 5),
-        v(Next, 6)
-    ],
+    bits: [v(Next, 2), v(Next, 3), v(Next, 4), v(Next, 5), v(Next, 6)],
 
-    ss: [
-        v(Next, 7),
-        v(Next, 8),
-        v(Next, 9),
-        v(Next, 10),
-        v(Next, 11),
-    ],
+    ss: [v(Next, 7), v(Next, 8), v(Next, 9), v(Next, 10), v(Next, 11)],
 
     base: (v(Curr, 0), v(Curr, 1)),
     n_prev: v(Curr, 4),
@@ -175,8 +166,8 @@ pub fn witness<F: FftField + std::fmt::Display>(
     row0: usize,
     base: (F, F),
     bits: &Vec<bool>,
-    acc0: (F, F)) -> VarbaseMulResult<F> {
-
+    acc0: (F, F),
+) -> VarbaseMulResult<F> {
     let l = LAYOUT;
     let bits: Vec<_> = bits.iter().map(|b| F::from(*b as u64)).collect();
     let bits_per_chunk = 5;
@@ -185,36 +176,43 @@ pub fn witness<F: FftField + std::fmt::Display>(
     let mut acc = acc0;
     let mut n_acc = F::zero();
     for (chunk, bs) in bits.chunks(bits_per_chunk).enumerate() {
-        let row = row0 + 2*chunk;
+        let row = row0 + 2 * chunk;
 
         set(w, row, l.n_prev, n_acc);
         for i in 0..bits_per_chunk {
             n_acc.double_in_place();
             n_acc += bs[i];
-            acc =
-                single_bit_witness(
-                    w,
-                    row,
-                    l.bits[i],
-                    l.base,
-                    l.ss[i],
-                    l.accs[i],
-                    l.accs[i+1],
-                    bs[i],
-                    base,
-                    acc);
+            acc = single_bit_witness(
+                w,
+                row,
+                l.bits[i],
+                l.base,
+                l.ss[i],
+                l.accs[i],
+                l.accs[i + 1],
+                bs[i],
+                base,
+                acc,
+            );
         }
         set(w, row, l.n_next, n_acc);
     }
     VarbaseMulResult { acc, n: n_acc }
 }
 
-pub fn constraint<F: FftField>(alpha0 : usize) -> E<F> {
-    let Layout { base, accs, bits, ss, n_prev, n_next } = LAYOUT;
+pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
+    let Layout {
+        base,
+        accs,
+        bits,
+        ss,
+        n_prev,
+        n_next,
+    } = LAYOUT;
 
     let mut c = Cache::new();
 
-    let mut constraint = |i| single_bit(&mut c, bits[i], base, ss[i], accs[i], accs[i+1]);
+    let mut constraint = |i| single_bit(&mut c, bits[i], base, ss[i], accs[i], accs[i + 1]);
 
     // n'
     // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
@@ -223,12 +221,14 @@ pub fn constraint<F: FftField>(alpha0 : usize) -> E<F> {
     let n_prev = E::Cell(n_prev);
     let n_next = E::Cell(n_next);
     let mut res = vec![
-        n_next - bits.iter().fold(n_prev, |acc, b| E::Cell(*b) + acc.double())
+        n_next
+            - bits
+                .iter()
+                .fold(n_prev, |acc, b| E::Cell(*b) + acc.double()),
     ];
 
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    E::cell(Column::Index(GateType::Vbmul), CurrOrNext::Curr)
-        * E::combine_constraints(alpha0, res)
+    E::cell(Column::Index(GateType::Vbmul), CurrOrNext::Curr) * E::combine_constraints(alpha0, res)
 }
