@@ -36,6 +36,7 @@ jobs:
 
       - name: Run cargo clippy
         run: |
+          rustup component add clippy
           cargo clippy \
             -p groupmap \
             -p mina-curves \
