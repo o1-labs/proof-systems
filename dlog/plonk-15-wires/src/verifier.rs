@@ -538,20 +538,29 @@ where
             // public input commitment
             polynomials.push((p_comm, p_eval.iter().map(|e| e).collect::<Vec<_>>(), None));
 
+            // ft commitment (chunks of it)
+            polynomials.push((&ft_comm, vec![ft_eval0, ft_eval1], None));
+
+            // permutation commitment
+            polynomials.push((
+                &proof.commitments.z_comm,
+                proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(),
+                None,
+            ));
+
+            // index commitments that use the coefficients
+            polynomials.push((
+                &index.generic_comm,
+                proof.evals.iter().map(|e| &e.generic_selector).collect::<Vec<_>>(),
+                None,
+            ));
+            polynomials.push((
+                &index.psm_comm,
+                proof.evals.iter().map(|e| &e.poseidon_selector).collect::<Vec<_>>(),
+                None,
+            ));
+
             // witness commitments
-            /*
-            let mut w_comm = vec![];
-            for w in proof.commitments.w_comm.iter() {
-                let mut ee = vec![];
-                for i in 0..COLUMNS {
-                    for e in proof.evals {
-                        ee.push(e.w[i])
-                    }
-                }
-                let ee = e.
-                w_comm.push((w, ee, None));
-            }
-            */
             polynomials.extend(
                 proof
                     .commitments
@@ -567,13 +576,6 @@ where
                     .collect::<Vec<_>>(),
             );
 
-            // permutation commitment
-            polynomials.push((
-                &proof.commitments.z_comm,
-                proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(),
-                None,
-            ));
-
             // sigma commitments
             polynomials.extend(
                 index
@@ -588,9 +590,6 @@ where
                     .map(|(c, e)| (c, e.clone(), None))
                     .collect::<Vec<_>>(),
             );
-
-            // ft commitment (chunks of it)
-            polynomials.push((&ft_comm, vec![ft_eval0, ft_eval1], None));
 
             // prepare for the opening proof verification
             let omega = index.domain.group_gen;
