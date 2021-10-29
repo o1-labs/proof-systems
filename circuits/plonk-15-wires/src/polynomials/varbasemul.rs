@@ -53,7 +53,6 @@ fn single_bit_witness<F: FftField>(
     let s1_value =
                   (input_value.1 - (base_value.1 * (b_value.double() - F::one()))) / (input_value.0 - base_value.0);
 
-    // let s1_value = (input_value.0 - base_value.0) / (input_value.1 - (b_value.double() - F::one()) * base_value.1);
     set(s1, s1_value);
 
     let s1_squared = s1_value.square();

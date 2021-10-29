@@ -19,7 +19,7 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use plonk_15_wires_circuits::{
     expr::{Environment, LookupEnvironment, Constants, l0_1},
-    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add},
+    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endosclmul},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
     gate::{combine_table_entry, LookupsUsed, LookupInfo, GateType},
@@ -383,42 +383,49 @@ where
             }
         };
 
+        let t4 = {
+            // generic
+            let mut t4 = index.cs.gnrc_quot(&lagrange.d4.this.w);
+            // complete addition
+            let (alphas_used, add_constraint) = complete_add::constraint(range::COMPLETE_ADD.start);
+            assert_eq!(alphas_used, range::COMPLETE_ADD.len());
+            let add4 = add_constraint.evaluations(&env);
+            t4 += &add4;
+            drop(add4);
+            t4
+        };
+
         // permutation
         let (perm, bnd) = index
             .cs
             .perm_quot(&lagrange, beta, gamma, &z, &alphas[range::PERM])?;
-        // generic
-        let gen = index.cs.gnrc_quot(&lagrange.d4.this.w);
-        // EC addition
-        let (alphas_used, add_constraint) = complete_add::constraint(range::COMPLETE_ADD.start);
-        assert_eq!(alphas_used, range::COMPLETE_ADD.len());
-        let add4 = add_constraint.evaluations(&env);
-        // endoscaling
-        let emul8 = index.cs.endomul_quot(&lagrange, &alphas[range::ENDML]);
+        let mut t8 = perm;
         // scalar multiplication
-        let mul8 =
-            varbasemul::constraint(range::MUL.start)
-            .evaluations(&env);
+        let mul8 = varbasemul::constraint(range::MUL.start).evaluations(&env);
+        t8 += &mul8;
+        drop(mul8);
+        // endoscaling
+        let emul8 = endosclmul::constraint(index.cs.endo, 2 + range::ENDML.start).evaluations(&env);
+        t8 += &emul8;
+        drop(emul8);
+        // poseidon
+        let pos8 = poseidon::constraint(&index.cs.fr_sponge_params).evaluations(&env);
+        t8 += &pos8;
+        drop(pos8);
 
-        // collect contribution evaluations
-        let t4 = {
-            let mut t4 = gen;
-            t4 += &add4;
-            t4
-        };
         let t4 =
             match index.cs.chacha8.as_ref() {
                 None => t4,
                 Some(_) => {
+                    let mut t4 = t4;
                     let chacha = chacha::constraint(range::CHACHA.start).evaluations(&env);
-                    &t4 + &chacha
+                    t4 += &chacha;
+                    drop(chacha);
+                    t4
                 }
             };
-        let mut t8 = &perm + &(&mul8 + &emul8);
 
         // quotient polynomial for lookup
-        // lookup::constraints
-        t8 += &poseidon::constraint(&index.cs.fr_sponge_params).evaluations(&env);
         let (t4, t8) =
             match lookup_used {
                 None => (t4, t8),
@@ -534,8 +541,7 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &(&index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
-                + &index.cs.endomul_lnrz(&evals, &alphas[range::ENDML]))
+            let f = &index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
                 + &index
                     .cs
                     .perm_lnrz(&evals, zeta, beta, gamma, &alphas[range::PERM]);

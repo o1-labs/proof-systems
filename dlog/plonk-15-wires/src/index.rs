@@ -22,10 +22,10 @@ use commitment_dlog::{
 };
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_15_wires_circuits::{
-    expr::{Column, Expr, Linearization, PolishToken},
+    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endosclmul},
     gate::{GateType, LookupInfo, LookupsUsed},
+    expr::{PolishToken, ConstantExpr, Expr, Column, Linearization},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
-    polynomials::{chacha, complete_add, lookup, poseidon, varbasemul},
     wires::*,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -217,7 +217,7 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
 
-        let linearization = {
+        let linearization: Linearization<Expr<ConstantExpr<Fr<G>>>> = {
             let evaluated_cols = {
                 let mut h = std::collections::HashSet::new();
                 use Column::*;
@@ -240,6 +240,7 @@ where
                 complete_add::constraint(super::range::COMPLETE_ADD.start);
             assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
             let expr = expr + complete_add;
+            let expr = expr + endosclmul::constraint(cs.endo, 2 + super::range::ENDML.start);
             let expr = if lookup_used.is_some() {
                 expr + Expr::combine_constraints(
                     2 + super::range::CHACHA.end,
