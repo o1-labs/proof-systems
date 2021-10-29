@@ -13,14 +13,14 @@ use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
 };
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
-use plonk_15_wires_circuits::{
+use kimchi_circuits::{
     expr::{Column, Constants, PolishToken},
     gate::{GateType, LookupsUsed},
     gates::generic::{CONSTANT_COEFF, MUL_COEFF},
     nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
     wires::*,
 };
+use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;

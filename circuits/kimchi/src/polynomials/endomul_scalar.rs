@@ -183,7 +183,6 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let one = F::one();
     let neg_one = -one;
 
-    let mut row = row0;
     for row_bits in bits_msb[..].chunks(bits_per_row) {
         w[0].push(n);
         w[2].push(a);

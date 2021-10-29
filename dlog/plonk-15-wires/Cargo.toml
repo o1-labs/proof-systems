@@ -27,7 +27,7 @@ ocaml-gen = { path = "../../ocaml/ocaml-gen", optional = true}
 commitment_dlog = { path = "../commitment" }
 o1-utils = { path = "../../utils" }
 oracle = { path = "../../oracle" }
-plonk_15_wires_circuits = { path = "../../circuits/plonk-15-wires" }
+kimchi-circuits = { path = "../../circuits/kimchi" }
 
 [dev-dependencies]
 groupmap = { path = "../../groupmap" }
@@ -35,4 +35,4 @@ mina-curves = { path = "../../curves" }
 
 [features]
 default = []
-ocaml_types = [ "ocaml", "ocaml-gen", "plonk_15_wires_circuits/ocaml_types", "commitment_dlog/ocaml_types" ]
+ocaml_types = [ "ocaml", "ocaml-gen", "kimchi-circuits/ocaml_types", "commitment_dlog/ocaml_types" ]

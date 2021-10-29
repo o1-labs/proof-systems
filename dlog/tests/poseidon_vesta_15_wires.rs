@@ -7,6 +7,12 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
+use kimchi_circuits::wires::{Wire, COLUMNS};
+use kimchi_circuits::{
+    gate::CircuitGate,
+    gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
+    nolookup::constraints::ConstraintSystem,
+};
 use mina_curves::pasta::{
     fp::Fp,
     pallas::Affine as Other,
@@ -15,12 +21,6 @@ use mina_curves::pasta::{
 use oracle::{
     poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use plonk_15_wires_circuits::wires::{Wire, COLUMNS};
-use plonk_15_wires_circuits::{
-    gate::CircuitGate,
-    gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
-    nolookup::constraints::ConstraintSystem,
 };
 use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};

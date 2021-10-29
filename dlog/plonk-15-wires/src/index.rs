@@ -20,14 +20,14 @@ use commitment_dlog::{
     srs::SRS,
     CommitmentField,
 };
-use oracle::poseidon::ArithmeticSpongeParams;
-use plonk_15_wires_circuits::{
+use kimchi_circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupInfo, LookupsUsed},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
 };
+use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::SeekFrom::Start;

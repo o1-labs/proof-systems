@@ -16,17 +16,17 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use lookup::CombinedEntry;
-use o1_utils::ExtendedDensePolynomial;
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
-use plonk_15_wires_circuits::nolookup::constraints::ZK_ROWS;
-use plonk_15_wires_circuits::{
+use kimchi_circuits::nolookup::constraints::ZK_ROWS;
+use kimchi_circuits::{
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::{COLUMNS, PERMUTS},
 };
+use lookup::CombinedEntry;
+use o1_utils::ExtendedDensePolynomial;
+use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -709,7 +709,7 @@ where
 pub mod caml {
     use super::*;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
-    use plonk_15_wires_circuits::nolookup::scalars::caml::CamlProofEvaluations;
+    use kimchi_circuits::nolookup::scalars::caml::CamlProofEvaluations;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {

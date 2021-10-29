@@ -21,5 +21,5 @@ o1-utils = { path = "../utils" }
 oracle = { path = "../oracle" }
 plonk_protocol_dlog = { path = "plonk" }
 plonk_circuits = { path = "../circuits/plonk" }
-plonk_15_wires_circuits = { path = "../circuits/plonk-15-wires" }
+kimchi-circuits = { path = "../circuits/kimchi" }
 plonk_15_wires_protocol_dlog = { path = "plonk-15-wires" }

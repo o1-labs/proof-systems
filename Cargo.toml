@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "circuits/plonk",
-    "circuits/plonk-15-wires",
+    "circuits/kimchi",
     "curves",
     "dlog",
     "dlog/commitment",

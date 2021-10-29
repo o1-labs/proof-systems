@@ -1,9 +1,9 @@
 use ark_ff::{Field, PrimeField};
+use kimchi_circuits::nolookup::scalars::ProofEvaluations;
 use oracle::poseidon::{
     ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W as SC, Sponge,
 };
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
-use plonk_15_wires_circuits::nolookup::scalars::ProofEvaluations;
 
 pub trait FrSponge<Fr: Field> {
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;

@@ -1,5 +1,5 @@
 [package]
-name = "plonk_15_wires_circuits"
+name = "kimchi-circuits"
 version = "0.1.0"
 edition = "2021"
 
