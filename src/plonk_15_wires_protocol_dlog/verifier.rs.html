@@ -605,68 +605,6 @@
 <span id="605">605</span>
 <span id="606">606</span>
 <span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements zk-proof batch verifier functionality.
@@ -1093,68 +1031,6 @@ This source file implements zk-proof batch verifier functionality.
 
                 <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">coefficients_comm</span>[<span class="ident">CONSTANT_COEFF</span>]);
                 <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">generic_selector</span>);
-
-                <span class="comment">// variable base endoscalar multiplication</span>
-                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">ConstraintSystem::endomul_scalars</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">evals</span>,
-                    <span class="ident">index</span>.<span class="ident">endo</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::ENDML</span>],
-                ));
-                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">emul_comm</span>);
-
-                <span class="comment">// EC variable base scalar multiplication</span>
-
-    <span class="comment">/*
-
-                let f_comm = PolyComm::multi_scalar_mul(&amp;p, &amp;s);
-
-                let f_eval =
-                    match constants {
-                        None =&gt; evals[0].f,
-                        Some(cs) =&gt; {
-                            evals[0].f +
-                            PolishToken::evaluate(
-                                &amp;index.linearization.constant_term,
-                                index.domain, oracles.zeta,
-                                &amp;evals, &amp;cs).unwrap()
-                        }
-                    };
-
-                // check linearization polynomial evaluation consistency
-                let zeta1m1 = zeta1 - &amp;Fr::&lt;G&gt;::one();
-                if (f_eval //evals[0].f
-                    + &amp;(if p_eval[0].len() &gt; 0 {
-                        p_eval[0][0]
-                    } else {
-                        Fr::&lt;G&gt;::zero()
-                    })
-                    - evals[0]
-                        .w
-                        .iter()
-                        .zip(evals[0].s.iter())
-                        .map(|(w, s)| (oracles.beta * s) + w + &amp;oracles.gamma)
-                        .fold(
-                            (evals[0].w[PERMUTS - 1] + &amp;oracles.gamma)
-                                * &amp;evals[1].z
-                                * &amp;alpha[range::PERM][0]
-                                * &amp;zkp,
-                            |x, y| x * y,
-                        )
-                    + evals[0]
-                        .w
-                        .iter()
-                        .zip(index.shift.iter())
-                        .map(|(w, s)| oracles.gamma + &amp;(oracles.beta * &amp;oracles.zeta * s) + w)
-                        .fold(alpha[range::PERM][0] * &amp;zkp * &amp;evals[0].z, |x, y| x * y)
-                    - evals[0].t * &amp;zeta1m1)
-                    * &amp;(oracles.zeta - &amp;index.w)
-                    * &amp;(oracles.zeta - &amp;Fr::&lt;G&gt;::one())
-                    != ((zeta1m1 * &amp;alpha[range::PERM][1] * &amp;(oracles.zeta - &amp;index.w))
-                        + (zeta1m1 * &amp;alpha[range::PERM][2] * &amp;(oracles.zeta - &amp;Fr::&lt;G&gt;::one())))
-                        * &amp;(Fr::&lt;G&gt;::one() - evals[0].z)
-                {
-                    return Err(ProofError::ProofVerification);
-                } */</span>
 
                 {
                     <span class="kw">let</span> <span class="ident">constants</span> <span class="op">=</span>

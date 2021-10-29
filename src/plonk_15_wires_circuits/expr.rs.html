@@ -1595,9 +1595,90 @@
 <span id="1595">1595</span>
 <span id="1596">1596</span>
 <span id="1597">1597</span>
+<span id="1598">1598</span>
+<span id="1599">1599</span>
+<span id="1600">1600</span>
+<span id="1601">1601</span>
+<span id="1602">1602</span>
+<span id="1603">1603</span>
+<span id="1604">1604</span>
+<span id="1605">1605</span>
+<span id="1606">1606</span>
+<span id="1607">1607</span>
+<span id="1608">1608</span>
+<span id="1609">1609</span>
+<span id="1610">1610</span>
+<span id="1611">1611</span>
+<span id="1612">1612</span>
+<span id="1613">1613</span>
+<span id="1614">1614</span>
+<span id="1615">1615</span>
+<span id="1616">1616</span>
+<span id="1617">1617</span>
+<span id="1618">1618</span>
+<span id="1619">1619</span>
+<span id="1620">1620</span>
+<span id="1621">1621</span>
+<span id="1622">1622</span>
+<span id="1623">1623</span>
+<span id="1624">1624</span>
+<span id="1625">1625</span>
+<span id="1626">1626</span>
+<span id="1627">1627</span>
+<span id="1628">1628</span>
+<span id="1629">1629</span>
+<span id="1630">1630</span>
+<span id="1631">1631</span>
+<span id="1632">1632</span>
+<span id="1633">1633</span>
+<span id="1634">1634</span>
+<span id="1635">1635</span>
+<span id="1636">1636</span>
+<span id="1637">1637</span>
+<span id="1638">1638</span>
+<span id="1639">1639</span>
+<span id="1640">1640</span>
+<span id="1641">1641</span>
+<span id="1642">1642</span>
+<span id="1643">1643</span>
+<span id="1644">1644</span>
+<span id="1645">1645</span>
+<span id="1646">1646</span>
+<span id="1647">1647</span>
+<span id="1648">1648</span>
+<span id="1649">1649</span>
+<span id="1650">1650</span>
+<span id="1651">1651</span>
+<span id="1652">1652</span>
+<span id="1653">1653</span>
+<span id="1654">1654</span>
+<span id="1655">1655</span>
+<span id="1656">1656</span>
+<span id="1657">1657</span>
+<span id="1658">1658</span>
+<span id="1659">1659</span>
+<span id="1660">1660</span>
+<span id="1661">1661</span>
+<span id="1662">1662</span>
+<span id="1663">1663</span>
+<span id="1664">1664</span>
+<span id="1665">1665</span>
+<span id="1666">1666</span>
+<span id="1667">1667</span>
+<span id="1668">1668</span>
+<span id="1669">1669</span>
+<span id="1670">1670</span>
+<span id="1671">1671</span>
+<span id="1672">1672</span>
+<span id="1673">1673</span>
+<span id="1674">1674</span>
+<span id="1675">1675</span>
+<span id="1676">1676</span>
+<span id="1677">1677</span>
+<span id="1678">1678</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::scalars</span>::{<span class="ident">ProofEvaluations</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::constraints</span>::{<span class="ident">eval_vanishes_on_last_4_rows</span>};
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>, <span class="ident">One</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">PrimeField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>, <span class="ident">One</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>};
 <span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Add</span>, <span class="ident">Sub</span>, <span class="ident">Mul</span>, <span class="ident">Neg</span>};
@@ -1737,6 +1818,11 @@
     <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">CurrOrNext</span>,
 }
 
+<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Variable</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;var({:?}, {:?})&quot;</span>, <span class="self">self</span>.<span class="ident">col</span>, <span class="self">self</span>.<span class="ident">row</span>)
+    }
+}
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="doccomment">/// An arithmetic expression over</span>
 <span class="doccomment">///</span>
@@ -1849,6 +1935,10 @@
             }
         })
     }
+
+    <span class="kw">fn</span> <span class="ident">var_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
+        <span class="macro">format!</span>(<span class="string">&quot;x_{}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>)
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">Cache</span> {
@@ -1903,6 +1993,7 @@
     <span class="ident">Constant</span>(<span class="ident">C</span>),
     <span class="ident">Cell</span>(<span class="ident">Variable</span>),
     <span class="ident">Double</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>),
+    <span class="ident">Square</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>),
     <span class="ident">BinOp</span>(<span class="ident">Op2</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span><span class="op">&gt;</span>),
     <span class="ident">VanishesOnLast4Rows</span>,
     <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is</span>
@@ -2022,6 +2113,10 @@
         <span class="ident">Expr::Double</span>(<span class="ident">Box::new</span>(<span class="self">self</span>))
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">square</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Square</span>(<span class="ident">Box::new</span>(<span class="self">self</span>))
+    }
+
     <span class="doccomment">/// Convenience function for constructing constant expressions.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constant</span>(<span class="ident">c</span>: <span class="ident">C</span>) -&gt; <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> {
         <span class="ident">Expr::Constant</span>(<span class="ident">c</span>)
@@ -2035,6 +2130,7 @@
             <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="number">4</span>,
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="kw">_</span>) =&gt; <span class="ident">d1_size</span>,
             <span class="ident">Cell</span>(<span class="kw">_</span>) =&gt; <span class="ident">d1_size</span>,
+            <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="number">2</span> <span class="op">*</span> <span class="ident">x</span>.<span class="ident">degree</span>(<span class="ident">d1_size</span>),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; (<span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">degree</span>(<span class="ident">d1_size</span>) <span class="op">+</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">degree</span>(<span class="ident">d1_size</span>),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">x</span>, <span class="ident">y</span>) <span class="op">|</span> <span class="ident">BinOp</span>(<span class="ident">Op2::Sub</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="ident">std::cmp::max</span>((<span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">degree</span>(<span class="ident">d1_size</span>), (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">degree</span>(<span class="ident">d1_size</span>)),
             <span class="ident">Pow</span>(<span class="ident">e</span>, <span class="ident">d</span>) =&gt; <span class="ident">d</span> <span class="op">*</span> <span class="ident">e</span>.<span class="ident">degree</span>(<span class="ident">d1_size</span>),
@@ -2329,7 +2425,7 @@
         <span class="ident">acc</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">square</span>(<span class="self">self</span>, <span class="ident">res_domain</span>: (<span class="ident">Domain</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>)) -&gt; <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">square</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">res_domain</span>: (<span class="ident">Domain</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>)) -&gt; <span class="ident">EvalResult</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident">EvalResult</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="ident">Constant</span>(<span class="ident">x</span>.<span class="ident">square</span>()),
@@ -2342,7 +2438,7 @@
             <span class="ident">SubEvals</span> { <span class="ident">evals</span>, <span class="ident">domain</span>: <span class="ident">d</span>, <span class="ident">shift</span>:<span class="ident">s</span> } =&gt; {
                 <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> (<span class="ident">d</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> (<span class="ident">res_domain</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>);
                 <span class="macro">assert!</span>(<span class="ident">scale</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>);
-                <span class="ident"><span class="self">Self</span>::init</span>(
+                <span class="ident">EvalResult::init</span>(
                     <span class="ident">res_domain</span>,
                     <span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">evals</span>.<span class="ident">evals</span>[(<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> (<span class="ident">d</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">*</span> <span class="ident">s</span>) <span class="op">%</span> <span class="ident">evals</span>.<span class="ident">evals</span>.<span class="ident">len</span>()].<span class="ident">square</span>())
             },
@@ -2408,6 +2504,12 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Convenience function for constructing expressions from literal</span>
+    <span class="doccomment">/// field elements.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">literal</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Expr::Constant</span>(<span class="ident">ConstantExpr::Literal</span>(<span class="ident">x</span>))
+    }
+
     <span class="doccomment">/// Combines multiple constraints `[c0, ..., cn]` into a single constraint</span>
     <span class="doccomment">/// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combine_constraints</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>, <span class="ident">cs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
@@ -2420,12 +2522,6 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Convenience function for constructing expressions from literal</span>
-    <span class="doccomment">/// field elements.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">literal</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Expr::Constant</span>(<span class="ident">ConstantExpr::Literal</span>(<span class="ident">x</span>))
-    }
-
     <span class="doccomment">/// Compile an expression to an RPN expression.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_polish</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -2440,6 +2536,11 @@
                 <span class="ident">x</span>.<span class="ident">to_polish_</span>(<span class="ident">cache</span>, <span class="ident">res</span>);
                 <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::Dup</span>);
                 <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::Add</span>);
+            },
+            <span class="ident">Expr::Square</span>(<span class="ident">x</span>) =&gt; {
+                <span class="ident">x</span>.<span class="ident">to_polish_</span>(<span class="ident">cache</span>, <span class="ident">res</span>);
+                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::Dup</span>);
+                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">PolishToken::Mul</span>);
             },
             <span class="ident">Expr::Pow</span>(<span class="ident">x</span>, <span class="ident">d</span>) =&gt; {
                 <span class="ident">x</span>.<span class="ident">to_polish_</span>(<span class="ident">cache</span>, <span class="ident">res</span>);
@@ -2489,6 +2590,7 @@
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Double</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>).<span class="ident">double</span>(),
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">d</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>).<span class="ident">pow</span>(<span class="kw-2">*</span><span class="ident">d</span>),
+            <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate_constants_</span>(<span class="ident">c</span>).<span class="ident">square</span>(),
             <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="ident">Constant</span>(<span class="ident">x</span>.<span class="ident">value</span>(<span class="ident">c</span>)),
             <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">Cell</span>(<span class="kw-2">*</span><span class="ident">v</span>),
             <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">VanishesOnLast4Rows</span>,
@@ -2523,6 +2625,7 @@
                 <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>, <span class="ident">c</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>)
             },
+            <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">x</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>, <span class="ident">c</span>)<span class="question-mark">?</span>.<span class="ident">square</span>()),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>, <span class="ident">c</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>, <span class="ident">c</span>)<span class="question-mark">?</span>;
@@ -2567,6 +2670,7 @@
             <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span><span class="ident">x</span>),
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">p</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">x</span>.<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>)<span class="question-mark">?</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span><span class="ident">p</span> <span class="kw">as</span> <span class="ident">u64</span>])),
             <span class="ident">Double</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">double</span>()),
+            <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">square</span>()),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">y</span>).<span class="ident">evaluate</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="ident">evals</span>)<span class="question-mark">?</span>;
@@ -2637,15 +2741,28 @@
         <span class="ident">d</span>: <span class="ident">Domain</span>,
         <span class="ident">env</span>: <span class="op">&amp;</span> <span class="ident">Environment</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Either</span><span class="op">&lt;</span><span class="ident">EvalResult</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">CacheId</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span> {
 
+        <span class="kw">let</span> <span class="ident">dom</span> <span class="op">=</span> (<span class="ident">d</span>, <span class="ident">get_domain</span>(<span class="ident">d</span>, <span class="ident">env</span>));
+
         <span class="kw">let</span> <span class="ident">res</span> : <span class="ident">EvalResult</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="self">self</span> {
+                <span class="ident">Expr::Square</span>(<span class="ident">x</span>) =&gt;
+                    <span class="kw">match</span> <span class="ident">x</span>.<span class="ident">evaluations_helper</span>(<span class="ident">cache</span>, <span class="ident">d</span>, <span class="ident">env</span>) {
+                        <span class="ident">Either::Left</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">square</span>(<span class="ident">dom</span>),
+                        <span class="ident">Either::Right</span>(<span class="ident">id</span>) =&gt; <span class="ident">id</span>.<span class="ident">get_from</span>(<span class="ident">cache</span>).<span class="ident">unwrap</span>().<span class="ident">square</span>(<span class="ident">dom</span>),
+                    },
                 <span class="ident">Expr::Double</span>(<span class="ident">x</span>) =&gt; {
-                    <span class="kw">let</span> <span class="ident">dom</span> <span class="op">=</span> (<span class="ident">d</span>, <span class="ident">get_domain</span>(<span class="ident">d</span>, <span class="ident">env</span>));
-
                     <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">evaluations_helper</span>(<span class="ident">cache</span>, <span class="ident">d</span>, <span class="ident">env</span>);
                     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span>
                         <span class="kw">match</span> <span class="ident">x</span> {
                             <span class="ident">Either::Left</span>(<span class="ident">x</span>) =&gt; {
+                                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span>
+                                    <span class="kw">match</span> <span class="ident">x</span> {
+                                        <span class="ident">EvalResult::Evals</span> { <span class="ident">domain</span>, <span class="kw-2">mut</span> <span class="ident">evals</span> } =&gt; {
+                                            <span class="ident">evals</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> { <span class="ident">x</span>.<span class="ident">double_in_place</span>(); });
+                                            <span class="kw">return</span> <span class="ident">Either::Left</span>(<span class="ident">EvalResult::Evals</span> { <span class="ident">domain</span>, <span class="ident">evals</span> })
+                                        },
+                                        <span class="ident">x</span> =&gt; <span class="ident">x</span>,
+                                    };
                                 <span class="kw">let</span> <span class="ident">xx</span> <span class="op">=</span> <span class="op">|</span><span class="op">|</span>
                                     <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">x</span> {
                                         <span class="ident">EvalResult::Constant</span>(<span class="ident">x</span>) =&gt; <span class="ident">EvalResult::Constant</span>(<span class="kw-2">*</span><span class="ident">x</span>),
@@ -2843,7 +2960,26 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Neg</span><span class="op">&lt;</span><span class="ident">Output</span><span class="op">=</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">One</span> <span class="op">+</span> <span class="ident">Zero</span> <span class="op">+</span> <span class="ident">PartialEq</span><span class="op">&gt;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">monomials</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Variable</span><span class="op">&gt;</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="comment">// TODO This function (which takes linear time)</span>
+    <span class="comment">// is called repeatedly in monomials, yielding quadratic behavior for</span>
+    <span class="comment">// that function. It&#39;s ok for now as we only call that function once on</span>
+    <span class="comment">// a small input when producing the verification key.</span>
+    <span class="kw">fn</span> <span class="ident">is_constant</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">evaluated</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Column</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
+        <span class="kw">use</span> <span class="ident">Expr</span>::<span class="kw-2">*</span>;
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="kw">_</span>) =&gt; <span class="ident">x</span>.<span class="ident">is_constant</span>(<span class="ident">evaluated</span>),
+            <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">is_constant</span>(<span class="ident">evaluated</span>),
+            <span class="ident">Constant</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="ident">evaluated</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>.<span class="ident">col</span>),
+            <span class="ident">Double</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">is_constant</span>(<span class="ident">evaluated</span>),
+            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="ident">x</span>.<span class="ident">is_constant</span>(<span class="ident">evaluated</span>) <span class="op">&amp;&amp;</span> <span class="ident">y</span>.<span class="ident">is_constant</span>(<span class="ident">evaluated</span>),
+            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="bool-val">true</span>,
+            <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+            <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">x</span>) =&gt; <span class="ident">x</span>.<span class="ident">is_constant</span>(<span class="ident">evaluated</span>),
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">monomials</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ev</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Column</span><span class="op">&gt;</span>) -&gt; <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Variable</span><span class="op">&gt;</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sing</span> <span class="op">=</span> <span class="op">|</span><span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Variable</span><span class="op">&gt;</span>, <span class="ident">c</span>: <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
             <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">v</span>, <span class="ident">c</span>);
@@ -2851,12 +2987,17 @@
         };
         <span class="kw">let</span> <span class="ident">constant</span> <span class="op">=</span> <span class="op">|</span><span class="ident">e</span> : <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">sing</span>(<span class="macro">vec!</span>[], <span class="ident">e</span>);
         <span class="kw">use</span> <span class="ident">Expr</span>::<span class="kw-2">*</span>;
+
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_constant</span>(<span class="ident">ev</span>) {
+            <span class="kw">return</span> <span class="ident">constant</span>(<span class="self">self</span>.<span class="ident">clone</span>())
+        }
+
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">d</span>) =&gt; {
                 <span class="comment">// Run the multiplication logic with square and multiply</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">sing</span>(<span class="macro">vec!</span>[], <span class="ident">Expr</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::one</span>());
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">acc_is_one</span> <span class="op">=</span> <span class="bool-val">true</span>;
-                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">monomials</span>();
+                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>);
 
                 <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> (<span class="number">0</span>..<span class="number">64</span>).<span class="ident">rev</span>() {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">acc_is_one</span> {
@@ -2874,15 +3015,15 @@
             },
             <span class="ident">Double</span>(<span class="ident">e</span>) =&gt;
                 <span class="ident">HashMap::from_iter</span>(
-                    <span class="ident">e</span>.<span class="ident">monomials</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">m</span>, <span class="ident">c</span>)<span class="op">|</span> (<span class="ident">m</span>, <span class="ident">c</span>.<span class="ident">double</span>()))),
-            <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">monomials</span>(),
+                    <span class="ident">e</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>).<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">m</span>, <span class="ident">c</span>)<span class="op">|</span> (<span class="ident">m</span>, <span class="ident">c</span>.<span class="ident">double</span>()))),
+            <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>),
             <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="ident">constant</span>(<span class="ident">UnnormalizedLagrangeBasis</span>(<span class="kw-2">*</span><span class="ident">i</span>)),
             <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="ident">constant</span>(<span class="ident">VanishesOnLast4Rows</span>),
             <span class="ident">Constant</span>(<span class="ident">c</span>) =&gt; <span class="ident">constant</span>(<span class="ident">Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>())),
             <span class="ident">Cell</span>(<span class="ident">var</span>) =&gt; <span class="ident">sing</span>(<span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">var</span>], <span class="ident">Constant</span>(<span class="ident">F::one</span>())),
             <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">e1</span>, <span class="ident">e2</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">monomials</span>();
-                <span class="kw">for</span> (<span class="ident">m</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">e2</span>.<span class="ident">monomials</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>);
+                <span class="kw">for</span> (<span class="ident">m</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">e2</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>) {
                     <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span>
                         <span class="kw">match</span> <span class="ident">res</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>) {
                             <span class="prelude-val">None</span> =&gt; <span class="ident">c</span>,
@@ -2893,8 +3034,8 @@
                 <span class="ident">res</span>
             },
             <span class="ident">BinOp</span>(<span class="ident">Op2::Sub</span>, <span class="ident">e1</span>, <span class="ident">e2</span>) =&gt; {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">monomials</span>();
-                <span class="kw">for</span> (<span class="ident">m</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">e2</span>.<span class="ident">monomials</span>() {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>);
+                <span class="kw">for</span> (<span class="ident">m</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">e2</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>) {
                     <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span>
                         <span class="kw">match</span> <span class="ident">res</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">m</span>) {
                             <span class="prelude-val">None</span> =&gt; <span class="op">-</span><span class="ident">c</span>, <span class="comment">// Expr::constant(F::one()) * c,</span>
@@ -2905,10 +3046,14 @@
                 <span class="ident">res</span>
             },
             <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">e1</span>, <span class="ident">e2</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">monomials</span>();
-                <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="ident">e2</span>.<span class="ident">monomials</span>();
+                <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>);
+                <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="ident">e2</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>);
                 <span class="ident">mul_monomials</span>(<span class="kw-2">&amp;</span><span class="ident">e1</span>, <span class="kw-2">&amp;</span><span class="ident">e2</span>)
-            }
+            },
+            <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">monomials</span>(<span class="ident">ev</span>);
+                <span class="ident">mul_monomials</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>, <span class="kw-2">&amp;</span><span class="ident">x</span>)
+            },
         }
     }
 
@@ -2941,7 +3086,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">linearize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">evaluated</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Column</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> : <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Column</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constant_term</span> : <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::zero</span>();
-        <span class="kw">let</span> <span class="ident">monomials</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">monomials</span>();
+        <span class="kw">let</span> <span class="ident">monomials</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">monomials</span>(<span class="kw-2">&amp;</span><span class="ident">evaluated</span>);
 
         <span class="kw">for</span> (<span class="ident">m</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">monomials</span> {
             <span class="kw">let</span> (<span class="ident">evaluated</span>, <span class="kw-2">mut</span> <span class="ident">unevaluated</span>) : (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">m</span>.<span class="ident">into_iter</span>().<span class="ident">partition</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">evaluated</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>.<span class="ident">col</span>));
@@ -3153,16 +3298,21 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">fmt::Display</span><span class="op">&gt;</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">use</span> <span class="ident">ConstantExpr</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Alpha</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Alpha&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">Beta</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Beta&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">Gamma</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Gamma&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">JointCombiner</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;JointCombiner&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>,
-            <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">n</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Pow({}, {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">n</span>)<span class="question-mark">?</span>,
+            <span class="ident">Alpha</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;alpha&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">Beta</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;beta&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">Gamma</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;gamma&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">JointCombiner</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;joint_combiner&quot;</span>)<span class="question-mark">?</span>,
+            <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, <span class="ident">x</span>.<span class="ident">into_repr</span>())<span class="question-mark">?</span>,
+            <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">n</span>) =&gt; {
+                <span class="kw">match</span> <span class="ident">x</span>.<span class="ident">as_ref</span>() {
+                    <span class="ident">Alpha</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;alpha_pow({})&quot;</span>, <span class="ident">n</span>)<span class="question-mark">?</span>,
+                    <span class="ident">x</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;pow({}, {})&quot;</span>, <span class="ident">x</span>, <span class="ident">n</span>)<span class="question-mark">?</span>
+                }
+            },
             <span class="ident">Add</span>(<span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} + {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
             <span class="ident">Mul</span>(<span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} * {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
             <span class="ident">Sub</span>(<span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} - {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
@@ -3171,22 +3321,34 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">fmt::Display</span><span class="op">&gt;</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">to_string</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">fmt::Display</span><span class="op">&gt;</span>(<span class="ident">cache</span>: <span class="kw-2">&amp;mut</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">CacheId</span>, <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">e</span>: <span class="op">&amp;</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">String</span> {
+    <span class="kw">use</span> <span class="ident">Expr</span>::<span class="kw-2">*</span>;
+    <span class="kw">match</span> <span class="ident">e</span> {
+        <span class="ident">Double</span>(<span class="ident">x</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">x</span>)),
+        <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">x</span>),
+        <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;cell({})&quot;</span>, <span class="kw-2">*</span><span class="ident">v</span>),
+        <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;unnormalized_lagrange_basis({})&quot;</span>, <span class="kw-2">*</span><span class="ident">i</span>),
+        <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="macro">format!</span>(<span class="string">&quot;vanishes_on_last_4_rows&quot;</span>),
+        <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>()), <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">y</span>.<span class="ident">as_ref</span>())),
+        <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} * {})&quot;</span>, <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>()), <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">y</span>.<span class="ident">as_ref</span>())),
+        <span class="ident">BinOp</span>(<span class="ident">Op2::Sub</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} - {})&quot;</span>, <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>()), <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">y</span>.<span class="ident">as_ref</span>())),
+        <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">d</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;pow({}, {})&quot;</span>, <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>()), <span class="ident">d</span>),
+        <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;square({})&quot;</span>, <span class="ident">to_string</span>(<span class="ident">cache</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>())),
+        <span class="ident">Cache</span>(<span class="ident">id</span>, <span class="ident">e</span>) =&gt; {
+            <span class="ident">cache</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">e</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>());
+            <span class="ident">id</span>.<span class="ident">var_name</span>()
+        }
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">fmt::Display</span> <span class="op">+</span> <span class="ident">Clone</span><span class="op">&gt;</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
-        <span class="kw">use</span> <span class="ident">Expr</span>::<span class="kw-2">*</span>;
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Double</span>(<span class="ident">x</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;(2 * {})&quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>,
-            <span class="ident">Constant</span>(<span class="ident">x</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">x</span>)<span class="question-mark">?</span>,
-            <span class="ident">Cell</span>(<span class="ident">v</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Cell({:?})&quot;</span>, <span class="kw-2">*</span><span class="ident">v</span>)<span class="question-mark">?</span>,
-            <span class="ident">UnnormalizedLagrangeBasis</span>(<span class="ident">i</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;UnnormalizedLagrangeBasis({})&quot;</span>, <span class="kw-2">*</span><span class="ident">i</span>)<span class="question-mark">?</span>,
-            <span class="ident">VanishesOnLast4Rows</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;VanishesOnLast4Rows&quot;</span>)<span class="question-mark">?</span>,
-            <span class="ident">BinOp</span>(<span class="ident">Op2::Add</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} + {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
-            <span class="ident">BinOp</span>(<span class="ident">Op2::Mul</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} * {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
-            <span class="ident">BinOp</span>(<span class="ident">Op2::Sub</span>, <span class="ident">x</span>, <span class="ident">y</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({} - {})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">y</span>.<span class="ident">as_ref</span>())<span class="question-mark">?</span>,
-            <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">d</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;({}^{})&quot;</span>, <span class="ident">x</span>.<span class="ident">as_ref</span>(), <span class="ident">d</span>)<span class="question-mark">?</span>,
-            <span class="ident">Cache</span>(<span class="kw">_</span>, <span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">fmt</span>(<span class="ident">f</span>)<span class="question-mark">?</span>
-        };
-        <span class="prelude-val">Ok</span>(())
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">env</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
+        <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">to_string</span>(<span class="kw-2">&amp;mut</span> <span class="ident">env</span>, <span class="self">self</span>);
+        <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">v</span>) <span class="kw">in</span> <span class="ident">env</span>.<span class="ident">into_iter</span>() {
+            <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;let {} = {} in\n&quot;</span>, <span class="ident">k</span>.<span class="ident">var_name</span>(), <span class="ident">v</span>)<span class="question-mark">?</span>;
+        }
+        <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>)
     }
 }
 

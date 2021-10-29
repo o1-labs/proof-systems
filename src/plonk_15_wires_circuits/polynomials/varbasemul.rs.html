@@ -232,7 +232,6 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
-<span id="235">235</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
@@ -288,7 +287,6 @@ for details.
     <span class="kw">let</span> <span class="ident">s1_value</span> <span class="op">=</span>
                   (<span class="ident">input_value</span>.<span class="number">1</span> <span class="op">-</span> (<span class="ident">base_value</span>.<span class="number">1</span> <span class="op">*</span> (<span class="ident">b_value</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">F::one</span>()))) <span class="op">/</span> (<span class="ident">input_value</span>.<span class="number">0</span> <span class="op">-</span> <span class="ident">base_value</span>.<span class="number">0</span>);
 
-    <span class="comment">// let s1_value = (input_value.0 - base_value.0) / (input_value.1 - (b_value.double() - F::one()) * base_value.1);</span>
     <span class="ident">set</span>(<span class="ident">s1</span>, <span class="ident">s1_value</span>);
 
     <span class="kw">let</span> <span class="ident">s1_squared</span> <span class="op">=</span> <span class="ident">s1_value</span>.<span class="ident">square</span>();
