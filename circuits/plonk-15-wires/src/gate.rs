@@ -117,7 +117,7 @@ impl<F: Field> JointLookup<F> {
 )]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::OcamlEnum)
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
