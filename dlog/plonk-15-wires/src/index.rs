@@ -22,10 +22,10 @@ use commitment_dlog::{
 };
 use oracle::poseidon::ArithmeticSpongeParams;
 use plonk_15_wires_circuits::{
-    polynomials::{chacha, lookup, poseidon, varbasemul, complete_add, endosclmul, endomul_scalar},
+    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupInfo, LookupsUsed},
-    expr::{PolishToken, ConstantExpr, Expr, Column, Linearization},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
+    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -167,8 +167,11 @@ where
             mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
             emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
 
-            endomul_scalar_comm:
-                self.srs.commit_evaluations_non_hiding(domain, &self.cs.endomul_scalar8, None),
+            endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.cs.endomul_scalar8,
+                None,
+            ),
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),

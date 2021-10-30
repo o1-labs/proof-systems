@@ -18,8 +18,8 @@ use ark_ec::{
 };
 use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations,
-    Radix2EvaluationDomain as D, UVPolynomial,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+    UVPolynomial,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
@@ -549,16 +549,17 @@ where
         max: Option<usize>,
     ) -> PolyComm<G> {
         let is_zero = plnm.evals.iter().all(|x| x.is_zero());
-        let basis =
-            match self.lagrange_bases.get(&domain.size()) {
-                None => panic!("lagrange bases for size {} not found", domain.size()),
-                Some(v) => &v[..]
-            };
+        let basis = match self.lagrange_bases.get(&domain.size()) {
+            None => panic!("lagrange bases for size {} not found", domain.size()),
+            Some(v) => &v[..],
+        };
         if domain.size == plnm.domain().size {
             Self::commit_helper(&plnm.evals[..], basis, is_zero, max)
         } else if domain.size < plnm.domain().size {
             let s = (plnm.domain().size / domain.size) as usize;
-            let v : Vec<_> = (0..(domain.size as usize)).map(|i| plnm.evals[s * i]).collect();
+            let v: Vec<_> = (0..(domain.size as usize))
+                .map(|i| plnm.evals[s * i])
+                .collect();
             Self::commit_helper(&v[..], basis, is_zero, max)
         } else {
             panic!("desired commitment domain size greater than evaluations' domain size")

@@ -4,6 +4,7 @@ This source file implements generic constraint polynomials.
 
 *****************************************************************************************************************/
 
+use crate::gates::generic::{CONSTANT_COEFF, MUL_COEFF};
 use crate::wires::GENERICS;
 use crate::{nolookup::constraints::ConstraintSystem, polynomial::COLUMNS};
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -12,31 +13,42 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedDensePolynomial;
-use crate::gates::generic::{MUL_COEFF, CONSTANT_COEFF};
 use rayon::prelude::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
-    pub fn gnrc_quot(
-        &self,
-        witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
-    ) -> Evaluations<F, D<F>> {
+    pub fn gnrc_quot(&self, witness_d4: &[Evaluations<F, D<F>>; COLUMNS]) -> Evaluations<F, D<F>> {
         // w[0](x) * w[1](x) * qml(x)
         let mut multiplication = &witness_d4[0] * &witness_d4[1];
         let m8 = &self.coefficients8[MUL_COEFF];
-        multiplication.evals.par_iter_mut().enumerate().for_each(|(i, e)| *e *= m8[2 * i]);
+        multiplication
+            .evals
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, e)| *e *= m8[2 * i]);
 
         // presence of left, right, and output wire
         // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
         let mut eval_part = multiplication;
-        for (w, q) in witness_d4.iter().zip(self.coefficients8.iter()).take(GENERICS) {
-            eval_part.evals.par_iter_mut().enumerate()
+        for (w, q) in witness_d4
+            .iter()
+            .zip(self.coefficients8.iter())
+            .take(GENERICS)
+        {
+            eval_part
+                .evals
+                .par_iter_mut()
+                .enumerate()
                 .for_each(|(i, e)| *e += w.evals[i] * q[2 * i])
             // eval_part += &(w * q);
         }
 
         let c = &self.coefficients8[CONSTANT_COEFF];
-        eval_part.evals.par_iter_mut().enumerate().for_each(|(i, e)| *e += c[2 * i]);
+        eval_part
+            .evals
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, e)| *e += c[2 * i]);
 
         eval_part *= &self.generic4;
 

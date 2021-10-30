@@ -183,19 +183,18 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let one = F::one();
     let neg_one = -one;
 
-    for (i, row_bits) in bits_msb[..].chunks(bits_per_row).enumerate() {
-        let row = row0 + i;
-        w[0][row] = n;
-        w[2][row] = a;
-        w[3][row] = b;
+    let mut row = row0;
+    for row_bits in bits_msb[..].chunks(bits_per_row) {
+        w[0].push(n);
+        w[2].push(a);
+        w[3].push(b);
 
         for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
-
             let b0 = *crumb_bits[1];
             let b1 = *crumb_bits[0];
 
             let crumb = F::from(b0 as u64) + F::from(b1 as u64).double();
-            w[6 + j][row] = crumb;
+            w[6 + j].push(crumb);
 
             a.double_in_place();
             b.double_in_place();
@@ -214,9 +213,13 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
             n += crumb;
         }
 
-        w[1][row] = n;
-        w[4][row] = a;
-        w[5][row] = b;
+        w[1].push(n);
+        w[4].push(a);
+        w[5].push(b);
+
+        w[14].push(F::zero()); // unused
+
+        row += 1;
     }
 
     assert_eq!(x, n);
