@@ -1,5 +1,5 @@
 use ocaml_gen::{decl_fake_generic, decl_func, decl_module, decl_type, decl_type_alias, Env};
-use ocamlgen_test_stubs::*;
+use ocamlgen_test_stubs::{single_tuple::*, type_alias::*};
 
 fn main() {
     let mut w = std::io::stdout();
@@ -24,33 +24,14 @@ fn type_alias(mut w: impl std::io::Write, env: &mut Env) {
     // something else
     decl_fake_generic!(T1, 0);
 
-    // type some_type = { t: 'T }
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct SomeType<T> {
-        t: T,
-    }
     decl_type!(w, env, SomeType<T1>);
 
-    // type some_concrete_type = { s: string }
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct SomeConcreteType {
-        s: String,
-    }
     decl_type!(w, env, SomeConcreteType);
 
     decl_module!(w, env, "A", {
         // type t2 = some_concrete_type some_type
         decl_type_alias!(w, env, "t2" => SomeType<SomeConcreteType>);
 
-        // external thing : unit -> t2 = "thing"
-        #[ocaml_gen::func]
-        #[ocaml::func]
-        pub fn thing() -> SomeType<SomeConcreteType> {
-            let t = SomeConcreteType {
-                s: "hey".to_string(),
-            };
-            SomeType { t }
-        }
         decl_func!(w, env, thing);
     });
 }

@@ -85,3 +85,10 @@ struct MyCustomType {
   // ...
 }
 ```
+
+## Guidance
+
+A few things to keep in mind:
+
+* declaring different types within the same namespace (module) is dangerous. For example, you can shadow a previous type by declaring a new type with the same name. Another example is that you can shadow a record field or tag name if another type has the same record field or tag name.
+* If you want to have different types that map to different concrete instantiations of the same generic custom type in Rust, you will have to create different types in Rust.

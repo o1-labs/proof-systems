@@ -9,7 +9,7 @@ impl OCamlDesc for () {
         "unit".to_string()
     }
 
-    fn unique_id(_stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         const_random!(u128)
     }
 }
@@ -19,7 +19,7 @@ impl OCamlDesc for [u8; 32] {
         "bytes".to_string()
     }
 
-    fn unique_id(_stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         const_random!(u128)
     }
 }
@@ -29,7 +29,7 @@ impl OCamlDesc for &[u8] {
         "bytes".to_string()
     }
 
-    fn unique_id(_stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         const_random!(u128)
     }
 }
@@ -42,11 +42,9 @@ where
         format!("({}) array", T::ocaml_desc(env, generics))
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T::unique_id(stop_here);
-        }
+        unique_id ^= T::unique_id();
         unique_id
     }
 }
@@ -59,11 +57,9 @@ where
         T::ocaml_desc(env, generics)
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T::unique_id(stop_here);
-        }
+        unique_id ^= T::unique_id();
         unique_id
     }
 }
@@ -76,11 +72,9 @@ where
         format!("({}) option", T::ocaml_desc(env, generics))
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T::unique_id(stop_here);
-        }
+        unique_id ^= T::unique_id();
         unique_id
     }
 }
@@ -90,7 +84,7 @@ impl OCamlDesc for ocaml::Int {
         "int".to_string()
     }
 
-    fn unique_id(_stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         const_random!(u128)
     }
 }
@@ -100,7 +94,7 @@ impl OCamlDesc for String {
         "string".to_string()
     }
 
-    fn unique_id(_stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         const_random!(u128)
     }
 }
@@ -110,7 +104,7 @@ impl OCamlDesc for bool {
         "bool".to_string()
     }
 
-    fn unique_id(_stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         const_random!(u128)
     }
 }
@@ -123,11 +117,9 @@ where
         T::ocaml_desc(env, generics)
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T::unique_id(stop_here);
-        }
+        unique_id ^= T::unique_id();
         unique_id
     }
 }
@@ -142,12 +134,10 @@ where
         format!("({})", v.join(" * "))
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T1::unique_id(stop_here);
-            unique_id ^= T2::unique_id(stop_here);
-        }
+        unique_id ^= T1::unique_id();
+        unique_id ^= T2::unique_id();
         unique_id
     }
 }
@@ -208,25 +198,23 @@ where
         format!("({})", v.join(" * "))
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T1::unique_id(stop_here);
-            unique_id ^= T2::unique_id(stop_here);
-            unique_id ^= T3::unique_id(stop_here);
-            unique_id ^= T4::unique_id(stop_here);
-            unique_id ^= T5::unique_id(stop_here);
-            unique_id ^= T6::unique_id(stop_here);
-            unique_id ^= T7::unique_id(stop_here);
-            unique_id ^= T8::unique_id(stop_here);
-            unique_id ^= T9::unique_id(stop_here);
-            unique_id ^= T10::unique_id(stop_here);
-            unique_id ^= T11::unique_id(stop_here);
-            unique_id ^= T12::unique_id(stop_here);
-            unique_id ^= T13::unique_id(stop_here);
-            unique_id ^= T14::unique_id(stop_here);
-            unique_id ^= T15::unique_id(stop_here);
-        }
+        unique_id ^= T1::unique_id();
+        unique_id ^= T2::unique_id();
+        unique_id ^= T3::unique_id();
+        unique_id ^= T4::unique_id();
+        unique_id ^= T5::unique_id();
+        unique_id ^= T6::unique_id();
+        unique_id ^= T7::unique_id();
+        unique_id ^= T8::unique_id();
+        unique_id ^= T9::unique_id();
+        unique_id ^= T10::unique_id();
+        unique_id ^= T11::unique_id();
+        unique_id ^= T12::unique_id();
+        unique_id ^= T13::unique_id();
+        unique_id ^= T14::unique_id();
+        unique_id ^= T15::unique_id();
         unique_id
     }
 }
@@ -280,16 +268,14 @@ where
         v.join(" * ")
     }
 
-    fn unique_id(stop_here: bool) -> u128 {
+    fn unique_id() -> u128 {
         let mut unique_id = const_random!(u128);
-        if !stop_here {
-            unique_id ^= T1::unique_id(stop_here);
-            unique_id ^= T2::unique_id(stop_here);
-            unique_id ^= T3::unique_id(stop_here);
-            unique_id ^= T4::unique_id(stop_here);
-            unique_id ^= T5::unique_id(stop_here);
-            unique_id ^= T6::unique_id(stop_here);
-        }
+        unique_id ^= T1::unique_id();
+        unique_id ^= T2::unique_id();
+        unique_id ^= T3::unique_id();
+        unique_id ^= T4::unique_id();
+        unique_id ^= T5::unique_id();
+        unique_id ^= T6::unique_id();
         unique_id
     }
 }
