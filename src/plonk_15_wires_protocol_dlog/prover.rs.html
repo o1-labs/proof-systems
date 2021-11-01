@@ -898,7 +898,6 @@
 <span id="898">898</span>
 <span id="899">899</span>
 <span id="900">900</span>
-<span id="901">901</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -1610,10 +1609,9 @@ This source file implements prover&#39;s zk-proof primitive.
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::caml</span>::{<span class="ident">CamlOpeningProof</span>, <span class="ident">CamlPolyComm</span>};
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
     <span class="kw">use</span> <span class="ident">plonk_15_wires_circuits::nolookup::scalars::caml::CamlProofEvaluations</span>;
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">proof</span>: <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>,
@@ -1624,7 +1622,7 @@ This source file implements prover&#39;s zk-proof primitive.
         <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     }
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
         <span class="comment">// polynomial commitments</span>
         <span class="kw">pub</span> <span class="ident">w_comm</span>: (

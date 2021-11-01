@@ -729,9 +729,6 @@
 <span id="729">729</span>
 <span id="730">730</span>
 <span id="731">731</span>
-<span id="732">732</span>
-<span id="733">733</span>
-<span id="734">734</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
 
 <span class="doccomment">//! ocaml-derive adds a number of derives to make ocaml-gen easier to use.</span>
@@ -753,7 +750,7 @@
 <span class="doccomment">/// For example:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">/// #[ocaml_gen]</span>
+<span class="doccomment">/// #[ocaml_gen::func]</span>
 <span class="doccomment">/// #[ocaml::func]</span>
 <span class="doccomment">/// pub fn something(arg1: String) {</span>
 <span class="doccomment">///   //...</span>
@@ -761,7 +758,7 @@
 <span class="doccomment">/// ```</span>
 <span class="doccomment">///</span>
 <span class="attribute">#[<span class="ident">proc_macro_attribute</span>]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ocaml_gen</span>(<span class="ident">_attribute</span>: <span class="ident">TokenStream</span>, <span class="ident">item</span>: <span class="ident">TokenStream</span>) -&gt; <span class="ident">TokenStream</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">func</span>(<span class="ident">_attribute</span>: <span class="ident">TokenStream</span>, <span class="ident">item</span>: <span class="ident">TokenStream</span>) -&gt; <span class="ident">TokenStream</span> {
     <span class="kw">let</span> <span class="ident">item_fn</span>: <span class="ident">syn::ItemFn</span> <span class="op">=</span> <span class="ident">syn::parse</span>(<span class="ident">item</span>).<span class="ident">unwrap</span>();
 
     <span class="kw">let</span> <span class="ident">rust_name</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">item_fn</span>.<span class="ident">sig</span>.<span class="ident">ident</span>;
@@ -828,27 +825,26 @@
 }
 
 <span class="comment">//</span>
-<span class="comment">// OcamlEnum</span>
+<span class="comment">// Enum</span>
 <span class="comment">//</span>
 
-<span class="doccomment">/// The OcamlEnum derive macro.</span>
+<span class="doccomment">/// The Enum derive macro.</span>
 <span class="doccomment">/// It generates implementations of ToOCaml and OCamlBinding on an enum type.</span>
 <span class="doccomment">/// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]</span>
 <span class="doccomment">/// For example:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">/// use ocaml_gen::OcamlEnum;</span>
+<span class="doccomment">/// use ocaml_gen::Enum;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// #[OcamlEnum]</span>
+<span class="doccomment">/// #[Enum]</span>
 <span class="doccomment">/// enum MyType {</span>
 <span class="doccomment">///   // ...</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">///</span>
-<span class="attribute">#[<span class="ident">proc_macro_derive</span>(<span class="ident">OcamlEnum</span>)]</span>
+<span class="attribute">#[<span class="ident">proc_macro_derive</span>(<span class="ident">Enum</span>)]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_ocaml_enum</span>(<span class="ident">item</span>: <span class="ident">TokenStream</span>) -&gt; <span class="ident">TokenStream</span> {
-    <span class="kw">let</span> <span class="ident">item_enum</span>: <span class="ident">syn::ItemEnum</span> <span class="op">=</span>
-        <span class="ident">syn::parse</span>(<span class="ident">item</span>).<span class="ident">expect</span>(<span class="string">&quot;only enum are supported with OcamlEnum&quot;</span>);
+    <span class="kw">let</span> <span class="ident">item_enum</span>: <span class="ident">syn::ItemEnum</span> <span class="op">=</span> <span class="ident">syn::parse</span>(<span class="ident">item</span>).<span class="ident">expect</span>(<span class="string">&quot;only enum are supported with Enum&quot;</span>);
 
     <span class="comment">//</span>
     <span class="comment">// ocaml_desc</span>
@@ -1080,27 +1076,25 @@
 }
 
 <span class="comment">//</span>
-<span class="comment">// OcamlGen</span>
+<span class="comment">// Struct</span>
 <span class="comment">//</span>
 
-<span class="doccomment">/// The OcamlGen derive macro.</span>
+<span class="doccomment">/// The Struct derive macro.</span>
 <span class="doccomment">/// It generates implementations of ToOCaml and OCamlBinding on a struct.</span>
 <span class="doccomment">/// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]</span>
 <span class="doccomment">/// For example:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">/// use ocaml_gen::OcamlGen;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// #[OcamlGen]</span>
+<span class="doccomment">/// #[ocaml_gen::Struct]</span>
 <span class="doccomment">/// struct MyType {</span>
 <span class="doccomment">///   // ...</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">///</span>
-<span class="attribute">#[<span class="ident">proc_macro_derive</span>(<span class="ident">OcamlGen</span>)]</span>
+<span class="attribute">#[<span class="ident">proc_macro_derive</span>(<span class="ident">Struct</span>)]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_ocaml_gen</span>(<span class="ident">item</span>: <span class="ident">TokenStream</span>) -&gt; <span class="ident">TokenStream</span> {
     <span class="kw">let</span> <span class="ident">item_struct</span>: <span class="ident">syn::ItemStruct</span> <span class="op">=</span>
-        <span class="ident">syn::parse</span>(<span class="ident">item</span>).<span class="ident">expect</span>(<span class="string">&quot;only structs are supported with OCamlGen&quot;</span>);
+        <span class="ident">syn::parse</span>(<span class="ident">item</span>).<span class="ident">expect</span>(<span class="string">&quot;only structs are supported with Struct&quot;</span>);
     <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">item_struct</span>.<span class="ident">ident</span>;
     <span class="kw">let</span> <span class="ident">generics</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">item_struct</span>.<span class="ident">generics</span>.<span class="ident">params</span>;
     <span class="kw">let</span> <span class="ident">fields</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">item_struct</span>.<span class="ident">fields</span>;
@@ -1358,15 +1352,15 @@
 <span class="doccomment">/// For example:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
-<span class="doccomment">/// use ocaml_gen::OCamlCustomType;</span>
+<span class="doccomment">/// use ocaml_gen::CustomType;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// #[OCamlCustomType]</span>
+<span class="doccomment">/// #[CustomType]</span>
 <span class="doccomment">/// struct MyCustomType {</span>
 <span class="doccomment">///   // ...</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">///</span>
-<span class="attribute">#[<span class="ident">proc_macro_derive</span>(<span class="ident">OCamlCustomType</span>)]</span>
+<span class="attribute">#[<span class="ident">proc_macro_derive</span>(<span class="ident">CustomType</span>)]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">derive_ocaml_custom</span>(<span class="ident">item</span>: <span class="ident">TokenStream</span>) -&gt; <span class="ident">TokenStream</span> {
     <span class="kw">let</span> <span class="ident">item_struct</span>: <span class="ident">syn::ItemStruct</span> <span class="op">=</span>
         <span class="ident">syn::parse</span>(<span class="ident">item</span>).<span class="ident">expect</span>(<span class="string">&quot;only structs are supported at the moment&quot;</span>);
@@ -1411,7 +1405,7 @@
             <span class="kw">if</span> <span class="ident">new_type</span> {
                 <span class="kw">let</span> <span class="ident">ty_name</span> <span class="op">=</span> <span class="ident">rename</span>.<span class="ident">unwrap_or</span>(#<span class="ident">ocaml_name</span>);
                 <span class="kw">let</span> <span class="ident">ty_id</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">::ocaml_gen::OCamlDesc</span><span class="op">&gt;</span><span class="ident">::unique_id</span>();
-                <span class="ident">env</span>.<span class="ident">new_custom_type</span>(<span class="ident">ty_id</span>, <span class="ident">ty_name</span>);
+                <span class="ident">env</span>.<span class="ident">new_type</span>(<span class="ident">ty_id</span>, <span class="ident">ty_name</span>);
             }
 
             <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="op">&lt;</span><span class="self">Self</span> <span class="kw">as</span> <span class="ident">::ocaml_gen::OCamlDesc</span><span class="op">&gt;</span><span class="ident">::ocaml_desc</span>(<span class="ident">env</span>, <span class="kw-2">&amp;</span>[]);

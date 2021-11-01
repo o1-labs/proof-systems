@@ -544,7 +544,6 @@
 <span id="544">544</span>
 <span id="545">545</span>
 <span id="546">546</span>
-<span id="547">547</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements prover&#39;s zk-proof primitive.
@@ -981,7 +980,6 @@ This source file implements prover&#39;s zk-proof primitive.
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">commitment_dlog::commitment::caml</span>::{<span class="ident">CamlOpeningProof</span>, <span class="ident">CamlPolyComm</span>};
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
     <span class="kw">use</span> <span class="ident">plonk_circuits::scalars::caml::CamlProofEvaluations</span>;
 
     <span class="comment">//</span>
@@ -989,7 +987,7 @@ This source file implements prover&#39;s zk-proof primitive.
     <span class="comment">//</span>
 
     <span class="doccomment">/// The ocaml type for ProverCommitments</span>
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">l_comm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">r_comm</span>: <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
@@ -1034,7 +1032,7 @@ This source file implements prover&#39;s zk-proof primitive.
     <span class="comment">// ProverProof&lt;G&gt; &lt;-&gt; CamlProverProof&lt;CamlG, CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProverProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">CamlProverCommitments</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">proof</span>: <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">CamlG</span>, <span class="ident">CamlF</span><span class="op">&gt;</span>,

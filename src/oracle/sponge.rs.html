@@ -241,7 +241,6 @@
 <span id="241">241</span>
 <span id="242">242</span>
 <span id="243">243</span>
-<span id="244">244</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>, <span class="ident">SpongeConstants</span>};
 <span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">short_weierstrass_jacobian::GroupAffine</span>, <span class="ident">SWModelParameters</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">FpParameters</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
@@ -459,13 +458,12 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
 
     <span class="comment">//</span>
     <span class="comment">// ScalarChallenge&lt;F&gt; &lt;-&gt; CamlScalarChallenge&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>(<span class="kw">pub</span> <span class="ident">CamlF</span>);
 
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ScalarChallenge</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>

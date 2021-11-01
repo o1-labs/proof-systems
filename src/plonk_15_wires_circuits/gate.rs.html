@@ -576,7 +576,6 @@
 <span id="576">576</span>
 <span id="577">577</span>
 <span id="578">578</span>
-<span id="579">579</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -696,7 +695,7 @@ This source file implements Plonk constraint gate primitive.
 )]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(
     <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>,
-    <span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::OcamlEnum</span>)
+    <span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Enum</span>)
 )]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">proptest_derive::Arbitrary</span>))]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GateType</span> {
@@ -1002,10 +1001,9 @@ This source file implements Plonk constraint gate primitive.
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires::caml::CamlWire</span>;
     <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
     <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">ocaml::Int</span>,
         <span class="kw">pub</span> <span class="ident">typ</span>: <span class="ident">GateType</span>,

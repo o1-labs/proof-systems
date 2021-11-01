@@ -243,12 +243,6 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
 </pre><pre class="rust"><code><span class="comment">// TODO: get rid of nightly with https://github.com/dtolnay/paste ?</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
@@ -293,12 +287,6 @@
             <span class="ident">Entry::Occupied</span>(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;ocaml-gen: cannot re-declare the same type twice&quot;</span>),
             <span class="ident">Entry::Vacant</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">insert</span>((<span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">clone</span>(), <span class="ident">name</span>)),
         };
-    }
-
-    <span class="doccomment">/// Declares a new custom type. Unlike [new_type] this can be called several times with the same type.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_custom_type</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">u128</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) {
-        <span class="self">self</span>.<span class="ident">locations</span>
-            .<span class="ident">insert</span>(<span class="ident">ty</span>, (<span class="self">self</span>.<span class="ident">current_module</span>.<span class="ident">clone</span>(), <span class="ident">name</span>));
     }
 
     <span class="doccomment">/// retrieves a type that was declared previously</span>
@@ -369,9 +357,9 @@
 <span class="comment">//</span>
 
 <span class="doccomment">/// OCamlBinding is the trait implemented by types to generate their OCaml bindings.</span>
-<span class="doccomment">/// It is usually derived automatically via the [OcamlGen] macro,</span>
-<span class="doccomment">/// or the [OCamlCustomType] macro for custom types.</span>
-<span class="doccomment">/// For functions, refer to the [ocaml_gen] macro.</span>
+<span class="doccomment">/// It is usually derived automatically via the [Struct] macro,</span>
+<span class="doccomment">/// or the [CustomType] macro for custom types.</span>
+<span class="doccomment">/// For functions, refer to the [func] macro.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OCamlBinding</span> {
     <span class="doccomment">/// will generate the OCaml bindings for a type (called root type).</span>
     <span class="doccomment">/// It takes the current environment [Env],</span>
@@ -380,8 +368,8 @@
 }
 
 <span class="doccomment">/// OCamlDesc is the trait implemented by types to facilitate generation of their OCaml bindings.</span>
-<span class="doccomment">/// It is usually derived automatically via the [OcamlGen] macro,</span>
-<span class="doccomment">/// or the [OCamlCustomType] macro for custom types.</span>
+<span class="doccomment">/// It is usually derived automatically via the [Struct] macro,</span>
+<span class="doccomment">/// or the [CustomType] macro for custom types.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">OCamlDesc</span> {
     <span class="doccomment">/// describes the type in OCaml, given the current environment [Env]</span>
     <span class="doccomment">/// and the list of generic type parameters of the root type</span>

@@ -1279,7 +1279,6 @@
 <span id="1279">1279</span>
 <span id="1280">1280</span>
 <span id="1281">1281</span>
-<span id="1282">1282</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Dlog-based polynomial commitment schema.
@@ -2447,11 +2446,10 @@ The folowing functionality is implemented
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
 
     <span class="comment">// polynomial commitment</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlPolyComm</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">unshifted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">shifted</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CamlG</span><span class="op">&gt;</span>,
@@ -2511,7 +2509,7 @@ The folowing functionality is implemented
 
     <span class="comment">// opening proof</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>, <span class="comment">// vector of rounds of L &amp; R commitments</span>
         <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">G</span>,

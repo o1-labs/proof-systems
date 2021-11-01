@@ -84,7 +84,6 @@
 <span id="84">84</span>
 <span id="85">85</span>
 <span id="86">86</span>
-<span id="87">87</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit gate wires primitive.
@@ -145,10 +144,9 @@ This source file implements Plonk circuit gate wires primitive.
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
     <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlWire</span> {
         <span class="kw">pub</span> <span class="ident">row</span>: <span class="ident">ocaml::Int</span>,
         <span class="kw">pub</span> <span class="ident">col</span>: <span class="ident">ocaml::Int</span>,

@@ -337,7 +337,6 @@
 <span id="337">337</span>
 <span id="338">338</span>
 <span id="339">339</span>
-<span id="340">340</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk prover polynomial evaluations primitive.
@@ -442,14 +441,13 @@ This source file implements Plonk prover polynomial evaluations primitive.
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">ocaml_gen::OcamlGen</span>;
     <span class="kw">use</span> <span class="ident">oracle::sponge::caml::CamlScalarChallenge</span>;
 
     <span class="comment">//</span>
     <span class="comment">// CamlLookupEvaluations&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlLookupEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">sorted</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">aggreg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
@@ -495,7 +493,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
     <span class="comment">// CamlProofEvaluations&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlProofEvaluations</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">w</span>: (
             <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>,
@@ -619,7 +617,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
     <span class="comment">// RandomOracles&lt;F&gt; &lt;-&gt; CamlRandomOracles&lt;CamlF&gt;</span>
     <span class="comment">//</span>
 
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">OcamlGen</span>)]</span>
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlRandomOracles</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="ident">joint_combiner</span>: (<span class="ident">CamlScalarChallenge</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>, <span class="ident">CamlF</span>),
         <span class="kw">pub</span> <span class="ident">beta</span>: <span class="ident">CamlF</span>,
