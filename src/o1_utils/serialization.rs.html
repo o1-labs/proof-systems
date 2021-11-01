@@ -89,10 +89,10 @@
 <span class="comment">// Serialization with serde</span>
 <span class="comment">//</span>
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">serialization</span> {
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ser</span> {
     <span class="doccomment">//! You can use this module for serialization and deserializing arkworks types with [serde].</span>
     <span class="doccomment">//! Simply use the following attribute on your field:</span>
-    <span class="doccomment">//! `#[serde(with = &quot;o1_utils::serialization::serialization&quot;) attribute&quot;]`</span>
+    <span class="doccomment">//! `#[serde(with = &quot;o1_utils::serialization::ser&quot;) attribute&quot;]`</span>
 
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">serde_with</span>::{<span class="ident">DeserializeAs</span>, <span class="ident">SerializeAs</span>};

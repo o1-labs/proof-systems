@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["commitment_dlog","export_test_vectors","groupmap","mina_curves","o1_utils","ocaml_derive","ocaml_gen","oracle","plonk_15_wires_circuits","plonk_15_wires_protocol_dlog","plonk_circuits","plonk_protocol_dlog"];
+window.ALL_CRATES = ["commitment_dlog","export_test_vectors","groupmap","kimchi","kimchi_circuits","mina_curves","o1_utils","ocaml_derive","ocaml_gen","oracle","plonk_circuits","plonk_protocol_dlog"];

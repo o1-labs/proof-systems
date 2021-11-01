@@ -504,7 +504,7 @@ This source file implements Plonk circuit constraint primitive.
         <span class="ident">public</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>.<span class="ident">len</span>())<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">elements</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">elm</span><span class="op">|</span> <span class="ident">elm</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">elements</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="comment">// sample the coordinate shifts</span>
         <span class="kw">let</span> (<span class="ident">r</span>, <span class="ident">o</span>) <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shifts</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>.<span class="ident">d1</span>);
@@ -688,7 +688,7 @@ This source file implements Plonk circuit constraint primitive.
 
             <span class="comment">// verify witness against constraints</span>
             <span class="op">!</span><span class="self">self</span>.<span class="ident">gates</span>[<span class="ident">i</span>].<span class="ident">verify</span>(<span class="kw">if</span> <span class="ident">i</span><span class="op">+</span><span class="number">1</span><span class="op">==</span><span class="self">self</span>.<span class="ident">gates</span>.<span class="ident">len</span>() {<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gates</span>[<span class="ident">i</span>]}
-                                                      <span class="kw">else</span> {<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gates</span>[<span class="ident">i</span><span class="op">+</span><span class="number">1</span>]}, <span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="self">self</span>)
+                                                      <span class="kw">else</span> {<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gates</span>[<span class="ident">i</span><span class="op">+</span><span class="number">1</span>]}, <span class="ident">witness</span>, <span class="self">self</span>)
             {
                 <span class="kw">return</span> <span class="bool-val">false</span>;
             }
@@ -707,7 +707,7 @@ This source file implements Plonk circuit constraint primitive.
             .<span class="ident">to_be_bytes</span>(),
         );
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">F::from_random_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">h</span>.<span class="ident">finalize</span>()[..<span class="number">31</span>]).<span class="ident">unwrap</span>();
-        <span class="kw">while</span> <span class="ident">r</span>.<span class="ident">legendre</span>().<span class="ident">is_qnr</span>() <span class="op">==</span> <span class="bool-val">false</span> <span class="op">|</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">r</span>).<span class="ident">is_zero</span>() {
+        <span class="kw">while</span> <span class="op">!</span><span class="ident">r</span>.<span class="ident">legendre</span>().<span class="ident">is_qnr</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">domain</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">r</span>).<span class="ident">is_zero</span>() {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">Blake2b::new</span>();
             <span class="ident">h</span>.<span class="ident">update</span>(
                 <span class="kw-2">&amp;</span>{
@@ -723,10 +723,10 @@ This source file implements Plonk circuit constraint primitive.
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sample_shifts</span>(<span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; (<span class="ident">F</span>, <span class="ident">F</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">i</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
-        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
+        <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>);
         <span class="kw">while</span> <span class="ident">r</span> <span class="op">==</span> <span class="ident">o</span> {
-            <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="kw-2">&amp;</span><span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>)
+            <span class="ident">o</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::sample_shift</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;mut</span> <span class="ident">i</span>)
         }
         (<span class="ident">r</span>, <span class="ident">o</span>)
     }

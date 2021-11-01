@@ -400,9 +400,9 @@ This file implements Poseidon Hash Function primitive
                 .<span class="ident">collect</span>()
         } <span class="kw">else</span> {
             <span class="macro">vec!</span>[
-                <span class="self">self</span>.<span class="ident">state</span>[<span class="number">0</span>] <span class="op">+</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>[<span class="number">2</span>],
-                <span class="self">self</span>.<span class="ident">state</span>[<span class="number">0</span>] <span class="op">+</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>[<span class="number">1</span>],
-                <span class="self">self</span>.<span class="ident">state</span>[<span class="number">1</span>] <span class="op">+</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>[<span class="number">2</span>],
+                <span class="self">self</span>.<span class="ident">state</span>[<span class="number">0</span>] <span class="op">+</span> <span class="self">self</span>.<span class="ident">state</span>[<span class="number">2</span>],
+                <span class="self">self</span>.<span class="ident">state</span>[<span class="number">0</span>] <span class="op">+</span> <span class="self">self</span>.<span class="ident">state</span>[<span class="number">1</span>],
+                <span class="self">self</span>.<span class="ident">state</span>[<span class="number">1</span>] <span class="op">+</span> <span class="self">self</span>.<span class="ident">state</span>[<span class="number">2</span>],
             ]
         };
     }
@@ -459,7 +459,7 @@ This file implements Poseidon Hash Function primitive
 
     <span class="kw">fn</span> <span class="ident">poseidon_block_cipher</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="ident">SC::HALF_ROUNDS_FULL</span> <span class="op">==</span> <span class="number">0</span> {
-            <span class="kw">if</span> <span class="ident">SC::INITIAL_ARK</span> <span class="op">==</span> <span class="bool-val">true</span> {
+            <span class="kw">if</span> <span class="ident">SC::INITIAL_ARK</span> {
                 <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                     <span class="self">self</span>.<span class="ident">state</span>[<span class="ident">i</span>].<span class="ident">add_assign</span>(<span class="ident">x</span>);
                 }

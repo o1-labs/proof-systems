@@ -1277,8 +1277,6 @@
 <span id="1277">1277</span>
 <span id="1278">1278</span>
 <span id="1279">1279</span>
-<span id="1280">1280</span>
-<span id="1281">1281</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Dlog-based polynomial commitment schema.
@@ -1357,7 +1355,7 @@ The folowing functionality is implemented
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shift_scalar</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">let</span> <span class="ident">two</span>: <span class="ident">F</span> <span class="op">=</span> (<span class="number">2</span> <span class="kw">as</span> <span class="ident">u64</span>).<span class="ident">into</span>();
+    <span class="kw">let</span> <span class="ident">two</span>: <span class="ident">F</span> <span class="op">=</span> <span class="number">2_u64</span>.<span class="ident">into</span>();
     <span class="ident">x</span> <span class="op">-</span> <span class="ident">two</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">F::Params::MODULUS_BITS</span> <span class="kw">as</span> <span class="ident">u64</span>])
 }
 
@@ -1432,12 +1430,9 @@ The folowing functionality is implemented
                 <span class="kw">let</span> <span class="ident">pairs</span> <span class="op">=</span> <span class="ident">com</span>
                     .<span class="ident">iter</span>()
                     .<span class="ident">zip</span>(<span class="ident">elm</span>.<span class="ident">iter</span>())
-                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">c</span>.<span class="ident">shifted</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">c</span>) =&gt; <span class="prelude-val">Some</span>((<span class="ident">c</span>, <span class="ident">s</span>)),
-                        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-                    })
+                    .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">c</span>.<span class="ident">shifted</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> (<span class="ident">c</span>, <span class="ident">s</span>)))
                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-                <span class="kw">if</span> <span class="ident">pairs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="ident">pairs</span>.<span class="ident">is_empty</span>() {
                     <span class="prelude-val">None</span>
                 } <span class="kw">else</span> {
                     <span class="kw">let</span> <span class="ident">points</span> <span class="op">=</span> <span class="ident">pairs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">*</span><span class="ident">c</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
@@ -1446,7 +1441,7 @@ The folowing functionality is implemented
                 }
             },
             <span class="ident">unshifted</span>: {
-                <span class="kw">if</span> <span class="ident">com</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">elm</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
+                <span class="kw">if</span> <span class="ident">com</span>.<span class="ident">is_empty</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">elm</span>.<span class="ident">is_empty</span>() {
                     <span class="ident">Vec::new</span>()
                 } <span class="kw">else</span> {
                     <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Iterator::max</span>(<span class="ident">com</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>())).<span class="ident">unwrap</span>();
@@ -1686,7 +1681,7 @@ The folowing functionality is implemented
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">xi_i</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
 
-    <span class="kw">for</span> (<span class="ident">evals_tr</span>, <span class="ident">shifted</span>) <span class="kw">in</span> <span class="ident">polys</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">evals_tr</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">evals_tr</span>[<span class="number">0</span>].<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span>) {
+    <span class="kw">for</span> (<span class="ident">evals_tr</span>, <span class="ident">shifted</span>) <span class="kw">in</span> <span class="ident">polys</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">evals_tr</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">evals_tr</span>[<span class="number">0</span>].<span class="ident">is_empty</span>()) {
         <span class="comment">// transpose the evaluations</span>
         <span class="kw">let</span> <span class="ident">evals</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">evals_tr</span>[<span class="number">0</span>].<span class="ident">len</span>())
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">evals_tr</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>[<span class="ident">i</span>]).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>())
@@ -1895,7 +1890,7 @@ The folowing functionality is implemented
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scale</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
 
             <span class="comment">// iterating over polynomials in the batch</span>
-            <span class="kw">for</span> (<span class="ident">p_i</span>, <span class="ident">degree_bound</span>, <span class="ident">omegas</span>) <span class="kw">in</span> <span class="ident">plnms</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="number">0</span>.<span class="ident">is_zero</span>() <span class="op">==</span> <span class="bool-val">false</span>) {
+            <span class="kw">for</span> (<span class="ident">p_i</span>, <span class="ident">degree_bound</span>, <span class="ident">omegas</span>) <span class="kw">in</span> <span class="ident">plnms</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="op">!</span><span class="ident">p</span>.<span class="number">0</span>.<span class="ident">is_zero</span>()) {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">offset</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">j</span> <span class="op">=</span> <span class="number">0</span>;
                 <span class="comment">// iterating over chunks of the polynomial</span>
@@ -1977,7 +1972,7 @@ The folowing functionality is implemented
         <span class="macro">assert!</span>(<span class="ident">padded_length</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">a</span>.<span class="ident">len</span>());
         <span class="ident">a</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(); <span class="ident">padded_length</span> <span class="op">-</span> <span class="ident">a</span>.<span class="ident">len</span>()]);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">b_init</span>.<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">b_init</span>;
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lr</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
@@ -2261,7 +2256,8 @@ The folowing functionality is implemented
             {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">xi_i</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
 
-                <span class="kw">for</span> (<span class="ident">comm</span>, <span class="ident">_evals_tr</span>, <span class="ident">shifted</span>) <span class="kw">in</span> <span class="ident">polys</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span>) {
+                <span class="kw">for</span> (<span class="ident">comm</span>, <span class="ident">_evals_tr</span>, <span class="ident">shifted</span>) <span class="kw">in</span> <span class="ident">polys</span>.<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="op">!</span><span class="ident">x</span>.<span class="number">0</span>.<span class="ident">unshifted</span>.<span class="ident">is_empty</span>())
+                {
                     <span class="comment">// iterating over the polynomial segments</span>
                     <span class="kw">for</span> <span class="ident">comm_ch</span> <span class="kw">in</span> <span class="ident">comm</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>() {
                         <span class="ident">scalars</span>.<span class="ident">push</span>(<span class="ident">rand_base_i_c_i</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">xi_i</span>);
@@ -2271,7 +2267,7 @@ The folowing functionality is implemented
 
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">_m</span>) <span class="op">=</span> <span class="ident">shifted</span> {
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">comm_ch</span>) <span class="op">=</span> <span class="ident">comm</span>.<span class="ident">shifted</span> {
-                            <span class="kw">if</span> <span class="ident">comm_ch</span>.<span class="ident">is_zero</span>() <span class="op">==</span> <span class="bool-val">false</span> {
+                            <span class="kw">if</span> <span class="op">!</span><span class="ident">comm_ch</span>.<span class="ident">is_zero</span>() {
                                 <span class="comment">// xi^i sum_j r^j elm_j^{N - m} f(elm_j)</span>
                                 <span class="ident">scalars</span>.<span class="ident">push</span>(<span class="ident">rand_base_i_c_i</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">xi_i</span>);
                                 <span class="ident">points</span>.<span class="ident">push</span>(<span class="ident">comm_ch</span>);
