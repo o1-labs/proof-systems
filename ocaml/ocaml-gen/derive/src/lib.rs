@@ -19,7 +19,7 @@ use syn::{
 /// For example:
 ///
 /// ```
-/// #[ocaml_gen]
+/// #[ocaml_gen::func]
 /// #[ocaml::func]
 /// pub fn something(arg1: String) {
 ///   //...
@@ -27,7 +27,7 @@ use syn::{
 /// ```
 ///
 #[proc_macro_attribute]
-pub fn ocaml_gen(_attribute: TokenStream, item: TokenStream) -> TokenStream {
+pub fn func(_attribute: TokenStream, item: TokenStream) -> TokenStream {
     let item_fn: syn::ItemFn = syn::parse(item).unwrap();
 
     let rust_name = &item_fn.sig.ident;
@@ -94,27 +94,26 @@ pub fn ocaml_gen(_attribute: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 //
-// OcamlEnum
+// Enum
 //
 
-/// The OcamlEnum derive macro.
+/// The Enum derive macro.
 /// It generates implementations of ToOCaml and OCamlBinding on an enum type.
 /// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
 /// For example:
 ///
 /// ```
-/// use ocaml_gen::OcamlEnum;
+/// use ocaml_gen::Enum;
 ///
-/// #[OcamlEnum]
+/// #[Enum]
 /// enum MyType {
 ///   // ...
 /// }
 /// ```
 ///
-#[proc_macro_derive(OcamlEnum)]
+#[proc_macro_derive(Enum)]
 pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
-    let item_enum: syn::ItemEnum =
-        syn::parse(item).expect("only enum are supported with OcamlEnum");
+    let item_enum: syn::ItemEnum = syn::parse(item).expect("only enum are supported with Enum");
 
     //
     // ocaml_desc
@@ -346,27 +345,25 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 }
 
 //
-// OcamlGen
+// Struct
 //
 
-/// The OcamlGen derive macro.
+/// The Struct derive macro.
 /// It generates implementations of ToOCaml and OCamlBinding on a struct.
 /// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
 /// For example:
 ///
 /// ```
-/// use ocaml_gen::OcamlGen;
-///
-/// #[OcamlGen]
+/// #[ocaml_gen::Struct]
 /// struct MyType {
 ///   // ...
 /// }
 /// ```
 ///
-#[proc_macro_derive(OcamlGen)]
+#[proc_macro_derive(Struct)]
 pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     let item_struct: syn::ItemStruct =
-        syn::parse(item).expect("only structs are supported with OCamlGen");
+        syn::parse(item).expect("only structs are supported with Struct");
     let name = &item_struct.ident;
     let generics = &item_struct.generics.params;
     let fields = &item_struct.fields;
@@ -624,15 +621,15 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 /// For example:
 ///
 /// ```
-/// use ocaml_gen::OCamlCustomType;
+/// use ocaml_gen::CustomType;
 ///
-/// #[OCamlCustomType]
+/// #[CustomType]
 /// struct MyCustomType {
 ///   // ...
 /// }
 /// ```
 ///
-#[proc_macro_derive(OCamlCustomType)]
+#[proc_macro_derive(CustomType)]
 pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     let item_struct: syn::ItemStruct =
         syn::parse(item).expect("only structs are supported at the moment");
@@ -677,7 +674,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             if new_type {
                 let ty_name = rename.unwrap_or(#ocaml_name);
                 let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_custom_type(ty_id, ty_name);
+                env.new_type(ty_id, ty_name);
             }
 
             let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[]);

@@ -117,7 +117,7 @@ impl<F: Field> JointLookup<F> {
 )]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::OcamlEnum)
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
@@ -423,10 +423,9 @@ pub mod caml {
     use super::*;
     use crate::wires::caml::CamlWire;
     use itertools::Itertools;
-    use ocaml_gen::OcamlGen;
     use std::convert::TryInto;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, OcamlGen)]
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
         pub row: ocaml::Int,
         pub typ: GateType,
