@@ -61,7 +61,7 @@ impl<F: FftField> CircuitGate<F> {
             row,
             typ: GateType::Poseidon,
             wires,
-            c: c.iter().flatten().map(|x| *x).collect(),
+            c: c.iter().flatten().copied().collect(),
         }
     }
 

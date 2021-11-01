@@ -129,7 +129,7 @@ where
         // absorb the public input, l, r, o polycommitments into the argument
         let public_input_comm = &index.srs.get_ref().commit_non_hiding(&p, None).unshifted;
         // this breaks tests with empty public input :: assert_eq!(public_input_comm.len(), 1);
-        fq_sponge.absorb_g(&public_input_comm);
+        fq_sponge.absorb_g(public_input_comm);
         fq_sponge.absorb_g(&l_comm.unshifted);
         fq_sponge.absorb_g(&r_comm.unshifted);
         fq_sponge.absorb_g(&o_comm.unshifted);
@@ -215,8 +215,8 @@ where
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &(&genp + &posp))
             .divide_by_vanishing_poly(index.cs.domain.d1)
-            .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+            .map_or(Err(ProofError::PolyDivision), Ok)?;
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 
@@ -225,8 +225,8 @@ where
             &(&z - &DensePolynomial::from_coefficients_slice(&[Fr::<G>::one()])).into(),
             &DensePolynomial::from_coefficients_slice(&[-Fr::<G>::one(), Fr::<G>::one()]).into(),
         )
-        .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+        .map_or(Err(ProofError::PolyDivision), Ok)?;
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 
@@ -235,8 +235,8 @@ where
             &DensePolynomial::from_coefficients_slice(&[-index.cs.sid[n - 3], Fr::<G>::one()])
                 .into(),
         )
-        .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+        .map_or(Err(ProofError::PolyDivision), Ok)?;
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 
@@ -312,11 +312,11 @@ where
         let f = &(&(&(&(&index.cs.gnrc_lnrz(&e[0])
             + &index
                 .cs
-                .psdn_lnrz(&e, &index.cs.fr_sponge_params, &alpha[range::PSDN]))
-            + &index.cs.ecad_lnrz(&e, &alpha[range::ADD]))
-            + &index.cs.vbmul_lnrz(&e, &alpha[range::MUL]))
-            + &index.cs.endomul_lnrz(&e, &alpha[range::ENDML]))
-            + &index.cs.perm_lnrz(&e, &z, &oracles, &alpha[range::PERM]);
+                .psdn_lnrz(e, &index.cs.fr_sponge_params, &alpha[range::PSDN]))
+            + &index.cs.ecad_lnrz(e, &alpha[range::ADD]))
+            + &index.cs.vbmul_lnrz(e, &alpha[range::MUL]))
+            + &index.cs.endomul_lnrz(e, &alpha[range::ENDML]))
+            + &index.cs.perm_lnrz(e, &z, &oracles, &alpha[range::PERM]);
 
         evals[0].f = f.eval(evlp[0], index.max_poly_size);
         evals[1].f = f.eval(evlp[1], index.max_poly_size);

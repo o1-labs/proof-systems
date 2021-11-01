@@ -64,10 +64,10 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
 
     let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
     let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-    let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1.clone()) * xt.clone());
+    let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
 
     let yq1 = (b2.clone().double() - E::one()) * yt.clone();
-    let yq2 = (b4.clone().double() - E::one()) * yt.clone();
+    let yq2 = (b4.clone().double() - E::one()) * yt;
 
     let s1_squared = cache.cache(s1.clone().square());
     let s3_squared = cache.cache(s3.clone().square());
@@ -82,7 +82,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let xp_xr = cache.cache(xp.clone() - xr.clone());
     let xr_xs = cache.cache(xr.clone() - xs.clone());
 
-    let ys_yr = cache.cache(ys.clone() + yr.clone());
+    let ys_yr = cache.cache(ys + yr.clone());
     let yr_yp = cache.cache(yr.clone() + yp.clone());
 
     let p = vec![
@@ -92,21 +92,21 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
         b3.clone() - b3.square(),
         b4.clone() - b4.square(),
         // (xq1 - xp) * s1 = yq1 - yp
-        ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1.clone() - yp.clone()),
+        ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
         // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
-        (((xp.clone().double() - s1_squared.clone()) + xq1.clone())
-            * ((xp_xr.clone() * s1.clone()) + yr_yp.clone()))
-            - (yp.clone().double() * xp_xr.clone()),
+        (((xp.double() - s1_squared.clone()) + xq1.clone())
+            * ((xp_xr.clone() * s1) + yr_yp.clone()))
+            - (yp.double() * xp_xr.clone()),
         // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-        yr_yp.clone().square() - (xp_xr.clone().square() * ((s1_squared - xq1) + xr.clone())),
+        yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
         // (xq2 - xr) * s3 = yq2 - yr
-        ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2.clone() - yr.clone()),
+        ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
         // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
-        (((xr.clone().double() - s3_squared.clone()) + xq2.clone())
+        (((xr.double() - s3_squared.clone()) + xq2.clone())
             * ((xr_xs.clone() * s3) + ys_yr.clone()))
-            - (yr.clone().double() * xr_xs.clone()),
+            - (yr.double() * xr_xs.clone()),
         // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-        ys_yr.clone().square() - (xr_xs.clone().square() * ((s3_squared - xq2) + xs)),
+        ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
         n_constraint,
     ];
     E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::Endomul), Curr)

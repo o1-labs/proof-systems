@@ -95,7 +95,7 @@ where
                 (0..a.len())
                     .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
                     .collect::<Vec<_>>(),
-                &x.clone(),
+                &x,
                 polymask,
                 evalmask,
                 sponge.clone(),
@@ -103,8 +103,7 @@ where
             );
             open += start.elapsed();
 
-            let t = (sponge.clone(), x.clone(), polymask, evalmask, comm, proof);
-            t
+            (sponge.clone(), x.clone(), polymask, evalmask, comm, proof)
         })
         .collect::<Vec<_>>();
 
@@ -119,13 +118,7 @@ where
                 proof
                     .4
                     .iter()
-                    .map(|poly| {
-                        (
-                            &(poly.0).0,
-                            poly.1.iter().map(|vector| vector).collect::<Vec<_>>(),
-                            poly.2,
-                        )
-                    })
+                    .map(|poly| (&(poly.0).0, poly.1.iter().collect::<Vec<_>>(), poly.2))
                     .collect::<Vec<_>>(),
                 &proof.5,
             )

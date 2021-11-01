@@ -129,7 +129,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     sorted: &Vec<Evaluations<F, D<F>>>,
-) -> () {
+) {
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
@@ -318,7 +318,7 @@ pub fn sorted<
         let spec = by_row[i];
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let table_entry = E::evaluate(&params, joint_lookup, &witness, i);
+            let table_entry = E::evaluate(&params, joint_lookup, witness, i);
             let count = counts.entry(table_entry).or_insert(0);
             *count += 1;
         }
@@ -507,7 +507,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
         .fold(E::zero(), |acc: E<F>, x| acc + x);
 
     let one: E<F> = E::one();
-    let non_lookup_indcator = one.clone() - lookup_indicator;
+    let non_lookup_indcator = one - lookup_indicator;
 
     let dummy_lookup: ConstantExpr<F> = dummy_lookup
         .iter()

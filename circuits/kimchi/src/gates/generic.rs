@@ -102,7 +102,7 @@ impl<F: FftField> CircuitGate<F> {
         // - if constant wire is set, then left wire must be set
 
         // all good
-        return Ok(());
+        Ok(())
     }
 
     pub fn generic(&self) -> F {

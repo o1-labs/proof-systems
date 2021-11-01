@@ -8,10 +8,10 @@ use serde_with::Bytes;
 // Serialization with serde
 //
 
-pub mod serialization {
+pub mod ser {
     //! You can use this module for serialization and deserializing arkworks types with [serde].
     //! Simply use the following attribute on your field:
-    //! `#[serde(with = "o1_utils::serialization::serialization") attribute"]`
+    //! `#[serde(with = "o1_utils::serialization::ser") attribute"]`
 
     use super::*;
     use serde_with::{DeserializeAs, SerializeAs};

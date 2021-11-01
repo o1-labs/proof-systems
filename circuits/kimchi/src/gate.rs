@@ -204,7 +204,7 @@ impl<F: FftField> LookupInfo<F> {
 
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
                 if let Some(v) = self.kinds_map.get(&(typ, *r)) {
-                    if self.kinds[*v].len() > 0 {
+                    if !self.kinds[*v].is_empty() {
                         return Some(LookupsUsed::Joint);
                     } else {
                         lookups_used = Some(LookupsUsed::Single);
@@ -268,7 +268,7 @@ impl GateType {
     /// Currently there is only the lookup pattern used in the ChaCha rows, and it
     /// is applied to each ChaCha row and its successor.
     ///
-    /// See circuits/plonk-15-wires/src/polynomials/chacha.rs for an explanation of
+    /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
         let curr_row = |column| LocalPosition {
@@ -341,10 +341,10 @@ impl GateType {
         let lookup_kinds = Self::lookup_kinds::<F>();
         for (i, (_, locs)) in lookup_kinds.into_iter().enumerate() {
             for (g, r) in locs {
-                if res.contains_key(&(g, r)) {
-                    panic!("Multiple lookup patterns asserted on same row.")
+                if let std::collections::hash_map::Entry::Vacant(e) = res.entry((g, r)) {
+                    e.insert(i);
                 } else {
-                    res.insert((g, r), i);
+                    panic!("Multiple lookup patterns asserted on same row.")
                 }
             }
         }

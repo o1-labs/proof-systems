@@ -74,7 +74,7 @@ fn single_bit<F: FftField>(
     input: CurveVar,
     output: CurveVar,
 ) -> Vec<E<F>> {
-    let v = |v| E::Cell(v);
+    let v = E::Cell;
     let double = |x: E<_>| x.clone() + x;
 
     let b_sign = double(v(b)) - E::one();
@@ -110,10 +110,9 @@ fn single_bit<F: FftField>(
         //   (input.x - base.x) * s1 = input.y – (2b-1)*base.y
         (v(input.0) - v(base.0)) * v(s1) - (v(input.1) - b_sign * v(base.1)),
         // constrain output.x
-        (u.clone() * u.clone())
-            - (t.clone() * t.clone()) * (v(output.0) - v(base.0) + s1_squared.clone()),
+        (u.clone() * u.clone()) - (t.clone() * t.clone()) * (v(output.0) - v(base.0) + s1_squared),
         // constrain output.y
-        (v(output.1) + v(input.1)) * t.clone() - (v(input.0) - v(output.0)) * u.clone(),
+        (v(output.1) + v(input.1)) * t - (v(input.0) - v(output.0)) * u,
     ]
 }
 

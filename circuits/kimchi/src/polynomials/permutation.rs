@@ -38,10 +38,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let x_minus_1 = DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]);
         let (bnd1, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
             &z_minus_1.clone().into(),
-            &x_minus_1.clone().into(),
+            &x_minus_1.into(),
         )
-        .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+        .map_or(Err(ProofError::PolyDivision), Ok)?;
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 
@@ -52,8 +52,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         ]);
         let (bnd2, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&z_minus_1.into(), &denominator.into())
-                .map_or(Err(ProofError::PolyDivision), |s| Ok(s))?;
-        if res.is_zero() == false {
+                .map_or(Err(ProofError::PolyDivision), Ok)?;
+        if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
 

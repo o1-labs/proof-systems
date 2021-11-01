@@ -776,7 +776,7 @@ where
             ProverProof::create::<DefaultFqSponge<VestaParameters, SC>, DefaultFrSponge<Fp, SC>>(
                 &group_map,
                 &witness,
-                &index,
+                index,
                 vec![prev],
             )
             .unwrap(),

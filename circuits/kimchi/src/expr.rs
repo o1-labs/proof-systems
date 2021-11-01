@@ -80,13 +80,13 @@ impl<'a, F: FftField> Environment<'a, F> {
         match col {
             Witness(i) => Some(&self.witness[*i]),
             Coefficient(i) => Some(&self.coefficient[*i]),
-            Z => Some(&self.z),
+            Z => Some(self.z),
             LookupKindIndex(i) => lookup.map(|l| &l.selectors[*i]),
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
             Index(t) => match self.index.get(t) {
-                None => return None,
+                None => None,
                 Some(e) => Some(e),
             },
         }
@@ -1453,10 +1453,10 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         let n = env.domain.d1.size as usize;
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, &cs).unwrap();
+            let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
             let e = env
-                .get_column(&idx)
-                .expect(&format!("Index polynomial {:?} not found", idx));
+                .get_column(idx)
+                .unwrap_or_else(|| panic!("Index polynomial {:?} not found", idx));
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -1464,7 +1464,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
         (
-            PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, &cs).unwrap(),
+            PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, cs).unwrap(),
             p,
         )
     }
@@ -1483,10 +1483,10 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         let n = env.domain.d1.size as usize;
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = c.evaluate_(env.domain.d1, pt, evals, &cs).unwrap();
+            let c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
             let e = env
-                .get_column(&idx)
-                .expect(&format!("Index polynomial {:?} not found", idx));
+                .get_column(idx)
+                .unwrap_or_else(|| panic!("Index polynomial {:?} not found", idx));
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -1495,7 +1495,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
         (
             self.constant_term
-                .evaluate_(env.domain.d1, pt, evals, &cs)
+                .evaluate_(env.domain.d1, pt, evals, cs)
                 .unwrap(),
             p,
         )
@@ -1664,7 +1664,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             let (evaluated, mut unevaluated): (Vec<_>, _) =
                 m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
-            if unevaluated.len() == 0 {
+            if unevaluated.is_empty() {
                 constant_term = constant_term + c;
             } else if unevaluated.len() == 1 {
                 let var = unevaluated.remove(0);
@@ -1913,7 +1913,7 @@ fn to_string<F: Clone + fmt::Display>(
         Constant(x) => format!("{}", x),
         Cell(v) => format!("cell({})", *v),
         UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-        VanishesOnLast4Rows => format!("vanishes_on_last_4_rows"),
+        VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
         BinOp(Op2::Add, x, y) => format!(
             "({} + {})",
             to_string(cache, x.as_ref()),
@@ -1943,7 +1943,7 @@ impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
         let mut env = HashMap::new();
         let e = to_string(&mut env, self);
         for (k, v) in env.into_iter() {
-            write!(f, "let {} = {} in\n", k.var_name(), v)?;
+            writeln!(f, "let {} = {} in", k.var_name(), v)?;
         }
         write!(f, "{}", e)
     }

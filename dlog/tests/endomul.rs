@@ -7,6 +7,13 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
+use kimchi::{index::Index, prover::ProverProof};
+use kimchi_circuits::{
+    gate::{CircuitGate, GateType},
+    nolookup::constraints::ConstraintSystem,
+    polynomials::endosclmul,
+    wires::*,
+};
 use mina_curves::pasta::{
     fp::Fp as F,
     pallas::Affine as Other,
@@ -16,13 +23,6 @@ use oracle::{
     poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
-use plonk_15_wires_circuits::{
-    gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
-    polynomials::endosclmul,
-    wires::*,
-};
-use plonk_15_wires_protocol_dlog::{index::Index, prover::ProverProof};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{sync::Arc, time::Instant};
 
@@ -61,7 +61,7 @@ fn endomul_test() {
 
         let row = rows_per_scalar * s + chunks;
         gates.push(CircuitGate {
-            row: row,
+            row,
             typ: GateType::Zero,
             wires: Wire::new(row),
             c: vec![],
@@ -109,7 +109,7 @@ fn endomul_test() {
             (acc.x, acc.y)
         };
 
-        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).map(|x| *x).rev().collect();
+        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).copied().rev().collect();
 
         let res = endosclmul::witness(
             &mut witness,
