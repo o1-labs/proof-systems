@@ -526,6 +526,7 @@ mod tests {
     use mina_curves::pasta::Fp;
     use proptest::prelude::*;
     use rand::SeedableRng as _;
+    use serde::{Deserialize, Serialize};
 
     // TODO: move to mina-curves
     prop_compose! {
@@ -560,10 +561,11 @@ mod tests {
     proptest! {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
-            let encoded = bincode::serialize(&cg).unwrap();
+            let encoded = rmp_serde::to_vec(&cg).unwrap();
             println!("gate: {:?}", cg);
             println!("encoded gate: {:?}", encoded);
-            let decoded: CircuitGate<Fp> = bincode::deserialize(&encoded).unwrap();
+            let decoded: CircuitGate<Fp> = rmp_serde::from_read_ref(&encoded).unwrap();
+
             println!("decoded gate: {:?}", decoded);
             prop_assert_eq!(cg.row, decoded.row);
             prop_assert_eq!(cg.typ, decoded.typ);
