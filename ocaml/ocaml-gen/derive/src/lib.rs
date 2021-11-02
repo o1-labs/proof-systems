@@ -212,9 +212,8 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
                     }
 
                     fn unique_id() -> u128 {
-                        // so that we can instantiate fake generics in different ways
-                        // without influencing the unique_id they return
-                        (0xdeadbeef as u128) ^ (#fake_generics_counter as u128)
+                        // any generic type has the same unique id
+                        0
                     }
                 }
             )*
@@ -547,9 +546,8 @@ pub fn derive_ocaml_struct(item: TokenStream) -> TokenStream {
                     }
 
                     fn unique_id() -> u128 {
-                        // so that we can instantiate fake generics in different ways
-                        // without influencing the unique_id they return
-                        (0xdeadbeef as u128) ^ (#fake_generics_counter as u128)
+                        // any generic type has the same unique id
+                        0
                     }
                 }
             )*

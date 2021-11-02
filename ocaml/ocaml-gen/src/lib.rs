@@ -48,11 +48,11 @@ impl Env {
     }
 
     /// retrieves a type that was declared previously
-    pub fn get_type(&self, ty: u128, name: &str) -> String {
+    pub fn get_type(&self, ty: u128) -> Option<String> {
         let (type_path, type_name) = self
             .locations
-            .get(&ty)
-            .unwrap_or_else(|| panic!("ocaml-gen: the type {} hasn't been declared", name));
+            .get(&ty)?;
+//            .unwrap_or_else(|| panic!("ocaml-gen: the type {} hasn't been declared", name));
 
         // path resolution
         let mut current = self.current_module.clone();
@@ -63,11 +63,13 @@ impl Env {
             .copied()
             .collect();
 
-        if path.is_empty() {
+        let name = if path.is_empty() {
             type_name.to_string()
         } else {
             format!("{}.{}", path.join("."), type_name)
-        }
+        };
+
+        Some(name)
     }
 
     /// create a module and enters it
@@ -213,9 +215,8 @@ macro_rules! decl_fake_generic {
             }
 
             fn unique_id() -> u128 {
-                // so that we can instantiate fake generics in different ways
-                // without influencing the unique_id they return
-                (0xdeadbeef as u128) ^ ($i as u128)
+                // any generic type has the same unique id
+                0
             }
         }
     };
