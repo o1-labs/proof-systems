@@ -39,7 +39,10 @@ impl Env {
     /// Declares a new type. If the type was already declared, this will panic. If you are declaring a custom type, use [new_custom_type].
     pub fn new_type(&mut self, ty: u128, name: &'static str) {
         match self.locations.entry(ty) {
-            Entry::Occupied(_) => panic!("ocaml-gen: cannot re-declare the same type twice"),
+            Entry::Occupied(_) => panic!(
+                "ocaml-gen: cannot re-declare the same type {} ({}) twice",
+                ty, name
+            ),
             Entry::Vacant(v) => v.insert((self.current_module.clone(), name)),
         };
     }
@@ -101,7 +104,7 @@ impl Env {
     pub fn root(&mut self) -> String {
         let mut res = String::new();
         for _ in &self.current_module {
-            res.push_str("end\n");
+            res.push_str("end");
         }
         res
     }
@@ -131,7 +134,7 @@ pub trait OCamlDesc {
     /// (the type that makes use of this type)
     fn ocaml_desc(env: &Env, generics: &[&str]) -> String;
 
-    /// Returns a unique ID for the type. This ID will not change if concrete type parameters are used.
+    /// Returns a unique ID for the type. This ID will not change if concrete type parameters are used, unless `stop_here` is set to `false`.
     fn unique_id() -> u128;
 }
 
@@ -144,9 +147,9 @@ pub trait OCamlDesc {
 macro_rules! decl_module {
     ($w:expr, $env:expr, $name:expr, $b:block) => {{
         use std::io::Write;
-        write!($w, "\n{}{}\n", format_args!("{: >1$}", "", $env.nested() * 2), $env.new_module($name)).unwrap();
+        writeln!($w, "{}", $env.new_module($name)).unwrap();
         $b
-        write!($w, "{}{}\n\n", format_args!("{: >1$}", "", $env.nested() * 2 - 2), $env.parent()).unwrap();
+        writeln!($w, "{}", $env.parent()).unwrap();
     }}
 }
 
@@ -158,13 +161,7 @@ macro_rules! decl_func {
         ::ocaml_gen::paste! {
             let binding = [<$func _to_ocaml>]($env, None);
         }
-        write!(
-            $w,
-            "{}{}\n",
-            format_args!("{: >1$}", "", $env.nested() * 2),
-            binding,
-        )
-        .unwrap();
+        writeln!($w, "{}", binding,).unwrap();
     }};
     // rename
     ($w:expr, $env:expr, $func:ident => $new:expr) => {{
@@ -172,13 +169,7 @@ macro_rules! decl_func {
         ::ocaml_gen::paste! {
             let binding = [<$func _to_ocaml>]($env, Some($new));
         }
-        write!(
-            $w,
-            "{}{}\n",
-            format_args!("{: >1$}", "", $env.nested() * 2),
-            binding,
-        )
-        .unwrap();
+        writeln!($w, "{}", binding,).unwrap();
     }};
 }
 
@@ -188,25 +179,13 @@ macro_rules! decl_type {
     ($w:expr, $env:expr, $ty:ty) => {{
         use std::io::Write;
         let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, None, true);
-        write!(
-            $w,
-            "{}{}\n",
-            format_args!("{: >1$}", "", $env.nested() * 2),
-            res,
-        )
-        .unwrap();
+        writeln!($w, "{}", res,).unwrap();
     }};
     // rename
     ($w:expr, $env:expr, $ty:ty => $new:expr) => {{
         use std::io::Write;
         let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new), true);
-        write!(
-            $w,
-            "{}{}\n",
-            format_args!("{: >1$}", "", $env.nested() * 2),
-            res,
-        )
-        .unwrap();
+        writeln!($w, "{}", res,).unwrap();
     }};
 }
 
@@ -216,17 +195,12 @@ macro_rules! decl_type_alias {
     ($w:expr, $env:expr, $new:expr => $ty:ty) => {{
         use std::io::Write;
         let res = <$ty as ::ocaml_gen::OCamlBinding>::ocaml_binding($env, Some($new), false);
-        write!(
-            $w,
-            "{}{}\n",
-            format_args!("{: >1$}", "", $env.nested() * 2),
-            res,
-        )
-        .unwrap();
+        writeln!($w, "{}", res,).unwrap();
     }};
 }
 
-/// Creates a fake generic. This is a necessary hack, at the moment, to declare types (with the [decl_type] macro) that have generic parameters.
+/// Creates a "fake" generic. This is a necessary hack
+/// to handle types that have generic type parameters.
 #[macro_export]
 macro_rules! decl_fake_generic {
     ($name:ident, $i:expr) => {
@@ -234,11 +208,14 @@ macro_rules! decl_fake_generic {
 
         impl ::ocaml_gen::OCamlDesc for $name {
             fn ocaml_desc(_env: &::ocaml_gen::Env, generics: &[&str]) -> String {
+                // TODO: this should return the information that it is a generic
                 format!("'{}", generics[$i])
             }
 
             fn unique_id() -> u128 {
-                ::ocaml_gen::const_random!(u128)
+                // so that we can instantiate fake generics in different ways
+                // without influencing the unique_id they return
+                (0xdeadbeef as u128) ^ ($i as u128)
             }
         }
     };

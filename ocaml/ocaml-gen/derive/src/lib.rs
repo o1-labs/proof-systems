@@ -114,14 +114,14 @@ pub fn func(_attribute: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_derive(Enum)]
 pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
     let item_enum: syn::ItemEnum = syn::parse(item).expect("only enum are supported with Enum");
+    let name = &item_enum.ident;
+    let generics = &item_enum.generics.params;
 
     //
     // ocaml_desc
     //
 
-    let generics_ident: Vec<_> = item_enum
-        .generics
-        .params
+    let generics_ident: Vec<_> = generics
         .iter()
         .filter_map(|g| match g {
             GenericParam::Type(t) => Some(&t.ident),
@@ -129,7 +129,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
         })
         .collect();
 
-    let name_str = item_enum.ident.to_string();
+    let name_str = name.to_string();
 
     let ocaml_desc = quote! {
         fn ocaml_desc(env: &::ocaml_gen::Env, generics: &[&str]) -> String {
@@ -146,7 +146,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
             let name = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
-            if generics_ocaml.is_empty() {
+            if generics.is_empty() || generics_ocaml.is_empty() {
                 name.to_string()
             } else {
                 format!("({}) {}", generics_ocaml.join(", "), name)
@@ -160,7 +160,15 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 
     let unique_id = quote! {
         fn unique_id() -> u128 {
-            ::ocaml_gen::const_random!(u128)
+            // this struct's unique id
+            let mut unique_id = ::ocaml_gen::const_random!(u128);
+
+            // XOR in the type parameters' unique ids
+            #(
+                unique_id ^= <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id();
+            );*
+
+            unique_id
         }
     };
 
@@ -168,16 +176,62 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
     // ocaml_binding
     //
 
-    let generics_str: Vec<String> = item_enum
-        .generics
-        .params
+    // list the generic type parameters
+    let generics_ident: Vec<_> = generics
         .iter()
         .filter_map(|g| match g {
             GenericParam::Type(t) => Some(&t.ident),
             _ => None,
         })
+        .collect();
+
+    let generics_str: Vec<String> = generics_ident
+        .iter()
         .map(|ident| ident.to_string())
         .collect();
+
+    // construct the generic version of this type
+    // i.e. ThisType<T1, T2, ...>
+    // this might be needed if we're aliasing this type
+
+    let fake_generics_counter: Vec<_> = (0..generics_ident.len()).collect();
+    let fake_generics: Vec<_> = fake_generics_counter
+        .iter()
+        .map(|i| quote::format_ident!("T{}", i.to_string()))
+        .collect();
+
+    let decl_fake_generics = {
+        quote! {
+            #(
+                pub struct #fake_generics;
+
+                impl ::ocaml_gen::OCamlDesc for #fake_generics {
+                    fn ocaml_desc(_env: &::ocaml_gen::Env, generics: &[&str]) -> String {
+                        // TODO: this should return the information that it is a generic
+                        format!("'{}", generics[#fake_generics_counter])
+                    }
+
+                    fn unique_id() -> u128 {
+                        // so that we can instantiate fake generics in different ways
+                        // without influencing the unique_id they return
+                        (0xdeadbeef as u128) ^ (#fake_generics_counter as u128)
+                    }
+                }
+            )*
+        }
+    };
+
+    let generic_ty = if generics.is_empty() {
+        quote! {
+            #name
+        }
+    } else {
+        quote! {
+            #name < #(#fake_generics),* >
+        }
+    };
+
+    //
 
     let body = {
         // we want to resolve types at runtime (to do relocation/renaming)
@@ -260,7 +314,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
         }
     };
 
-    let ocaml_name = rust_ident_to_ocaml(name_str);
+    let ocaml_name = rust_ident_to_ocaml(name_str.clone());
 
     let ocaml_binding = quote! {
         fn ocaml_binding(
@@ -268,24 +322,54 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
             rename: Option<&'static str>,
             new_type: bool,
         ) -> String {
-            // register the new type
-            if new_type {
-                let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_type(ty_id, ty_name);
-            }
-
+            // get generic part
             let global_generics: Vec<&str> = vec![#(#generics_str),*];
-            let generics_ocaml = {
+            let ty_desc = {
                 #body
             };
 
-            let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
+            //
+            let ty_name = rename.unwrap_or(#ocaml_name);
+            let ty_generics: Vec<_> = global_generics.iter().map(|x| format!("'{}", x)).collect();
 
+
+            //
             if new_type {
-                format!("type nonrec {} = {}", name, generics_ocaml)
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_type(ty_id, ty_name);
+
+                if ty_generics.is_empty() {
+                    format!("type nonrec {} = {}", ty_name, ty_desc)
+                } else {
+                    format!("type nonrec ({}) {} = {}", ty_generics.join(", "), ty_name, ty_desc)
+                }
+
             } else {
-                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+                // get generics
+                let mut concrete_types: Vec<String> = vec![];
+                #(
+                    let concrete_ty_id = <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id();
+                    let concrete_ty_name = env.get_type(concrete_ty_id, stringify!(#generics_ident));
+                    concrete_types.push(concrete_ty_name);
+                );*
+
+                // register this alias type
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_type(ty_id, ty_name);
+
+                // get the aliased type
+                #decl_fake_generics
+                let aliased_ty_id = <#generic_ty as ::ocaml_gen::OCamlDesc>::unique_id();
+                let aliased_ty_name = env.get_type(aliased_ty_id, #name_str);
+
+                // display
+                let name = rename.expect("type alias must have a name");
+                if concrete_types.is_empty() {
+                    format!("type nonrec {} = {}", name, aliased_ty_name)
+                } else {
+                    format!("type nonrec {} = ({}) {}", name, concrete_types.join(", "), aliased_ty_name)
+                }
+
             }
         }
     };
@@ -361,7 +445,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 /// ```
 ///
 #[proc_macro_derive(Struct)]
-pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
+pub fn derive_ocaml_struct(item: TokenStream) -> TokenStream {
     let item_struct: syn::ItemStruct =
         syn::parse(item).expect("only structs are supported with Struct");
     let name = &item_struct.ident;
@@ -397,7 +481,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             let name = env.get_type(type_id, #name_str);
 
             // return the type description in OCaml
-            if generics_ocaml.is_empty() {
+            if generics.is_empty() || generics_ocaml.is_empty() {
                 name.to_string()
             } else {
                 format!("({}) {}", generics_ocaml.join(", "), name)
@@ -411,7 +495,15 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
 
     let unique_id = quote! {
         fn unique_id() -> u128 {
-            ::ocaml_gen::const_random!(u128)
+            // this struct's unique id
+            let mut unique_id = ::ocaml_gen::const_random!(u128);
+
+            // XOR in the type parameters' unique ids
+            #(
+                unique_id ^= <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id();
+            );*
+
+            unique_id
         }
     };
 
@@ -419,15 +511,62 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     // ocaml_binding
     //
 
-    let generics_str: Vec<String> = generics
+    // list the generic type parameters
+    let generics_ident: Vec<_> = generics
         .iter()
         .filter_map(|g| match g {
             GenericParam::Type(t) => Some(&t.ident),
             _ => None,
         })
+        .collect();
+
+    let generics_str: Vec<String> = generics_ident
+        .iter()
         .map(|ident| ident.to_string())
         .collect();
 
+    // construct the generic version of this type
+    // i.e. ThisType<T1, T2, ...>
+    // this might be needed if we're aliasing this type
+
+    let fake_generics_counter: Vec<_> = (0..generics_ident.len()).collect();
+    let fake_generics: Vec<_> = fake_generics_counter
+        .iter()
+        .map(|i| quote::format_ident!("T{}", i.to_string()))
+        .collect();
+
+    let decl_fake_generics = {
+        quote! {
+            #(
+                pub struct #fake_generics;
+
+                impl ::ocaml_gen::OCamlDesc for #fake_generics {
+                    fn ocaml_desc(_env: &::ocaml_gen::Env, generics: &[&str]) -> String {
+                        // TODO: this should return the information that it is a generic
+                        format!("'{}", generics[#fake_generics_counter])
+                    }
+
+                    fn unique_id() -> u128 {
+                        // so that we can instantiate fake generics in different ways
+                        // without influencing the unique_id they return
+                        (0xdeadbeef as u128) ^ (#fake_generics_counter as u128)
+                    }
+                }
+            )*
+        }
+    };
+
+    let generic_ty = if generics.is_empty() {
+        quote! {
+            #name
+        }
+    } else {
+        quote! {
+            #name < #(#fake_generics),* >
+        }
+    };
+
+    //
     let body = match fields {
         Fields::Named(fields) => {
             let mut punctured_generics_name: Vec<String> = vec![];
@@ -530,7 +669,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
         _ => panic!("only named, and unnamed field supported"),
     };
 
-    let ocaml_name = rust_ident_to_ocaml(name_str);
+    let ocaml_name = rust_ident_to_ocaml(name_str.clone());
 
     let ocaml_binding = quote! {
         fn ocaml_binding(
@@ -538,24 +677,50 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             rename: Option<&'static str>,
             new_type: bool,
         ) -> String {
-            // register the new type
-            if new_type {
-                let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_type(ty_id, ty_name);
-            }
-
+            // get generic part
             let global_generics: Vec<&str> = vec![#(#generics_str),*];
-            let generics_ocaml = {
+            let ty_desc = {
                 #body
             };
 
-            let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &global_generics);
+            //
+            let ty_name = rename.unwrap_or(#ocaml_name);
+            let ty_generics: Vec<_> = global_generics.iter().map(|x| format!("'{}", x)).collect();
 
+            //
             if new_type {
-                format!("type nonrec {} = {}", name, generics_ocaml)
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_type(ty_id, ty_name);
+                if ty_generics.is_empty() {
+                    format!("type nonrec {} = {}", ty_name, ty_desc)
+                } else {
+                    format!("type nonrec ({}) {} = {}", ty_generics.join(", "), ty_name, ty_desc)
+                }
             } else {
-                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
+                // get generics
+                let mut concrete_types: Vec<String> = vec![];
+                #(
+                    let concrete_ty_id = <#generics_ident as ::ocaml_gen::OCamlDesc>::unique_id();
+                    let concrete_ty_name = env.get_type(concrete_ty_id, stringify!(#generics_ident));
+                    concrete_types.push(concrete_ty_name);
+                );*
+
+                // register this alias type
+                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+                env.new_type(ty_id, ty_name);
+
+                // get the aliased type
+                #decl_fake_generics
+                let aliased_ty_id = <#generic_ty as ::ocaml_gen::OCamlDesc>::unique_id();
+                let aliased_ty_name = env.get_type(aliased_ty_id, #name_str);
+
+                // display
+                let name = rename.expect("type alias must have a name");
+                if concrete_types.is_empty() {
+                    format!("type nonrec {} = {}", name, aliased_ty_name)
+                } else {
+                    format!("type nonrec {} = ({}) {}", name, concrete_types.join(", "), aliased_ty_name)
+                }
             }
         }
     };
@@ -652,8 +817,23 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
     // unique_id
     //
 
+    // we generate the unique_id based on this struct's unique id as well as the unique ids of its concrete type parameters.
+    // this is so that we can distinguish between different declaration of the same custom types but using different type parameters.
+    // see https://github.com/o1-labs/proof-systems/issues/172
+
+    let generics_ident: Vec<_> = item_struct
+        .generics
+        .params
+        .iter()
+        .filter_map(|g| match g {
+            GenericParam::Type(t) => Some(&t.ident),
+            _ => None,
+        })
+        .collect();
+
     let unique_id = quote! {
         fn unique_id() -> u128 {
+            // this struct's unique id
             ::ocaml_gen::const_random!(u128)
         }
     };
@@ -670,20 +850,17 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             rename: Option<&'static str>,
             new_type: bool,
         ) -> String {
-            // register the new type
-            if new_type {
-                let ty_name = rename.unwrap_or(#ocaml_name);
-                let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
-                env.new_type(ty_id, ty_name);
+            if !new_type {
+                panic!("aliases of custom types are dangerous, as they do not provide any type safety. If you need to distinguish different usages of a single custom types, you'll have to create distinct custom types in Rust.")
             }
 
-            let name = <Self as ::ocaml_gen::OCamlDesc>::ocaml_desc(env, &[]);
+            // register the type
+            let ty_name = rename.unwrap_or(#ocaml_name);
+            let ty_id = <Self as ::ocaml_gen::OCamlDesc>::unique_id();
+            env.new_type(ty_id, ty_name);
 
-            if new_type {
-                format!("type nonrec {}", name)
-            } else {
-                format!("type nonrec {} = {}", rename.expect("type alias must have a name"), name)
-            }
+            // display
+            format!("type {}", ty_name)
         }
     };
 

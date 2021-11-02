@@ -43,7 +43,9 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T::unique_id();
+        unique_id
     }
 }
 
@@ -56,7 +58,9 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T::unique_id();
+        unique_id
     }
 }
 
@@ -69,7 +73,9 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T::unique_id();
+        unique_id
     }
 }
 
@@ -112,7 +118,9 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T::unique_id();
+        unique_id
     }
 }
 
@@ -127,7 +135,10 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T1::unique_id();
+        unique_id ^= T2::unique_id();
+        unique_id
     }
 }
 
@@ -188,7 +199,23 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T1::unique_id();
+        unique_id ^= T2::unique_id();
+        unique_id ^= T3::unique_id();
+        unique_id ^= T4::unique_id();
+        unique_id ^= T5::unique_id();
+        unique_id ^= T6::unique_id();
+        unique_id ^= T7::unique_id();
+        unique_id ^= T8::unique_id();
+        unique_id ^= T9::unique_id();
+        unique_id ^= T10::unique_id();
+        unique_id ^= T11::unique_id();
+        unique_id ^= T12::unique_id();
+        unique_id ^= T13::unique_id();
+        unique_id ^= T14::unique_id();
+        unique_id ^= T15::unique_id();
+        unique_id
     }
 }
 
@@ -242,6 +269,13 @@ where
     }
 
     fn unique_id() -> u128 {
-        const_random!(u128)
+        let mut unique_id = const_random!(u128);
+        unique_id ^= T1::unique_id();
+        unique_id ^= T2::unique_id();
+        unique_id ^= T3::unique_id();
+        unique_id ^= T4::unique_id();
+        unique_id ^= T5::unique_id();
+        unique_id ^= T6::unique_id();
+        unique_id
     }
 }
