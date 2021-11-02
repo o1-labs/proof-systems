@@ -61,7 +61,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic(zeta) * w[1](zeta),
     /// generic(zeta) * w[2](zeta)
     pub fn gnrc_scalars(w_zeta: &[F; COLUMNS], generic_zeta: F) -> Vec<F> {
-        let mut res = vec![generic_zeta * w_zeta[0] * &w_zeta[1]];
+        let mut res = vec![generic_zeta * w_zeta[0] * w_zeta[1]];
         res.extend((0..GENERICS).map(|i| generic_zeta * w_zeta[i]));
         res
     }
@@ -252,6 +252,6 @@ mod tests {
 
         // check that f(z) = t(z) * Z_H(z)
         let z_h_zeta = cs.domain.d1.evaluate_vanishing_polynomial(zeta);
-        assert!(f_zeta == t_zeta * &z_h_zeta);
+        assert!(f_zeta == t_zeta * z_h_zeta);
     }
 }

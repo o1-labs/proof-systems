@@ -65,7 +65,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     // This variable is used to constrain same_x
     let x21_inv = w(10);
 
-    let mut cache = Cache::new();
+    let mut cache = Cache::default();
 
     let x21 = cache.cache(x2.clone() - x1.clone());
     let y21 = cache.cache(y2 - y1.clone());

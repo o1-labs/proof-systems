@@ -156,10 +156,10 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
         }
     }
 
-    for i in 0..3 {
-        res[i].reverse();
+    for r in res.iter_mut().take(3) {
+        r.reverse();
         // Just to be safe.
-        assert!(res[i][res[i].len() - 1].is_zero());
+        assert!(r[r.len() - 1].is_zero());
     }
     res
 }

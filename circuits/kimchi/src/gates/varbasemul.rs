@@ -189,122 +189,122 @@ impl<F: FftField> CircuitGate<F> {
         // (xp - xt) * s1 = yp – (2*b1-1)*yt
         ensure_eq!(
             zero,
-            (xp - &xt) * &s1 - &yp + &(yt * &(b1.double() - &one)),
+            (xp - xt) * s1 - yp + (yt * (b1.double() - one)),
             "eq 6 wrong"
         );
 
         // s1^2 - s2^2 = xt - xr
-        ensure_eq!(zero, s1.square() - &s2.square() - &xt + &xr, "eq 7 wrong");
+        ensure_eq!(zero, s1.square() - s2.square() - xt + xr, "eq 7 wrong");
 
         // (2*xp + xt – s1^2) * (s1 + s2) = 2*yp
         ensure_eq!(
             zero,
-            (xp.double() + &xt - &s1.square()) * &(s1 + &s2) - &yp.double(),
+            (xp.double() + xt - s1.square()) * (s1 + s2) - yp.double(),
             "eq 8 wrong"
         );
 
         // (xp – xr) * s2 = yr + yp
-        ensure_eq!(zero, (xp - &xr) * &s2 - &yr - &yp, "eq 9 wrong");
+        ensure_eq!(zero, (xp - xr) * s2 - yr - yp, "eq 9 wrong");
 
         // (xr - xt) * s3 = yr – (2b2-1)*yt
         ensure_eq!(
             zero,
-            (xr - &xt) * &s3 - &yr + &(yt * &(b2.double() - &one)),
+            (xr - xt) * s3 - yr + (yt * (b2.double() - one)),
             "eq 10 wrong"
         );
 
         // S3^2 – s4^2 = xt - xs
-        ensure_eq!(zero, s3.square() - &s4.square() - &xt + &xs, "eq 11 wrong");
+        ensure_eq!(zero, s3.square() - s4.square() - xt + xs, "eq 11 wrong");
 
         // (2*xr + xt – s3^2) * (s3 + s4) = 2*yr
         ensure_eq!(
             zero,
-            (xr.double() + &xt - &s3.square()) * &(s3 + &s4) - &yr.double(),
+            (xr.double() + xt - s3.square()) * (s3 + s4) - yr.double(),
             "eq 12 wrong"
         );
 
         // (xr – xs) * s4 = ys + yr
-        ensure_eq!(zero, (xr - &xs) * &s4 - &ys - &yr, "eq 13 wrong");
+        ensure_eq!(zero, (xr - xs) * s4 - ys - yr, "eq 13 wrong");
 
         // (xt - xp) * s1 = (2b1-1)*yt - yp
         ensure_eq!(
             zero,
-            (xt - &next_xp) * &next_s1 - (next_b1.double() - &one) * &yt + &next_yp,
+            (xt - next_xp) * next_s1 - (next_b1.double() - one) * yt + next_yp,
             "eq 14 wrong"
         );
 
         // (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
         ensure_eq!(
             zero,
-            (next_xp.double() - &next_s1.square() + &xt)
-                * &((next_xp - &next_xr) * &next_s1 + &next_yr + &next_yp)
-                - (next_xp - &next_xr) * &next_yp.double(),
+            (next_xp.double() - next_s1.square() + xt)
+                * ((next_xp - next_xr) * next_s1 + next_yr + next_yp)
+                - (next_xp - next_xr) * next_yp.double(),
             "eq 15 wrong"
         );
 
         // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xt + xr)
         ensure_eq!(
             zero,
-            (next_yr + &next_yp).square()
-                - (next_xp - &next_xr).square() * &(next_s1.square() - &xt + &next_xr),
+            (next_yr + next_yp).square()
+                - (next_xp - next_xr).square() * (next_s1.square() - xt + next_xr),
             "eq 16 wrong"
         );
 
         // (xt - xr) * s3 = (2b2-1)*yt - yr
         ensure_eq!(
             zero,
-            (xt - &next_xr) * &next_s3 - (next_b2.double() - &one) * &yt - &next_yr,
+            (xt - next_xr) * next_s3 - (next_b2.double() - one) * yt - next_yr,
             "eq 17 wrong"
         );
 
         // (2*xr – s3^2 + xt) * ((xr – xv) * s3 + yv + yr) = (xr – xv) * 2*yr
         ensure_eq!(
             zero,
-            (next_xr.double() - &next_s3.square() + &xt)
-                * &((next_xr - &next_xv) * &next_s3 + &next_yv + &next_yr)
-                - (next_xr - &next_xv) * &next_yr.double(),
+            (next_xr.double() - next_s3.square() + xt)
+                * ((next_xr - next_xv) * next_s3 + next_yv + next_yr)
+                - (next_xr - next_xv) * next_yr.double(),
             "eq 18 wrong"
         );
 
         // (yv + yr)^2 = (xr – xv)^2 * (s3^2 – xt + xv)
         ensure_eq!(
             zero,
-            (next_yv + &next_yr).square()
-                - (next_xr - &next_xv).square() * &(next_s3.square() - &xt + &next_xv),
+            (next_yv + next_yr).square()
+                - (next_xr - next_xv).square() * (next_s3.square() - xt + next_xv),
             "eq 19 wrong"
         );
 
         // (xt - xv) * s5 = (2b3-1)*yt - yv
         ensure_eq!(
             zero,
-            (xt - &next_xv) * &next_s5 - (next_b3.double() - &one) * &yt + &next_yv,
+            (xt - next_xv) * next_s5 - (next_b3.double() - one) * yt + next_yv,
             "eq 20 wrong"
         );
 
         // (2*xv – s5^2 + xt) * ((xv – xs) * s5 + ys + yv) = (xv – xs) * 2*yv
         ensure_eq!(
             zero,
-            (next_xv.double() - &next_s5.square() + &xt)
-                * &((next_xv - &next_xs) * &next_s5 + &next_ys + &next_yv)
-                - (next_xv - &next_xs) * &next_yv.double(),
+            (next_xv.double() - next_s5.square() + xt)
+                * ((next_xv - next_xs) * next_s5 + next_ys + next_yv)
+                - (next_xv - next_xs) * next_yv.double(),
             "eq 21 wrong"
         );
 
         // (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xt + xs)
         ensure_eq!(
             zero,
-            (next_ys + &next_yv).square()
-                - (next_xv - &next_xs).square() * &(next_s5.square() - &xt + &next_xs),
+            (next_ys + next_yv).square()
+                - (next_xv - next_xs).square() * (next_s5.square() - xt + next_xs),
             "eq 22 wrong"
         );
 
         // TODO(mimoo): this constraint is not in the PDF
         ensure_eq!(
             zero,
-            ((((next_xr.double() + &b1).double() + &b2).double() + &next_b1).double() + &next_b2)
+            ((((next_xr.double() + b1).double() + b2).double() + next_b1).double() + next_b2)
                 .double()
-                + &next_xs
-                - &xr,
+                + next_xs
+                - xr,
             "eq 23 wrong"
         );
 

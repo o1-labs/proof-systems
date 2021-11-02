@@ -89,7 +89,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &Vec<ProofEvaluations<F>>,
+        e: &[ProofEvaluations<F>],
         zeta: F,
         beta: F,
         gamma: F,
@@ -101,7 +101,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     pub fn perm_scalars(
-        e: &Vec<ProofEvaluations<F>>,
+        e: &[ProofEvaluations<F>],
         beta: F,
         gamma: F,
         // TODO(mimoo): should only pass an iterator, to prevent different calls to re-use the same alphas!
@@ -112,8 +112,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .w
             .iter()
             .zip(e[0].s.iter())
-            .map(|(w, s)| gamma + &(beta * s) + w)
-            .fold(e[1].z * beta * alpha[0] * &zkp_zeta, |x, y| x * y)
+            .map(|(w, s)| gamma + (beta * s) + w)
+            .fold(e[1].z * beta * alpha[0] * zkp_zeta, |x, y| x * y)
     }
 
     /// permutation aggregation polynomial computation
@@ -150,7 +150,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             z[j + 1] = witness
                 .iter()
                 .zip(self.sigmal1.iter())
-                .map(|(w, s)| w[j] + &(s[j] * beta) + gamma)
+                .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y)
         }
 
@@ -161,7 +161,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             z[j + 1] *= witness
                 .iter()
                 .zip(self.shift.iter())
-                .map(|(w, s)| w[j] + &(self.sid[j] * beta * s) + gamma)
+                .map(|(w, s)| w[j] + (self.sid[j] * beta * s) + gamma)
                 .fold(x, |z, y| z * y)
         }
 

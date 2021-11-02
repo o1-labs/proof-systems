@@ -125,10 +125,10 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     lookup_table: G,
     lookup_table_entries: usize,
     d1: D<F>,
-    gates: &Vec<CircuitGate<F>>,
+    gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
-    sorted: &Vec<Evaluations<F, D<F>>>,
+    sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
         .iter()
@@ -288,7 +288,6 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 
 /// Computes the sorted lookup tables required by the lookup argument.
 pub fn sorted<
-    'a,
     F: FftField,
     E: Entry<Field = F> + Eq + std::hash::Hash + Clone,
     I: Iterator<Item = E>,
@@ -299,7 +298,7 @@ pub fn sorted<
     lookup_table: G,
     lookup_table_entries: usize,
     d1: D<F>,
-    gates: &Vec<CircuitGate<F>>,
+    gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     params: E::Params,
 ) -> Result<Vec<Vec<E>>, ProofError> {
@@ -314,8 +313,8 @@ pub fn sorted<
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
-    for i in 0..lookup_rows {
-        let spec = by_row[i];
+    for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
+        let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
             let table_entry = E::evaluate(&params, joint_lookup, witness, i);
@@ -356,11 +355,10 @@ pub fn sorted<
         }
 
         // snake-ify (see top comment)
-        for i in 0..sorted.len() {
-            if i % 2 != 0 {
-                sorted[i].reverse();
-            }
+        for s in sorted.iter_mut().skip(1).step_by(2) {
+            s.reverse();
         }
+
         sorted
     };
 
@@ -391,16 +389,16 @@ pub fn sorted<
 ///
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
-pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
+pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
-    gates: &Vec<CircuitGate<F>>,
+    gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     beta: F,
     gamma: F,
-    sorted: &Vec<Evaluations<F, D<F>>>,
+    sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
 ) -> Result<Evaluations<F, D<F>>, ProofError> {
     let n = d1.size as usize;
@@ -481,7 +479,7 @@ pub fn aggregation<'a, R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(dummy_lookup: &Vec<F>, d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //

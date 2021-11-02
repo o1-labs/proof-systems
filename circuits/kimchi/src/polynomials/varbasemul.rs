@@ -164,7 +164,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     base: (F, F),
-    bits: &Vec<bool>,
+    bits: &[bool],
     acc0: (F, F),
 ) -> VarbaseMulResult<F> {
     let l = LAYOUT;
@@ -178,9 +178,9 @@ pub fn witness<F: FftField + std::fmt::Display>(
         let row = row0 + 2 * chunk;
 
         set(w, row, l.n_prev, n_acc);
-        for i in 0..bits_per_chunk {
+        for (i, bs) in bs.iter().enumerate().take(bits_per_chunk) {
             n_acc.double_in_place();
-            n_acc += bs[i];
+            n_acc += bs;
             acc = single_bit_witness(
                 w,
                 row,
@@ -189,7 +189,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
                 l.ss[i],
                 l.accs[i],
                 l.accs[i + 1],
-                bs[i],
+                *bs,
                 base,
                 acc,
             );
@@ -209,7 +209,7 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
         n_next,
     } = LAYOUT;
 
-    let mut c = Cache::new();
+    let mut c = Cache::default();
 
     let mut constraint = |i| single_bit(&mut c, bits[i], base, ss[i], accs[i], accs[i + 1]);
 

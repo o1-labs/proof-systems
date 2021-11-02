@@ -70,7 +70,7 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 // constrain the values of the (r+1)th state.
 pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
     let mut res = vec![];
-    let mut cache = Cache::new();
+    let mut cache = Cache::default();
 
     let mut idx = 0;
 
@@ -112,7 +112,7 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn psdn_scalars(
-        evals: &Vec<ProofEvaluations<F>>,
+        evals: &[ProofEvaluations<F>],
         params: &ArithmeticSpongeParams<F>,
         alpha: &[F],
     ) -> Vec<F> {
@@ -136,7 +136,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 .iter()
                 .zip(alp[eq.source].iter())
                 .map(|(p, a)| -*a * p)
-                .fold(acc, |x, y| x + &y)
+                .fold(acc, |x, y| x + y)
         });
 
         let mut rhs = F::zero();
@@ -154,8 +154,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let mut res = vec![lhs + rhs];
 
         // TODO(mimoo): how is that useful? we already have access to these
-        for i in 0..COLUMNS {
-            res.push(evals[0].poseidon_selector * alpha[i]);
+        for alpha in alpha.iter().take(COLUMNS) {
+            res.push(evals[0].poseidon_selector * alpha);
         }
         res
     }
@@ -163,7 +163,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
     pub fn psdn_lnrz(
         &self,
-        evals: &Vec<ProofEvaluations<F>>,
+        evals: &[ProofEvaluations<F>],
         params: &ArithmeticSpongeParams<F>,
         alpha: &[F],
     ) -> DensePolynomial<F> {
