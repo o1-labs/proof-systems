@@ -851,7 +851,7 @@ pub fn derive_ocaml_custom(item: TokenStream) -> TokenStream {
             new_type: bool,
         ) -> String {
             if !new_type {
-                panic!("aliases of custom types are dangerous, as they do not provide any type safety. If you need to distinguish different usages of a single custom types, you'll have to create distinct custom types in Rust.")
+                panic!("aliases of custom types are dangerous, as they do not provide any type safety. If you need to distinguish different usages of a single custom types, you'll have to create distinct custom types in Rust. You attempted to create a second alias of {}", #ocaml_name);
             }
 
             // register the type
