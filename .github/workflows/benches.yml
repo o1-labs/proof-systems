@@ -1,0 +1,67 @@
+name: Benchmarks
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+jobs:
+  run_checks:
+    runs-on: ubuntu-latest
+    name: Run some basic checks
+    steps:
+
+      - name: Set up cargo/rust and valgrind (for iai)
+        run: |
+          rustup component add rustfmt 
+          sudo apt install -y valgrind
+
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install ocaml
+
+      - name: Checkout master
+        uses: actions/checkout@v2
+        with:
+          ref: master
+          
+      - name: Run baseline criterion bench (for time)
+        run: |
+          cargo bench -p kimchi --bench proof_criterion -- --save-baseline master
+      
+      - name: Run baseline iai bench (for accuracy)
+        run: |
+          cargo bench -p kimchi --bench proof_iai > iai_baseline
+            
+      - name: Checkout PR
+        uses: actions/checkout@v2
+
+      - name: Run criterion bench against baseline
+        run: |
+          cargo -q bench -p kimchi --bench proof_criterion -- --baseline master > bench_result
+
+      - name: Run iai bench against baseline
+        run: |
+          cargo bench -p kimchi --bench proof_iai > iai_feature
+
+      - name: Write result in PR
+        uses: actions/github-script@v5
+        with:
+          script: |
+            const fs = require('fs');
+
+            // read the output file
+            const criterion_result = fs.readFileSync("bench_result", {encoding:'utf8', flag:'r'});
+            const iai_baseline = fs.readFileSync("iai_baseline", {encoding:'utf8', flag:'r'});
+            const iai_feature = fs.readFileSync("iai_feature", {encoding:'utf8', flag:'r'});
+
+            // form message
+            const message = '👋 criterion benchmark result:\n' + criterion_result + '\n\n iai baseline result:\n' + iai_baseline + '\n\n iai feature result:\n' + iai_feature;
+
+            // post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            })
