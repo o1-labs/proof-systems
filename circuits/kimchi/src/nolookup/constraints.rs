@@ -224,7 +224,7 @@ where
 
         // create a map of cells to their shifted value
         let map: [Vec<F>; PERMUTS] =
-            array_init(|i| domain.elements().map(|elm| shifts[i] * &elm).collect());
+            array_init(|i| domain.elements().map(|elm| shifts[i] * elm).collect());
 
         //
         Self { shifts, map }
@@ -309,12 +309,12 @@ pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
 
     // (x-w3)(x-w2)(x-w1) =
     // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-    let w1w2 = w1 * &w2;
+    let w1w2 = w1 * w2;
     DP::from_coefficients_slice(&[
-        -w1w2 * &w3,                      // 1
-        w1w2 + &(w1 * &w3) + &(w3 * &w2), // x
-        -w1 - &w2 - &w3,                  // x^2
-        F::one(),                         // x^3
+        -w1w2 * w3,                   // 1
+        w1w2 + (w1 * w3) + (w3 * w2), // x
+        -w1 - w2 - w3,                // x^2
+        F::one(),                     // x^3
     ])
 }
 
@@ -447,10 +447,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         let chacha8 = {
             use GateType::*;
-            let has_chacha_gate = gates.iter().any(|gate| match gate.typ {
-                ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => true,
-                _ => false,
-            });
+            let has_chacha_gate = gates
+                .iter()
+                .any(|gate| matches!(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
             if !has_chacha_gate {
                 None
             } else {

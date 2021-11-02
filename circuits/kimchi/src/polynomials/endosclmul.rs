@@ -57,7 +57,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let xr = w(7);
     let yr = w(8);
 
-    let mut cache = Cache::new();
+    let mut cache = Cache::default();
 
     let s1 = w(9);
     let s3 = w(10);
@@ -125,7 +125,7 @@ pub fn witness<F: Field + std::fmt::Display>(
     row0: usize,
     endo: F,
     base: (F, F),
-    bits: &Vec<bool>,
+    bits: &[bool],
     acc0: (F, F),
 ) -> EndoMulResult<F> {
     let bits_per_row = 4;

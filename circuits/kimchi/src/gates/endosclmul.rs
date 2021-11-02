@@ -53,8 +53,8 @@ impl<F: FftField> CircuitGate<F> {
     ) -> Result<(), String> {
         let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
-        let xq1 = (F::one() + &((cs.endo - &F::one()) * &next[12])) * &this[0];
-        let xq2 = (F::one() + &((cs.endo - &F::one()) * &next[14])) * &this[0];
+        let xq1 = (F::one() + ((cs.endo - F::one()) * next[12])) * this[0];
+        let xq2 = (F::one() + ((cs.endo - F::one()) * next[14])) * this[0];
 
         ensure_eq!(self.typ, GateType::Endomul, "endomul: incorrect gate");
 

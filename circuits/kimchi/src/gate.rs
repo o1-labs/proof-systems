@@ -166,7 +166,7 @@ fn lookup_kinds<F: Field>() -> Vec<Vec<JointLookup<F>>> {
         .collect()
 }
 
-fn max_lookups_per_row<F>(kinds: &Vec<Vec<JointLookup<F>>>) -> usize {
+fn max_lookups_per_row<F>(kinds: &[Vec<JointLookup<F>>]) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
 
@@ -197,7 +197,7 @@ impl<F: FftField> LookupInfo<F> {
     }
 
     /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn lookup_used(&self, gates: &Vec<CircuitGate<F>>) -> Option<LookupsUsed> {
+    pub fn lookup_used(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
         let mut lookups_used = None;
         for g in gates.iter() {
             let typ = g.typ;
@@ -217,16 +217,16 @@ impl<F: FftField> LookupInfo<F> {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials<'a>(
-        &'a self,
+    pub fn selector_polynomials(
+        &self,
         domain: EvaluationDomains<F>,
-        gates: &Vec<CircuitGate<F>>,
+        gates: &[CircuitGate<F>],
     ) -> Vec<E<F, D<F>>> {
         let n = domain.d1.size as usize;
         let mut res: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
 
-        for i in 0..n {
-            let typ = gates[i].typ;
+        for (i, gate) in gates.iter().enumerate().take(n) {
+            let typ = gate.typ;
 
             if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
                 res[*v][i] = F::one();
@@ -247,7 +247,7 @@ impl<F: FftField> LookupInfo<F> {
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<'a>(&'a self, gates: &Vec<CircuitGate<F>>) -> Vec<&'a Vec<JointLookup<F>>> {
+    pub fn by_row<'a>(&'a self, gates: &[CircuitGate<F>]) -> Vec<&'a Vec<JointLookup<F>>> {
         let mut kinds = vec![&self.empty; gates.len() + 1];
         for i in 0..gates.len() {
             let typ = gates[i].typ;
@@ -526,7 +526,6 @@ mod tests {
     use mina_curves::pasta::Fp;
     use proptest::prelude::*;
     use rand::SeedableRng as _;
-    use serde::{Deserialize, Serialize};
 
     // TODO: move to mina-curves
     prop_compose! {

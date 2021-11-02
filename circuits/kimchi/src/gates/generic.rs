@@ -86,14 +86,14 @@ impl<F: FftField> CircuitGate<F> {
 
         // toggling each column x[i] depending on the selectors c[i]
         let sum = (0..GENERICS)
-            .map(|i| self.c[i] * &this[i])
-            .fold(zero, |x, y| x + &y);
+            .map(|i| self.c[i] * this[i])
+            .fold(zero, |x, y| x + y);
 
         // multiplication
-        let mul = mul_selector * &left * &right;
+        let mul = mul_selector * left * right;
         ensure_eq!(
             zero,
-            sum + &mul + &constant_selector,
+            sum + mul + constant_selector,
             "generic: incorrect sum"
         );
 

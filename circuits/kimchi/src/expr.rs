@@ -248,6 +248,7 @@ impl<F: Field> ConstantExpr<F> {
 pub struct CacheId(usize);
 
 /// A cache
+#[derive(Default)]
 pub struct Cache {
     next_id: usize,
 }
@@ -282,11 +283,6 @@ impl CacheId {
 }
 
 impl Cache {
-    /// Create a new cache
-    pub fn new() -> Self {
-        Cache { next_id: 0 }
-    }
-
     fn next_id(&mut self) -> CacheId {
         let id = self.next_id;
         self.next_id += 1;
@@ -393,7 +389,7 @@ impl Variable {
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate<'c>(
-        toks: &Vec<PolishToken<F>>,
+        toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
         evals: &[ProofEvaluations<F>],
@@ -1526,7 +1522,7 @@ fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
             m.extend(m2);
             m.sort();
             let c1c2 = c1.clone() * c2.clone();
-            let v = res.entry(m).or_insert(Expr::<F>::zero());
+            let v = res.entry(m).or_insert_with(Expr::<F>::zero);
             *v = v.clone() + c1c2;
         }
     }

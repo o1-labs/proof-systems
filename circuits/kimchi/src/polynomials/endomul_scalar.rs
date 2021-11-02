@@ -126,7 +126,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
 
     let xs: [_; 8] = array_init(|i| witness_column(6 + i));
 
-    let mut cache = Cache::new();
+    let mut cache = Cache::default();
 
     let c_coeffs = [
         F::zero(),
@@ -224,30 +224,32 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
 }
 
 fn c_func<F: Field>(x: F) -> F {
-    if x == F::from(0u64) {
-        F::zero()
-    } else if x == F::from(1u64) {
-        F::zero()
-    } else if x == F::from(2u64) {
-        -F::one()
-    } else if x == F::from(3u64) {
-        F::one()
-    } else {
-        panic!("c_func")
+    let zero = F::zero();
+    let one = F::one();
+    let two = F::from(2u64);
+    let three = F::from(3u64);
+
+    match x {
+        x if x.is_zero() => zero,
+        x if x == one => zero,
+        x if x == two => -one,
+        x if x == three => one,
+        _ => panic!("c_func"),
     }
 }
 
 fn d_func<F: Field>(x: F) -> F {
-    if x == F::from(0u64) {
-        -F::one()
-    } else if x == F::from(1u64) {
-        F::one()
-    } else if x == F::from(2u64) {
-        F::zero()
-    } else if x == F::from(3u64) {
-        F::zero()
-    } else {
-        panic!("c_func")
+    let zero = F::zero();
+    let one = F::one();
+    let two = F::from(2u64);
+    let three = F::from(3u64);
+
+    match x {
+        x if x.is_zero() => -one,
+        x if x == one => one,
+        x if x == two => zero,
+        x if x == three => zero,
+        _ => panic!("d_func"),
     }
 }
 
