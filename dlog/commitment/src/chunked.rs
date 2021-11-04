@@ -1,11 +1,12 @@
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{ProjectiveCurve};
 use ark_ff::{Field, Zero};
 
+use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
 
 impl<C> PolyComm<C>
 where
-    C: AffineCurve,
+    C: CommitmentCurve,
 {
     /// Multiplies each commitment chunk of f with powers of zeta^n
     /// Note that it ignores the shifted part.
@@ -17,7 +18,7 @@ where
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
         for chunk in self.unshifted.iter().rev() {
             res *= zeta_n;
-            res.add_assign_mixed(chunk)
+            res.add_assign_mixed(chunk);
         }
 
         PolyComm {
