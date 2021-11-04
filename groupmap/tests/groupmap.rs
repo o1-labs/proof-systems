@@ -3,7 +3,6 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
     Fq,
 };
-use rand;
 
 type G = VestaParameters;
 

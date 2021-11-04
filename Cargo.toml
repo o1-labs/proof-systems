@@ -1,12 +1,12 @@
 [workspace]
 members = [
     "circuits/plonk",
-    "circuits/plonk-15-wires",
+    "circuits/kimchi",
     "curves",
     "dlog",
     "dlog/commitment",
     "dlog/plonk",
-    "dlog/plonk-15-wires",
+    "dlog/kimchi",
     "groupmap",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",

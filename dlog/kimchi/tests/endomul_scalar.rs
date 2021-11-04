@@ -1,5 +1,4 @@
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
+use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
@@ -11,7 +10,7 @@ use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::{
     gate::{CircuitGate, GateType},
     nolookup::constraints::ConstraintSystem,
-    polynomials::varbasemul,
+    polynomials::endomul_scalar,
     wires::*,
 };
 use mina_curves::pasta::{
@@ -21,7 +20,7 @@ use mina_curves::pasta::{
 };
 use oracle::{
     poseidon::PlonkSpongeConstants15W,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use rand::{rngs::StdRng, SeedableRng};
 use std::{sync::Arc, time::Instant};
@@ -33,33 +32,29 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
-fn varbase_mul_test() {
+fn endomul_scalar_test() {
     let fp_sponge_params = oracle::pasta::fp::params();
 
-    let num_bits = F::size_in_bits();
-    let chunks = num_bits / 5;
+    let bits_per_row = 2 * 8;
+    let num_bits = 128;
+    let rows_per_scalar = num_bits / bits_per_row;
 
-    let num_scalars = 10;
-    let rows_per_scalar = 2 * (255 / 5);
+    let num_scalars = 100;
 
-    assert_eq!(num_bits % 5, 0);
+    assert_eq!(num_bits % bits_per_row, 0);
 
     let mut gates = vec![];
 
-    for i in 0..(chunks * num_scalars) {
-        let row = 2 * i;
-        gates.push(CircuitGate {
-            row,
-            typ: GateType::Vbmul,
-            wires: Wire::new(row),
-            c: vec![],
-        });
-        gates.push(CircuitGate {
-            row: row + 1,
-            typ: GateType::Zero,
-            wires: Wire::new(row + 1),
-            c: vec![],
-        });
+    for s in 0..num_scalars {
+        for i in 0..rows_per_scalar {
+            let row = rows_per_scalar * s + i;
+            gates.push(CircuitGate {
+                row,
+                typ: GateType::EndomulScalar,
+                wires: Wire::new(row),
+                c: vec![],
+            });
+        }
     }
 
     let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
@@ -70,12 +65,13 @@ fn varbase_mul_test() {
 
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
+    let (_, endo_scalar_coeff) = endos::<Affine>();
+
     let srs = Arc::new(srs);
 
     let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
-    let mut witness: [Vec<F>; COLUMNS] =
-        array_init(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 
     let verifier_index = index.verifier_index();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
@@ -83,43 +79,20 @@ fn varbase_mul_test() {
     let lgr_comms = vec![];
     let rng = &mut StdRng::from_seed([0; 32]);
 
-    let start = Instant::now();
+    //let start = Instant::now();
     for i in 0..num_scalars {
-        let x = F::rand(rng);
-        let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_repr()).take(num_bits).collect();
-        let x_ = <Other as AffineCurve>::ScalarField::from_repr(
-            <F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..]),
-        )
-        .unwrap();
+        let x = {
+            let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
+                .take(num_bits)
+                .collect();
+            F::from_repr(<F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..])).unwrap()
+        };
 
-        let base = Other::prime_subgroup_generator();
-        let g = Other::prime_subgroup_generator().into_projective();
-        let acc = (g + g).into_affine();
-        let acc = (acc.x, acc.y);
-
-        let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).copied().rev().collect();
-
-        let res = varbasemul::witness(
-            &mut witness,
-            i * rows_per_scalar,
-            (base.x, base.y),
-            &bits_msb,
-            acc,
+        assert_eq!(
+            ScalarChallenge(x).to_field(&endo_scalar_coeff),
+            endomul_scalar::witness(&mut witness, x, endo_scalar_coeff, num_bits)
         );
-
-        let shift = <Other as AffineCurve>::ScalarField::from(2).pow(&[(bits_msb.len()) as u64]);
-        let expected = g
-            .mul((<Other as AffineCurve>::ScalarField::one() + shift + x_.double()).into_repr())
-            .into_affine();
-
-        assert_eq!(x_.into_repr(), res.n.into_repr());
-        assert_eq!((expected.x, expected.y), res.acc);
     }
-    println!(
-        "{}{:?}",
-        "Witness generation time: ".yellow(),
-        start.elapsed()
-    );
 
     let start = Instant::now();
     let proof =

@@ -46,18 +46,18 @@ impl Env {
 
     /// retrieves a type that was declared previously
     pub fn get_type(&self, ty: u128, name: &str) -> String {
-        let (type_path, type_name) = self.locations.get(&ty).expect(&format!(
-            "ocaml-gen: the type {} hasn't been declared",
-            name
-        ));
+        let (type_path, type_name) = self
+            .locations
+            .get(&ty)
+            .unwrap_or_else(|| panic!("ocaml-gen: the type {} hasn't been declared", name));
 
         // path resolution
         let mut current = self.current_module.clone();
         current.reverse();
         let path: Vec<&str> = type_path
-            .into_iter()
+            .iter()
             .skip_while(|&p| Some(*p) == current.pop())
-            .map(|&p| p)
+            .copied()
             .collect();
 
         if path.is_empty() {

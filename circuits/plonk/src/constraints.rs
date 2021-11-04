@@ -112,7 +112,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: usize,
     ) -> Option<Self> {
         let domain = EvaluationDomains::<F>::create(gates.len())?;
-        let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
+        let mut sid = domain.d1.elements().collect::<Vec<_>>();
 
         // sample the coordinate shifts
         let (r, o) = Self::sample_shifts(&domain.d1);
@@ -296,7 +296,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
             // verify witness against constraints
             !self.gates[i].verify(if i+1==self.gates.len() {&self.gates[i]}
-                                                      else {&self.gates[i+1]}, witness, &self)
+                                                      else {&self.gates[i+1]}, witness, self)
             {
                 return false;
             }
@@ -315,7 +315,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .to_be_bytes(),
         );
         let mut r = F::from_random_bytes(&h.finalize()[..31]).unwrap();
-        while r.legendre().is_qnr() == false || domain.evaluate_vanishing_polynomial(r).is_zero() {
+        while !r.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(r).is_zero() {
             let mut h = Blake2b::new();
             h.update(
                 &{
@@ -331,10 +331,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
     pub fn sample_shifts(domain: &D<F>) -> (F, F) {
         let mut i: u32 = 7;
-        let r = Self::sample_shift(&domain, &mut i);
-        let mut o = Self::sample_shift(&domain, &mut i);
+        let r = Self::sample_shift(domain, &mut i);
+        let mut o = Self::sample_shift(domain, &mut i);
         while r == o {
-            o = Self::sample_shift(&domain, &mut i)
+            o = Self::sample_shift(domain, &mut i)
         }
         (r, o)
     }

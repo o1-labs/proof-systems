@@ -33,3 +33,13 @@ jobs:
       - name: Run cargo fmt
         run: |
           cargo fmt -- --check
+
+      - name: Run cargo clippy
+        run: |
+          rustup component add clippy
+          cargo clippy \
+            -p groupmap \
+            -p mina-curves \
+            -p ocaml-gen \
+            -p o1-utils \
+            -p oracle

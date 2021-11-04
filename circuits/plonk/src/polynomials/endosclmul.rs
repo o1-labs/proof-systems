@@ -25,7 +25,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         let xr = &(&polys.d8.this.r.square() - &polys.d8.this.l) - &polys.d8.next.r;
         let t = &polys.d8.this.l - &xr;
-        let u = &polys.d8.this.o.scale((2 as u64).into()) - &(&t * &polys.d8.this.r);
+        let u = &polys.d8.this.o.scale(2_u64.into()) - &(&t * &polys.d8.this.r);
 
         (
             // verify booleanity of the scalar bits
@@ -40,7 +40,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             +
             // (xP - xQ) × λ1 - yP + (yT * (2 * b2i - 1))
             &(&(&(&(&(&polys.d4.next.l - &polys.d4.this.r) * &polys.d4.next.r) - &polys.d4.next.o) +
-                &(&polys.d4.this.o * &(&polys.d4.this.l.scale((2 as u64).into()) - &self.l04))) * &self.emul2l).scale(alpha[3]),
+                &(&polys.d4.this.o * &(&polys.d4.this.l.scale(2_u64.into()) - &self.l04))) * &self.emul2l).scale(alpha[3]),
             // u^2 - t^2 * (xR + xP + xS)
             &(&(&u.square() - &(&t.square() * &(&(&xr + &polys.d8.this.l) + &polys.d8.next.l))).scale(alpha[4])
             +

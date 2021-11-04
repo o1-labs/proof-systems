@@ -31,7 +31,7 @@ pub enum SRSValue<'a, G: CommitmentCurve> {
 impl<'a, G: CommitmentCurve> SRSValue<'a, G> {
     pub fn get_ref(&self) -> &SRS<G> {
         match self {
-            SRSValue::Value(x) => &x,
+            SRSValue::Value(x) => x,
             SRSValue::Ref(x) => x,
         }
     }
