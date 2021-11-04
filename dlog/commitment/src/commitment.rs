@@ -16,7 +16,9 @@ use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_ff::{
+    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
+};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
     UVPolynomial,
@@ -75,9 +77,23 @@ where
     }
 }
 
-pub fn shift_scalar<F: PrimeField>(x: F) -> F {
-    let two: F = (2 as u64).into();
-    x - two.pow(&[F::Params::MODULUS_BITS as u64])
+pub fn shift_scalar<G: AffineCurve>(x: G::ScalarField) -> G::ScalarField
+where
+    G::BaseField: PrimeField,
+{
+    let n1 = <G::ScalarField as PrimeField>::Params::MODULUS;
+    let n2 = <G::ScalarField as PrimeField>::BigInt::from_bits_le(
+        &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
+    );
+    let two: G::ScalarField = (2 as u64).into();
+    if n1 < n2 {
+        (x
+            - (two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64])
+                + G::ScalarField::one()))
+            / two
+    } else {
+        x - two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64])
+    }
 }
 
 impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
@@ -597,6 +613,7 @@ where
     where
         EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
         RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
@@ -687,7 +704,7 @@ where
             .map(|(a, b)| *a * b)
             .fold(Fr::<G>::zero(), |acc, x| acc + x);
 
-        sponge.absorb_fr(&[shift_scalar(combined_inner_product)]);
+        sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();
         let u: G = to_group(group_map, t);
@@ -836,6 +853,7 @@ where
     where
         EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
         RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
@@ -900,7 +918,7 @@ where
                 combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
             };
 
-            sponge.absorb_fr(&[shift_scalar(combined_inner_product0)]);
+            sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
 
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
@@ -985,6 +1003,7 @@ where
                     for comm_ch in comm.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * &xi_i);
                         points.push(*comm_ch);
+
                         xi_i *= *xi;
                     }
 
@@ -994,6 +1013,7 @@ where
                                 // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
                                 scalars.push(rand_base_i_c_i * &xi_i);
                                 points.push(comm_ch);
+
                                 xi_i *= *xi;
                             }
                         }
