@@ -8,7 +8,7 @@ pub use super::{index::Index, range};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -99,6 +99,7 @@ fn combine_evaluations<F: FftField>(
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
+    G::BaseField: PrimeField,
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -148,6 +149,7 @@ where
 
         // compute public input polynomial
         let public = witness[0][0..index.cs.public].to_vec();
+
         let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,

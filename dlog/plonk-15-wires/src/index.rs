@@ -270,7 +270,7 @@ where
         Index {
             // TODO(mimoo): re-order field like in the type def
             // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),
-            max_quot_size: cs.domain.d8.size as usize - 7,
+            max_quot_size: 7 * cs.domain.d1.size as usize,
             fq_sponge_params,
             max_poly_size,
             srs,

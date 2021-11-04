@@ -8,7 +8,7 @@ pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
@@ -57,6 +57,7 @@ where
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
+    G::BaseField: PrimeField,
 {
     pub fn prev_chal_evals(
         &self,
@@ -310,18 +311,32 @@ where
                 .map(|(_, e)| (e.iter().map(|x| x).collect(), None))
                 .collect();
             es.push((p_eval.iter().map(|e| e).collect::<Vec<_>>(), None));
+            es.push((vec![&ft_eval0, &ft_eval1], None));
+            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| &e.generic_selector)
+                    .collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| &e.poseidon_selector)
+                    .collect::<Vec<_>>(),
+                None,
+            ));
             es.extend(
                 (0..COLUMNS)
                     .map(|c| (self.evals.iter().map(|e| &e.w[c]).collect::<Vec<_>>(), None))
                     .collect::<Vec<_>>(),
             );
-            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
             es.extend(
                 (0..PERMUTS - 1)
                     .map(|c| (self.evals.iter().map(|e| &e.s[c]).collect::<Vec<_>>(), None))
                     .collect::<Vec<_>>(),
             );
-            es.push((vec![&ft_eval0, &ft_eval1], None));
 
             combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.g.len())
         };
