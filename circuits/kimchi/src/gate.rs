@@ -17,7 +17,13 @@ use std::io::{Result as IoResult, Write};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
     Next,
@@ -563,11 +569,9 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            println!("gate: {:?}", cg);
-            println!("encoded gate: {:?}", encoded);
             let decoded: CircuitGate<Fp> = rmp_serde::from_read_ref(&encoded).unwrap();
 
-            println!("decoded gate: {:?}", decoded);
+            prop_assert_eq!(cg.row, decoded.row);
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);
