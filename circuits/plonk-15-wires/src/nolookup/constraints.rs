@@ -345,9 +345,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
         assert!(domain.d1.size > ZK_ROWS);
 
-        // pre-compute all the elements
-        let mut sid = domain.d1.elements().map(|elm| elm).collect::<Vec<_>>();
-
         // pad the rows: add zero gates to reach the domain size
         let n = domain.d1.size();
         let mut padding = (gates.len()..n)
@@ -365,6 +362,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // sample the coordinate shifts
         let shifts = Shifts::new(&domain.d1);
+
+        // pre-compute all the elements
+        let sid = shifts.map[0].clone();
 
         // compute permutation polynomials
         let mut sigmal1: [Vec<F>; PERMUTS] =
@@ -390,9 +390,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         };
 
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
-
-        let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?
-        sid.append(&mut s);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
         let zkpm = zk_polynomial(domain.d1);
@@ -621,6 +618,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
+                assert!(wire.col < PERMUTS);
                 if witness[col][row] != witness[wire.col][wire.row] {
                     return Err(GateError::DisconnectedWires(
                         Wire { col, row },
@@ -637,11 +635,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 if gate.c != left_wire {
                     return Err(GateError::IncorrectPublic(row));
                 }
+            } else {
+                // check the gate's satisfiability
+                gate
+                    .verify(&witness, &self)
+                    .map_err(|err| GateError::Custom { row, err })?;
             }
-
-            // check the gate's satisfiability
-            gate.verify(&witness, &self)
-                .map_err(|err| GateError::Custom { row, err })?;
         }
 
         // all good!
