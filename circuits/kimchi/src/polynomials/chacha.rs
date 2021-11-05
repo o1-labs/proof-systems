@@ -514,7 +514,7 @@ mod tests {
             h.insert(Column::Index(GateType::Generic));
             h
         };
-        let mut powers = 0..20;
+        let mut powers = 0..24;
         let expr = constraint(&mut powers);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
