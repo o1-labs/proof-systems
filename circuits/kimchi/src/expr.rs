@@ -1457,7 +1457,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
-                .for_each(|(i, r)| *r += c * e.evals[scale * i])
+                .for_each(|(i, r)| *r += c * e.evals[scale * i]);
         });
         let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
         (
