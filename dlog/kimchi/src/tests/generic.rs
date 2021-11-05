@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::{index::Index, prover::ProverProof};
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -8,7 +9,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::{
     gate::CircuitGate,
     nolookup::constraints::ConstraintSystem,

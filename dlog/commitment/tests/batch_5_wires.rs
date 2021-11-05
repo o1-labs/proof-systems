@@ -1,9 +1,5 @@
-/*****************************************************************************************************************
-
-This source file tests polynomial commitments, batched openings and
-verification of a batch of batched opening proofs of polynomial commitments
-
-*****************************************************************************************************************/
+//! This source file tests polynomial commitments, batched openings and
+//! verification of a batch of batched opening proofs of polynomial commitments
 
 use ark_ff::{UniformRand, Zero};
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};

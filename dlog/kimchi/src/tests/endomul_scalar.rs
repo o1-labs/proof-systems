@@ -6,7 +6,7 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use kimchi::{index::Index, prover::ProverProof};
+use crate::{index::Index, prover::ProverProof};
 use kimchi_circuits::{
     gate::{CircuitGate, GateType},
     nolookup::constraints::ConstraintSystem,
