@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::iter::FromIterator;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use CurrOrNext::*;
 
 use crate::domains::EvaluationDomains;
@@ -1838,6 +1838,16 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
             return self;
         }
         Expr::BinOp(Op2::Add, Box::new(self), Box::new(other))
+    }
+}
+
+impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
+    fn add_assign(&mut self, other: Self) {
+        if self.is_zero() {
+            *self = other;
+        } else if !other.is_zero() {
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+        }
     }
 }
 
