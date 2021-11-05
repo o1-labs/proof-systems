@@ -395,12 +395,32 @@ where
             // subtract the public values
             let public4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
             t4 += &public4; // already negated earlier
+
+            if cfg!(test) {
+                let (_, res) = t4
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             // complete addition
             let mut add_alphas =
                 all_alphas.take_powers(ConstraintType::Gate(GateType::CompleteAdd));
             let add_constraint = complete_add::constraint(&mut add_alphas);
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
+
+            if cfg!(test) {
+                let (_, res) = add4
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             drop(add4);
 
             // permutation
@@ -410,10 +430,28 @@ where
                 .perm_quot(&lagrange, beta, gamma, &z, &mut perm_alphas)?;
             let mut t8 = perm;
 
+            if cfg!(test) {
+                let (_, res) = t8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             // scalar multiplication
             let mut mul_alphas = all_alphas.take_powers(ConstraintType::Gate(GateType::Vbmul));
             let mul8 = varbasemul::constraint(&mut mul_alphas).evaluations(&env);
             t8 += &mul8;
+
+            if cfg!(test) {
+                let (_, res) = mul8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
 
             drop(mul8);
 
@@ -423,6 +461,15 @@ where
             let emul8 = endosclmul::constraint(&mut endomul_alphas).evaluations(&env);
             t8 += &emul8;
 
+            if cfg!(test) {
+                let (_, res) = emul8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             drop(emul8);
 
             // endoscaling scalar computation
@@ -430,6 +477,15 @@ where
                 all_alphas.take_powers(ConstraintType::Gate(GateType::EndomulScalar));
             let emulscalar8 = endomul_scalar::constraint(&mut endoscalar_alphas).evaluations(&env);
             t8 += &emulscalar8;
+
+            if cfg!(test) {
+                let (_, res) = emulscalar8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
 
             drop(emulscalar8);
 
@@ -439,6 +495,15 @@ where
             let pos8 = poseidon::constraint(&mut poseidon_alphas).evaluations(&env);
             t8 += &pos8;
 
+            if cfg!(test) {
+                let (_, res) = pos8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             drop(pos8);
 
             // chacha
@@ -447,6 +512,16 @@ where
                     all_alphas.take_powers(ConstraintType::Gate(GateType::ChaCha0));
                 let chacha = chacha::constraint(&mut chacha_alphas).evaluations(&env);
                 t4 += &chacha;
+
+                if cfg!(test) {
+                    let (_, res) = chacha
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+                }
+
                 drop(chacha);
             }
 
