@@ -436,11 +436,12 @@ where
                 );
                 let mut alpha_powers =
                     all_alphas.take_alphas(ConstraintType::Gate(GateType::Generic));
-                scalars_part.extend(&ConstraintSystem::gnrc_scalars(
+                let (scalars, _) = &ConstraintSystem::gnrc_scalars(
                     &mut alpha_powers,
                     &evals[0].w,
                     evals[0].generic_selector,
-                ));
+                );
+                scalars_part.extend(scalars);
 
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars_part.push(evals[0].generic_selector);

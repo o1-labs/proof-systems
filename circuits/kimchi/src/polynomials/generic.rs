@@ -1,12 +1,15 @@
 //! This module implements generic constraint polynomials.
 
-use crate::gates::generic::{CONSTANT_COEFF, MUL_COEFF};
-use crate::wires::GENERICS;
-use crate::{nolookup::constraints::ConstraintSystem, polynomial::COLUMNS};
+use crate::{
+    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+    nolookup::constraints::ConstraintSystem,
+    polynomial::COLUMNS,
+    wires::GENERICS,
+};
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::Polynomial;
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedDensePolynomial;
 use rayon::prelude::*;
@@ -16,52 +19,53 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_quot(
         &self,
         alphas: &mut impl Iterator<Item = F>,
-        witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
+        witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
-        // w[0](x) * w[1](x) * qml(x)
-        let mut multiplication = &witness_d4[0] * &witness_d4[1];
-        let m8 = &self.coefficients8[MUL_COEFF];
-        multiplication
+        // multiplication: left * right
+        let mut res_d4 = &witness_cols_d4[0] * &witness_cols_d4[1];
+
+        // * multiplication selector
+        let mul_selector_d8 = &self.coefficients8[MUL_COEFF];
+        res_d4
             .evals
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, e)| *e *= m8[2 * i]);
+            .for_each(|(i, eval)| *eval *= mul_selector_d8[2 * i]);
 
-        // presence of left, right, and output wire
-        // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
-        let mut eval_part = multiplication;
-        for (w, q) in witness_d4
+        // + addition: L * selector_L + R * selector_R + O * selector_O
+        for (witness_d4, selector_d8) in witness_cols_d4
             .iter()
             .zip(self.coefficients8.iter())
             .take(GENERICS)
         {
-            eval_part
+            res_d4
                 .evals
                 .par_iter_mut()
                 .enumerate()
-                .for_each(|(i, e)| *e += w.evals[i] * q[2 * i])
-            // eval_part += &(w * q);
+                .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
         }
 
-        let c = &self.coefficients8[CONSTANT_COEFF];
-        eval_part
+        // + constant
+        let constant_d8 = &self.coefficients8[CONSTANT_COEFF];
+        res_d4
             .evals
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, e)| *e += c[2 * i]);
+            .for_each(|(i, e)| *e += constant_d8[2 * i]);
 
-        eval_part *= &self.generic4;
+        // * generic selector
+        res_d4 *= &self.generic4;
 
-        // multiply with a power of alpha
+        // * alpha
         let alpha = alphas
             .next()
             .expect("not enough powers of alpha for the generic gate");
         let mut alpha4 = self.l04.clone();
         alpha4.evals.iter_mut().for_each(|x| *x *= alpha);
-        eval_part *= &alpha4;
+        res_d4 *= &alpha4;
 
         // return the result
-        eval_part
+        res_d4
     }
 
     /// produces
@@ -73,13 +77,21 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         alphas: &mut impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
-    ) -> Vec<F> {
-        let alpha0 = alphas
+    ) -> (Vec<F>, F) {
+        let alpha = alphas
             .next()
             .expect("not enough alpha powers for generic gate");
-        let mut res = vec![alpha0 * generic_zeta * w_zeta[0] * w_zeta[1]];
-        res.extend((0..GENERICS).map(|i| alpha0 * generic_zeta * w_zeta[i]));
-        res
+
+        // multiplication: l(z) * r(z) * generic(z) * alpha
+        let mut res = vec![alpha * generic_zeta * w_zeta[0] * w_zeta[1]];
+
+        // addition:
+        // - l(z) * generic(z) * alpha
+        // - r(z) * generic(z) * alpha
+        // - o(z) * generic(z) * alpha
+        res.extend((0..GENERICS).map(|i| alpha * generic_zeta * w_zeta[i]));
+
+        (res, alpha)
     }
 
     /// generic constraint linearization poly contribution computation
@@ -89,23 +101,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
     ) -> DensePolynomial<F> {
-        let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
-
-        // w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2] * alpha
-        let mut res = self
-            .coefficientsm
-            .iter()
-            .zip(scalars[1..].iter())
-            .map(|(q, s)| q.scale(*s))
-            .fold(DensePolynomial::<F>::zero(), |x, y| &x + &y);
+        let (scalars, alpha) = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
         // multiplication
-        res += &self.coefficientsm[MUL_COEFF].scale(scalars[0]);
+        let mut res = self.coefficientsm[MUL_COEFF].scale(scalars[0]);
+
+        // addition
+        res += &self
+            .coefficientsm
+            .iter()
+            .zip(&scalars[1..])
+            .map(|(selector, scalar)| selector.scale(*scalar))
+            .fold(DensePolynomial::<F>::zero(), |x, y| &x + &y);
 
         // constant selector
-        res += &self.coefficientsm[CONSTANT_COEFF].scale(generic_zeta);
+        res += &self.coefficientsm[CONSTANT_COEFF].scale(generic_zeta * alpha);
 
-        // (l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc) * alpha
         res
     }
 
