@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements generic constraint polynomials.
-
-*****************************************************************************************************************/
+//! This module implements generic constraint polynomials.
 
 use crate::gates::generic::{CONSTANT_COEFF, MUL_COEFF};
 use crate::wires::GENERICS;

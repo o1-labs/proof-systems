@@ -1,14 +1,9 @@
-/********************************************************************************************
+//! This module implements prover's zk-proof primitive.
 
-This source file implements prover's zk-proof primitive.
-
-*********************************************************************************************/
-
-pub use super::{index::Index, range};
-use crate::plonk_sponge::FrSponge;
+use crate::{index::Index, plonk_sponge::FrSponge};
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{Field, One, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -16,10 +11,10 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use kimchi_circuits::nolookup::constraints::ZK_ROWS;
 use kimchi_circuits::{
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
+    nolookup::constraints::ZK_ROWS,
     nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::{COLUMNS, PERMUTS},
@@ -344,6 +339,7 @@ where
 
         // compute permutation aggregation polynomial
         let z = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
+
         // commit to z
         let z_comm = index.srs.commit(&z, None, rng);
 
@@ -353,7 +349,7 @@ where
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
         let alphas = range::alpha_powers(alpha);
 
-        // evaluate polynomials over domains
+        // evaluate witness and permutation polynomials over domains
         let lagrange = index.cs.evaluate(&w, &z);
 
         let lookup_table_combined = lookup_used.as_ref().map(|_| {

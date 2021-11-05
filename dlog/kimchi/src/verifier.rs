@@ -1,12 +1,10 @@
-/********************************************************************************************
+//! This module implements zk-proof batch verifier functionality.
 
-This source file implements zk-proof batch verifier functionality.
-
-*********************************************************************************************/
-
-pub use super::index::VerifierIndex as Index;
-pub use super::prover::{range, ProverProof};
-use crate::plonk_sponge::FrSponge;
+use crate::{
+    index::VerifierIndex,
+    plonk_sponge::FrSponge,
+    prover::ProverProof,
+};
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
@@ -60,7 +58,7 @@ where
 {
     pub fn prev_chal_evals(
         &self,
-        index: &Index<G>,
+        index: &VerifierIndex<G>,
         evaluation_points: &[Fr<G>],
         powers_of_eval_points_for_chunks: &[Fr<G>],
     ) -> Vec<Vec<Vec<Fr<G>>>> {
@@ -103,10 +101,10 @@ where
             .collect()
     }
 
-    /// This function runs random oracle argument
+    /// This function runs the random oracle argument
     pub fn oracles<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         &self,
-        index: &Index<G>,
+        index: &VerifierIndex<G>,
         p_comm: &PolyComm<G>,
     ) -> OraclesResult<G, EFqSponge> {
         let n = index.domain.size;
@@ -356,11 +354,11 @@ where
 
     /// This function verifies the batch of zk-proofs
     ///     proofs: vector of Plonk proofs
-    ///     index: Index
+    ///     index: VerifierIndex
     ///     RETURN: verification status
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
-        proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
+        proofs: &Vec<(&VerifierIndex<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
     ) -> Result<bool, ProofError> {
         // if there's no proof to verify, return early
         if proofs.is_empty() {
@@ -447,52 +445,52 @@ where
                         mds: index.fr_sponge_params.mds.clone(),
                     };
 
-                    let s = &mut scalars_part;
-                    let p = &mut commitments_part;
-                    index.linearization.index_terms.iter().for_each(|(c, e)| {
-                        let e = PolishToken::evaluate(
-                            e,
+                    let scalars = &mut scalars_part;
+                    let commitments = &mut commitments_part;
+                    for (col, tokens) in &index.linearization.index_terms {
+                        let scalar = PolishToken::evaluate(
+                            tokens,
                             index.domain,
                             oracles.zeta,
                             &evals,
                             &constants,
                         )
-                        .unwrap();
+                        .expect("should evaluate");
                         let l = proof.commitments.lookup.as_ref();
                         use Column::*;
-                        match c {
+                        match col {
                             Witness(i) => {
-                                s.push(e);
-                                p.push(&proof.commitments.w_comm[*i])
+                                scalars.push(scalar);
+                                commitments.push(&proof.commitments.w_comm[*i])
                             }
                             Coefficient(i) => {
-                                s.push(e);
-                                p.push(&index.coefficients_comm[*i])
+                                scalars.push(scalar);
+                                commitments.push(&index.coefficients_comm[*i])
                             }
                             Z => {
-                                s.push(e);
-                                p.push(&proof.commitments.z_comm);
+                                scalars.push(scalar);
+                                commitments.push(&proof.commitments.z_comm);
                             }
                             LookupSorted(i) => {
-                                s.push(e);
-                                p.push(&l.unwrap().sorted[*i])
+                                scalars.push(scalar);
+                                commitments.push(&l.unwrap().sorted[*i])
                             }
                             LookupAggreg => {
-                                s.push(e);
-                                p.push(&l.unwrap().aggreg)
+                                scalars.push(scalar);
+                                commitments.push(&l.unwrap().aggreg)
                             }
                             LookupKindIndex(i) => {
-                                s.push(e);
-                                p.push(&index.lookup_selectors[*i]);
+                                scalars.push(scalar);
+                                commitments.push(&index.lookup_selectors[*i]);
                             }
                             LookupTable => {
                                 let mut j = Fr::<G>::one();
-                                s.push(e);
-                                p.push(&index.lookup_tables[0][0]);
+                                scalars.push(scalar);
+                                commitments.push(&index.lookup_tables[0][0]);
                                 for t in index.lookup_tables[0].iter().skip(1) {
                                     j *= constants.joint_combiner;
-                                    s.push(e * j);
-                                    p.push(t);
+                                    scalars.push(scalar * j);
+                                    commitments.push(t);
                                 }
                             }
                             Index(t) => {
@@ -509,11 +507,11 @@ where
                                     ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
                                 };
-                                s.push(e);
-                                p.push(c);
+                                scalars.push(scalar);
+                                commitments.push(col);
                             }
                         }
-                    });
+                    }
                 }
 
                 // MSM
