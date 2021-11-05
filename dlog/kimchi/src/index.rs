@@ -12,7 +12,7 @@ use std::{
 };
 
 use ark_ec::AffineCurve;
-use ark_ff::PrimeField;
+use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use commitment_dlog::{
@@ -21,7 +21,7 @@ use commitment_dlog::{
     CommitmentField,
 };
 use kimchi_circuits::{
-    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
+    expr::{Column, Expr, Linearization, PolishToken},
     gate::{GateType, LookupInfo, LookupsUsed},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
@@ -144,6 +144,55 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
+pub fn expr_linearization<F: FftField + SquareRootField>(
+    domain: D<F>,
+    lookup_used: bool,
+    chacha: bool,
+    dummy_lookup_value: Option<&[F]>,
+) -> Linearization<Vec<PolishToken<F>>> {
+    let lookup_info = LookupInfo::<F>::create();
+    let evaluated_cols = {
+        let mut h = std::collections::HashSet::new();
+        use Column::*;
+        for i in 0..COLUMNS {
+            h.insert(Witness(i));
+        }
+        for i in 0..(lookup_info.max_per_row + 1) {
+            h.insert(LookupSorted(i));
+        }
+        h.insert(Z);
+        h.insert(LookupAggreg);
+        h.insert(LookupTable);
+        h.insert(Index(GateType::Poseidon));
+        h.insert(Index(GateType::Generic));
+        h
+    };
+    let expr = poseidon::constraint();
+    let expr = expr + varbasemul::constraint(super::range::MUL.start);
+    let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
+    assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
+    let expr = expr + complete_add;
+    let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
+    let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
+    let expr = if lookup_used {
+        expr + Expr::combine_constraints(
+            2 + super::range::CHACHA.end,
+            lookup::constraints(dummy_lookup_value.unwrap(), domain),
+        )
+    } else {
+        expr
+    };
+    let expr = if chacha {
+        expr + chacha::constraint(super::range::CHACHA.start)
+    } else {
+        expr
+    };
+
+    expr.linearize(evaluated_cols)
+        .unwrap()
+        .map(|e| e.to_polish())
+}
+
 impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
@@ -158,14 +207,23 @@ where
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
             coefficients_comm: array_init(|i| {
-                self.srs.commit_non_hiding(&self.cs.coefficientsm[i], None)
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
 
             psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
-            complete_add_comm: self.srs.commit_non_hiding(&self.cs.complete_addm, None),
-            mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
-            emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
+            complete_add_comm: self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.cs.complete_addl4,
+                None,
+            ),
+            mul_comm: self
+                .srs
+                .commit_evaluations_non_hiding(domain, &self.cs.mull8, None),
+            emul_comm: self
+                .srs
+                .commit_evaluations_non_hiding(domain, &self.cs.emull, None),
 
             endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
@@ -225,47 +283,16 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
 
-        let linearization: Linearization<Expr<ConstantExpr<Fr<G>>>> = {
-            let evaluated_cols = {
-                let mut h = std::collections::HashSet::new();
-                use Column::*;
-                for i in 0..COLUMNS {
-                    h.insert(Witness(i));
-                }
-                for i in 0..(lookup_info.max_per_row + 1) {
-                    h.insert(LookupSorted(i));
-                }
-                h.insert(Z);
-                h.insert(LookupAggreg);
-                h.insert(LookupTable);
-                h.insert(Index(GateType::Poseidon));
-                h.insert(Index(GateType::Generic));
-                h
-            };
-            let expr = poseidon::constraint();
-            let expr = expr + varbasemul::constraint(super::range::MUL.start);
-            let (alphas_used, complete_add) =
-                complete_add::constraint(super::range::COMPLETE_ADD.start);
-            assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
-            let expr = expr + complete_add;
-            let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
-            let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
-            let expr = if lookup_used.is_some() {
-                expr + Expr::combine_constraints(
-                    2 + super::range::CHACHA.end,
-                    lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1),
-                )
+        let linearization = expr_linearization(
+            cs.domain.d1,
+            lookup_used.is_some(),
+            cs.chacha8.is_some(),
+            if lookup_used.is_some() {
+                Some(&cs.dummy_lookup_values[0][..])
             } else {
-                expr
-            };
-            let expr = if cs.chacha8.is_some() {
-                expr + chacha::constraint(super::range::CHACHA.start)
-            } else {
-                expr
-            };
-
-            expr.linearize(evaluated_cols).unwrap()
-        };
+                None
+            },
+        );
 
         Index {
             // TODO(mimoo): re-order field like in the type def
@@ -276,7 +303,7 @@ where
             srs,
             cs,
             lookup_used,
-            linearization: linearization.map(|e| e.to_polish()),
+            linearization,
         }
     }
 }
