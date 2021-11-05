@@ -498,16 +498,20 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        Self::commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+        Self::commit_helper(&plnm.coeffs[..], &self.g[..], None, plnm.is_zero(), max)
     }
 
-    fn commit_helper(
+    pub fn commit_helper(
         scalars: &[Fr<G>],
         basis: &[G],
+        n: Option<usize>,
         is_zero: bool,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let n = basis.len();
+        let n = match n {
+            Some(n) => n,
+            None => basis.len(),
+        };
         let p = scalars.len();
 
         // committing all the segments without shifting
@@ -572,9 +576,11 @@ where
                 let v: Vec<_> = (0..(domain.size as usize))
                     .map(|i| plnm.evals[s * i])
                     .collect();
-                Self::commit_helper(&v[..], basis, is_zero, max)
+                Self::commit_helper(&v[..], basis, None, is_zero, max)
             }
-            std::cmp::Ordering::Equal => Self::commit_helper(&plnm.evals[..], basis, is_zero, max),
+            std::cmp::Ordering::Equal => {
+                Self::commit_helper(&plnm.evals[..], basis, None, is_zero, max)
+            }
             std::cmp::Ordering::Greater => {
                 panic!("desired commitment domain size greater than evaluations' domain size")
             }
@@ -625,6 +631,8 @@ where
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
 
+        let mut combined_polynomial_terms = vec![];
+
         // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
         let (p, blinding_factor) = {
             let mut p = DensePolynomial::<Fr<G>>::zero();
@@ -639,7 +647,7 @@ where
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    while offset < p_i.coeffs.len() {
+                    while j < omegas.unshifted.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
                             &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
@@ -649,6 +657,7 @@ where
                         );
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
+
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
@@ -662,7 +671,7 @@ where
                     }
                 } else {
                     assert!(omegas.shifted.is_none());
-                    while offset < p_i.coeffs.len() {
+                    while j < omegas.unshifted.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
                             &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
@@ -670,6 +679,12 @@ where
                                 offset + self.g.len()
                             }],
                         );
+
+                        combined_polynomial_terms.push(
+                            self.commit_non_hiding(&segment, None).unshifted[0]
+                                + self.h.mul(omegas.unshifted[j]).into_affine(),
+                        );
+
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
                         omega += &(omegas.unshifted[j] * scale);
