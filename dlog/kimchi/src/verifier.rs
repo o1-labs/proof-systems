@@ -150,13 +150,9 @@ where
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
         // absorb the polycommitments into the argument and sample zeta
-        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
-        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
+        let expected_t_size = 7;
+        assert_eq!(expected_t_size, self.commitments.t_comm.unshifted.len());
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
-        fq_sponge.absorb_g(&vec![
-            dummy;
-            max_t_size - self.commitments.t_comm.unshifted.len()
-        ]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
@@ -406,7 +402,7 @@ where
                 p_eval,
                 powers_of_eval_points_for_chunks,
                 polys,
-                zeta1,
+                zeta1: zeta_to_domain_size,
                 ft_eval0,
                 ..
             } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
@@ -535,10 +531,12 @@ where
                 PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)
             };
 
+            let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
             // Maller's optimization (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
-            let chunked_f_comm = f_comm.chunk_commitment(zeta1);
-            let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta1);
-            let ft_comm = &chunked_f_comm - &chunked_t_comm.scale(zeta1 - Fr::<G>::one());
+            let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
+            let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
+            let ft_comm =
+                &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - Fr::<G>::one());
 
             params.push((
                 p_eval,
