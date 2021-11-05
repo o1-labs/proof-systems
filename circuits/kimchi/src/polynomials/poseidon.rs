@@ -7,14 +7,8 @@ This source file implements Posedon constraint polynomials.
 use crate::expr::{Cache, Column, ConstantExpr, E};
 use crate::gate::{CurrOrNext, GateType};
 use crate::gates::poseidon::*;
-use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::wires::COLUMNS;
 use ark_ff::{FftField, SquareRootField};
-use ark_poly::univariate::DensePolynomial;
-use array_init::array_init;
-use o1_utils::ExtendedDensePolynomial;
-use oracle::poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W, SpongeConstants};
+use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
 use CurrOrNext::*;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
@@ -108,70 +102,4 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
         }));
     }
     E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(0, res)
-}
-
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    pub fn psdn_scalars(
-        evals: &[ProofEvaluations<F>],
-        params: &ArithmeticSpongeParams<F>,
-        alpha: &[F],
-    ) -> Vec<F> {
-        let w_zeta = evals[0].w;
-        let sboxed: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
-            array_init(|i| {
-                let col = round_to_cols(round);
-                sbox::<F, PlonkSpongeConstants15W>(w_zeta[col][i])
-            })
-        });
-        let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =
-            array_init(|round| array_init(|i| alpha[round * SPONGE_WIDTH + i]));
-
-        let lhs = ROUND_EQUATIONS.iter().fold(F::zero(), |acc, eq| {
-            let (target_row, target_round) = &eq.target;
-            let cols = match target_row {
-                Curr => &evals[0].w,
-                Next => &evals[1].w,
-            };
-            cols[round_to_cols(*target_round)]
-                .iter()
-                .zip(alp[eq.source].iter())
-                .map(|(p, a)| -*a * p)
-                .fold(acc, |x, y| x + y)
-        });
-
-        let mut rhs = F::zero();
-        for eq in ROUND_EQUATIONS.iter() {
-            let ss = sboxed[eq.source];
-            let aa = alp[eq.source];
-            for (i, p) in ss.iter().enumerate() {
-                // Each of these contributes to the right hand side of SPONGE_WIDTH cell equations
-                let coeff =
-                    (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| acc + aa[j] * params.mds[j][i]);
-                rhs += coeff * p;
-            }
-        }
-
-        let mut res = vec![lhs + rhs];
-
-        // TODO(mimoo): how is that useful? we already have access to these
-        for alpha in alpha.iter().take(COLUMNS) {
-            res.push(evals[0].poseidon_selector * alpha);
-        }
-        res
-    }
-
-    /// poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
-    pub fn psdn_lnrz(
-        &self,
-        evals: &[ProofEvaluations<F>],
-        params: &ArithmeticSpongeParams<F>,
-        alpha: &[F],
-    ) -> DensePolynomial<F> {
-        let scalars = Self::psdn_scalars(evals, params, alpha);
-        self.coefficientsm
-            .iter()
-            .zip(scalars[1..].iter())
-            .map(|(r, a)| r.scale(*a))
-            .fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
-    }
 }
