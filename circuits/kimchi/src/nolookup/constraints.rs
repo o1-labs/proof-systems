@@ -56,9 +56,6 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
-    /// coefficients polynomials in coefficient form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
@@ -73,25 +70,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// poseidon constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub psm: DP<F>,
-
-    // ECC arithmetic selector polynomials
-    // -----------------------------------
-    /// EC point addition constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub complete_addm: DP<F>,
-    /// mulm constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub mulm: DP<F>,
-    /// emulm constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub emulm: DP<F>,
-    /// endomul scalar computation
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub endomul_scalarm: DP<F>,
-
-    //
-    // Polynomials over lagrange base
-    //
 
     // Generic constraint selector polynomials
     // ---------------------------------------
@@ -578,7 +556,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables8,
             lookup_tables: lookup_tables_polys,
             endomul_scalar8,
-            endomul_scalarm,
             domain,
             public,
             sid,
@@ -587,16 +564,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             sigmam,
             genericm,
             generic4,
-            coefficientsm,
             coefficients8,
             ps8,
             psm,
-            complete_addm,
             complete_addl4,
             mull8,
-            mulm,
             emull,
-            emulm,
             l1,
             l04,
             l08,
