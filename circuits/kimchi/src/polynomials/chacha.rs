@@ -342,44 +342,52 @@ pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
     s
 }
 
-// TODO: Assert somehow that we're using the right number of alphas.
-pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
-    let w = |i: usize, r: CurrOrNext| E::<F>::cell(Column::Witness(i), r);
+struct Helper<F>(PhantomData<F>);
 
-    // 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
-    // like y^x' or x+z
-    let chunks_over_2_rows = |col_offset: usize| -> Vec<_> {
+impl<F> Helper<F>
+where
+    F: FftField,
+{
+    fn w(i: usize, r: CurrOrNext) -> E<F> {
+        E::<F>::cell(Column::Witness(i), r)
+    }
+
+    /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
+    /// like y^x' or x+z
+    fn chunks_over_2_rows(col_offset: usize) -> Vec<E<F>> {
         (0..8)
             .map(|i| {
                 let r = if i < 4 { Curr } else { Next };
-                w(col_offset + (i % 4), r)
+                Helper::w(col_offset + (i % 4), r)
             })
             .collect()
-    };
+    }
 
-    let boolean = |b: &E<F>| b.clone() * b.clone() - b.clone();
+    fn boolean(b: &E<F>) -> E<F> {
+        b.clone() * b.clone() - b.clone()
+    }
 
-    let combine_nybbles = |ns: Vec<E<F>>| -> E<F> {
+    fn combine_nybbles(ns: Vec<E<F>>) -> E<F> {
         ns.into_iter()
             .enumerate()
             .fold(E::zero(), |acc: E<F>, (i, t)| {
                 acc + E::from(1 << (4 * i)) * t
             })
-    };
+    }
 
-    // Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-    let line = |nybble_rotation: usize| -> E<F> {
-        let y_xor_xprime_nybbles = chunks_over_2_rows(3);
-        let x_plus_z_nybbles = chunks_over_2_rows(7);
-        let y_nybbles = chunks_over_2_rows(11);
+    /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
+    fn line(alphas: &mut impl Iterator<Item = usize>, nybble_rotation: usize) -> E<F> {
+        let y_xor_xprime_nybbles = Helper::chunks_over_2_rows(3);
+        let x_plus_z_nybbles = Helper::chunks_over_2_rows(7);
+        let y_nybbles = Helper::chunks_over_2_rows(11);
 
-        let x_plus_z_overflow_bit = w(2, Next);
+        let x_plus_z_overflow_bit = Helper::w(2, Next);
 
-        let x = w(0, Curr);
-        let xprime = w(0, Next);
-        let y = w(1, Curr);
-        let yprime = w(1, Next);
-        let z = w(2, Curr);
+        let x = Helper::w(0, Curr);
+        let xprime = Helper::w(0, Next);
+        let y = Helper::w(1, Curr);
+        let yprime = Helper::w(1, Next);
+        let z = Helper::w(2, Curr);
 
         // Because the nybbles are little-endian, rotating the vector "right"
         // is equivalent to left-shifting the nybbles.
@@ -387,26 +395,28 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
         y_xor_xprime_rotated.rotate_right(nybble_rotation);
 
         E::combine_constraints(
-            alpha0,
+            alphas,
             vec![
                 // booleanity of overflow bit
-                boolean(&x_plus_z_overflow_bit),
+                Helper::boolean(&x_plus_z_overflow_bit),
                 // x' = x + z (mod 2^32)
-                combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
+                Helper::combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
                 // Correctness of x+z nybbles
                 xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
                 // Correctness of y nybbles
-                combine_nybbles(y_nybbles) - y,
+                Helper::combine_nybbles(y_nybbles) - y,
                 // y' = (y ^ x') <<< 4 * nybble_rotation
-                combine_nybbles(y_xor_xprime_rotated) - yprime,
+                Helper::combine_nybbles(y_xor_xprime_rotated) - yprime,
             ],
         )
-    };
+    }
+}
 
+pub fn constraint<F: FftField>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
     let chacha_final = {
-        let y_xor_xprime_nybbles = chunks_over_2_rows(1);
-        let low_bits = chunks_over_2_rows(5);
-        let yprime = w(0, Curr);
+        let y_xor_xprime_nybbles = Helper::chunks_over_2_rows(1);
+        let low_bits = Helper::chunks_over_2_rows(5);
+        let yprime = Helper::w(0, Curr);
 
         let one_half = F::from(2u64).inverse().unwrap();
 
@@ -422,20 +432,20 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
             })
             .collect();
 
-        let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
-        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
-        E::combine_constraints(alpha0, constraints)
+        let mut constraints: Vec<E<F>> = low_bits.iter().map(Helper::boolean).collect();
+        constraints.push(Helper::combine_nybbles(y_xor_xprime_rotated) - yprime);
+        E::combine_constraints(&mut alphas.by_ref().take(9), constraints)
     };
 
     let index = |g: GateType| E::cell(Column::Index(g), Curr);
     use GateType::*;
     vec![
         // a += b; d ^= a; d <<<= 16 (=4*4);
-        index(ChaCha0) * line(4),
+        index(ChaCha0) * Helper::line(&mut alphas.by_ref().take(5), 4),
         // c += d; b ^= c; b <<<= 12 (=3*4);
-        index(ChaCha1) * line(3),
+        index(ChaCha1) * Helper::line(&mut alphas.by_ref().take(5), 3),
         // a += b; d ^= a; d <<<= 8  (=2*4);
-        index(ChaCha2) * line(2),
+        index(ChaCha2) * Helper::line(&mut alphas.by_ref().take(5), 2),
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -504,8 +514,8 @@ mod tests {
             h.insert(Column::Index(GateType::Generic));
             h
         };
-
-        let expr = constraint::<F>(10);
+        let mut powers = 0..20;
+        let expr = constraint(&mut powers);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

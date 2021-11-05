@@ -42,7 +42,7 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
+pub fn constraint<F: Field>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
     // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
@@ -163,10 +163,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     res.push(y21.clone() * (same_x - inf.clone()));
     res.push(y21 * inf_z - inf);
 
-    (
-        res.len(),
-        v(Column::Index(GateType::CompleteAdd)) * E::combine_constraints(alpha0, res),
-    )
+    v(Column::Index(GateType::CompleteAdd)) * E::combine_constraints(alphas, res)
 }
 
 impl<F: FftField> CircuitGate<F> {

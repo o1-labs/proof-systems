@@ -13,7 +13,11 @@ use rayon::prelude::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
-    pub fn gnrc_quot(&self, witness_d4: &[Evaluations<F, D<F>>; COLUMNS]) -> Evaluations<F, D<F>> {
+    pub fn gnrc_quot(
+        &self,
+        alphas: &mut impl Iterator<Item = F>,
+        witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
+    ) -> Evaluations<F, D<F>> {
         // w[0](x) * w[1](x) * qml(x)
         let mut multiplication = &witness_d4[0] * &witness_d4[1];
         let m8 = &self.coefficients8[MUL_COEFF];
@@ -48,25 +52,46 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         eval_part *= &self.generic4;
 
+        // multiply with a power of alpha
+        let alpha = alphas
+            .next()
+            .expect("not enough powers of alpha for the generic gate");
+        let mut alpha4 = self.l04.clone();
+        alpha4.evals.iter_mut().for_each(|x| *x *= alpha);
+        eval_part *= &alpha4;
+
+        // return the result
         eval_part
     }
 
     /// produces
-    /// generic(zeta) * w[0](zeta) * w[1](zeta),
-    /// generic(zeta) * w[0](zeta),
-    /// generic(zeta) * w[1](zeta),
-    /// generic(zeta) * w[2](zeta)
-    pub fn gnrc_scalars(w_zeta: &[F; COLUMNS], generic_zeta: F) -> Vec<F> {
-        let mut res = vec![generic_zeta * w_zeta[0] * w_zeta[1]];
-        res.extend((0..GENERICS).map(|i| generic_zeta * w_zeta[i]));
+    /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
+    /// alpha * generic(zeta) * w[0](zeta),
+    /// alpha * generic(zeta) * w[1](zeta),
+    /// alpha * generic(zeta) * w[2](zeta)
+    pub fn gnrc_scalars(
+        alphas: &mut impl Iterator<Item = F>,
+        w_zeta: &[F; COLUMNS],
+        generic_zeta: F,
+    ) -> Vec<F> {
+        let alpha0 = alphas
+            .next()
+            .expect("not enough alpha powers for generic gate");
+        let mut res = vec![alpha0 * generic_zeta * w_zeta[0] * w_zeta[1]];
+        res.extend((0..GENERICS).map(|i| alpha0 * generic_zeta * w_zeta[i]));
         res
     }
 
     /// generic constraint linearization poly contribution computation
-    pub fn gnrc_lnrz(&self, w_zeta: &[F; COLUMNS], generic_zeta: F) -> DensePolynomial<F> {
-        let scalars = Self::gnrc_scalars(w_zeta, generic_zeta);
+    pub fn gnrc_lnrz(
+        &self,
+        alphas: &mut impl Iterator<Item = F>,
+        w_zeta: &[F; COLUMNS],
+        generic_zeta: F,
+    ) -> DensePolynomial<F> {
+        let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
-        // w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2]
+        // w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2] * alpha
         let mut res = self
             .coefficientsm
             .iter()
@@ -80,7 +105,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // constant selector
         res += &self.coefficientsm[CONSTANT_COEFF].scale(generic_zeta);
 
-        // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
+        // (l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc) * alpha
         res
     }
 
@@ -231,7 +256,8 @@ mod tests {
         let zeta = Fp::rand(rng);
 
         // compute quotient by dividing with vanishing polynomial
-        let t1 = cs.gnrc_quot(&witness_d4);
+        let alphas = vec![Fp::rand(rng)];
+        let t1 = cs.gnrc_quot(&mut alphas.clone().into_iter(), &witness_d4);
         let t_before_division = &t1.interpolate() + &public;
         let (t, rem) = t_before_division
             .divide_by_vanishing_poly(cs.domain.d1)
@@ -243,7 +269,7 @@ mod tests {
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
-        let f = cs.gnrc_lnrz(&w_zeta, generic_zeta);
+        let f = cs.gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta);
         let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)

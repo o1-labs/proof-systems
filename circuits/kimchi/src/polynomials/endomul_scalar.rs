@@ -113,7 +113,7 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
+pub fn constraint<F: Field>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
     let curr_row = |c| E::cell(c, CurrOrNext::Curr);
     let witness_column = |i| curr_row(Column::Witness(i));
 
@@ -159,7 +159,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints) * curr_row(Column::Index(GateType::EndomulScalar))
+    E::combine_constraints(alphas, constraints) * curr_row(Column::Index(GateType::EndomulScalar))
 }
 
 pub fn witness<F: PrimeField + std::fmt::Display>(

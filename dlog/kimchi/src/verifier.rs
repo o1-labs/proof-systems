@@ -1,6 +1,7 @@
 //! This module implements zk-proof batch verifier functionality.
 
 use crate::{
+    alphas::{Alphas, ConstraintType},
     index::VerifierIndex,
     plonk_sponge::FrSponge,
     prover::ProverProof,
@@ -36,8 +37,8 @@ where
     pub digest: Fr<G>,
     /// the challenges produced in the protocol
     pub oracles: RandomOracles<Fr<G>>,
-    /// pre-computed powers of the alpha challenge
-    pub alphas: Vec<Fr<G>>,
+    /// the computed powers of alpha
+    pub all_alphas: Alphas<Fr<G>>,
     /// public polynomial evaluations
     pub p_eval: [Vec<Fr<G>>; 2],
     /// zeta^n and (zeta * omega)^n
@@ -167,7 +168,7 @@ where
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
         let zetaw = zeta * &index.domain.group_gen;
-        let alphas = range::alpha_powers(alpha);
+        let all_alphas = Alphas::new(alpha, &index.powers_of_alpha);
 
         // compute Lagrange base evaluation denominators
         let w = (0..self.public.len())
@@ -245,18 +246,24 @@ where
             let zkp = index.zkpm.evaluate(&zeta);
             let zeta1m1 = zeta1 - &Fr::<G>::one();
 
+            let mut alpha_powers = all_alphas.get_alphas(ConstraintType::Permutation);
+            let alpha0 = alpha_powers
+                .next()
+                .expect("missing power of alpha for permutation");
+            let alpha1 = alpha_powers
+                .next()
+                .expect("missing power of alpha for permutation");
+            let alpha2 = alpha_powers
+                .next()
+                .expect("missing power of alpha for permutation");
+
+            let init = (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alpha0 * zkp;
             let mut ft_eval0 = evals[0]
                 .w
                 .iter()
                 .zip(evals[0].s.iter())
-                .map(|(w, s)| (beta * s) + w + &gamma)
-                .fold(
-                    (evals[0].w[PERMUTS - 1] + &gamma)
-                        * &evals[1].z
-                        * &alphas[range::PERM][0]
-                        * &zkp,
-                    |x, y| x * y,
-                );
+                .map(|(w, s)| (beta * s) + w + gamma)
+                .fold(init, |x, y| x * y);
 
             ft_eval0 -= if !p_eval[0].is_empty() {
                 p_eval[0][0]
@@ -268,14 +275,14 @@ where
                 .w
                 .iter()
                 .zip(index.shift.iter())
-                .map(|(w, s)| gamma + &(beta * &zeta * s) + w)
-                .fold(alphas[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
+                .map(|(w, s)| gamma + (beta * zeta * s) + w)
+                .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
 
-            let nominator = ((zeta1m1 * &alphas[range::PERM][1] * &(zeta - &index.w))
-                + (zeta1m1 * &alphas[range::PERM][2] * &(zeta - &Fr::<G>::one())))
+            let nominator = ((zeta1m1 * alpha1 * (zeta - &index.w))
+                + (zeta1m1 * alpha2 * (zeta - Fr::<G>::one())))
                 * &(Fr::<G>::one() - evals[0].z);
 
-            let denominator = (zeta - &index.w) * &(zeta - &Fr::<G>::one());
+            let denominator = (zeta - index.w) * (zeta - Fr::<G>::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
             ft_eval0 += nominator * &denominator;
@@ -342,7 +349,7 @@ where
             fq_sponge,
             digest,
             oracles,
-            alphas,
+            all_alphas,
             p_eval,
             powers_of_eval_points_for_chunks,
             polys,
@@ -385,7 +392,7 @@ where
             let OraclesResult {
                 fq_sponge,
                 oracles,
-                alphas,
+                mut all_alphas,
                 p_eval,
                 powers_of_eval_points_for_chunks,
                 polys,
@@ -409,11 +416,12 @@ where
                 // permutation
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
                 let mut commitments_part = vec![&index.sigma_comm[PERMUTS - 1]];
+                let mut alpha_powers = all_alphas.take_alphas(ConstraintType::Permutation);
                 let mut scalars_part = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     oracles.beta,
                     oracles.gamma,
-                    &alphas[range::PERM],
+                    &mut alpha_powers,
                     zkp,
                 )];
 
@@ -426,7 +434,10 @@ where
                         .take(GENERICS)
                         .collect::<Vec<_>>(),
                 );
+                let mut alpha_powers =
+                    all_alphas.take_alphas(ConstraintType::Gate(GateType::Generic));
                 scalars_part.extend(&ConstraintSystem::gnrc_scalars(
+                    &mut alpha_powers,
                     &evals[0].w,
                     evals[0].generic_selector,
                 ));
@@ -434,7 +445,19 @@ where
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars_part.push(evals[0].generic_selector);
 
+                // other gates are implemented using the expression framework
                 {
+                    // Note: because we use the expression framework for these gates, we have to discard the stored powers of alpha.
+                    // This is to make sure that we're using these powers of alphas).
+                    // TODO: once all gates use the expression framework we won't need this anymore
+                    all_alphas.discard(ConstraintType::Gate(GateType::CompleteAdd));
+                    all_alphas.discard(ConstraintType::Gate(GateType::Vbmul));
+                    all_alphas.discard(ConstraintType::Gate(GateType::Endomul));
+                    all_alphas.discard(ConstraintType::Gate(GateType::EndomulScalar));
+                    all_alphas.discard(ConstraintType::Gate(GateType::Poseidon));
+                    all_alphas.discard(ConstraintType::Gate(GateType::ChaCha0));
+                    all_alphas.discard(ConstraintType::Lookup);
+
                     // TODO: Reuse constants from oracles function
                     let constants = Constants {
                         alpha: oracles.alpha,

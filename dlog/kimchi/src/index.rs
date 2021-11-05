@@ -31,6 +31,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::alphas::{self, ConstraintType};
+
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
@@ -52,6 +54,9 @@ where
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+
+    /// The mapping between powers of alpha and constraints
+    pub powers_of_alpha: alphas::Builder,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -79,6 +84,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
+    /// The mapping between powers of alpha and constraints
+    pub powers_of_alpha: alphas::Builder,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: Arc<SRS<G>>,
@@ -158,6 +165,7 @@ where
             domain,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
+            powers_of_alpha: self.powers_of_alpha.clone(),
             srs: Arc::clone(&self.srs),
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
@@ -229,6 +237,8 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
 
+        let mut powers_of_alpha = alphas::Builder::default();
+
         let linearization: Linearization<Expr<ConstantExpr<Fr<G>>>> = {
             let evaluated_cols = {
                 let mut h = std::collections::HashSet::new();
@@ -246,29 +256,56 @@ where
                 h.insert(Index(GateType::Generic));
                 h
             };
-            let expr = poseidon::constraint();
-            let expr = expr + varbasemul::constraint(super::range::MUL.start);
-            let (alphas_used, complete_add) =
-                complete_add::constraint(super::range::COMPLETE_ADD.start);
-            assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
-            let expr = expr + complete_add;
-            let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
-            let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
-            let expr = if lookup_used.is_some() {
-                expr + Expr::combine_constraints(
-                    2 + super::range::CHACHA.end,
-                    lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1),
-                )
-            } else {
-                expr
-            };
-            let expr = if cs.chacha8.is_some() {
-                expr + chacha::constraint(super::range::CHACHA.start)
-            } else {
-                expr
-            };
 
-            expr.linearize(evaluated_cols).unwrap()
+            // generic gate
+            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Generic), 1);
+            alphas.next();
+
+            // permutation
+            let mut alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
+            alphas.next();
+            alphas.next();
+            alphas.next();
+
+            // poseidon gate
+            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Poseidon), 15);
+            let mut expr = poseidon::constraint(&mut alphas);
+
+            // variable-base scalar multiplication
+            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Vbmul), 21);
+            expr += varbasemul::constraint(&mut alphas);
+
+            // EC addition
+            let mut alphas =
+                powers_of_alpha.register(ConstraintType::Gate(GateType::CompleteAdd), 7);
+            expr += complete_add::constraint(&mut alphas);
+
+            // endo scalar multiplication
+            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Endomul), 11);
+            expr += endosclmul::constraint(&mut alphas);
+
+            // scalar of endo scalar multiplication
+            let mut alphas =
+                powers_of_alpha.register(ConstraintType::Gate(GateType::EndomulScalar), 11);
+            expr += endomul_scalar::constraint(&mut alphas);
+
+            // lookup
+            if lookup_used.is_some() {
+                let mut alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
+                let lookup_constraints =
+                    lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1);
+                expr += Expr::combine_constraints(&mut alphas, lookup_constraints)
+            }
+
+            // chacha
+            if cs.chacha8.is_some() {
+                let mut alphas =
+                    powers_of_alpha.register(ConstraintType::Gate(GateType::ChaCha0), 24);
+                expr += chacha::constraint(&mut alphas)
+            }
+
+            expr.linearize(evaluated_cols)
+                .expect("bug in the linearization")
         };
 
         // TODO: why 7? hardcode/document it somewhere
@@ -278,6 +315,7 @@ where
             cs,
             lookup_used,
             linearization: linearization.map(|e| e.to_polish()),
+            powers_of_alpha,
             srs,
             max_poly_size,
             max_quot_size,

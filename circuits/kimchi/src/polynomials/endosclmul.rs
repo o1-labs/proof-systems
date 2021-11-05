@@ -36,7 +36,7 @@ use ark_ff::{Field, One};
 use CurrOrNext::*;
 
 /// The constraint for endoscaling.
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
+pub fn constraint<F: Field>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
 
@@ -109,7 +109,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
         ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
         n_constraint,
     ];
-    E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::Endomul), Curr)
+    E::combine_constraints(alphas, p) * E::cell(Column::Index(GateType::Endomul), Curr)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point

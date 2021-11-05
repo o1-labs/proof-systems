@@ -3,46 +3,56 @@
 use crate::expr::{Cache, Column, ConstantExpr, E};
 use crate::gate::{CurrOrNext, GateType};
 use crate::gates::poseidon::*;
-use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::wires::COLUMNS;
 use ark_ff::{FftField, SquareRootField};
-use ark_poly::univariate::DensePolynomial;
-use array_init::array_init;
-use o1_utils::ExtendedDensePolynomial;
-use oracle::poseidon::{sbox, ArithmeticSpongeParams, PlonkSpongeConstants15W, SpongeConstants};
+use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
+use std::ops::RangeInclusive;
 use CurrOrNext::*;
 
-/// An equation of the form `(curr | next)[i] = round(curr[j])`
-pub struct RoundEquation {
-    pub source: usize,
-    pub target: (CurrOrNext, usize),
+/// All the information needed to construct a round in the Poseidon custom gate.
+pub struct RoundSpec {
+    /// the columns that contain the input
+    pub input_cols: RangeInclusive<usize>,
+    /// the row that contain the output
+    pub output_row: CurrOrNext,
+    /// the columns that contain the output
+    pub output_cols: RangeInclusive<usize>,
 }
 
-pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
-    RoundEquation {
-        source: 0,
-        target: (Curr, 1),
+/// Specifies in which columns the input of a row is stored,
+/// as well as which row and columns the output the permutation is stored.
+/// A Poseidon gates performs 5 rounds, with the last 5 round outputing
+/// its result on the next row. Each round acts on a state of 3 columns.
+/// The layout is also shuffled, so that the 4th round of the gate is stored
+/// right after the first round. This is to let the permutation access it,
+/// in case the final output lands on this state, instead of the next row's.
+pub const ROUND_EQUATIONS: [RoundSpec; ROUNDS_PER_ROW] = [
+    RoundSpec {
+        input_cols: 0..=2,
+        output_row: Curr,
+        output_cols: 6..=8,
     },
-    RoundEquation {
-        source: 1,
-        target: (Curr, 2),
+    RoundSpec {
+        input_cols: 6..=8,
+        output_row: Curr,
+        output_cols: 9..=11,
     },
-    RoundEquation {
-        source: 2,
-        target: (Curr, 3),
+    RoundSpec {
+        input_cols: 9..=11,
+        output_row: Curr,
+        output_cols: 12..=14,
     },
-    RoundEquation {
-        source: 3,
-        target: (Curr, 4),
+    RoundSpec {
+        input_cols: 12..=14,
+        output_row: Curr,
+        output_cols: 3..=5,
     },
-    RoundEquation {
-        source: 4,
-        target: (Next, 0),
+    RoundSpec {
+        input_cols: 3..=5,
+        output_row: Next,
+        output_cols: 0..=2,
     },
 ];
 
-pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
 /// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
 /// Conjunction of:
 /// curr[round_range(1)] = round(curr[round_range(0)])
@@ -65,10 +75,9 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
 /// ...
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
+pub fn constraint<F: FftField + SquareRootField>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
     let mut res = vec![];
     let mut cache = Cache::default();
-
-    let mut idx = 0;
 
     let mds: Vec<Vec<_>> = (0..SPONGE_WIDTH)
         .map(|row| {
@@ -78,96 +87,28 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
         })
         .collect();
 
-    for e in ROUND_EQUATIONS.iter() {
-        let &RoundEquation {
-            source,
-            target: (target_row, target_round),
-        } = e;
-        let sboxed: Vec<_> = round_to_cols(source)
-            .map(|i| {
-                cache.cache(
-                    E::cell(Column::Witness(i), Curr).pow(PlonkSpongeConstants15W::SPONGE_BOX),
-                )
-            })
-            .collect();
+    for (round, eq) in ROUND_EQUATIONS.iter().enumerate() {
+        // sbox
+        let mut sboxed = vec![];
+        for input_col in eq.input_cols.clone() {
+            let res =
+                E::cell(Column::Witness(input_col), Curr).pow(PlonkSpongeConstants15W::SPONGE_BOX);
+            sboxed.push(cache.cache(res));
+        }
 
-        res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
-            let rc = E::cell(Column::Coefficient(idx), Curr);
-
-            idx += 1;
-
-            E::cell(Column::Witness(col), target_row)
-                - sboxed
-                    .iter()
-                    .zip(mds[j].iter())
-                    .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
-        }));
-    }
-    E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(0, res)
-}
-
-impl<F: FftField + SquareRootField> ConstraintSystem<F> {
-    pub fn psdn_scalars(
-        evals: &[ProofEvaluations<F>],
-        params: &ArithmeticSpongeParams<F>,
-        alpha: &[F],
-    ) -> Vec<F> {
-        let w_zeta = evals[0].w;
-        let sboxed: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] = array_init(|round| {
-            array_init(|i| {
-                let col = round_to_cols(round);
-                sbox::<F, PlonkSpongeConstants15W>(w_zeta[col][i])
-            })
-        });
-        let alp: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] =
-            array_init(|round| array_init(|i| alpha[round * SPONGE_WIDTH + i]));
-
-        let lhs = ROUND_EQUATIONS.iter().fold(F::zero(), |acc, eq| {
-            let (target_row, target_round) = &eq.target;
-            let cols = match target_row {
-                Curr => &evals[0].w,
-                Next => &evals[1].w,
-            };
-            cols[round_to_cols(*target_round)]
-                .iter()
-                .zip(alp[eq.source].iter())
-                .map(|(p, a)| -*a * p)
-                .fold(acc, |x, y| x + y)
-        });
-
-        let mut rhs = F::zero();
-        for eq in ROUND_EQUATIONS.iter() {
-            let ss = sboxed[eq.source];
-            let aa = alp[eq.source];
-            for (i, p) in ss.iter().enumerate() {
-                // Each of these contributes to the right hand side of SPONGE_WIDTH cell equations
-                let coeff =
-                    (0..SPONGE_WIDTH).fold(F::zero(), |acc, j| acc + aa[j] * params.mds[j][i]);
-                rhs += coeff * p;
+        for (state_i, output_col) in eq.output_cols.clone().enumerate() {
+            // round constant
+            let mut output = E::cell(Column::Coefficient(round * 3 + state_i), Curr);
+            // + MDS(sboxed)
+            for (x, c) in sboxed.iter().zip(&mds[state_i]) {
+                output += E::Constant(c.clone()) * x.clone();
             }
-        }
+            // create the constraint
+            let constraint = E::cell(Column::Witness(output_col), eq.output_row) - output;
 
-        let mut res = vec![lhs + rhs];
-
-        // TODO(mimoo): how is that useful? we already have access to these
-        for alpha in alpha.iter().take(COLUMNS) {
-            res.push(evals[0].poseidon_selector * alpha);
+            res.push(constraint);
         }
-        res
     }
 
-    /// poseidon linearization poly contribution computation f^7 + c(x) - f(wx)
-    pub fn psdn_lnrz(
-        &self,
-        evals: &[ProofEvaluations<F>],
-        params: &ArithmeticSpongeParams<F>,
-        alpha: &[F],
-    ) -> DensePolynomial<F> {
-        let scalars = Self::psdn_scalars(evals, params, alpha);
-        self.coefficientsm
-            .iter()
-            .zip(scalars[1..].iter())
-            .map(|(r, a)| r.scale(*a))
-            .fold(self.psm.scale(scalars[0]), |x, y| &x + &y)
-    }
+    E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(alphas, res)
 }
