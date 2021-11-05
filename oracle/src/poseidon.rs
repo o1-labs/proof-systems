@@ -229,7 +229,6 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
 
     fn absorb(&mut self, x: &[F]) {
         for x in x.iter() {
-            println!("Rabsorb {}", x);
             match self.sponge_state {
                 SpongeState::Absorbed(n) => {
                     if n == self.rate {
