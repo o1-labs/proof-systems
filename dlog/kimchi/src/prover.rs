@@ -496,13 +496,23 @@ where
         t += &bnd;
 
         // commit to t
-        let t_comm = index.srs.commit(&t, None, rng);
+        let t_comm = {
+            let (mut t_comm, mut omega_t) = index.srs.commit(&t, None, rng);
+
+            let expected_t_size = 7;
+            let dummies = expected_t_size - t_comm.unshifted.len();
+            // Add some hiding commitments to 0
+            for _ in 0..dummies {
+                use ark_ec::ProjectiveCurve;
+                let w = Fr::<G>::rand(rng);
+                t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
+                omega_t.unshifted.push(w);
+            }
+            (t_comm, omega_t)
+        };
 
         // absorb the polycommitments into the argument and sample zeta
-        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
-        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.0.unshifted);
-        fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
@@ -557,11 +567,13 @@ where
 
         let chunked_evals = [chunked_evals_zeta, chunked_evals_zeta_omega];
 
-        let zeta_n = zeta.pow(&[index.max_poly_size as u64]);
-        let zeta_omega_n = zeta_omega.pow(&[index.max_poly_size as u64]);
+        let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
+        let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
+
+        let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
         // normal evaluations
-        let power_of_eval_points_for_chunks = [zeta_n, zeta_omega_n];
+        let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
         let evals = &chunked_evals
             .iter()
             .zip(power_of_eval_points_for_chunks.iter())
@@ -588,7 +600,10 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &index.cs.gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
+            let f = &index
+                .cs
+                .gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
+                .interpolate()
                 + &index
                     .cs
                     .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
@@ -603,12 +618,13 @@ where
             drop(lookup_aggreg8);
             drop(lookup_table_combined);
 
-            f.chunk_polynomial(zeta_n, index.max_poly_size)
+            f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
         };
 
-        let t_chunked = t.chunk_polynomial(zeta_n, index.max_poly_size);
+        let t_chunked = t.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
 
-        let ft: DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
+        let ft: DensePolynomial<Fr<G>> =
+            &f_chunked - &t_chunked.scale(zeta_to_domain_size - Fr::<G>::one());
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
@@ -655,12 +671,12 @@ where
         // construct the blinding part of the ft polynomial for Maller's optimization
         // (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
         let blinding_ft = {
-            let blinding_t = t_comm.1.chunk_blinding(zeta_n);
+            let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
             let blinding_f = Fr::<G>::zero();
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                unshifted: vec![blinding_f - (zeta_n - Fr::<G>::one()) * blinding_t],
+                unshifted: vec![blinding_f - (zeta_to_domain_size - Fr::<G>::one()) * blinding_t],
                 shifted: None,
             }
         };
