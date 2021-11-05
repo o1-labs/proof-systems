@@ -531,7 +531,7 @@ where
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
                                 };
                                 scalars.push(scalar);
-                                commitments.push(col);
+                                commitments.push(c);
                             }
                         }
                     }
