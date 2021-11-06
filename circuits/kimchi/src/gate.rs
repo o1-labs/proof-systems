@@ -354,16 +354,18 @@ impl GateType {
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+// TODO: this struct is a row in the circuit, not a gate (as theoretically a row can contain multiple gates)
 pub struct CircuitGate<F: FftField> {
     /// row position in the circuit
     // TODO(mimoo): shouldn't this be u32 since we serialize it as a u32?
+    // TODO: get rid of row, this is redundant information
     pub row: usize,
     /// type of the gate
     pub typ: GateType,
-    /// gate wires
+    /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
     /// constraints vector
-    // TODO: rename
+    // TODO: rename to "coeffs"
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub c: Vec<F>,
 }
@@ -519,7 +521,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;

@@ -439,7 +439,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // generic constraint polynomials
 
         let genericm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.generic()).collect(),
+            gates
+                .iter()
+                .map(|gate| {
+                    if matches!(gate.typ, GateType::Generic) {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
             domain.d1,
         )
         .interpolate();
@@ -476,20 +485,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         };
 
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if i < gate.c.len() {
-                            gate.c[i]
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
+            let padded = gates
+                .iter()
+                .map(|gate| gate.c.get(i).cloned().unwrap_or_else(F::zero))
+                .collect();
+            let eval = E::from_vec_and_domain(padded, domain.d1);
+            eval.interpolate()
         });
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));

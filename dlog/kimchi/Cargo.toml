@@ -32,6 +32,7 @@ kimchi-circuits = { path = "../../circuits/kimchi" }
 [dev-dependencies]
 groupmap = { path = "../../groupmap" }
 mina-curves = { path = "../../curves" }
+kimchi-circuits = { path = "../../circuits/kimchi", features = ["testing"] }
 
 [features]
 default = []

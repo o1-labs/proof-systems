@@ -258,14 +258,12 @@ where
             };
 
             // generic gate
-            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Generic), 1);
-            alphas.next();
+            let alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Generic), 2);
+            alphas.for_each(drop);
 
             // permutation
-            let mut alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
-            alphas.next();
-            alphas.next();
-            alphas.next();
+            let alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
+            alphas.for_each(drop);
 
             // poseidon gate
             let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Poseidon), 15);

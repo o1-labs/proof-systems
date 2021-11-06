@@ -15,7 +15,6 @@ use commitment_dlog::commitment::{
 use kimchi_circuits::{
     expr::{Column, Constants, PolishToken},
     gate::{GateType, LookupsUsed},
-    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
     nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
     wires::*,
 };
@@ -426,25 +425,26 @@ where
                 )];
 
                 // generic
-                commitments_part.push(&index.coefficients_comm[MUL_COEFF]);
-                commitments_part.extend(
-                    index
+                {
+                    let mut alpha_powers =
+                        all_alphas.take_alphas(ConstraintType::Gate(GateType::Generic));
+                    let generic_scalars = &ConstraintSystem::gnrc_scalars(
+                        &mut alpha_powers,
+                        &evals[0].w,
+                        evals[0].generic_selector,
+                    );
+
+                    let generic_com = index
                         .coefficients_comm
                         .iter()
-                        .take(GENERICS)
-                        .collect::<Vec<_>>(),
-                );
-                let mut alpha_powers =
-                    all_alphas.take_alphas(ConstraintType::Gate(GateType::Generic));
-                let (scalars, _) = &ConstraintSystem::gnrc_scalars(
-                    &mut alpha_powers,
-                    &evals[0].w,
-                    evals[0].generic_selector,
-                );
-                scalars_part.extend(scalars);
+                        .take(generic_scalars.len())
+                        .collect::<Vec<_>>();
 
-                commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
-                scalars_part.push(evals[0].generic_selector);
+                    assert_eq!(generic_scalars.len(), generic_com.len());
+
+                    scalars_part.extend(generic_scalars);
+                    commitments_part.extend(generic_com);
+                }
 
                 // other gates are implemented using the expression framework
                 {
