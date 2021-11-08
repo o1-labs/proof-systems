@@ -24,7 +24,7 @@
 
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, ops::Range, vec::IntoIter};
+use std::{collections::HashMap, ops::Range, thread, vec::IntoIter};
 
 use kimchi_circuits::gate::GateType;
 
@@ -156,8 +156,11 @@ impl<F: Field> Alphas<F> {
 impl<F> Drop for Alphas<F> {
     fn drop(&mut self) {
         if self.mapping.len() != 0 {
-            // don't panic because we might already be panicking
-            eprintln!("there are some constraints that haven't used their associated powers of alpha: {:?}", self.mapping.keys());
+            if thread::panicking() {
+                eprintln!("there are some constraints that haven't used their associated powers of alpha: {:?}", self.mapping.keys());
+            } else {
+                panic!("there are some constraints that haven't used their associated powers of alpha: {:?}", self.mapping.keys());
+            }
         }
     }
 }
@@ -189,11 +192,13 @@ where
 {
     fn drop(&mut self) {
         if let Some(v) = self.0.next() {
-            // don't panic because we might already be panicking
-            eprintln!(
-                "the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.1,
-                v
-            );
+            if thread::panicking() {
+                eprintln!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.1,
+                v);
+            } else {
+                panic!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.1,
+                v);
+            }
         }
     }
 }
