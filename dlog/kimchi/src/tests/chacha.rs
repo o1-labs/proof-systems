@@ -1,3 +1,4 @@
+use crate::{index::Index, prover::ProverProof};
 use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{
@@ -5,7 +6,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::wires::{Wire, COLUMNS};
 use kimchi_circuits::{
     gate::CircuitGate, nolookup::constraints::ConstraintSystem, polynomials::chacha,

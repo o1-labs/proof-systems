@@ -75,7 +75,7 @@ pub const ROUND_EQUATIONS: [RoundSpec; ROUNDS_PER_ROW] = [
 /// ...
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
-pub fn constraint<F: FftField + SquareRootField>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
+pub fn constraint<F: FftField + SquareRootField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let mut res = vec![];
     let mut cache = Cache::default();
 

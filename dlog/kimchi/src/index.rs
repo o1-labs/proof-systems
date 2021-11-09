@@ -257,51 +257,56 @@ where
                 h
             };
 
-            // generic gate
-            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Generic), 1);
-            alphas.next();
+            let mut expr: Expr<ConstantExpr<Fr<G>>> = 0.into();
 
+            //
             // permutation
-            let mut alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
-            alphas.next();
-            alphas.next();
-            alphas.next();
+            //
 
-            // poseidon gate
-            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Poseidon), 15);
-            let mut expr = poseidon::constraint(&mut alphas);
+            let mut _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
+            // (not using the expression framework)
 
-            // variable-base scalar multiplication
-            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Vbmul), 21);
-            expr += varbasemul::constraint(&mut alphas);
-
-            // EC addition
-            let mut alphas =
-                powers_of_alpha.register(ConstraintType::Gate(GateType::CompleteAdd), 7);
-            expr += complete_add::constraint(&mut alphas);
-
-            // endo scalar multiplication
-            let mut alphas = powers_of_alpha.register(ConstraintType::Gate(GateType::Endomul), 11);
-            expr += endosclmul::constraint(&mut alphas);
-
-            // scalar of endo scalar multiplication
-            let mut alphas =
-                powers_of_alpha.register(ConstraintType::Gate(GateType::EndomulScalar), 11);
-            expr += endomul_scalar::constraint(&mut alphas);
-
+            //
             // lookup
+            //
+
             if lookup_used.is_some() {
-                let mut alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
+                let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
                 let lookup_constraints =
                     lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1);
-                expr += Expr::combine_constraints(&mut alphas, lookup_constraints)
+                expr += Expr::combine_constraints(alphas, lookup_constraints)
             }
+
+            //
+            // gates
+            //
+
+            let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
+
+            // generic gate
+            // (not using the expression framework)
+
+            // poseidon gate
+            expr += poseidon::constraint(alphas.clone().take(15));
+
+            // variable-base scalar multiplication
+            expr += varbasemul::constraint(alphas.clone().take(21));
+
+            // EC addition
+            expr += complete_add::constraint(alphas.clone().take(7));
+
+            // endo scalar multiplication
+            expr += endosclmul::constraint(alphas.clone().take(11));
+
+            // scalar of endo scalar multiplication
+            expr += endomul_scalar::constraint(alphas.clone().take(11));
 
             // chacha
             if cs.chacha8.is_some() {
-                let mut alphas =
-                    powers_of_alpha.register(ConstraintType::Gate(GateType::ChaCha0), 24);
-                expr += chacha::constraint(&mut alphas)
+                expr += chacha::constraint_chacha0(alphas.clone().take(5));
+                expr += chacha::constraint_chacha1(alphas.clone().take(5));
+                expr += chacha::constraint_chacha2(alphas.clone().take(5));
+                expr += chacha::constraint_chacha_final(alphas.clone().take(9));
             }
 
             expr.linearize(evaluated_cols)

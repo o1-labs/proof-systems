@@ -36,7 +36,7 @@ use ark_ff::{Field, One};
 use CurrOrNext::*;
 
 /// The constraint for endoscaling.
-pub fn constraint<F: Field>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
+pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
 

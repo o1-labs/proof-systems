@@ -1,3 +1,4 @@
+mod chacha;
 mod ec;
 mod endomul_scalar;
 mod generic;

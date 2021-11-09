@@ -191,7 +191,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     VarbaseMulResult { acc, n: n_acc }
 }
 
-pub fn constraint<F: FftField>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
+pub fn constraint<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let Layout {
         base,
         accs,

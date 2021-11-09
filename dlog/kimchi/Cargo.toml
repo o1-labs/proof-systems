@@ -13,6 +13,7 @@ ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 array-init = "1.0.0"
 colored = "2.0.0"
+itertools = "0.10.1"
 rand = "0.8.0"
 rand_core = { version = "0.5" }
 rayon = "1.5.0"

@@ -246,7 +246,7 @@ where
             let zkp = index.zkpm.evaluate(&zeta);
             let zeta1m1 = zeta1 - &Fr::<G>::one();
 
-            let mut alpha_powers = all_alphas.get_alphas(ConstraintType::Permutation);
+            let mut alpha_powers = all_alphas.get_alphas(ConstraintType::Permutation, 3);
             let alpha0 = alpha_powers
                 .next()
                 .expect("missing power of alpha for permutation");
@@ -392,7 +392,7 @@ where
             let OraclesResult {
                 fq_sponge,
                 oracles,
-                mut all_alphas,
+                all_alphas,
                 p_eval,
                 powers_of_eval_points_for_chunks,
                 polys,
@@ -416,12 +416,12 @@ where
                 // permutation
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
                 let mut commitments_part = vec![&index.sigma_comm[PERMUTS - 1]];
-                let mut alpha_powers = all_alphas.take_alphas(ConstraintType::Permutation);
+                let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
                 let mut scalars_part = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     oracles.beta,
                     oracles.gamma,
-                    &mut alpha_powers,
+                    alphas,
                     zkp,
                 )];
 
@@ -434,13 +434,9 @@ where
                         .take(GENERICS)
                         .collect::<Vec<_>>(),
                 );
-                let mut alpha_powers =
-                    all_alphas.take_alphas(ConstraintType::Gate(GateType::Generic));
-                let (scalars, _) = &ConstraintSystem::gnrc_scalars(
-                    &mut alpha_powers,
-                    &evals[0].w,
-                    evals[0].generic_selector,
-                );
+                let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
+                let (scalars, _) =
+                    &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
                 scalars_part.extend(scalars);
 
                 commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
@@ -448,17 +444,6 @@ where
 
                 // other gates are implemented using the expression framework
                 {
-                    // Note: because we use the expression framework for these gates, we have to discard the stored powers of alpha.
-                    // This is to make sure that we're using these powers of alphas).
-                    // TODO: once all gates use the expression framework we won't need this anymore
-                    all_alphas.discard(ConstraintType::Gate(GateType::CompleteAdd));
-                    all_alphas.discard(ConstraintType::Gate(GateType::Vbmul));
-                    all_alphas.discard(ConstraintType::Gate(GateType::Endomul));
-                    all_alphas.discard(ConstraintType::Gate(GateType::EndomulScalar));
-                    all_alphas.discard(ConstraintType::Gate(GateType::Poseidon));
-                    all_alphas.discard(ConstraintType::Gate(GateType::ChaCha0));
-                    all_alphas.discard(ConstraintType::Lookup);
-
                     // TODO: Reuse constants from oracles function
                     let constants = Constants {
                         alpha: oracles.alpha,

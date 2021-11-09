@@ -113,7 +113,7 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-pub fn constraint<F: Field>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
+pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let curr_row = |c| E::cell(c, CurrOrNext::Curr);
     let witness_column = |i| curr_row(Column::Witness(i));
 

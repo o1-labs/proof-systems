@@ -26,7 +26,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
-        alphas: &mut impl Iterator<Item = F>,
+        mut alphas: impl Iterator<Item = F>,
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.l08.scale(gamma);
@@ -97,7 +97,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         zeta: F,
         beta: F,
         gamma: F,
-        alphas: &mut impl Iterator<Item = F>,
+        alphas: impl Iterator<Item = F>,
     ) -> DensePolynomial<F> {
         let zkpm_zeta = self.zkpm.evaluate(&zeta);
         let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
@@ -108,7 +108,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         e: &[ProofEvaluations<F>],
         beta: F,
         gamma: F,
-        alphas: &mut impl Iterator<Item = F>,
+        mut alphas: impl Iterator<Item = F>,
         zkp_zeta: F,
     ) -> F {
         let alpha0 = alphas

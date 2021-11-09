@@ -149,6 +149,7 @@ use crate::gate::{CurrOrNext, GateType};
 use ark_ff::{FftField, Field, Zero};
 use CurrOrNext::*;
 
+/// Implementation details
 struct Impl<F>(PhantomData<F>);
 
 impl<F> Impl<F>
@@ -183,7 +184,7 @@ where
     }
 
     /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-    fn line(alphas: &mut impl Iterator<Item = usize>, nybble_rotation: usize) -> E<F> {
+    fn line(alphas: impl Iterator<Item = usize>, nybble_rotation: usize) -> E<F> {
         let y_xor_xprime_nybbles = Self::chunks_over_2_rows(3);
         let x_plus_z_nybbles = Self::chunks_over_2_rows(7);
         let y_nybbles = Self::chunks_over_2_rows(11);
@@ -219,51 +220,55 @@ where
     }
 }
 
-pub fn constraint<F: FftField>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
-    let chacha_final = {
-        let y_xor_xprime_nybbles = Impl::chunks_over_2_rows(1);
-        let low_bits = Impl::chunks_over_2_rows(5);
-        let yprime = Impl::w(0, Curr);
-
-        let one_half = F::from(2u64).inverse().unwrap();
-
-        // (y xor xprime) <<< 7
-        // per the comment at the top of the file
-        let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
-            .iter()
-            .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
-            .map(|(&i, &j)| -> E<F> {
-                E::from(8) * low_bits[i].clone()
-                    + E::Constant(C::Literal(one_half))
-                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
-            })
-            .collect();
-
-        let mut constraints: Vec<E<F>> = low_bits.iter().map(Impl::boolean).collect();
-        constraints.push(Impl::combine_nybbles(y_xor_xprime_rotated) - yprime);
-        E::combine_constraints(&mut alphas.by_ref().take(9), constraints)
-    };
-
+/// a += b; d ^= a; d <<<= 16 (=4*4)
+pub fn constraint_chacha0<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let index = |g: GateType| E::cell(Column::Index(g), Curr);
-    use GateType::*;
-    vec![
-        // a += b; d ^= a; d <<<= 16 (=4*4);
-        index(ChaCha0) * Impl::line(&mut alphas.by_ref().take(5), 4),
-        // c += d; b ^= c; b <<<= 12 (=3*4);
-        index(ChaCha1) * Impl::line(&mut alphas.by_ref().take(5), 3),
-        // a += b; d ^= a; d <<<= 8  (=2*4);
-        index(ChaCha2) * Impl::line(&mut alphas.by_ref().take(5), 2),
-        // The last line, namely,
-        // c += d; b ^= c; b <<<= 7;
-        // is special.
-        // We don't use the y' value computed by this one, so we
-        // will use a ChaCha0 gate to compute the nybbles of
-        // all the relevant values, and the xors, and then do
-        // the shifting using a ChaChaFinal gate.
-        index(ChaChaFinal) * chacha_final,
-    ]
-    .into_iter()
-    .fold(0.into(), |acc, x| acc + x)
+    index(GateType::ChaCha0) * Impl::line(alphas, 4)
+}
+
+/// c += d; b ^= c; b <<<= 12 (=3*4)
+pub fn constraint_chacha1<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    let index = |g: GateType| E::cell(Column::Index(g), Curr);
+    index(GateType::ChaCha1) * Impl::line(alphas, 3)
+}
+
+/// a += b; d ^= a; d <<<= 8  (=2*4)
+pub fn constraint_chacha2<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    let index = |g: GateType| E::cell(Column::Index(g), Curr);
+    index(GateType::ChaCha2) * Impl::line(alphas, 2)
+}
+
+/// The last line, namely,
+/// c += d; b ^= c; b <<<= 7;
+/// is special.
+/// We don't use the y' value computed by this one, so we
+/// will use a ChaCha0 gate to compute the nybbles of
+/// all the relevant values, and the xors, and then do
+/// the shifting using a ChaChaFinal gate.
+pub fn constraint_chacha_final<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    let index = |g: GateType| E::cell(Column::Index(g), Curr);
+
+    let y_xor_xprime_nybbles = Impl::chunks_over_2_rows(1);
+    let low_bits = Impl::chunks_over_2_rows(5);
+    let yprime = Impl::w(0, Curr);
+
+    let one_half = F::from(2u64).inverse().unwrap();
+
+    // (y xor xprime) <<< 7
+    // per the comment at the top of the file
+    let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
+        .iter()
+        .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
+        .map(|(&i, &j)| -> E<F> {
+            E::from(8) * low_bits[i].clone()
+                + E::Constant(C::Literal(one_half))
+                    * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+        })
+        .collect();
+
+    let mut constraints: Vec<E<F>> = low_bits.iter().map(Impl::boolean).collect();
+    constraints.push(Impl::combine_nybbles(y_xor_xprime_rotated) - yprime);
+    E::combine_constraints(alphas, constraints) * index(GateType::ChaChaFinal)
 }
 
 // TODO: move this to test file
@@ -467,7 +472,6 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::polynomials::chacha::constraint;
     use crate::{
         expr::{Column, Constants, PolishToken},
         gate::LookupInfo,
@@ -519,8 +523,10 @@ mod tests {
             h.insert(Column::Index(GateType::Generic));
             h
         };
-        let mut powers = 0..24;
-        let expr = constraint(&mut powers);
+        let mut expr = constraint_chacha0(0..5);
+        expr += constraint_chacha1(0..5);
+        expr += constraint_chacha2(0..5);
+        expr += constraint_chacha_final(0..9);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

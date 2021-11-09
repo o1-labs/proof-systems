@@ -18,7 +18,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
-        alphas: &mut impl Iterator<Item = F>,
+        mut alphas: impl Iterator<Item = F>,
         witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
         // multiplication: left * right
@@ -74,7 +74,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// alpha * generic(zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[2](zeta)
     pub fn gnrc_scalars(
-        alphas: &mut impl Iterator<Item = F>,
+        mut alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
     ) -> (Vec<F>, F) {
@@ -97,7 +97,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(
         &self,
-        alphas: &mut impl Iterator<Item = F>,
+        alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
     ) -> DensePolynomial<F> {
