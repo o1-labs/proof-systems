@@ -29,7 +29,6 @@ jobs:
         run: |
           set -xe
           cargo bench -p kimchi -- proof_criterion --save-baseline master
-          cargo bench -p kimchi -- proof_iai > iai_baseline
             
       - name: Checkout PR
         uses: actions/checkout@v2
@@ -38,7 +37,6 @@ jobs:
         run: |
           set -xe
           cargo -q bench -p kimchi -- proof_criterion --baseline master > bench_result
-          cargo bench -p kimchi -- proof_iai > iai_feature
 
       - name: Write result in PR
         uses: actions/github-script@v5
@@ -48,8 +46,8 @@ jobs:
 
             // read the output file
             const criterion_result = fs.readFileSync("bench_result", {encoding:'utf8', flag:'r'});
-            const iai_baseline = fs.readFileSync("iai_baseline", {encoding:'utf8', flag:'r'});
-            const iai_feature = fs.readFileSync("iai_feature", {encoding:'utf8', flag:'r'});
+            const iai_baseline = "fs.readFileSync("iai_baseline", {encoding:'utf8', flag:'r'})";
+            const iai_feature = "fs.readFileSync("iai_feature", {encoding:'utf8', flag:'r'})";
 
             // form message
             const message = '👋 criterion benchmark result:\n' + criterion_result + '\n\n iai baseline result:\n' + iai_baseline + '\n\n iai feature result:\n' + iai_feature;
