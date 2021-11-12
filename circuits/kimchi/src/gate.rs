@@ -225,6 +225,7 @@ impl<F: FftField> LookupInfo<F> {
         let n = domain.d1.size as usize;
         let mut res: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
 
+        // TODO: is take(n) useful here? I don't see why we need this
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
@@ -237,6 +238,7 @@ impl<F: FftField> LookupInfo<F> {
         }
 
         // Actually, don't need to evaluate over domain 8 here.
+        // TODO: so why do it :D?
         res.into_iter()
             .map(|v| {
                 E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
@@ -270,6 +272,7 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
+    #[allow(clippy::type_complexity)]
     pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -277,15 +280,23 @@ impl GateType {
         };
         let chacha_pattern = (0..4)
             .map(|i| {
-                let op1 = curr_row(3 + i);
-                let op2 = curr_row(7 + i);
-                let res = curr_row(11 + i);
+                // each row represents an XOR operation
+                // where l XOR r = o
+                //
+                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                // - - - l - - - r - - -  o  -  -  -
+                // - - - - l - - - r - -  -  o  -  -
+                // - - - - - l - - - r -  -  -  o  -
+                // - - - - - - l - - - r  -  -  -  o
+                let left = curr_row(3 + i);
+                let right = curr_row(7 + i);
+                let output = curr_row(11 + i);
                 let l = |loc: LocalPosition| SingleLookup {
                     table_id: 0,
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    entry: vec![l(op1), l(op2), l(res)],
+                    entry: vec![l(left), l(right), l(output)],
                 }
             })
             .collect();

@@ -184,6 +184,7 @@ where
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
 
         let joint_combiner_ = {
+            // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
             let s = match lookup_used.as_ref() {
                 None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
                 Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
@@ -191,6 +192,7 @@ where
             (s, s.to_field(&index.srs.endo_r))
         };
 
+        // TODO: that seems like an unecessary line
         let joint_combiner: Fr<G> = joint_combiner_.1;
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is

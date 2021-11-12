@@ -1,6 +1,8 @@
+use crate::domains::EvaluationDomains;
 use crate::gate::{CurrOrNext, GateType};
 use crate::nolookup::constraints::eval_vanishes_on_last_4_rows;
 use crate::nolookup::scalars::ProofEvaluations;
+use crate::wires::COLUMNS;
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -12,9 +14,6 @@ use std::fmt;
 use std::iter::FromIterator;
 use std::ops::{Add, Mul, Neg, Sub};
 use CurrOrNext::*;
-
-use crate::domains::EvaluationDomains;
-use crate::wires::COLUMNS;
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
@@ -658,8 +657,8 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             (
                 SubEvals {
                     evals,
-                    domain: d,
-                    shift: s,
+                    domain,
+                    shift,
                 },
                 Constant(x),
             )
@@ -667,16 +666,18 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 Constant(x),
                 SubEvals {
                     evals,
-                    domain: d,
-                    shift: s,
+                    domain,
+                    shift,
                 },
             ) => {
                 let n = res_domain.1.size as usize;
-                let scale = (d as usize) / (res_domain.0 as usize);
+                let scale = (domain as usize) / (res_domain.0 as usize);
                 assert!(scale != 0);
                 let v: Vec<_> = (0..n)
                     .into_par_iter()
-                    .map(|i| x + evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()])
+                    .map(|i| {
+                        x + evals.evals[(scale * i + (domain as usize) * shift) % evals.evals.len()]
+                    })
                     .collect();
                 Evals {
                     domain: res_domain.0,

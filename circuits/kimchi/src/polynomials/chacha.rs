@@ -148,15 +148,15 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
     // XOR for all possible four-bit arguments.
     // I suppose this could be computed a bit faster using symmetry but it's quite
     // small (16*16 = 256 entries) so let's just keep it simple.
-    for i in 0u32..0b10000 {
-        for j in 0u32..0b10000 {
+    for i in 0u32..=0b1111 {
+        for j in 0u32..=0b1111 {
             res[0].push(F::from(i));
             res[1].push(F::from(j));
             res[2].push(F::from(i ^ j));
         }
     }
 
-    for r in res.iter_mut().take(3) {
+    for r in &mut res {
         r.reverse();
         // Just to be safe.
         assert!(r[r.len() - 1].is_zero());

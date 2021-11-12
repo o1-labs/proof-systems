@@ -39,7 +39,8 @@ jobs:
           rustup component add clippy
           cargo clippy \
             -p groupmap \
+            -p kimchi-circuits \
             -p mina-curves \
-            -p ocaml-gen \
             -p o1-utils \
-            -p oracle
+            -p oracle \
+            -p ocaml-gen 
