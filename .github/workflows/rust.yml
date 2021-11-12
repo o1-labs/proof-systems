@@ -38,6 +38,7 @@ jobs:
         run: |
           rustup component add clippy
           cargo clippy \
+            -p commitment_dlog \
             -p groupmap \
             -p kimchi-circuits \
             -p mina-curves \

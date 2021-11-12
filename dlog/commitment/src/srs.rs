@@ -47,17 +47,17 @@ where
         let potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
         let t = G::prime_subgroup_generator();
         let (x, y) = t.to_coordinates().unwrap();
-        let phi_t = G::of_coordinates(x * &endo_q, y);
+        let phi_t = G::of_coordinates(x * endo_q, y);
         if t.mul(potential_endo_r) == phi_t.into_projective() {
             potential_endo_r
         } else {
-            potential_endo_r * &potential_endo_r
+            potential_endo_r * potential_endo_r
         }
     };
     (endo_q, endo_r)
 }
 
-fn point_of_random_bytes<G: CommitmentCurve>(m: &G::Map, random_bytes: &[u8]) -> G
+fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
 where
     G::BaseField: PrimeField,
     G::ScalarField: CommitmentField,
@@ -73,7 +73,7 @@ where
 
     let n = <G::BaseField as PrimeField>::BigInt::from_bits_be(&bits);
     let t = G::BaseField::from_repr(n).expect("packing code has a bug");
-    let (x, y) = m.to_group(t);
+    let (x, y) = map.to_group(t);
     G::of_coordinates(x, y)
 }
 

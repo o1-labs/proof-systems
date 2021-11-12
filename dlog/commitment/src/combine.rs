@@ -6,13 +6,13 @@ use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use rayon::prelude::*;
 
-fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
-    let len = if p.len() % 2 == 0 {
-        p.len()
+fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
+    let len = if pairs.len() % 2 == 0 {
+        pairs.len()
     } else {
-        p.len() - 1
+        pairs.len() - 1
     };
-    let mut denominators = p
+    let mut denominators = pairs
         .chunks_exact_mut(2)
         .map(|p| {
             if p[0].x == p[1].x {
@@ -22,7 +22,7 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
                     p[1].y.double()
                 }
             } else {
-                p[0].x - &p[1].x
+                p[0].x - p[1].x
             }
         })
         .collect::<Vec<_>>();
@@ -31,34 +31,36 @@ fn add_pairs_in_place<P: SWModelParameters>(p: &mut Vec<SWJAffine<P>>) {
 
     for (i, d) in (0..len).step_by(2).zip(denominators.iter()) {
         let j = i / 2;
-        if p[i + 1].is_zero() {
-            p[j] = p[i];
-        } else if p[i].is_zero() {
-            p[j] = p[i + 1];
-        } else if p[i + 1].x == p[i].x && (p[i + 1].y != p[i].y || p[i + 1].y.is_zero()) {
-            p[j] = SWJAffine::<P>::zero();
-        } else if p[i + 1].x == p[i].x && p[i + 1].y == p[i].y {
-            let sq = p[i].x.square();
-            let s = (sq.double() + &sq + &P::COEFF_A) * d;
-            let x = s.square() - &p[i].x.double();
-            let y = -p[i].y - &(s * &(x - &p[i].x));
-            p[j].x = x;
-            p[j].y = y;
+        if pairs[i + 1].is_zero() {
+            pairs[j] = pairs[i];
+        } else if pairs[i].is_zero() {
+            pairs[j] = pairs[i + 1];
+        } else if pairs[i + 1].x == pairs[i].x
+            && (pairs[i + 1].y != pairs[i].y || pairs[i + 1].y.is_zero())
+        {
+            pairs[j] = SWJAffine::<P>::zero();
+        } else if pairs[i + 1].x == pairs[i].x && pairs[i + 1].y == pairs[i].y {
+            let sq = pairs[i].x.square();
+            let s = (sq.double() + sq + P::COEFF_A) * d;
+            let x = s.square() - pairs[i].x.double();
+            let y = -pairs[i].y - (s * (x - pairs[i].x));
+            pairs[j].x = x;
+            pairs[j].y = y;
         } else {
-            let s = (p[i].y - &p[i + 1].y) * d;
-            let x = s.square() - &p[i].x - &p[i + 1].x;
-            let y = -p[i].y - &(s * &(x - &p[i].x));
-            p[j].x = x;
-            p[j].y = y;
+            let s = (pairs[i].y - pairs[i + 1].y) * d;
+            let x = s.square() - pairs[i].x - pairs[i + 1].x;
+            let y = -pairs[i].y - (s * (x - pairs[i].x));
+            pairs[j].x = x;
+            pairs[j].y = y;
         }
     }
 
-    let len = p.len();
+    let len = pairs.len();
     if len % 2 == 1 {
-        p[len / 2] = p[len - 1];
-        p.truncate(len / 2 + 1);
+        pairs[len / 2] = pairs[len - 1];
+        pairs.truncate(len / 2 + 1);
     } else {
-        p.truncate(len / 2);
+        pairs.truncate(len / 2);
     }
 }
 
@@ -79,7 +81,7 @@ fn batch_add_assign<P: SWModelParameters>(
                 p1.y.double()
             }
         } else {
-            p0.x - &p1.x
+            p0.x - p1.x
         };
         denominators[i] = d;
     }
@@ -97,15 +99,15 @@ fn batch_add_assign<P: SWModelParameters>(
             v0[i] = SWJAffine::<P>::zero();
         } else if p1.x == p0.x && p1.y == p0.y {
             let sq = p0.x.square();
-            let s = (sq.double() + &sq + &P::COEFF_A) * d;
-            let x = s.square() - &p0.x.double();
-            let y = -p0.y - &(s * &(x - &p0.x));
+            let s = (sq.double() + sq + P::COEFF_A) * d;
+            let x = s.square() - p0.x.double();
+            let y = -p0.y - (s * (x - p0.x));
             v0[i].x = x;
             v0[i].y = y;
         } else {
-            let s = (p0.y - &p1.y) * d;
-            let x = s.square() - &p0.x - &p1.x;
-            let y = -p0.y - &(s * &(x - &p0.x));
+            let s = (p0.y - p1.y) * d;
+            let x = s.square() - p0.x - p1.x;
+            let y = -p0.y - (s * (x - p0.x));
             v0[i].x = x;
             v0[i].y = y;
         }
@@ -180,10 +182,8 @@ fn affine_window_combine_base<P: SWModelParameters>(
     x1: P::ScalarField,
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
-    let n = g1.len();
-
     let g1g2 = {
-        let mut v: Vec<_> = (0..2 * n)
+        let mut v: Vec<_> = (0..2 * g1.len())
             .map(|i| {
                 let j = i / 2;
                 if i % 2 == 0 {
@@ -196,14 +196,14 @@ fn affine_window_combine_base<P: SWModelParameters>(
         add_pairs_in_place(&mut v);
         v
     };
-    assert!(g1g2.len() == n);
+    assert!(g1g2.len() == g1.len());
 
     let windows1 = BitIteratorBE::new(x1.into_repr()).tuples();
     let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
-    let mut p = vec![SWJAffine::<P>::zero(); n];
+    let mut points = vec![SWJAffine::<P>::zero(); g1.len()];
 
-    let mut denominators = vec![P::BaseField::zero(); n];
+    let mut denominators = vec![P::BaseField::zero(); g1.len()];
 
     let [g01_00, g10_00, g11_00, g00_01, g01_01, g10_01, g11_01, g00_10, g01_10, g10_10, g11_10, g00_11, g01_11, g10_11, g11_11] =
         affine_shamir_window_table(&mut denominators, g1, g2);
@@ -211,46 +211,76 @@ fn affine_window_combine_base<P: SWModelParameters>(
     for ((hi_1, lo_1), (hi_2, lo_2)) in windows1.zip(windows2) {
         // double in place
         for _ in 0..2 {
-            for i in 0..n {
-                denominators[i] = p[i].y.double();
+            for i in 0..g1.len() {
+                denominators[i] = points[i].y.double();
             }
             ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
-            for i in 0..n {
+            for i in 0..g1.len() {
                 let d = denominators[i];
-                let sq = p[i].x.square();
-                let s = (sq.double() + &sq + &P::COEFF_A) * &d;
-                let x = s.square() - &p[i].x.double();
-                let y = -p[i].y - &(s * &(x - &p[i].x));
-                p[i].x = x;
-                p[i].y = y;
+                let sq = points[i].x.square();
+                let s = (sq.double() + sq + P::COEFF_A) * d;
+                let x = s.square() - points[i].x.double();
+                let y = -points[i].y - (s * (x - points[i].x));
+                points[i].x = x;
+                points[i].y = y;
             }
         }
 
         match ((hi_1, lo_1), (hi_2, lo_2)) {
             ((false, false), (false, false)) => (),
-            ((false, true), (false, false)) => batch_add_assign(&mut denominators, &mut p, &g01_00),
-            ((true, false), (false, false)) => batch_add_assign(&mut denominators, &mut p, &g10_00),
-            ((true, true), (false, false)) => batch_add_assign(&mut denominators, &mut p, &g11_00),
+            ((false, true), (false, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g01_00)
+            }
+            ((true, false), (false, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g10_00)
+            }
+            ((true, true), (false, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g11_00)
+            }
 
-            ((false, false), (false, true)) => batch_add_assign(&mut denominators, &mut p, &g00_01),
-            ((false, true), (false, true)) => batch_add_assign(&mut denominators, &mut p, &g01_01),
-            ((true, false), (false, true)) => batch_add_assign(&mut denominators, &mut p, &g10_01),
-            ((true, true), (false, true)) => batch_add_assign(&mut denominators, &mut p, &g11_01),
+            ((false, false), (false, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g00_01)
+            }
+            ((false, true), (false, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g01_01)
+            }
+            ((true, false), (false, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g10_01)
+            }
+            ((true, true), (false, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g11_01)
+            }
 
-            ((false, false), (true, false)) => batch_add_assign(&mut denominators, &mut p, &g00_10),
-            ((false, true), (true, false)) => batch_add_assign(&mut denominators, &mut p, &g01_10),
-            ((true, false), (true, false)) => batch_add_assign(&mut denominators, &mut p, &g10_10),
-            ((true, true), (true, false)) => batch_add_assign(&mut denominators, &mut p, &g11_10),
+            ((false, false), (true, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g00_10)
+            }
+            ((false, true), (true, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g01_10)
+            }
+            ((true, false), (true, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g10_10)
+            }
+            ((true, true), (true, false)) => {
+                batch_add_assign(&mut denominators, &mut points, &g11_10)
+            }
 
-            ((false, false), (true, true)) => batch_add_assign(&mut denominators, &mut p, &g00_11),
-            ((false, true), (true, true)) => batch_add_assign(&mut denominators, &mut p, &g01_11),
-            ((true, false), (true, true)) => batch_add_assign(&mut denominators, &mut p, &g10_11),
-            ((true, true), (true, true)) => batch_add_assign(&mut denominators, &mut p, &g11_11),
+            ((false, false), (true, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g00_11)
+            }
+            ((false, true), (true, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g01_11)
+            }
+            ((true, false), (true, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g10_11)
+            }
+            ((true, true), (true, true)) => {
+                batch_add_assign(&mut denominators, &mut points, &g11_11)
+            }
         }
     }
-    p
+    points
 }
 
 fn affine_window_combine_one_base<P: SWModelParameters>(
@@ -258,53 +288,51 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
     g2: &[SWJAffine<P>],
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
-    let n = g1.len();
-
     let windows2 = BitIteratorBE::new(x2.into_repr()).tuples();
 
-    let mut p = vec![SWJAffine::<P>::zero(); n];
+    let mut points = vec![SWJAffine::<P>::zero(); g1.len()];
 
-    let mut denominators = vec![P::BaseField::zero(); n];
+    let mut denominators = vec![P::BaseField::zero(); g1.len()];
 
     let [g01, g10, g11] = affine_shamir_window_table_one(&mut denominators, g2);
 
     for (hi_2, lo_2) in windows2 {
         // double in place
         for _ in 0..2 {
-            for i in 0..n {
-                denominators[i] = p[i].y.double();
+            for i in 0..g1.len() {
+                denominators[i] = points[i].y.double();
             }
             ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
 
             // TODO: Use less memory
-            for i in 0..n {
+            for i in 0..g1.len() {
                 let d = denominators[i];
-                let sq = p[i].x.square();
-                let s = (sq.double() + &sq + &P::COEFF_A) * &d;
-                let x = s.square() - &p[i].x.double();
-                let y = -p[i].y - &(s * &(x - &p[i].x));
-                p[i].x = x;
-                p[i].y = y;
+                let sq = points[i].x.square();
+                let s = (sq.double() + sq + P::COEFF_A) * d;
+                let x = s.square() - points[i].x.double();
+                let y = -points[i].y - (s * (x - points[i].x));
+                points[i].x = x;
+                points[i].y = y;
             }
         }
 
         match (hi_2, lo_2) {
             (false, false) => (),
-            (false, true) => batch_add_assign(&mut denominators, &mut p, &g01),
-            (true, false) => batch_add_assign(&mut denominators, &mut p, &g10),
-            (true, true) => batch_add_assign(&mut denominators, &mut p, &g11),
+            (false, true) => batch_add_assign(&mut denominators, &mut points, &g01),
+            (true, false) => batch_add_assign(&mut denominators, &mut points, &g10),
+            (true, true) => batch_add_assign(&mut denominators, &mut points, &g11),
         }
     }
 
-    batch_add_assign(&mut denominators, &mut p, g1);
+    batch_add_assign(&mut denominators, &mut points, g1);
 
-    p
+    points
 }
 
 #[cfg(test)]
 fn affine_combine<P: SWModelParameters>(
-    g1: &Vec<SWJAffine<P>>,
-    g2: &Vec<SWJAffine<P>>,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
     x1: P::ScalarField,
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
@@ -318,8 +346,8 @@ fn affine_combine<P: SWModelParameters>(
 }
 
 pub fn affine_window_combine<P: SWModelParameters>(
-    g1: &Vec<SWJAffine<P>>,
-    g2: &Vec<SWJAffine<P>>,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
     x1: P::ScalarField,
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
@@ -333,8 +361,8 @@ pub fn affine_window_combine<P: SWModelParameters>(
 }
 
 pub fn affine_window_combine_one<P: SWModelParameters>(
-    g1: &Vec<SWJAffine<P>>,
-    g2: &Vec<SWJAffine<P>>,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
     x2: P::ScalarField,
 ) -> Vec<SWJAffine<P>> {
     const CHUNK_SIZE: usize = 10_000;
@@ -365,8 +393,8 @@ fn combine<G: AffineCurve>(
 }
 
 pub fn window_combine<G: AffineCurve>(
-    g_lo: &Vec<G>,
-    g_hi: &Vec<G>,
+    g_lo: &[G],
+    g_hi: &[G],
     x_lo: G::ScalarField,
     x_hi: G::ScalarField,
 ) -> Vec<G> {
@@ -418,9 +446,7 @@ pub fn affine_shamir_window_table<P: SWModelParameters>(
 ) -> [Vec<SWJAffine<P>>; 15] {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
-        for i in 0..n {
-            dst[i] = src[i]
-        }
+        dst[..n].clone_from_slice(&src[..n]);
     }
 
     let n = g1.len();
@@ -498,9 +524,7 @@ pub fn affine_shamir_window_table_one<P: SWModelParameters>(
 ) -> [Vec<SWJAffine<P>>; 3] {
     fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
         let n = dst.len();
-        for i in 0..n {
-            dst[i] = src[i]
-        }
+        dst[..n].clone_from_slice(&src[..n]);
     }
 
     let n = g1.len();
