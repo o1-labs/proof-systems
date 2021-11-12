@@ -27,18 +27,10 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// creates an addition gate
-    pub fn create_generic_add(row: usize, wires: GateWires) -> Self {
+    pub fn create_generic_add(row: usize, wires: GateWires, left_coeff: F, right_coeff: F) -> Self {
         let on = F::one();
         let off = F::zero();
-        let qw: [F; GENERICS] = array_init(|col| {
-            if col < 2 {
-                on
-            } else if col == 2 {
-                -on
-            } else {
-                off
-            }
-        });
+        let qw: [F; GENERICS] = [left_coeff, right_coeff, -on];
         Self::create_generic(row, wires, qw, off, off)
     }
 
@@ -46,8 +38,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_generic_mul(row: usize, wires: GateWires) -> Self {
         let on = F::one();
         let off = F::zero();
-        let qw: [F; GENERICS] = array_init(|col| if col == 2 { on } else { off });
-        Self::create_generic(row, wires, qw, -on, off)
+        let qw: [F; GENERICS] = [off, off, -on];
+        Self::create_generic(row, wires, qw, on, off)
     }
 
     /// creates a constant gate
@@ -94,7 +86,7 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(
             zero,
             sum + mul + constant_selector,
-            "generic: incorrect sum"
+            "generic: incorrect sum or mul"
         );
 
         // TODO(mimoo): additional checks:
