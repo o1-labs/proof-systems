@@ -336,6 +336,8 @@
 <span id="336">336</span>
 <span id="337">337</span>
 <span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::expr</span>::{<span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">E</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">nolookup::constraints::ConstraintSystem</span>, <span class="ident">wires::COLUMNS</span>};
@@ -464,7 +466,7 @@
 
     <span class="kw">let</span> <span class="ident">xs</span>: [<span class="kw">_</span>; <span class="number">8</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness_column</span>(<span class="number">6</span> <span class="op">+</span> <span class="ident">i</span>));
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
 
     <span class="kw">let</span> <span class="ident">c_coeffs</span> <span class="op">=</span> [
         <span class="ident">F::zero</span>(),
@@ -562,30 +564,32 @@
 }
 
 <span class="kw">fn</span> <span class="ident">c_func</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">0u64</span>) {
-        <span class="ident">F::zero</span>()
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">1u64</span>) {
-        <span class="ident">F::zero</span>()
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">2u64</span>) {
-        <span class="op">-</span><span class="ident">F::one</span>()
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">3u64</span>) {
-        <span class="ident">F::one</span>()
-    } <span class="kw">else</span> {
-        <span class="macro">panic!</span>(<span class="string">&quot;c_func&quot;</span>)
+    <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
+    <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
+    <span class="kw">let</span> <span class="ident">two</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>);
+    <span class="kw">let</span> <span class="ident">three</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">3u64</span>);
+
+    <span class="kw">match</span> <span class="ident">x</span> {
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">is_zero</span>() =&gt; <span class="ident">zero</span>,
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">one</span> =&gt; <span class="ident">zero</span>,
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">two</span> =&gt; <span class="op">-</span><span class="ident">one</span>,
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">three</span> =&gt; <span class="ident">one</span>,
+        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;c_func&quot;</span>),
     }
 }
 
 <span class="kw">fn</span> <span class="ident">d_func</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">0u64</span>) {
-        <span class="op">-</span><span class="ident">F::one</span>()
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">1u64</span>) {
-        <span class="ident">F::one</span>()
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">2u64</span>) {
-        <span class="ident">F::zero</span>()
-    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">F::from</span>(<span class="number">3u64</span>) {
-        <span class="ident">F::zero</span>()
-    } <span class="kw">else</span> {
-        <span class="macro">panic!</span>(<span class="string">&quot;c_func&quot;</span>)
+    <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
+    <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="ident">F::one</span>();
+    <span class="kw">let</span> <span class="ident">two</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>);
+    <span class="kw">let</span> <span class="ident">three</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">3u64</span>);
+
+    <span class="kw">match</span> <span class="ident">x</span> {
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span>.<span class="ident">is_zero</span>() =&gt; <span class="op">-</span><span class="ident">one</span>,
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">one</span> =&gt; <span class="ident">one</span>,
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">two</span> =&gt; <span class="ident">zero</span>,
+        <span class="ident">x</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">three</span> =&gt; <span class="ident">zero</span>,
+        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;d_func&quot;</span>),
     }
 }
 

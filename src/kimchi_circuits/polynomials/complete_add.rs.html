@@ -303,7 +303,7 @@
     <span class="comment">// This variable is used to constrain same_x</span>
     <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">10</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
 
     <span class="kw">let</span> <span class="ident">x21</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">x2</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">x1</span>.<span class="ident">clone</span>());
     <span class="kw">let</span> <span class="ident">y21</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">y2</span> <span class="op">-</span> <span class="ident">y1</span>.<span class="ident">clone</span>());

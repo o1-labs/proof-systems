@@ -575,7 +575,6 @@
 <span id="575">575</span>
 <span id="576">576</span>
 <span id="577">577</span>
-<span id="578">578</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -744,7 +743,7 @@ This source file implements Plonk constraint gate primitive.
         .<span class="ident">collect</span>()
 }
 
-<span class="kw">fn</span> <span class="ident">max_lookups_per_row</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">kinds</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">usize</span> {
+<span class="kw">fn</span> <span class="ident">max_lookups_per_row</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">kinds</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>]) -&gt; <span class="ident">usize</span> {
     <span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">x</span>.<span class="ident">len</span>(), <span class="ident">acc</span>))
 }
 
@@ -775,7 +774,7 @@ This source file implements Plonk constraint gate primitive.
     }
 
     <span class="doccomment">/// Check what kind of lookups, if any, are used by this circuit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupsUsed</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupsUsed</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookups_used</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">gates</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">g</span>.<span class="ident">typ</span>;
@@ -795,16 +794,16 @@ This source file implements Plonk constraint gate primitive.
 
     <span class="doccomment">/// Each entry in `kinds` has a corresponding selector polynomial that controls whether that</span>
     <span class="doccomment">/// lookup kind should be enforced at a given row. This computes those selector polynomials.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">selector_polynomials</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-        <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>,
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">selector_polynomials</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">domain</span>: <span class="ident">EvaluationDomains</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
-        <span class="ident">gates</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>],
     ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">n</span>]).<span class="ident">collect</span>();
 
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">n</span> {
-            <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">gates</span>[<span class="ident">i</span>].<span class="ident">typ</span>;
+        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">take</span>(<span class="ident">n</span>) {
+            <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">gate</span>.<span class="ident">typ</span>;
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">typ</span>, <span class="ident">CurrOrNext::Curr</span>)) {
                 <span class="ident">res</span>[<span class="kw-2">*</span><span class="ident">v</span>][<span class="ident">i</span>] <span class="op">=</span> <span class="ident">F::one</span>();
@@ -825,7 +824,7 @@ This source file implements Plonk constraint gate primitive.
     }
 
     <span class="doccomment">/// For each row in the circuit, which lookup-constraints should be enforced at that row.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">by_row</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">by_row</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">gates</span>: <span class="kw-2">&amp;</span>[<span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">kinds</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">empty</span>; <span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>];
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">gates</span>.<span class="ident">len</span>() {
             <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">gates</span>[<span class="ident">i</span>].<span class="ident">typ</span>;
@@ -1104,7 +1103,6 @@ This source file implements Plonk constraint gate primitive.
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
     <span class="kw">use</span> <span class="ident">proptest::prelude</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">rand::SeedableRng</span> <span class="kw">as</span> <span class="kw">_</span>;
-    <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
     <span class="comment">// TODO: move to mina-curves</span>
     <span class="macro">prop_compose!</span> {

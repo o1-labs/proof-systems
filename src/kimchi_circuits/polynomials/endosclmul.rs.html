@@ -271,7 +271,7 @@
     <span class="kw">let</span> <span class="ident">xr</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">7</span>);
     <span class="kw">let</span> <span class="ident">yr</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">8</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::new</span>();
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
 
     <span class="kw">let</span> <span class="ident">s1</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">9</span>);
     <span class="kw">let</span> <span class="ident">s3</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">10</span>);
@@ -339,7 +339,7 @@
     <span class="ident">row0</span>: <span class="ident">usize</span>,
     <span class="ident">endo</span>: <span class="ident">F</span>,
     <span class="ident">base</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
-    <span class="ident">bits</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+    <span class="ident">bits</span>: <span class="kw-2">&amp;</span>[<span class="ident">bool</span>],
     <span class="ident">acc0</span>: (<span class="ident">F</span>, <span class="ident">F</span>),
 ) -&gt; <span class="ident">EndoMulResult</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">bits_per_row</span> <span class="op">=</span> <span class="number">4</span>;

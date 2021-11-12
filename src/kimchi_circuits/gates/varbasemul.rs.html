@@ -511,122 +511,122 @@ The constraints above are derived from the following EC Affine arithmetic equati
         <span class="comment">// (xp - xt) * s1 = yp – (2*b1-1)*yt</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xp</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">s1</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yp</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="ident">yt</span> <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">b1</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">one</span>)),
+            (<span class="ident">xp</span> <span class="op">-</span> <span class="ident">xt</span>) <span class="op">*</span> <span class="ident">s1</span> <span class="op">-</span> <span class="ident">yp</span> <span class="op">+</span> (<span class="ident">yt</span> <span class="op">*</span> (<span class="ident">b1</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>)),
             <span class="string">&quot;eq 6 wrong&quot;</span>
         );
 
         <span class="comment">// s1^2 - s2^2 = xt - xr</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">s1</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">s2</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xr</span>, <span class="string">&quot;eq 7 wrong&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">s1</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">s2</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xt</span> <span class="op">+</span> <span class="ident">xr</span>, <span class="string">&quot;eq 7 wrong&quot;</span>);
 
         <span class="comment">// (2*xp + xt – s1^2) * (s1 + s2) = 2*yp</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xp</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">s1</span>.<span class="ident">square</span>()) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">s1</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">s2</span>) <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yp</span>.<span class="ident">double</span>(),
+            (<span class="ident">xp</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">xt</span> <span class="op">-</span> <span class="ident">s1</span>.<span class="ident">square</span>()) <span class="op">*</span> (<span class="ident">s1</span> <span class="op">+</span> <span class="ident">s2</span>) <span class="op">-</span> <span class="ident">yp</span>.<span class="ident">double</span>(),
             <span class="string">&quot;eq 8 wrong&quot;</span>
         );
 
         <span class="comment">// (xp – xr) * s2 = yr + yp</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, (<span class="ident">xp</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xr</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">s2</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yr</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yp</span>, <span class="string">&quot;eq 9 wrong&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, (<span class="ident">xp</span> <span class="op">-</span> <span class="ident">xr</span>) <span class="op">*</span> <span class="ident">s2</span> <span class="op">-</span> <span class="ident">yr</span> <span class="op">-</span> <span class="ident">yp</span>, <span class="string">&quot;eq 9 wrong&quot;</span>);
 
         <span class="comment">// (xr - xt) * s3 = yr – (2b2-1)*yt</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xr</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">s3</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yr</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="ident">yt</span> <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">b2</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">one</span>)),
+            (<span class="ident">xr</span> <span class="op">-</span> <span class="ident">xt</span>) <span class="op">*</span> <span class="ident">s3</span> <span class="op">-</span> <span class="ident">yr</span> <span class="op">+</span> (<span class="ident">yt</span> <span class="op">*</span> (<span class="ident">b2</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>)),
             <span class="string">&quot;eq 10 wrong&quot;</span>
         );
 
         <span class="comment">// S3^2 – s4^2 = xt - xs</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">s3</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">s4</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xs</span>, <span class="string">&quot;eq 11 wrong&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, <span class="ident">s3</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">s4</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xt</span> <span class="op">+</span> <span class="ident">xs</span>, <span class="string">&quot;eq 11 wrong&quot;</span>);
 
         <span class="comment">// (2*xr + xt – s3^2) * (s3 + s4) = 2*yr</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xr</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">s3</span>.<span class="ident">square</span>()) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">s3</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">s4</span>) <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yr</span>.<span class="ident">double</span>(),
+            (<span class="ident">xr</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">xt</span> <span class="op">-</span> <span class="ident">s3</span>.<span class="ident">square</span>()) <span class="op">*</span> (<span class="ident">s3</span> <span class="op">+</span> <span class="ident">s4</span>) <span class="op">-</span> <span class="ident">yr</span>.<span class="ident">double</span>(),
             <span class="string">&quot;eq 12 wrong&quot;</span>
         );
 
         <span class="comment">// (xr – xs) * s4 = ys + yr</span>
-        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, (<span class="ident">xr</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xs</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">s4</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">ys</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">yr</span>, <span class="string">&quot;eq 13 wrong&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">zero</span>, (<span class="ident">xr</span> <span class="op">-</span> <span class="ident">xs</span>) <span class="op">*</span> <span class="ident">s4</span> <span class="op">-</span> <span class="ident">ys</span> <span class="op">-</span> <span class="ident">yr</span>, <span class="string">&quot;eq 13 wrong&quot;</span>);
 
         <span class="comment">// (xt - xp) * s1 = (2b1-1)*yt - yp</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xt</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xp</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_s1</span> <span class="op">-</span> (<span class="ident">next_b1</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">one</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">yt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yp</span>,
+            (<span class="ident">xt</span> <span class="op">-</span> <span class="ident">next_xp</span>) <span class="op">*</span> <span class="ident">next_s1</span> <span class="op">-</span> (<span class="ident">next_b1</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span> <span class="op">+</span> <span class="ident">next_yp</span>,
             <span class="string">&quot;eq 14 wrong&quot;</span>
         );
 
         <span class="comment">// (2*xp – s1^2 + xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">next_xp</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_s1</span>.<span class="ident">square</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xt</span>)
-                <span class="op">*</span> <span class="kw-2">&amp;</span>((<span class="ident">next_xp</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xr</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_s1</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yr</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yp</span>)
-                <span class="op">-</span> (<span class="ident">next_xp</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xr</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_yp</span>.<span class="ident">double</span>(),
+            (<span class="ident">next_xp</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">next_s1</span>.<span class="ident">square</span>() <span class="op">+</span> <span class="ident">xt</span>)
+                <span class="op">*</span> ((<span class="ident">next_xp</span> <span class="op">-</span> <span class="ident">next_xr</span>) <span class="op">*</span> <span class="ident">next_s1</span> <span class="op">+</span> <span class="ident">next_yr</span> <span class="op">+</span> <span class="ident">next_yp</span>)
+                <span class="op">-</span> (<span class="ident">next_xp</span> <span class="op">-</span> <span class="ident">next_xr</span>) <span class="op">*</span> <span class="ident">next_yp</span>.<span class="ident">double</span>(),
             <span class="string">&quot;eq 15 wrong&quot;</span>
         );
 
         <span class="comment">// (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xt + xr)</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">next_yr</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yp</span>).<span class="ident">square</span>()
-                <span class="op">-</span> (<span class="ident">next_xp</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xr</span>).<span class="ident">square</span>() <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">next_s1</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_xr</span>),
+            (<span class="ident">next_yr</span> <span class="op">+</span> <span class="ident">next_yp</span>).<span class="ident">square</span>()
+                <span class="op">-</span> (<span class="ident">next_xp</span> <span class="op">-</span> <span class="ident">next_xr</span>).<span class="ident">square</span>() <span class="op">*</span> (<span class="ident">next_s1</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xt</span> <span class="op">+</span> <span class="ident">next_xr</span>),
             <span class="string">&quot;eq 16 wrong&quot;</span>
         );
 
         <span class="comment">// (xt - xr) * s3 = (2b2-1)*yt - yr</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xt</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xr</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_s3</span> <span class="op">-</span> (<span class="ident">next_b2</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">one</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">yt</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_yr</span>,
+            (<span class="ident">xt</span> <span class="op">-</span> <span class="ident">next_xr</span>) <span class="op">*</span> <span class="ident">next_s3</span> <span class="op">-</span> (<span class="ident">next_b2</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span> <span class="op">-</span> <span class="ident">next_yr</span>,
             <span class="string">&quot;eq 17 wrong&quot;</span>
         );
 
         <span class="comment">// (2*xr – s3^2 + xt) * ((xr – xv) * s3 + yv + yr) = (xr – xv) * 2*yr</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">next_xr</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_s3</span>.<span class="ident">square</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xt</span>)
-                <span class="op">*</span> <span class="kw-2">&amp;</span>((<span class="ident">next_xr</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xv</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_s3</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yv</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yr</span>)
-                <span class="op">-</span> (<span class="ident">next_xr</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xv</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_yr</span>.<span class="ident">double</span>(),
+            (<span class="ident">next_xr</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">next_s3</span>.<span class="ident">square</span>() <span class="op">+</span> <span class="ident">xt</span>)
+                <span class="op">*</span> ((<span class="ident">next_xr</span> <span class="op">-</span> <span class="ident">next_xv</span>) <span class="op">*</span> <span class="ident">next_s3</span> <span class="op">+</span> <span class="ident">next_yv</span> <span class="op">+</span> <span class="ident">next_yr</span>)
+                <span class="op">-</span> (<span class="ident">next_xr</span> <span class="op">-</span> <span class="ident">next_xv</span>) <span class="op">*</span> <span class="ident">next_yr</span>.<span class="ident">double</span>(),
             <span class="string">&quot;eq 18 wrong&quot;</span>
         );
 
         <span class="comment">// (yv + yr)^2 = (xr – xv)^2 * (s3^2 – xt + xv)</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">next_yv</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yr</span>).<span class="ident">square</span>()
-                <span class="op">-</span> (<span class="ident">next_xr</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xv</span>).<span class="ident">square</span>() <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">next_s3</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_xv</span>),
+            (<span class="ident">next_yv</span> <span class="op">+</span> <span class="ident">next_yr</span>).<span class="ident">square</span>()
+                <span class="op">-</span> (<span class="ident">next_xr</span> <span class="op">-</span> <span class="ident">next_xv</span>).<span class="ident">square</span>() <span class="op">*</span> (<span class="ident">next_s3</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xt</span> <span class="op">+</span> <span class="ident">next_xv</span>),
             <span class="string">&quot;eq 19 wrong&quot;</span>
         );
 
         <span class="comment">// (xt - xv) * s5 = (2b3-1)*yt - yv</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">xt</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xv</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_s5</span> <span class="op">-</span> (<span class="ident">next_b3</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">one</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">yt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yv</span>,
+            (<span class="ident">xt</span> <span class="op">-</span> <span class="ident">next_xv</span>) <span class="op">*</span> <span class="ident">next_s5</span> <span class="op">-</span> (<span class="ident">next_b3</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">one</span>) <span class="op">*</span> <span class="ident">yt</span> <span class="op">+</span> <span class="ident">next_yv</span>,
             <span class="string">&quot;eq 20 wrong&quot;</span>
         );
 
         <span class="comment">// (2*xv – s5^2 + xt) * ((xv – xs) * s5 + ys + yv) = (xv – xs) * 2*yv</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">next_xv</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_s5</span>.<span class="ident">square</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">xt</span>)
-                <span class="op">*</span> <span class="kw-2">&amp;</span>((<span class="ident">next_xv</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xs</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_s5</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_ys</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yv</span>)
-                <span class="op">-</span> (<span class="ident">next_xv</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xs</span>) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">next_yv</span>.<span class="ident">double</span>(),
+            (<span class="ident">next_xv</span>.<span class="ident">double</span>() <span class="op">-</span> <span class="ident">next_s5</span>.<span class="ident">square</span>() <span class="op">+</span> <span class="ident">xt</span>)
+                <span class="op">*</span> ((<span class="ident">next_xv</span> <span class="op">-</span> <span class="ident">next_xs</span>) <span class="op">*</span> <span class="ident">next_s5</span> <span class="op">+</span> <span class="ident">next_ys</span> <span class="op">+</span> <span class="ident">next_yv</span>)
+                <span class="op">-</span> (<span class="ident">next_xv</span> <span class="op">-</span> <span class="ident">next_xs</span>) <span class="op">*</span> <span class="ident">next_yv</span>.<span class="ident">double</span>(),
             <span class="string">&quot;eq 21 wrong&quot;</span>
         );
 
         <span class="comment">// (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xt + xs)</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            (<span class="ident">next_ys</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_yv</span>).<span class="ident">square</span>()
-                <span class="op">-</span> (<span class="ident">next_xv</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">next_xs</span>).<span class="ident">square</span>() <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">next_s5</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xt</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_xs</span>),
+            (<span class="ident">next_ys</span> <span class="op">+</span> <span class="ident">next_yv</span>).<span class="ident">square</span>()
+                <span class="op">-</span> (<span class="ident">next_xv</span> <span class="op">-</span> <span class="ident">next_xs</span>).<span class="ident">square</span>() <span class="op">*</span> (<span class="ident">next_s5</span>.<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xt</span> <span class="op">+</span> <span class="ident">next_xs</span>),
             <span class="string">&quot;eq 22 wrong&quot;</span>
         );
 
         <span class="comment">// TODO(mimoo): this constraint is not in the PDF</span>
         <span class="macro">ensure_eq!</span>(
             <span class="ident">zero</span>,
-            ((((<span class="ident">next_xr</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">b1</span>).<span class="ident">double</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">b2</span>).<span class="ident">double</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_b1</span>).<span class="ident">double</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_b2</span>)
+            ((((<span class="ident">next_xr</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b1</span>).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b2</span>).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">next_b1</span>).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">next_b2</span>)
                 .<span class="ident">double</span>()
-                <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">next_xs</span>
-                <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">xr</span>,
+                <span class="op">+</span> <span class="ident">next_xs</span>
+                <span class="op">-</span> <span class="ident">xr</span>,
             <span class="string">&quot;eq 23 wrong&quot;</span>
         );
 

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Mode",""]],"fn":[["main",""]],"mod":[["vectors",""]]});
+initSidebarItems({"enum":[["Mode",""]],"fn":[["main",""]],"macro":[["env","Inspects an environment variable at compile time."]],"mod":[["env","Inspection and manipulation of the process’s environment."],["io","Traits, helpers, and type definitions for core I/O functionality."],["vectors",""]],"struct":[["File","A reference to an open file on the filesystem."]],"trait":[["FromStr","Parse a value from a string"],["Write","A trait for objects which are byte-oriented sinks."]]});

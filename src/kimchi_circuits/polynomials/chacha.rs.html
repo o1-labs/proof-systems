@@ -713,10 +713,10 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
         }
     }
 
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">3</span> {
-        <span class="ident">res</span>[<span class="ident">i</span>].<span class="ident">reverse</span>();
+    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="ident">res</span>.<span class="ident">iter_mut</span>().<span class="ident">take</span>(<span class="number">3</span>) {
+        <span class="ident">r</span>.<span class="ident">reverse</span>();
         <span class="comment">// Just to be safe.</span>
-        <span class="macro">assert!</span>(<span class="ident">res</span>[<span class="ident">i</span>][<span class="ident">res</span>[<span class="ident">i</span>].<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>].<span class="ident">is_zero</span>());
+        <span class="macro">assert!</span>(<span class="ident">r</span>[<span class="ident">r</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>].<span class="ident">is_zero</span>());
     }
     <span class="ident">res</span>
 }

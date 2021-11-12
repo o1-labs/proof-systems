@@ -255,6 +255,10 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements generic constraint polynomials.
@@ -318,7 +322,7 @@ This source file implements generic constraint polynomials.
     <span class="doccomment">/// generic(zeta) * w[1](zeta),</span>
     <span class="doccomment">/// generic(zeta) * w[2](zeta)</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_scalars</span>(<span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>], <span class="ident">generic_zeta</span>: <span class="ident">F</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">generic_zeta</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">w_zeta</span>[<span class="number">1</span>]];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">generic_zeta</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="number">0</span>] <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="number">1</span>]];
         <span class="ident">res</span>.<span class="ident">extend</span>((<span class="number">0</span>..<span class="ident">GENERICS</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">generic_zeta</span> <span class="op">*</span> <span class="ident">w_zeta</span>[<span class="ident">i</span>]));
         <span class="ident">res</span>
     }
@@ -421,8 +425,7 @@ This source file implements generic constraint polynomials.
         <span class="ident">gate::CircuitGate</span>,
         <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
     };
-
-    <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">UniformRand</span>, <span class="ident">Zero</span>};
+    <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">One</span>, <span class="ident">UniformRand</span>, <span class="ident">Zero</span>};
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
     <span class="kw">use</span> <span class="ident">itertools::iterate</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span>;
@@ -436,7 +439,12 @@ This source file implements generic constraint polynomials.
         <span class="comment">// create generic gates</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates_row</span> <span class="op">=</span> <span class="ident">iterate</span>(<span class="number">0usize</span>, <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
-        <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_add</span>(<span class="ident">r</span>, <span class="ident">Wire::new</span>(<span class="ident">r</span>))); <span class="comment">// add</span>
+        <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_add</span>(
+            <span class="ident">r</span>,
+            <span class="ident">Wire::new</span>(<span class="ident">r</span>),
+            <span class="ident">Fp::one</span>(),
+            <span class="ident">Fp::one</span>(),
+        )); <span class="comment">// add</span>
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
         <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_mul</span>(<span class="ident">r</span>, <span class="ident">Wire::new</span>(<span class="ident">r</span>))); <span class="comment">// mul</span>
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
@@ -509,7 +517,7 @@ This source file implements generic constraint polynomials.
 
         <span class="comment">// check that f(z) = t(z) * Z_H(z)</span>
         <span class="kw">let</span> <span class="ident">z_h_zeta</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">evaluate_vanishing_polynomial</span>(<span class="ident">zeta</span>);
-        <span class="macro">assert!</span>(<span class="ident">f_zeta</span> <span class="op">==</span> <span class="ident">t_zeta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">z_h_zeta</span>);
+        <span class="macro">assert!</span>(<span class="ident">f_zeta</span> <span class="op">==</span> <span class="ident">t_zeta</span> <span class="op">*</span> <span class="ident">z_h_zeta</span>);
     }
 }
 </code></pre></div>
