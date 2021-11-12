@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 #[macro_use]
 extern crate num_derive;
 

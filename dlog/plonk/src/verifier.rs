@@ -275,10 +275,9 @@ where
             .map(|(index, lgr_comm, proof)| {
                 let n = index.domain.size;
                 // commit to public input polynomial
-                let p_comm = PolyComm::<G>::multi_scalar_mul(
-                    &lgr_comm.iter().take(proof.public.len()).collect(),
-                    &proof.public.iter().map(|s| -*s).collect(),
-                );
+                let com: Vec<_> = lgr_comm.iter().take(proof.public.len()).collect();
+                let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+                let p_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
 
                 let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);

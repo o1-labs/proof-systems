@@ -37,12 +37,4 @@ jobs:
       - name: Run cargo clippy
         run: |
           rustup component add clippy
-          cargo clippy \
-            -p commitment_dlog \
-            -p groupmap \
-            -p kimchi-circuits \
-            -p kimchi \
-            -p mina-curves \
-            -p o1-utils \
-            -p oracle \
-            -p ocaml-gen 
+          cargo clippy
