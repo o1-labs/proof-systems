@@ -41,6 +41,7 @@ jobs:
             -p commitment_dlog \
             -p groupmap \
             -p kimchi-circuits \
+            -p kimchi \
             -p mina-curves \
             -p o1-utils \
             -p oracle \
