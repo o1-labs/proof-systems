@@ -114,68 +114,6 @@ fn batch_add_assign<P: SWModelParameters>(
     }
 }
 
-#[cfg(test)]
-fn affine_combine_base<P: SWModelParameters>(
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
-    x1: P::ScalarField,
-    x2: P::ScalarField,
-) -> Vec<SWJAffine<P>> {
-    let n = g1.len();
-
-    let g1g2 = {
-        let mut v: Vec<_> = (0..2 * n)
-            .map(|i| {
-                let j = i / 2;
-                if i % 2 == 0 {
-                    g1[j]
-                } else {
-                    g2[j]
-                }
-            })
-            .collect();
-        add_pairs_in_place(&mut v);
-        v
-    };
-    assert!(g1g2.len() == n);
-
-    let bits1 = BitIteratorBE::new(x1.into_repr());
-    let bits2 = BitIteratorBE::new(x2.into_repr());
-
-    let mut p = vec![SWJAffine::<P>::zero(); n];
-
-    let mut denominators = vec![P::BaseField::zero(); n];
-
-    for (b1, b2) in bits1.zip(bits2) {
-        // double in place
-        {
-            for i in 0..n {
-                denominators[i] = p[i].y.double();
-            }
-            ark_ff::batch_inversion::<P::BaseField>(&mut denominators);
-
-            // TODO: Use less memory
-            for i in 0..n {
-                let d = denominators[i];
-                let sq = p[i].x.square();
-                let s = (sq.double() + &sq + &P::COEFF_A) * &d;
-                let x = s.square() - &p[i].x.double();
-                let y = -p[i].y - &(s * &(x - &p[i].x));
-                p[i].x = x;
-                p[i].y = y;
-            }
-        }
-
-        match (b1, b2) {
-            (true, true) => batch_add_assign(&mut denominators, &mut p, &g1g2),
-            (false, true) => batch_add_assign(&mut denominators, &mut p, g2),
-            (true, false) => batch_add_assign(&mut denominators, &mut p, g1),
-            (false, false) => (),
-        }
-    }
-    p
-}
-
 fn affine_window_combine_base<P: SWModelParameters>(
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
@@ -329,22 +267,6 @@ fn affine_window_combine_one_base<P: SWModelParameters>(
     points
 }
 
-#[cfg(test)]
-fn affine_combine<P: SWModelParameters>(
-    g1: &[SWJAffine<P>],
-    g2: &[SWJAffine<P>],
-    x1: P::ScalarField,
-    x2: P::ScalarField,
-) -> Vec<SWJAffine<P>> {
-    const CHUNK_SIZE: usize = 10_000;
-    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
-    let v: Vec<_> = b
-        .into_par_iter()
-        .map(|(v1, v2)| affine_combine_base(v1, v2, x1, x2))
-        .collect();
-    v.concat()
-}
-
 pub fn affine_window_combine<P: SWModelParameters>(
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
@@ -374,24 +296,6 @@ pub fn affine_window_combine_one<P: SWModelParameters>(
     v.concat()
 }
 
-#[cfg(test)]
-fn combine<G: AffineCurve>(
-    g_lo: &Vec<G>,
-    g_hi: &Vec<G>,
-    x_lo: G::ScalarField,
-    x_hi: G::ScalarField,
-) -> Vec<G> {
-    let mut g_proj: Vec<G::Projective> = {
-        let pairs: Vec<_> = g_lo.iter().zip(g_hi).collect();
-        pairs
-            .into_par_iter()
-            .map(|(lo, hi)| shamir_sum::<G>(x_lo, *lo, x_hi, *hi))
-            .collect()
-    };
-    G::Projective::batch_normalization(g_proj.as_mut_slice());
-    g_proj.par_iter().map(|g| g.into_affine()).collect()
-}
-
 pub fn window_combine<G: AffineCurve>(
     g_lo: &[G],
     g_hi: &[G],
@@ -407,36 +311,6 @@ pub fn window_combine<G: AffineCurve>(
     };
     G::Projective::batch_normalization(g_proj.as_mut_slice());
     g_proj.par_iter().map(|g| g.into_affine()).collect()
-}
-
-#[cfg(test)]
-fn shamir_sum<G: AffineCurve>(
-    x1: G::ScalarField,
-    g1: G,
-    x2: G::ScalarField,
-    g2: G,
-) -> G::Projective {
-    let mut g1g2: G::Projective = g1.into_projective();
-    g1g2.add_assign_mixed(&g2);
-    let g1g2 = g1g2.into_affine();
-
-    let bits1 = BitIteratorBE::new(x1.into_repr());
-    let bits2 = BitIteratorBE::new(x2.into_repr());
-
-    let mut res = G::Projective::zero();
-
-    for (b1, b2) in bits1.zip(bits2) {
-        res.double_in_place();
-
-        match (b1, b2) {
-            (true, true) => res.add_assign_mixed(&g1g2),
-            (false, true) => res.add_assign_mixed(&g2),
-            (true, false) => res.add_assign_mixed(&g1),
-            (false, false) => (),
-        }
-    }
-
-    res
 }
 
 pub fn affine_shamir_window_table<P: SWModelParameters>(
