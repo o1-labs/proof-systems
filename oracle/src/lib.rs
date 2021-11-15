@@ -1,3 +1,6 @@
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
+
 pub mod pasta;
 pub mod poseidon;
 pub mod rndoracle;

@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use ark_ec::models::SWModelParameters;
 use ark_ff::{Field, One, SquareRootField, Zero};
 

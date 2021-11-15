@@ -1,6 +1,7 @@
-/// Hosts the benchmarking logic
-pub mod bench;
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
 
+pub mod bench;
 pub mod index;
 pub mod plonk_sponge;
 pub mod prover;

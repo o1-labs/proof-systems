@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 use mina_curves::pasta;
 
 pub mod chunked;
