@@ -29,6 +29,8 @@ oracle = { path = "../../oracle" }
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../../ocaml/ocaml-gen", optional = true }
 
+wasm-bindgen = { version = "0.2", optional = true }
+
 [dev-dependencies]
 rmp-serde = "0.15.5"
 proptest = "1.0.0"
@@ -37,3 +39,4 @@ proptest-derive = "0.3.0"
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]
+wasm_types = [ "wasm-bindgen" ]
