@@ -134,22 +134,22 @@ pub enum GateType {
     /// zero gate
     Zero = 0,
     /// generic arithmetic gate
-    Generic,
+    Generic = 1,
     /// Poseidon permutation gate
-    Poseidon,
+    Poseidon = 2,
     /// Complete EC addition in Affine form
-    CompleteAdd,
+    CompleteAdd = 3,
     /// EC variable base scalar multiplication
-    Vbmul,
+    Vbmul = 4,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    Endomul,
+    Endomul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndomulScalar,
+    EndomulScalar = 6,
     /// ChaCha
-    ChaCha0,
-    ChaCha1,
-    ChaCha2,
-    ChaChaFinal,
+    ChaCha0 = 7,
+    ChaCha1 = 8,
+    ChaCha2 = 9,
+    ChaChaFinal = 10,
 }
 
 /// Describes the desired lookup configuration.
