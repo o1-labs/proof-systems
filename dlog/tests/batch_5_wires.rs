@@ -90,11 +90,12 @@ where
             commit += start.elapsed();
 
             start = Instant::now();
+            let polys: Vec<_> = (0..a.len())
+                .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
+                .collect();
             let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
                 &group_map,
-                (0..a.len())
-                    .map(|i| (&a[i], bounds[i], (comm[i].0).1.clone()))
-                    .collect::<Vec<_>>(),
+                &polys,
                 &x,
                 polymask,
                 evalmask,

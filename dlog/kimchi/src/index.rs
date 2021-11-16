@@ -300,12 +300,9 @@ where
 
         // offset
         let mut reader = BufReader::new(file);
-        match offset {
-            Some(offset) => {
-                reader.seek(Start(offset)).map_err(|e| e.to_string())?;
-            }
-            None => (),
-        };
+        if let Some(offset) = offset {
+            reader.seek(Start(offset)).map_err(|e| e.to_string())?;
+        }
 
         // deserialize
         let mut verifier_index = Self::deserialize(&mut rmp_serde::Deserializer::new(reader))

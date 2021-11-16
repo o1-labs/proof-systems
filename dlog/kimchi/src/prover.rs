@@ -148,7 +148,7 @@ where
 
         // compute public input polynomial
         let public = witness[0][0..index.cs.public].to_vec();
-        let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        let public_poly = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
         )
@@ -166,7 +166,7 @@ where
         });
 
         // compute witness polynomials
-        let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -175,7 +175,7 @@ where
         });
 
         // absorb the wire polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.commit_non_hiding(&p, None).unshifted);
+        fq_sponge.absorb_g(&index.srs.commit_non_hiding(&public_poly, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
@@ -184,6 +184,7 @@ where
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
 
         let joint_combiner_ = {
+            // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
             let s = match lookup_used.as_ref() {
                 None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
                 Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
@@ -191,6 +192,7 @@ where
             (s, s.to_field(&index.srs.endo_r))
         };
 
+        // TODO: that seems like an unecessary line
         let joint_combiner: Fr<G> = joint_combiner_.1;
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
@@ -343,9 +345,9 @@ where
             };
 
         // compute permutation aggregation polynomial
-        let z = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
+        let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
         // commit to z
-        let z_comm = index.srs.commit(&z, None, rng);
+        let z_comm = index.srs.commit(&z_poly, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
@@ -354,7 +356,7 @@ where
         let alphas = range::alpha_powers(alpha);
 
         // evaluate polynomials over domains
-        let lagrange = index.cs.evaluate(&w, &z);
+        let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
         let lookup_table_combined = lookup_used.as_ref().map(|_| {
             let joint_table = &index.cs.lookup_tables8[0];
@@ -430,9 +432,10 @@ where
         };
 
         // permutation
-        let (perm, bnd) = index
-            .cs
-            .perm_quot(&lagrange, beta, gamma, &z, &alphas[range::PERM])?;
+        let (perm, bnd) =
+            index
+                .cs
+                .perm_quot(&lagrange, beta, gamma, &z_poly, &alphas[range::PERM])?;
         let mut t8 = perm;
         // scalar multiplication
         let mul8 = varbasemul::constraint(range::MUL.start).evaluations(&env);
@@ -477,7 +480,7 @@ where
         };
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &p)
+        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &public_poly)
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), Ok)?;
         if !res.is_zero() {
@@ -498,7 +501,7 @@ where
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
         let omega = index.cs.domain.d1.group_gen;
-        let zeta_omega = zeta * &omega;
+        let zeta_omega = zeta * omega;
 
         let lookup_evals = |e: Fr<G>| {
             lookup_aggreg_coeffs
@@ -526,8 +529,8 @@ where
         // evaluate the polynomials
         let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
-            w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
-            z: z.eval(zeta, index.max_poly_size),
+            w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
+            z: z_poly.eval(zeta, index.max_poly_size),
             lookup: lookup_evals(zeta),
             generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
@@ -536,8 +539,8 @@ where
             s: array_init(|i| {
                 index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
             }),
-            w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
-            z: z.eval(zeta_omega, index.max_poly_size),
+            w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
+            z: z_poly.eval(zeta_omega, index.max_poly_size),
             lookup: lookup_evals(zeta_omega),
             generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
@@ -608,10 +611,13 @@ where
             s.absorb(&fq_sponge.digest());
             s
         };
-        let p_eval = if p.is_zero() {
+        let p_eval = if public_poly.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
-            [vec![p.evaluate(&zeta)], vec![p.evaluate(&zeta_omega)]]
+            [
+                vec![public_poly.evaluate(&zeta)],
+                vec![public_poly.evaluate(&zeta_omega)],
+            ]
         };
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&p_eval[i], &chunked_evals[i])
@@ -658,13 +664,14 @@ where
             .iter()
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
-        polynomials.extend(vec![(&p, None, non_hiding(1))]);
+        polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
-        polynomials.extend(vec![(&z, None, z_comm.1)]);
+        polynomials.extend(vec![(&z_poly, None, z_comm.1)]);
         polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
         polynomials.extend(vec![(&index.cs.psm, None, non_hiding(1))]);
         polynomials.extend(
-            w.iter()
+            witness_poly
+                .iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
@@ -690,8 +697,8 @@ where
             },
             proof: index.srs.open(
                 group_map,
-                polynomials,
-                &vec![zeta, zeta_omega],
+                &polynomials,
+                &[zeta, zeta_omega],
                 v,
                 u,
                 fq_sponge_before_evaluations,
