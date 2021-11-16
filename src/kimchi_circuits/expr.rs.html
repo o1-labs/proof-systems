@@ -1947,9 +1947,12 @@
 <span id="1947">1947</span>
 <span id="1948">1948</span>
 <span id="1949">1949</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
+<span id="1950">1950</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::domains::EvaluationDomains</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::constraints::eval_vanishes_on_last_4_rows</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::nolookup::scalars::ProofEvaluations</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires::COLUMNS</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
@@ -1961,9 +1964,6 @@
 <span class="kw">use</span> <span class="ident">std::iter::FromIterator</span>;
 <span class="kw">use</span> <span class="ident">std::ops</span>::{<span class="ident">Add</span>, <span class="ident">Mul</span>, <span class="ident">Neg</span>, <span class="ident">Sub</span>};
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
-
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::domains::EvaluationDomains</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires::COLUMNS</span>;
 
 <span class="doccomment">/// The collection of constants required to evaluate an `Expr`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Constants</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -2607,8 +2607,8 @@
             (
                 <span class="ident">SubEvals</span> {
                     <span class="ident">evals</span>,
-                    <span class="ident">domain</span>: <span class="ident">d</span>,
-                    <span class="ident">shift</span>: <span class="ident">s</span>,
+                    <span class="ident">domain</span>,
+                    <span class="ident">shift</span>,
                 },
                 <span class="ident">Constant</span>(<span class="ident">x</span>),
             )
@@ -2616,16 +2616,18 @@
                 <span class="ident">Constant</span>(<span class="ident">x</span>),
                 <span class="ident">SubEvals</span> {
                     <span class="ident">evals</span>,
-                    <span class="ident">domain</span>: <span class="ident">d</span>,
-                    <span class="ident">shift</span>: <span class="ident">s</span>,
+                    <span class="ident">domain</span>,
+                    <span class="ident">shift</span>,
                 },
             ) =&gt; {
                 <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">res_domain</span>.<span class="number">1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
-                <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> (<span class="ident">d</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> (<span class="ident">res_domain</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>);
+                <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> (<span class="ident">domain</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">/</span> (<span class="ident">res_domain</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>);
                 <span class="macro">assert!</span>(<span class="ident">scale</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>);
                 <span class="kw">let</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">n</span>)
                     .<span class="ident">into_par_iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">evals</span>.<span class="ident">evals</span>[(<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> (<span class="ident">d</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">*</span> <span class="ident">s</span>) <span class="op">%</span> <span class="ident">evals</span>.<span class="ident">evals</span>.<span class="ident">len</span>()])
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                        <span class="ident">x</span> <span class="op">+</span> <span class="ident">evals</span>.<span class="ident">evals</span>[(<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span> <span class="op">+</span> (<span class="ident">domain</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">*</span> <span class="ident">shift</span>) <span class="op">%</span> <span class="ident">evals</span>.<span class="ident">evals</span>.<span class="ident">len</span>()]
+                    })
                     .<span class="ident">collect</span>();
                 <span class="ident">Evals</span> {
                     <span class="ident">domain</span>: <span class="ident">res_domain</span>.<span class="number">0</span>,

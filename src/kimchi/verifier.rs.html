@@ -630,8 +630,6 @@
 <span id="630">630</span>
 <span id="631">631</span>
 <span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements zk-proof batch verifier functionality.
@@ -679,6 +677,7 @@ This source file implements zk-proof batch verifier functionality.
     <span class="doccomment">/// zeta^n and (zeta * omega)^n</span>
     <span class="kw">pub</span> <span class="ident">powers_of_eval_points_for_chunks</span>: [<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="number">2</span>],
     <span class="doccomment">/// ?</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
     <span class="kw">pub</span> <span class="ident">polys</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// pre-computed zeta^n</span>
     <span class="kw">pub</span> <span class="ident">zeta1</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
@@ -725,12 +724,12 @@ This source file implements zk-proof batch verifier functionality.
                                     <span class="prelude-val">Some</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>[<span class="ident">j</span>],
                                 };
 
-                                <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">betaacc</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">b_j</span>;
+                                <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">betaacc</span> <span class="op">*</span> <span class="ident">b_j</span>;
                                 <span class="ident">betaacc</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">evaluation_points</span>[<span class="ident">i</span>];
                                 <span class="ident">ret</span>
                             })
-                            .<span class="ident">fold</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">y</span>);
-                        <span class="macro">vec!</span>[<span class="ident">full</span> <span class="op">-</span> <span class="kw-2">&amp;</span>(<span class="ident">diff</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">powers_of_eval_points_for_chunks</span>[<span class="ident">i</span>]), <span class="ident">diff</span>]
+                            .<span class="ident">fold</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">y</span>);
+                        <span class="macro">vec!</span>[<span class="ident">full</span> <span class="op">-</span> (<span class="ident">diff</span> <span class="op">*</span> <span class="ident">powers_of_eval_points_for_chunks</span>[<span class="ident">i</span>]), <span class="ident">diff</span>]
                     })
                     .<span class="ident">collect</span>()
             })
@@ -802,7 +801,7 @@ This source file implements zk-proof batch verifier functionality.
 
         <span class="comment">// prepare some often used values</span>
         <span class="kw">let</span> <span class="ident">zeta1</span> <span class="op">=</span> <span class="ident">zeta</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">n</span>]);
-        <span class="kw">let</span> <span class="ident">zetaw</span> <span class="op">=</span> <span class="ident">zeta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">group_gen</span>;
+        <span class="kw">let</span> <span class="ident">zetaw</span> <span class="op">=</span> <span class="ident">zeta</span> <span class="op">*</span> <span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">group_gen</span>;
         <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">range::alpha_powers</span>(<span class="ident">alpha</span>);
 
         <span class="comment">// compute Lagrange base evaluation denominators</span>
@@ -826,10 +825,10 @@ This source file implements zk-proof batch verifier functionality.
                         .<span class="ident">iter</span>()
                         .<span class="ident">zip</span>(<span class="ident">lagrange</span>.<span class="ident">iter</span>())
                         .<span class="ident">zip</span>(<span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">elements</span>())
-                        .<span class="ident">map</span>(<span class="op">|</span>((<span class="ident">p</span>, <span class="ident">l</span>), <span class="ident">w</span>)<span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">l</span> <span class="op">*</span> <span class="ident">p</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">w</span>)
-                        .<span class="ident">fold</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">y</span>))
-                        <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">zeta1</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>())
-                        <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">size_inv</span>,
+                        .<span class="ident">map</span>(<span class="op">|</span>((<span class="ident">p</span>, <span class="ident">l</span>), <span class="ident">w</span>)<span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">l</span> <span class="op">*</span> <span class="ident">p</span> <span class="op">*</span> <span class="ident">w</span>)
+                        .<span class="ident">fold</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">y</span>))
+                        <span class="op">*</span> (<span class="ident">zeta1</span> <span class="op">-</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>())
+                        <span class="op">*</span> <span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">size_inv</span>,
                 ],
                 <span class="macro">vec!</span>[
                     (<span class="self">self</span>
@@ -837,17 +836,17 @@ This source file implements zk-proof batch verifier functionality.
                         .<span class="ident">iter</span>()
                         .<span class="ident">zip</span>(<span class="ident">lagrange</span>[<span class="self">self</span>.<span class="ident">public</span>.<span class="ident">len</span>()..].<span class="ident">iter</span>())
                         .<span class="ident">zip</span>(<span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">elements</span>())
-                        .<span class="ident">map</span>(<span class="op">|</span>((<span class="ident">p</span>, <span class="ident">l</span>), <span class="ident">w</span>)<span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">l</span> <span class="op">*</span> <span class="ident">p</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">w</span>)
-                        .<span class="ident">fold</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">y</span>))
-                        <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">size_inv</span>
-                        <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">zetaw</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u64</span>]) <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>()),
+                        .<span class="ident">map</span>(<span class="op">|</span>((<span class="ident">p</span>, <span class="ident">l</span>), <span class="ident">w</span>)<span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">l</span> <span class="op">*</span> <span class="ident">p</span> <span class="op">*</span> <span class="ident">w</span>)
+                        .<span class="ident">fold</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">y</span>))
+                        <span class="op">*</span> <span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">size_inv</span>
+                        <span class="op">*</span> (<span class="ident">zetaw</span>.<span class="ident">pow</span>(<span class="kw-2">&amp;</span>[<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u64</span>]) <span class="op">-</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>()),
                 ],
             ]
         } <span class="kw">else</span> {
             [<span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::new</span>(), <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::new</span>()]
         };
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">2</span> {
-            <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>(<span class="kw-2">&amp;</span><span class="ident">p_eval</span>[<span class="ident">i</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">evals</span>[<span class="ident">i</span>])
+        <span class="kw">for</span> (<span class="ident">p</span>, <span class="ident">e</span>) <span class="kw">in</span> <span class="ident">p_eval</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">evals</span>) {
+            <span class="ident">fr_sponge</span>.<span class="ident">absorb_evaluations</span>(<span class="ident">p</span>, <span class="ident">e</span>);
         }
         <span class="ident">fr_sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ft_eval1</span>);
 
@@ -879,18 +878,15 @@ This source file implements zk-proof batch verifier functionality.
         <span class="comment">// compute evaluation of ft(zeta)</span>
         <span class="kw">let</span> <span class="ident">ft_eval0</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">zkp</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">zkpm</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
-            <span class="kw">let</span> <span class="ident">zeta1m1</span> <span class="op">=</span> <span class="ident">zeta1</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
+            <span class="kw">let</span> <span class="ident">zeta1m1</span> <span class="op">=</span> <span class="ident">zeta1</span> <span class="op">-</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ft_eval0</span> <span class="op">=</span> <span class="ident">evals</span>[<span class="number">0</span>]
                 .<span class="ident">w</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">zip</span>(<span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">s</span>.<span class="ident">iter</span>())
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">beta</span> <span class="op">*</span> <span class="ident">s</span>) <span class="op">+</span> <span class="ident">w</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">gamma</span>)
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">beta</span> <span class="op">*</span> <span class="ident">s</span>) <span class="op">+</span> <span class="ident">w</span> <span class="op">+</span> <span class="ident">gamma</span>)
                 .<span class="ident">fold</span>(
-                    (<span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">w</span>[<span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>] <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">gamma</span>)
-                        <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="number">1</span>].<span class="ident">z</span>
-                        <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">0</span>]
-                        <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">zkp</span>,
+                    (<span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">w</span>[<span class="ident">PERMUTS</span> <span class="op">-</span> <span class="number">1</span>] <span class="op">+</span> <span class="ident">gamma</span>) <span class="op">*</span> <span class="ident">evals</span>[<span class="number">1</span>].<span class="ident">z</span> <span class="op">*</span> <span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">0</span>] <span class="op">*</span> <span class="ident">zkp</span>,
                     <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>,
                 );
 
@@ -904,17 +900,17 @@ This source file implements zk-proof batch verifier functionality.
                 .<span class="ident">w</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">zip</span>(<span class="ident">index</span>.<span class="ident">shift</span>.<span class="ident">iter</span>())
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">gamma</span> <span class="op">+</span> <span class="kw-2">&amp;</span>(<span class="ident">beta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">zeta</span> <span class="op">*</span> <span class="ident">s</span>) <span class="op">+</span> <span class="ident">w</span>)
-                .<span class="ident">fold</span>(<span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">zkp</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">z</span>, <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>);
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">w</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">gamma</span> <span class="op">+</span> (<span class="ident">beta</span> <span class="op">*</span> <span class="ident">zeta</span> <span class="op">*</span> <span class="ident">s</span>) <span class="op">+</span> <span class="ident">w</span>)
+                .<span class="ident">fold</span>(<span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">0</span>] <span class="op">*</span> <span class="ident">zkp</span> <span class="op">*</span> <span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">z</span>, <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">y</span>);
 
-            <span class="kw">let</span> <span class="ident">nominator</span> <span class="op">=</span> ((<span class="ident">zeta1m1</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">1</span>] <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">zeta</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">w</span>))
-                <span class="op">+</span> (<span class="ident">zeta1m1</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">2</span>] <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">zeta</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>())))
-                <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>() <span class="op">-</span> <span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">z</span>);
+            <span class="kw">let</span> <span class="ident">nominator</span> <span class="op">=</span> ((<span class="ident">zeta1m1</span> <span class="op">*</span> <span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">1</span>] <span class="op">*</span> (<span class="ident">zeta</span> <span class="op">-</span> <span class="ident">index</span>.<span class="ident">w</span>))
+                <span class="op">+</span> (<span class="ident">zeta1m1</span> <span class="op">*</span> <span class="ident">alphas</span>[<span class="ident">range::PERM</span>][<span class="number">2</span>] <span class="op">*</span> (<span class="ident">zeta</span> <span class="op">-</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>())))
+                <span class="op">*</span> (<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>() <span class="op">-</span> <span class="ident">evals</span>[<span class="number">0</span>].<span class="ident">z</span>);
 
-            <span class="kw">let</span> <span class="ident">denominator</span> <span class="op">=</span> (<span class="ident">zeta</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">w</span>) <span class="op">*</span> <span class="kw-2">&amp;</span>(<span class="ident">zeta</span> <span class="op">-</span> <span class="kw-2">&amp;</span><span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>());
+            <span class="kw">let</span> <span class="ident">denominator</span> <span class="op">=</span> (<span class="ident">zeta</span> <span class="op">-</span> <span class="ident">index</span>.<span class="ident">w</span>) <span class="op">*</span> (<span class="ident">zeta</span> <span class="op">-</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>());
             <span class="kw">let</span> <span class="ident">denominator</span> <span class="op">=</span> <span class="ident">denominator</span>.<span class="ident">inverse</span>().<span class="ident">expect</span>(<span class="string">&quot;negligible probability&quot;</span>);
 
-            <span class="ident">ft_eval0</span> <span class="op">+</span><span class="op">=</span> <span class="ident">nominator</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">denominator</span>;
+            <span class="ident">ft_eval0</span> <span class="op">+</span><span class="op">=</span> <span class="ident">nominator</span> <span class="op">*</span> <span class="ident">denominator</span>;
 
             <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">Constants</span> {
                 <span class="ident">alpha</span>,
@@ -939,6 +935,8 @@ This source file implements zk-proof batch verifier functionality.
         <span class="kw">let</span> <span class="ident">combined_inner_product</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">ft_eval0</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ft_eval0</span>];
             <span class="kw">let</span> <span class="ident">ft_eval1</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="self">self</span>.<span class="ident">ft_eval1</span>];
+
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">es</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">polys</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">e</span>)<span class="op">|</span> (<span class="ident">e</span>.<span class="ident">iter</span>().<span class="ident">collect</span>(), <span class="prelude-val">None</span>))
@@ -992,9 +990,10 @@ This source file implements zk-proof batch verifier functionality.
     <span class="doccomment">///     proofs: vector of Plonk proofs</span>
     <span class="doccomment">///     index: Index</span>
     <span class="doccomment">///     RETURN: verification status</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">EFrSponge</span>: <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
-        <span class="ident">proofs</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="ident">proofs</span>: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
         <span class="comment">// if there&#39;s no proof to verify, return early</span>
         <span class="kw">if</span> <span class="ident">proofs</span>.<span class="ident">is_empty</span>() {
@@ -1012,10 +1011,9 @@ This source file implements zk-proof batch verifier functionality.
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">params</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">lgr_comm</span>, <span class="ident">proof</span>) <span class="kw">in</span> <span class="ident">proofs</span> {
             <span class="comment">// commit to public input polynomial</span>
-            <span class="kw">let</span> <span class="ident">p_comm</span> <span class="op">=</span> <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::multi_scalar_mul</span>(
-                <span class="kw-2">&amp;</span><span class="ident">lgr_comm</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="ident">proof</span>.<span class="ident">public</span>.<span class="ident">len</span>()).<span class="ident">collect</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">public</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">s</span>).<span class="ident">collect</span>(),
-            );
+            <span class="kw">let</span> <span class="ident">com</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lgr_comm</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="ident">proof</span>.<span class="ident">public</span>.<span class="ident">len</span>()).<span class="ident">collect</span>();
+            <span class="kw">let</span> <span class="ident">elm</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proof</span>.<span class="ident">public</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="op">-</span><span class="kw-2">*</span><span class="ident">s</span>).<span class="ident">collect</span>();
+            <span class="kw">let</span> <span class="ident">p_comm</span> <span class="op">=</span> <span class="ident">PolyComm</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::multi_scalar_mul</span>(<span class="kw-2">&amp;</span><span class="ident">com</span>, <span class="kw-2">&amp;</span><span class="ident">elm</span>);
 
             <span class="comment">// run the oracles argument</span>
             <span class="kw">let</span> <span class="ident">OraclesResult</span> {
@@ -1081,9 +1079,7 @@ This source file implements zk-proof batch verifier functionality.
                         <span class="ident">mds</span>: <span class="ident">index</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">mds</span>.<span class="ident">clone</span>(),
                     };
 
-                    <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">scalars_part</span>;
-                    <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">commitments_part</span>;
-                    <span class="ident">index</span>.<span class="ident">linearization</span>.<span class="ident">index_terms</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">e</span>)<span class="op">|</span> {
+                    <span class="kw">for</span> (<span class="ident">c</span>, <span class="ident">e</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">linearization</span>.<span class="ident">index_terms</span> {
                         <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">PolishToken::evaluate</span>(
                             <span class="ident">e</span>,
                             <span class="ident">index</span>.<span class="ident">domain</span>,
@@ -1096,37 +1092,37 @@ This source file implements zk-proof batch verifier functionality.
                         <span class="kw">use</span> <span class="ident">Column</span>::<span class="kw-2">*</span>;
                         <span class="kw">match</span> <span class="ident">c</span> {
                             <span class="ident">Witness</span>(<span class="ident">i</span>) =&gt; {
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">commitments</span>.<span class="ident">w_comm</span>[<span class="kw-2">*</span><span class="ident">i</span>])
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">commitments</span>.<span class="ident">w_comm</span>[<span class="kw-2">*</span><span class="ident">i</span>])
                             }
                             <span class="ident">Coefficient</span>(<span class="ident">i</span>) =&gt; {
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">coefficients_comm</span>[<span class="kw-2">*</span><span class="ident">i</span>])
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">coefficients_comm</span>[<span class="kw-2">*</span><span class="ident">i</span>])
                             }
                             <span class="ident">Z</span> =&gt; {
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">commitments</span>.<span class="ident">z_comm</span>);
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">proof</span>.<span class="ident">commitments</span>.<span class="ident">z_comm</span>);
                             }
                             <span class="ident">LookupSorted</span>(<span class="ident">i</span>) =&gt; {
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">unwrap</span>().<span class="ident">sorted</span>[<span class="kw-2">*</span><span class="ident">i</span>])
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">unwrap</span>().<span class="ident">sorted</span>[<span class="kw-2">*</span><span class="ident">i</span>])
                             }
                             <span class="ident">LookupAggreg</span> =&gt; {
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">unwrap</span>().<span class="ident">aggreg</span>)
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">unwrap</span>().<span class="ident">aggreg</span>)
                             }
                             <span class="ident">LookupKindIndex</span>(<span class="ident">i</span>) =&gt; {
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_selectors</span>[<span class="kw-2">*</span><span class="ident">i</span>]);
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_selectors</span>[<span class="kw-2">*</span><span class="ident">i</span>]);
                             }
                             <span class="ident">LookupTable</span> =&gt; {
                                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">j</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>][<span class="number">0</span>]);
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>][<span class="number">0</span>]);
                                 <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">index</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="number">1</span>) {
                                     <span class="ident">j</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">constants</span>.<span class="ident">joint_combiner</span>;
-                                    <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span> <span class="op">*</span> <span class="ident">j</span>);
-                                    <span class="ident">p</span>.<span class="ident">push</span>(<span class="ident">t</span>);
+                                    <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span> <span class="op">*</span> <span class="ident">j</span>);
+                                    <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="ident">t</span>);
                                 }
                             }
                             <span class="ident">Index</span>(<span class="ident">t</span>) =&gt; {
@@ -1143,11 +1139,11 @@ This source file implements zk-proof batch verifier functionality.
                                     <span class="ident">ChaCha2</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">chacha_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()[<span class="number">2</span>],
                                     <span class="ident">ChaChaFinal</span> =&gt; <span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">chacha_comm</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>()[<span class="number">3</span>],
                                 };
-                                <span class="ident">s</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">p</span>.<span class="ident">push</span>(<span class="ident">c</span>);
+                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="ident">c</span>);
                             }
                         }
-                    });
+                    }
                 }
 
                 <span class="comment">// MSM</span>
@@ -1251,7 +1247,7 @@ This source file implements zk-proof batch verifier functionality.
             <span class="kw">let</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">domain</span>.<span class="ident">group_gen</span>;
             <span class="ident">batch</span>.<span class="ident">push</span>((
                 <span class="ident">fq_sponge</span>.<span class="ident">clone</span>(),
-                <span class="macro">vec!</span>[<span class="ident">oracles</span>.<span class="ident">zeta</span>, <span class="ident">oracles</span>.<span class="ident">zeta</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">omega</span>],
+                <span class="macro">vec!</span>[<span class="ident">oracles</span>.<span class="ident">zeta</span>, <span class="ident">oracles</span>.<span class="ident">zeta</span> <span class="op">*</span> <span class="ident">omega</span>],
                 <span class="ident">oracles</span>.<span class="ident">v</span>,
                 <span class="ident">oracles</span>.<span class="ident">u</span>,
                 <span class="ident">polynomials</span>,

@@ -643,6 +643,8 @@
 <span id="643">643</span>
 <span id="644">644</span>
 <span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This source file implements the arithmetization of plookup constraints</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Because of our ZK-rows, we can&#39;t do the trick in the plookup paper of</span>
@@ -765,6 +767,7 @@
 }
 
 <span class="doccomment">/// Checks that all the lookup constraints are satisfied.</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">G</span>: <span class="ident">Fn</span>() -&gt; <span class="ident">I</span><span class="op">&gt;</span>(
     <span class="ident">dummy_lookup_value</span>: <span class="ident">F</span>,
     <span class="ident">lookup_table</span>: <span class="ident">G</span>,
@@ -1034,6 +1037,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1</span>
 <span class="doccomment">/// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aggregation</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span>, <span class="ident">F</span>: <span class="ident">FftField</span>, <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>(
     <span class="ident">dummy_lookup_value</span>: <span class="ident">F</span>,
     <span class="ident">lookup_table</span>: <span class="ident">I</span>,

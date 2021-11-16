@@ -575,6 +575,17 @@
 <span id="575">575</span>
 <span id="576">576</span>
 <span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -802,6 +813,7 @@ This source file implements Plonk constraint gate primitive.
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">n</span>]).<span class="ident">collect</span>();
 
+        <span class="comment">// TODO: is take(n) useful here? I don&#39;t see why we need this</span>
         <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">gate</span>) <span class="kw">in</span> <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">take</span>(<span class="ident">n</span>) {
             <span class="kw">let</span> <span class="ident">typ</span> <span class="op">=</span> <span class="ident">gate</span>.<span class="ident">typ</span>;
 
@@ -814,6 +826,7 @@ This source file implements Plonk constraint gate primitive.
         }
 
         <span class="comment">// Actually, don&#39;t need to evaluate over domain 8 here.</span>
+        <span class="comment">// TODO: so why do it :D?</span>
         <span class="ident">res</span>.<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
                 <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="ident">v</span>, <span class="ident">domain</span>.<span class="ident">d1</span>)
@@ -847,6 +860,7 @@ This source file implements Plonk constraint gate primitive.
     <span class="doccomment">///</span>
     <span class="doccomment">/// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of</span>
     <span class="doccomment">/// how these work.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::type_complexity</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_kinds</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">HashSet</span><span class="op">&lt;</span>(<span class="ident">GateType</span>, <span class="ident">CurrOrNext</span>)<span class="op">&gt;</span>)<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">curr_row</span> <span class="op">=</span> <span class="op">|</span><span class="ident">column</span><span class="op">|</span> <span class="ident">LocalPosition</span> {
             <span class="ident">row</span>: <span class="ident">CurrOrNext::Curr</span>,
@@ -854,15 +868,23 @@ This source file implements Plonk constraint gate primitive.
         };
         <span class="kw">let</span> <span class="ident">chacha_pattern</span> <span class="op">=</span> (<span class="number">0</span>..<span class="number">4</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">op1</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">3</span> <span class="op">+</span> <span class="ident">i</span>);
-                <span class="kw">let</span> <span class="ident">op2</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">7</span> <span class="op">+</span> <span class="ident">i</span>);
-                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">11</span> <span class="op">+</span> <span class="ident">i</span>);
+                <span class="comment">// each row represents an XOR operation</span>
+                <span class="comment">// where l XOR r = o</span>
+                <span class="comment">//</span>
+                <span class="comment">// 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14</span>
+                <span class="comment">// - - - l - - - r - - -  o  -  -  -</span>
+                <span class="comment">// - - - - l - - - r - -  -  o  -  -</span>
+                <span class="comment">// - - - - - l - - - r -  -  -  o  -</span>
+                <span class="comment">// - - - - - - l - - - r  -  -  -  o</span>
+                <span class="kw">let</span> <span class="ident">left</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">3</span> <span class="op">+</span> <span class="ident">i</span>);
+                <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">7</span> <span class="op">+</span> <span class="ident">i</span>);
+                <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">curr_row</span>(<span class="number">11</span> <span class="op">+</span> <span class="ident">i</span>);
                 <span class="kw">let</span> <span class="ident">l</span> <span class="op">=</span> <span class="op">|</span><span class="ident">loc</span>: <span class="ident">LocalPosition</span><span class="op">|</span> <span class="ident">SingleLookup</span> {
                     <span class="ident">table_id</span>: <span class="number">0</span>,
                     <span class="ident">value</span>: <span class="macro">vec!</span>[(<span class="ident">F::one</span>(), <span class="ident">loc</span>)],
                 };
                 <span class="ident">JointLookup</span> {
-                    <span class="ident">entry</span>: <span class="macro">vec!</span>[<span class="ident">l</span>(<span class="ident">op1</span>), <span class="ident">l</span>(<span class="ident">op2</span>), <span class="ident">l</span>(<span class="ident">res</span>)],
+                    <span class="ident">entry</span>: <span class="macro">vec!</span>[<span class="ident">l</span>(<span class="ident">left</span>), <span class="ident">l</span>(<span class="ident">right</span>), <span class="ident">l</span>(<span class="ident">output</span>)],
                 }
             })
             .<span class="ident">collect</span>();

@@ -705,15 +705,15 @@ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.
     <span class="comment">// XOR for all possible four-bit arguments.</span>
     <span class="comment">// I suppose this could be computed a bit faster using symmetry but it&#39;s quite</span>
     <span class="comment">// small (16*16 = 256 entries) so let&#39;s just keep it simple.</span>
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0u32</span>..<span class="number">0b10000</span> {
-        <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0u32</span>..<span class="number">0b10000</span> {
+    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0u32</span>..<span class="op">=</span><span class="number">0b1111</span> {
+        <span class="kw">for</span> <span class="ident">j</span> <span class="kw">in</span> <span class="number">0u32</span>..<span class="op">=</span><span class="number">0b1111</span> {
             <span class="ident">res</span>[<span class="number">0</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">i</span>));
             <span class="ident">res</span>[<span class="number">1</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">j</span>));
             <span class="ident">res</span>[<span class="number">2</span>].<span class="ident">push</span>(<span class="ident">F::from</span>(<span class="ident">i</span> <span class="op">^</span> <span class="ident">j</span>));
         }
     }
 
-    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="ident">res</span>.<span class="ident">iter_mut</span>().<span class="ident">take</span>(<span class="number">3</span>) {
+    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="kw-2">&amp;mut</span> <span class="ident">res</span> {
         <span class="ident">r</span>.<span class="ident">reverse</span>();
         <span class="comment">// Just to be safe.</span>
         <span class="macro">assert!</span>(<span class="ident">r</span>[<span class="ident">r</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>].<span class="ident">is_zero</span>());

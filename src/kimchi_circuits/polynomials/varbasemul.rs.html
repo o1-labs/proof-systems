@@ -231,6 +231,7 @@
 <span id="231">231</span>
 <span id="232">232</span>
 <span id="233">233</span>
+<span id="234">234</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
@@ -262,6 +263,7 @@ for details.
     }
 }
 
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
 <span class="kw">fn</span> <span class="ident">single_bit_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(
     <span class="ident">w</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
     <span class="ident">row</span>: <span class="ident">usize</span>,
