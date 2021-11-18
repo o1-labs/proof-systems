@@ -31,8 +31,7 @@ pub struct Wire {
 
 #[cfg(feature = "wasm_types")]
 impl Wire {
-    #[wasm_bindgen(constructor)]
-    pub fn new(row: i32, col: i32) -> Self {
+    pub fn create(row: i32, col: i32) -> Self {
         Self { row: row as usize, col: col as usize }
     }
 }
