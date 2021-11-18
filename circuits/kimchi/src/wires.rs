@@ -29,6 +29,14 @@ pub struct Wire {
     pub col: usize,
 }
 
+#[cfg(feature = "wasm_types")]
+impl Wire {
+    #[wasm_bindgen(constructor)]
+    pub fn new(row: i32, col: i32) -> Self {
+        Self { row: row as usize, col: col as usize }
+    }
+}
+
 impl Wire {
     /// Creates a new set of wires for a given row.
     pub fn new(row: usize) -> [Self; PERMUTS] {
