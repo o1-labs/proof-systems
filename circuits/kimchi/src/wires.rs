@@ -30,7 +30,15 @@ pub struct Wire {
 }
 
 #[cfg(feature = "wasm_types")]
+#[cfg_attr(
+    feature = "wasm_types",
+    wasm_bindgen::prelude::wasm_bindgen
+)]
 impl Wire {
+    #[cfg_attr(
+        feature = "wasm_types",
+        wasm_bindgen::prelude::wasm_bindgen
+    )]
     pub fn create(row: i32, col: i32) -> Self {
         Self { row: row as usize, col: col as usize }
     }
