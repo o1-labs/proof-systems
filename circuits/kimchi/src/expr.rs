@@ -44,6 +44,8 @@ pub struct LookupEnvironment<'a, F: FftField> {
     pub selectors: &'a Vec<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
     pub table: &'a Evaluations<F, D<F>>,
+    /// The evaluations of the runtime lookup table polynomial.
+    pub runtime_table: &'a Evaluations<F, D<F>>,
 }
 
 /// The collection of polynomials (all in evaluation form) and constants
@@ -86,6 +88,7 @@ impl<'a, F: FftField> Environment<'a, F> {
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
+            RuntimeLookupTable => lookup.map(|l| l.runtime_table),
             Index(t) => match self.index.get(t) {
                 None => None,
                 Some(e) => Some(e),
@@ -127,6 +130,7 @@ pub enum Column {
     Index(GateType),
     Coefficient(usize),
     Indexer,
+    RuntimeLookupTable,
 }
 
 impl Column {
@@ -380,6 +384,7 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i]),
             LookupAggreg => l.map(|l| l.aggreg),
             LookupTable => l.map(|l| l.table),
+            RuntimeLookupTable => l.map(|l| l.runtime_table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {

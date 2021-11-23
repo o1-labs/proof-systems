@@ -36,6 +36,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 pub struct LookupCommitments<G: AffineCurve> {
     pub sorted: Vec<PolyComm<G>>,
     pub aggreg: PolyComm<G>,
+    pub runtime_table: PolyComm<G>,
 }
 
 #[derive(Clone)]
@@ -107,6 +108,7 @@ where
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
+        runtime_table: Vec<Fr<G>>,
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
@@ -182,6 +184,22 @@ where
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
+
+        let (runtime_table_evals, runtime_table_comm, runtime_table_poly, runtime_table8) = {
+            match lookup_used.as_ref() {
+                None => (None, None, None, None),
+                Some(_) => {
+                    let evals = lookup::zk_patch(runtime_table, index.cs.domain.d1, rng);
+                    let comm = index
+                        .srs
+                        .commit_evaluations(index.cs.domain.d1, &evals, None, rng);
+                    fq_sponge.absorb_g(&comm.0.unshifted);
+                    let coeffs = evals.clone().interpolate();
+                    let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
+                    (Some(evals), Some(comm), Some(coeffs), Some(evals8))
+                }
+            }
+        };
 
         let joint_combiner_ = {
             // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
@@ -356,6 +374,7 @@ where
                     // TODO: There's probably a clever way to expand the domain without
                     // interpolating
                     let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
+
                     (Some(coeffs), Some(comm), Some(evals8))
                 },
             };
@@ -394,12 +413,16 @@ where
             .as_ref()
             .zip(lookup_sorted8.as_ref())
             .zip(lookup_aggreg8.as_ref())
+            .zip(runtime_table8.as_ref())
             .map(
-                |((lookup_table_combined, lookup_sorted), lookup_aggreg)| LookupEnvironment {
-                    aggreg: lookup_aggreg,
-                    sorted: lookup_sorted,
-                    table: lookup_table_combined,
-                    selectors: &index.cs.lookup_selectors,
+                |(((lookup_table_combined, lookup_sorted), lookup_aggreg), runtime_table)| {
+                    LookupEnvironment {
+                        aggreg: lookup_aggreg,
+                        sorted: lookup_sorted,
+                        table: lookup_table_combined,
+                        selectors: &index.cs.lookup_selectors,
+                        runtime_table: runtime_table,
+                    }
                 },
             );
 
@@ -530,7 +553,8 @@ where
             lookup_aggreg_coeffs
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
-                .map(|(aggreg, sorted)| {
+                .zip(runtime_table_poly.as_ref())
+                .map(|((aggreg, sorted), runtime_table)| {
                     let table_id: u32 = 0;
                     LookupEvaluations {
                         aggreg: aggreg.eval(e, index.max_poly_size),
@@ -554,6 +578,7 @@ where
                                     * &table_id.into())
                             })
                             .collect(),
+                        runtime_table: runtime_table.eval(e, index.max_poly_size),
                     }
                 })
         };
@@ -605,6 +630,7 @@ where
                         .iter()
                         .map(|p| DensePolynomial::eval_polynomial(p, e1))
                         .collect(),
+                    runtime_table: DensePolynomial::eval_polynomial(&l.runtime_table, e1),
                 }),
                 generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                 poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
@@ -723,12 +749,14 @@ where
                 w_comm: array_init(|i| w_comm[i].0.clone()),
                 z_comm: z_comm.0,
                 t_comm: t_comm.0,
-                lookup: lookup_aggreg_comm.zip(lookup_sorted_comm).map(|(a, s)| {
-                    LookupCommitments {
+                lookup: lookup_aggreg_comm
+                    .zip(lookup_sorted_comm)
+                    .zip(runtime_table_comm)
+                    .map(|((a, s), rt)| LookupCommitments {
                         aggreg: a.0,
                         sorted: s.iter().map(|(x, _)| x.clone()).collect(),
-                    }
-                }),
+                        runtime_table: rt.0,
+                    }),
             },
             proof: index.srs.open(
                 group_map,

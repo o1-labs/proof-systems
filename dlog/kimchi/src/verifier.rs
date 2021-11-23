@@ -122,6 +122,10 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
+        self.commitments.lookup.iter().for_each(|l| {
+            fq_sponge.absorb_g(&l.runtime_table.unshifted);
+        });
+
         let joint_combiner = {
             let s = match index.lookup_used.as_ref() {
                 None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
@@ -517,7 +521,10 @@ where
                             }
                             Indexer => {
                                 scalars_part.push(e);
-                                commitments_part.push(&index.indexer_comm);
+                                commitments_part.push(&index.indexer_comm)
+                            }
+                            RuntimeLookupTable => {
+                                panic!("TODO: RuntimeLookupTable");
                             }
                         }
                     }

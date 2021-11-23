@@ -195,6 +195,7 @@ fn positive(index: &Index<Affine>) {
             ProverProof::create::<BaseSponge, ScalarSponge>(
                 &group_map,
                 witness_cols,
+                vec![],
                 index,
                 vec![prev],
             )

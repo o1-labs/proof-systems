@@ -508,6 +508,7 @@ mod tests {
                     .collect(),
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
+                runtime_table: F::rand(rng),
             }),
             indexer: F::zero(),
         };

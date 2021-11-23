@@ -105,6 +105,7 @@ pub fn proof(num: usize) {
             ProverProof::create::<BaseSponge, ScalarSponge>(
                 &group_map,
                 witness,
+                vec![],
                 &index,
                 vec![prev],
             )

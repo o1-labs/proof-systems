@@ -126,8 +126,14 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
     // add the proof to the batch
     let mut batch = Vec::new();
     batch.push(
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![prev])
-            .unwrap(),
+        ProverProof::create::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            vec![],
+            &index,
+            vec![prev],
+        )
+        .unwrap(),
     );
 
     // verify the proof
