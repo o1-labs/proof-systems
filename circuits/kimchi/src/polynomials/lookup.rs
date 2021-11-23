@@ -54,12 +54,16 @@ fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
         .fold(E::zero(), |acc, e| acc + e)
 }
 
-fn joint_lookup<F: FftField>(j: &JointLookup<F>) -> E<F> {
+fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: usize) -> E<F> {
     j.entry
         .iter()
         .enumerate()
         .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
+        + E::constant(
+            ConstantExpr::JointCombiner.pow(max_joint_size)
+                * ConstantExpr::Literal(j.table_id.into()),
+        )
 }
 
 struct AdjacentPairs<A, I: Iterator<Item = A>> {
@@ -200,7 +204,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let table_entry = joint_lookup.evaluate(joint_combiner, &eval);
+            let table_entry =
+                joint_lookup.evaluate(joint_combiner, lookup_info.max_joint_size, &eval);
             *all_lookups.entry(table_entry).or_insert(0) += 1
         }
 
@@ -232,6 +237,7 @@ pub trait Entry {
 
     fn evaluate(
         p: &Self::Params,
+        max_joint_size: usize,
         j: &JointLookup<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
@@ -246,6 +252,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
 
     fn evaluate(
         joint_combiner: &F,
+        max_joint_size: usize,
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
@@ -258,7 +265,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, &eval))
+        CombinedEntry(j.evaluate(*joint_combiner, max_joint_size, &eval))
     }
 }
 
@@ -271,6 +278,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 
     fn evaluate(
         _: &(),
+        _max_joint_size: usize,
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
@@ -298,6 +306,7 @@ pub fn sorted<
     dummy_lookup_value: E,
     lookup_table: G,
     lookup_table_entries: usize,
+    max_joint_size: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
@@ -318,7 +327,7 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let table_entry = E::evaluate(&params, joint_lookup, witness, i);
+            let table_entry = E::evaluate(&params, max_joint_size, joint_lookup, witness, i);
             let count = counts.entry(table_entry).or_insert(0);
             *count += 1;
         }
@@ -466,7 +475,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, &eval))
+                    acc * (gamma + j.evaluate(joint_combiner, lookup_info.max_joint_size, &eval))
                 })
             };
 
@@ -484,7 +493,11 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(
+    dummy_lookup: &[F],
+    dummy_lookup_table_id: u32,
+    d1: D<F>,
+) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -517,7 +530,9 @@ pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
         .rev()
         .fold(ConstantExpr::zero(), |acc, x| {
             ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x)
-        });
+        })
+        + (ConstantExpr::JointCombiner.pow(lookup_info.max_joint_size)
+            * ConstantExpr::Literal(dummy_lookup_table_id.into()));
 
     let complements_with_beta_term: Vec<ConstantExpr<F>> = {
         let mut v = vec![ConstantExpr::one()];
@@ -542,7 +557,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
         spec.iter()
-            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
+            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j, lookup_info.max_joint_size))
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
     let f_chunk = lookup_info

@@ -65,9 +65,12 @@ pub struct SingleLookup<F> {
 /// This function computes that combined value.
 pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item = &'a F>>(
     joint_combiner: F,
+    table_id: u32,
+    max_joint_size: usize,
     v: I,
 ) -> F {
     v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
+        + &(joint_combiner.pow([max_joint_size as u64]) * &table_id.into())
 }
 
 impl<F: Field> SingleLookup<F> {
@@ -89,14 +92,19 @@ pub struct JointLookup<F> {
 impl<F: Field> JointLookup<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, joint_combiner: F, eval: &G) -> F {
+    pub fn evaluate<G: Fn(LocalPosition) -> F>(
+        &self,
+        joint_combiner: F,
+        max_joint_size: usize,
+        eval: &G,
+    ) -> F {
         let mut res = F::zero();
         let mut c = F::one();
         for s in self.entry.iter() {
             res += c * s.evaluate(eval);
             c *= joint_combiner;
         }
-        res
+        res + F::from(self.table_id) * joint_combiner.pow([max_joint_size as u64])
     }
 }
 
