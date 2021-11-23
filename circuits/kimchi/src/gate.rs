@@ -148,6 +148,8 @@ pub enum GateType {
     ChaCha1,
     ChaCha2,
     ChaChaFinal,
+    /// Lookup
+    Lookup,
 }
 
 /// Describes the desired lookup configuration.
@@ -286,6 +288,9 @@ impl GateType {
             row: CurrOrNext::Curr,
             column,
         };
+        let l = |loc: LocalPosition| SingleLookup {
+            value: vec![(F::one(), loc)],
+        };
         let chacha_pattern = (0..4)
             .map(|i| {
                 // each row represents an XOR operation
@@ -299,15 +304,25 @@ impl GateType {
                 let left = curr_row(3 + i);
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
-                let l = |loc: LocalPosition| SingleLookup {
-                    value: vec![(F::one(), loc)],
-                };
                 JointLookup {
                     table_id: 0,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
             .collect();
+
+        let lookup_pattern = (0..4)
+            .map(|i| {
+                let index = curr_row(2 * i);
+                let value = curr_row(2 * i + 1);
+                JointLookup {
+                    table_id: 1,
+                    entry: vec![l(index), l(value)],
+                }
+            })
+            .collect();
+        let mut lookup_where = HashSet::new();
+        lookup_where.insert((Lookup, Curr));
 
         let mut chacha_where = HashSet::new();
         use CurrOrNext::*;
@@ -345,6 +360,7 @@ impl GateType {
         vec![
             (chacha_pattern, chacha_where),
             (chacha_final_pattern, chacha_final_where),
+            (lookup_pattern, lookup_where),
         ]
     }
 
@@ -426,6 +442,7 @@ impl<F: FftField> CircuitGate<F> {
             Endomul => self.verify_endomul(witness, cs),
             EndomulScalar => self.verify_endomul_scalar(witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            Lookup => panic!("todo"),
         }
     }
 }

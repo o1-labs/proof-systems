@@ -135,6 +135,12 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
+    // Runtime lookup polynomials
+    // --------------------------
+    /// Lookup index
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub lookup8: Option<E<F, D<F>>>,
+
     // Constant polynomials
     // --------------------
     /// 1-st Lagrange evaluated over domain.d8
@@ -512,6 +518,32 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
+        // Runtime lookup polynomials
+        let lookup8 = {
+            use GateType::*;
+            let has_lookup_gate = gates.iter().any(|gate| gate.typ == Lookup);
+            if !has_lookup_gate {
+                None
+            } else {
+                let a = E::<F, D<F>>::from_vec_and_domain(
+                    gates
+                        .iter()
+                        .map(|gate| {
+                            if gate.typ == Lookup {
+                                F::one()
+                            } else {
+                                F::zero()
+                            }
+                        })
+                        .collect(),
+                    domain.d1,
+                )
+                .interpolate()
+                .evaluate_over_domain(domain.d8);
+                Some(a)
+            }
+        };
+
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
@@ -611,6 +643,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             zkpl,
             zkpm,
             vanishes_on_last_4_rows,
+            lookup8,
             gates,
             shift: shifts.shifts,
             endo,
