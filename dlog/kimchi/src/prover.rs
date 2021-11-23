@@ -438,6 +438,7 @@ where
                 domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
+                indexer: &index.cs.indexer8,
             }
         };
 
@@ -565,6 +566,7 @@ where
             lookup: lookup_evals(zeta),
             generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
+            indexer: index.cs.indexer.eval(zeta, index.max_poly_size),
         };
         let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| {
@@ -575,6 +577,7 @@ where
             lookup: lookup_evals(zeta_omega),
             generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
+            indexer: index.cs.indexer.eval(zeta_omega, index.max_poly_size),
         };
 
         drop(lookup_aggreg_coeffs);
@@ -605,6 +608,7 @@ where
                 }),
                 generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                 poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
+                indexer: DensePolynomial::eval_polynomial(&es.indexer, e1),
             })
             .collect::<Vec<_>>();
 

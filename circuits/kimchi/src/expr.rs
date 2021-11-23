@@ -70,6 +70,8 @@ pub struct Environment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
     pub lookup: Option<LookupEnvironment<'a, F>>,
+    /// Indexer polynomial
+    pub indexer: &'a Evaluations<F, D<F>>,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -88,6 +90,7 @@ impl<'a, F: FftField> Environment<'a, F> {
                 None => None,
                 Some(e) => Some(e),
             },
+            Indexer => Some(&self.indexer),
         }
     }
 }
@@ -123,6 +126,7 @@ pub enum Column {
     LookupKindIndex(usize),
     Index(GateType),
     Coefficient(usize),
+    Indexer,
 }
 
 impl Column {
@@ -381,6 +385,7 @@ impl Variable {
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
             }
+            Indexer => Ok(evals.indexer),
         }
     }
 }

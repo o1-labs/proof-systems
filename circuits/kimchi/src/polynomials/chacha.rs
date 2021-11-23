@@ -509,6 +509,7 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
             }),
+            indexer: F::zero(),
         };
         let evals = vec![eval(), eval()];
 

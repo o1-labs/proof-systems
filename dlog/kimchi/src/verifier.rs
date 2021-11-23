@@ -515,6 +515,10 @@ where
                                 scalars_part.push(e);
                                 commitments_part.push(c);
                             }
+                            Indexer => {
+                                scalars_part.push(e);
+                                commitments_part.push(&index.indexer_comm);
+                            }
                         }
                     }
                 }

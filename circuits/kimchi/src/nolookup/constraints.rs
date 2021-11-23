@@ -89,6 +89,12 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalarm: DP<F>,
 
+    // Runtime lookup polynomials
+    // --------------------------
+    /// the constant indexer polynomial, f(w^i) = i
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub indexer: DP<F>,
+
     //
     // Polynomials over lagrange base
     //
@@ -140,6 +146,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// Lookup index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub lookup8: Option<E<F, D<F>>>,
+    /// the constant indexer polynomial, f(w^i) = i
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub indexer8: E<F, D<F>>,
 
     // Constant polynomials
     // --------------------
@@ -544,6 +553,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        let indexer = E::<F, D<F>>::from_vec_and_domain(
+            (0..domain.d8.size).map(Into::into).collect(),
+            domain.d8,
+        )
+        .interpolate();
+        let indexer8 = indexer.evaluate_over_domain_by_ref(domain.d8);
+
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
@@ -643,6 +659,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             zkpl,
             zkpm,
             vanishes_on_last_4_rows,
+            indexer,
+            indexer8,
             lookup8,
             gates,
             shift: shifts.shifts,

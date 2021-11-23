@@ -38,6 +38,8 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+    /// evaluation of the indexer polynomial
+    pub indexer: Field,
 }
 
 impl<F: FftField> ProofEvaluations<Vec<F>> {
@@ -57,6 +59,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
+            indexer: DensePolynomial::eval_polynomial(&self.indexer, pt),
         }
     }
 }
@@ -184,6 +187,7 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
+        pub indexer: Vec<CamlF>,
     }
 
     //

@@ -120,6 +120,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     /// Lookup polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_comm: Option<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub indexer_comm: PolyComm<G>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -188,6 +190,9 @@ where
                 .lookup8
                 .as_ref()
                 .map(|c| self.srs.commit_evaluations_non_hiding(domain, &c, None)),
+            indexer_comm: self
+                .srs
+                .commit_evaluations_non_hiding(domain, &self.cs.indexer8, None),
             lookup_selectors: self
                 .cs
                 .lookup_selectors
