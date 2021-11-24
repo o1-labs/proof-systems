@@ -275,24 +275,21 @@ where
             CombinedEntry(x)
         };
 
+        let iter_lookup_table = || {
+            (0..d1_size).map(|i| {
+                let table_id = 0;
+                let row = index.cs.lookup_tables8[table_id as usize]
+                    .iter()
+                    .map(|e| &e.evals[8 * i]);
+                combine_table_entry(joint_combiner, table_id, lookup_info.max_joint_size, row)
+            })
+        };
+
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
             match lookup_used.as_ref() {
                 None => (None, None, None, None),
                 Some(_) => {
-                    let iter_lookup_table = || {
-                        (0..d1_size).map(|i| {
-                            let table_id = 0;
-                            let row = index.cs.lookup_tables8[table_id as usize]
-                                .iter()
-                                .map(|e| &e.evals[8 * i]);
-                            CombinedEntry(combine_table_entry(
-                                joint_combiner,
-                                table_id,
-                                lookup_info.max_joint_size,
-                                row,
-                            ))
-                        })
-                    };
+                    let iter_lookup_table = || iter_lookup_table().map(|x| CombinedEntry(x));
 
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
@@ -384,12 +381,6 @@ where
             match lookup_sorted {
                 None => (None, None, None),
                 Some(lookup_sorted) => {
-                    let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let table_id = 0;
-                        let row = index.cs.lookup_tables8[table_id as usize].iter().map(|e| & e.evals[8 * i]);
-                        combine_table_entry(joint_combiner, table_id, lookup_info.max_joint_size, row)
-                    });
-
                     let aggreg =
                         lookup::aggregation::<_, Fr<G>, _>(
                             Box::new(iter_lookup_table()) as Box<dyn DoubleEndedIterator<Item = Fr<G>>>,
