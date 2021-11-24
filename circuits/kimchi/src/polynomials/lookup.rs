@@ -364,9 +364,6 @@ pub fn sorted<
             sorted[i].push(end_val);
         }
 
-        let final_sorted = &mut sorted[max_lookups_per_row];
-        final_sorted.push(final_sorted[final_sorted.len() - 1].clone());
-
         // snake-ify (see top comment)
         for s in sorted.iter_mut().skip(1).step_by(2) {
             s.reverse();
