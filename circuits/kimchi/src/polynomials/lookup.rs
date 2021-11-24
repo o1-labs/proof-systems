@@ -323,6 +323,10 @@ pub fn sorted<
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
+    for t in lookup_table().take(lookup_rows) {
+        counts.entry(t).or_insert(1);
+    }
+
     for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
@@ -334,11 +338,6 @@ pub fn sorted<
         *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
     }
 
-    for t in lookup_table().take(lookup_rows) {
-        let count = counts.entry(t).or_insert(0);
-        *count += 1;
-    }
-
     let sorted = {
         let mut sorted: Vec<Vec<E>> = vec![];
         for _ in 0..max_lookups_per_row + 1 {
@@ -347,9 +346,13 @@ pub fn sorted<
 
         let mut i = 0;
         for t in lookup_table().take(lookup_table_entries) {
-            let t_count = match counts.get(&t) {
+            let t_count = match counts.get_mut(&t) {
                 None => return Err(ProofError::ValueNotInTable),
-                Some(x) => *x,
+                Some(x) => {
+                    let res = *x;
+                    *x = 1;
+                    res
+                }
             };
             for j in 0..t_count {
                 let idx = i + j;
