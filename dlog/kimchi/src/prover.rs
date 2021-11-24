@@ -37,6 +37,7 @@ pub struct LookupCommitments<G: AffineCurve> {
     pub sorted: Vec<PolyComm<G>>,
     pub aggreg: PolyComm<G>,
     pub runtime_table: PolyComm<G>,
+    pub lookup_chunk: PolyComm<G>,
 }
 
 #[derive(Clone)]
@@ -338,6 +339,42 @@ where
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();
 
+        let (lookup_chunk_coeffs, lookup_chunk_comm, lookup_chunk8) =
+            // compute lookup chunk polynomial
+            match &lookup_sorted {
+                None => (None, None, None),
+                Some(_lookup_sorted) => {
+                    let evals =
+                        lookup::lookup_chunk::<_, Fr<G>>(
+                            dummy_lookup_value.0,
+                            index.cs.domain.d1,
+                            &index.cs.gates,
+                            &witness,
+                            joint_combiner,
+                            beta, gamma,
+                            rng,
+                        );
+
+                    let comm = index.srs.commit_evaluations(index.cs.domain.d1, &evals, None, rng);
+                    fq_sponge.absorb_g(&comm.0.unshifted);
+
+                    let coeffs = evals.interpolate();
+
+                    // TODO: There's probably a clever way to expand the domain without
+                    // interpolating
+                    let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
+
+                    (Some(coeffs), Some(comm), Some(evals8))
+                },
+            };
+
+        let iter_lookup_chunk = || {
+            (0..d1_size).map(|i| match &lookup_chunk8 {
+                Some(lookup_chunk8) => lookup_chunk8.evals[8 * i],
+                None => Fr::<G>::zero(),
+            })
+        };
+
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
             match lookup_sorted {
@@ -351,12 +388,9 @@ where
 
                     let aggreg =
                         lookup::aggregation::<_, Fr<G>, _>(
-                            dummy_lookup_value.0,
-                            iter_lookup_table(),
+                            Box::new(iter_lookup_table()) as Box<dyn DoubleEndedIterator<Item = Fr<G>>>,
+                            Box::new(iter_lookup_chunk()) as Box<dyn DoubleEndedIterator<Item = Fr<G>>>,
                             index.cs.domain.d1,
-                            &index.cs.gates,
-                            &witness,
-                            joint_combiner,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -414,15 +448,18 @@ where
             .zip(lookup_sorted8.as_ref())
             .zip(lookup_aggreg8.as_ref())
             .zip(runtime_table8.as_ref())
+            .zip(lookup_chunk8.as_ref())
             .map(
-                |(((lookup_table_combined, lookup_sorted), lookup_aggreg), runtime_table)| {
-                    LookupEnvironment {
-                        aggreg: lookup_aggreg,
-                        sorted: lookup_sorted,
-                        table: lookup_table_combined,
-                        selectors: &index.cs.lookup_selectors,
-                        runtime_table: runtime_table,
-                    }
+                |(
+                    (((lookup_table_combined, lookup_sorted), lookup_aggreg), runtime_table),
+                    lookup_chunk,
+                )| LookupEnvironment {
+                    aggreg: lookup_aggreg,
+                    sorted: lookup_sorted,
+                    table: lookup_table_combined,
+                    selectors: &index.cs.lookup_selectors,
+                    runtime_table: runtime_table,
+                    lookup_chunk: lookup_chunk,
                 },
             );
 
@@ -554,7 +591,8 @@ where
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
                 .zip(runtime_table_poly.as_ref())
-                .map(|((aggreg, sorted), runtime_table)| {
+                .zip(lookup_chunk_coeffs.as_ref())
+                .map(|(((aggreg, sorted), runtime_table), lookup_chunk)| {
                     let table_id: u32 = 0;
                     LookupEvaluations {
                         aggreg: aggreg.eval(e, index.max_poly_size),
@@ -579,6 +617,7 @@ where
                             })
                             .collect(),
                         runtime_table: runtime_table.eval(e, index.max_poly_size),
+                        lookup_chunk: lookup_chunk.eval(e, index.max_poly_size),
                     }
                 })
         };
@@ -631,6 +670,7 @@ where
                         .map(|p| DensePolynomial::eval_polynomial(p, e1))
                         .collect(),
                     runtime_table: DensePolynomial::eval_polynomial(&l.runtime_table, e1),
+                    lookup_chunk: DensePolynomial::eval_polynomial(&l.lookup_chunk, e1),
                 }),
                 generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                 poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
@@ -752,10 +792,12 @@ where
                 lookup: lookup_aggreg_comm
                     .zip(lookup_sorted_comm)
                     .zip(runtime_table_comm)
-                    .map(|((a, s), rt)| LookupCommitments {
+                    .zip(lookup_chunk_comm)
+                    .map(|(((a, s), rt), chunk)| LookupCommitments {
                         aggreg: a.0,
                         sorted: s.iter().map(|(x, _)| x.clone()).collect(),
                         runtime_table: rt.0,
+                        lookup_chunk: chunk.0,
                     }),
             },
             proof: index.srs.open(

@@ -46,6 +46,8 @@ pub struct LookupEnvironment<'a, F: FftField> {
     pub table: &'a Evaluations<F, D<F>>,
     /// The evaluations of the runtime lookup table polynomial.
     pub runtime_table: &'a Evaluations<F, D<F>>,
+    /// The combined lookups chunked per row.
+    pub lookup_chunk: &'a Evaluations<F, D<F>>,
 }
 
 /// The collection of polynomials (all in evaluation form) and constants
@@ -88,6 +90,7 @@ impl<'a, F: FftField> Environment<'a, F> {
             LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
             LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
+            LookupChunk => lookup.map(|l| l.lookup_chunk),
             RuntimeLookupTable => lookup.map(|l| l.runtime_table),
             Index(t) => match self.index.get(t) {
                 None => None,
@@ -126,6 +129,7 @@ pub enum Column {
     LookupSorted(usize),
     LookupAggreg,
     LookupTable,
+    LookupChunk,
     LookupKindIndex(usize),
     Index(GateType),
     Coefficient(usize),
@@ -384,6 +388,7 @@ impl Variable {
             LookupSorted(i) => l.map(|l| l.sorted[i]),
             LookupAggreg => l.map(|l| l.aggreg),
             LookupTable => l.map(|l| l.table),
+            LookupChunk => l.map(|l| l.lookup_chunk),
             RuntimeLookupTable => l.map(|l| l.runtime_table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),

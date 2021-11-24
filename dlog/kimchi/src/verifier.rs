@@ -145,6 +145,7 @@ where
         let gamma = fq_sponge.challenge();
 
         self.commitments.lookup.iter().for_each(|l| {
+            fq_sponge.absorb_g(&l.lookup_chunk.unshifted);
             fq_sponge.absorb_g(&l.aggreg.unshifted);
         });
 
@@ -525,6 +526,9 @@ where
                             }
                             RuntimeLookupTable => {
                                 panic!("TODO: RuntimeLookupTable");
+                            }
+                            LookupChunk => {
+                                panic!("TODO: LookupChunk");
                             }
                         }
                     }

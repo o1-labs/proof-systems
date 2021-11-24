@@ -22,6 +22,8 @@ pub struct LookupEvaluations<Field> {
     pub table: Field,
     /// runtime lookup table polynomial
     pub runtime_table: Field,
+    /// chunked row lookups
+    pub lookup_chunk: Field,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
@@ -59,6 +61,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
                     .map(|x| DensePolynomial::eval_polynomial(x, pt))
                     .collect(),
                 runtime_table: DensePolynomial::eval_polynomial(&l.runtime_table, pt),
+                lookup_chunk: DensePolynomial::eval_polynomial(&l.lookup_chunk, pt),
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),

@@ -378,6 +378,66 @@ pub fn sorted<
     Ok(sorted)
 }
 
+pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
+    dummy_lookup_value: F,
+    d1: D<F>,
+    gates: &[CircuitGate<F>],
+    witness: &[Vec<F>; COLUMNS],
+    joint_combiner: F,
+    beta: F,
+    gamma: F,
+    rng: &mut R,
+) -> Evaluations<F, D<F>> {
+    let n = d1.size as usize;
+    let lookup_rows = n - ZK_ROWS - 1;
+
+    let lookup_info = LookupInfo::<F>::create();
+    let max_lookups_per_row = lookup_info.max_per_row;
+
+    let beta1 = F::one() + beta;
+
+    let complements_with_beta_term = {
+        let mut v = vec![F::one()];
+        let x = gamma + dummy_lookup_value;
+        for i in 1..(max_lookups_per_row + 1) {
+            v.push(v[i - 1] * x)
+        }
+
+        let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
+        v.iter_mut().for_each(|x| *x *= beta1_per_row);
+
+        v
+    };
+    let lookup_chunk: Vec<_> = lookup_info
+        .by_row(gates)
+        .iter()
+        .take(lookup_rows)
+        .enumerate()
+        .map(|(i, spec)| {
+            let eval = |pos: LocalPosition| -> F {
+                let row = match pos.row {
+                    Curr => i,
+                    Next => i + 1,
+                };
+                witness[pos.column][row]
+            };
+
+            let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
+
+            // This recomputes `joint_lookup.evaluate` on all the rows, which
+            // is also computed in `sorted`. It should pretty cheap relative to
+            // the whole cost of the prover, and saves us
+            // `max_lookups_per_row (=4) * n` field elements of
+            // memory.
+            spec.iter().fold(padding, |acc, j| {
+                let res = j.evaluate(joint_combiner, lookup_info.max_joint_size, &eval);
+                acc * (gamma + res)
+            })
+        })
+        .collect();
+    zk_patch(lookup_chunk, d1, rng)
+}
+
 /// Computes the aggregation polynomial for maximum n lookups per row, whose kth entry is the product of terms
 ///
 ///  (gamma(1 + beta) + t_i + beta t_{i+1}) \prod_{0 <= j < n} ( (1 + beta) (gamma + f_{i,j}) )
@@ -404,12 +464,9 @@ pub fn sorted<
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
-    dummy_lookup_value: F,
     lookup_table: I,
+    lookup_chunk: I,
     d1: D<F>,
-    gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
     beta: F,
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
@@ -437,48 +494,11 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     }));
     ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
 
-    let lookup_info = LookupInfo::<F>::create();
-    let max_lookups_per_row = lookup_info.max_per_row;
-
-    let complements_with_beta_term = {
-        let mut v = vec![F::one()];
-        let x = gamma + dummy_lookup_value;
-        for i in 1..(max_lookups_per_row + 1) {
-            v.push(v[i - 1] * x)
-        }
-
-        let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
-        v.iter_mut().for_each(|x| *x *= beta1_per_row);
-
-        v
-    };
-
     adjacent_pairs(lookup_table)
         .take(lookup_rows)
-        .zip(lookup_info.by_row(gates))
+        .zip(lookup_chunk)
         .enumerate()
-        .for_each(|(i, ((t0, t1), spec))| {
-            let f_chunk = {
-                let eval = |pos: LocalPosition| -> F {
-                    let row = match pos.row {
-                        Curr => i,
-                        Next => i + 1,
-                    };
-                    witness[pos.column][row]
-                };
-
-                let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
-
-                // This recomputes `joint_lookup.evaluate` on all the rows, which
-                // is also computed in `sorted`. It should pretty cheap relative to
-                // the whole cost of the prover, and saves us
-                // `max_lookups_per_row (=4) * n` field elements of
-                // memory.
-                spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, lookup_info.max_joint_size, &eval))
-                })
-            };
-
+        .for_each(|(i, ((t0, t1), f_chunk))| {
             // At this point, lookup_aggreg[i + 1] contains 1/s_chunk
             // f_chunk / s_chunk
             lookup_aggreg[i + 1] *= f_chunk;
@@ -568,7 +588,7 @@ pub fn constraints<F: FftField>(
         .fold(non_lookup_indcator * f_term(&vec![]), |acc, x| acc + x);
     let gammabeta1 =
         || E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
-    let ft_chunk = f_chunk
+    let ft_chunk = E::cell(Column::LookupChunk, Curr)
         * (gammabeta1()
             + E::cell(Column::LookupTable, Curr)
             + E::beta() * E::cell(Column::LookupTable, Next));
@@ -654,6 +674,7 @@ pub fn constraints<F: FftField>(
 
     let mut res = vec![
         E::VanishesOnLast4Rows * aggreg_equation,
+        E::VanishesOnLast4Rows * (E::cell(Column::LookupChunk, Curr) - f_chunk),
         E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the 3rd to last row (index = num_rows - 3), which
         // contains the full product, equals 1

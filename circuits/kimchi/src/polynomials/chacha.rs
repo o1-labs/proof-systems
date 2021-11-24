@@ -509,6 +509,7 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
                 runtime_table: F::rand(rng),
+                lookup_chunk: F::rand(rng),
             }),
             indexer: F::zero(),
         };
