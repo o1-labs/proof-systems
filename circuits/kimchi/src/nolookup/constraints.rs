@@ -553,11 +553,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let indexer = E::<F, D<F>>::from_vec_and_domain(
-            (0..domain.d8.size).map(Into::into).collect(),
-            domain.d8,
-        )
-        .interpolate();
+        let indexer = {
+            // NB: The indexer is in reverse order, to allow the runtime table to be 'snakified'
+            // with the lookup table
+            let indexes: Vec<_> = (0..domain.d1.size - ZK_ROWS)
+                .rev()
+                .map(Into::into)
+                .collect();
+            E::<F, D<F>>::from_vec_and_domain(indexes, domain.d1).interpolate()
+        };
         let indexer8 = indexer.evaluate_over_domain_by_ref(domain.d8);
 
         // constant polynomials
