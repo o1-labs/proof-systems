@@ -186,18 +186,22 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
 
-        let (runtime_table_evals, runtime_table_comm, runtime_table_poly, runtime_table8) = {
+        let (runtime_table_comm, runtime_table_poly, runtime_table8) = {
             match lookup_used.as_ref() {
-                None => (None, None, None, None),
+                None => (None, None, None),
                 Some(_) => {
-                    let evals = lookup::zk_patch(runtime_table, index.cs.domain.d1, rng);
+                    let evals = lookup::zk_patch(
+                        runtime_table.iter().map(|x| *x).rev().collect(),
+                        index.cs.domain.d1,
+                        rng,
+                    );
                     let comm = index
                         .srs
                         .commit_evaluations(index.cs.domain.d1, &evals, None, rng);
                     fq_sponge.absorb_g(&comm.0.unshifted);
                     let coeffs = evals.clone().interpolate();
                     let evals8 = coeffs.evaluate_over_domain_by_ref(index.cs.domain.d8);
-                    (Some(evals), Some(comm), Some(coeffs), Some(evals8))
+                    (Some(comm), Some(coeffs), Some(evals8))
                 }
             }
         };
