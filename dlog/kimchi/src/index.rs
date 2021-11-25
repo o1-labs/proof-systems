@@ -252,7 +252,7 @@ where
                 for i in 0..COLUMNS {
                     h.insert(Witness(i));
                 }
-                for i in 0..(lookup_info.max_per_row + 1) {
+                for i in 0..(lookup_info.max_per_row + 2) {
                     h.insert(LookupSorted(i));
                 }
                 h.insert(Z);

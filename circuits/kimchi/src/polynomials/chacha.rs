@@ -475,7 +475,7 @@ mod tests {
             for i in 0..COLUMNS {
                 h.insert(Column::Witness(i));
             }
-            for i in 0..(lookup_info.max_per_row + 1) {
+            for i in 0..(lookup_info.max_per_row + 2) {
                 h.insert(Column::LookupSorted(i));
             }
             h.insert(Column::Z);
@@ -503,7 +503,7 @@ mod tests {
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: Some(LookupEvaluations {
-                sorted: (0..(lookup_info.max_per_row + 1))
+                sorted: (0..(lookup_info.max_per_row + 2))
                     .map(|_| F::rand(rng))
                     .collect(),
                 aggreg: F::rand(rng),

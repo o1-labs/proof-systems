@@ -209,7 +209,9 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             *all_lookups.entry(table_entry).or_insert(0) += 1
         }
 
-        *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
+        // TODO: Remove the + 1 here
+        *all_lookups.entry(dummy_lookup_value).or_insert(0) +=
+            lookup_info.max_per_row + 1 - spec.len()
     }
 
     assert_eq!(
@@ -329,7 +331,8 @@ pub fn sorted<
 
     for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
         let spec = row;
-        let padding = max_lookups_per_row - spec.len();
+        // TODO: Remove the + 1 here
+        let padding = max_lookups_per_row + 1 - spec.len();
         for joint_lookup in spec.iter() {
             let table_entry = E::evaluate(&params, max_joint_size, joint_lookup, witness, i);
             let count = counts.entry(table_entry).or_insert(0);
@@ -340,7 +343,7 @@ pub fn sorted<
 
     let sorted = {
         let mut sorted: Vec<Vec<E>> = vec![];
-        for _ in 0..max_lookups_per_row + 1 {
+        for _ in 0..max_lookups_per_row + 2 {
             sorted.push(Vec::with_capacity(lookup_rows + 1))
         }
 
@@ -362,9 +365,12 @@ pub fn sorted<
             i += t_count;
         }
 
-        for i in 0..max_lookups_per_row {
-            let end_val = sorted[i + 1][0].clone();
-            sorted[i].push(end_val);
+        for i in 0..(max_lookups_per_row + 1) {
+            let prev_row = &sorted[i + 1];
+            if prev_row.len() > 0 {
+                let end_val = prev_row[0].clone();
+                sorted[i].push(end_val);
+            }
         }
 
         // snake-ify (see top comment)
@@ -399,11 +405,11 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
     let complements_with_beta_term = {
         let mut v = vec![F::one()];
         let x = gamma + dummy_lookup_value;
-        for i in 1..(max_lookups_per_row + 1) {
+        for i in 1..(max_lookups_per_row + 2) {
             v.push(v[i - 1] * x)
         }
 
-        let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
+        let beta1_per_row = beta1.pow(&[(max_lookups_per_row + 1) as u64]);
         v.iter_mut().for_each(|x| *x *= beta1_per_row);
 
         v
@@ -422,7 +428,7 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
                 witness[pos.column][row]
             };
 
-            let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
+            let padding = complements_with_beta_term[max_lookups_per_row + 1 - spec.len()];
 
             // This recomputes `joint_lookup.evaluate` on all the rows, which
             // is also computed in `sorted`. It should pretty cheap relative to
@@ -557,12 +563,12 @@ pub fn constraints<F: FftField>(
     let complements_with_beta_term: Vec<ConstantExpr<F>> = {
         let mut v = vec![ConstantExpr::one()];
         let x = ConstantExpr::Gamma + dummy_lookup;
-        for i in 1..(lookup_info.max_per_row + 1) {
+        for i in 1..(lookup_info.max_per_row + 2) {
             v.push(v[i - 1].clone() * x.clone())
         }
 
         let beta1_per_row: ConstantExpr<F> =
-            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
+            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row + 1);
         v.iter()
             .map(|x| x.clone() * beta1_per_row.clone())
             .collect()
@@ -574,7 +580,7 @@ pub fn constraints<F: FftField>(
     // on non-lookup rows, will be equal to 1.
     let f_term = |spec: &Vec<_>| {
         assert!(spec.len() <= lookup_info.max_per_row);
-        let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
+        let padding = complements_with_beta_term[lookup_info.max_per_row + 1 - spec.len()].clone();
 
         spec.iter()
             .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j, lookup_info.max_joint_size))
@@ -623,7 +629,7 @@ pub fn constraints<F: FftField>(
     // and if i % 2 = 1, we enforce that the
     // first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
-    let s_chunk = (0..(lookup_info.max_per_row + 1))
+    let s_chunk = (0..(lookup_info.max_per_row + 2))
         .map(|i| {
             let (s1, s2) = if i % 2 == 0 {
                 (Curr, Next)
@@ -637,7 +643,7 @@ pub fn constraints<F: FftField>(
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
-    let compatibility_checks: Vec<_> = (0..lookup_info.max_per_row)
+    let compatibility_checks: Vec<_> = (0..lookup_info.max_per_row + 1)
         .map(|i| {
             let first_or_last = if i % 2 == 0 {
                 // Check compatibility of the last elements
@@ -658,7 +664,7 @@ pub fn constraints<F: FftField>(
         aggreg.next =
         aggreg.curr
         * f_chunk
-        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
+        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1])
         / (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
 
         rearranging,
@@ -668,7 +674,7 @@ pub fn constraints<F: FftField>(
         =
         aggreg.curr
         * f_chunk
-        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
+        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1])
 
     */
 
