@@ -54,12 +54,12 @@ fn lookup_prover() {
 
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
     for _ in 0..num_lookups {
-        for i in 0..4 {
+        for i in 0..3 {
             let idx = rand::random::<usize>() % table_size;
             witness[i * 2].push(Into::into(idx as u64));
             witness[i * 2 + 1].push(runtime_table[idx]);
         }
-        for i in 8..COLUMNS {
+        for i in 6..COLUMNS {
             witness[i].push(Fp::zero());
         }
     }

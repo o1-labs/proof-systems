@@ -311,7 +311,7 @@ impl GateType {
             })
             .collect();
 
-        let lookup_pattern = (0..4)
+        let lookup_pattern = (0..3)
             .map(|i| {
                 let index = curr_row(2 * i);
                 let value = curr_row(2 * i + 1);
