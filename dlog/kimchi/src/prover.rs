@@ -109,7 +109,7 @@ where
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
-        runtime_table: Vec<Fr<G>>,
+        mut runtime_table: Vec<Fr<G>>,
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self, ProofError> {
@@ -190,6 +190,11 @@ where
             match lookup_used.as_ref() {
                 None => (None, None, None),
                 Some(_) => {
+                    // Pad runtime table with zeros before reversing.
+                    runtime_table.extend(
+                        (0..((d1_size - ZK_ROWS as usize) - runtime_table.len()))
+                            .map(|_| Fr::<G>::zero()),
+                    );
                     let evals = lookup::zk_patch(
                         runtime_table.iter().map(|x| *x).rev().collect(),
                         index.cs.domain.d1,
@@ -284,12 +289,29 @@ where
                 combine_table_entry(joint_combiner, table_id, lookup_info.max_joint_size, row)
             })
         };
+        let iter_runtime_table = || {
+            (0..d1_size).map(|i| match &runtime_table8 {
+                Some(runtime_table8) => {
+                    let table_id = 1;
+                    let index = &index.cs.indexer8.evals[8 * i];
+                    let value = &runtime_table8.evals[8 * i];
+                    combine_table_entry(
+                        joint_combiner,
+                        table_id,
+                        lookup_info.max_joint_size,
+                        [value, index].into_iter(),
+                    )
+                }
+                None => Fr::<G>::zero(),
+            })
+        };
 
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
             match lookup_used.as_ref() {
                 None => (None, None, None, None),
                 Some(_) => {
                     let iter_lookup_table = || iter_lookup_table().map(|x| CombinedEntry(x));
+                    let iter_runtime_table = || iter_runtime_table().map(|x| CombinedEntry(x));
 
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
@@ -298,6 +320,7 @@ where
                         dummy_lookup_value,
                         iter_lookup_table,
                         index.cs.lookup_table_lengths[0],
+                        iter_runtime_table,
                         lookup_info.max_joint_size,
                         index.cs.domain.d1,
                         &index.cs.gates,
@@ -384,6 +407,7 @@ where
                     let aggreg =
                         lookup::aggregation::<_, Fr<G>, _>(
                             Box::new(iter_lookup_table()) as Box<dyn DoubleEndedIterator<Item = Fr<G>>>,
+                            Box::new(iter_runtime_table()) as Box<dyn DoubleEndedIterator<Item = Fr<G>>>,
                             Box::new(iter_lookup_chunk()) as Box<dyn DoubleEndedIterator<Item = Fr<G>>>,
                             index.cs.domain.d1,
                             beta, gamma,

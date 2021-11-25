@@ -317,7 +317,7 @@ impl GateType {
                 let value = curr_row(2 * i + 1);
                 JointLookup {
                     table_id: 1,
-                    entry: vec![l(index), l(value)],
+                    entry: vec![l(value), l(index)],
                 }
             })
             .collect();

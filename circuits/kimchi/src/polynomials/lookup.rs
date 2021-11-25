@@ -209,9 +209,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             *all_lookups.entry(table_entry).or_insert(0) += 1
         }
 
-        // TODO: Remove the + 1 here
-        *all_lookups.entry(dummy_lookup_value).or_insert(0) +=
-            lookup_info.max_per_row + 1 - spec.len()
+        *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
     }
 
     assert_eq!(
@@ -237,6 +235,8 @@ pub trait Entry {
     type Field: Field;
     type Params;
 
+    fn literal(f: Self::Field) -> Self;
+
     fn evaluate(
         p: &Self::Params,
         max_joint_size: usize,
@@ -251,6 +251,10 @@ pub struct CombinedEntry<F>(pub F);
 impl<F: Field> Entry for CombinedEntry<F> {
     type Field = F;
     type Params = F;
+
+    fn literal(f: Self::Field) -> Self {
+        CombinedEntry(f)
+    }
 
     fn evaluate(
         joint_combiner: &F,
@@ -278,6 +282,10 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     type Field = F;
     type Params = ();
 
+    fn literal(_f: Self::Field) -> Self {
+        panic!("TODO");
+    }
+
     fn evaluate(
         _: &(),
         _max_joint_size: usize,
@@ -300,14 +308,17 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 /// Computes the sorted lookup tables required by the lookup argument.
 pub fn sorted<
     F: FftField,
-    E: Entry<Field = F> + Eq + std::hash::Hash + Clone,
+    E: Entry<Field = F> + Eq + std::hash::Hash + Clone + std::fmt::Debug,
     I: Iterator<Item = E>,
+    I2: DoubleEndedIterator<Item = E>,
     G: Fn() -> I,
+    G2: Fn() -> I2,
 >(
     // TODO: Multiple tables
     dummy_lookup_value: E,
     lookup_table: G,
     lookup_table_entries: usize,
+    runtime_table: G2,
     max_joint_size: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
@@ -325,18 +336,22 @@ pub fn sorted<
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
-    for t in lookup_table().take(lookup_rows) {
+    for t in runtime_table()
+        .take(lookup_rows + 1)
+        .chain(lookup_table().take(lookup_rows))
+    {
         counts.entry(t).or_insert(1);
     }
 
     for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
         let spec = row;
-        // TODO: Remove the + 1 here
-        let padding = max_lookups_per_row + 1 - spec.len();
+        let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
             let table_entry = E::evaluate(&params, max_joint_size, joint_lookup, witness, i);
-            let count = counts.entry(table_entry).or_insert(0);
-            *count += 1;
+            match counts.get_mut(&table_entry) {
+                None => return Err(ProofError::ValueNotInTable),
+                Some(x) => *x += 1,
+            }
         }
         *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
     }
@@ -348,7 +363,14 @@ pub fn sorted<
         }
 
         let mut i = 0;
-        for t in lookup_table().take(lookup_table_entries) {
+        // NB: There are lookup_rows+1 different values in the runtime table, all of which
+        // participate in the multiset inclusion argument. Thus, we need to consider them all here.
+        for t in runtime_table()
+            .rev()
+            .skip(ZK_ROWS)
+            .take(lookup_rows + 1)
+            .chain(lookup_table().take(lookup_table_entries))
+        {
             let t_count = match counts.get_mut(&t) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(x) => {
@@ -371,6 +393,12 @@ pub fn sorted<
                 let end_val = prev_row[0].clone();
                 sorted[i].push(end_val);
             }
+        }
+
+        // Pad columns with zeros
+        for i in 0..(max_lookups_per_row + 2) {
+            let len = sorted[i].len();
+            sorted[i].extend((0..lookup_rows + 1 - len).map(|_| E::literal(F::zero())));
         }
 
         // snake-ify (see top comment)
@@ -405,11 +433,11 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
     let complements_with_beta_term = {
         let mut v = vec![F::one()];
         let x = gamma + dummy_lookup_value;
-        for i in 1..(max_lookups_per_row + 2) {
+        for i in 1..(max_lookups_per_row + 1) {
             v.push(v[i - 1] * x)
         }
 
-        let beta1_per_row = beta1.pow(&[(max_lookups_per_row + 1) as u64]);
+        let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
         v.iter_mut().for_each(|x| *x *= beta1_per_row);
 
         v
@@ -428,7 +456,7 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
                 witness[pos.column][row]
             };
 
-            let padding = complements_with_beta_term[max_lookups_per_row + 1 - spec.len()];
+            let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
 
             // This recomputes `joint_lookup.evaluate` on all the rows, which
             // is also computed in `sorted`. It should pretty cheap relative to
@@ -469,8 +497,9 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
+pub fn aggregation<R: Rng + ?Sized, F: FftField, I: DoubleEndedIterator<Item = F>>(
     lookup_table: I,
+    runtime_table: I,
     lookup_chunk: I,
     d1: D<F>,
     beta: F,
@@ -482,7 +511,13 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
     let gammabeta1 = gamma * beta1;
-    let mut lookup_aggreg = vec![F::one()];
+    // Due to the snaking of the lookup and runtime tables, there's actually 1 more value included
+    // in the numerator of the lookup argument vs the denominator. To compensate, we include the
+    // value here, abusing the fact that we know the lookup table is padded with 0s.
+    // In essence, here we are including the evaluation
+    // `gamma * (beta + 1) + x + beta * x`
+    // but simplified using x = 0.
+    let mut lookup_aggreg = vec![gammabeta1];
 
     lookup_aggreg.extend((0..lookup_rows).map(|row| {
         sorted
@@ -498,20 +533,28 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
             })
             .fold(F::one(), |acc, x| acc * x)
     }));
-    ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[1..]);
+    ark_ff::fields::batch_inversion::<F>(&mut lookup_aggreg[0..]);
 
     adjacent_pairs(lookup_table)
         .take(lookup_rows)
+        .zip(adjacent_pairs(runtime_table))
         .zip(lookup_chunk)
         .enumerate()
-        .for_each(|(i, ((t0, t1), f_chunk))| {
+        .for_each(|(i, (((t0, t1), (rt0, rt1)), f_chunk))| {
+            if i == 0 {
+                // Snakify between lookup_table and runtime_table
+                lookup_aggreg[0] *= gammabeta1 + rt0 + beta * t0;
+            }
+
             // At this point, lookup_aggreg[i + 1] contains 1/s_chunk
             // f_chunk / s_chunk
             lookup_aggreg[i + 1] *= f_chunk;
             // f_chunk * t_chunk / s_chunk
             lookup_aggreg[i + 1] *= gammabeta1 + t0 + beta * t1;
+            // f_chunk * t_chunk * rt_chunk / s_chunk
+            lookup_aggreg[i + 1] *= gammabeta1 + rt1 + beta * rt0;
             let prev = lookup_aggreg[i];
-            // prev * f_chunk * t_chunk / s_chunk
+            // prev * f_chunk * t_chunk * rt_chunk / s_chunk
             lookup_aggreg[i + 1] *= prev;
         });
 
@@ -563,12 +606,12 @@ pub fn constraints<F: FftField>(
     let complements_with_beta_term: Vec<ConstantExpr<F>> = {
         let mut v = vec![ConstantExpr::one()];
         let x = ConstantExpr::Gamma + dummy_lookup;
-        for i in 1..(lookup_info.max_per_row + 2) {
+        for i in 1..(lookup_info.max_per_row + 1) {
             v.push(v[i - 1].clone() * x.clone())
         }
 
         let beta1_per_row: ConstantExpr<F> =
-            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row + 1);
+            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
         v.iter()
             .map(|x| x.clone() * beta1_per_row.clone())
             .collect()
@@ -580,7 +623,7 @@ pub fn constraints<F: FftField>(
     // on non-lookup rows, will be equal to 1.
     let f_term = |spec: &Vec<_>| {
         assert!(spec.len() <= lookup_info.max_per_row);
-        let padding = complements_with_beta_term[lookup_info.max_per_row + 1 - spec.len()].clone();
+        let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
         spec.iter()
             .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j, lookup_info.max_joint_size))
@@ -598,6 +641,15 @@ pub fn constraints<F: FftField>(
         * (gammabeta1()
             + E::cell(Column::LookupTable, Curr)
             + E::beta() * E::cell(Column::LookupTable, Next));
+
+    let runtime_table_entry = |curr_or_next| -> E<F> {
+        E::cell(Column::RuntimeLookupTable, curr_or_next)
+            + E::cell(Column::Indexer, curr_or_next) * E::constant(ConstantExpr::JointCombiner)
+            + E::constant(ConstantExpr::JointCombiner).pow(lookup_info.max_joint_size)
+    };
+
+    let rt_chunk = ft_chunk
+        * (gammabeta1() + runtime_table_entry(Next) + E::beta() * runtime_table_entry(Curr));
 
     let num_rows = d1.size as usize;
 
@@ -658,13 +710,14 @@ pub fn constraints<F: FftField>(
         .collect();
 
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * s_chunk
-        - E::cell(Column::LookupAggreg, Curr) * ft_chunk;
+        - E::cell(Column::LookupAggreg, Curr) * rt_chunk;
 
     /*
         aggreg.next =
         aggreg.curr
         * f_chunk
         * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1])
+        * (gammabeta1 + index.runtime_table[i+1] + beta * index.runtime_tables[i])
         / (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
 
         rearranging,
@@ -675,13 +728,28 @@ pub fn constraints<F: FftField>(
         aggreg.curr
         * f_chunk
         * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1])
+        * (gammabeta1 + index.runtime_table[i+1] + beta * index.runtime_tables[i])
 
     */
 
     let mut res = vec![
         E::VanishesOnLast4Rows * aggreg_equation,
         E::VanishesOnLast4Rows * (E::cell(Column::LookupChunk, Curr) - f_chunk),
-        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        // Check that the first term matches the 'snakification' term for the lookup_table and
+        // runtime_table. Without this term, the RHS of lookupaggreg[0] would be 1; we multiply by
+        // this term to add continuity between the two tables.
+        // Doing this allows us to avoid the compatibility check -- and, more importantly, allows
+        // us to avoid massaging the tables so that this check holds.
+        //
+        // To account for the extra term in the numerator for joining the runtime table to the
+        // lookup table, we also introduce a `gamma * (beta + 1) + x + beta * x` term into the
+        // denominator for the missing final value `x` in the lookup table. Happily, this value is
+        // 0, so we simplify this down to `gamma * (beta + 1)`.
+        E::UnnormalizedLagrangeBasis(0)
+            * (E::cell(Column::LookupAggreg, Curr) * gammabeta1()
+                - gammabeta1()
+                - runtime_table_entry(Curr)
+                - E::beta() * E::cell(Column::LookupTable, Curr)),
         // Check that the 3rd to last row (index = num_rows - 3), which
         // contains the full product, equals 1
         E::UnnormalizedLagrangeBasis(num_lookup_rows)

@@ -258,6 +258,8 @@ where
                 h.insert(Z);
                 h.insert(LookupAggreg);
                 h.insert(LookupTable);
+                h.insert(Indexer);
+                h.insert(RuntimeLookupTable);
                 h.insert(LookupChunk);
                 h.insert(Index(GateType::Poseidon));
                 h.insert(Index(GateType::Generic));
