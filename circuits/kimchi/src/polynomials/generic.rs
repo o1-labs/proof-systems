@@ -179,16 +179,14 @@ mod tests {
         let mut gates_row = iterate(0usize, |&i| i + 1);
         let r = gates_row.next().unwrap();
         gates.push(CircuitGate::create_generic_add(
-            r,
             Wire::new(r),
             Fp::one(),
             Fp::one(),
         )); // add
         let r = gates_row.next().unwrap();
-        gates.push(CircuitGate::create_generic_mul(r, Wire::new(r))); // mul
+        gates.push(CircuitGate::create_generic_mul(Wire::new(r))); // mul
         let r = gates_row.next().unwrap();
         gates.push(CircuitGate::create_generic_const(
-            r,
             Wire::new(r),
             19u32.into(),
         )); // const

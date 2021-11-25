@@ -170,8 +170,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
 
 impl<F: FftField> CircuitGate<F> {
     /// Check the correctness of witness values for a complete-add gate.
-    pub fn verify_complete_add(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
-        let row = self.row;
+    pub fn verify_complete_add(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         let x1 = witness[0][row];
         let y1 = witness[1][row];
         let x2 = witness[2][row];

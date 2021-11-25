@@ -13,13 +13,13 @@ pub const MUL_COEFF: usize = GENERICS;
 pub const CONSTANT_COEFF: usize = GENERICS + 1;
 
 impl<F: FftField> CircuitGate<F> {
-    pub fn create_generic(row: usize, wires: GateWires, qw: [F; GENERICS], qm: F, qc: F) -> Self {
+    pub fn create_generic(wires: GateWires, qw: [F; GENERICS], qm: F, qc: F) -> Self {
+
         let mut c = qw.to_vec();
         c.push(qm);
         c.push(qc);
 
         CircuitGate {
-            row,
             typ: GateType::Generic,
             wires,
             c,
@@ -27,42 +27,42 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// creates an addition gate
-    pub fn create_generic_add(row: usize, wires: GateWires, left_coeff: F, right_coeff: F) -> Self {
+    pub fn create_generic_add(wires: GateWires, left_coeff: F, right_coeff: F) -> Self {
         let on = F::one();
         let off = F::zero();
         let qw: [F; GENERICS] = [left_coeff, right_coeff, -on];
-        Self::create_generic(row, wires, qw, off, off)
+        Self::create_generic( wires, qw, off, off)
     }
 
     /// creates a multiplication gate
-    pub fn create_generic_mul(row: usize, wires: GateWires) -> Self {
+    pub fn create_generic_mul(wires: GateWires) -> Self {
         let on = F::one();
         let off = F::zero();
         let qw: [F; GENERICS] = [off, off, -on];
-        Self::create_generic(row, wires, qw, on, off)
+        Self::create_generic(wires, qw, on, off)
     }
 
     /// creates a constant gate
-    pub fn create_generic_const(row: usize, wires: GateWires, constant: F) -> Self {
+    pub fn create_generic_const(wires: GateWires, constant: F) -> Self {
         let on = F::one();
         let off = F::zero();
         let qw: [F; GENERICS] = array_init(|col| if col == 0 { on } else { off });
-        Self::create_generic(row, wires, qw, off, -constant)
+        Self::create_generic(wires, qw, off, -constant)
     }
 
     /// creates a public input gate
-    pub fn create_generic_public(row: usize, wires: GateWires) -> Self {
+    pub fn create_generic_public(wires: GateWires) -> Self {
         let on = F::one();
         let off = F::zero();
         let qw: [F; GENERICS] = array_init(|col| if col == 0 { on } else { off });
-        Self::create_generic(row, wires, qw, off, off)
+        Self::create_generic(wires, qw, off, off)
     }
 
     /// verifies that the generic gate constraints are solved by the witness
     // TODO(mimoo): this is not going to work for public inputs no?
-    pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
+    pub fn verify_generic(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // assignments
-        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
         let left = this[0];
         let right = this[1];
 

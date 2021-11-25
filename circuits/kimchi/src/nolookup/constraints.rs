@@ -354,7 +354,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
                 CircuitGate::<F>::zero(
-                    i,
                     array_init(|j| Wire {
                         col: WIRES[j],
                         row: i,
@@ -655,7 +654,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // check the gate's satisfiability
-            gate.verify(&witness, self)
+            gate.verify(row, &witness, self)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
