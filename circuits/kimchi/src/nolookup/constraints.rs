@@ -5,7 +5,7 @@ This source file implements Plonk circuit constraint primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::gate::{CircuitGate, GateType, LookupInfo};
+use crate::gate::{CircuitGate, GateType, LookupInfo, LookupTable};
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -352,7 +352,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
         mut gates: Vec<CircuitGate<F>>,
-        lookup_tables: Vec<Vec<Vec<F>>>,
+        lookup_tables: Vec<LookupTable<F>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
@@ -590,44 +590,69 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         //
 
-        // get the height of each lookup table
-        let lookup_table_length = if lookup_tables[0].len() > 0 {
-            lookup_tables[0][0].len()
-        } else {
-            0
-        };
-
-        // get the last entry in each column of each table
-        let dummy_lookup_values: Vec<F> = lookup_tables[0]
+        // Get the max width of all lookup tables
+        let max_table_width = lookup_tables
             .iter()
-            .map(|col| col[col.len() - 1])
+            .fold(0, |max_width, LookupTable { width, .. }| {
+                std::cmp::max(max_width, *width)
+            });
+        let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
+        let mut lookup_table_ids = Vec::with_capacity(d1_size);
+        for table in lookup_tables.iter() {
+            for row in table.values.iter() {
+                if row.len() != table.width {
+                    // Malformed table, widths do not match
+                    None?;
+                }
+                lookup_table_ids.push(table.table_id.into());
+                for (i, value) in row.iter().enumerate() {
+                    lookup_table[i].push(*value);
+                }
+                for i in row.len()..max_table_width {
+                    lookup_table[i].push(F::zero())
+                }
+            }
+        }
+
+        let mut lookup_table_length = 0;
+
+        // Pad with zeros as needed
+        if max_table_width > 0 {
+            lookup_table_length = lookup_table[0].len();
+            if lookup_table_length > d1_size - (ZK_ROWS as usize) {
+                // Too many values across tables
+                None?
+            }
+            for _ in lookup_table_length..d1_size - (ZK_ROWS as usize) {
+                lookup_table_ids.push(F::zero());
+                for j in 0..max_table_width {
+                    lookup_table[j].push(F::zero())
+                }
+            }
+        }
+
+        let dummy_lookup_values: Vec<_> = lookup_table
+            .iter()
+            .map(|tbl| {
+                let len = tbl.len();
+                tbl[len - 1]
+            })
             .collect();
 
-        // pre-compute polynomial and evaluation form for the look up tables
-        let mut lookup_tables_polys: Vec<DP<F>> = vec![];
-        let mut lookup_tables8: Vec<E<F, D<F>>> = vec![];
+        let lookup_table_polys: Vec<DP<F>> = lookup_table
+            .into_iter()
+            .map(|tbl| E::<F, D<F>>::from_vec_and_domain(tbl, domain.d1).interpolate())
+            .collect();
 
-        for table in lookup_tables.into_iter().take(1) {
-            let dummies = &dummy_lookup_values;
-            let mut table_poly = vec![];
-            let mut table_eval = vec![];
-            for (mut col, dummy) in table.into_iter().zip(dummies) {
-                // pad each column to the size of the domain
-                let padding = (0..(d1_size - col.len())).map(|_| dummy);
-                col.extend(padding);
-                let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
-                let eval = poly.evaluate_over_domain_by_ref(domain.d8);
-                table_poly.push(poly);
-                table_eval.push(eval);
-            }
-            lookup_tables_polys = table_poly;
-            lookup_tables8 = table_eval;
+        let lookup_tables8: Vec<E<F, D<F>>> = lookup_table_polys
+            .iter()
+            .map(|poly| poly.evaluate_over_domain_by_ref(domain.d8))
+            .collect();
+
+        for _ in (d1_size - ZK_ROWS as usize)..d1_size {
+            lookup_table_ids.push(F::one());
         }
 
-        let mut lookup_table_ids = vec![F::zero(); d1_size];
-        for i in (d1_size - ZK_ROWS as usize)..d1_size {
-            lookup_table_ids[i] = F::one();
-        }
         let lookup_table_id_polys =
             E::<F, D<F>>::from_vec_and_domain(lookup_table_ids, domain.d1).interpolate();
         let lookup_table_ids8 = lookup_table_id_polys.evaluate_over_domain_by_ref(domain.d8);
@@ -650,7 +675,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             dummy_lookup_values,
             lookup_table_length,
             lookup_tables8,
-            lookup_tables: lookup_tables_polys,
+            lookup_tables: lookup_table_polys,
             lookup_table_ids: lookup_table_id_polys,
             lookup_table_ids8,
             endomul_scalar8,

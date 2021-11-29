@@ -10,7 +10,7 @@ use groupmap::GroupMap;
 use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::wires::{Wire, COLUMNS};
 use kimchi_circuits::{
-    gate::{CircuitGate, GateType},
+    gate::{CircuitGate, GateType, LookupTable},
     nolookup::constraints::ConstraintSystem,
     polynomials::chacha,
 };
@@ -66,9 +66,25 @@ fn lookup_prover() {
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs =
-        ConstraintSystem::<Fp>::create(gates, vec![chacha::xor_table()], fp_sponge_params, PUBLIC)
-            .unwrap();
+    let dummy_tables: Vec<LookupTable<Fp>> = vec![
+        chacha::dummy_xor_table::<Fp>(),
+        // Empty dummy table
+        LookupTable {
+            table_id: 2,
+            width: 4,
+            values: vec![],
+        },
+        // Unused table with one value
+        LookupTable {
+            table_id: 3,
+            width: 10,
+            values: vec![
+                (0..10).map(Into::into).collect(),
+                (0..10).map(Into::into).rev().collect(),
+            ],
+        },
+    ];
+    let cs = ConstraintSystem::<Fp>::create(gates, dummy_tables, fp_sponge_params, PUBLIC).unwrap();
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
     let mut srs = SRS::create(max_size);

@@ -127,7 +127,7 @@ And we'll check that y' is the sum of the shifted nybbles.
 *****************************************************************************************************************/
 
 use crate::expr::{Column, ConstantExpr as C, E};
-use crate::gate::{CurrOrNext, GateType};
+use crate::gate::{CurrOrNext, GateType, LookupTable};
 use ark_ff::{FftField, Field, Zero};
 use CurrOrNext::*;
 
@@ -142,26 +142,33 @@ use CurrOrNext::*;
 // 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
 //
 // will translate into a scalar multiplication by 0, which is free.
-pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
-    let mut res = vec![vec![]; 3];
+pub fn xor_table<F: Field>() -> LookupTable<F> {
+    let mut values: Vec<Vec<F>> = Vec::with_capacity(0b111 * 0b111);
 
     // XOR for all possible four-bit arguments.
     // I suppose this could be computed a bit faster using symmetry but it's quite
     // small (16*16 = 256 entries) so let's just keep it simple.
     for i in 0u32..=0b1111 {
         for j in 0u32..=0b1111 {
-            res[0].push(F::from(i));
-            res[1].push(F::from(j));
-            res[2].push(F::from(i ^ j));
+            values.push(vec![i.into(), j.into(), (i ^ j).into()]);
         }
     }
 
-    for r in &mut res {
-        r.reverse();
-        // Just to be safe.
-        assert!(r[r.len() - 1].is_zero());
+    values[0].iter().fold((), |(), x| assert!(x.is_zero()));
+
+    LookupTable {
+        table_id: 0,
+        width: 3,
+        values,
     }
-    res
+}
+
+pub fn dummy_xor_table<F: Field>() -> LookupTable<F> {
+    LookupTable {
+        table_id: 0,
+        width: 3,
+        values: vec![],
+    }
 }
 
 // This is just for tests. It doesn't set up the permutations

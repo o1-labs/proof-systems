@@ -42,6 +42,14 @@ pub struct LocalPosition {
     pub column: usize,
 }
 
+/// A lookup table representative.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct LookupTable<F> {
+    pub table_id: u32,
+    pub width: usize,
+    pub values: Vec<Vec<F>>,
+}
+
 /// Look up a single value in a lookup table. The value may be computed as a linear
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
