@@ -497,10 +497,10 @@ where
                                     scalars_part.push(e * j);
                                     commitments_part.push(t);
                                 }
-                                /* TODO: When multiple tables are supported, include the table ID commitment here */
-                                /*
-                                scalars_part.push(e * constants.joint_combiner.pow([index.max_joint_size as u64]));
-                                commitments_part.push(&index.table_ids[0]); */
+                                scalars_part.push(
+                                    e * constants.joint_combiner.pow([index.max_joint_size as u64]),
+                                );
+                                commitments_part.push(&index.lookup_table_ids);
                             }
                             Index(t) => {
                                 use GateType::*;

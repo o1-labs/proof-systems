@@ -286,12 +286,8 @@ where
                 let row = index.cs.lookup_tables8[table_id as usize]
                     .iter()
                     .map(|e| &e.evals[8 * i]);
-                combine_table_entry(
-                    joint_combiner,
-                    Fr::<G>::zero(), // Table ID 0
-                    lookup_info.max_joint_size,
-                    row,
-                )
+                let table_id = index.cs.lookup_table_ids8.evals[8 * i];
+                combine_table_entry(joint_combiner, table_id, lookup_info.max_joint_size, row)
             })
         };
         let iter_runtime_table = || {
@@ -460,10 +456,12 @@ where
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
             }
-            let mut table_id_eval = index.cs.l08.clone();
-            table_id_eval.evals.iter_mut().for_each(|e| {
-                *e *= joint_combiner.pow([lookup_info.max_joint_size as u64]) * &table_id.into()
-            });
+            let mut table_id_eval = index.cs.lookup_table_ids8.clone();
+            let table_combiner = joint_combiner.pow([lookup_info.max_joint_size as u64]);
+            table_id_eval
+                .evals
+                .iter_mut()
+                .for_each(|e| *e *= table_combiner);
             res += &table_id_eval;
             res
         });
