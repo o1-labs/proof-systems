@@ -283,12 +283,15 @@ where
         let iter_lookup_table = || {
             (0..d1_size).map(|i| {
                 let table_id = 0;
-                let row = index.cs.lookup_tables8[table_id as usize].iter().map(|e| &e.evals[8 * i]);
+                let row = index.cs.lookup_tables8[table_id as usize]
+                    .iter()
+                    .map(|e| &e.evals[8 * i]);
                 combine_table_entry(
                     joint_combiner,
                     Fr::<G>::zero(), // Table ID 0
                     lookup_info.max_joint_size,
-                    row)
+                    row,
+                )
             })
         };
         let iter_runtime_table = || {
@@ -301,8 +304,9 @@ where
                             joint_combiner,
                             Fr::<G>::one(), // Table ID 1
                             lookup_info.max_joint_size,
-                            [value, index].into_iter())
-                    },
+                            [value, index].into_iter(),
+                        )
+                    }
                     None => Fr::<G>::zero(),
                 }
             })

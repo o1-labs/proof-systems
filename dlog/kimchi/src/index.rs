@@ -143,6 +143,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_tables: Vec<Vec<PolyComm<G>>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_table_ids: PolyComm<G>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_selectors: Vec<PolyComm<G>>,
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
@@ -209,6 +211,11 @@ where
                         .collect()
                 })
                 .collect(),
+            lookup_table_ids: self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.cs.lookup_table_ids8,
+                None,
+            ),
 
             max_joint_size: self.max_joint_size,
 

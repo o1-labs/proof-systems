@@ -196,6 +196,10 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_table_lengths: Vec<usize>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub lookup_table_ids: DP<F>,
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub lookup_table_ids8: E<F, D<F>>,
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
@@ -616,6 +620,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables8.push(table_eval);
         }
 
+        let lookup_table_ids = vec![F::zero(); d1_size - ZK_ROWS as usize];
+        let lookup_table_id_polys =
+            E::<F, D<F>>::from_vec_and_domain(lookup_table_ids, domain.d1).interpolate();
+        let lookup_table_ids8 = lookup_table_id_polys.evaluate_over_domain_by_ref(domain.d8);
+
         // generate the look up selector polynomials if any lookup-based gate is being used in the circuit
         let lookup_info = LookupInfo::<F>::create();
         let lookup_selectors = if lookup_info.lookup_used(&gates).is_some() {
@@ -635,6 +644,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_table_lengths,
             lookup_tables8,
             lookup_tables: lookup_tables_polys,
+            lookup_table_ids: lookup_table_id_polys,
+            lookup_table_ids8,
             endomul_scalar8,
             endomul_scalarm,
             domain,
