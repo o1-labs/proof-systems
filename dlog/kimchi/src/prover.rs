@@ -271,7 +271,7 @@ where
                     let table_id = 0;
                     combine_table_entry(
                         joint_combiner,
-                        table_id,
+                        Fr::<G>::zero(), // Table ID 0 for dummy value
                         lookup_info.max_joint_size,
                         index.cs.dummy_lookup_values[table_id as usize].iter(),
                     )
@@ -283,26 +283,28 @@ where
         let iter_lookup_table = || {
             (0..d1_size).map(|i| {
                 let table_id = 0;
-                let row = index.cs.lookup_tables8[table_id as usize]
-                    .iter()
-                    .map(|e| &e.evals[8 * i]);
-                combine_table_entry(joint_combiner, table_id, lookup_info.max_joint_size, row)
+                let row = index.cs.lookup_tables8[table_id as usize].iter().map(|e| &e.evals[8 * i]);
+                combine_table_entry(
+                    joint_combiner,
+                    Fr::<G>::zero(), // Table ID 0
+                    lookup_info.max_joint_size,
+                    row)
             })
         };
         let iter_runtime_table = || {
-            (0..d1_size).map(|i| match &runtime_table8 {
-                Some(runtime_table8) => {
-                    let table_id = 1;
-                    let index = &index.cs.indexer8.evals[8 * i];
-                    let value = &runtime_table8.evals[8 * i];
-                    combine_table_entry(
-                        joint_combiner,
-                        table_id,
-                        lookup_info.max_joint_size,
-                        [value, index].into_iter(),
-                    )
+            (0..d1_size).map(|i| {
+                match &runtime_table8 {
+                    Some(runtime_table8) => {
+                        let index = &index.cs.indexer8.evals[8 * i];
+                        let value = &runtime_table8.evals[8 * i];
+                        combine_table_entry(
+                            joint_combiner,
+                            Fr::<G>::one(), // Table ID 1
+                            lookup_info.max_joint_size,
+                            [value, index].into_iter())
+                    },
+                    None => Fr::<G>::zero(),
                 }
-                None => Fr::<G>::zero(),
             })
         };
 
