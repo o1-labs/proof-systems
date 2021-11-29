@@ -46,11 +46,7 @@ pub fn proof(num: usize) {
 
     for _ in 0..ADD_GATES {
         let wires = Wire::new(abs_row);
-        gates.push(CircuitGate::create_generic_add(
-            wires,
-            Fp::one(),
-            Fp::one(),
-        ));
+        gates.push(CircuitGate::create_generic_add(wires, Fp::one(), Fp::one()));
         abs_row += 1;
     }
 

@@ -118,8 +118,7 @@ impl<F: FftField> CircuitGate<F> {
         );
         ensure_eq!(
             F::zero(),
-            (((witness[6][row + 1].double() + this[11]).double() + this[12]).double()
-                + this[13])
+            (((witness[6][row + 1].double() + this[11]).double() + this[12]).double() + this[13])
                 .double()
                 + this[14]
                 - this[6],

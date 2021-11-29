@@ -366,9 +366,6 @@ impl GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CircuitGate<F: FftField> {
-    /// row position in the circuit
-    // TODO(mimoo): shouldn't this be u32 since we serialize it as a u32?
-    //pub row: usize,
     /// type of the gate
     pub typ: GateType,
     /// gate wires

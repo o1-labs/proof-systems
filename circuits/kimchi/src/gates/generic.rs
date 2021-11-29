@@ -14,7 +14,6 @@ pub const CONSTANT_COEFF: usize = GENERICS + 1;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_generic(wires: GateWires, qw: [F; GENERICS], qm: F, qc: F) -> Self {
-
         let mut c = qw.to_vec();
         c.push(qm);
         c.push(qc);
@@ -31,7 +30,7 @@ impl<F: FftField> CircuitGate<F> {
         let on = F::one();
         let off = F::zero();
         let qw: [F; GENERICS] = [left_coeff, right_coeff, -on];
-        Self::create_generic( wires, qw, off, off)
+        Self::create_generic(wires, qw, off, off)
     }
 
     /// creates a multiplication gate

@@ -353,12 +353,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
-                CircuitGate::<F>::zero(
-                    array_init(|j| Wire {
-                        col: WIRES[j],
-                        row: i,
-                    }),
-                )
+                CircuitGate::<F>::zero(array_init(|j| Wire {
+                    col: WIRES[j],
+                    row: i,
+                }))
             })
             .collect();
         gates.append(&mut padding);
