@@ -268,12 +268,11 @@ where
             let x = match lookup_used.as_ref() {
                 None => Fr::<G>::zero(),
                 Some(_) => {
-                    let table_id = 0;
                     combine_table_entry(
                         joint_combiner,
                         Fr::<G>::zero(), // Table ID 0 for dummy value
                         lookup_info.max_joint_size,
-                        index.cs.dummy_lookup_values[table_id as usize].iter(),
+                        index.cs.dummy_lookup_values.iter(),
                     )
                 }
             };
@@ -282,10 +281,7 @@ where
 
         let iter_lookup_table = || {
             (0..d1_size).map(|i| {
-                let table_id = 0;
-                let row = index.cs.lookup_tables8[table_id as usize]
-                    .iter()
-                    .map(|e| &e.evals[8 * i]);
+                let row = index.cs.lookup_tables8.iter().map(|e| &e.evals[8 * i]);
                 let table_id = index.cs.lookup_table_ids8.evals[8 * i];
                 combine_table_entry(joint_combiner, table_id, lookup_info.max_joint_size, row)
             })
@@ -321,7 +317,7 @@ where
                     let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
                         dummy_lookup_value,
                         iter_lookup_table,
-                        index.cs.lookup_table_lengths[0],
+                        index.cs.lookup_table_length,
                         iter_runtime_table,
                         lookup_info.max_joint_size,
                         index.cs.domain.d1,
@@ -449,8 +445,7 @@ where
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
         let lookup_table_combined = lookup_used.as_ref().map(|_| {
-            let table_id: u32 = 0;
-            let joint_table = &index.cs.lookup_tables8[table_id as usize];
+            let joint_table = &index.cs.lookup_tables8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
@@ -578,7 +573,7 @@ where
                 (t4, t8),
                 alpha,
                 alphas[alphas.len() - 1],
-                lookup::constraints(&index.cs.dummy_lookup_values[0], 0, index.cs.domain.d1)
+                lookup::constraints(&index.cs.dummy_lookup_values, 0, index.cs.domain.d1)
                     .iter()
                     .map(|e| e.evaluations(&env))
                     .collect(),
@@ -615,9 +610,8 @@ where
                 .zip(lookup_sorted_coeffs.as_ref())
                 .zip(runtime_table_poly.as_ref())
                 .zip(lookup_chunk_coeffs.as_ref())
-                .map(|(((aggreg, sorted), runtime_table), lookup_chunk)| {
-                    let table_id: u32 = 0;
-                    LookupEvaluations {
+                .map(
+                    |(((aggreg, sorted), runtime_table), lookup_chunk)| LookupEvaluations {
                         aggreg: aggreg.eval(e, index.max_poly_size),
                         sorted: sorted
                             .iter()
@@ -626,7 +620,9 @@ where
                         table: {
                             let table_combiner =
                                 joint_combiner.pow([lookup_info.max_joint_size as u64]);
-                            index.cs.lookup_tables[table_id as usize]
+                            index
+                                .cs
+                                .lookup_tables
                                 .iter()
                                 .map(|p| p.eval(e, index.max_poly_size))
                                 .rev()
@@ -643,8 +639,8 @@ where
                         },
                         runtime_table: runtime_table.eval(e, index.max_poly_size),
                         lookup_chunk: lookup_chunk.eval(e, index.max_poly_size),
-                    }
-                })
+                    },
+                )
         };
 
         // evaluate the polynomials

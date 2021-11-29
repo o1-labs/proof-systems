@@ -141,7 +141,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     pub lookup_used: Option<LookupsUsed>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
+    pub lookup_tables: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table_ids: PolyComm<G>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -205,11 +205,7 @@ where
                 .cs
                 .lookup_tables8
                 .iter()
-                .map(|v| {
-                    v.iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                        .collect()
-                })
+                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                 .collect(),
             lookup_table_ids: self.srs.commit_evaluations_non_hiding(
                 domain,
@@ -283,7 +279,7 @@ where
             let expr = if lookup_used.is_some() {
                 expr + Expr::combine_constraints(
                     2 + super::range::CHACHA.end,
-                    lookup::constraints(&cs.dummy_lookup_values[0], 0, cs.domain.d1),
+                    lookup::constraints(&cs.dummy_lookup_values, 0, cs.domain.d1),
                 )
             } else {
                 expr

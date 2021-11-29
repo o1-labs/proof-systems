@@ -491,8 +491,8 @@ where
                             LookupTable => {
                                 let mut j = Fr::<G>::one();
                                 scalars_part.push(e);
-                                commitments_part.push(&index.lookup_tables[0][0]);
-                                for t in index.lookup_tables[0].iter().skip(1) {
+                                commitments_part.push(&index.lookup_tables[0]);
+                                for t in index.lookup_tables.iter().skip(1) {
                                     j *= constants.joint_combiner;
                                     scalars_part.push(e * j);
                                     commitments_part.push(t);

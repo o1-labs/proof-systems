@@ -188,14 +188,13 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// Lookup tables
     // TODO: this should be one big Option<Lookup>
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub dummy_lookup_values: Vec<Vec<F>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub lookup_tables: Vec<Vec<DP<F>>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub lookup_table_lengths: Vec<usize>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub dummy_lookup_values: Vec<F>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub lookup_tables: Vec<DP<F>>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub lookup_tables8: Vec<E<F, D<F>>>,
+    pub lookup_table_length: usize,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_table_ids: DP<F>,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -592,19 +591,24 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
 
         // get the height of each lookup table
-        let lookup_table_lengths: Vec<_> = lookup_tables.iter().map(|v| v[0].len()).collect();
+        let lookup_table_length = if lookup_tables[0].len() > 0 {
+            lookup_tables[0][0].len()
+        } else {
+            0
+        };
 
         // get the last entry in each column of each table
-        let dummy_lookup_values: Vec<Vec<F>> = lookup_tables
+        let dummy_lookup_values: Vec<F> = lookup_tables[0]
             .iter()
-            .map(|table| table.iter().map(|col| col[col.len() - 1]).collect())
+            .map(|col| col[col.len() - 1])
             .collect();
 
         // pre-compute polynomial and evaluation form for the look up tables
-        let mut lookup_tables_polys: Vec<Vec<DP<F>>> = vec![];
-        let mut lookup_tables8: Vec<Vec<E<F, D<F>>>> = vec![];
+        let mut lookup_tables_polys: Vec<DP<F>> = vec![];
+        let mut lookup_tables8: Vec<E<F, D<F>>> = vec![];
 
-        for (table, dummies) in lookup_tables.into_iter().zip(&dummy_lookup_values) {
+        for table in lookup_tables.into_iter().take(1) {
+            let dummies = &dummy_lookup_values;
             let mut table_poly = vec![];
             let mut table_eval = vec![];
             for (mut col, dummy) in table.into_iter().zip(dummies) {
@@ -616,8 +620,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 table_poly.push(poly);
                 table_eval.push(eval);
             }
-            lookup_tables_polys.push(table_poly);
-            lookup_tables8.push(table_eval);
+            lookup_tables_polys = table_poly;
+            lookup_tables8 = table_eval;
         }
 
         let mut lookup_table_ids = vec![F::zero(); d1_size];
@@ -644,7 +648,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             chacha8,
             lookup_selectors,
             dummy_lookup_values,
-            lookup_table_lengths,
+            lookup_table_length,
             lookup_tables8,
             lookup_tables: lookup_tables_polys,
             lookup_table_ids: lookup_table_id_polys,
