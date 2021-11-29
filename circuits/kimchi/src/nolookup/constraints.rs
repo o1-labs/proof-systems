@@ -620,7 +620,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables8.push(table_eval);
         }
 
-        let lookup_table_ids = vec![F::zero(); d1_size - ZK_ROWS as usize];
+        let mut lookup_table_ids = vec![F::zero(); d1_size];
+        for i in (d1_size - ZK_ROWS as usize)..d1_size {
+            lookup_table_ids[i] = F::one();
+        }
         let lookup_table_id_polys =
             E::<F, D<F>>::from_vec_and_domain(lookup_table_ids, domain.d1).interpolate();
         let lookup_table_ids8 = lookup_table_id_polys.evaluate_over_domain_by_ref(domain.d8);

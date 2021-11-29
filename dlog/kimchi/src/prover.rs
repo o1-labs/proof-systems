@@ -623,22 +623,24 @@ where
                             .iter()
                             .map(|c| c.eval(e, index.max_poly_size))
                             .collect(),
-                        table: index.cs.lookup_tables[table_id as usize]
-                            .iter()
-                            .map(|p| p.eval(e, index.max_poly_size))
-                            .rev()
-                            .fold(vec![Fr::<G>::zero()], |acc, x| {
-                                acc.into_iter()
-                                    .zip(x.iter())
-                                    .map(|(acc, x)| acc * joint_combiner + x)
-                                    .collect()
-                            })
-                            .into_iter()
-                            .map(|x| {
-                                x + &(joint_combiner.pow([lookup_info.max_joint_size as u64])
-                                    * &table_id.into())
-                            })
-                            .collect(),
+                        table: {
+                            let table_combiner =
+                                joint_combiner.pow([lookup_info.max_joint_size as u64]);
+                            index.cs.lookup_tables[table_id as usize]
+                                .iter()
+                                .map(|p| p.eval(e, index.max_poly_size))
+                                .rev()
+                                .fold(vec![Fr::<G>::zero()], |acc, x| {
+                                    acc.into_iter()
+                                        .zip(x.iter())
+                                        .map(|(acc, x)| acc * joint_combiner + x)
+                                        .collect()
+                                })
+                                .into_iter()
+                                .zip(index.cs.lookup_table_ids.eval(e, index.max_poly_size))
+                                .map(|(x, table_id)| x + &(table_combiner * table_id))
+                                .collect()
+                        },
                         runtime_table: runtime_table.eval(e, index.max_poly_size),
                         lookup_chunk: lookup_chunk.eval(e, index.max_poly_size),
                     }
