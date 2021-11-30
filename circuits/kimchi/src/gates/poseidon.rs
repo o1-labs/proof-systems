@@ -52,13 +52,11 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_poseidon(
-        row: usize,
         wires: GateWires,
         // Coefficients are passed in in the logical order
         c: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         CircuitGate {
-            row,
             typ: GateType::Poseidon,
             wires,
             c: c.iter().flatten().copied().collect(),
@@ -100,11 +98,11 @@ impl<F: FftField> CircuitGate<F> {
             });
 
             // create poseidon gate for this row
-            gates.push(CircuitGate::create_poseidon(abs_row, wires, coeffs));
+            gates.push(CircuitGate::create_poseidon(wires, coeffs));
         }
 
         // final (zero) gate that contains the output of poseidon
-        gates.push(CircuitGate::zero(last_row, first_and_last_row[1]));
+        gates.push(CircuitGate::zero(first_and_last_row[1]));
 
         //
         (gates, last_row)
@@ -113,6 +111,7 @@ impl<F: FftField> CircuitGate<F> {
     /// Checks if a witness verifies a poseidon gate
     pub fn verify_poseidon(
         &self,
+        row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
@@ -127,12 +126,12 @@ impl<F: FftField> CircuitGate<F> {
         let mut states = vec![];
         for round in 0..ROUNDS_PER_ROW {
             let cols = round_to_cols(round);
-            let state: Vec<F> = witness[cols].iter().map(|col| col[self.row]).collect();
+            let state: Vec<F> = witness[cols].iter().map(|col| col[row]).collect();
             states.push(state);
         }
         // (last state is in next row)
         let cols = round_to_cols(0);
-        let next_row = self.row + 1;
+        let next_row = row + 1;
         let last_state: Vec<F> = witness[cols].iter().map(|col| col[next_row]).collect();
         states.push(last_state);
 

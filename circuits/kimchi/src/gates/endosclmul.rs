@@ -37,9 +37,8 @@ use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {
-    pub fn create_endomul(row: usize, wires: GateWires) -> Self {
+    pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
-            row,
             typ: GateType::Endomul,
             wires,
             c: vec![],
@@ -48,11 +47,12 @@ impl<F: FftField> CircuitGate<F> {
 
     pub fn verify_endomul(
         &self,
+        row: usize,
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
         let xq1 = (F::one() + ((cs.endo - F::one()) * next[12])) * this[0];
         let xq2 = (F::one() + ((cs.endo - F::one()) * next[14])) * this[0];
 
@@ -118,8 +118,7 @@ impl<F: FftField> CircuitGate<F> {
         );
         ensure_eq!(
             F::zero(),
-            (((witness[6][self.row + 1].double() + this[11]).double() + this[12]).double()
-                + this[13])
+            (((witness[6][row + 1].double() + this[11]).double() + this[12]).double() + this[13])
                 .double()
                 + this[14]
                 - this[6],

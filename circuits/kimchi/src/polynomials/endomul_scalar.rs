@@ -7,6 +7,7 @@ use array_init::array_init;
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
         &self,
+        row: usize,
         witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
@@ -16,7 +17,6 @@ impl<F: FftField> CircuitGate<F> {
             "incorrect gate type (should be EndomulScalar)"
         );
 
-        let row = self.row;
         let n0 = witness[0][row];
         let n8 = witness[1][row];
         let a0 = witness[2][row];

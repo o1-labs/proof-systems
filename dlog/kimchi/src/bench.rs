@@ -40,18 +40,13 @@ pub fn proof(num: usize) {
 
     for _ in 0..MUL_GATES {
         let wires = Wire::new(abs_row);
-        gates.push(CircuitGate::<Fp>::create_generic_mul(abs_row, wires));
+        gates.push(CircuitGate::<Fp>::create_generic_mul(wires));
         abs_row += 1;
     }
 
     for _ in 0..ADD_GATES {
         let wires = Wire::new(abs_row);
-        gates.push(CircuitGate::create_generic_add(
-            abs_row,
-            wires,
-            Fp::one(),
-            Fp::one(),
-        ));
+        gates.push(CircuitGate::create_generic_add(wires, Fp::one(), Fp::one()));
         abs_row += 1;
     }
 
