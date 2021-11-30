@@ -157,7 +157,7 @@ pub fn xor_table<F: Field>() -> LookupTable<F> {
     values[0].iter().fold((), |(), x| assert!(x.is_zero()));
 
     LookupTable {
-        table_id: 0,
+        table_id: 1,
         width: 3,
         values,
     }
@@ -165,7 +165,7 @@ pub fn xor_table<F: Field>() -> LookupTable<F> {
 
 pub fn dummy_xor_table<F: Field>() -> LookupTable<F> {
     LookupTable {
-        table_id: 0,
+        table_id: 1,
         width: 3,
         values: vec![],
     }

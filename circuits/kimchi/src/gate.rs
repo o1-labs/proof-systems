@@ -320,7 +320,7 @@ impl GateType {
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
                 JointLookup {
-                    table_id: 0,
+                    table_id: 1,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -361,7 +361,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: 1,
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
