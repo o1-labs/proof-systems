@@ -319,8 +319,6 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk constraints.
@@ -426,16 +424,14 @@ The constraints above are derived from the following EC Affine arithmetic equati
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_vbmul</span>(<span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">wires</span>: <span class="kw-2">&amp;</span>[<span class="ident">GateWires</span>; <span class="number">2</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_vbmul</span>(<span class="ident">wires</span>: <span class="kw-2">&amp;</span>[<span class="ident">GateWires</span>; <span class="number">2</span>]) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[
             <span class="ident">CircuitGate</span> {
-                <span class="ident">row</span>,
                 <span class="ident">typ</span>: <span class="ident">GateType::Vbmul</span>,
                 <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">0</span>],
                 <span class="ident">c</span>: <span class="macro">vec!</span>[],
             },
             <span class="ident">CircuitGate</span> {
-                <span class="ident">row</span>: <span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>,
                 <span class="ident">typ</span>: <span class="ident">GateType::Zero</span>,
                 <span class="ident">wires</span>: <span class="ident">wires</span>[<span class="number">1</span>],
                 <span class="ident">c</span>: <span class="macro">vec!</span>[],
@@ -443,9 +439,9 @@ The constraints above are derived from the following EC Affine arithmetic equati
         ]
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_vbmul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="self">self</span>.<span class="ident">row</span>]);
-        <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="self">self</span>.<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_vbmul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">row</span>: <span class="ident">usize</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span>]);
+        <span class="kw">let</span> <span class="ident">next</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span> <span class="op">+</span> <span class="number">1</span>]);
 
         <span class="comment">//    0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	Type</span>
         <span class="comment">//   xT	yT	xS	yS	xP	yP	n	xr	yr	s1	s2	b1	s3	s4	b2	VBSM</span>

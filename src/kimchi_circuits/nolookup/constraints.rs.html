@@ -724,9 +724,6 @@
 <span id="723">723</span>
 <span id="724">724</span>
 <span id="725">725</span>
-<span id="726">726</span>
-<span id="727">727</span>
-<span id="728">728</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -1082,13 +1079,10 @@ This source file implements Plonk circuit constraint primitive.
         <span class="kw">let</span> <span class="ident">d1_size</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">padding</span> <span class="op">=</span> (<span class="ident">gates</span>.<span class="ident">len</span>()..<span class="ident">d1_size</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>(
-                    <span class="ident">i</span>,
-                    <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">Wire</span> {
-                        <span class="ident">col</span>: <span class="ident">WIRES</span>[<span class="ident">j</span>],
-                        <span class="ident">row</span>: <span class="ident">i</span>,
-                    }),
-                )
+                <span class="ident">CircuitGate</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>(<span class="ident">array_init</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> <span class="ident">Wire</span> {
+                    <span class="ident">col</span>: <span class="ident">WIRES</span>[<span class="ident">j</span>],
+                    <span class="ident">row</span>: <span class="ident">i</span>,
+                }))
             })
             .<span class="ident">collect</span>();
         <span class="ident">gates</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">padding</span>);
@@ -1384,7 +1378,7 @@ This source file implements Plonk circuit constraint primitive.
             }
 
             <span class="comment">// check the gate&#39;s satisfiability</span>
-            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="self">self</span>)
+            <span class="ident">gate</span>.<span class="ident">verify</span>(<span class="ident">row</span>, <span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="self">self</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">err</span><span class="op">|</span> <span class="ident">GateError::Custom</span> { <span class="ident">row</span>, <span class="ident">err</span> })<span class="question-mark">?</span>;
         }
 
