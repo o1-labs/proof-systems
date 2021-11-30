@@ -122,6 +122,8 @@ pub mod caml {
         pub sorted: Vec<Vec<CamlF>>,
         pub aggreg: Vec<CamlF>,
         pub table: Vec<CamlF>,
+        pub runtime_table: Vec<CamlF>,
+        pub lookup_chunk: Vec<CamlF>,
     }
 
     impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
@@ -138,6 +140,8 @@ pub mod caml {
                     .collect(),
                 aggreg: le.aggreg.into_iter().map(Into::into).collect(),
                 table: le.table.into_iter().map(Into::into).collect(),
+                runtime_table: le.runtime_table.into_iter().map(Into::into).collect(),
+                lookup_chunk: le.lookup_chunk.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -155,6 +159,8 @@ pub mod caml {
                     .collect(),
                 aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
                 table: pe.table.into_iter().map(Into::into).collect(),
+                runtime_table: pe.runtime_table.into_iter().map(Into::into).collect(),
+                lookup_chunk: pe.lookup_chunk.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -237,6 +243,7 @@ pub mod caml {
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
+                indexer: pe.indexer.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -280,6 +287,7 @@ pub mod caml {
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                indexer: cpe.indexer.into_iter().map(Into::into).collect(),
             }
         }
     }
