@@ -5,12 +5,13 @@ This source file implements Plonk constraint gate primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
+use crate::expr::E as Expr;
 use crate::{nolookup::constraints::ConstraintSystem, wires::*};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::{HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
@@ -93,18 +94,20 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
-    pub table_id: i32,
+    #[serde(bound = "Expr<F>: Serialize + DeserializeOwned")]
+    pub table_id: Expr<F>,
     pub entry: Vec<SingleLookup<F>>,
 }
 
 impl<F: Field> JointLookup<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(
+    pub fn evaluate<G: Fn(LocalPosition) -> F, H: Fn(&Expr<F>) -> F>(
         &self,
         joint_combiner: F,
         max_joint_size: usize,
         eval: &G,
+        eval_expr: &H,
     ) -> F {
         let mut res = F::zero();
         let mut c = F::one();
@@ -112,14 +115,7 @@ impl<F: Field> JointLookup<F> {
             res += c * s.evaluate(eval);
             c *= joint_combiner;
         }
-        let table_id = {
-            if self.table_id >= 0 {
-                F::from(self.table_id as u32)
-            } else {
-                -F::from((-self.table_id) as u32)
-            }
-        };
-        res + table_id * joint_combiner.pow([max_joint_size as u64])
+        res + eval_expr(&self.table_id) * joint_combiner.pow([max_joint_size as u64])
     }
 }
 
@@ -180,6 +176,7 @@ pub struct LookupInfo<F> {
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: usize,
+    #[serde(bound = "Expr<F>: Serialize + DeserializeOwned")]
     /// An empty vector.
     empty: Vec<JointLookup<F>>,
 }
@@ -320,7 +317,7 @@ impl GateType {
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
                 JointLookup {
-                    table_id: 1,
+                    table_id: Expr::literal(F::from(1 as u64)),
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -331,7 +328,7 @@ impl GateType {
                 let index = curr_row(2 * i);
                 let value = curr_row(2 * i + 1);
                 JointLookup {
-                    table_id: -1,
+                    table_id: -Expr::literal(F::from(1 as u64)),
                     entry: vec![l(value), l(index)],
                 }
             })
@@ -361,7 +358,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: 1,
+                    table_id: Expr::literal(F::from(1 as u64)),
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })

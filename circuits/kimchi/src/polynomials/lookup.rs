@@ -26,9 +26,9 @@
 //! and if i % 2 = 1, we enforce that the
 //! first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 
-use crate::expr::{Column, ConstantExpr, Variable, E};
+use crate::expr::{Column, ConstantExpr, Constants, Variable, VariableEvaluator, E};
 use crate::{
     gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
     wires::COLUMNS,
@@ -55,21 +55,12 @@ fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
 }
 
 fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: usize) -> E<F> {
-    let table_id = {
-        if j.table_id >= 0 {
-            F::from(j.table_id as u32)
-        } else {
-            -F::from((-j.table_id) as u32)
-        }
-    };
     j.entry
         .iter()
         .enumerate()
         .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
-        + E::constant(
-            ConstantExpr::JointCombiner.pow(max_joint_size) * ConstantExpr::Literal(table_id),
-        )
+        + E::constant(ConstantExpr::JointCombiner.pow(max_joint_size)) * j.table_id.clone()
 }
 
 struct AdjacentPairs<A, I: Iterator<Item = A>> {
@@ -197,6 +188,16 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
         counts
     };
 
+    let constants = Constants {
+        alpha: F::zero(),
+        beta: F::zero(),
+        gamma: F::zero(),
+        joint_combiner,
+        endo_coefficient: F::zero(),
+        mds: vec![],
+    };
+    let evaluator = |row: usize| LookupChunkVariableEvaluator { row, witness };
+
     let mut all_lookups: HashMap<F, usize> = HashMap::new();
     lookup_table()
         .take(lookup_rows)
@@ -209,9 +210,18 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             };
             witness[pos.column][row]
         };
+        let evaluators = &[evaluator(i), evaluator(i + 1)];
+        let eval_expr = |expr: &E<F>| -> F {
+            expr.evaluate_(d1, F::zero(), evaluators, &constants)
+                .expect("Lookup evaluation succeeded")
+        };
         for joint_lookup in spec.iter() {
-            let table_entry =
-                joint_lookup.evaluate(joint_combiner, lookup_info.max_joint_size, &eval);
+            let table_entry = joint_lookup.evaluate(
+                joint_combiner,
+                lookup_info.max_joint_size,
+                &eval,
+                &eval_expr,
+            );
             *all_lookups.entry(table_entry).or_insert(0) += 1
         }
 
@@ -254,7 +264,7 @@ pub trait Entry {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CombinedEntry<F>(pub F);
-impl<F: Field> Entry for CombinedEntry<F> {
+impl<F: FftField> Entry for CombinedEntry<F> {
     type Field = F;
     type Params = F;
 
@@ -276,8 +286,27 @@ impl<F: Field> Entry for CombinedEntry<F> {
             };
             witness[pos.column][row]
         };
+        let constants = Constants {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: *joint_combiner,
+            endo_coefficient: F::zero(),
+            mds: vec![],
+        };
+        let evaluator = |row: usize| LookupChunkVariableEvaluator { row, witness };
+        let evaluators = &[evaluator(row), evaluator(row + 1)];
+        let eval_expr = |expr: &E<F>| -> F {
+            expr.evaluate_(
+                D::new(0).expect("unitary domain"),
+                F::zero(),
+                evaluators,
+                &constants,
+            )
+            .expect("Lookup evaluation succeeded")
+        };
 
-        CombinedEntry(j.evaluate(*joint_combiner, max_joint_size, &eval))
+        CombinedEntry(j.evaluate(*joint_combiner, max_joint_size, &eval, &eval_expr))
     }
 }
 
@@ -418,6 +447,47 @@ pub fn sorted<
     Ok(sorted)
 }
 
+struct LookupChunkVariableEvaluator<'a, F> {
+    row: usize,
+    witness: &'a [Vec<F>; COLUMNS],
+}
+
+impl<'a, F: Copy> VariableEvaluator<F> for LookupChunkVariableEvaluator<'a, F> {
+    fn witness<'b>(self: &Self, i: usize) -> Result<F, &'b str> {
+        Ok(self.witness[i][self.row])
+    }
+    fn z<'b>(self: &Self) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn lookup_sorted<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn lookup_aggreg<'b>(self: &Self) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn lookup_table<'b>(self: &Self) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn lookup_chunk<'b>(self: &Self) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn runtime_lookup_table<'b>(self: &Self) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn index<'b>(self: &Self, _kind: crate::gate::GateType) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn coefficient<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn lookup_kind_index<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+    fn indexer<'b>(self: &Self) -> Result<F, &'b str> {
+        panic!("Not implemented");
+    }
+}
+
 pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
     dummy_lookup_value: F,
     d1: D<F>,
@@ -448,6 +518,15 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
 
         v
     };
+    let constants = Constants {
+        alpha: F::zero(),
+        beta,
+        gamma,
+        joint_combiner,
+        endo_coefficient: F::zero(),
+        mds: vec![],
+    };
+    let evaluator = |row: usize| LookupChunkVariableEvaluator { row, witness };
     let lookup_chunk: Vec<_> = lookup_info
         .by_row(gates)
         .iter()
@@ -461,6 +540,11 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
                 };
                 witness[pos.column][row]
             };
+            let evaluators = &[evaluator(i), evaluator(i + 1)];
+            let eval_expr = |expr: &E<F>| -> F {
+                expr.evaluate_(d1, F::zero(), evaluators, &constants)
+                    .expect("Lookup evaluation succeeded")
+            };
 
             let padding = complements_with_beta_term[max_lookups_per_row - spec.len()];
 
@@ -470,7 +554,12 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
             // `max_lookups_per_row (=4) * n` field elements of
             // memory.
             spec.iter().fold(padding, |acc, j| {
-                let res = j.evaluate(joint_combiner, lookup_info.max_joint_size, &eval);
+                let res = j.evaluate(
+                    joint_combiner,
+                    lookup_info.max_joint_size,
+                    &eval,
+                    &eval_expr,
+                );
                 acc * (gamma + res)
             })
         })
