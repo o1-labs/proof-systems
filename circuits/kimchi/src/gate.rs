@@ -45,7 +45,7 @@ pub struct LocalPosition {
 /// A lookup table representative.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LookupTable<F> {
-    pub table_id: u32,
+    pub table_id: i32,
     pub width: usize,
     pub values: Vec<Vec<F>>,
 }
@@ -93,7 +93,7 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
-    pub table_id: u64,
+    pub table_id: i32,
     pub entry: Vec<SingleLookup<F>>,
 }
 
@@ -112,7 +112,14 @@ impl<F: Field> JointLookup<F> {
             res += c * s.evaluate(eval);
             c *= joint_combiner;
         }
-        res + F::from(self.table_id) * joint_combiner.pow([max_joint_size as u64])
+        let table_id = {
+            if self.table_id >= 0 {
+                F::from(self.table_id as u32)
+            } else {
+                -F::from((-self.table_id) as u32)
+            }
+        };
+        res + table_id * joint_combiner.pow([max_joint_size as u64])
     }
 }
 

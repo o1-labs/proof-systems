@@ -55,14 +55,20 @@ fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
 }
 
 fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: usize) -> E<F> {
+    let table_id = {
+        if j.table_id >= 0 {
+            F::from(j.table_id as u32)
+        } else {
+            -F::from((-j.table_id) as u32)
+        }
+    };
     j.entry
         .iter()
         .enumerate()
         .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
         + E::constant(
-            ConstantExpr::JointCombiner.pow(max_joint_size)
-                * ConstantExpr::Literal(j.table_id.into()),
+            ConstantExpr::JointCombiner.pow(max_joint_size) * ConstantExpr::Literal(table_id),
         )
 }
 

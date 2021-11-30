@@ -599,12 +599,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
         let mut lookup_table_ids = Vec::with_capacity(d1_size);
         for table in lookup_tables.iter() {
+            let table_id = {
+                if table.table_id >= 0 {
+                    F::from(table.table_id as u32)
+                } else {
+                    -F::from((-table.table_id) as u32)
+                }
+            };
             for row in table.values.iter() {
                 if row.len() != table.width {
                     // Malformed table, widths do not match
                     None?;
                 }
-                lookup_table_ids.push(table.table_id.into());
+                lookup_table_ids.push(table_id);
                 for (i, value) in row.iter().enumerate() {
                     lookup_table[i].push(*value);
                 }
