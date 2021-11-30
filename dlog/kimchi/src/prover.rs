@@ -294,7 +294,7 @@ where
                         let value = &runtime_table8.evals[8 * i];
                         combine_table_entry(
                             joint_combiner,
-                            Fr::<G>::one(), // Table ID 1
+                            -Fr::<G>::one(), // Table ID -1
                             lookup_info.max_joint_size,
                             [value, index].into_iter(),
                         )

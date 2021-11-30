@@ -651,7 +651,7 @@ pub fn constraints<F: FftField>(
     let runtime_table_entry = |curr_or_next| -> E<F> {
         E::cell(Column::RuntimeLookupTable, curr_or_next)
             + E::cell(Column::Indexer, curr_or_next) * E::constant(ConstantExpr::JointCombiner)
-            + E::constant(ConstantExpr::JointCombiner).pow(lookup_info.max_joint_size)
+            - E::constant(ConstantExpr::JointCombiner).pow(lookup_info.max_joint_size)
     };
 
     let rt_chunk = ft_chunk

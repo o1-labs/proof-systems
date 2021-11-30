@@ -611,7 +611,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                     // Malformed table, widths do not match
                     None?;
                 }
-                lookup_table_ids.push(table_id);
+                lookup_table_ids.push(table_id.into());
                 for (i, value) in row.iter().enumerate() {
                     lookup_table[i].push(*value);
                 }
