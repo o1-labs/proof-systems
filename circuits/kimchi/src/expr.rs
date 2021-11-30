@@ -1,7 +1,7 @@
 use crate::domains::EvaluationDomains;
 use crate::gate::{CurrOrNext, GateType};
 use crate::nolookup::constraints::eval_vanishes_on_last_4_rows;
-use crate::nolookup::scalars::ProofEvaluations;
+use crate::nolookup::scalars::{LookupEvaluations, ProofEvaluations};
 use crate::wires::COLUMNS;
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -374,39 +374,98 @@ pub enum PolishToken<F> {
     Load(usize),
 }
 
+pub trait VariableEvaluator<F> {
+    fn witness<'b>(self: &Self, i: usize) -> Result<F, &'b str>;
+    fn z<'b>(self: &Self) -> Result<F, &'b str>;
+    fn lookup_sorted<'b>(self: &Self, i: usize) -> Result<F, &'b str>;
+    fn lookup_aggreg<'b>(self: &Self) -> Result<F, &'b str>;
+    fn lookup_table<'b>(self: &Self) -> Result<F, &'b str>;
+    fn lookup_chunk<'b>(self: &Self) -> Result<F, &'b str>;
+    fn runtime_lookup_table<'b>(self: &Self) -> Result<F, &'b str>;
+    fn index<'b>(self: &Self, kind: GateType) -> Result<F, &'b str>;
+    fn coefficient<'b>(self: &Self, i: usize) -> Result<F, &'b str>;
+    fn lookup_kind_index<'b>(self: &Self, i: usize) -> Result<F, &'b str>;
+    fn indexer<'b>(self: &Self) -> Result<F, &'b str>;
+}
+
+impl<F> ProofEvaluations<F> {
+    fn lookup<'b>(self: &Self) -> Result<&LookupEvaluations<F>, &'b str> {
+        self.lookup
+            .as_ref()
+            .ok_or("Lookup should not have been used")
+    }
+}
+
+impl<F: Copy> VariableEvaluator<F> for ProofEvaluations<F> {
+    fn witness<'b>(self: &Self, i: usize) -> Result<F, &'b str> {
+        Ok(self.w[i])
+    }
+    fn z<'b>(self: &Self) -> Result<F, &'b str> {
+        Ok(self.z)
+    }
+    fn lookup_sorted<'b>(self: &Self, i: usize) -> Result<F, &'b str> {
+        self.lookup().map(|l| l.sorted[i])
+    }
+    fn lookup_aggreg<'b>(self: &Self) -> Result<F, &'b str> {
+        self.lookup().map(|l| l.aggreg)
+    }
+    fn lookup_table<'b>(self: &Self) -> Result<F, &'b str> {
+        self.lookup().map(|l| l.table)
+    }
+    fn lookup_chunk<'b>(self: &Self) -> Result<F, &'b str> {
+        self.lookup().map(|l| l.lookup_chunk)
+    }
+    fn runtime_lookup_table<'b>(self: &Self) -> Result<F, &'b str> {
+        self.lookup().map(|l| l.runtime_table)
+    }
+    fn index<'b>(self: &Self, kind: GateType) -> Result<F, &'b str> {
+        match kind {
+            GateType::Poseidon => Ok(self.poseidon_selector),
+            GateType::Generic => Ok(self.generic_selector),
+            _ => Err("Cannot get index evaluation (should have been linearized away)"),
+        }
+    }
+    fn coefficient<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
+        Err("Cannot get coefficient evaluation")
+    }
+    fn lookup_kind_index<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
+        Err("Cannot get lookup index evaluation")
+    }
+    fn indexer<'b>(self: &Self) -> Result<F, &'b str> {
+        Ok(self.indexer)
+    }
+}
+
 impl Variable {
-    fn evaluate<'a, 'b, F: Field>(&self, evals: &'a [ProofEvaluations<F>]) -> Result<F, &'b str> {
+    fn evaluate<'a, 'b, F: Field, Ev: VariableEvaluator<F>>(
+        &self,
+        evals: &'a [Ev],
+    ) -> Result<F, &'b str> {
         let evals = &evals[self.row.shift()];
         use Column::*;
-        let l = evals
-            .lookup
-            .as_ref()
-            .ok_or("Lookup should not have been used");
         match self.col {
-            Witness(i) => Ok(evals.w[i]),
-            Z => Ok(evals.z),
-            LookupSorted(i) => l.map(|l| l.sorted[i]),
-            LookupAggreg => l.map(|l| l.aggreg),
-            LookupTable => l.map(|l| l.table),
-            LookupChunk => l.map(|l| l.lookup_chunk),
-            RuntimeLookupTable => l.map(|l| l.runtime_table),
-            Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-            Index(GateType::Generic) => Ok(evals.generic_selector),
-            Coefficient(_) | LookupKindIndex(_) | Index(_) => {
-                Err("Cannot get index evaluation (should have been linearized away)")
-            }
-            Indexer => Ok(evals.indexer),
+            Witness(i) => evals.witness(i),
+            Z => evals.z(),
+            LookupSorted(i) => evals.lookup_sorted(i),
+            LookupAggreg => evals.lookup_aggreg(),
+            LookupTable => evals.lookup_table(),
+            LookupChunk => evals.lookup_chunk(),
+            RuntimeLookupTable => evals.runtime_lookup_table(),
+            Index(kind) => evals.index(kind),
+            Coefficient(i) => evals.coefficient(i),
+            LookupKindIndex(i) => evals.lookup_kind_index(i),
+            Indexer => evals.indexer(),
         }
     }
 }
 
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate<'c>(
+    pub fn evaluate<'c, Ev: VariableEvaluator<F>>(
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &[Ev],
         c: &Constants<F>,
     ) -> Result<F, &'c str> {
         let mut stack = vec![];
@@ -1154,22 +1213,22 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Evaluate an expression as a field element against an environment.
-    pub fn evaluate(
+    pub fn evaluate<Ev: VariableEvaluator<F>>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &[Ev],
         env: &Environment<F>,
     ) -> Result<F, &str> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
     /// Evaluate an expression as a field element against the constants.
-    pub fn evaluate_(
+    pub fn evaluate_<Ev: VariableEvaluator<F>>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &[Ev],
         c: &Constants<F>,
     ) -> Result<F, &str> {
         use Expr::*;
@@ -1220,7 +1279,12 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, &str> {
+    pub fn evaluate<Ev: VariableEvaluator<F>>(
+        &self,
+        d: D<F>,
+        pt: F,
+        evals: &[Ev],
+    ) -> Result<F, &str> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1455,11 +1519,11 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(
+    pub fn to_polynomial<Ev: VariableEvaluator<F>>(
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &[Ev],
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size as usize;
@@ -1485,11 +1549,11 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(
+    pub fn to_polynomial<Ev: VariableEvaluator<F>>(
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &[Ev],
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size as usize;
