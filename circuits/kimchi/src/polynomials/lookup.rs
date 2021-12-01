@@ -457,34 +457,34 @@ impl<'a, F: Copy> VariableEvaluator<F> for LookupChunkVariableEvaluator<'a, F> {
         Ok(self.witness[i][self.row])
     }
     fn z<'b>(self: &Self) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator z: Not implemented")
     }
     fn lookup_sorted<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator lookup_sorted: Not implemented")
     }
     fn lookup_aggreg<'b>(self: &Self) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator lookup_aggreg: Not implemented")
     }
     fn lookup_table<'b>(self: &Self) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator lookup_table: Not implemented")
     }
     fn lookup_chunk<'b>(self: &Self) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator lookup_chunk: Not implemented")
     }
     fn runtime_lookup_table<'b>(self: &Self) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator runtime_lookup_table: Not implemented")
     }
     fn index<'b>(self: &Self, _kind: crate::gate::GateType) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator index: Not implemented")
     }
     fn coefficient<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator coefficient: Not implemented")
     }
     fn lookup_kind_index<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator lookup_kind_index: Not implemented")
     }
     fn indexer<'b>(self: &Self) -> Result<F, &'b str> {
-        panic!("Not implemented");
+        Err("LookupChunkVariableEvaluator indexer: Not implemented")
     }
 }
 
