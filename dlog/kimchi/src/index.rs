@@ -254,6 +254,7 @@ where
                 use Column::*;
                 for i in 0..COLUMNS {
                     h.insert(Witness(i));
+                    h.insert(Coefficient(i));
                 }
                 for i in 0..(lookup_info.max_per_row + 2) {
                     h.insert(LookupSorted(i));

@@ -323,6 +323,7 @@ where
                         index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
+                        &array_init(|i| &index.cs.coefficients8[i].evals),
                         joint_combiner,
                     )?;
 
@@ -372,6 +373,7 @@ where
                             index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
+                            &array_init(|i| &index.cs.coefficients8[i].evals),
                             joint_combiner,
                             beta, gamma,
                             rng,
@@ -648,6 +650,7 @@ where
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
             z: z_poly.eval(zeta, index.max_poly_size),
+            c: array_init(|i| index.cs.coefficientsm[i].eval(zeta, index.max_poly_size)),
             lookup: lookup_evals(zeta),
             generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
@@ -659,6 +662,7 @@ where
             }),
             w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
             z: z_poly.eval(zeta_omega, index.max_poly_size),
+            c: array_init(|i| index.cs.coefficientsm[i].eval(zeta_omega, index.max_poly_size)),
             lookup: lookup_evals(zeta_omega),
             generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
@@ -682,6 +686,7 @@ where
                 s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                 w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                 z: DensePolynomial::eval_polynomial(&es.z, e1),
+                c: array_init(|i| DensePolynomial::eval_polynomial(&es.c[i], e1)),
                 lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
                     table: DensePolynomial::eval_polynomial(&l.table, e1),
                     aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),

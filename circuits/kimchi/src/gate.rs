@@ -5,7 +5,7 @@ This source file implements Plonk constraint gate primitive.
 *****************************************************************************************************************/
 
 use crate::domains::EvaluationDomains;
-use crate::expr::E as Expr;
+use crate::expr::{Column, E as Expr};
 use crate::{nolookup::constraints::ConstraintSystem, wires::*};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
@@ -328,7 +328,7 @@ impl GateType {
                 let index = curr_row(2 * i);
                 let value = curr_row(2 * i + 1);
                 JointLookup {
-                    table_id: -Expr::literal(F::from(1 as u64)),
+                    table_id: Expr::cell(Column::Coefficient(i), Curr),
                     entry: vec![l(index), l(value)],
                 }
             })

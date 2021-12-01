@@ -36,6 +36,8 @@ pub struct ProofEvaluations<Field> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Field; PERMUTS - 1],
+    /// coefficient polynomials
+    pub c: [Field; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
@@ -63,6 +65,7 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
                 runtime_table: DensePolynomial::eval_polynomial(&l.runtime_table, pt),
                 lookup_chunk: DensePolynomial::eval_polynomial(&l.lookup_chunk, pt),
             }),
+            c: array_init(|i| DensePolynomial::eval_polynomial(&self.c[i], pt)),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
             indexer: DensePolynomial::eval_polynomial(&self.indexer, pt),
@@ -197,6 +200,23 @@ pub mod caml {
             Vec<CamlF>,
             Vec<CamlF>,
         ),
+        pub c: (
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+        ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
         pub indexer: Vec<CamlF>,
@@ -237,10 +257,28 @@ pub mod caml {
                 pe.s[4].iter().cloned().map(Into::into).collect(),
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
+            let c = (
+                pe.c[0].iter().cloned().map(Into::into).collect(),
+                pe.c[1].iter().cloned().map(Into::into).collect(),
+                pe.c[2].iter().cloned().map(Into::into).collect(),
+                pe.c[3].iter().cloned().map(Into::into).collect(),
+                pe.c[4].iter().cloned().map(Into::into).collect(),
+                pe.c[5].iter().cloned().map(Into::into).collect(),
+                pe.c[6].iter().cloned().map(Into::into).collect(),
+                pe.c[7].iter().cloned().map(Into::into).collect(),
+                pe.c[8].iter().cloned().map(Into::into).collect(),
+                pe.c[9].iter().cloned().map(Into::into).collect(),
+                pe.c[10].iter().cloned().map(Into::into).collect(),
+                pe.c[11].iter().cloned().map(Into::into).collect(),
+                pe.c[12].iter().cloned().map(Into::into).collect(),
+                pe.c[13].iter().cloned().map(Into::into).collect(),
+                pe.c[14].iter().cloned().map(Into::into).collect(),
+            );
             Self {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),
                 s,
+                c,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
                 indexer: pe.indexer.into_iter().map(Into::into).collect(),
@@ -279,11 +317,29 @@ pub mod caml {
                 cpe.s.4.into_iter().map(Into::into).collect(),
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
+            let c = [
+                cpe.c.0.into_iter().map(Into::into).collect(),
+                cpe.c.1.into_iter().map(Into::into).collect(),
+                cpe.c.2.into_iter().map(Into::into).collect(),
+                cpe.c.3.into_iter().map(Into::into).collect(),
+                cpe.c.4.into_iter().map(Into::into).collect(),
+                cpe.c.5.into_iter().map(Into::into).collect(),
+                cpe.c.6.into_iter().map(Into::into).collect(),
+                cpe.c.7.into_iter().map(Into::into).collect(),
+                cpe.c.8.into_iter().map(Into::into).collect(),
+                cpe.c.9.into_iter().map(Into::into).collect(),
+                cpe.c.10.into_iter().map(Into::into).collect(),
+                cpe.c.11.into_iter().map(Into::into).collect(),
+                cpe.c.12.into_iter().map(Into::into).collect(),
+                cpe.c.13.into_iter().map(Into::into).collect(),
+                cpe.c.14.into_iter().map(Into::into).collect(),
+            ];
 
             Self {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
                 s,
+                c,
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),

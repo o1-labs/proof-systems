@@ -425,8 +425,8 @@ impl<F: Copy> VariableEvaluator<F> for ProofEvaluations<F> {
             _ => Err("Cannot get index evaluation (should have been linearized away)"),
         }
     }
-    fn coefficient<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
-        Err("Cannot get coefficient evaluation")
+    fn coefficient<'b>(self: &Self, i: usize) -> Result<F, &'b str> {
+        Ok(self.c[i])
     }
     fn lookup_kind_index<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
         Err("Cannot get lookup index evaluation")

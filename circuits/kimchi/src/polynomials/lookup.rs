@@ -129,6 +129,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
+    coefficients8: &[&Vec<F>; COLUMNS],
     joint_combiner: F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
@@ -196,7 +197,11 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
         endo_coefficient: F::zero(),
         mds: vec![],
     };
-    let evaluator = |row: usize| LookupChunkVariableEvaluator { row, witness };
+    let evaluator = |row: usize| LookupChunkVariableEvaluator {
+        row,
+        witness,
+        coefficients8,
+    };
 
     let mut all_lookups: HashMap<F, usize> = HashMap::new();
     lookup_table()
@@ -258,6 +263,7 @@ pub trait Entry {
         max_joint_size: usize,
         j: &JointLookup<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
+        coefficients8: &[&Vec<Self::Field>; COLUMNS],
         row: usize,
     ) -> Self;
 }
@@ -277,6 +283,7 @@ impl<F: FftField> Entry for CombinedEntry<F> {
         max_joint_size: usize,
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
+        coefficients8: &[&Vec<F>; COLUMNS],
         row: usize,
     ) -> CombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
@@ -294,7 +301,11 @@ impl<F: FftField> Entry for CombinedEntry<F> {
             endo_coefficient: F::zero(),
             mds: vec![],
         };
-        let evaluator = |row: usize| LookupChunkVariableEvaluator { row, witness };
+        let evaluator = |row: usize| LookupChunkVariableEvaluator {
+            row,
+            witness,
+            coefficients8,
+        };
         let evaluators = &[evaluator(row), evaluator(row + 1)];
         let eval_expr = |expr: &E<F>| -> F {
             expr.evaluate_(
@@ -326,6 +337,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
         _max_joint_size: usize,
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
+        _coefficients8: &[&Vec<F>; COLUMNS],
         row: usize,
     ) -> UncombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
@@ -358,6 +370,7 @@ pub fn sorted<
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
+    coefficients8: &[&Vec<F>; COLUMNS],
     params: E::Params,
 ) -> Result<Vec<Vec<E>>, ProofError> {
     // We pad the lookups so that it is as if we lookup exactly
@@ -382,7 +395,14 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let table_entry = E::evaluate(&params, max_joint_size, joint_lookup, witness, i);
+            let table_entry = E::evaluate(
+                &params,
+                max_joint_size,
+                joint_lookup,
+                witness,
+                coefficients8,
+                i,
+            );
             match counts.get_mut(&table_entry) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(x) => *x += 1,
@@ -450,6 +470,7 @@ pub fn sorted<
 struct LookupChunkVariableEvaluator<'a, F> {
     row: usize,
     witness: &'a [Vec<F>; COLUMNS],
+    coefficients8: &'a [&'a Vec<F>; COLUMNS],
 }
 
 impl<'a, F: Copy> VariableEvaluator<F> for LookupChunkVariableEvaluator<'a, F> {
@@ -477,8 +498,8 @@ impl<'a, F: Copy> VariableEvaluator<F> for LookupChunkVariableEvaluator<'a, F> {
     fn index<'b>(self: &Self, _kind: crate::gate::GateType) -> Result<F, &'b str> {
         Err("LookupChunkVariableEvaluator index: Not implemented")
     }
-    fn coefficient<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
-        Err("LookupChunkVariableEvaluator coefficient: Not implemented")
+    fn coefficient<'b>(self: &Self, i: usize) -> Result<F, &'b str> {
+        Ok(self.coefficients8[i][8 * self.row])
     }
     fn lookup_kind_index<'b>(self: &Self, _i: usize) -> Result<F, &'b str> {
         Err("LookupChunkVariableEvaluator lookup_kind_index: Not implemented")
@@ -493,6 +514,7 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
+    coefficients8: &[&Vec<F>; COLUMNS],
     joint_combiner: F,
     beta: F,
     gamma: F,
@@ -526,7 +548,11 @@ pub fn lookup_chunk<R: Rng + ?Sized, F: FftField>(
         endo_coefficient: F::zero(),
         mds: vec![],
     };
-    let evaluator = |row: usize| LookupChunkVariableEvaluator { row, witness };
+    let evaluator = |row: usize| LookupChunkVariableEvaluator {
+        row,
+        witness,
+        coefficients8,
+    };
     let lookup_chunk: Vec<_> = lookup_info
         .by_row(gates)
         .iter()

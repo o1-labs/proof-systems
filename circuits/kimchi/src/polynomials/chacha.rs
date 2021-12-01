@@ -507,6 +507,7 @@ mod tests {
             w: array_init(|_| F::rand(rng)),
             z: F::rand(rng),
             s: array_init(|_| F::rand(rng)),
+            c: array_init(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: Some(LookupEvaluations {
