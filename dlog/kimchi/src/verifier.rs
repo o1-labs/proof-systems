@@ -498,7 +498,9 @@ where
                                     commitments_part.push(t);
                                 }
                                 scalars_part.push(
-                                    e * constants.joint_combiner.pow([index.max_joint_size as u64]),
+                                    e * constants
+                                        .joint_combiner
+                                        .pow([index.lookup_max_width as u64]),
                                 );
                                 commitments_part.push(&index.lookup_table_ids);
                             }

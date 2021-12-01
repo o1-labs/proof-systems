@@ -199,6 +199,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_table_ids: DP<F>,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_table_ids8: E<F, D<F>>,
+    pub lookup_max_width: usize,
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
@@ -672,6 +673,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             vec![]
         };
 
+        let lookup_max_width = std::cmp::max(max_table_width, lookup_info.max_joint_size);
+
         //
         // return result
         //
@@ -685,6 +688,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables: lookup_table_polys,
             lookup_table_ids: lookup_table_id_polys,
             lookup_table_ids8,
+            lookup_max_width,
             endomul_scalar8,
             endomul_scalarm,
             domain,
