@@ -61,8 +61,6 @@ where
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
-    pub max_joint_size: usize,
-
     /// random oracle argument parameters
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
@@ -137,7 +135,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub endo: Fr<G>,
 
-    pub max_joint_size: usize,
+    pub lookup_max_width: usize,
 
     pub lookup_used: Option<LookupsUsed>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -213,7 +211,7 @@ where
                 None,
             ),
 
-            max_joint_size: self.max_joint_size,
+            lookup_max_width: self.cs.lookup_max_width,
 
             w: zk_w3(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
@@ -280,7 +278,12 @@ where
             let expr = if lookup_used.is_some() {
                 expr + Expr::combine_constraints(
                     2 + super::range::CHACHA.end,
-                    lookup::constraints(&cs.dummy_lookup_values, 0, cs.domain.d1),
+                    lookup::constraints(
+                        &cs.dummy_lookup_values,
+                        0,
+                        cs.domain.d1,
+                        cs.lookup_max_width,
+                    ),
                 )
             } else {
                 expr
@@ -300,7 +303,6 @@ where
             max_quot_size: cs.domain.d8.size as usize - 7,
             fq_sponge_params,
             max_poly_size,
-            max_joint_size: lookup_info.max_joint_size,
             srs,
             cs,
             lookup_used,
