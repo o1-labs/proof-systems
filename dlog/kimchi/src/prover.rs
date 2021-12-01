@@ -296,7 +296,7 @@ where
                             joint_combiner,
                             -Fr::<G>::one(), // Table ID -1
                             lookup_info.max_joint_size,
-                            [value, index].into_iter(),
+                            [index, value].into_iter(),
                         )
                     }
                     None => Fr::<G>::zero(),

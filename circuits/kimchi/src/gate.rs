@@ -329,7 +329,7 @@ impl GateType {
                 let value = curr_row(2 * i + 1);
                 JointLookup {
                     table_id: -Expr::literal(F::from(1 as u64)),
-                    entry: vec![l(value), l(index)],
+                    entry: vec![l(index), l(value)],
                 }
             })
             .collect();

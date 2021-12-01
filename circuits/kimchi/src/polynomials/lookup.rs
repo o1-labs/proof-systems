@@ -738,8 +738,8 @@ pub fn constraints<F: FftField>(
             + E::beta() * E::cell(Column::LookupTable, Next));
 
     let runtime_table_entry = |curr_or_next| -> E<F> {
-        E::cell(Column::RuntimeLookupTable, curr_or_next)
-            + E::cell(Column::Indexer, curr_or_next) * E::constant(ConstantExpr::JointCombiner)
+        E::cell(Column::RuntimeLookupTable, curr_or_next) * E::constant(ConstantExpr::JointCombiner)
+            + E::cell(Column::Indexer, curr_or_next)
             - E::constant(ConstantExpr::JointCombiner).pow(lookup_info.max_joint_size)
     };
 
