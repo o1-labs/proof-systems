@@ -263,7 +263,6 @@ where
                     let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
                         dummy_lookup_value,
                         iter_lookup_table,
-                        index.cs.lookup_table_lengths[0],
                         index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,

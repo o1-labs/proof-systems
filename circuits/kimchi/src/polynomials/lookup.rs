@@ -297,7 +297,6 @@ pub fn sorted<
     // TODO: Multiple tables
     dummy_lookup_value: E,
     lookup_table: G,
-    lookup_table_entries: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
@@ -314,20 +313,23 @@ pub fn sorted<
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
+    for t in lookup_table().take(lookup_rows) {
+        // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
+        // duplicate! E.g. 3 values the same would insert the value 3 times for each instance.
+        counts.entry(t).or_insert(1);
+    }
+
     for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
             let table_entry = E::evaluate(&params, joint_lookup, witness, i);
-            let count = counts.entry(table_entry).or_insert(0);
-            *count += 1;
+            match counts.get_mut(&table_entry) {
+                None => return Err(ProofError::ValueNotInTable),
+                Some(count) => *count += 1,
+            }
         }
         *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
-    }
-
-    for t in lookup_table().take(lookup_rows) {
-        let count = counts.entry(t).or_insert(0);
-        *count += 1;
     }
 
     let sorted = {
@@ -337,10 +339,15 @@ pub fn sorted<
         }
 
         let mut i = 0;
-        for t in lookup_table().take(lookup_table_entries) {
-            let t_count = match counts.get(&t) {
-                None => return Err(ProofError::ValueNotInTable),
-                Some(x) => *x,
+        for t in lookup_table().take(lookup_rows) {
+            let t_count = match counts.get_mut(&t) {
+                None => panic!("Value has disappeared from count table"),
+                Some(x) => {
+                    let res = *x;
+                    // Reset the count, any duplicate values should only appear once from now on.
+                    *x = 1;
+                    res
+                }
             };
             for j in 0..t_count {
                 let idx = i + j;
