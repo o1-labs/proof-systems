@@ -22,7 +22,7 @@ use commitment_dlog::{
 };
 use kimchi_circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
-    gate::{GateType, LookupInfo, LookupsUsed},
+    gate::{GateType, LookupsUsed},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
@@ -46,8 +46,6 @@ where
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
 
-    pub lookup_used: Option<LookupsUsed>,
-
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 
@@ -67,6 +65,17 @@ where
 }
 
 /// The verifier index
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct LookupVerifierIndex<G: CommitmentCurve> {
+    pub lookup_used: LookupsUsed,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_selectors: Vec<PolyComm<G>>,
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct VerifierIndex<G: CommitmentCurve> {
@@ -129,11 +138,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub endo: Fr<G>,
 
-    pub lookup_used: Option<LookupsUsed>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_selectors: Vec<PolyComm<G>>,
+    pub lookup_index: Option<LookupVerifierIndex<G>>,
+
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 
@@ -151,6 +158,28 @@ where
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
+        let lookup_index = {
+            match self.cs.lookup_constraint_system.as_ref() {
+                None => None,
+                Some(cs) => Some(LookupVerifierIndex {
+                    lookup_used: cs.lookup_used,
+                    lookup_selectors: cs
+                        .lookup_selectors
+                        .iter()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                        .collect(),
+                    lookup_tables: cs
+                        .lookup_tables8
+                        .iter()
+                        .map(|v| {
+                            v.iter()
+                                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                                .collect()
+                        })
+                        .collect(),
+                }),
+            }
+        };
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
@@ -175,22 +204,8 @@ where
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
-            lookup_selectors: self
-                .cs
-                .lookup_selectors
-                .iter()
-                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                .collect(),
-            lookup_tables: self
-                .cs
-                .lookup_tables8
-                .iter()
-                .map(|v| {
-                    v.iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                        .collect()
-                })
-                .collect(),
+
+            lookup_index,
 
             w: zk_w3(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
@@ -201,7 +216,6 @@ where
             zkpm: self.cs.zkpm.clone(),
             shift: self.cs.shift,
             linearization: self.linearization.clone(),
-            lookup_used: self.lookup_used,
             srs: Arc::clone(&self.srs),
         }
     }
@@ -222,9 +236,6 @@ where
         }
         cs.endo = endo_q;
 
-        let lookup_info = LookupInfo::<Fr<G>>::create();
-        let lookup_used = lookup_info.lookup_used(&cs.gates);
-
         let linearization: Linearization<Expr<ConstantExpr<Fr<G>>>> = {
             let evaluated_cols = {
                 let mut h = std::collections::HashSet::new();
@@ -232,8 +243,13 @@ where
                 for i in 0..COLUMNS {
                     h.insert(Witness(i));
                 }
-                for i in 0..(lookup_info.max_per_row + 1) {
-                    h.insert(LookupSorted(i));
+                match cs.lookup_constraint_system.as_ref() {
+                    None => (),
+                    Some(lcs) => {
+                        for i in 0..(lcs.max_lookups_per_row + 1) {
+                            h.insert(LookupSorted(i));
+                        }
+                    }
                 }
                 h.insert(Z);
                 h.insert(LookupAggreg);
@@ -250,13 +266,14 @@ where
             let expr = expr + complete_add;
             let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
             let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
-            let expr = if lookup_used.is_some() {
-                expr + Expr::combine_constraints(
-                    2 + super::range::CHACHA.end,
-                    lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1),
-                )
-            } else {
-                expr
+            let expr = match cs.lookup_constraint_system.as_ref() {
+                None => expr,
+                Some(lcs) => {
+                    expr + Expr::combine_constraints(
+                        2 + super::range::CHACHA.end,
+                        lookup::constraints(&lcs.dummy_lookup_values[0], cs.domain.d1),
+                    )
+                }
             };
             let expr = if cs.chacha8.is_some() {
                 expr + chacha::constraint(super::range::CHACHA.start)
@@ -275,7 +292,6 @@ where
             max_poly_size,
             srs,
             cs,
-            lookup_used,
             linearization: linearization.map(|e| e.to_polish()),
         }
     }
