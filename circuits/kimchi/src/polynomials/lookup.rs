@@ -336,7 +336,7 @@ pub fn sorted<
 
     let sorted = {
         let mut sorted: Vec<Vec<E>> =
-            vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row];
+            vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;
         for t in lookup_table().take(lookup_rows) {
