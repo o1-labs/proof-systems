@@ -333,10 +333,8 @@ pub fn sorted<
     }
 
     let sorted = {
-        let mut sorted: Vec<Vec<E>> = vec![];
-        for _ in 0..max_lookups_per_row + 1 {
-            sorted.push(Vec::with_capacity(lookup_rows + 1))
-        }
+        let mut sorted: Vec<Vec<E>> =
+            vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row];
 
         let mut i = 0;
         for t in lookup_table().take(lookup_rows) {
