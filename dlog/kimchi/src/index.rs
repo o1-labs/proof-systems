@@ -159,9 +159,8 @@ where
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
         let lookup_index = {
-            match self.cs.lookup_constraint_system.as_ref() {
-                None => None,
-                Some(cs) => Some(LookupVerifierIndex {
+            self.cs.lookup_constraint_system.as_ref().map(|cs| {
+                LookupVerifierIndex {
                     lookup_used: cs.lookup_used,
                     lookup_selectors: cs
                         .lookup_selectors
@@ -177,8 +176,8 @@ where
                                 .collect()
                         })
                         .collect(),
-                }),
-            }
+                }
+            })
         };
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
