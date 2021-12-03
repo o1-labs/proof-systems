@@ -315,7 +315,9 @@ pub fn sorted<
 
     for t in lookup_table().take(lookup_rows) {
         // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
-        // duplicate! E.g. 3 values the same would insert the value 3 times for each instance.
+        // duplicate!
+        // E.g. A value duplicated in the table 3 times would be entered into the sorted array 3
+        // times at its first occurrence, then a further 2 times as each duplicate is encountered.
         counts.entry(t).or_insert(1);
     }
 
