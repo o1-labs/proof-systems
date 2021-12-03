@@ -5,7 +5,7 @@ This source file implements zk-proof batch verifier functionality.
 *********************************************************************************************/
 
 pub use super::index::{LookupVerifierIndex, VerifierIndex as Index};
-pub use super::prover::{range, ProverProof};
+pub use super::prover::{range, LookupCommitments, ProverProof};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, Zero};
@@ -17,7 +17,10 @@ use kimchi_circuits::{
     expr::{Column, Constants, PolishToken},
     gate::{GateType, LookupsUsed},
     gates::generic::{CONSTANT_COEFF, MUL_COEFF},
-    nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
+    nolookup::{
+        constraints::ConstraintSystem,
+        scalars::{LookupEvaluations, ProofEvaluations, RandomOracles},
+    },
     wires::*,
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
@@ -629,6 +632,52 @@ where
                     .map(|(c, e)| (c, e.clone(), None))
                     .collect::<Vec<_>>(),
             );
+
+            // lookup table commitments
+            match (&proof.evals, proof.commitments.lookup.as_ref()) {
+                (
+                    [ProofEvaluations {
+                        lookup:
+                            Some(LookupEvaluations {
+                                sorted: sorted_evals0,
+                                aggreg: aggreg_eval0,
+                                table: table_eval0,
+                            }),
+                        ..
+                    }, ProofEvaluations {
+                        lookup:
+                            Some(LookupEvaluations {
+                                sorted: sorted_evals1,
+                                aggreg: aggreg_eval1,
+                                table: table_eval1,
+                            }),
+                        ..
+                    }],
+                    Some(LookupCommitments {
+                        sorted: sorted_comms,
+                        aggreg: aggreg_comm,
+                    }),
+                ) => {
+                    if sorted_comms.len() != sorted_evals0.len()
+                        || sorted_comms.len() != sorted_evals1.len()
+                    {
+                        return Err(ProofError::ProofInconsistentLookup);
+                    }
+                    for ((comms, evals0), evals1) in sorted_comms
+                        .iter()
+                        .zip(sorted_evals0.iter())
+                        .zip(sorted_evals1.iter())
+                    {
+                        polynomials.push((comms, vec![evals0, evals1], None));
+                    }
+                    polynomials.push((aggreg_comm, vec![aggreg_eval0, aggreg_eval1], None));
+                }
+                (
+                    [ProofEvaluations { lookup: None, .. }, ProofEvaluations { lookup: None, .. }],
+                    None,
+                ) => (),
+                _ => return Err(ProofError::ProofInconsistentLookup),
+            }
 
             // prepare for the opening proof verification
             let omega = index.domain.group_gen;

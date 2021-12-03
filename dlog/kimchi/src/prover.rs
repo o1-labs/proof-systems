@@ -551,9 +551,6 @@ where
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
         };
 
-        drop(lookup_aggreg_coeffs);
-        drop(lookup_sorted_coeffs);
-
         let chunked_evals = [chunked_evals_zeta, chunked_evals_zeta_omega];
 
         let zeta_n = zeta.pow(&[index.max_poly_size as u64]);
@@ -687,6 +684,24 @@ where
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
+
+        match (
+            lookup_sorted_coeffs.as_ref(),
+            lookup_sorted_comm.as_ref(),
+            lookup_aggreg_coeffs.as_ref(),
+            lookup_aggreg_comm.as_ref(),
+        ) {
+            (Some(sorted_poly), Some(sorted_comms), Some(aggreg_poly), Some(aggreg_comm)) => {
+                for (poly, comm) in sorted_poly
+                    .iter()
+                    .zip(sorted_comms.iter())
+                    .chain([(aggreg_poly, aggreg_comm)].into_iter())
+                {
+                    polynomials.push((poly, None, comm.1.clone()));
+                }
+            }
+            _ => (),
+        }
 
         Ok(Self {
             commitments: ProverCommitments {

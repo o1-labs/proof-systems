@@ -28,6 +28,7 @@ pub enum ProofError {
     OracleCommit,
     RuntimeEnv,
     ValueNotInTable,
+    ProofInconsistentLookup,
 }
 
 // Implement `Display` for ProofError
