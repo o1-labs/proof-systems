@@ -545,10 +545,24 @@ where
             let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta1);
             let ft_comm = &chunked_f_comm - &chunked_t_comm.scale(zeta1 - Fr::<G>::one());
 
+            // compute table commitment
+            let table_comm = index.lookup_index.as_ref().map(|lookup_index| {
+                let mut j = Fr::<G>::one();
+                let mut lookup_scalars = vec![j];
+                let mut lookup_commitments = vec![&lookup_index.lookup_tables[0][0]];
+                for comm in lookup_index.lookup_tables[0].iter().skip(1) {
+                    j *= oracles.joint_combiner.1;
+                    lookup_scalars.push(j);
+                    lookup_commitments.push(comm);
+                }
+                PolyComm::multi_scalar_mul(&lookup_commitments, &lookup_scalars)
+            });
+
             params.push((
                 p_eval,
                 p_comm,
                 ft_comm,
+                table_comm,
                 fq_sponge,
                 oracles,
                 vec![ft_eval0],
@@ -561,7 +575,17 @@ where
         let mut batch = vec![];
         for (proof, params) in proofs.iter().zip(params.iter()) {
             let (index, _lgr_comm, proof) = proof;
-            let (p_eval, p_comm, ft_comm, fq_sponge, oracles, ft_eval0, ft_eval1, polys) = params;
+            let (
+                p_eval,
+                p_comm,
+                ft_comm,
+                table_comm,
+                fq_sponge,
+                oracles,
+                ft_eval0,
+                ft_eval1,
+                polys,
+            ) = params;
 
             // recursion stuff
             let mut polynomials = polys
@@ -634,7 +658,7 @@ where
             );
 
             // lookup table commitments
-            match (&proof.evals, proof.commitments.lookup.as_ref()) {
+            match (&proof.evals, proof.commitments.lookup.as_ref(), table_comm) {
                 (
                     [ProofEvaluations {
                         lookup:
@@ -657,6 +681,7 @@ where
                         sorted: sorted_comms,
                         aggreg: aggreg_comm,
                     }),
+                    Some(table_comm),
                 ) => {
                     if sorted_comms.len() != sorted_evals0.len()
                         || sorted_comms.len() != sorted_evals1.len()
@@ -671,13 +696,16 @@ where
                         polynomials.push((comms, vec![evals0, evals1], None));
                     }
                     polynomials.push((aggreg_comm, vec![aggreg_eval0, aggreg_eval1], None));
+
+                    polynomials.push((table_comm, vec![table_eval0, table_eval1], None));
                 }
                 (
                     [ProofEvaluations { lookup: None, .. }, ProofEvaluations { lookup: None, .. }],
                     None,
+                    None,
                 ) => (),
                 _ => return Err(ProofError::ProofInconsistentLookup),
-            }
+            };
 
             // prepare for the opening proof verification
             let omega = index.domain.group_gen;

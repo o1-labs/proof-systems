@@ -685,20 +685,40 @@ where
                 .collect::<Vec<_>>(),
         );
 
+        let combined_table_poly =
+            index
+                .cs
+                .lookup_constraint_system
+                .as_ref()
+                .map(|lookup_constraint_system| {
+                    let joint_table = &lookup_constraint_system.lookup_tables[0];
+                    let mut res = joint_table[joint_table.len() - 1].clone();
+                    for col in joint_table.iter().rev().skip(1) {
+                        res.iter_mut().for_each(|e| *e *= joint_combiner);
+                        res += col;
+                    }
+                    res
+                });
+
         match (
             lookup_sorted_coeffs.as_ref(),
             lookup_sorted_comm.as_ref(),
             lookup_aggreg_coeffs.as_ref(),
             lookup_aggreg_comm.as_ref(),
+            combined_table_poly.as_ref(),
         ) {
-            (Some(sorted_poly), Some(sorted_comms), Some(aggreg_poly), Some(aggreg_comm)) => {
-                for (poly, comm) in sorted_poly
-                    .iter()
-                    .zip(sorted_comms.iter())
-                    .chain([(aggreg_poly, aggreg_comm)].into_iter())
-                {
+            (
+                Some(sorted_poly),
+                Some(sorted_comms),
+                Some(aggreg_poly),
+                Some(aggreg_comm),
+                Some(combined_table_poly),
+            ) => {
+                for (poly, comm) in sorted_poly.iter().zip(sorted_comms.iter()) {
                     polynomials.push((poly, None, comm.1.clone()));
                 }
+                polynomials.push((aggreg_poly, None, aggreg_comm.1.clone()));
+                polynomials.push((combined_table_poly, None, non_hiding(1)));
             }
             _ => (),
         }
