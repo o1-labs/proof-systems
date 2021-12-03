@@ -99,25 +99,18 @@ pub fn proof(num: usize) {
             (chals, comm)
         };
 
-        // add the proof to the batch
-        let mut batch = Vec::new();
-        batch.push(
-            ProverProof::create::<BaseSponge, ScalarSponge>(
-                &group_map,
-                witness,
-                &index,
-                vec![prev],
-            )
-            .unwrap(),
-        );
+        let proof = ProverProof::create::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            &index,
+            vec![prev],
+        )
+        .unwrap();
 
         // verify the proof
         let verifier_index = index.verifier_index();
         let lgr_comms = vec![];
-        let batch: Vec<_> = batch
-            .iter()
-            .map(|proof| (&verifier_index, &lgr_comms, proof))
-            .collect();
+        let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
         ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
     }
 }
