@@ -308,7 +308,7 @@ where
 
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
-            match (index.cs.lookup_constraint_system.as_ref(), lookup_sorted.as_ref()) {
+            match (index.cs.lookup_constraint_system.as_ref(), lookup_sorted) {
                 (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
                 (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
