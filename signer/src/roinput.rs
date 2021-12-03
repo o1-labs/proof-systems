@@ -44,7 +44,6 @@ use bitvec::{prelude::*, view::AsBits};
 /// of the random oracle input get serialized together in two different ways: both as *bytes* and
 /// as a vector of *field elements*.  The random oracle input encapsulates and automates this
 /// complexity.
-
 #[derive(Default)]
 pub struct ROInput {
     fields: Vec<BaseField>,

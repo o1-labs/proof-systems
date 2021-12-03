@@ -4,7 +4,7 @@
 
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField; // for into_repr()
-
+use ark_serialize::CanonicalSerialize;
 use mina_curves::pasta::pallas as Pallas;
 
 /// Affine curve point type
@@ -13,8 +13,6 @@ pub use Pallas::Affine as CurvePoint;
 pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 /// Scalar field element type
 pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
-
-use ark_serialize::CanonicalSerialize;
 
 /// Field element helpers
 pub trait FieldHelpers<F: PrimeField> {

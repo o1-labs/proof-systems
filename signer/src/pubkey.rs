@@ -12,14 +12,16 @@ use crate::{BaseField, CurvePoint, FieldHelpers};
 
 /// Length of Mina addresses
 pub const MINA_ADDRESS_LEN: usize = 55;
+const MINA_ADDRESS_RAW_LEN: usize = 40;
 
 /// Public key
-#[derive(Copy, Clone, fmt::Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct PubKey(CurvePoint);
 
 impl PubKey {
     /// Create a public key from curve point
-    pub fn new(point: CurvePoint) -> Self {
+    /// Note: Does not check point is on curve
+    pub fn from_point_unsafe(point: CurvePoint) -> Self {
         Self(point)
     }
 
@@ -32,6 +34,10 @@ impl PubKey {
         let bytes = bs58::decode(address)
             .into_vec()
             .map_err(|_| "Invalid address encoding")?;
+
+        if bytes.len() != MINA_ADDRESS_RAW_LEN {
+            return Err("Invalid raw address bytes length");
+        }
 
         let (raw, checksum) = (&bytes[..bytes.len() - 4], &bytes[bytes.len() - 4..]);
         let hash = Sha256::digest(&Sha256::digest(raw)[..]);
@@ -56,33 +62,38 @@ impl PubKey {
             pt.y = pt.y.neg();
         }
 
-        Ok(PubKey::new(pt))
+        if !pt.is_on_curve() {
+            return Err("Point is not on curve");
+        }
+
+        // Safe now because we checked point pt is on curve
+        Ok(PubKey::from_point_unsafe(pt))
     }
 
     /// Convert public key into curve point
-    pub fn to_point(self) -> CurvePoint {
+    pub fn into_point(self) -> CurvePoint {
         self.0
     }
 
     /// Convert public key into compressed public key
-    pub fn to_compressed(self) -> CompressedPubKey {
-        let point = self.to_point();
+    pub fn into_compressed(self) -> CompressedPubKey {
+        let point = self.into_point();
         CompressedPubKey {
             x: point.x,
-            is_odd: !point.y.into_repr().is_even(),
+            is_odd: point.y.into_repr().is_odd(),
         }
     }
 
     /// Serialize public key into corresponding Mina address
-    pub fn to_address(self) -> String {
-        let point = self.to_point();
-        to_address(point.x, point.y.into_repr().is_odd())
+    pub fn into_address(self) -> String {
+        let point = self.into_point();
+        into_address(point.x, point.y.into_repr().is_odd())
     }
 }
 
 impl fmt::Display for PubKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let point = self.to_point();
+        let point = self.into_point();
         let mut x_bytes = point.x.to_bytes();
         let mut y_bytes = point.y.to_bytes();
         x_bytes.reverse();
@@ -102,7 +113,7 @@ pub struct CompressedPubKey {
     pub is_odd: bool,
 }
 
-fn to_address(x: BaseField, is_odd: bool) -> String {
+fn into_address(x: BaseField, is_odd: bool) -> String {
     let mut raw: Vec<u8> = vec![
         0xcb, // version for base58 check
         0x01, // non_zero_curve_point version
@@ -119,13 +130,14 @@ fn to_address(x: BaseField, is_odd: bool) -> String {
     let hash = Sha256::digest(&Sha256::digest(&raw[..])[..]);
     raw.extend(&hash[..4]);
 
+    // The raw buffer is MINA_ADDRESS_RAW_LEN (= 40) bytes in length
     bs58::encode(raw).into_string()
 }
 
 impl CompressedPubKey {
     /// Serialize compressed public key into corresponding Mina address
-    pub fn to_address(self) -> String {
-        to_address(self.x, self.is_odd)
+    pub fn into_address(self) -> String {
+        into_address(self.x, self.is_odd)
     }
 }
 
@@ -138,7 +150,7 @@ mod tests {
         macro_rules! assert_from_address_check {
             ($address:expr) => {
                 let pk = PubKey::from_address($address).expect("failed to create pubkey");
-                assert_eq!(pk.to_address(), $address);
+                assert_eq!(pk.into_address(), $address);
             };
         }
 

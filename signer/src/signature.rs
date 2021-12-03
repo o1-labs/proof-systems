@@ -7,10 +7,10 @@ use crate::{BaseField, FieldHelpers, ScalarField};
 /// Signature structure
 #[derive(Clone, Copy, Eq, fmt::Debug, PartialEq)]
 pub struct Signature {
-    /// Field component
+    /// Base field component
     pub rx: BaseField,
 
-    /// Scalar component
+    /// Scalar field component
     pub s: ScalarField,
 }
 

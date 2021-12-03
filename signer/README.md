@@ -4,36 +4,65 @@ This crate provides an API and framework for Mina signing.  It follows the algor
 
 ## Simple interface
 
-The simple interface uses the default signer configuration compatible with mainnet and testnet transaction signatures.
+The [create] interface uses the default signer configuration compatible with mainnet and testnet transaction signatures.
 
 ```rust
+#[path = "../tests/transaction.rs"]
+mod transaction;
+
 use rand;
-use mina_signer::{NetworkId, Keypair, Signer};
-use mina_signer::NetworkId;
+use mina_signer::{NetworkId, Keypair, PubKey, Signer};
+use transaction::Transaction;
+
+let keypair = Keypair::rand(&mut rand::rngs::OsRng);
+
+let tx = Transaction::new_payment(
+                keypair.public,
+                PubKey::from_address("B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt").expect("invalid receiver address"),
+                1729000000000,
+                2000000000,
+                271828,
+            );
 
 let mut ctx = mina_signer::create(NetworkId::TESTNET);
-let sig = ctx.sign(key_pair, transaction);
+let sig = ctx.sign(keypair, tx);
 
-assert_eq!(ctx.verify(sig, key_pair.public, transaction), true);
+assert!(ctx.verify(sig, keypair.public, tx));
 ```
 
 ## Advanced interface
 
-The advanced interface allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
+The [custom] interface allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
 
 ```rust
+#[path = "../tests/transaction.rs"]
+mod transaction;
+
 use rand;
-use mina_signer::{NetworkId, Keypair, Signer};
 use oracle::{pasta, poseidon};
+use mina_signer::{NetworkId, Keypair, PubKey, Signer};
+use transaction::Transaction;
+
+let keypair = Keypair::rand(&mut rand::rngs::OsRng);
+
+let tx = Transaction::new_payment(
+                keypair.public,
+                PubKey::from_address("B62qrKG4Z8hnzZqp1AL8WsQhQYah3quN1qUj3SyfJA8Lw135qWWg1mi").expect("invalid receiver address"),
+                1729000000000,
+                2000000000,
+                271828,
+            );
 
 let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants5W>(
     pasta::fp5::params(),
     NetworkId::TESTNET,
 );
 
-let sig = ctx.sign(key_pair, transaction);
-assert_eq!(ctx.verify(sig, key_pair.public, transaction), true);
+let sig = ctx.sign(keypair, tx);
+assert!(ctx.verify(sig, keypair.public, tx));
 ```
+
+Note that these examples use the test [`Transaction`](https://github.com/o1-labs/proof-systems/tree/master/signer/tests/transaction.rs) structure found in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/signer/tests) directory.  This is a complete reference implementation of the Mina payment and delegation transaction structures found on mainnet and testnet.
 
 ## Framework
 
@@ -75,7 +104,7 @@ For more details please see the rustdoc mina-signer documentation.
 
 # Unit tests
 
-There is a standard set of signature unit tests in the `./tests` directory.
+There is a standard set of [signature unit tests](https://github.com/o1-labs/proof-systems/tree/master/signer/tests/tests.rs) in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/signer/tests) directory.
 
 These can be run with
 

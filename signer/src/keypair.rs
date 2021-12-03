@@ -2,42 +2,39 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
-use core::fmt;
-
 use crate::{CurvePoint, FieldHelpers, PubKey, ScalarField, SecKey};
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::UniformRand;
+use core::fmt;
 use rand::{self, CryptoRng, RngCore};
 
 /// Keypair structure
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Keypair {
     /// Secret key
-    pub secret: SecKey,
+    pub(crate) secret: SecKey,
     /// Public key
     pub public: PubKey,
 }
 
 impl Keypair {
     /// Create a keypair from scalar field `secret` element and curve point `public`
-    pub fn new(secret: ScalarField, public: CurvePoint) -> Self {
+    /// Note: Does not check point `public` is on curve
+    pub fn from_parts_unsafe(secret: ScalarField, public: CurvePoint) -> Self {
         Self {
             secret: SecKey::new(secret),
-            public: PubKey::new(public),
+            public: PubKey::from_point_unsafe(public),
         }
     }
 
     /// Generate a random keypair
     pub fn rand(rng: &mut (impl RngCore + CryptoRng)) -> Self {
-        let secret: ScalarField = ScalarField::rand(rng);
+        let sec_key: SecKey = SecKey::rand(rng);
         let public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(secret)
+            .mul(sec_key.into_scalar())
             .into_affine();
 
-        Keypair {
-            secret: SecKey::new(secret),
-            public: PubKey::new(public),
-        }
+        // Safe in this case b/c point must be on curve
+        Self::from_parts_unsafe(sec_key.into_scalar(), public)
     }
 
     /// Deserialize a keypair from secret key hex
@@ -50,12 +47,17 @@ impl Keypair {
             .mul(secret)
             .into_affine();
 
-        Ok(Keypair::new(secret, public))
+        if !public.is_on_curve() {
+            return Err("Point is not on curve");
+        }
+
+        // Safe now because we checked point is on the curve
+        Ok(Keypair::from_parts_unsafe(secret, public))
     }
 
     /// Obtain the Mina address corresponding to the keypair's public key
     pub fn get_address(self) -> String {
-        self.public.to_address()
+        self.public.into_address()
     }
 }
 

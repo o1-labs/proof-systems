@@ -19,7 +19,7 @@ use blake2::{
     VarBlake2b,
 };
 use oracle::{
-    poseidon::{SpongeConstants, SpongeState},
+    poseidon::SpongeConstants,
     rndoracle::{ArithmeticSponge, Sponge},
 };
 use std::ops::Neg;
@@ -42,12 +42,12 @@ impl<SC: SpongeConstants> Signer for Schnorr<SC> {
     where
         S: Signable,
     {
-        let k: ScalarField = self.blinding_hash(&kp, input);
+        let k: ScalarField = self.derive_nonce(&kp, input);
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
 
         let e: ScalarField = self.message_hash(&kp.public, r.x, input);
-        let s: ScalarField = k + e * kp.secret.to_scalar();
+        let s: ScalarField = k + e * kp.secret.into_scalar();
 
         Signature::new(r.x, s)
     }
@@ -62,7 +62,7 @@ impl<SC: SpongeConstants> Signer for Schnorr<SC> {
             .mul(sig.s)
             .into_affine();
         // Perform addition and infinity check in projective coordinates for performance
-        let rv = public.to_point().mul(ev).neg().add_mixed(&sv);
+        let rv = public.into_point().mul(ev).neg().add_mixed(&sv);
         if rv.is_zero() {
             return false;
         }
@@ -92,19 +92,19 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         bytes
     }
 
-    // This function uses a cryptographic hash function to create a uniformly and
-    // randomly distributed nonce.  It is crucial for security that no two different
-    // messages share the same nonce.
-    fn blinding_hash<H>(&self, kp: &Keypair, input: H) -> ScalarField
+    /// This function uses a cryptographic hash function to create a uniformly and
+    /// randomly distributed nonce.  It is crucial for security that no two different
+    /// messages share the same nonce.
+    fn derive_nonce<H>(&self, kp: &Keypair, input: H) -> ScalarField
     where
         H: Hashable,
     {
         let mut hasher = VarBlake2b::new(32).unwrap();
 
         let mut roi: ROInput = input.to_roinput();
-        roi.append_field(kp.public.to_point().x);
-        roi.append_field(kp.public.to_point().y);
-        roi.append_scalar(kp.secret.to_scalar());
+        roi.append_field(kp.public.into_point().x);
+        roi.append_field(kp.public.into_point().y);
+        roi.append_scalar(kp.secret.into_scalar());
         roi.append_bytes(&[self.network_id.into()]);
 
         hasher.update(roi.to_bytes());
@@ -112,32 +112,31 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         let mut bytes = [0; 32];
         hasher.finalize_variable(|out| bytes.copy_from_slice(out));
         // Drop the top two bits to convert into a scalar field element
-        //   N.B. Since the order p is very close to 2^m for some m, truncating only creates
-        //   a tiny amount of bias that should be insignificant and keeps the implementation
-        //   simple by avoiding reduction modulo p.
+        //   N.B. Since the order of Pallas's scalar field p is very close to 2^m
+        //   for some m, truncating only creates a tiny amount of bias that should
+        //   be insignificant and better than reduction modulo p.
         bytes[bytes.len() - 1] &= 0b0011_1111;
 
         ScalarField::from_random_bytes(&bytes[..]).expect("failed to create scalar from bytes")
     }
 
-    // This function uses a cryptographic hash function (based on a sponge construction) to
-    // convert the message to be signed (and some other information) into a uniformly and
-    // randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
-    // SNARK-friendly cryptographic hash function.
-    // Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
+    /// This function uses a cryptographic hash function (based on a sponge construction) to
+    /// convert the message to be signed (and some other information) into a uniformly and
+    /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
+    /// SNARK-friendly cryptographic hash function.
+    /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
     fn message_hash<S>(&mut self, pub_key: &PubKey, rx: BaseField, input: S) -> ScalarField
     where
         S: Signable,
     {
         let mut roi: ROInput = input.to_roinput();
-        roi.append_field(pub_key.to_point().x);
-        roi.append_field(pub_key.to_point().y);
+        roi.append_field(pub_key.into_point().x);
+        roi.append_field(pub_key.into_point().y);
         roi.append_field(rx);
 
         // Set sponge initial state (explicitly init state so signer context can be reused)
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
-        self.sponge.state = vec![BaseField::zero(); self.sponge.state.len()];
-        self.sponge.sponge_state = SpongeState::Absorbed(0);
+        self.sponge.reset();
         self.sponge
             .absorb(&[
                 BaseField::from_bytes(&Schnorr::<SC>::domain_bytes::<S>(self.network_id))

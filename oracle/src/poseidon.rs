@@ -84,6 +84,7 @@ pub trait Sponge<Input: Field, Digest> {
     fn new(params: ArithmeticSpongeParams<Input>) -> Self;
     fn absorb(&mut self, x: &[Input]);
     fn squeeze(&mut self) -> Digest;
+    fn reset(&mut self);
 }
 
 pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
@@ -266,5 +267,10 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                 self.state[0]
             }
         }
+    }
+
+    fn reset(&mut self) {
+        self.state = vec![F::zero(); self.state.len()];
+        self.sponge_state = SpongeState::Absorbed(0);
     }
 }

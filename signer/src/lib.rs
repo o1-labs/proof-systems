@@ -1,46 +1,5 @@
-#![warn(missing_docs)]
-
-//! Mina signer library for verification and signing
-//!
-//! **Example**
-//!
-//! ```
-//! use rand;
-//! use mina_signer::{Hashable, Keypair, NetworkId, ROInput, Signable, Signer};
-//!
-//! #[derive(Clone, Copy)]
-//! struct Thing {
-//!     foo: u32,
-//!     bar: u64,
-//! }
-//!
-//! impl Hashable for Thing {
-//!     fn to_roinput(self) -> ROInput {
-//!         let mut roi = ROInput::new();
-//!
-//!         roi.append_u32(self.foo);
-//!         roi.append_u64(self.bar);
-//!
-//!         roi
-//!     }
-//! }
-//!
-//! impl Signable for Thing {
-//!     fn domain_string(network_id: NetworkId) -> &'static str {
-//!        match network_id {
-//!            NetworkId::MAINNET => "ThingSigMainnet",
-//!            NetworkId::TESTNET => "ThingSigTestnet",
-//!        }
-//!    }
-//! }
-//!
-//! let kp = Keypair::rand(&mut rand::rngs::OsRng);
-//! let thang = Thing { foo: 31, bar: 45 };
-//!
-//! let mut ctx = mina_signer::create(NetworkId::TESTNET);
-//! let sig = ctx.sign(kp, thang);
-//! assert_eq!(ctx.verify(sig, kp.public, thang), true);
-//! ```
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
 
 pub mod domain;
 pub mod keypair;
