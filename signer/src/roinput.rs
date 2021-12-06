@@ -67,7 +67,7 @@ impl ROInput {
     /// Append a scalar field element
     pub fn append_scalar(&mut self, s: ScalarField) {
         // mina scalars are 255 bytes
-        let bytes = s.to_bytes(); // TODO: Combine these two into one-liner
+        let bytes = s.to_bytes();
         let bits = &bytes.as_bits::<Lsb0>()[..ScalarField::size_in_bits()];
         self.bits.extend(bits);
     }
