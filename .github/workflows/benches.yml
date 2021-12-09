@@ -1,0 +1,63 @@
+name: Benchmarks
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  run_checks:
+    runs-on: ubuntu-latest
+    name: Run some basic checks
+    steps:
+      - name: Install dependencies
+        run: |
+          set -x
+          sudo apt install -y valgrind    # iai
+          cargo install cargo-criterion   # criterion
+
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install ocaml
+
+      - name: Checkout PR
+        uses: actions/checkout@v2
+
+      - name: Run iai bench
+        run: |
+          set -x
+          cargo bench -p kimchi --bench proof_iai > iai_bench
+          cat iai_bench
+
+      - name: Run criterion bench
+        run: |
+          set -x
+          cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
+          cat criterion_bench
+
+      - name: Write result in PR
+        uses: actions/github-script@v5
+        with:
+          script: |
+            const fs = require('fs');
+
+            // read the output file
+            const iai_bench = fs.readFileSync("iai_bench", {encoding:'utf8', flag:'r'});
+            const criterion_bench = fs.readFileSync("criterion_bench", {encoding:'utf8', flag:'r'});
+
+            // form message
+            const message = `Hello there👋 
+            Here are some benchmark results using [criterion](https://bheisler.github.io/criterion.rs/). Keep in mind that since this runs in CI, it is not really accurate (as it depends on the host load)
+
+            <pre><code>${criterion_bench}</code></pre>
+
+            Here's some more accurate benchmark with [iai](https://github.com/bheisler/iai)
+
+            <pre><code>${iai_bench}</code></pre>`;
+
+            // post comment
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            })
