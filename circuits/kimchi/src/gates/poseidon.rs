@@ -1,6 +1,6 @@
 /*****************************************************************************************************************
 
-This source file implements Posedon constraint gate Plonk primitive.
+This source file implements Poseidon constraint gate Plonk primitive.
 
 Constraint vector format:
 

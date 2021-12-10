@@ -26,6 +26,24 @@ The constraints above are derived from the following EC Affine arithmetic equati
     (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 
+The above variables are stored in the following witness positions for the verify_endomul() function
+
+    xt : witness[0][row]
+    yt : witness[1][row]
+    xs : witness[2][row]
+    ys : witness[3][row]
+    xp : witness[4][row]
+    yp : witness[5][row]
+    n  : witness[6][row]
+    xr : witness[7][row]
+    yr : witness[8][row]
+    s1 : witness[9][row]
+    s3 : witness[10][row]
+    b1 : witness[11][row]
+    b2 : witness[12][row]
+    b3 : witness[13][row]
+    b4 : witness[14][row]
+
 *****************************************************************************************************************/
 
 use crate::gate::{CircuitGate, GateType};
@@ -82,7 +100,7 @@ impl<F: FftField> CircuitGate<F> {
         );
         ensure_eq!(
             F::zero(),
-            (xq1 - this[4]) * this[9] - (this[11].double() - F::one()) * this[2] + this[5],
+            (xq1 - this[4]) * this[9] - (this[11].double() - F::one()) * this[1] + this[5],
             "endomul: wrong eq 5"
         );
         ensure_eq!(
@@ -100,7 +118,7 @@ impl<F: FftField> CircuitGate<F> {
         );
         ensure_eq!(
             F::zero(),
-            (xq2 - this[7]) * this[10] - (this[13].double() - F::one()) * this[2] + this[8],
+            (xq2 - this[7]) * this[10] - (this[13].double() - F::one()) * this[1] + this[8],
             "endomul: wrong eq 8"
         );
         ensure_eq!(
