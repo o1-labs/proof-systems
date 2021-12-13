@@ -211,7 +211,8 @@ We will represent the polynomials for the side-loaded tables as
 column within that table. We also include polynomials `SideLoadedCombined(i)`
 in the proof, along with their openings, where
 ```
-SideLoadedCombined(i) = sum[j=1, ?, SideLoadedTable(i, j) * joint_combiner^j]
+SideLoadedCombined(i)
+  = sum[j=1, ?, SideLoadedTable(i, j) * joint_combiner^(j-1)]
 ```
 and check for consistency of the evaluations and openings when verifying the
 proof.
@@ -256,7 +257,7 @@ value
 LookupTable - FixedAndRuntimeTable
 ```
 is either 0 (where no side-loaded table contributes a value) or the value of
-some row in `SideLoadedCombined(i)` from the table `i`.
+some row in `SideLoadedCombined(i) * joint_combiner` from the table `i`.
 
 For the `0` differences, we calculate a permutation between them all and the
 single constant `0`, to ensure that `LookupTable = FixedAndRuntimeTable`. For
@@ -266,14 +267,16 @@ relevant to each value.
 Thus, we build the permutation accumulator
 ```
 LookupPermutation
- * ((LookupTable - FixedAndRuntimeTable) + gamma + beta * Sigma(7))
+ * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
+     + gamma + beta * Sigma(7))
  * (SideLoadedCombined(0) + gamma + beta * Sigma(8))
  * (SideLoadedCombined(1) + gamma + beta * Sigma(9))
  * (SideLoadedCombined(2) + gamma + beta * Sigma(10))
  * (SideLoadedCombined(3) + gamma + beta * Sigma(11))
  =
    LookupPermutation[prev]
-   * ((LookupTable - FixedAndRuntimeTable) + gamma + x * beta * shift[7])
+   * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
+       + gamma + x * beta * shift[7])
    * (SideLoadedCombined(0) + gamma + x * beta * shift[8])
    * (SideLoadedCombined(1) + gamma + x * beta * shift[9])
    * (SideLoadedCombined(2) + gamma + x * beta * shift[10])
@@ -315,7 +318,8 @@ runtime table, we can construct the permutation
 ```
 LookupPermutation
  * PermutationAggreg
- * ((LookupTable - FixedAndRuntimeTable) + gamma + beta * Sigma(7))
+ * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
+     + gamma + beta * Sigma(7))
  * (SideLoadedCombined(0) + gamma + beta * Sigma(8))
  * (SideLoadedCombined(1) + gamma + beta * Sigma(9))
  * (SideLoadedCombined(2) + gamma + beta * Sigma(10))
@@ -324,7 +328,8 @@ LookupPermutation
  =
    LookupPermutation[prev]
    * PermutationAggreg[prev]
-   * ((LookupTable - FixedAndRuntimeTable) + gamma + x * beta * shift[7])
+   * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
+       + gamma + x * beta * shift[7])
    * (SideLoadedCombined(0) + gamma + x * beta * shift[8])
    * (SideLoadedCombined(1) + gamma + x * beta * shift[9])
    * (SideLoadedCombined(2) + gamma + x * beta * shift[10])
@@ -332,9 +337,10 @@ LookupPermutation
    * (RuntimeTable(1) + gamma + x * beta * shift[12])
 ```
 to allow interaction between any of the first 7 witness rows and the first row
-of the runtime table. Note that the witness rows cannot interact with the
-combined lookup rows, due to their use of `joint_combiner`, which is sampled
-using randomness that depends on this witness.
+of the runtime table. Note that the witness rows can only interact with the
+side-loaded tables when they contain a single entry due to their use of
+`joint_combiner` for subsequent entries, which is sampled using randomness that
+depends on this witness.
 
 In order to check the combined permutation, we remove the final check from the
 existing permutation argument and compute the combined check of both
@@ -395,7 +401,8 @@ of the runtime table.
   ```
   LookupPermutation
    * PermutationAggreg
-   * ((LookupTable - FixedAndRuntimeTable) + gamma + beta * Sigma(7))
+   * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
+       + gamma + beta * Sigma(7))
    * (SideLoadedCombined(0) + gamma + beta * Sigma(8))
    * (SideLoadedCombined(1) + gamma + beta * Sigma(9))
    * (SideLoadedCombined(2) + gamma + beta * Sigma(10))
@@ -404,7 +411,8 @@ of the runtime table.
    =
      LookupPermutation[prev]
      * PermutationAggreg[prev]
-     * ((LookupTable - FixedAndRuntimeTable) + gamma + x * beta * shift[7])
+     * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
+         + gamma + x * beta * shift[7])
      * (SideLoadedCombined(0) + gamma + x * beta * shift[8])
      * (SideLoadedCombined(1) + gamma + x * beta * shift[9])
      * (SideLoadedCombined(2) + gamma + x * beta * shift[10])
