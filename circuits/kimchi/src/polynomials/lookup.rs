@@ -63,7 +63,7 @@
 //!   - when they are different, there is some `j` such that it equals `gamma * (1 + beta) +
 //!     lookup_table[i] + beta * lookup_table[i+1]`
 //!   - using the example above, this becomes
-//!     ```
+//!     ```ignore
 //!         gamma * (1 + beta) + 0 + beta * 0
 //!       * gamma * (1 + beta) + 0 + beta * 0
 //!       * gamma * (1 + beta) + 0 + beta * 0
@@ -77,7 +77,7 @@
 //!       * gamma * (1 + beta) + 4 + beta * 5
 //!     ```
 //!     which we can simplify to
-//!     ```
+//!     ```ignore
 //!         (gamma + 0) * (1 + beta)
 //!       * (gamma + 0) * (1 + beta)
 //!       * (gamma + 0) * (1 + beta)
@@ -96,7 +96,7 @@
 //!   the product of `(gamma + witness_table[i]) * (1 + beta)`, since each term individually
 //!   cancels out.
 //!   - using the example above, the `lookup_table` terms become
-//!     ```
+//!     ```ignore
 //!         gamma * (1 + beta) + 0 + beta * 1
 //!       * gamma * (1 + beta) + 1 + beta * 2
 //!       * gamma * (1 + beta) + 2 + beta * 3
@@ -104,7 +104,7 @@
 //!       * gamma * (1 + beta) + 4 + beta * 5
 //!     ```
 //!     and the `witness_table` terms become
-//!     ```
+//!     ```ignore
 //!         (gamma + 0) * (1 + beta)
 //!       * (gamma + 0) * (1 + beta)
 //!       * (gamma + 0) * (1 + beta)
