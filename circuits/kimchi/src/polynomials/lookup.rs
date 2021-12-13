@@ -294,8 +294,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let table_entry = joint_lookup.evaluate(joint_combiner, &eval);
-            *all_lookups.entry(table_entry).or_insert(0) += 1
+            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
+            *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
         *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
@@ -419,8 +419,8 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let table_entry = E::evaluate(&params, joint_lookup, witness, i);
-            match counts.get_mut(&table_entry) {
+            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(count) => *count += 1,
             }
