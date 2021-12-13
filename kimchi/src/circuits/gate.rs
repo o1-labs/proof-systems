@@ -147,6 +147,8 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
+    /// Non-native modular multiplication
+    Nnmul,
 }
 
 /// Describes the desired lookup configuration.
@@ -428,6 +430,7 @@ impl<F: FftField> CircuitGate<F> {
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            Nnmul => self.verify_nnmul(row, witness),
         }
     }
 }

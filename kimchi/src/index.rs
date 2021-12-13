@@ -115,6 +115,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    /// non-native multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub nnmul_comm: PolyComm<G>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [Fr<G>; PERMUTS],
@@ -240,6 +244,7 @@ where
                 &self.cs.endomul_scalar8,
                 None,
             ),
+            nnmul_comm: self.srs.commit_non_hiding(&self.cs.nnmulm, None),
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
