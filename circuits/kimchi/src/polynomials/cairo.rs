@@ -237,10 +237,8 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     // * Check next program counter (pc update)
     // need to fix it
     constraints.push(
-        fPC_JNZ * dst * 
-                ( (next_pc - (pc + op1))               // <=> pc_up = 4 :
-                + res * (next_pc - (pc+size) ) )     //  and dst != 0 : next_pc = pc + op1 // condition holds
-                - (1-dst*res) * (pc+size) ) // <=> pc_up = 4 :  if dst == 1 else pc + size )
+        fPC_JNZ * dst * res * (next_pc - (pc + op1))          // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
+        + fPC_JNZ * (1 - dst) * (next_pc - (pc+size))         // <=> pc_up = 4 and dst == 0 : next_pc = pc + size // condition false
             + (1 - fPC_JNZ) * next_pc                         // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
             - (1 - fPC_ABS - fPC_RES - fPC_JNZ) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
             - fPC_ABS * res                                   // <=> pc_up = 1 : next_pc = res       // absolute jump
