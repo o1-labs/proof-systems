@@ -451,7 +451,7 @@ mod tests {
         // Compute new value of pc
         match pc_up {
             0 => {
-                // next instruction is rigth after the current one
+                // next instruction is right after the current one
                 next_pc = pc + size // the common case
             }
             1 => {
