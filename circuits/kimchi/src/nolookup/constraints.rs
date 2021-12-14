@@ -437,7 +437,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndomulScalar) as u64))
+                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
                 .collect(),
             domain.d1,
         )

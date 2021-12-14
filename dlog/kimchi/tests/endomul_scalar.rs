@@ -49,7 +49,7 @@ fn endomul_scalar_test() {
         for i in 0..rows_per_scalar {
             let row = rows_per_scalar * s + i;
             gates.push(CircuitGate {
-                typ: GateType::EndomulScalar,
+                typ: GateType::EndoMulScalar,
                 wires: Wire::new(row),
                 c: vec![],
             });
