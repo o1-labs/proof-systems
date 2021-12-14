@@ -50,7 +50,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_nnmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
-                typ: GateType::Nnmul,
+                typ: GateType::NonNativeMul,
                 wires: wires[0],
                 c: vec![],
             },
@@ -68,7 +68,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn nnmul(&self) -> F {
-        if self.typ == GateType::Nnmul {
+        if self.typ == GateType::NonNativeMul {
             F::one()
         } else {
             F::zero()

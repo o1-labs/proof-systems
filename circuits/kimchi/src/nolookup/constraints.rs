@@ -571,7 +571,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            emulm,
             nnmulm,
             l1,
             l04,
