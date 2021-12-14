@@ -110,95 +110,114 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub constants: std::marker::PhantomData<SC>,
 }
 
-impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
-    fn apply_mds_matrix(&mut self) {
-        self.state = if SC::FULL_MDS {
-            self.params
-                .mds
-                .iter()
-                .map(|m| {
-                    self.state
-                        .iter()
-                        .zip(m.iter())
-                        .fold(F::zero(), |x, (s, &m)| m * s + x)
-                })
-                .collect()
+fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
+    params: &ArithmeticSpongeParams<F>,
+    state: &Vec<F>,
+) -> Vec<F> {
+    if SC::FULL_MDS {
+        params
+            .mds
+            .iter()
+            .map(|m| {
+                state
+                    .iter()
+                    .zip(m.iter())
+                    .fold(F::zero(), |x, (s, &m)| m * s + x)
+            })
+            .collect()
+    } else {
+        vec![
+            state[0] + &state[2],
+            state[0] + &state[1],
+            state[1] + &state[2],
+        ]
+    }
+}
+
+/// Performs a single full round (given the round number) for the sponge.
+/// Note that if INITIAL_ARK is set in the parameters, calling full round will not be enough to manually implement the sponge.
+pub fn full_round<F: Field, SC: SpongeConstants>(
+    params: &ArithmeticSpongeParams<F>,
+    state: &mut Vec<F>,
+    r: usize,
+) {
+    for i in 0..state.len() {
+        state[i] = sbox::<F, SC>(state[i]);
+    }
+    *state = apply_mds_matrix::<F, SC>(params, state);
+    for (i, x) in params.round_constants[r].iter().enumerate() {
+        state[i].add_assign(x);
+    }
+}
+
+fn half_rounds<F: Field, SC: SpongeConstants>(
+    params: &ArithmeticSpongeParams<F>,
+    state: &mut Vec<F>,
+) {
+    for r in 0..SC::HALF_ROUNDS_FULL {
+        for (i, x) in params.round_constants[r].iter().enumerate() {
+            state[i].add_assign(x);
+        }
+        for i in 0..state.len() {
+            state[i] = sbox::<F, SC>(state[i]);
+        }
+        apply_mds_matrix::<F, SC>(params, state);
+    }
+
+    for r in 0..SC::ROUNDS_PARTIAL {
+        for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + r]
+            .iter()
+            .enumerate()
+        {
+            state[i].add_assign(x);
+        }
+        state[0] = sbox::<F, SC>(state[0]);
+        apply_mds_matrix::<F, SC>(params, state);
+    }
+
+    for r in 0..SC::HALF_ROUNDS_FULL {
+        for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
+            .iter()
+            .enumerate()
+        {
+            state[i].add_assign(x);
+        }
+        for i in 0..state.len() {
+            state[i] = sbox::<F, SC>(state[i]);
+        }
+        apply_mds_matrix::<F, SC>(params, state);
+    }
+}
+
+pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
+    params: &ArithmeticSpongeParams<F>,
+    state: &mut Vec<F>,
+) {
+    if SC::HALF_ROUNDS_FULL == 0 {
+        if SC::INITIAL_ARK == true {
+            for (i, x) in params.round_constants[0].iter().enumerate() {
+                state[i].add_assign(x);
+            }
+            for r in 0..SC::ROUNDS_FULL {
+                full_round::<F, SC>(params, state, r + 1);
+            }
         } else {
-            vec![
-                self.state[0] + &self.state[2],
-                self.state[0] + &self.state[1],
-                self.state[1] + &self.state[2],
-            ]
-        };
+            for r in 0..SC::ROUNDS_FULL {
+                full_round::<F, SC>(params, state, r);
+            }
+        }
+    } else {
+        half_rounds::<F, SC>(params, state);
     }
+}
 
-    /// Performs a single full round (given the round number) for the sponge.
-    /// Note that if INITIAL_ARK is set in the parameters, calling full round will not be enough to manually implement the sponge.
+impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     pub fn full_round(&mut self, r: usize) {
-        // TODO(mimoo): ideally this should be enforced in the type of the state itself
-        assert!(self.state.len() == SC::SPONGE_WIDTH);
-        for i in 0..self.state.len() {
-            self.state[i] = sbox::<F, SC>(self.state[i]);
-        }
-        self.apply_mds_matrix();
-        for (i, x) in self.params.round_constants[r].iter().enumerate() {
-            self.state[i].add_assign(x);
-        }
-    }
-
-    fn half_rounds(&mut self) {
-        for r in 0..SC::HALF_ROUNDS_FULL {
-            for (i, x) in self.params.round_constants[r].iter().enumerate() {
-                self.state[i].add_assign(x);
-            }
-            for i in 0..self.state.len() {
-                self.state[i] = sbox::<F, SC>(self.state[i]);
-            }
-            self.apply_mds_matrix();
-        }
-
-        for r in 0..SC::ROUNDS_PARTIAL {
-            for (i, x) in self.params.round_constants[SC::HALF_ROUNDS_FULL + r]
-                .iter()
-                .enumerate()
-            {
-                self.state[i].add_assign(x);
-            }
-            self.state[0] = sbox::<F, SC>(self.state[0]);
-            self.apply_mds_matrix();
-        }
-
-        for r in 0..SC::HALF_ROUNDS_FULL {
-            for (i, x) in self.params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
-                .iter()
-                .enumerate()
-            {
-                self.state[i].add_assign(x);
-            }
-            for i in 0..self.state.len() {
-                self.state[i] = sbox::<F, SC>(self.state[i]);
-            }
-            self.apply_mds_matrix();
-        }
+        full_round::<F, SC>(&self.params, &mut self.state, r);
     }
 
     fn poseidon_block_cipher(&mut self) {
-        if SC::HALF_ROUNDS_FULL == 0 {
-            if SC::INITIAL_ARK == true {
-                for (i, x) in self.params.round_constants[0].iter().enumerate() {
-                    self.state[i].add_assign(x);
-                }
-                for r in 0..SC::ROUNDS_FULL {
-                    self.full_round(r + 1);
-                }
-            } else {
-                for r in 0..SC::ROUNDS_FULL {
-                    self.full_round(r);
-                }
-            }
-        } else {
-            self.half_rounds();
-        }
+        poseidon_block_cipher::<F, SC>(&self.params, &mut self.state);
     }
 }
 
