@@ -80,10 +80,19 @@ impl SpongeConstants for PlonkSpongeConstants15W {
     const INITIAL_ARK: bool = false;
 }
 
+/// Cryptographic sponge interface - for hashing an arbitrary amount of
+/// data into one or more field elements
 pub trait Sponge<Input: Field, Digest> {
+    /// Create a new cryptographic sponge using arithmetic sponge `params`
     fn new(params: ArithmeticSpongeParams<Input>) -> Self;
+
+    /// Absorb an array of field elements `x`
     fn absorb(&mut self, x: &[Input]);
+
+    /// Squeeze an output from the sponge
     fn squeeze(&mut self) -> Digest;
+
+    /// Reset the sponge back to its initial state (as if it were just created)
     fn reset(&mut self);
 }
 
