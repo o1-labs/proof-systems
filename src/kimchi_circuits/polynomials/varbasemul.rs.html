@@ -233,6 +233,7 @@
 <span id="232">232</span>
 <span id="233">233</span>
 <span id="234">234</span>
+<span id="235">235</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
@@ -465,8 +466,9 @@ for details.
     <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
         <span class="ident">res</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">constraint</span>(<span class="ident">i</span>));
     }
-    <span class="ident">E::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::Vbmul</span>), <span class="ident">CurrOrNext::Curr</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>)
+    <span class="ident">E::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::VarBaseMul</span>), <span class="ident">CurrOrNext::Curr</span>)
+        <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (6bda5b331 2021-12-12)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (8f117a77d 2021-12-13)" ></div>
 </body></html>

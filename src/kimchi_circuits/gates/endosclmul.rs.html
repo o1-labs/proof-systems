@@ -121,22 +121,6 @@
 <span id="120">120</span>
 <span id="121">121</span>
 <span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
-<span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
-<span id="129">129</span>
-<span id="130">130</span>
-<span id="131">131</span>
-<span id="132">132</span>
-<span id="133">133</span>
-<span id="134">134</span>
-<span id="135">135</span>
-<span id="136">136</span>
-<span id="137">137</span>
-<span id="138">138</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements group endomorphism optimised
@@ -178,7 +162,7 @@ The constraints above are derived from the following EC Affine arithmetic equati
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_endomul</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
-            <span class="ident">typ</span>: <span class="ident">GateType::Endomul</span>,
+            <span class="ident">typ</span>: <span class="ident">GateType::EndoMul</span>,
             <span class="ident">wires</span>,
             <span class="ident">c</span>: <span class="macro">vec!</span>[],
         }
@@ -195,65 +179,49 @@ The constraints above are derived from the following EC Affine arithmetic equati
         <span class="kw">let</span> <span class="ident">xq1</span> <span class="op">=</span> (<span class="ident">F::one</span>() <span class="op">+</span> ((<span class="ident">cs</span>.<span class="ident">endo</span> <span class="op">-</span> <span class="ident">F::one</span>()) <span class="op">*</span> <span class="ident">next</span>[<span class="number">12</span>])) <span class="op">*</span> <span class="ident">this</span>[<span class="number">0</span>];
         <span class="kw">let</span> <span class="ident">xq2</span> <span class="op">=</span> (<span class="ident">F::one</span>() <span class="op">+</span> ((<span class="ident">cs</span>.<span class="ident">endo</span> <span class="op">-</span> <span class="ident">F::one</span>()) <span class="op">*</span> <span class="ident">next</span>[<span class="number">14</span>])) <span class="op">*</span> <span class="ident">this</span>[<span class="number">0</span>];
 
-        <span class="macro">ensure_eq!</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="ident">GateType::Endomul</span>, <span class="string">&quot;endomul: incorrect gate&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="self">self</span>.<span class="ident">typ</span>, <span class="ident">GateType::EndoMul</span>, <span class="string">&quot;incorrect gate type&quot;</span>);
 
         <span class="comment">// verify booleanity of the scalar bits</span>
 
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">F::zero</span>(),
-            <span class="ident">this</span>[<span class="number">11</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">11</span>].<span class="ident">square</span>(),
-            <span class="string">&quot;endomul: wrong eq 1&quot;</span>
-        );
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">F::zero</span>(),
-            <span class="ident">this</span>[<span class="number">12</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">12</span>].<span class="ident">square</span>(),
-            <span class="string">&quot;endomul: wrong eq 2&quot;</span>
-        );
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">F::zero</span>(),
-            <span class="ident">this</span>[<span class="number">13</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">13</span>].<span class="ident">square</span>(),
-            <span class="string">&quot;endomul: wrong eq 3&quot;</span>
-        );
-        <span class="macro">ensure_eq!</span>(
-            <span class="ident">F::zero</span>(),
-            <span class="ident">this</span>[<span class="number">14</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">14</span>].<span class="ident">square</span>(),
-            <span class="string">&quot;endomul: wrong eq 4&quot;</span>
-        );
+        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">this</span>[<span class="number">11</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">11</span>].<span class="ident">square</span>(), <span class="string">&quot;wrong eq 1&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">this</span>[<span class="number">12</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">12</span>].<span class="ident">square</span>(), <span class="string">&quot;wrong eq 2&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">this</span>[<span class="number">13</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">13</span>].<span class="ident">square</span>(), <span class="string">&quot;wrong eq 3&quot;</span>);
+        <span class="macro">ensure_eq!</span>(<span class="ident">F::zero</span>(), <span class="ident">this</span>[<span class="number">14</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">14</span>].<span class="ident">square</span>(), <span class="string">&quot;wrong eq 4&quot;</span>);
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
             (<span class="ident">xq1</span> <span class="op">-</span> <span class="ident">this</span>[<span class="number">4</span>]) <span class="op">*</span> <span class="ident">this</span>[<span class="number">9</span>] <span class="op">-</span> (<span class="ident">this</span>[<span class="number">11</span>].<span class="ident">double</span>() <span class="op">-</span> <span class="ident">F::one</span>()) <span class="op">*</span> <span class="ident">this</span>[<span class="number">2</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">5</span>],
-            <span class="string">&quot;endomul: wrong eq 5&quot;</span>
+            <span class="string">&quot;wrong eq 5&quot;</span>
         );
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
             (<span class="ident">this</span>[<span class="number">4</span>].<span class="ident">double</span>() <span class="op">-</span> <span class="ident">this</span>[<span class="number">9</span>].<span class="ident">square</span>() <span class="op">+</span> <span class="ident">xq1</span>)
                 <span class="op">*</span> ((<span class="ident">this</span>[<span class="number">4</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">7</span>]) <span class="op">*</span> <span class="ident">this</span>[<span class="number">9</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">8</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">5</span>])
                 <span class="op">-</span> (<span class="ident">this</span>[<span class="number">4</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">7</span>]) <span class="op">*</span> <span class="ident">this</span>[<span class="number">5</span>].<span class="ident">double</span>(),
-            <span class="string">&quot;endomul: wrong eq 6&quot;</span>
+            <span class="string">&quot;wrong eq 6&quot;</span>
         );
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
             (<span class="ident">this</span>[<span class="number">8</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">5</span>]).<span class="ident">square</span>()
                 <span class="op">-</span> (<span class="ident">this</span>[<span class="number">4</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">7</span>]).<span class="ident">square</span>() <span class="op">*</span> (<span class="ident">this</span>[<span class="number">9</span>].<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xq1</span> <span class="op">+</span> <span class="ident">this</span>[<span class="number">7</span>]),
-            <span class="string">&quot;endomul: wrong eq 7&quot;</span>
+            <span class="string">&quot;wrong eq 7&quot;</span>
         );
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
             (<span class="ident">xq2</span> <span class="op">-</span> <span class="ident">this</span>[<span class="number">7</span>]) <span class="op">*</span> <span class="ident">this</span>[<span class="number">10</span>] <span class="op">-</span> (<span class="ident">this</span>[<span class="number">13</span>].<span class="ident">double</span>() <span class="op">-</span> <span class="ident">F::one</span>()) <span class="op">*</span> <span class="ident">this</span>[<span class="number">2</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">8</span>],
-            <span class="string">&quot;endomul: wrong eq 8&quot;</span>
+            <span class="string">&quot;wrong eq 8&quot;</span>
         );
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
             (<span class="ident">this</span>[<span class="number">7</span>].<span class="ident">double</span>() <span class="op">-</span> <span class="ident">this</span>[<span class="number">10</span>].<span class="ident">square</span>() <span class="op">+</span> <span class="ident">xq2</span>)
                 <span class="op">*</span> ((<span class="ident">this</span>[<span class="number">7</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">2</span>]) <span class="op">*</span> <span class="ident">this</span>[<span class="number">10</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">3</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">8</span>])
                 <span class="op">-</span> (<span class="ident">this</span>[<span class="number">7</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">2</span>]) <span class="op">*</span> <span class="ident">this</span>[<span class="number">8</span>].<span class="ident">double</span>(),
-            <span class="string">&quot;endomul: wrong eq 9&quot;</span>
+            <span class="string">&quot;wrong eq 9&quot;</span>
         );
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
             (<span class="ident">this</span>[<span class="number">3</span>] <span class="op">+</span> <span class="ident">this</span>[<span class="number">8</span>]).<span class="ident">square</span>()
                 <span class="op">-</span> (<span class="ident">this</span>[<span class="number">7</span>] <span class="op">-</span> <span class="ident">this</span>[<span class="number">2</span>]).<span class="ident">square</span>() <span class="op">*</span> (<span class="ident">this</span>[<span class="number">10</span>].<span class="ident">square</span>() <span class="op">-</span> <span class="ident">xq2</span> <span class="op">+</span> <span class="ident">this</span>[<span class="number">2</span>]),
-            <span class="string">&quot;endomul: wrong eq 10&quot;</span>
+            <span class="string">&quot;wrong eq 10&quot;</span>
         );
         <span class="macro">ensure_eq!</span>(
             <span class="ident">F::zero</span>(),
@@ -261,14 +229,14 @@ The constraints above are derived from the following EC Affine arithmetic equati
                 .<span class="ident">double</span>()
                 <span class="op">+</span> <span class="ident">this</span>[<span class="number">14</span>]
                 <span class="op">-</span> <span class="ident">this</span>[<span class="number">6</span>],
-            <span class="string">&quot;endomul: wrong eq 11&quot;</span>
+            <span class="string">&quot;wrong eq 11&quot;</span>
         );
 
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">endomul</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">F</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Endomul</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::EndoMul</span> {
             <span class="ident">F::one</span>()
         } <span class="kw">else</span> {
             <span class="ident">F::zero</span>()
@@ -276,5 +244,5 @@ The constraints above are derived from the following EC Affine arithmetic equati
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (6bda5b331 2021-12-12)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (8f117a77d 2021-12-13)" ></div>
 </body></html>

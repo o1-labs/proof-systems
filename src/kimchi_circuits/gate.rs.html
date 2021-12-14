@@ -700,20 +700,20 @@ This source file implements Plonk constraint gate primitive.
 )]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">proptest_derive::Arbitrary</span>))]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GateType</span> {
-    <span class="doccomment">/// zero gate</span>
+    <span class="doccomment">/// Zero gate</span>
     <span class="ident">Zero</span> <span class="op">=</span> <span class="number">0</span>,
-    <span class="doccomment">/// generic arithmetic gate</span>
+    <span class="doccomment">/// Generic arithmetic gate</span>
     <span class="ident">Generic</span>,
     <span class="doccomment">/// Poseidon permutation gate</span>
     <span class="ident">Poseidon</span>,
     <span class="doccomment">/// Complete EC addition in Affine form</span>
     <span class="ident">CompleteAdd</span>,
     <span class="doccomment">/// EC variable base scalar multiplication</span>
-    <span class="ident">Vbmul</span>,
+    <span class="ident">VarBaseMul</span>,
     <span class="doccomment">/// EC variable base scalar multiplication with group endomorphim optimization</span>
-    <span class="ident">Endomul</span>,
+    <span class="ident">EndoMul</span>,
     <span class="doccomment">/// Gate for computing the scalar corresponding to an endoscaling</span>
-    <span class="ident">EndomulScalar</span>,
+    <span class="ident">EndoMulScalar</span>,
     <span class="doccomment">/// ChaCha</span>
     <span class="ident">ChaCha0</span>,
     <span class="ident">ChaCha1</span>,
@@ -996,9 +996,9 @@ This source file implements Plonk constraint gate primitive.
             <span class="ident">Generic</span> =&gt; <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
             <span class="ident">Poseidon</span> =&gt; <span class="self">self</span>.<span class="ident">verify_poseidon</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="ident">CompleteAdd</span> =&gt; <span class="self">self</span>.<span class="ident">verify_complete_add</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
-            <span class="ident">Vbmul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
-            <span class="ident">Endomul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
-            <span class="ident">EndomulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">VarBaseMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
+            <span class="ident">EndoMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
+            <span class="ident">EndoMulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;todo&quot;</span>),
         }
     }
@@ -1156,5 +1156,5 @@ This source file implements Plonk constraint gate primitive.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (6bda5b331 2021-12-12)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (8f117a77d 2021-12-13)" ></div>
 </body></html>
