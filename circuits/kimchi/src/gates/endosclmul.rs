@@ -39,7 +39,7 @@ use array_init::array_init;
 impl<F: FftField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
-            typ: GateType::Endomul,
+            typ: GateType::EndoMul,
             wires,
             c: vec![],
         }
@@ -56,65 +56,49 @@ impl<F: FftField> CircuitGate<F> {
         let xq1 = (F::one() + ((cs.endo - F::one()) * next[12])) * this[0];
         let xq2 = (F::one() + ((cs.endo - F::one()) * next[14])) * this[0];
 
-        ensure_eq!(self.typ, GateType::Endomul, "endomul: incorrect gate");
+        ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
         // verify booleanity of the scalar bits
 
-        ensure_eq!(
-            F::zero(),
-            this[11] - this[11].square(),
-            "endomul: wrong eq 1"
-        );
-        ensure_eq!(
-            F::zero(),
-            this[12] - this[12].square(),
-            "endomul: wrong eq 2"
-        );
-        ensure_eq!(
-            F::zero(),
-            this[13] - this[13].square(),
-            "endomul: wrong eq 3"
-        );
-        ensure_eq!(
-            F::zero(),
-            this[14] - this[14].square(),
-            "endomul: wrong eq 4"
-        );
+        ensure_eq!(F::zero(), this[11] - this[11].square(), "wrong eq 1");
+        ensure_eq!(F::zero(), this[12] - this[12].square(), "wrong eq 2");
+        ensure_eq!(F::zero(), this[13] - this[13].square(), "wrong eq 3");
+        ensure_eq!(F::zero(), this[14] - this[14].square(), "wrong eq 4");
         ensure_eq!(
             F::zero(),
             (xq1 - this[4]) * this[9] - (this[11].double() - F::one()) * this[2] + this[5],
-            "endomul: wrong eq 5"
+            "wrong eq 5"
         );
         ensure_eq!(
             F::zero(),
             (this[4].double() - this[9].square() + xq1)
                 * ((this[4] - this[7]) * this[9] + this[8] + this[5])
                 - (this[4] - this[7]) * this[5].double(),
-            "endomul: wrong eq 6"
+            "wrong eq 6"
         );
         ensure_eq!(
             F::zero(),
             (this[8] + this[5]).square()
                 - (this[4] - this[7]).square() * (this[9].square() - xq1 + this[7]),
-            "endomul: wrong eq 7"
+            "wrong eq 7"
         );
         ensure_eq!(
             F::zero(),
             (xq2 - this[7]) * this[10] - (this[13].double() - F::one()) * this[2] + this[8],
-            "endomul: wrong eq 8"
+            "wrong eq 8"
         );
         ensure_eq!(
             F::zero(),
             (this[7].double() - this[10].square() + xq2)
                 * ((this[7] - this[2]) * this[10] + this[3] + this[8])
                 - (this[7] - this[2]) * this[8].double(),
-            "endomul: wrong eq 9"
+            "wrong eq 9"
         );
         ensure_eq!(
             F::zero(),
             (this[3] + this[8]).square()
                 - (this[7] - this[2]).square() * (this[10].square() - xq2 + this[2]),
-            "endomul: wrong eq 10"
+            "wrong eq 10"
         );
         ensure_eq!(
             F::zero(),
@@ -122,14 +106,14 @@ impl<F: FftField> CircuitGate<F> {
                 .double()
                 + this[14]
                 - this[6],
-            "endomul: wrong eq 11"
+            "wrong eq 11"
         );
 
         Ok(())
     }
 
     pub fn endomul(&self) -> F {
-        if self.typ == GateType::Endomul {
+        if self.typ == GateType::EndoMul {
             F::one()
         } else {
             F::zero()

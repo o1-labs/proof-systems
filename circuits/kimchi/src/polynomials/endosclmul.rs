@@ -109,7 +109,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
         ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
         n_constraint,
     ];
-    E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::Endomul), Curr)
+    E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::EndoMul), Curr)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point
