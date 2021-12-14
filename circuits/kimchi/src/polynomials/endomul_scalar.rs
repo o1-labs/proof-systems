@@ -11,11 +11,7 @@ impl<F: FftField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        ensure_eq!(
-            self.typ,
-            GateType::EndomulScalar,
-            "incorrect gate type (should be EndomulScalar)"
-        );
+        ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
 
         let n0 = witness[0][row];
         let n8 = witness[1][row];
@@ -159,7 +155,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints) * curr_row(Column::Index(GateType::EndomulScalar))
+    E::combine_constraints(alpha0, constraints) * curr_row(Column::Index(GateType::EndoMulScalar))
 }
 
 pub fn witness<F: PrimeField + std::fmt::Display>(

@@ -230,5 +230,6 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    E::cell(Column::Index(GateType::Vbmul), CurrOrNext::Curr) * E::combine_constraints(alpha0, res)
+    E::cell(Column::Index(GateType::VarBaseMul), CurrOrNext::Curr)
+        * E::combine_constraints(alpha0, res)
 }
