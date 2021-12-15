@@ -1,6 +1,6 @@
 # Mina signer
 
-This crate provides an API and framework for Mina signing.  It follows the algorithm outlined in the [Mina Signature Specification](https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md).
+This crate provides an API and framework for Mina signing.  It follows the algorithm outlined in the [Mina Signature Specification](https://github.com/MinaProtocol/mina/blob/master/docs/specs/signatures/description.md).
 
 ## Simple interface
 
