@@ -2,13 +2,14 @@ name: Benchmarks
 
 on:
   pull_request:
-    branches:
-      - master
+    types:
+      - labeled
 
 jobs:
-  run_checks:
+  bench:
     runs-on: ubuntu-latest
     name: Run some basic checks
+    if: github.event.label.name == 'benchmark'
     steps:
       - name: Install dependencies
         run: |
