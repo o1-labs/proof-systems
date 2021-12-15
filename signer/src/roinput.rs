@@ -9,9 +9,9 @@ use bitvec::{prelude::*, view::AsBits};
 
 /// Random oracle input structure
 ///
-/// The random oracle input encapsulates the serialization format and methods using during signing.
+/// The random oracle input encapsulates the serialization format and methods using during hashing.
 ///
-/// When implementing the [crate::Hashable] trait in order to enable signing for a type, you must implement
+/// When implementing the [crate::Hashable] trait in order to enable hashing for a type, you must implement
 /// its `to_roinput()` serialization method using the [ROInput] functions below.
 ///
 /// For example,
