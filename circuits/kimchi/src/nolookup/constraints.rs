@@ -15,7 +15,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use blake2::{Blake2b, Digest};
+use blake2::{Blake2b512, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -238,7 +238,7 @@ where
 
     /// sample coordinate shifts deterministically
     fn sample(domain: &D<F>, input: &mut u32) -> F {
-        let mut h = Blake2b::new();
+        let mut h = Blake2b512::new();
 
         *input += 1;
         h.update(&input.to_be_bytes());
@@ -247,7 +247,7 @@ where
             .expect("our field elements fit in more than 31 bytes");
 
         while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
-            let mut h = Blake2b::new();
+            let mut h = Blake2b512::new();
             *input += 1;
             h.update(&input.to_be_bytes());
             shift = F::from_random_bytes(&h.finalize()[..31])

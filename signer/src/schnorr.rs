@@ -16,7 +16,7 @@ use ark_ff::{
 };
 use blake2::{
     digest::{Update, VariableOutput},
-    VarBlake2b,
+    Blake2bVar,
 };
 use oracle::{
     poseidon::SpongeConstants,
@@ -99,7 +99,7 @@ impl<SC: SpongeConstants> Schnorr<SC> {
     where
         H: Hashable,
     {
-        let mut hasher = VarBlake2b::new(32).unwrap();
+        let mut hasher = Blake2bVar::new(32).unwrap();
 
         let mut roi: ROInput = input.to_roinput();
         roi.append_field(kp.public.into_point().x);
@@ -107,10 +107,12 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         roi.append_scalar(kp.secret.into_scalar());
         roi.append_bytes(&[self.network_id.into()]);
 
-        hasher.update(roi.to_bytes());
+        hasher.update(&roi.to_bytes());
 
         let mut bytes = [0; 32];
-        hasher.finalize_variable(|out| bytes.copy_from_slice(out));
+        hasher
+            .finalize_variable(&mut bytes)
+            .expect("incorrect output size");
         // Drop the top two bits to convert into a scalar field element
         //   N.B. Since the order of Pallas's scalar field p is very close to 2^m
         //   for some m, truncating only creates a tiny amount of bias that should
