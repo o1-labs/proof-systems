@@ -198,7 +198,7 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     // * Check value of result
     constraints.push(
         (1 - fPC_JNZ) * res                     // if pc_up != 4 : res = ..        // no res in conditional jumps
-            + (fRES_MUL * op0 * op1             //      if res_log = 2 : op0 * op1
+            - (fRES_MUL * op0 * op1             //      if res_log = 2 : op0 * op1
             + fRES_ADD * (op0 + op1)            //      if res_log = 1 : op0 + op1
             + (1 - fRES_ADD - fRES_MUL) * op1), //      if res_log = 0 : op1
     );
@@ -235,11 +235,10 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     );
 
     // * Check next program counter (pc update)
-    // need to fix it
+    constraints.push(fPC_JNZ * (dst * res - 1) * (next_pc - (pc - size))); // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
     constraints.push(
-        fPC_JNZ * dst * res * (next_pc - (pc + op1))          // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
-        + fPC_JNZ * (1 - dst) * (next_pc - (pc+size))         // <=> pc_up = 4 and dst == 0 : next_pc = pc + size // condition false
-            + (1 - fPC_JNZ) * next_pc                         // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
+        fPC_JNZ * dst * (next_pc - (pc + op1))                // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
+        + (1 - fPC_JNZ) * next_pc                             // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
             - (1 - fPC_ABS - fPC_RES - fPC_JNZ) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
             - fPC_ABS * res                                   // <=> pc_up = 1 : next_pc = res       // absolute jump
             - fPC_REL * (pc + res), //                           <=> pc_up = 2 : next_pc = pc + res  // relative jump

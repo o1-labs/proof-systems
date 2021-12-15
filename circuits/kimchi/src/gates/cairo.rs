@@ -24,7 +24,7 @@ fn biased_rep(offset: u16) -> i16 {
 }
 
 /// Converts a 64bit word Cairo bytecode instruction into an array of 19 field elements
-fn deserialize<F: FftField>(instruction: u64) -> [F; NUM_FLAGS + 3] {
+fn deserialize<F: FftField>(instruction: u64) -> (u16, u16, u16, Vec<u64>) {
     let mut flags = Vec::with_capacity(NUM_FLAGS);
     let (off_dst, off_op0, off_op1): (i16, i16, i16);
     let array = [F; NUM_FLAGS + 3];
@@ -58,8 +58,8 @@ impl<F: FftField> CircuitGate<F> {
     /// verifies that the Cairo gate constraints are solved by the witness
     pub fn verify_gate_cairo(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // witness layout:
-        // 0       1       2        3   4   5   6   7 8 9 10 11 12 13 14 15
-        // pc      ap      fp      dst op0 op1 res
+        // 0       1       2        3   4   5   6   7       8       9       10   11 12 13 14 15
+        // pc      ap      fp      dst op0 op1 res  dst_dir op0_dir op1_dir size
         // next_pc next_ap next_fp
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
@@ -71,6 +71,10 @@ impl<F: FftField> CircuitGate<F> {
         let op0 = this[4];
         let op1 = this[5];
         let res = this[6];
+        let dst_dir = this[7]; // shouldnt be wit?
+        let op0_dir = this[8]; // shouldnt be wit?
+        let op1_dir = this[9]; // shouldnt be wit?
+        let size = this[10]; // shouldnt be wit?
         let next_pc = next[0];
         let next_ap = next[1];
         let next_fp = next[2];
@@ -83,7 +87,7 @@ impl<F: FftField> CircuitGate<F> {
         let off_op0 = self.c[OP0_COEFF];
         let off_op1 = self.c[OP1_COEFF];
         let flags = self.c[0..FLAGS];
-        let fDST_REG = u16::from(flags[0]);
+        let fDST_REG = flags[0];
         let fOP0_REG = flags[1];
         let fOP1_VAL = flags[2];
         let fOP1_FP = flags[3];
@@ -100,7 +104,7 @@ impl<F: FftField> CircuitGate<F> {
         let fOP_AEQ = flags[14];
         let f15 = flags[15];
 
-        // compute the seven sets of Cairo flags
+        // compute the seven sets of Cairo flags PARECE QUE NO
         let dst_reg = fDST_REG;
         let op0_reg = fOP0_REG;
         let op1_src = 4 * fOP1_AP + 2 * fOP1_FP + fOP1_VAL;
@@ -109,85 +113,151 @@ impl<F: FftField> CircuitGate<F> {
         let ap_up = 2 * fAP_ADD1 + fAP_INC;
         let opcode = 4 * fOP_AEQ + 2 * fOP_RET + fOP_CALL;
 
-        // contents
-        let (dst, op0, op1, res): (F, F, F, F);
-        let (dst_dir, op0_dir, op1_dir): (F, F, F);
-        let size;
+        // FLAGS RELATED
 
         // check if it's the correct gate
-        ensure_eq!(self.typ, GateType::Cairo, "generic: incorrect gate");
+        ensure_eq!(self.typ, GateType::Cairo, "incorrect cairo gate");
 
         // check last flag is a zero
-        ensure_eq!(zero, f15);
+        ensure_eq!(zero, f15, "last flag is nonzero");
 
-        // COMPUTE AUXILIARY VALUES
-
-        // Compute new value of pc
-        match pc_up {
-            0 => {
-                // next instruction is right after the current one
-                next_pc = pc + size // the common case
-            }
-            1 => {
-                // next instruction is in res
-                next_pc = res // absolute jump
-            }
-            2 => {
-                // relative jump
-                next_pc = pc + res // go to some address relative to pc
-            }
-            4 => {
-                // conditional relative jump (jnz)
-                if dst == 0 {
-                    next_pc = pc + size; // if condition false, common case
-                } else {
-                    // if condition true, relative jump with second operand
-                    next_pc = pc + op1;
-                }
-            }
-            _ => unimplemented!(), // invalid instruction
+        // check booleanity of flags
+        for i in 0..15 {
+            ensure_eq!(zero, flags[i] * (1 - flags[i]), "non-boolean flags");
         }
 
-        // Compute new value of ap and fp based on the opcode
-        if opcode == 1 {
-            // "call" instruction
-            assert_eq!(dst, fp); // checks [ap] contains fp
-            assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after call
+        // check no two flags of same set are nonzero
+        ensure_eq!(
+            zero,
+            (fOP1_AP + fOP1_FP + fOP1_VAL) * (1 - (fOP1_AP + fOP1_FP + fOP1_VAL)),
+            "invalid format of `op1_src`"
+        );
+        ensure_eq!(
+            zero,
+            (fRES_MUL + fRES_ADD) * (1 - (fRES_MUL + fRES_ADD)),
+            "invalid format of `res_log`"
+        );
+        ensure_eq!(
+            zero,
+            (fPC_JNZ + fPC_REL + fPC_ABS) * (1 - (fPC_JNZ + fPC_REL + fPC_ABS)),
+            "invalid format of `pc_up`"
+        );
+        ensure_eq!(
+            zero,
+            (fAP_ADD1 + fAP_INC) * (1 - (fAP_ADD1 + fAP_INC)),
+            "invalid format of `ap_up`"
+        );
+        ensure_eq!(
+            zero,
+            (fOP_AEQ + fOP_RET + fOP_CALL) * (1 - (fOP_AEQ + fOP_RET + fOP_CALL)),
+            "invalid format of `opcode`"
+        );
 
-            // Update fp
-            next_fp = ap + 2; // pointer for next frame is after current fp and instruction after call
+        // OPERANDS RELATED
 
-            // Update ap
-            match ap_up {
-                0 => next_ap = ap + 2, // two words were written so advance 2 positions
-                _ => unimplemented!(), // ap increments not allowed in call instructions
-            }
-        } else if opcode == 0 || opcode == 2 || opcode == 4 {
-            // rest of types of instruction
-            // jumps and increments || return || assert equal
-            match ap_up {
-                0 => next_ap = ap,       // no modification on ap
-                1 => next_ap = ap + res, // ap += <op>
-                2 => next_ap = ap + 1,   // ap++
-                _ => unimplemented!(),   // invalid instruction
-            }
-            match opcode {
-                0 => next_fp = fp,  // no modification on fp
-                2 => next_fp = dst, // ret sets fp to previous fp that was in [ap-2]
-                4 => {
-                    assert_eq!(res, dst); // assert equal result and destination
-                    next_fp = fp // no modification on fp
-                }
-            }
-        } else {
-            unimplemented!(); // invalid instruction
-        }
+        // * Destination address
+        // if dst_reg = 0 : dst_dir = ap + off_dst
+        // if dst_reg = 1 : dst_dir = fp + off_dst
+        ensure_eq!(
+            dst_dir,
+            fDST_REG * fp + (1 - fDST_REG) * ap + off_dst,
+            "invalid destination address"
+        );
+
+        // * First operand address
+        // if op0_reg = 0 : op0_dir = ap + off_dst
+        // if op0_reg = 1 : op0_dir = fp + off_dst
+        ensure_eq!(
+            op0_dir,
+            fOP0_REG * fp + (1 - fOP0_REG) * ap + off_op0,
+            "invalid first operand address"
+        );
+
+        // * Second operand address
+        ensure_eq!(
+            op1_dir, //                                      op1_dir = ..
+            (fOP1_AP * ap                              // if op1_src == 4 : ap
+            + fOP1_FP * fp                             // if op1_src == 2 : fp 
+            + fOP1_VAL * pc                            // if op1_src == 1 : pc
+            + (1 - fOP1_FP - fOP1_AP - fOP1_VAL) * op0 // if op1_src == 0 : op0 
+            + off_op1), //                                                      + off_op1
+            "invalid second operand address"
+        );
+
+        // OPERATIONS RELATED
+
+        // * Check value of result
+        ensure_eq!(
+            (1 - fPC_JNZ) * res, //               if  pc_up != 4 : res = ..  // no res in conditional jumps
+            fRES_MUL * op0 * op1               // if res_log = 2 : op0 * op1
+            + fRES_ADD * (op0 + op1)           // if res_log = 1 : op0 + op1
+            + (1 - fRES_ADD - fRES_MUL) * op1, // if res_log = 0 : op1
+            "invalid result"
+        );
+
+        // * Check storage of current fp for a call instruction
+        ensure_eq!(
+            zero,
+            fOPC_CALL * (dst - fp),
+            "current fp after call not stored"
+        ); // if opcode = 1 : dst = fp
+
+        // * Check storage of next instruction after a call instruction
+        ensure_eq!(
+            zero,
+            fOPC_CALL * (op0 - (pc + size)),
+            "next instruction after call not stored"
+        ); // if opcode = 1 : op0 = pc + size
+
+        // * Check destination = result after assert-equal
+        ensure_eq!(zero, fOPC_ASSEQ * (dst - res), "false assert equal"); // if opcode = 4 : dst = res
+
+        // REGISTERS RELATED
+
+        // * Check next allocation pointer
+        ensure_eq!(
+            next_ap, //          next_ap =
+            ap               //             ap + 
+            + fAP_INC * res  //  if ap_up == 1 : res
+            + fAP_ADD1       //  if ap_up == 2 : 1
+            + fOPC_CALL * 2, // if opcode == 1 : 2
+            "wrong next allocation pointer"
+        );
+
+        // * Check next frame pointer
+        ensure_eq!(
+            next_fp, //                                       next_fp =
+            fOPC_CALL * (ap + 2)               // if opcode == 1      : ap + 2
+            + fOPC_RET * dst                   // if opcode == 2      : dst
+            + (1 - fOPC_CALL - fOPC_RET) * fp, // if opcode == 4 or 0 : fp
+            "wrong next frame pointer"
+        );
+
+        // * Check next program counter
+        ensure_eq!(
+            zero,
+            fPC_JNZ * (dst * res - 1) * (next_pc - (pc - size)), // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
+            "wrong next program counter"
+        );
+        ensure_eq!(
+            zero,
+            fPC_JNZ * dst * (next_pc - (pc + op1))                // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
+            + (1 - fPC_JNZ) * next_pc                             // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
+                - (1 - fPC_ABS - fPC_RES - fPC_JNZ) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
+                - fPC_ABS * res                                   // <=> pc_up = 1 : next_pc = res       // absolute jump
+                - fPC_REL * (pc + res), //                           <=> pc_up = 2 : next_pc = pc + res  // relative jump
+            "wrong next program counter"
+        );
+
+        // TODO(querolita): check intial and final claims for registers
+
+        // TODO(querolita): memory related checks
 
         Ok(())
     }
 
     /// Checks if a circuit gate corresponds to a Cairo gate
-    pub fn cairo(&self) -> F {
+    pub fn is_cairo(&self) -> F {
         if self.typ == GateType::Cairo {
             F::one()
         } else {
