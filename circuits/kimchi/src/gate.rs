@@ -140,6 +140,8 @@ pub enum GateType {
     ChaCha1,
     ChaCha2,
     ChaChaFinal,
+    /// Gate for Cairo instructions
+    Cairo,
 }
 
 /// Describes the desired lookup configuration.
@@ -367,34 +369,6 @@ impl GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CircuitGate<F: FftField> {
-    /*
-    Zero {},
-    Generic {
-        selectors: {l: bool, r: bool, o: bool, m: Option<bool>, c: Option<F>},
-        wires: GateWires
-    },
-    Poseidon {
-        selectors: {}
-        wires: GateWires
-    },
-    Endosclmul {
-        selectors: {}
-        wires: GateWires
-    },
-    Verbasemul{
-        selectors: {}
-        wires: GateWires
-    },
-    CompleteAdd{},
-    Vbmul{},
-    Endomul{},
-    EndomulScalar{}
-    Chacha0{},
-    Chacha{},
-    Chacha1{},
-    Chacha2{},
-    ChachaFinal{},
-    */
     /// type of the gate
     pub typ: GateType,
     /// gate wires
@@ -450,6 +424,7 @@ impl<F: FftField> CircuitGate<F> {
             Endomul => self.verify_endomul(row, witness, cs),
             EndomulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            Cairo => self.verify_gate_cairo(row, witness),
         }
     }
 }
