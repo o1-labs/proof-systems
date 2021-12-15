@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["MINA_ADDRESS_LEN","Length of Mina addresses"]],"struct":[["CompressedPubKey","Compressed public keys consist of x-coordinate and y-coordinate parity."],["PubKey","Public key"]]});

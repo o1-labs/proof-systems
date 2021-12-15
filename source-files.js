@@ -5,6 +5,7 @@ sourcesIndex["groupmap"] = {"name":"","files":["lib.rs"]};
 sourcesIndex["kimchi"] = {"name":"","files":["bench.rs","index.rs","lib.rs","plonk_sponge.rs","prover.rs","range.rs","verifier.rs"]};
 sourcesIndex["kimchi_circuits"] = {"name":"","dirs":[{"name":"gates","files":["endosclmul.rs","generic.rs","mod.rs","poseidon.rs","varbasemul.rs"]},{"name":"nolookup","files":["constraints.rs","mod.rs","scalars.rs"]},{"name":"polynomials","files":["chacha.rs","complete_add.rs","endomul_scalar.rs","endosclmul.rs","generic.rs","lookup.rs","mod.rs","permutation.rs","poseidon.rs","varbasemul.rs"]}],"files":["domains.rs","expr.rs","gate.rs","lib.rs","macros.rs","polynomial.rs","wires.rs"]};
 sourcesIndex["mina_curves"] = {"name":"","dirs":[{"name":"pasta","dirs":[{"name":"curves","files":["mod.rs","pallas.rs","vesta.rs"]},{"name":"fields","files":["fp.rs","fq.rs","mod.rs"]}],"files":["mod.rs"]}],"files":["lib.rs"]};
+sourcesIndex["mina_signer"] = {"name":"","files":["domain.rs","keypair.rs","lib.rs","pubkey.rs","roinput.rs","schnorr.rs","seckey.rs","signature.rs"]};
 sourcesIndex["o1_utils"] = {"name":"","files":["dense_polynomial.rs","evaluations.rs","lib.rs","serialization.rs"]};
 sourcesIndex["ocaml_derive"] = {"name":"","files":["lib.rs"]};
 sourcesIndex["ocaml_gen"] = {"name":"","files":["conv.rs","lib.rs"]};

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Signature","Signature structure"]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["FieldHelpers","Field element helpers"]],"type":[["BaseField","Base field element type"],["CurvePoint","Affine curve point type"],["ScalarField","Scalar field element type"]]});
