@@ -4,7 +4,7 @@ This crate provides an API and framework for Mina signing.  It follows the algor
 
 ## Simple interface
 
-The [create] interface uses the default signer configuration compatible with mainnet and testnet transaction signatures.
+The [create] function uses the default signer configuration compatible with mainnet and testnet transaction signatures.
 
 ```rust
 #[path = "../tests/transaction.rs"]
@@ -32,7 +32,7 @@ assert!(ctx.verify(sig, keypair.public, tx));
 
 ## Advanced interface
 
-The [custom] interface allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
+The [custom] function allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
 
 ```rust
 #[path = "../tests/transaction.rs"]
