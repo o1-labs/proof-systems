@@ -186,9 +186,7 @@ impl<F: Field> ArithmeticSpongeParams<F> {
         }
     }
 
-    pub fn poseidon_block_cipher<SC: SpongeConstants>(
-        &self,
-        state: &mut Vec<F>) {
+    pub fn poseidon_block_cipher<SC: SpongeConstants>(&self, state: &mut Vec<F>) {
         if SC::HALF_ROUNDS_FULL == 0 {
             if SC::INITIAL_ARK {
                 for (i, x) in self.round_constants[0].iter().enumerate() {
@@ -209,7 +207,11 @@ impl<F: Field> ArithmeticSpongeParams<F> {
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
-    fn poseidon_block_cipher(&mut self) {
+    pub fn full_round(&mut self, r: usize) {
+        self.params.full_round::<SC>(&mut self.state, r);
+    }
+
+    pub fn poseidon_block_cipher(&mut self) {
         self.params.poseidon_block_cipher::<SC>(&mut self.state);
     }
 }
