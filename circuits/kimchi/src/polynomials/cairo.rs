@@ -79,13 +79,11 @@ The transition function uses 4 auxiliary values:
 - res: result of the operation in the right part
 
  The Kimchi 15 columns are:
- row: 0   |  1 |  2 | 3       | 4       | 5       | 6       | 7       | 8       | 9   | 10  | 11  | 12  |  13  | 14
+ row     0    |    1    |     2   |  3  |  4  |  5  |  6  |    7    |    8    |    9    |  10  | 11  | 12  |  13  | 14
+ -------------------------------------------------------------------------------------------------------------------
+ i      pc    |   ap    |    fp   | dst | op0 | op1 | res | dst_dir | op0_dir | op1_dir | size
  --------------------------------------------------------------------------------------------------------------------
-       pc | ap | fp | off_dst | off_op0 | off_op1 | sft_dst | sft_op0 | sft_op1 | dst | op0 | op1 | res | size | f15
- --------------------------------------------------------------------------------------------------------------------
- row+1: 0   | 1         |  2      | 3       | 4       | 5        | 6        | 7       | 8       | 9       | 10      | 11       | 12       |  13     | 14
- -------------------------------------------------------------------------------------------------------------------------------------------------------------
-   fDST_REG | fOP0_REG | fOP1_VAL | fOP1_FP | fOP1_AP | fRES_ADD | fRES_MUL | fPC_ABS | fPC_REL | fPC_JNZ | fAP_INC | fAP_ADD1 | fOP_CALL | fOP_RET | fOP_AEQ
+ i+1  next_pc | next_ap | next_fp | ....
  ------------------------------------------------------------------------------------------------------------------------------
   row+2: again like in current row but for the next instruction
  next_pc next_ap next_fp
@@ -99,10 +97,8 @@ use ark_ff::{FftField, Field, One};
 use CurrOrNext::*;
 
 pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
-    let v_curr = |c| E::cell(c, Curr);
-    let w_curr = |i| v_curr(Column::Witness(i));
-    let v_next = |c| E::cell(c, Next);
-    let w_next = |i| v_next(Column::Witness(i));
+    let w_curr = |i| E::cell(Column::Witness(i), Curr);
+    let w_next = |i| E::cell(Column::Witness(i), Next);
     // need to load next+1 as well for next_pc, next_ap, next_fp
 
     // load all variables of the witness
@@ -205,15 +201,15 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
 
     // * Check storage of current fp for a call instruction
     // <=> assert_eq!(dst, fp);
-    constraints.push(fOPC_CALL * (dst - fp)); // if opcode = 1 : dst = fp
+    constraints.push(fOP_CALL * (dst - fp)); // if opcode = 1 : dst = fp
 
     // * Check storage of next instruction after a call instruction
     // <=> assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after call
-    constraints.push(fOPC_CALL * (op0 - (pc + size))); // if opcode = 1 : op0 = pc + size
+    constraints.push(fOP_CALL * (op0 - (pc + size))); // if opcode = 1 : op0 = pc + size
 
     // * Check destination = result after assert-equal
     // <=> assert_eq!(res, dst);
-    constraints.push(fOPC_ASSEQ * (dst - res)); // if opcode = 4 : dst = res
+    constraints.push(fOP_AEQ * (dst - res)); // if opcode = 4 : dst = res
 
     // REGISTERS-RELATED
 
@@ -223,15 +219,15 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
             - (ap                   //             ap + 
         + fAP_INC * res             //  if ap_up == 1 : res             res
         + fAP_ADD1                  //  if ap_up == 2 : 1
-        + fOPC_CALL * 2), //           if opcode == 1 : 2
+        + fOP_CALL * 2), //           if opcode == 1 : 2
     ); //
 
     // * Check next frame pointer
     constraints.push(
         next_fp                                  //             next_fp = 
-            - (fOPC_CALL * (ap + 2)              // if opcode == 1      : ap + 2
-            + fOPC_RET * dst                     // if opcode == 2      : dst
-            + (1 - fOPC_CALL - fOPC_RET) * fp ), // if opcode == 4 or 0 : fp
+            - (fOP_CALL * (ap + 2)              // if opcode == 1      : ap + 2
+            + fOP_RET * dst                     // if opcode == 2      : dst
+            + (1 - fOP_CALL - fOP_RET) * fp ), // if opcode == 4 or 0 : fp
     );
 
     // * Check next program counter (pc update)
@@ -239,7 +235,7 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     constraints.push(
         fPC_JNZ * dst * (next_pc - (pc + op1))                // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
         + (1 - fPC_JNZ) * next_pc                             // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
-            - (1 - fPC_ABS - fPC_RES - fPC_JNZ) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
+            - (1 - fPC_ABS - fPC_REL - fPC_JNZ) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
             - fPC_ABS * res                                   // <=> pc_up = 1 : next_pc = res       // absolute jump
             - fPC_REL * (pc + res), //                           <=> pc_up = 2 : next_pc = pc + res  // relative jump
     );
@@ -286,11 +282,13 @@ fn deserialize<F: Field>(instruction: u64) -> (i16, i16, i16, Vec<u64>) {
     (off_dst, off_op0, off_op1, flags)
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::pallas as Pallas;
+    //use mina_curves::pasta::pallas as Pallas;
     // Affine curve point
     // use Pallas::Affine as CurvePoint;
     // Base field element
@@ -299,7 +297,8 @@ mod tests {
     #[test]
     fn testingcairo() {
         let instruction: u64 = 0x480680017fff8000; // tempvar x = 10 // next word must have a 10 on it
-        let memory: [i64; 1000]; // memory of 1k entries
+        let next_instr: u64 = 0x208b7fff7fff7ffe; // return() // end of program
+        let memory: [Fp; 1000]; // memory of 1k entries
 
         // Load offsets and flags
         let (off_dst, off_op0, off_op1, flags) = deserialize::<Fp>(instruction);
@@ -364,11 +363,11 @@ mod tests {
             0x4806,
             dst_reg
                 + 2 * op0_reg
-                + 2u16.pow(2) * op1_src
-                + 2u16.pow(5) * res_log
-                + 2u16.pow(7) * pc_up
-                + 2u16.pow(10) * ap_up
-                + 2u16.pow(12) * opcode
+                + 2u64.pow(2) * op1_src
+                + 2u64.pow(5) * res_log
+                + 2u64.pow(7) * pc_up
+                + 2u64.pow(10) * ap_up
+                + 2u64.pow(12) * opcode
         );
 
         // Finished testing shape of instruction
@@ -377,7 +376,8 @@ mod tests {
         let (dst, op0, op1, res): (i64, i64, i64, i64);
         let (dst_dir, op0_dir, op1_dir): (i64, i64, i64);
         let size;
-        let (pc, ap, fp) = (1, 9, 9);
+        let (pc, ap, fp) = (1, 6, 6);
+        let (next_pc, next_ap, next_fp) = (3, 7, 6);
 
         // COMPUTE AUXILIARY VALUES
 
@@ -513,77 +513,3 @@ mod tests {
         constraint();
     }
 }
-/*
-
-impl<F: FftField> CircuitGate<F> {
-    /// Check the correctness of witness values for a complete-add gate.
-    pub fn verify_complete_add(
-        &self,
-        row: usize,
-        witness: &[Vec<F>; COLUMNS],
-    ) -> Result<(), String> {
-        let x1 = witness[0][row];
-        let y1 = witness[1][row];
-        let x2 = witness[2][row];
-        let y2 = witness[3][row];
-        let x3 = witness[4][row];
-        let y3 = witness[5][row];
-        let inf = witness[6][row];
-        let same_x = witness[7][row];
-        let s = witness[8][row];
-        let inf_z = witness[9][row];
-        let x21_inv = witness[10][row];
-
-        if x1 == x2 {
-            ensure_eq!(same_x, F::one(), "Expected same_x = true");
-        } else {
-            ensure_eq!(same_x, F::zero(), "Expected same_x = false");
-        }
-
-        if same_x == F::one() {
-            let x1_squared = x1.square();
-            ensure_eq!(
-                (s + s) * y1,
-                (x1_squared.double() + x1_squared),
-                "double s wrong"
-            );
-        } else {
-            ensure_eq!((x2 - x1) * s, y2 - y1, "add s wrong");
-        }
-
-        ensure_eq!(s.square(), x1 + x2 + x3, "x3 wrong");
-        let expected_y3 = s * (x1 - x3) - y1;
-        ensure_eq!(
-            y3,
-            expected_y3,
-            format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
-        );
-
-        let not_same_y = F::from((y1 != y2) as u64);
-        ensure_eq!(inf, same_x * not_same_y, "inf wrong");
-
-        if y1 == y2 {
-            ensure_eq!(inf_z, F::zero(), "wrong inf z (y1 == y2)");
-        } else {
-            let a = if same_x == F::one() {
-                (y2 - y1).inverse().unwrap()
-            } else {
-                F::zero()
-            };
-            ensure_eq!(inf_z, a, "wrong inf z (y1 != y2)");
-        }
-
-        if x1 == x2 {
-            ensure_eq!(x21_inv, F::zero(), "wrong x21_inv (x1 == x2)");
-        } else {
-            ensure_eq!(
-                x21_inv,
-                (x2 - x1).inverse().unwrap(),
-                "wrong x21_inv (x1 != x2)"
-            );
-        }
-
-        Ok(())
-    }
-}
-*/

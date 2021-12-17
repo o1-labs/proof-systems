@@ -20,7 +20,7 @@ This extension should provide us with
   registers (`pc`, `ap`, `fp`)
 * functions to create gates for each possible Cairo bytecode instruction using
   the values of the flags, contained in the coefficients field of the Cairo
-  CircuitGate
+  `CircuitGate`
 * specialized constraints for the logics of each possible Cairo instruction and
   corresponding values of witness and memory contents
 * permutation argument for checking the consistency of the memory
@@ -28,6 +28,11 @@ This extension should provide us with
 Possible use-cases:
 * Cairo programs running on the blockchain could be proved with Mina
 * complementary to snarkyJS
+
+## Detailed design
+[detailed-design]: #detailed-design
+
+
 
 <!-- 
 ## Detailed design
