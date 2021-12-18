@@ -149,12 +149,7 @@ where
 
         // compute public input polynomial
         let public = witness[0][0..index.cs.public].to_vec();
-<<<<<<< HEAD:dlog/kimchi/src/prover.rs
         let public_poly = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
-=======
-
-        let p = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
->>>>>>> 03c15c52 (various compatibility fixes):dlog/plonk-15-wires/src/prover.rs
             public.clone(),
             index.cs.domain.d1,
         )
@@ -499,7 +494,7 @@ where
         let t_comm = {
             let (mut t_comm, mut omega_t) = index.srs.commit(&t, None, rng);
 
-            let expected_t_size = 7;
+            let expected_t_size = PERMUTS;
             let dummies = expected_t_size - t_comm.unshifted.len();
             // Add some hiding commitments to 0
             for _ in 0..dummies {

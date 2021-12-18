@@ -151,7 +151,7 @@ where
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
         // absorb the polycommitments into the argument and sample zeta
-        let expected_t_size = 7;
+        let expected_t_size = PERMUTS;
         assert_eq!(expected_t_size, self.commitments.t_comm.unshifted.len());
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
 

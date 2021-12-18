@@ -119,6 +119,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn verify_vbmul(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
+        // TODO: implement verification
         return Ok(());
 
         let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
