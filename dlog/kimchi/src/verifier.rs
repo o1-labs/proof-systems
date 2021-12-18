@@ -306,7 +306,7 @@ where
                 .iter()
                 .map(|(_, e)| (e.iter().collect(), None))
                 .collect();
-            es.push((p_eval.iter().map(|e| e).collect::<Vec<_>>(), None));
+            es.push((p_eval.iter().collect::<Vec<_>>(), None));
             es.push((vec![&ft_eval0, &ft_eval1], None));
             es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
             es.push((

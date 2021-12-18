@@ -6,7 +6,7 @@ pub fn bench_proof_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof creation");
     group.measurement_time(Duration::from_secs(100));
 
-    let ctx = BenchmarkCtx::new();
+    let ctx = BenchmarkCtx::new_for_bench();
     group.bench_function("single proof", |b| b.iter(|| ctx.create_proof()));
 }
 

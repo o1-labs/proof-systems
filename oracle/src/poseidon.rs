@@ -189,8 +189,8 @@ impl<F: Field> ArithmeticSpongeParams<F> {
             {
                 state[i].add_assign(x);
             }
-            for i in 0..state.len() {
-                state[i] = sbox::<F, SC>(state[i]);
+            for state_i in state.iter_mut() {
+                *state_i = sbox::<F, SC>(*state_i);
             }
             self.apply_mds_matrix::<SC>(state);
         }

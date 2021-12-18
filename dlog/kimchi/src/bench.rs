@@ -42,7 +42,7 @@ pub struct BenchmarkCtx {
 }
 
 impl BenchmarkCtx {
-    pub fn new() -> Self {
+    pub fn new_for_bench() -> Self {
         // create the circuit
         let mut gates = vec![];
         let mut abs_row = 0;
