@@ -85,7 +85,7 @@ where
     let n2 = <G::ScalarField as PrimeField>::BigInt::from_bits_le(
         &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
     );
-    let two: G::ScalarField = (2 as u64).into();
+    let two: G::ScalarField = 2_u64.into();
     if n1 < n2 {
         (x - (two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64])
             + G::ScalarField::one()))
