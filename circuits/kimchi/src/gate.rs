@@ -23,10 +23,7 @@ use std::io::{Result as IoResult, Write};
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
-#[cfg_attr(
-    feature = "wasm_types",
-    wasm_bindgen::prelude::wasm_bindgen
-)]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
