@@ -606,7 +606,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
 
-                if wire.col < PERMUTS {
+                if wire.col >= PERMUTS {
                     return Err(GateError::Custom {
                         row,
                         err: format!(
