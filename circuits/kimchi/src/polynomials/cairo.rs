@@ -96,6 +96,7 @@ use crate::wires::COLUMNS;
 use ark_ff::{FftField, Field, One};
 use CurrOrNext::*;
 
+/*
 pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     let w_curr = |i| E::cell(Column::Witness(i), Curr);
     let w_next = |i| E::cell(Column::Witness(i), Next);
@@ -183,9 +184,9 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     constraints.push(
         op1_dir                                        //         op1_dir = ..
             - (fOP1_AP * ap                            // if op1_src == 4 : ap
-            + fOP1_FP * fp                             // if op1_src == 2 : fp 
+            + fOP1_FP * fp                             // if op1_src == 2 : fp
             + fOP1_VAL * pc                            // if op1_src == 1 : pc
-            + (1 - fOP1_FP - fOP1_AP - fOP1_VAL) * op0 // if op1_src == 0 : op0 
+            + (1 - fOP1_FP - fOP1_AP - fOP1_VAL) * op0 // if op1_src == 0 : op0
             + off_op1), //                                                      + off_op1
     );
 
@@ -215,8 +216,8 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
 
     // * Check next allocation pointer
     constraints.push(
-        next_ap                     //  next_ap = 
-            - (ap                   //             ap + 
+        next_ap                     //  next_ap =
+            - (ap                   //             ap +
         + fAP_INC * res             //  if ap_up == 1 : res             res
         + fAP_ADD1                  //  if ap_up == 2 : 1
         + fOP_CALL * 2), //           if opcode == 1 : 2
@@ -224,7 +225,7 @@ pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
 
     // * Check next frame pointer
     constraints.push(
-        next_fp                                  //             next_fp = 
+        next_fp                                  //             next_fp =
             - (fOP_CALL * (ap + 2)              // if opcode == 1      : ap + 2
             + fOP_RET * dst                     // if opcode == 2      : dst
             + (1 - fOP_CALL - fOP_RET) * fp ), // if opcode == 4 or 0 : fp
@@ -513,3 +514,4 @@ mod tests {
         constraint();
     }
 }
+*/
