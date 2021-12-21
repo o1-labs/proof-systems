@@ -2,14 +2,15 @@
 name = "dlog"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 
 [dev-dependencies]
-rand_core = { version = "0.5" }
-colored = "1.9.2"
+rand_core = "0.6.3"
+colored = "2.0.0"
 rand = { version = "0.8.0", features = ["getrandom"] }
-sprs = "0.7.1"
-rayon = { version = "1" }
-array-init = "1.0.0"
+sprs = "0.11.0"
+rayon = "1.5.1"
+array-init = "2.0.0"
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }

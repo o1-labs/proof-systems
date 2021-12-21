@@ -113,7 +113,7 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
 
 /// The combined constraint for endoscaling.
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    E::combine_constraints(alpha0, constraints()) * E::cell(Column::Index(GateType::Endomul), Curr)
+    E::combine_constraints(alpha0, constraints()) * E::cell(Column::Index(GateType::EndoMul), Curr)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point

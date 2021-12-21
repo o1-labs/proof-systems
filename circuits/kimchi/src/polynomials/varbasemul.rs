@@ -29,6 +29,7 @@ fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn single_bit_witness<F: FftField>(
     w: &mut [Vec<F>; COLUMNS],
     row: usize,
@@ -229,5 +230,6 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    E::cell(Column::Index(GateType::Vbmul), CurrOrNext::Curr) * E::combine_constraints(alpha0, res)
+    E::cell(Column::Index(GateType::VarBaseMul), CurrOrNext::Curr)
+        * E::combine_constraints(alpha0, res)
 }

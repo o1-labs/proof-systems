@@ -103,16 +103,14 @@ use ark_ff::FftField;
 use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {
-    pub fn create_vbmul(row: usize, wires: &[GateWires; 2]) -> Vec<Self> {
+    pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
-                row,
-                typ: GateType::Vbmul,
+                typ: GateType::VarBaseMul,
                 wires: wires[0],
                 c: vec![],
             },
             CircuitGate {
-                row: row + 1,
                 typ: GateType::Zero,
                 wires: wires[1],
                 c: vec![],
@@ -120,11 +118,10 @@ impl<F: FftField> CircuitGate<F> {
         ]
     }
 
-    pub fn verify_vbmul(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
+    pub fn verify_vbmul(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         return Ok(());
-
-        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][self.row + 1]);
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
 
         //    0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	Type
         //   xT	yT	xS	yS	xP	yP	n	xr	yr	s1	s2	b1	s3	s4	b2	VBSM
@@ -175,11 +172,7 @@ impl<F: FftField> CircuitGate<F> {
         // checks
         //
 
-        ensure_eq!(
-            self.typ,
-            GateType::Vbmul,
-            "incorrect gate type (should be vbmul)"
-        );
+        ensure_eq!(self.typ, GateType::VarBaseMul, "incorrect gate type");
 
         // verify booleanity of the scalar bits
         ensure_eq!(zero, b1 - b1.square(), "eq 1 wrong");
@@ -315,7 +308,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn vbmul(&self) -> F {
-        if self.typ == GateType::Vbmul {
+        if self.typ == GateType::VarBaseMul {
             F::one()
         } else {
             F::zero()

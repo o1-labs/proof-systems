@@ -15,7 +15,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use array_init::array_init;
-use blake2::{Blake2b, Digest};
+use blake2::{Blake2b512, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -150,6 +150,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 
     /// Lookup tables
+    // TODO: this should be one big Option<Lookup>
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub dummy_lookup_values: Vec<Vec<F>>,
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
@@ -161,7 +162,7 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
-    /// 1 at the rows where that pattern should be enforced, and 1 at
+    /// 1 at the rows where that pattern should be enforced, and 0 at
     /// all other rows.
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
@@ -215,7 +216,7 @@ where
 
     /// sample coordinate shifts deterministically
     fn sample(domain: &D<F>, input: &mut u32) -> F {
-        let mut h = Blake2b::new();
+        let mut h = Blake2b512::new();
 
         *input += 1;
         h.update(&input.to_be_bytes());
@@ -224,7 +225,7 @@ where
             .expect("our field elements fit in more than 31 bytes");
 
         while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
-            let mut h = Blake2b::new();
+            let mut h = Blake2b512::new();
             *input += 1;
             h.update(&input.to_be_bytes());
             shift = F::from_random_bytes(&h.finalize()[..31])
@@ -324,19 +325,20 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         assert!(domain.d1.size > ZK_ROWS);
 
         // pad the rows: add zero gates to reach the domain size
-        let n = domain.d1.size();
-        let mut padding = (gates.len()..n)
+        let d1_size = domain.d1.size();
+        let mut padding = (gates.len()..d1_size)
             .map(|i| {
-                CircuitGate::<F>::zero(
-                    i,
-                    array_init(|j| Wire {
-                        col: WIRES[j],
-                        row: i,
-                    }),
-                )
+                CircuitGate::<F>::zero(array_init(|j| Wire {
+                    col: WIRES[j],
+                    row: i,
+                }))
             })
             .collect();
         gates.append(&mut padding);
+
+        //
+        // Permutation
+        //
 
         // sample the coordinate shifts
         let shifts = Shifts::new(&domain.d1);
@@ -369,8 +371,15 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
 
+        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
+
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
         let zkpm = zk_polynomial(domain.d1);
+        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
+
+        //
+        // Gates
+        //
 
         // compute generic constraint polynomials
 
@@ -403,13 +412,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndomulScalar) as u64))
+                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
                 .collect(),
             domain.d1,
         )
         .interpolate();
-
-        let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
         // generic constraint polynomials
 
@@ -489,7 +496,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4);
         let zero8 =
             E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
-        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
         let vanishes_on_last_4_rows =
             vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
@@ -497,49 +503,58 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // endo
         let endo = F::zero();
 
+        //
+        // Lookup
+        //
+
+        // get the height of each lookup table
         let lookup_table_lengths: Vec<_> = lookup_tables.iter().map(|v| v[0].len()).collect();
+
+        // get the last entry in each column of each table
         let dummy_lookup_values: Vec<Vec<F>> = lookup_tables
             .iter()
-            .map(|cols| cols.iter().map(|c| c[c.len() - 1]).collect())
+            .map(|table| table.iter().map(|col| col[col.len() - 1]).collect())
             .collect();
 
-        let lookup_tables: Vec<Vec<DP<F>>> = lookup_tables
-            .into_iter()
-            .zip(dummy_lookup_values.iter())
-            .map(|(t, dummy)| {
-                t.into_iter()
-                    .enumerate()
-                    .map(|(i, mut col)| {
-                        let d = dummy[i];
-                        col.extend((0..(n - col.len())).map(|_| d));
-                        E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate()
-                    })
-                    .collect()
-            })
-            .collect();
-        let lookup_tables8 = lookup_tables
-            .iter()
-            .map(|t| {
-                t.iter()
-                    .map(|col| col.evaluate_over_domain_by_ref(domain.d8))
-                    .collect()
-            })
-            .collect();
+        // pre-compute polynomial and evaluation form for the look up tables
+        let mut lookup_tables_polys: Vec<Vec<DP<F>>> = vec![];
+        let mut lookup_tables8: Vec<Vec<E<F, D<F>>>> = vec![];
 
+        for (table, dummies) in lookup_tables.into_iter().zip(&dummy_lookup_values) {
+            let mut table_poly = vec![];
+            let mut table_eval = vec![];
+            for (mut col, dummy) in table.into_iter().zip(dummies) {
+                // pad each column to the size of the domain
+                let padding = (0..(d1_size - col.len())).map(|_| dummy);
+                col.extend(padding);
+                let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
+                let eval = poly.evaluate_over_domain_by_ref(domain.d8);
+                table_poly.push(poly);
+                table_eval.push(eval);
+            }
+            lookup_tables_polys.push(table_poly);
+            lookup_tables8.push(table_eval);
+        }
+
+        // generate the look up selector polynomials if any lookup-based gate is being used in the circuit
         let lookup_info = LookupInfo::<F>::create();
+        let lookup_selectors = if lookup_info.lookup_used(&gates).is_some() {
+            LookupInfo::<F>::create().selector_polynomials(domain, &gates)
+        } else {
+            vec![]
+        };
 
+        //
         // return result
+        //
+
         Some(ConstraintSystem {
             chacha8,
-            lookup_selectors: if lookup_info.lookup_used(&gates).is_some() {
-                LookupInfo::<F>::create().selector_polynomials(domain, &gates)
-            } else {
-                vec![]
-            },
+            lookup_selectors,
             dummy_lookup_values,
             lookup_table_lengths,
             lookup_tables8,
-            lookup_tables,
+            lookup_tables: lookup_tables_polys,
             endomul_scalar8,
             domain,
             public,
@@ -608,7 +623,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // check the gate's satisfiability
-            gate.verify(&witness, self)
+            gate.verify(row, &witness, self)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 

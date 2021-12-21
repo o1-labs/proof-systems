@@ -49,8 +49,7 @@ fn endomul_scalar_test() {
         for i in 0..rows_per_scalar {
             let row = rows_per_scalar * s + i;
             gates.push(CircuitGate {
-                row,
-                typ: GateType::EndomulScalar,
+                typ: GateType::EndoMulScalar,
                 wires: Wire::new(row),
                 c: vec![],
             });
@@ -80,7 +79,7 @@ fn endomul_scalar_test() {
     let rng = &mut StdRng::from_seed([0; 32]);
 
     //let start = Instant::now();
-    for i in 0..num_scalars {
+    for _ in 0..num_scalars {
         let x = {
             let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
                 .take(num_bits)

@@ -45,6 +45,7 @@ where
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: [Fr<G>; 2],
     /// ?
+    #[allow(clippy::type_complexity)]
     pub polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
     /// pre-computed zeta^n
     pub zeta1: Fr<G>,
@@ -92,12 +93,12 @@ where
                                     Some(b) => b[j],
                                 };
 
-                                let ret = betaacc * &b_j;
+                                let ret = betaacc * b_j;
                                 betaacc *= &evaluation_points[i];
                                 ret
                             })
-                            .fold(Fr::<G>::zero(), |x, y| x + &y);
-                        vec![full - &(diff * &powers_of_eval_points_for_chunks[i]), diff]
+                            .fold(Fr::<G>::zero(), |x, y| x + y);
+                        vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
                     })
                     .collect()
             })
@@ -165,7 +166,7 @@ where
 
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
-        let zetaw = zeta * &index.domain.group_gen;
+        let zetaw = zeta * index.domain.group_gen;
         let alphas = range::alpha_powers(alpha);
 
         // compute Lagrange base evaluation denominators
@@ -189,10 +190,10 @@ where
                         .iter()
                         .zip(lagrange.iter())
                         .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * &w)
-                        .fold(Fr::<G>::zero(), |x, y| x + &y))
-                        * &(zeta1 - &Fr::<G>::one())
-                        * &index.domain.size_inv,
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(Fr::<G>::zero(), |x, y| x + y))
+                        * (zeta1 - Fr::<G>::one())
+                        * index.domain.size_inv,
                 ],
                 vec![
                     (self
@@ -200,17 +201,17 @@ where
                         .iter()
                         .zip(lagrange[self.public.len()..].iter())
                         .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * &w)
-                        .fold(Fr::<G>::zero(), |x, y| x + &y))
-                        * &index.domain.size_inv
-                        * &(zetaw.pow(&[n as u64]) - &Fr::<G>::one()),
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(Fr::<G>::zero(), |x, y| x + y))
+                        * index.domain.size_inv
+                        * (zetaw.pow(&[n as u64]) - Fr::<G>::one()),
                 ],
             ]
         } else {
             [Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]
         };
-        for i in 0..2 {
-            fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])
+        for (p, e) in p_eval.iter().zip(&self.evals) {
+            fr_sponge.absorb_evaluations(p, e);
         }
         fr_sponge.absorb(&self.ft_eval1);
 
@@ -242,18 +243,15 @@ where
         // compute evaluation of ft(zeta)
         let ft_eval0 = {
             let zkp = index.zkpm.evaluate(&zeta);
-            let zeta1m1 = zeta1 - &Fr::<G>::one();
+            let zeta1m1 = zeta1 - Fr::<G>::one();
 
             let mut ft_eval0 = evals[0]
                 .w
                 .iter()
                 .zip(evals[0].s.iter())
-                .map(|(w, s)| (beta * s) + w + &gamma)
+                .map(|(w, s)| (beta * s) + w + gamma)
                 .fold(
-                    (evals[0].w[PERMUTS - 1] + &gamma)
-                        * &evals[1].z
-                        * &alphas[range::PERM][0]
-                        * &zkp,
+                    (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alphas[range::PERM][0] * zkp,
                     |x, y| x * y,
                 );
 
@@ -267,17 +265,17 @@ where
                 .w
                 .iter()
                 .zip(index.shift.iter())
-                .map(|(w, s)| gamma + &(beta * &zeta * s) + w)
-                .fold(alphas[range::PERM][0] * &zkp * &evals[0].z, |x, y| x * y);
+                .map(|(w, s)| gamma + (beta * zeta * s) + w)
+                .fold(alphas[range::PERM][0] * zkp * evals[0].z, |x, y| x * y);
 
-            let nominator = ((zeta1m1 * &alphas[range::PERM][1] * &(zeta - &index.w))
-                + (zeta1m1 * &alphas[range::PERM][2] * &(zeta - &Fr::<G>::one())))
-                * &(Fr::<G>::one() - evals[0].z);
+            let nominator = ((zeta1m1 * alphas[range::PERM][1] * (zeta - index.w))
+                + (zeta1m1 * alphas[range::PERM][2] * (zeta - Fr::<G>::one())))
+                * (Fr::<G>::one() - evals[0].z);
 
-            let denominator = (zeta - &index.w) * &(zeta - &Fr::<G>::one());
+            let denominator = (zeta - index.w) * (zeta - Fr::<G>::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
-            ft_eval0 += nominator * &denominator;
+            ft_eval0 += nominator * denominator;
 
             let cs = Constants {
                 alpha,
@@ -302,6 +300,8 @@ where
         let combined_inner_product = {
             let ft_eval0 = vec![ft_eval0];
             let ft_eval1 = vec![self.ft_eval1];
+
+            #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys
                 .iter()
                 .map(|(_, e)| (e.iter().collect(), None))
@@ -369,9 +369,10 @@ where
     ///     proofs: vector of Plonk proofs
     ///     index: Index
     ///     RETURN: verification status
+    #[allow(clippy::type_complexity)]
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
-        proofs: &Vec<(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
+        proofs: &[(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],
     ) -> Result<bool, ProofError> {
         // if there's no proof to verify, return early
         if proofs.is_empty() {
@@ -389,10 +390,9 @@ where
         let mut params = vec![];
         for (index, lgr_comm, proof) in proofs {
             // commit to public input polynomial
-            let p_comm = PolyComm::<G>::multi_scalar_mul(
-                &lgr_comm.iter().take(proof.public.len()).collect(),
-                &proof.public.iter().map(|s| -*s).collect(),
-            );
+            let com: Vec<_> = lgr_comm.iter().take(proof.public.len()).collect();
+            let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+            let p_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
 
             // run the oracles argument
             let OraclesResult {
@@ -458,9 +458,7 @@ where
                         mds: index.fr_sponge_params.mds.clone(),
                     };
 
-                    let s = &mut scalars_part;
-                    let p = &mut commitments_part;
-                    index.linearization.index_terms.iter().for_each(|(c, e)| {
+                    for (c, e) in &index.linearization.index_terms {
                         let e = PolishToken::evaluate(
                             e,
                             index.domain,
@@ -473,37 +471,37 @@ where
                         use Column::*;
                         match c {
                             Witness(i) => {
-                                s.push(e);
-                                p.push(&proof.commitments.w_comm[*i])
+                                scalars_part.push(e);
+                                commitments_part.push(&proof.commitments.w_comm[*i])
                             }
                             Coefficient(i) => {
-                                s.push(e);
-                                p.push(&index.coefficients_comm[*i])
+                                scalars_part.push(e);
+                                commitments_part.push(&index.coefficients_comm[*i])
                             }
                             Z => {
-                                s.push(e);
-                                p.push(&proof.commitments.z_comm);
+                                scalars_part.push(e);
+                                commitments_part.push(&proof.commitments.z_comm);
                             }
                             LookupSorted(i) => {
-                                s.push(e);
-                                p.push(&l.unwrap().sorted[*i])
+                                scalars_part.push(e);
+                                commitments_part.push(&l.unwrap().sorted[*i])
                             }
                             LookupAggreg => {
-                                s.push(e);
-                                p.push(&l.unwrap().aggreg)
+                                scalars_part.push(e);
+                                commitments_part.push(&l.unwrap().aggreg)
                             }
                             LookupKindIndex(i) => {
-                                s.push(e);
-                                p.push(&index.lookup_selectors[*i]);
+                                scalars_part.push(e);
+                                commitments_part.push(&index.lookup_selectors[*i]);
                             }
                             LookupTable => {
                                 let mut j = Fr::<G>::one();
-                                s.push(e);
-                                p.push(&index.lookup_tables[0][0]);
+                                scalars_part.push(e);
+                                commitments_part.push(&index.lookup_tables[0][0]);
                                 for t in index.lookup_tables[0].iter().skip(1) {
                                     j *= constants.joint_combiner;
-                                    s.push(e * j);
-                                    p.push(t);
+                                    scalars_part.push(e * j);
+                                    commitments_part.push(t);
                                 }
                             }
                             Index(t) => {
@@ -511,20 +509,20 @@ where
                                 let c = match t {
                                     Zero | Generic => panic!("Selector for {:?} not defined", t),
                                     CompleteAdd => &index.complete_add_comm,
-                                    Vbmul => &index.mul_comm,
-                                    Endomul => &index.emul_comm,
-                                    EndomulScalar => &index.endomul_scalar_comm,
+                                    VarBaseMul => &index.mul_comm,
+                                    EndoMul => &index.emul_comm,
+                                    EndoMulScalar => &index.endomul_scalar_comm,
                                     Poseidon => &index.psm_comm,
                                     ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
                                     ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                                     ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
                                 };
-                                s.push(e);
-                                p.push(c);
+                                scalars_part.push(e);
+                                commitments_part.push(c);
                             }
                         }
-                    });
+                    }
                 }
 
                 // MSM
@@ -630,7 +628,7 @@ where
             let omega = index.domain.group_gen;
             batch.push((
                 fq_sponge.clone(),
-                vec![oracles.zeta, oracles.zeta * &omega],
+                vec![oracles.zeta, oracles.zeta * omega],
                 oracles.v,
                 oracles.u,
                 polynomials,

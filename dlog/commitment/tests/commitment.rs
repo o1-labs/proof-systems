@@ -200,7 +200,7 @@ where
         let timer = Instant::now();
         let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
             &group_map,
-            polynomials,
+            &polynomials,
             &eval_points.clone(),
             polymask,
             evalmask,
