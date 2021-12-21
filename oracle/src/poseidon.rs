@@ -151,8 +151,8 @@ impl<F: Field> ArithmeticSpongeParams<F> {
     pub fn full_round<SC: SpongeConstants>(&self, state: &mut Vec<F>, r: usize) {
         // TODO(mimoo): ideally this should be enforced in the type of the state itself
         assert!(state.len() == SC::SPONGE_WIDTH);
-        for i in 0..state.len() {
-            state[i] = sbox::<F, SC>(state[i]);
+        for state_i in state.iter_mut() {
+            *state_i = sbox::<F, SC>(*state_i);
         }
         self.apply_mds_matrix::<SC>(state);
         for (i, x) in self.round_constants[r].iter().enumerate() {
@@ -165,8 +165,8 @@ impl<F: Field> ArithmeticSpongeParams<F> {
             for (i, x) in self.round_constants[r].iter().enumerate() {
                 state[i].add_assign(x);
             }
-            for i in 0..state.len() {
-                state[i] = sbox::<F, SC>(state[i]);
+            for state_i in state.iter_mut() {
+                *state_i = sbox::<F, SC>(*state_i);
             }
             self.apply_mds_matrix::<SC>(state);
         }
@@ -189,8 +189,8 @@ impl<F: Field> ArithmeticSpongeParams<F> {
             {
                 state[i].add_assign(x);
             }
-            for i in 0..state.len() {
-                state[i] = sbox::<F, SC>(state[i]);
+            for state_i in state.iter_mut() {
+                *state_i = sbox::<F, SC>(*state_i);
             }
             self.apply_mds_matrix::<SC>(state);
         }
