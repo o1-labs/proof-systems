@@ -506,6 +506,7 @@ where
                                     ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                                     ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                                    Cairo => panic!(),
                                 };
                                 scalars_part.push(e);
                                 commitments_part.push(c);
