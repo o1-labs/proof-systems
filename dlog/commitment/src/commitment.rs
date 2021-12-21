@@ -86,12 +86,11 @@ where
         &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
     );
     let two: G::ScalarField = (2u64).into();
+    let two_pow = two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
     if n1 < n2 {
-        (x - (two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64])
-            + G::ScalarField::one()))
-            / two
+        (x - (two_pow + G::ScalarField::one())) / two
     } else {
-        x - two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64])
+        x - two_pow
     }
 }
 

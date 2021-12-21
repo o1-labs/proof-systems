@@ -26,18 +26,6 @@ pub struct Wire {
     pub col: usize,
 }
 
-#[cfg(feature = "wasm_types")]
-#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-impl Wire {
-    #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-    pub fn create(row: i32, col: i32) -> Self {
-        Self {
-            row: row as usize,
-            col: col as usize,
-        }
-    }
-}
-
 impl Wire {
     /// Creates a new set of wires for a given row.
     pub fn new(row: usize) -> [Self; PERMUTS] {
@@ -93,6 +81,22 @@ pub mod caml {
             Self {
                 row: w.row.try_into().expect("isize -> usize"),
                 col: w.col.try_into().expect("isize -> usize"),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wasm_types")]
+pub mod wasm {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl Wire {
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        pub fn create(row: i32, col: i32) -> Self {
+            Self {
+                row: row as usize,
+                col: col as usize,
             }
         }
     }

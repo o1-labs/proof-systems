@@ -605,7 +605,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
-                assert!(wire.col < PERMUTS);
+
+                if wire.col >= PERMUTS {
+                    return Err(GateError::Custom {
+                        row,
+                        err: format!(
+                            "a wire can only be connected to the first {} columns",
+                            PERMUTS
+                        ),
+                    });
+                }
+
                 if witness[col][row] != witness[wire.col][wire.row] {
                     return Err(GateError::DisconnectedWires(
                         Wire { col, row },

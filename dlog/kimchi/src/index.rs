@@ -146,7 +146,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
-    lookup_used: bool,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
 ) -> Linearization<Vec<PolishToken<F>>> {
@@ -174,7 +173,7 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     let expr = expr + complete_add;
     let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
     let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
-    let expr = if lookup_used {
+    let expr = if dummy_lookup_value.is_some() {
         expr + Expr::combine_constraints(
             2 + super::range::CHACHA.end,
             lookup::constraints(dummy_lookup_value.unwrap(), domain),
@@ -283,21 +282,19 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
 
-        let linearization = expr_linearization(
-            cs.domain.d1,
-            lookup_used.is_some(),
-            cs.chacha8.is_some(),
-            if lookup_used.is_some() {
-                Some(&cs.dummy_lookup_values[0][..])
-            } else {
-                None
-            },
-        );
+        let dummy_lookup_value = if lookup_used.is_some() {
+            Some(&cs.dummy_lookup_values[0][..])
+        } else {
+            None
+        };
+
+        let linearization =
+            expr_linearization(cs.domain.d1, cs.chacha8.is_some(), dummy_lookup_value);
 
         Index {
             // TODO(mimoo): re-order field like in the type def
             // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),
-            max_quot_size: 7 * cs.domain.d1.size as usize,
+            max_quot_size: PERMUTS * cs.domain.d1.size as usize,
             fq_sponge_params,
             max_poly_size,
             srs,
