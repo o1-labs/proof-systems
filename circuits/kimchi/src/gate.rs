@@ -401,8 +401,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
+            wires: wires,
             c: Vec::new(),
-            wires,
         }
     }
 
