@@ -1942,6 +1942,10 @@ impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut env = HashMap::new();
         let e = to_string(&mut env, self);
+        let mut env: Vec<_> = env.into_iter().collect();
+        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
+        // consistent when printing.
+        env.sort_by(|(x, _), (y, _)| x.cmp(y));
         for (k, v) in env.into_iter() {
             writeln!(f, "let {} = {} in", k.var_name(), v)?;
         }
