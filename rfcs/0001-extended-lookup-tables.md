@@ -144,8 +144,9 @@ these components -- as the seed for this randomness.
 ### Representing the combined fixed table
 
 The fixed table can be constructed at constraint system generation time, by
-extending all of the constituent tables to the same width, generating the
-appropriate table IDs array, and concatenating all of the tables. Concretely:
+extending all of the constituent tables to the same width (i.e. number of
+columns), generating the appropriate table IDs array, and concatenating all of
+the tables. Concretely:
 
 Let `t[id][row][col]` be the `col`th element of the `row`th entry in the `id`th
 fixed table.
