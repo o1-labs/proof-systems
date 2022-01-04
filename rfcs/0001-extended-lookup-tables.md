@@ -27,7 +27,8 @@ These goals support 5 major use-cases:
 * allow circuits to use low-cost branching and other familiar programming
   primitives
   - this depends on the development of a bytecode interpreter on top of the
-    lookup-table primitives.
+    lookup-table primitives, where the values in the table represent the
+    bytecode of the instructions.
 * allow circuits to load and execute some 'user provided' bytecode
   - e.g. to run a small bytecode program provided in a transaction at
     block-production time.
