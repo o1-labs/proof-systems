@@ -165,6 +165,9 @@ where x = len(t[0]) + len(t[1]) + ... + len(t[id-1]) + row
 This can be encoded as `W+1` polynomials in the constraint system, which we
 will reference as `FixedTable(i)` for `0 <= i < W` and `TableID`.
 
+For any unused entries, we use `TableID = -1`, to avoid collisions with any
+tables.
+
 ### Representing the runtime table
 
 The runtime table can be considered as a 'mask' that we apply to the fixed
