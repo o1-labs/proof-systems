@@ -109,9 +109,23 @@ witness. However, where we have runtime or side-loaded tables, a malicious
 prover may be able to select values in those tables that abuse knowledge of
 `joint_combiner` to create collisions.
 
-For example, to maliciously insert a value `(x, y, z)` for table with ID 1, the
-prover could select the value `x + y * joint_combiner + z * joint_combiner^2 +
--1 * joint_combiner^max_joint_size` for an entry in table 2.
+For example, the prover could create the appearance that there is a value
+`(x, y, z)` in the table with ID 1 by entering a single value `a` into the
+table with ID 2, by computing
+```
+a =   x
+    + y * joint_combiner
+    + z * joint_combiner^2
+    + -1 * joint_combiner^max_joint_size
+```
+so that the combined contribution with its table ID becomes
+```
+a + 2 * joint_combiner^max_joint_size
+```
+and thus matches exactly the combined value from `(x, y, z)` in the table with ID 1:
+```
+x + y * joint_combiner + z * joint_combiner^2 + 1 * joint_combiner^max_joint_size
+```
 
 Thus, we need to ensure that the `joint_combiner` depends on the values in
 runtime or side-loaded tables, so that the values in these tables cannot be
