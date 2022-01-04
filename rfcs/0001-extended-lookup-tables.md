@@ -455,6 +455,11 @@ of the runtime table.
 
 This results in 5 new checks, and the removal of 1 old check.
 
+The lookup permutation argument (and its columns) can be elided when it is
+unused by either the side-loaded table or the runtime table. Similarly, the
+runtime table checks (and columns) can be omitted when there is no runtime
+table.
+
 ## Drawbacks
 [drawbacks]: #drawbacks
 
