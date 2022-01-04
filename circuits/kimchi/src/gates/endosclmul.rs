@@ -57,7 +57,7 @@ use array_init::array_init;
 impl<F: FftField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
         CircuitGate {
-            typ: GateType::Endomul,
+            typ: GateType::EndoMul,
             wires,
             c: vec![],
         }
@@ -74,7 +74,7 @@ impl<F: FftField> CircuitGate<F> {
         let xq1 = (F::one() + ((cs.endo - F::one()) * next[12])) * this[0];
         let xq2 = (F::one() + ((cs.endo - F::one()) * next[14])) * this[0];
 
-        ensure_eq!(self.typ, GateType::Endomul, "endomul: incorrect gate");
+        ensure_eq!(self.typ, GateType::EndoMul, "endomul: incorrect gate");
 
         // verify booleanity of the scalar bits
 
@@ -147,7 +147,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn endomul(&self) -> F {
-        if self.typ == GateType::Endomul {
+        if self.typ == GateType::EndoMul {
             F::one()
         } else {
             F::zero()

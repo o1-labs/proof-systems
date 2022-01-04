@@ -387,9 +387,9 @@ where
             use GateType::*;
             index_evals.insert(Poseidon, &index.cs.ps8);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
-            index_evals.insert(Vbmul, &index.cs.mull8);
-            index_evals.insert(Endomul, &index.cs.emull);
-            index_evals.insert(EndomulScalar, &index.cs.endomul_scalar8);
+            index_evals.insert(VarBaseMul, &index.cs.mull8);
+            index_evals.insert(EndoMul, &index.cs.emull);
+            index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()

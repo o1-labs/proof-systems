@@ -121,27 +121,25 @@ impl<F: Field> JointLookup<F> {
 )]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
-    /// zero gate
+    /// Zero gate
     Zero = 0,
-    /// generic arithmetic gate
+    /// Generic arithmetic gate
     Generic,
     /// Poseidon permutation gate
     Poseidon,
     /// Complete EC addition in Affine form
     CompleteAdd,
     /// EC variable base scalar multiplication
-    Vbmul,
+    VarBaseMul,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    Endomul,
+    EndoMul,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndomulScalar,
+    EndoMulScalar,
     /// ChaCha
     ChaCha0,
     ChaCha1,
     ChaCha2,
     ChaChaFinal,
-    /// Gate for Cairo instructions
-    Cairo,
 }
 
 /// Describes the desired lookup configuration.
@@ -365,7 +363,6 @@ impl GateType {
     }
 }
 
-/// Describes a gate in the circuit
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CircuitGate<F: FftField> {
@@ -401,8 +398,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
-            wires: wires,
             c: Vec::new(),
+            wires,
         }
     }
 
@@ -420,11 +417,10 @@ impl<F: FftField> CircuitGate<F> {
             Generic => self.verify_generic(row, witness),
             Poseidon => self.verify_poseidon(row, witness, cs),
             CompleteAdd => self.verify_complete_add(row, witness),
-            Vbmul => self.verify_vbmul(row, witness),
-            Endomul => self.verify_endomul(row, witness, cs),
-            EndomulScalar => self.verify_endomul_scalar(row, witness, cs),
+            VarBaseMul => self.verify_vbmul(row, witness),
+            EndoMul => self.verify_endomul(row, witness, cs),
+            EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
-            Cairo => self.verify_gate_cairo(row, witness),
         }
     }
 }

@@ -49,7 +49,7 @@ fn varbase_mul_test() {
     for i in 0..(chunks * num_scalars) {
         let row = 2 * i;
         gates.push(CircuitGate {
-            typ: GateType::Vbmul,
+            typ: GateType::VarBaseMul,
             wires: Wire::new(row),
             c: vec![],
         });

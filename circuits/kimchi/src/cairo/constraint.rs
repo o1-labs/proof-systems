@@ -96,7 +96,6 @@ use crate::wires::COLUMNS;
 use ark_ff::{FftField, Field, One};
 use CurrOrNext::*;
 
-
 pub fn constraint<F: Field>(memory: Vec<F>) -> (Expr<F>) {
     let w_curr = |i| E::cell(Column::Witness(i), Curr);
     let w_next = |i| E::cell(Column::Witness(i), Next);
@@ -514,4 +513,3 @@ mod tests {
         constraint();
     }
 }
-*/

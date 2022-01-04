@@ -106,7 +106,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
             CircuitGate {
-                typ: GateType::Vbmul,
+                typ: GateType::VarBaseMul,
                 wires: wires[0],
                 c: vec![],
             },
@@ -173,7 +173,7 @@ impl<F: FftField> CircuitGate<F> {
 
         ensure_eq!(
             self.typ,
-            GateType::Vbmul,
+            GateType::VarBaseMul,
             "incorrect gate type (should be vbmul)"
         );
 
@@ -311,7 +311,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn vbmul(&self) -> F {
-        if self.typ == GateType::Vbmul {
+        if self.typ == GateType::VarBaseMul {
             F::one()
         } else {
             F::zero()

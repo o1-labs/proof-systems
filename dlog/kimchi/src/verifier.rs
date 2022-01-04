@@ -498,15 +498,15 @@ where
                                 let c = match t {
                                     Zero | Generic => panic!("Selector for {:?} not defined", t),
                                     CompleteAdd => &index.complete_add_comm,
-                                    Vbmul => &index.mul_comm,
-                                    Endomul => &index.emul_comm,
-                                    EndomulScalar => &index.endomul_scalar_comm,
+                                    VarBaseMul => &index.mul_comm,
+                                    EndoMul => &index.emul_comm,
+                                    EndoMulScalar => &index.endomul_scalar_comm,
                                     Poseidon => &index.psm_comm,
                                     ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
                                     ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                                     ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                                    Cairo => panic!(),
+                                    //Cairo => panic!(),
                                 };
                                 scalars_part.push(e);
                                 commitments_part.push(c);
