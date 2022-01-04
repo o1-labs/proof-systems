@@ -93,7 +93,7 @@ the sizes of all tables must be known at constraint system time, we can treat
 this as a fixed column. For example, this converts a lookup `(a, b, c)` in the
 table with ID `1` into a lookup of `(a, b, c, 1)` in the combined table, and
 ensures that any value `(x, y, z)` from table ID `2` will not match that
-lookup, since its representative is (x, y, z, 2)`.
+lookup, since its representative is `(x, y, z, 2)`.
 
 To avoid any interaction between the `TableID` column and any other data in
 the tables, we use `TableID * joint_combiner^max_joint_size` to mix in the
