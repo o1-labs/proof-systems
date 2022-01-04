@@ -106,7 +106,7 @@ combined table.
 
 Currently, the `joint_combiner` is sampled using randomness that depends on the
 witness. However, where we have runtime or side-loaded tables, a malicious
-prover may be able to select values in those tables that absue knowledge of
+prover may be able to select values in those tables that abuse knowledge of
 `joint_combiner` to create collisions.
 
 For example, to maliciously insert a value `(x, y, z)` for table with ID 1, the
