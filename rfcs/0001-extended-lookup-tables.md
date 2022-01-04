@@ -155,11 +155,11 @@ setting `t[id][row][col] = 0` for all `w < col <= W`.
 Form the combined table by concatenating all of these tables
 `FixedTable = t[0] || t[1] || t[2] || ...`
 and store in `TableID` the table ID that the corresponding row came from.
-Then, for every `x` and `y`, we have
+Then, for every `output_row`, we have
 ```
-FixedTable[x][col] = t[id][row][col]`
-TableID[x] = id
-where x = len(t[0]) + len(t[1]) + ... + len(t[id-1]) + row
+FixedTable[output_row][col] = t[id][row][col]`
+TableID[output_row] = id
+where output_row = len(t[0]) + len(t[1]) + ... + len(t[id-1]) + row
 ```
 
 This can be encoded as `W+1` polynomials in the constraint system, which we
