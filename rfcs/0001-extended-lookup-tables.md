@@ -65,7 +65,7 @@ where the value `x` was intended.
 
 ### Combining multiple tables
 
-The current implementation only supports a single table. In order to make
+The current implementation only supports a single fixed table. In order to make
 multiple tables available, we either need to run a separate PLOOKUP argument
 for each table, or to concatenate the tables to form an combined table and
 identify the values from each table in such a way that the prover cannot use
