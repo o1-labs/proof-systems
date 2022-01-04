@@ -147,19 +147,19 @@ The fixed table can be constructed at constraint system generation time, by
 extending all of the constituent tables to the same width, generating the
 appropriate table IDs array, and concatenating all of the tables. Concretely:
 
-Let `t[i][j][k]` be the `k`th element of the `j`th entry in the `i`th fixed
-table.
-Let `W` be the maximum width of all of the `t[i][j]`s.
-For any `t[i][j]` whose width `w` is less than `W`, pad it to width `W` by
-setting `t[i][j][k] = 0` for all `w < k <= W`.
+Let `t[id][row][col]` be the `col`th element of the `row`th entry in the `id`th
+fixed table.
+Let `W` be the maximum width of all of the `t[id][row]`s.
+For any `t[id][row]` whose width `w` is less than `W`, pad it to width `W` by
+setting `t[id][row][col] = 0` for all `w < col <= W`.
 Form the combined table by concatenating all of these tables
 `FixedTable = t[0] || t[1] || t[2] || ...`
 and store in `TableID` the table ID that the corresponding row came from.
 Then, for every `x` and `y`, we have
 ```
-FixedTable[x][k] = t[i][j][k]`
-TableID[x] = i
-where x = len(t[0]) + len(t[1]) + ... + len(t[i-1]) + j
+FixedTable[x][col] = t[id][row][col]`
+TableID[x] = id
+where x = len(t[0]) + len(t[1]) + ... + len(t[id-1]) + row
 ```
 
 This can be encoded as `W+1` polynomials in the constraint system, which we
