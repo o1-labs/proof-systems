@@ -43,13 +43,13 @@ In the following, we describe the parts that compose the Turshi proof system for
 * `ClaimedRegisters`: this is a set of three tuples that store the claimed initial and finalization values of the three registers `pc`,`ap`,`fp` upon execution of the `CairoProgram`.
 * `ExecutionTrace`: this is a table that contains values obtained upon execution of the `CairoProgram` and describes it. 
 * `StateTransition`: this is the set of Cairo constraints that must be satisfied between consecutive states of the `ExecutionTrace`. 
-* `MemoryStack`: this is an array that stores the program memory after executing the `CairoProgram`. This means that the first few entries of the `MemoryStack` correspond to the `CairoProgram` itself, and it is followed by values that will make up the witness.
+* `CairoMemory`: this is an array that stores the program memory after executing the `CairoProgram`. This means that the first few entries of the `CairoMemory` correspond to the `CairoProgram` itself, and it is followed by values that will make up the witness.
 
 ### Setup
 Both prover and verifier get as input a compiled `CairoProgram` and a set of claimed register values `ClaimedRegisters` after the execution of the program. These two will make up the so called public input of the proof system. The debug mode of the [Cairo Playground](https://www.cairo-lang.org/playground/) can be used to easily get test cases. If interesting enough, we may consider to integrate the [Cairo compiler](https://github.com/starkware-libs/cairo-lang/tree/master/src/starkware/cairo/lang/compiler) directly for our tests.
 
 ### Prover: 
-The first task to be done by the prover is execute-or simulate the execution of-the `CairoProgram` to obtain a correct instantiation of the `MemoryStack`. Together with these private values, the prover generates the `ExecutionTrace` and determines the witness of the relation. In order to prove the correctness of the memory (i.e. single-valued and continuity), it creates four pairs of lists (sorted and unsorted) to perform a permutation argument on them. It commits to the witness of the relation and receives two random field elements $z$ and $\alpha$ from the verifier. The former is used as a random point to evaluate the permutation argument, whereas the latter is used to linearly combine the four arguments securely. 
+The first task to be done by the prover is execute-or simulate the execution of-the `CairoProgram` to obtain a correct instantiation of the `CairoMemory`. Together with these private values, the prover generates the `ExecutionTrace` and determines the witness of the relation. In order to prove the correctness of the memory (i.e. single-valued and continuity), it creates four pairs of lists (sorted and unsorted) to perform a permutation argument on them. It commits to the witness of the relation and receives two random field elements $z$ and $\alpha$ from the verifier. The former is used as a random point to evaluate the permutation argument, whereas the latter is used to linearly combine the four arguments securely. 
 
 ### Verifier
 
