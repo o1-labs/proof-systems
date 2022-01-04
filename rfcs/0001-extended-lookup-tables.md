@@ -80,8 +80,8 @@ element `joint_combiner`, where the randomness depends on the circuit witness,
 and then compute `x + y * joint_combiner + z * joint_combiner^2`. Notice that,
 if the prover wants to select some `(a, b, c)` not in the table and claim that
 it in fact was, they are not able to use the knowledge of the `joint_combiner`
-to choose their `(a, b, c)`, since their choice will change the value of the
-`joint_combiner`.
+to choose their `(a, b, c)`, since the `joint_combiner` will depend on those
+values `a`, `b`, and `c`.
 
 This is a standard technique for checking multiple equalities at once by
 checking a single equality; to use it, we must simply ensure that the
