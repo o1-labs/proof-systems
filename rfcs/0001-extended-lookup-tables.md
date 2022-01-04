@@ -138,6 +138,9 @@ In particular, this means that we must have a commitment per column for each
 type of table, so that the verifier can confirm the correct construction of the
 combined table.
 
+As usual, we will use the 'transcript' of the proof so far -- including all of
+these components -- as the seed for this randomness.
+
 ### Representing the combined fixed table
 
 The fixed table can be constructed at constraint system generation time, by
