@@ -1,0 +1,7 @@
+{{range $details := sort .Site.Data.references "year"}}
+    {{if $details.apa}}
+    <ul>
+        <li>{{if $details.tag}}[{{$details.tag}}]{{end}} <a href="{{$details.link}}" title="{{$details.apa}}" target="_blank">{{$details.apa}}</a>{{if $details.year }} ({{$details.year}}){{ end }}.</li>
+    </ul>
+    {{end}}
+{{end}}

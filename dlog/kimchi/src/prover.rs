@@ -1,11 +1,6 @@
-/********************************************************************************************
+//! This source file implements prover's zk-proof primitive.
 
-This source file implements prover's zk-proof primitive.
-
-*********************************************************************************************/
-
-pub use super::{index::Index, range};
-use crate::plonk_sponge::FrSponge;
+use crate::{index::Index, plonk_sponge::FrSponge, range};
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
@@ -29,45 +24,52 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
+// handy aliases
+
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 #[derive(Clone)]
+/// Commitments to the lookup polynomials involved in the proof
 pub struct LookupCommitments<G: AffineCurve> {
+    /// The sorted stuff
     pub sorted: Vec<PolyComm<G>>,
+    /// The aggregated stuff
     pub aggreg: PolyComm<G>,
 }
 
 #[derive(Clone)]
+/// Commitments to the polynomials involved in the proof
 pub struct ProverCommitments<G: AffineCurve> {
-    // polynomial commitments
+    /// commitments to the witness columns
     pub w_comm: [PolyComm<G>; COLUMNS],
+    /// commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
+    /// commitment to the quotient polynomial
     pub t_comm: PolyComm<G>,
+    /// lookup-related commitments
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 #[derive(Clone)]
+/// A proof consists of the following:
 pub struct ProverProof<G: AffineCurve> {
-    // polynomial commitments
+    /// polynomial commitments
     pub commitments: ProverCommitments<G>,
-
-    // batched commitment opening proof
+    /// batched commitment opening proof
     pub proof: OpeningProof<G>,
-
-    // polynomial evaluations
+    /// polynomial evaluations
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
-
+    /// ft_eval
     pub ft_eval1: Fr<G>,
-
-    // public part of the witness
+    /// public part of the witness
     pub public: Vec<Fr<G>>,
-
-    // The challenges underlying the optional polynomials folded into the proof
+    /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
+// TODO: move elsewhere
 fn combine_evaluations<F: FftField>(
     init: (Evaluations<F, D<F>>, Evaluations<F, D<F>>),
     alpha: F,
@@ -101,10 +103,10 @@ where
     G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
-    // This function constructs prover's zk-proof from the witness & the Index against SRS instance
-    //     witness: computation witness
-    //     index: Index
-    //     RETURN: prover's zk-proof
+    /// This function constructs prover's zk-proof from the witness & the Index against SRS instance
+    ///     witness: computation witness
+    ///     index: Index
+    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
@@ -120,7 +122,11 @@ where
             index.cs.verify(&witness).expect("incorrect witness");
         }
 
-        // ensure we have room for the zero-knowledge rows
+        //~ 1. add zero-knowledge rows to the execution trace
+        //~    (see https://o1-labs.github.io/mina-book/crypto/plonk/zkpm.html)
+
+        //~     - ensure that execution traces are all of size smaller than d1_size - ZK_ROWS
+        //~      (TODO: specify d1_size and ZK_ROWS)
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
@@ -129,25 +135,29 @@ where
             return Err(ProofError::NoRoomForZkInWitness);
         }
 
-        // pad and add zero-knowledge rows to the witness columns
         for w in &mut witness {
+            //~     - check that the execution traces are all of the same size
             if w.len() != length_witness {
                 return Err(ProofError::WitnessCsInconsistent);
             }
 
-            // padding
+            //~     - pad each execution trace with enough zeros to make them of length d1_size
             w.extend(std::iter::repeat(Fr::<G>::zero()).take(length_padding));
 
-            // zk-rows
+            //~     - randomize the last three rows of each execution trace
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
                 *row = Fr::<G>::rand(rng);
             }
         }
 
-        // the transcript of the random oracle non-interactive argument
-        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
+        //~ 3. compute the public input polynomial as $-p$,
+        //~    where $p$ is the polynomial representing the public input as such:
+        //~    * $p(\omega^i) = w_0[i]$ for $i \in [[0, l]]$
+        //~    * $p(\omega^j) = 0$ for $j \in [[l+1, n]]$
+        //~
+        //~    and $w_0$ is the execution trace of the first register,
+        //~    which contains the public input f in the first $l$ rows
 
-        // compute public input polynomial
         let public = witness[0][0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
             public.clone(),
@@ -155,8 +165,13 @@ where
         )
         .interpolate();
 
-        // commit to the wire values
+        //~ 4. commit to the execution traces of the 15 registers:
+        //~    - interpolate each register $w_i$ into a polynomial
+        //~    - commit (with hiding) to each polynomial to obtain $com(w_i)$
+
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
+            // note: here we commit directly from the evaluation form
+            //       skipping the interpolation step
             let e = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -166,7 +181,8 @@ where
                 .commit_evaluations(index.cs.domain.d1, &e, None, rng)
         });
 
-        // compute witness polynomials
+        //~ 5. compute witness polynomials
+
         let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
@@ -175,11 +191,16 @@ where
             .interpolate()
         });
 
-        // absorb the wire polycommitments into the argument
+        //~ 6. absorb the wire polycommitments into the argument
+        // the transcript of the random oracle non-interactive argument
+
+        let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
         fq_sponge.absorb_g(&index.srs.commit_non_hiding(&public_poly, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
+
+        //~ 7. build the lookup stuff
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
@@ -301,9 +322,12 @@ where
                 }
             };
 
-        // sample beta, gamma oracles
+        //~ 8. sample beta, gamma oracles
+
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();
+
+        //~ 9. more lookup stuff
 
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
@@ -344,18 +368,23 @@ where
                 },
             };
 
-        // compute permutation aggregation polynomial
+        //~ 10. compute permutation aggregation polynomial
+
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
-        // commit to z
+
+        //~ 11. commit to the permutation polynomial z
         let z_comm = index.srs.commit(&z_poly, None, rng);
 
-        // absorb the z commitment into the argument and query alpha
+        //~ 12. absorb the permutation commitment into the argument
+
         fq_sponge.absorb_g(&z_comm.0.unshifted);
+
+        //~ 13. query $\alpha$
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
         let alphas = range::alpha_powers(alpha);
 
-        // evaluate polynomials over domains
+        //~ 14. evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
         let lookup_table_combined = lookup_used.as_ref().map(|_| {
@@ -381,7 +410,7 @@ where
                 },
             );
 
-        // compute quotient polynomial
+        //~ 15. compute quotient polynomial
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
@@ -479,7 +508,8 @@ where
             ),
         };
 
-        // divide contributions with vanishing polynomial
+        //~ 16. divide contributions with vanishing polynomial
+
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &public_poly)
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), Ok)?;
@@ -510,8 +540,11 @@ where
         // absorb the polycommitments into the argument and sample zeta
         fq_sponge.absorb_g(&t_comm.0.unshifted);
 
+        //~ 19. sample zeta
+
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
+
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
 
@@ -538,7 +571,8 @@ where
                 })
         };
 
-        // evaluate the polynomials
+        //~ 20. evaluate the polynomials
+
         let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
             w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
@@ -591,7 +625,8 @@ where
             })
             .collect::<Vec<_>>();
 
-        // compute and evaluate linearization polynomial
+        //~ 21. compute and evaluate linearization polynomial
+
         let f_chunked = {
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from

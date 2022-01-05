@@ -1,0 +1,23 @@
+googleAnalytics = "UA-215689345-1"
+baseURL = 'https://www.github.com'
+languageCode = 'en-us'
+title = 'Mina Specifications'
+theme = "book"
+
+[params]
+BookLogo = 'logo.svg'
+
+[markup]
+  [markup.highlight]
+    anchorLineNos = false
+    codeFences = true
+    guessSyntax = false
+    hl_Lines = ''
+    lineAnchors = ''
+    lineNoStart = 1
+    lineNos = true
+    lineNumbersInTable = true
+    noClasses = true
+    style = 'friendly'
+    # style = 'pastie'
+    tabWidth = 4

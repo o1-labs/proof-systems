@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk Protocol Index primitive.
-
-*****************************************************************************************************************/
+//! This source file implements Plonk Protocol Index primitive.
 
 use std::{
     fs::{File, OpenOptions},
@@ -208,6 +204,13 @@ where
     G::BaseField: PrimeField,
     G::ScalarField: CommitmentField,
 {
+    //~
+    //~ ## Verifier Index
+    //~
+    //~ The verifier index is a structure that contains all the information needed to verify a proof.
+    //~ You can create the verifier index from the prover index, by commiting to a number of polynomials in advance.
+    //~
+
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
         // TODO: Switch to commit_evaluations for all index polys
@@ -274,6 +277,13 @@ where
         }
     }
 
+    //~
+    //~ ## Prover Index
+    //~
+    //~ The prover index is a structure that contains all the information needed to
+    //~ generate the proof.
+    //~
+
     // this function compiles the index from constraints
     pub fn create(
         mut cs: ConstraintSystem<Fr<G>>,
@@ -289,6 +299,8 @@ where
             );
         }
         cs.endo = endo_q;
+
+        //~ 1. do the lookup stuff
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);

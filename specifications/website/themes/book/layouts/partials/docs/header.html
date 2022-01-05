@@ -1,0 +1,122 @@
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]},SVG: {addMMLclasses: true},
+    loader: { load: ['[tex]/textmacros','[tex]/newcommand','[tex]/action']},
+    tex: { packages: { '[+]': ['newcommand','action', 'textmacros'] }}
+});
+</script>
+
+<!-- mathjax 2 -->
+<script src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS_CHTML-full"></script>
+
+<!-- load variable renamer library -->
+<script language="javascript" type="text/javascript" src="{{ " /js/interactive_variables.js" | urlize | relURL }}"></script>
+
+<!-- run setupInteractiveVariables function after Mathjax rendering -->
+<script>
+  MathJax.Hub.Queue(function () {
+    setupInteractiveVariables()
+  });
+</script>
+
+
+$\newcommand{\alicebob}[3]{#1 & \ra{#2} & #3\\[-5pt]}$
+$\newcommand{\bobalice}[3]{#1 & \la{#2} & #3\\[-5pt]}$
+$\newcommand{\alicework}[1]{#1 & &\\[-5pt]}$
+$\newcommand{\bobwork}[1]{ & & #1\\[-5pt]}$
+$\newcommand{\work}[2]{#1 & & #2\\}$
+$\newcommand{\allwork}[1]{ & #1 & \\}$
+$\newcommand{\aliceseparator}{-------&&\\}$
+$\newcommand{\bobseparator}{&&-------\\}$
+$\newcommand{\foo}{\phantom{\text{bigarrowfitsallthis}}}$
+$\newcommand{\ra}[1]{%
+\vphantom{\xrightarrow{asd}}%
+\smash{\xrightarrow[\foo]{#1}}%
+}$
+$\newcommand{\la}[1]{%
+\vphantom{\xleftarrow{asd}}%
+\smash{\xleftarrow[\foo]{#1}}%
+}$
+$\newcommand{\z}[1]{\mathbb{Z}_{#1}}$
+$\newcommand{\zq}{\mathbb{Z}_\varq}$
+$\newcommand{\zqs}{\mathbb{Z}_q^\ast}$
+$\newcommand{\zns}[1]{\mathbb{Z}_{#1}^\ast}$
+$\require{action}
+\newcommand{\sampleSymb}{
+  {\overset{\$}{\leftarrow}}
+}$
+$\newcommand{\field}[1]{\mathbb{F}_{#1}}$
+$\newcommand{\sample}[1]{#1\sampleSymb\zq}$
+$\newcommand{\sampleGeneric}[2]{#1\sampleSymb#2}$
+$\newcommand{\sampleInterval}[2]{#1\sampleSymb\interval{#2}}$
+$\newcommand{\sampleRange}[2]{#1\sampleSymb\range{#2}}$
+$\newcommand{\samplezqs}[1]{\class{hover}{#1\sampleSymb\zqs}}$
+$\newcommand{\sampleN}[2]{\class{hover}{#1\sampleSymb\z{#2}}}$
+$\newcommand{\sampleNs}[2]{\class{hover}{#1\sampleSymb\z{#2}^\ast}}$
+$\newcommand{\equalQ}{\overset{?}{=}}$
+$\newcommand{\gQ}{\overset{?}{>}}$
+$\newcommand{\inQ}{\overset{?}{\in}}$
+$\newcommand{\cgroup}{\mathbb{G}}$
+$\newcommand{\hash}[1]{\mathsf{Hash}({#1})}$
+$\newcommand{\hashbit}[2]{\mathsf{Hash}({#1})\verb+[0:#2]+}$
+$\newcommand{\naturals}{\mathbb{N}}$
+$\newcommand{\sqfree}{L_\mathsf{square-free}}$
+$\newcommand{\ceil}[1]{\lceil #1 \rceil}$
+$\newcommand{\sampleSet}[2]{\class{hover}{#1\sampleSymb#2}}$
+$\newcommand{\bunch}[1]{\{ #1_i\}_{i=1}^m}$
+$\newcommand{\bunchi}[1]{\{ #1\}_{i=1}^m}$
+$\newcommand{\forb}{\text{ for }i=1,\ldots,m}$
+$\newcommand{\interval}[1]{[0, #1[}$
+<!-- $\newcommand{\range}[1]{\{0, \dots,#1 -1 \}}$ -->
+$\newcommand{\range}[1]{[#1]}$
+$\newcommand{\rangeone}[1]{\{1, \dots,#1 -1 \}}$
+
+<!-- variables -->
+
+$\newcommand{\vara}{\class{var var_a}{a}}$
+$\newcommand{\varb}{\class{var var_b}{b}}$
+$\newcommand{\varc}{\class{var var_c}{c}}$
+$\newcommand{\vard}{\class{var var_d}{d}}$
+$\newcommand{\varh}{\class{var var_h}{h}}$
+$\newcommand{\varg}{\class{var var_g}{g}}$
+$\newcommand{\varu}{\class{var var_u}{u}}$
+$\newcommand{\varx}{\class{var var_x}{x}}$
+$\newcommand{\varX}{\class{var var_X}{X}}$
+$\newcommand{\varz}{\class{var var_z}{z}}$
+$\newcommand{\varr}{\class{var var_r}{r}}$
+$\newcommand{\varq}{\class{var var_q}{q}}$
+$\newcommand{\varp}{\class{var var_p}{p}}$
+$\newcommand{\vare}{\class{var var_e}{e}}$
+$\newcommand{\vary}{\class{var var_y}{y}}$
+$\newcommand{\varw}{\class{var var_w}{w}}$
+
+$\newcommand{\varprover}{\class{var var_Prover}{\text{Prover}}}$
+$\newcommand{\varprover}{\class{var var_Prover}{\text{Prover}}}$
+$\newcommand{\varverifier}{\class{var var_Verifier}{\text{Verifier}}}$
+$\newcommand{\varN}{\class{var var_N}{N}}$
+$\newcommand{\rhovar}{\class{var var_ρ}{\rho}}$
+$\newcommand{\sigmavar}{\class{var var_σ}{\sigma}}$
+$\newcommand{\thetavar}{\class{var var_θ}{\theta}}$
+$\newcommand{\muvar}{\class{var var_μ}{\mu}}$
+
+
+
+$\newcommand{\true}{\mathsf{true}}$
+$\newcommand{\false}{\mathsf{false}}$
+
+
+
+<div class="flex align-center justify-between">
+  <label for="menu-control">
+    <img src="{{ "svg/menu.svg" | relURL }}" class="book-icon" alt="Menu" />
+  </label>
+
+  <strong>{{ partial "docs/title" . }}</strong>
+
+  <label for="toc-control">
+    {{ if default true (default .Site.Params.BookToC .Params.BookToC) }}
+    <img src="{{ "svg/toc.svg" | relURL }}" class="book-icon" alt="Table of Contents" />
+    {{ end }}
+  </label>
+</div>
+

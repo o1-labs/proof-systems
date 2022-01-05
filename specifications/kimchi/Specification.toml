@@ -1,0 +1,26 @@
+[metadata]
+name = "Kimchi"
+description = "This specification describes the Kimchi proof system."
+version = "0.1.0"
+authors = ["TODO: ENTER ALL THE NAMES"]
+
+[config]
+template = "specification.md"
+
+[sections]
+permutation = "../../circuits/kimchi/src/polynomials/permutation.rs"
+lookup = "../../circuits/kimchi/src/polynomials/lookup.rs"
+
+# gates
+chacha = "../../circuits/kimchi/src/polynomials/chacha.rs"
+complete_add = "../../circuits/kimchi/src/polynomials/complete_add.rs"
+endomul_scalar = "../../circuits/kimchi/src/polynomials/endomul_scalar.rs"
+endosclmul = "../../circuits/kimchi/src/polynomials/endosclmul.rs"
+generic = "../../circuits/kimchi/src/polynomials/generic.rs"
+poseidon = "../../circuits/kimchi/src/polynomials/poseidon.rs"
+varbasemul = "../../circuits/kimchi/src/polynomials/varbasemul.rs"
+
+constraint_system = "../../circuits/kimchi/src/nolookup/constraints.rs"
+indexes = "../../dlog/kimchi/src/index.rs"
+prover = "../../dlog/kimchi/src/prover.rs"
+verifier = "../../dlog/kimchi/src/verifier.rs"

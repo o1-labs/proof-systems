@@ -4,9 +4,7 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-pub use super::index::VerifierIndex as Index;
-pub use super::prover::{range, ProverProof};
-use crate::plonk_sponge::FrSponge;
+use crate::{index::VerifierIndex, plonk_sponge::FrSponge, prover::ProverProof, range};
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
@@ -22,6 +20,8 @@ use kimchi_circuits::{
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
+
+// handy aliases
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
@@ -62,7 +62,7 @@ where
 {
     pub fn prev_chal_evals(
         &self,
-        index: &Index<G>,
+        index: &VerifierIndex<G>,
         evaluation_points: &[Fr<G>],
         powers_of_eval_points_for_chunks: &[Fr<G>],
     ) -> Vec<Vec<Vec<Fr<G>>>> {
@@ -108,7 +108,7 @@ where
     /// This function runs random oracle argument
     pub fn oracles<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         &self,
-        index: &Index<G>,
+        index: &VerifierIndex<G>,
         p_comm: &PolyComm<G>,
     ) -> OraclesResult<G, EFqSponge> {
         let n = index.domain.size;
@@ -367,12 +367,12 @@ where
 
     /// This function verifies the batch of zk-proofs
     ///     proofs: vector of Plonk proofs
-    ///     index: Index
+    ///     index: VerifierIndex
     ///     RETURN: verification status
     #[allow(clippy::type_complexity)]
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
-        proofs: &[(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],
+        proofs: &[(&VerifierIndex<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],
     ) -> Result<bool, ProofError> {
         // if there's no proof to verify, return early
         if proofs.is_empty() {
