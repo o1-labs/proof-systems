@@ -1,11 +1,21 @@
+use crate::gate;
 use ark_ff::{BigInteger, FftField, Field, PrimeField};
 
+/// Cairo memory stack
 pub struct CairoMemory<F: FftField> {
+    /// length of the public memory 
     pub pubsize: usize,
+    /// full memory stack
     pub stack: Vec<F>,
 }
 
 impl<F: FftField> CairoMemory {
+    pub fn new_memory(input: CairoProgram) -> CairoMemory {
+        CairoMemory {
+            pubsize = len(&input),
+            stack = input,
+        }
+    }
     pub fn get_pub_size(&self) -> usize {
         self.pubsize
     }
@@ -17,9 +27,5 @@ impl<F: FftField> CairoMemory {
     }
     pub fn read_memory(&self, index: usize) -> F {
         &self.stack[index]
-    }
-    pub fn initialize_memory(&self, input: Vec<F>) {
-        &self.pubsize = len(&input);
-        &self.stack = input;
     }
 }

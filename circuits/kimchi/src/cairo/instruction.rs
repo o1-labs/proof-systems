@@ -19,72 +19,104 @@ pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 /// Scalar field element type
 pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
 
-pub const NUM_FLAGS: usize = 16;
-pub const OP1_COEFF: usize = NUM_FLAGS;
-pub const OP0_COEFF: usize = OP1_COEFF + 1;
-pub const DST_COEFF: usize = OP0_COEFF + 1;
 
-/// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15)
-fn biased_rep(offset: u16) -> i16 {
-    let mut num: i32 = -2i32.pow(15u32);
-    for i in 0..16 {
-        // num = -2^15 + sum_(i=0..15) b_i * 2^i
-        num += 2i32.pow(i) * ((offset as i32 >> i) % 2);
-    }
-    num as i16
+/// A Cairo instruction
+pub struct CairoInstruction<F: FftField> {
+    /// 64bit word
+    pub word : u64,
+    /// vector of 16 flags
+    pub flags : Vec<F>,
+    /// offset of destination address
+    pub off_dst : F,
+    /// offset of first operand
+    pub off_op0 : F,
+    /// offset of second operand
+    pub off_op1 : F,
 }
 
-fn to_field<F: FftField>(item: i16) -> F {
-    if item < 0 {
-        // 1. Convert item to i32, so that the absolute value fits (e.g. 2^15 could not fit in i16 otherwise)
-        // 2. Once it is a positive value, store it as u32
-        // 3. Then it can be transformed to a field element
-        // 4. The transformed value is the negate of that field element (<=> F::from(0) - elem)
-        (F::from((i32::from(item)).abs() as u32)).neg()
-    } else {
-        F::from(item as u32)
+pub impl CairoInstruction {
+    pub const NUM_FLAGS: usize = 16;
+
+    /// Creates a CairoInstruction from a 64bit word
+    pub fn create(word: u64) -> CairoInstruction {
+        let (flags, off_dst, off_op0, off_op1) = word_to_field(&word);
+        CairoInstruction {
+            word,
+            flags,
+            off_dst,
+            off_op0,
+            off_op1,
+        }
     }
+
+    /// Converts a 64bit word Cairo bytecode instruction into a tuple of flags and 3 offsets
+    pub fn deserialize(&self) -> (Vec<u64>, i16, i16, i16) {
+        let mut flags = Vec::with_capacity(NUM_FLAGS);
+        let (off_dst, off_op0, off_op1): (i16, i16, i16);
+        // The least significant 16 bits
+        off_dst = biased_rep((self.word % 2u64.pow(16u32)) as u16);
+        // From the 32nd bit to the 17th
+        off_op0 = biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16);
+        // From the 48th bit to the 33rd
+        off_op1 = biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16);
+        // The most significant 16 bits
+        for i in 0..NUM_FLAGS {
+            flags.push((self.word >> (48 + i)) % 2);
+        }
+        (flags, off_op1, off_op0, off_dst)
+    }
+
+    /// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15)
+    fn biased_rep(offset: u16) -> i16 {
+        let mut num: i32 = -2i32.pow(15u32);
+        for i in 0..16 {
+            // num = -2^15 + sum_(i=0..15) b_i * 2^i
+            num += 2i32.pow(i) * ((offset as i32 >> i) % 2);
+        }
+        num as i16
+    }
+
+    /// Transforms a signed i16 element to a field element. This is used to compute offsets.
+    fn to_field<F: FftField>(item: i16) -> F {
+        if item < 0 {
+            // 1. Convert item to i32, so that the absolute value fits (e.g. 2^15 could not fit in i16 otherwise)
+            // 2. Once it is a positive value, store it as u32
+            // 3. Then it can be transformed to a field element
+            // 4. The transformed value is the negate of that field element (<=> F::from(0) - elem)
+            (F::from((i32::from(item)).abs() as u32)).neg()
+        } else {
+            F::from(item as u32)
+        }
+    }
+
+    /// Converts a 64bit word Cairo bytecode instruction into a vector of 19 field elements
+    fn word_to_field<F: FftField>(word: u64) -> (Vec<F>, F, F, F) {
+        let mut flags = Vec::with_capacity(NUM_FLAGS);
+        let (off_dst, off_op0, off_op1): (i16, i16, i16);
+        // The least significant 16 bits
+        off_dst = biased_rep((word % 2u64.pow(16u32)) as u16);
+        // From the 32nd bit to the 17th
+        off_op0 = biased_rep(((word % (2u64.pow(32u32))) >> 16) as u16);
+        // From the 48th bit to the 33rd
+        off_op1 = biased_rep(((word % (2u64.pow(48u32))) >> 32) as u16);
+        // The most significant 16 bits
+        for i in 0..NUM_FLAGS {
+            flags.push(F::from((word >> (48 + i)) % 2));
+        }
+        (flags, to_field::<F>(off_dst), to_field::<F>(off_op0), to_field::<F>(off_op1))
+    }
+
 }
 
-/// Converts a 64bit word Cairo bytecode instruction into a tuple of flags and 3 offsets
-fn deserialize_tup(instruction: u64) -> (Vec<u64>, i16, i16, i16) {
-    let mut flags = Vec::with_capacity(NUM_FLAGS);
-    let (off_dst, off_op0, off_op1): (i16, i16, i16);
-    // The least significant 16 bits
-    off_dst = biased_rep((instruction % 2u64.pow(16u32)) as u16);
-    // From the 32nd bit to the 17th
-    off_op0 = biased_rep(((instruction % (2u64.pow(32u32))) >> 16) as u16);
-    // From the 48th bit to the 33rd
-    off_op1 = biased_rep(((instruction % (2u64.pow(48u32))) >> 32) as u16);
-    // The most significant 16 bits
-    for i in 0..NUM_FLAGS {
-        flags.push((instruction >> (48 + i)) % 2);
-    }
-    (flags, off_op1, off_op0, off_dst)
-}
 
-/// Converts a 64bit word Cairo bytecode instruction into a vector of 19 field elements
-fn deserialize_vec<F: FftField>(instruction: u64) -> Vec<F> {
-    let mut vector = Vec::with_capacity(NUM_FLAGS + 3);
-    vector.resize(NUM_FLAGS + 3, F::zero());
-    let mut flags = Vec::with_capacity(NUM_FLAGS);
-    let (off_dst, off_op0, off_op1): (i16, i16, i16);
-    // The least significant 16 bits
-    off_dst = biased_rep((instruction % 2u64.pow(16u32)) as u16);
-    // From the 32nd bit to the 17th
-    off_op0 = biased_rep(((instruction % (2u64.pow(32u32))) >> 16) as u16);
-    // From the 48th bit to the 33rd
-    off_op1 = biased_rep(((instruction % (2u64.pow(48u32))) >> 32) as u16);
-    // The most significant 16 bits
-    for i in 0..NUM_FLAGS {
-        flags.push((instruction >> (48 + i)) % 2);
-        vector[i] = F::from(flags[i]);
-    }
-    vector[OP1_COEFF] = to_field::<F>(off_op1);
-    vector[OP0_COEFF] = to_field::<F>(off_op0);
-    vector[DST_COEFF] = to_field::<F>(off_dst);
-    vector
-}
+
+
+
+
+
+
+
+
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_cairo(wires: GateWires, instr: u64) -> Self {
@@ -311,14 +343,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
 
-    /// Checks if a circuit gate corresponds to a Cairo gate
-    pub fn is_cairo(&self) -> F {
-        if self.typ == GateType::Cairo {
-            F::one()
-        } else {
-            F::zero()
-        }
-    }
+    
 }
 
 #[cfg(test)]
