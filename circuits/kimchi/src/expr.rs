@@ -2126,7 +2126,6 @@ pub mod caml {
         }
     }
 
-    #[repr(C)]
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)]
     pub enum CamlPolishToken<F> {
         Alpha,
