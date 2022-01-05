@@ -496,7 +496,9 @@ where
 
             let expected_t_size = PERMUTS;
             let dummies = expected_t_size - t_comm.unshifted.len();
-            // Add some hiding commitments to 0
+            // Add `dummies` many hiding commitments to the 0 polynomial, since if the
+            // number of commitments in `t_comm` is less than the max size, it means that
+            // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
                 let w = Fr::<G>::rand(rng);
