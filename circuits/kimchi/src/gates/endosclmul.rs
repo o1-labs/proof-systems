@@ -70,22 +70,8 @@ impl<F: FftField> CircuitGate<F> {
         };
 
         let evals: [ProofEvaluations<F>; 2] = [
-            ProofEvaluations {
-                w: this,
-                z: F::zero(),
-                s: array_init(|_| F::zero()),
-                lookup: None,
-                generic_selector: F::zero(),
-                poseidon_selector: F::zero(),
-            },
-            ProofEvaluations {
-                w: next,
-                z: F::zero(),
-                s: array_init(|_| F::zero()),
-                lookup: None,
-                generic_selector: F::zero(),
-                poseidon_selector: F::zero(),
-            },
+            ProofEvaluations::dummy_with_witness_evaluations(this),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
         let constraints = endosclmul::constraints::<F>();
