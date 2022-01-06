@@ -80,12 +80,14 @@ where
 /// Inside the circuit, we have a specialized scalar multiplication which computes
 /// either
 ///
-/// ```
+/// ```ignore
 /// |g: G, x: G::ScalarField| g.scale(x + 2^n)
 /// ```
+///
 /// if the scalar field of G is greater than the size of the base field
 /// and
-/// ```
+///
+/// ```ignore
 /// |g: G, x: G::ScalarField| g.scale(2*x + 2^n)
 /// ```
 ///
@@ -94,13 +96,16 @@ where
 /// to our in-circuit scalar-multiplication function. This computes that inverse function.
 /// Namely,
 ///
-/// ```
+/// ```ignore
 /// |x: G::ScalarField| x - 2^n
 /// ```
+///
 /// when the scalar field is larger than the base field and
-/// ```
+///
+/// ```ignore
 /// |x: G::ScalarField| (x - 2^n) / 2
 /// ```
+///
 /// in the other case.
 pub fn shift_scalar<G: AffineCurve>(x: G::ScalarField) -> G::ScalarField
 where
