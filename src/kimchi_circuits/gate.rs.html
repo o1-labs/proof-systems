@@ -578,6 +578,10 @@
 <span id="576">576</span>
 <span id="577">577</span>
 <span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -597,7 +601,14 @@ This source file implements Plonk constraint gate primitive.
 
 <span class="doccomment">/// A row accessible from a given row, corresponds to the fact that we open all polynomials</span>
 <span class="doccomment">/// at `zeta` **and** `omega * zeta`.</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(
+    <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>,
+    <span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Enum</span>)
+)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;wasm_types&quot;</span>, <span class="ident">wasm_bindgen::prelude::wasm_bindgen</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">proptest_derive::Arbitrary</span>))]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CurrOrNext</span> {
     <span class="ident">Curr</span>,
     <span class="ident">Next</span>,
@@ -699,27 +710,28 @@ This source file implements Plonk constraint gate primitive.
     <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>,
     <span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Enum</span>)
 )]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;wasm_types&quot;</span>, <span class="ident">wasm_bindgen::prelude::wasm_bindgen</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">proptest_derive::Arbitrary</span>))]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GateType</span> {
     <span class="doccomment">/// Zero gate</span>
     <span class="ident">Zero</span> <span class="op">=</span> <span class="number">0</span>,
     <span class="doccomment">/// Generic arithmetic gate</span>
-    <span class="ident">Generic</span>,
+    <span class="ident">Generic</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="doccomment">/// Poseidon permutation gate</span>
-    <span class="ident">Poseidon</span>,
+    <span class="ident">Poseidon</span> <span class="op">=</span> <span class="number">2</span>,
     <span class="doccomment">/// Complete EC addition in Affine form</span>
-    <span class="ident">CompleteAdd</span>,
+    <span class="ident">CompleteAdd</span> <span class="op">=</span> <span class="number">3</span>,
     <span class="doccomment">/// EC variable base scalar multiplication</span>
-    <span class="ident">VarBaseMul</span>,
+    <span class="ident">VarBaseMul</span> <span class="op">=</span> <span class="number">4</span>,
     <span class="doccomment">/// EC variable base scalar multiplication with group endomorphim optimization</span>
-    <span class="ident">EndoMul</span>,
+    <span class="ident">EndoMul</span> <span class="op">=</span> <span class="number">5</span>,
     <span class="doccomment">/// Gate for computing the scalar corresponding to an endoscaling</span>
-    <span class="ident">EndoMulScalar</span>,
+    <span class="ident">EndoMulScalar</span> <span class="op">=</span> <span class="number">6</span>,
     <span class="doccomment">/// ChaCha</span>
-    <span class="ident">ChaCha0</span>,
-    <span class="ident">ChaCha1</span>,
-    <span class="ident">ChaCha2</span>,
-    <span class="ident">ChaChaFinal</span>,
+    <span class="ident">ChaCha0</span> <span class="op">=</span> <span class="number">7</span>,
+    <span class="ident">ChaCha1</span> <span class="op">=</span> <span class="number">8</span>,
+    <span class="ident">ChaCha2</span> <span class="op">=</span> <span class="number">9</span>,
+    <span class="ident">ChaChaFinal</span> <span class="op">=</span> <span class="number">10</span>,
 }
 
 <span class="doccomment">/// Describes the desired lookup configuration.</span>
@@ -1143,11 +1155,7 @@ This source file implements Plonk constraint gate primitive.
         <span class="attribute">#[<span class="ident">test</span>]</span>
         <span class="kw">fn</span> <span class="ident">test_gate_serialization</span>(<span class="ident">cg</span> <span class="kw">in</span> <span class="ident">arb_circuit_gate</span>()) {
             <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">rmp_serde::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">cg</span>).<span class="ident">unwrap</span>();
-            <span class="macro">println!</span>(<span class="string">&quot;gate: {:?}&quot;</span>, <span class="ident">cg</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;encoded gate: {:?}&quot;</span>, <span class="ident">encoded</span>);
             <span class="kw">let</span> <span class="ident">decoded</span>: <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">rmp_serde::from_read_ref</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>).<span class="ident">unwrap</span>();
-
-            <span class="macro">println!</span>(<span class="string">&quot;decoded gate: {:?}&quot;</span>, <span class="ident">decoded</span>);
             <span class="macro">prop_assert_eq!</span>(<span class="ident">cg</span>.<span class="ident">typ</span>, <span class="ident">decoded</span>.<span class="ident">typ</span>);
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">PERMUTS</span> {
                 <span class="macro">prop_assert_eq!</span>(<span class="ident">cg</span>.<span class="ident">wires</span>[<span class="ident">i</span>], <span class="ident">decoded</span>.<span class="ident">wires</span>[<span class="ident">i</span>]);
@@ -1157,5 +1165,5 @@ This source file implements Plonk constraint gate primitive.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e100ec5bc 2021-12-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>

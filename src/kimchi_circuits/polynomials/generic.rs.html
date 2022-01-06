@@ -259,6 +259,23 @@
 <span id="257">257</span>
 <span id="258">258</span>
 <span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements generic constraint polynomials.
@@ -269,11 +286,11 @@ This source file implements generic constraint polynomials.
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::wires::GENERICS</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">nolookup::constraints::ConstraintSystem</span>, <span class="ident">polynomial::COLUMNS</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly::Polynomial</span>;
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
-    <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
+    <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>,
+    <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
 };
-<span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
+<span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -328,22 +345,37 @@ This source file implements generic constraint polynomials.
     }
 
     <span class="doccomment">/// generic constraint linearization poly contribution computation</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>], <span class="ident">generic_zeta</span>: <span class="ident">F</span>) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">w_zeta</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>; <span class="ident">COLUMNS</span>], <span class="ident">generic_zeta</span>: <span class="ident">F</span>) -&gt; <span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
+
         <span class="kw">let</span> <span class="ident">scalars</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::gnrc_scalars</span>(<span class="ident">w_zeta</span>, <span class="ident">generic_zeta</span>);
 
+        <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">Evaluations::from_vec_and_domain</span>(<span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">n</span>], <span class="ident">d1</span>);
+
+        <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="number">0</span>].<span class="ident">evals</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="ident">n</span>;
+
         <span class="comment">// w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2]</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">coefficientsm</span>
+        <span class="self">self</span>.<span class="ident">coefficients8</span>
             .<span class="ident">iter</span>()
             .<span class="ident">zip</span>(<span class="ident">scalars</span>[<span class="number">1</span>..].<span class="ident">iter</span>())
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">q</span>, <span class="ident">s</span>)<span class="op">|</span> <span class="ident">q</span>.<span class="ident">scale</span>(<span class="kw-2">*</span><span class="ident">s</span>))
-            .<span class="ident">fold</span>(<span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>(), <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">x</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">y</span>);
+            .<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">q</span>, <span class="ident">s</span>)<span class="op">|</span> {
+                <span class="ident">res</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> {
+                    <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">s</span> <span class="op">*</span> <span class="ident">q</span>.<span class="ident">evals</span>[<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span>];
+                });
+            });
 
         <span class="comment">// multiplication</span>
-        <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficientsm</span>[<span class="ident">MUL_COEFF</span>].<span class="ident">scale</span>(<span class="ident">scalars</span>[<span class="number">0</span>]);
+        <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">scalars</span>[<span class="number">0</span>];
+        <span class="ident">res</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> {
+            <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="ident">s</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">MUL_COEFF</span>][<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span>];
+        });
 
         <span class="comment">// constant selector</span>
-        <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficientsm</span>[<span class="ident">CONSTANT_COEFF</span>].<span class="ident">scale</span>(<span class="ident">generic_zeta</span>);
+        <span class="ident">res</span>.<span class="ident">evals</span>.<span class="ident">par_iter_mut</span>().<span class="ident">enumerate</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">e</span>)<span class="op">|</span> {
+            <span class="kw-2">*</span><span class="ident">e</span> <span class="op">+</span><span class="op">=</span> <span class="ident">generic_zeta</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">CONSTANT_COEFF</span>][<span class="ident">scale</span> <span class="op">*</span> <span class="ident">i</span>];
+        });
 
         <span class="comment">// l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc</span>
         <span class="ident">res</span>
@@ -356,17 +388,19 @@ This source file implements generic constraint polynomials.
         <span class="ident">public</span>: <span class="kw-2">&amp;</span><span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">bool</span> {
         <span class="comment">// multiplication</span>
-        <span class="kw">let</span> <span class="ident">multiplication</span> <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="number">1</span>]) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficientsm</span>[<span class="ident">MUL_COEFF</span>];
+        <span class="kw">let</span> <span class="ident">coefficientsm</span>: [<span class="kw">_</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
+            <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">coefficients8</span>[<span class="ident">i</span>].<span class="ident">clone</span>().<span class="ident">interpolate</span>());
+        <span class="kw">let</span> <span class="ident">multiplication</span> <span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="number">0</span>] <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">witness</span>[<span class="number">1</span>]) <span class="op">*</span> <span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">MUL_COEFF</span>];
 
         <span class="comment">// addition (of left, right, output wires)</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wires</span> <span class="op">=</span> <span class="ident">DensePolynomial::zero</span>();
-        <span class="kw">for</span> (<span class="ident">w</span>, <span class="ident">q</span>) <span class="kw">in</span> <span class="ident">witness</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="self">self</span>.<span class="ident">coefficientsm</span>.<span class="ident">iter</span>()).<span class="ident">take</span>(<span class="ident">GENERICS</span>) {
+        <span class="kw">for</span> (<span class="ident">w</span>, <span class="ident">q</span>) <span class="kw">in</span> <span class="ident">witness</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">coefficientsm</span>.<span class="ident">iter</span>()).<span class="ident">take</span>(<span class="ident">GENERICS</span>) {
             <span class="ident">wires</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">w</span> <span class="op">*</span> <span class="ident">q</span>);
         }
 
         <span class="comment">// compute f</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">multiplication</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">wires</span>;
-        <span class="ident">f</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">coefficientsm</span>[<span class="ident">CONSTANT_COEFF</span>];
+        <span class="ident">f</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">coefficientsm</span>[<span class="ident">CONSTANT_COEFF</span>];
         <span class="ident">f</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">f</span> <span class="op">*</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">genericm</span>;
         <span class="ident">f</span> <span class="op">+</span><span class="op">=</span> <span class="ident">public</span>;
 
@@ -380,7 +414,7 @@ This source file implements generic constraint polynomials.
 
         <span class="comment">//</span>
         <span class="kw">for</span> (<span class="ident">row</span>, <span class="ident">elem</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">elements</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">qc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coefficientsm</span>[<span class="ident">CONSTANT_COEFF</span>].<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elem</span>);
+            <span class="kw">let</span> <span class="ident">qc</span> <span class="op">=</span> <span class="ident">coefficientsm</span>[<span class="ident">CONSTANT_COEFF</span>].<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elem</span>);
 
             <span class="comment">// qc check</span>
             <span class="kw">if</span> <span class="ident">qc</span> <span class="op">!</span><span class="op">=</span> <span class="ident">F::zero</span>() <span class="op">&amp;&amp;</span> <span class="op">-</span><span class="ident">qc</span> <span class="op">!</span><span class="op">=</span> <span class="ident">values</span>[<span class="number">0</span>].<span class="number">0</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elem</span>) {
@@ -400,7 +434,7 @@ This source file implements generic constraint polynomials.
                 }
                 <span class="macro">println!</span>(
                     <span class="string">&quot;  q_M = {} | mul = {}&quot;</span>,
-                    <span class="self">self</span>.<span class="ident">coefficientsm</span>[<span class="ident">MUL_COEFF</span>].<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elem</span>),
+                    <span class="ident">coefficientsm</span>[<span class="ident">MUL_COEFF</span>].<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elem</span>),
                     <span class="ident">multiplication</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">elem</span>)
                 );
                 <span class="macro">println!</span>(<span class="string">&quot;  q_C = {}&quot;</span>, <span class="ident">qc</span>);
@@ -510,7 +544,7 @@ This source file implements generic constraint polynomials.
         <span class="kw">let</span> <span class="ident">w_zeta</span>: [<span class="ident">Fp</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">col</span>].<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>));
         <span class="kw">let</span> <span class="ident">generic_zeta</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">genericm</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
 
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">w_zeta</span>, <span class="ident">generic_zeta</span>);
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">gnrc_lnrz</span>(<span class="kw-2">&amp;</span><span class="ident">w_zeta</span>, <span class="ident">generic_zeta</span>).<span class="ident">interpolate</span>();
         <span class="kw">let</span> <span class="ident">f_zeta</span> <span class="op">=</span> <span class="ident">f</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">zeta</span>);
 
         <span class="comment">// check that f(z) = t(z) * Z_H(z)</span>
@@ -519,5 +553,5 @@ This source file implements generic constraint polynomials.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e100ec5bc 2021-12-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>

@@ -139,6 +139,8 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">index</span>::{<span class="ident">Index</span>, <span class="ident">VerifierIndex</span>},
     <span class="ident">prover::ProverProof</span>,
@@ -182,8 +184,8 @@
     <span class="ident">verifier_index</span>: <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">BenchmarkCtx</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BenchmarkCtx</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="comment">// create the circuit</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">abs_row</span> <span class="op">=</span> <span class="number">0</span>;
@@ -224,7 +226,9 @@
             <span class="ident">verifier_index</span>,
         }
     }
+}
 
+<span class="kw">impl</span> <span class="ident">BenchmarkCtx</span> {
     <span class="doccomment">/// Produces a proof</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_proof</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
         <span class="comment">// set up</span>
@@ -279,5 +283,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e100ec5bc 2021-12-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>

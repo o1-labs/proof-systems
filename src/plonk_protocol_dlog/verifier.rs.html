@@ -459,6 +459,7 @@
 <span id="457">457</span>
 <span id="458">458</span>
 <span id="459">459</span>
+<span id="460">460</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements zk-proof batch verifier functionality.
@@ -469,7 +470,7 @@ This source file implements zk-proof batch verifier functionality.
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prover</span>::{<span class="ident">range</span>, <span class="ident">ProverProof</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plonk_sponge::FrSponge</span>;
 <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
+<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Polynomial</span>};
 <span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{
     <span class="ident">b_poly</span>, <span class="ident">b_poly_coefficients</span>, <span class="ident">combined_inner_product</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">CommitmentField</span>, <span class="ident">PolyComm</span>,
@@ -491,6 +492,7 @@ This source file implements zk-proof batch verifier functionality.
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
+    <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
 {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prev_chal_evals</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -919,5 +921,5 @@ This source file implements zk-proof batch verifier functionality.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="plonk_protocol_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e100ec5bc 2021-12-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="plonk_protocol_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>

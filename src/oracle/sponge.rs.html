@@ -238,11 +238,6 @@
 <span id="236">236</span>
 <span id="237">237</span>
 <span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>, <span class="ident">SpongeConstants</span>};
 <span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">short_weierstrass_jacobian::GroupAffine</span>, <span class="ident">SWModelParameters</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">FpParameters</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
@@ -398,37 +393,32 @@
 
     <span class="kw">fn</span> <span class="ident">absorb_fr</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">x</span>: <span class="kw-2">&amp;</span>[<span class="ident">P::ScalarField</span>]) {
         <span class="self">self</span>.<span class="ident">last_squeezed</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-        <span class="kw">let</span> <span class="ident">total_length</span> <span class="op">=</span> <span class="ident">P::ScalarField::size_in_bits</span>();
 
         <span class="ident">x</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> {
-            <span class="comment">// padding (since unpadded_bits is a BigInt, it can be larger than the total_length)</span>
-            <span class="kw">let</span> <span class="ident">unpadded_bits</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">into_repr</span>().<span class="ident">to_bits_be</span>();
-            <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">total_length</span>.<span class="ident">saturating_sub</span>(<span class="ident">unpadded_bits</span>.<span class="ident">len</span>());
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="bool-val">false</span>; <span class="ident">padding</span>];
-            <span class="ident">bits</span>.<span class="ident">extend_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">unpadded_bits</span>);
+            <span class="kw">let</span> <span class="ident">bits</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">into_repr</span>().<span class="ident">to_bits_le</span>();
 
             <span class="comment">// absorb</span>
             <span class="kw">if</span> <span class="op">&lt;</span><span class="ident">P::ScalarField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::Params::MODULUS</span>
                 <span class="op">&lt;</span> <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::Params::MODULUS</span>.<span class="ident">into</span>()
             {
                 <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">P::BaseField::from_repr</span>(
-                    <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt::from_bits_be</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>),
+                    <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt::from_bits_le</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>),
                 )
                 .<span class="ident">expect</span>(<span class="string">&quot;padding code has a bug&quot;</span>)]);
             } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">low_bits</span> <span class="op">=</span> <span class="ident">P::BaseField::from_repr</span>(
-                    <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt::from_bits_be</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>[<span class="number">1</span>..]),
-                )
-                .<span class="ident">expect</span>(<span class="string">&quot;padding code has a bug&quot;</span>);
-
-                <span class="kw">let</span> <span class="ident">high_bit</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">bits</span>[<span class="number">0</span>] {
+                <span class="kw">let</span> <span class="ident">low_bit</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">bits</span>[<span class="number">0</span>] {
                     <span class="ident">P::BaseField::one</span>()
                 } <span class="kw">else</span> {
                     <span class="ident">P::BaseField::zero</span>()
                 };
 
-                <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">low_bits</span>]);
-                <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">high_bit</span>]);
+                <span class="kw">let</span> <span class="ident">high_bits</span> <span class="op">=</span> <span class="ident">P::BaseField::from_repr</span>(
+                    <span class="op">&lt;</span><span class="ident">P::BaseField</span> <span class="kw">as</span> <span class="ident">PrimeField</span><span class="op">&gt;</span><span class="ident">::BigInt::from_bits_le</span>(<span class="kw-2">&amp;</span><span class="ident">bits</span>[<span class="number">1</span>..<span class="ident">bits</span>.<span class="ident">len</span>()]),
+                )
+                .<span class="ident">expect</span>(<span class="string">&quot;padding code has a bug&quot;</span>);
+
+                <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">high_bits</span>]);
+                <span class="self">self</span>.<span class="ident">sponge</span>.<span class="ident">absorb</span>(<span class="kw-2">&amp;</span>[<span class="ident">low_bit</span>]);
             }
         });
     }
@@ -487,5 +477,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e100ec5bc 2021-12-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>

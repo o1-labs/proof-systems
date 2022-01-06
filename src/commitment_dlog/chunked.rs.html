@@ -48,14 +48,16 @@
 <span id="46">46</span>
 <span id="47">47</span>
 <span id="48">48</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec</span>::{<span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>};
+<span id="49">49</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ec::ProjectiveCurve</span>;
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">Zero</span>};
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::commitment::CommitmentCurve</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::PolyComm</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span> <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">C</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">C</span>: <span class="ident">AffineCurve</span>,
+    <span class="ident">C</span>: <span class="ident">CommitmentCurve</span>,
 {
     <span class="doccomment">/// Multiplies each commitment chunk of f with powers of zeta^n</span>
     <span class="doccomment">/// Note that it ignores the shifted part.</span>
@@ -67,7 +69,7 @@
         <span class="comment">// (https://en.wikipedia.org/wiki/Horner%27s_method)</span>
         <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">unshifted</span>.<span class="ident">iter</span>().<span class="ident">rev</span>() {
             <span class="ident">res</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">zeta_n</span>;
-            <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="ident">chunk</span>)
+            <span class="ident">res</span>.<span class="ident">add_assign_mixed</span>(<span class="ident">chunk</span>);
         }
 
         <span class="ident">PolyComm</span> {
@@ -97,5 +99,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (e100ec5bc 2021-12-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
 </body></html>
