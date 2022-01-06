@@ -193,13 +193,12 @@ pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collection
 
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
-    lookup_used: bool,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
 ) -> Linearization<Vec<PolishToken<F>>> {
     let evaluated_cols = linearization_columns::<F>();
 
-    constraints_expr(domain, lookup_used, chacha, dummy_lookup_value)
+    constraints_expr(domain, chacha, dummy_lookup_value)
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish())
