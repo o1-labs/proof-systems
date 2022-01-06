@@ -16,7 +16,9 @@ use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_ff::{
+    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
+};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
     UVPolynomial,
@@ -75,9 +77,51 @@ where
     }
 }
 
-pub fn shift_scalar<F: PrimeField>(x: F) -> F {
-    let two: F = 2_u64.into();
-    x - two.pow(&[F::Params::MODULUS_BITS as u64])
+/// Inside the circuit, we have a specialized scalar multiplication which computes
+/// either
+///
+/// ```ignore
+/// |g: G, x: G::ScalarField| g.scale(x + 2^n)
+/// ```
+///
+/// if the scalar field of G is greater than the size of the base field
+/// and
+///
+/// ```ignore
+/// |g: G, x: G::ScalarField| g.scale(2*x + 2^n)
+/// ```
+///
+/// otherwise. So, if we want to actually scale by `s`, we need to apply the inverse function
+/// of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case), before supplying the scalar
+/// to our in-circuit scalar-multiplication function. This computes that inverse function.
+/// Namely,
+///
+/// ```ignore
+/// |x: G::ScalarField| x - 2^n
+/// ```
+///
+/// when the scalar field is larger than the base field and
+///
+/// ```ignore
+/// |x: G::ScalarField| (x - 2^n) / 2
+/// ```
+///
+/// in the other case.
+pub fn shift_scalar<G: AffineCurve>(x: G::ScalarField) -> G::ScalarField
+where
+    G::BaseField: PrimeField,
+{
+    let n1 = <G::ScalarField as PrimeField>::Params::MODULUS;
+    let n2 = <G::ScalarField as PrimeField>::BigInt::from_bits_le(
+        &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
+    );
+    let two: G::ScalarField = (2u64).into();
+    let two_pow = two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
+    if n1 < n2 {
+        (x - (two_pow + G::ScalarField::one())) / two
+    } else {
+        x - two_pow
+    }
 }
 
 impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
@@ -483,16 +527,20 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        Self::commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+        Self::commit_helper(&plnm.coeffs[..], &self.g[..], None, plnm.is_zero(), max)
     }
 
-    fn commit_helper(
+    pub fn commit_helper(
         scalars: &[Fr<G>],
         basis: &[G],
+        n: Option<usize>,
         is_zero: bool,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let n = basis.len();
+        let n = match n {
+            Some(n) => n,
+            None => basis.len(),
+        };
         let p = scalars.len();
 
         // committing all the segments without shifting
@@ -557,9 +605,11 @@ where
                 let v: Vec<_> = (0..(domain.size as usize))
                     .map(|i| plnm.evals[s * i])
                     .collect();
-                Self::commit_helper(&v[..], basis, is_zero, max)
+                Self::commit_helper(&v[..], basis, None, is_zero, max)
             }
-            std::cmp::Ordering::Equal => Self::commit_helper(&plnm.evals[..], basis, is_zero, max),
+            std::cmp::Ordering::Equal => {
+                Self::commit_helper(&plnm.evals[..], basis, None, is_zero, max)
+            }
             std::cmp::Ordering::Greater => {
                 panic!("desired commitment domain size greater than evaluations' domain size")
             }
@@ -600,6 +650,7 @@ where
     where
         EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
         RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
@@ -608,6 +659,8 @@ where
         let padding = padded_length - self.g.len();
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
+
+        let mut combined_polynomial_terms = vec![];
 
         // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
         let (p, blinding_factor) = {
@@ -623,7 +676,7 @@ where
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    while offset < p_i.coeffs.len() {
+                    while j < omegas.unshifted.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
                             &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
@@ -633,6 +686,7 @@ where
                         );
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
+
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
@@ -646,7 +700,7 @@ where
                     }
                 } else {
                     assert!(omegas.shifted.is_none());
-                    while offset < p_i.coeffs.len() {
+                    while j < omegas.unshifted.len() {
                         let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
                             &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
@@ -654,6 +708,12 @@ where
                                 offset + self.g.len()
                             }],
                         );
+
+                        combined_polynomial_terms.push(
+                            self.commit_non_hiding(&segment, None).unshifted[0]
+                                + self.h.mul(omegas.unshifted[j]).into_affine(),
+                        );
+
                         // always mixing in the unshifted segments
                         p += &segment.scale(scale);
                         omega += &(omegas.unshifted[j] * scale);
@@ -690,7 +750,7 @@ where
             .map(|(a, b)| *a * b)
             .fold(Fr::<G>::zero(), |acc, x| acc + x);
 
-        sponge.absorb_fr(&[shift_scalar(combined_inner_product)]);
+        sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();
         let u: G = to_group(group_map, t);
@@ -840,6 +900,7 @@ where
     where
         EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
         RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
@@ -904,7 +965,7 @@ where
                 combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
             };
 
-            sponge.absorb_fr(&[shift_scalar(combined_inner_product0)]);
+            sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
 
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
@@ -990,6 +1051,7 @@ where
                     for comm_ch in comm.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
+
                         xi_i *= *xi;
                     }
 
@@ -999,6 +1061,7 @@ where
                                 // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
                                 scalars.push(rand_base_i_c_i * xi_i);
                                 points.push(comm_ch);
+
                                 xi_i *= *xi;
                             }
                         }

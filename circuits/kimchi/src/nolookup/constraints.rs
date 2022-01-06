@@ -56,9 +56,6 @@ pub struct ConstraintSystem<F: FftField> {
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
-    /// coefficients polynomials in coefficient form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
@@ -73,25 +70,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// poseidon constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub psm: DP<F>,
-
-    // ECC arithmetic selector polynomials
-    // -----------------------------------
-    /// EC point addition constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub complete_addm: DP<F>,
-    /// mulm constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub mulm: DP<F>,
-    /// emulm constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub emulm: DP<F>,
-    /// endomul scalar computation
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub endomul_scalarm: DP<F>,
-
-    //
-    // Polynomials over lagrange base
-    //
 
     // Generic constraint selector polynomials
     // ---------------------------------------
@@ -346,9 +324,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
         assert!(domain.d1.size > ZK_ROWS);
 
-        // pre-compute all the elements
-        let mut sid = domain.d1.elements().collect::<Vec<_>>();
-
         // pad the rows: add zero gates to reach the domain size
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
@@ -367,6 +342,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // sample the coordinate shifts
         let shifts = Shifts::new(&domain.d1);
+
+        // pre-compute all the elements
+        let sid = shifts.map[0].clone();
 
         // compute permutation polynomials
         let mut sigmal1: [Vec<F>; PERMUTS] =
@@ -394,9 +372,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
 
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        let mut s = sid[0..2].to_vec(); // TODO(mimoo): why do we do that?
-        sid.append(&mut s);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
         let zkpm = zk_polynomial(domain.d1);
@@ -581,7 +556,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             lookup_tables8,
             lookup_tables: lookup_tables_polys,
             endomul_scalar8,
-            endomul_scalarm,
             domain,
             public,
             sid,
@@ -590,16 +564,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             sigmam,
             genericm,
             generic4,
-            coefficientsm,
             coefficients8,
             ps8,
             psm,
-            complete_addm,
             complete_addl4,
             mull8,
-            mulm,
             emull,
-            emulm,
             l1,
             l04,
             l08,
@@ -635,6 +605,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
+
+                if wire.col >= PERMUTS {
+                    return Err(GateError::Custom {
+                        row,
+                        err: format!(
+                            "a wire can only be connected to the first {} columns",
+                            PERMUTS
+                        ),
+                    });
+                }
+
                 if witness[col][row] != witness[wire.col][wire.row] {
                     return Err(GateError::DisconnectedWires(
                         Wire { col, row },

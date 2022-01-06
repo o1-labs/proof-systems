@@ -17,7 +17,14 @@ use std::io::{Result as IoResult, Write};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
     Next,
@@ -119,27 +126,28 @@ impl<F: Field> JointLookup<F> {
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
     /// Zero gate
     Zero = 0,
     /// Generic arithmetic gate
-    Generic,
+    Generic = 1,
     /// Poseidon permutation gate
-    Poseidon,
+    Poseidon = 2,
     /// Complete EC addition in Affine form
-    CompleteAdd,
+    CompleteAdd = 3,
     /// EC variable base scalar multiplication
-    VarBaseMul,
+    VarBaseMul = 4,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul,
+    EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar,
+    EndoMulScalar = 6,
     /// ChaCha
-    ChaCha0,
-    ChaCha1,
-    ChaCha2,
-    ChaChaFinal,
+    ChaCha0 = 7,
+    ChaCha1 = 8,
+    ChaCha2 = 9,
+    ChaChaFinal = 10,
 }
 
 /// Describes the desired lookup configuration.
@@ -563,11 +571,7 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            println!("gate: {:?}", cg);
-            println!("encoded gate: {:?}", encoded);
             let decoded: CircuitGate<Fp> = rmp_serde::from_read_ref(&encoded).unwrap();
-
-            println!("decoded gate: {:?}", decoded);
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);

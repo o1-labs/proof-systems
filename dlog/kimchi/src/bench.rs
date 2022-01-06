@@ -41,8 +41,8 @@ pub struct BenchmarkCtx {
     verifier_index: VerifierIndex<Affine>,
 }
 
-impl BenchmarkCtx {
-    pub fn new() -> Self {
+impl Default for BenchmarkCtx {
+    fn default() -> Self {
         // create the circuit
         let mut gates = vec![];
         let mut abs_row = 0;
@@ -83,7 +83,9 @@ impl BenchmarkCtx {
             verifier_index,
         }
     }
+}
 
+impl BenchmarkCtx {
     /// Produces a proof
     pub fn create_proof(&self) -> ProverProof<Affine> {
         // set up

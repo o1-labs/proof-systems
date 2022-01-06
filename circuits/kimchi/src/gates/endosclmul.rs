@@ -28,9 +28,11 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
+use crate::expr;
 use crate::gate::{CircuitGate, GateType};
+use crate::polynomials::endosclmul;
 use crate::{
-    nolookup::constraints::ConstraintSystem,
+    nolookup::{constraints::ConstraintSystem, scalars::ProofEvaluations},
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::FftField;
@@ -51,63 +53,38 @@ impl<F: FftField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-        let xq1 = (F::one() + ((cs.endo - F::one()) * next[12])) * this[0];
-        let xq2 = (F::one() + ((cs.endo - F::one()) * next[14])) * this[0];
-
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        // verify booleanity of the scalar bits
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
 
-        ensure_eq!(F::zero(), this[11] - this[11].square(), "wrong eq 1");
-        ensure_eq!(F::zero(), this[12] - this[12].square(), "wrong eq 2");
-        ensure_eq!(F::zero(), this[13] - this[13].square(), "wrong eq 3");
-        ensure_eq!(F::zero(), this[14] - this[14].square(), "wrong eq 4");
-        ensure_eq!(
-            F::zero(),
-            (xq1 - this[4]) * this[9] - (this[11].double() - F::one()) * this[2] + this[5],
-            "wrong eq 5"
-        );
-        ensure_eq!(
-            F::zero(),
-            (this[4].double() - this[9].square() + xq1)
-                * ((this[4] - this[7]) * this[9] + this[8] + this[5])
-                - (this[4] - this[7]) * this[5].double(),
-            "wrong eq 6"
-        );
-        ensure_eq!(
-            F::zero(),
-            (this[8] + this[5]).square()
-                - (this[4] - this[7]).square() * (this[9].square() - xq1 + this[7]),
-            "wrong eq 7"
-        );
-        ensure_eq!(
-            F::zero(),
-            (xq2 - this[7]) * this[10] - (this[13].double() - F::one()) * this[2] + this[8],
-            "wrong eq 8"
-        );
-        ensure_eq!(
-            F::zero(),
-            (this[7].double() - this[10].square() + xq2)
-                * ((this[7] - this[2]) * this[10] + this[3] + this[8])
-                - (this[7] - this[2]) * this[8].double(),
-            "wrong eq 9"
-        );
-        ensure_eq!(
-            F::zero(),
-            (this[3] + this[8]).square()
-                - (this[7] - this[2]).square() * (this[10].square() - xq2 + this[2]),
-            "wrong eq 10"
-        );
-        ensure_eq!(
-            F::zero(),
-            (((witness[6][row + 1].double() + this[11]).double() + this[12]).double() + this[13])
-                .double()
-                + this[14]
-                - this[6],
-            "wrong eq 11"
-        );
+        let pt = F::from(123456u64);
+
+        let constants = expr::Constants {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: F::zero(),
+            mds: vec![],
+            endo_coefficient: cs.endo,
+        };
+
+        let evals: [ProofEvaluations<F>; 2] = [
+            ProofEvaluations::dummy_with_witness_evaluations(this),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
+        ];
+
+        let constraints = endosclmul::constraints::<F>();
+        for (i, c) in constraints.iter().enumerate() {
+            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
+                Ok(x) => {
+                    if x != F::zero() {
+                        return Err(format!("Bad endo equation {}", i));
+                    }
+                }
+                Err(e) => return Err(format!("evaluation failed: {}", e)),
+            }
+        }
 
         Ok(())
     }
