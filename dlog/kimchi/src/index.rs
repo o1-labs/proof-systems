@@ -21,7 +21,7 @@ use commitment_dlog::{
     CommitmentField,
 };
 use kimchi_circuits::{
-    expr::{Column, Expr, Linearization, PolishToken},
+    expr::{Column, Expr, Linearization, PolishToken, E},
     gate::{GateType, LookupInfo, LookupsUsed},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
@@ -144,28 +144,11 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-pub fn expr_linearization<F: FftField + SquareRootField>(
+pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
-) -> Linearization<Vec<PolishToken<F>>> {
-    let lookup_info = LookupInfo::<F>::create();
-    let evaluated_cols = {
-        let mut h = std::collections::HashSet::new();
-        use Column::*;
-        for i in 0..COLUMNS {
-            h.insert(Witness(i));
-        }
-        for i in 0..(lookup_info.max_per_row + 1) {
-            h.insert(LookupSorted(i));
-        }
-        h.insert(Z);
-        h.insert(LookupAggreg);
-        h.insert(LookupTable);
-        h.insert(Index(GateType::Poseidon));
-        h.insert(Index(GateType::Generic));
-        h
-    };
+) -> E<F> {
     let expr = poseidon::constraint();
     let expr = expr + varbasemul::constraint(super::range::MUL.start);
     let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
@@ -187,7 +170,37 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
         expr
     };
 
-    expr.linearize(evaluated_cols)
+    expr
+}
+
+pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
+    let lookup_info = LookupInfo::<F>::create();
+    let mut h = std::collections::HashSet::new();
+    use Column::*;
+    for i in 0..COLUMNS {
+        h.insert(Witness(i));
+    }
+    for i in 0..(lookup_info.max_per_row + 1) {
+        h.insert(LookupSorted(i));
+    }
+    h.insert(Z);
+    h.insert(LookupAggreg);
+    h.insert(LookupTable);
+    h.insert(Index(GateType::Poseidon));
+    h.insert(Index(GateType::Generic));
+    h
+}
+
+pub fn expr_linearization<F: FftField + SquareRootField>(
+    domain: D<F>,
+    lookup_used: bool,
+    chacha: bool,
+    dummy_lookup_value: Option<&[F]>,
+) -> Linearization<Vec<PolishToken<F>>> {
+    let evaluated_cols = linearization_columns::<F>();
+
+    constraints_expr(domain, lookup_used, chacha, dummy_lookup_value)
+        .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish())
 }
