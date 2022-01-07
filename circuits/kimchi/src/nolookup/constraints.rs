@@ -157,8 +157,6 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_tables: Vec<Vec<DP<F>>>,
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
     pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub lookup_table_lengths: Vec<usize>,
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
@@ -507,9 +505,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         //
 
-        // get the height of each lookup table
-        let lookup_table_lengths: Vec<_> = lookup_tables.iter().map(|v| v[0].len()).collect();
-
         // get the last entry in each column of each table
         let dummy_lookup_values: Vec<Vec<F>> = lookup_tables
             .iter()
@@ -552,7 +547,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             chacha8,
             lookup_selectors,
             dummy_lookup_values,
-            lookup_table_lengths,
             lookup_tables8,
             lookup_tables: lookup_tables_polys,
             endomul_scalar8,
