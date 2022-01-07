@@ -700,12 +700,6 @@
 <span id="698">698</span>
 <span id="699">699</span>
 <span id="700">700</span>
-<span id="701">701</span>
-<span id="702">702</span>
-<span id="703">703</span>
-<span id="704">704</span>
-<span id="705">705</span>
-<span id="706">706</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk circuit constraint primitive.
@@ -865,8 +859,6 @@ This source file implements Plonk circuit constraint primitive.
     <span class="kw">pub</span> <span class="ident">lookup_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">lookup_tables8</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">lookup_table_lengths</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// Lookup selectors:</span>
     <span class="doccomment">/// For each kind of lookup-pattern, we have a selector that&#39;s</span>
@@ -1215,9 +1207,6 @@ This source file implements Plonk circuit constraint primitive.
         <span class="comment">// Lookup</span>
         <span class="comment">//</span>
 
-        <span class="comment">// get the height of each lookup table</span>
-        <span class="kw">let</span> <span class="ident">lookup_table_lengths</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lookup_tables</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>[<span class="number">0</span>].<span class="ident">len</span>()).<span class="ident">collect</span>();
-
         <span class="comment">// get the last entry in each column of each table</span>
         <span class="kw">let</span> <span class="ident">dummy_lookup_values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">lookup_tables</span>
             .<span class="ident">iter</span>()
@@ -1260,7 +1249,6 @@ This source file implements Plonk circuit constraint primitive.
             <span class="ident">chacha8</span>,
             <span class="ident">lookup_selectors</span>,
             <span class="ident">dummy_lookup_values</span>,
-            <span class="ident">lookup_table_lengths</span>,
             <span class="ident">lookup_tables8</span>,
             <span class="ident">lookup_tables</span>: <span class="ident">lookup_tables_polys</span>,
             <span class="ident">endomul_scalar8</span>,
@@ -1413,5 +1401,5 @@ This source file implements Plonk circuit constraint primitive.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (f1ce0e6a0 2022-01-05)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi_circuits" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0-nightly (cfa4ac66c 2022-01-06)" ></div>
 </body></html>
