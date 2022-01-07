@@ -4,8 +4,6 @@ This source file implements Cairo instruction gate primitive.
 
 *****************************************************************************************************************/
 
-use crate::gate::{CircuitGate, GateType};
-use crate::wires::{GateWires, Wire, COLUMNS};
 use ark_ec::AffineCurve;
 use ark_ff::{BigInteger, FftField, Field, PrimeField};
 use ark_serialize::CanonicalSerialize;
@@ -19,34 +17,170 @@ pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 /// Scalar field element type
 pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
 
-
 /// A Cairo instruction
-pub struct CairoInstruction<F: FftField> {
+pub struct CairoInstruction {
     /// 64bit word
-    pub word : u64,
-    /// vector of 16 flags
-    pub flags : Vec<F>,
-    /// offset of destination address
-    pub off_dst : F,
-    /// offset of first operand
-    pub off_op0 : F,
-    /// offset of second operand
-    pub off_op1 : F,
+    pub word: u64,
 }
 
-pub impl CairoInstruction {
+pub impl<F: FftField> CairoInstruction {
     pub const NUM_FLAGS: usize = 16;
 
     /// Creates a CairoInstruction from a 64bit word
     pub fn create(word: u64) -> CairoInstruction {
-        let (flags, off_dst, off_op0, off_op1) = word_to_field(&word);
-        CairoInstruction {
-            word,
-            flags,
-            off_dst,
-            off_op0,
-            off_op1,
+        CairoInstruction { word }
+    }
+
+    pub fn off_dst(&self) -> F {
+        // The least significant 16 bits
+        to_field::<F>(biased_rep((self.word % 2u64.pow(16u32)) as u16))
+    }
+
+    pub fn off_op0(&self) -> F {
+        // From the 32nd bit to the 17th
+        to_field::<F>(biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16))
+    }
+
+    pub fn off_op1(&self) -> F {
+        // From the 48th bit to the 33rd
+        to_field::<F>(biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16))
+    }
+
+    /// Returns vector of 16 flags
+    pub fn flags(&self) -> Vec<F> {
+        let mut flags = Vec::with_capacity(NUM_FLAGS);
+        // The most significant 16 bits
+        for i in 0..NUM_FLAGS {
+            flags.push(F::from(word.flag_at(i)));
         }
+        flags
+    }
+
+    /// Returns i-th bit-flag as u64
+    fn flag_at(&self, pos: usize) -> u64 {
+        (self.word >> (48 + pos)) % 2
+    }
+
+    /// Returns bit-flag for destination register as field element
+    pub fn fDST_REG(&self) -> F {
+        F::from(self.flag_at(0))
+    }
+
+    /// Returns bit-flag for first operand register as field element
+    pub fn fOP0_REG(&self) -> F {
+        F::from(self.flag_at(1))
+    }
+
+    /// Returns bit-flag for immediate value for second register as field element
+    pub fn fOP1_VAL(&self) -> F {
+        F::from(self.flag_at(2))
+    }
+
+    /// Returns bit-flag for frame pointer for second register as field element
+    pub fn fOP1_FP(&self) -> F {
+        F::from(self.flag_at(3))
+    }
+
+    /// Returns bit-flag for allocation pointer for second regsiter as field element
+    pub fn fOP1_AP(&self) -> F {
+        F::from(self.flag_at(4))
+    }
+
+    /// Returns bit-flag for addition operation in right side as field element
+    pub fn fRES_ADD(&self) -> F {
+        F::from(self.flag_at(5))
+    }
+
+    /// Returns bit-flag for multiplication operation in right side as field element
+    pub fn fRES_MUL(&self) -> F {
+        F::from(self.flag_at(6))
+    }
+
+    /// Returns bit-flag for program counter update being absolute jump as field element
+    pub fn fPC_ABS(&self) -> F {
+        F::from(self.flag_at(7))
+    }
+
+    /// Returns bit-flag for program counter update being relative jump as field element
+    pub fn fPC_REL(&self) -> F {
+        F::from(self.flag_at(8))
+    }
+
+    /// Returns bit-flag for program counter update being conditional jump as field element
+    pub fn fPC_JNZ(&self) -> F {
+        F::from(self.flag_at(9))
+    }
+
+    /// Returns bit-flag for allocation counter update being a manual addition as field element
+    pub fn fAP_ADD(&self) -> F {
+        F::from(self.flag_at(10))
+    }
+
+    /// Returns bit-flag for allocation counter update being a self increment as field element
+    pub fn fAP_ONE(&self) -> F {
+        F::from(self.flag_at(11))
+    }
+
+    /// Returns bit-flag for operation being a call as field element
+    pub fn fOPC_CALL(&self) -> F {
+        F::from(self.flag_at(12))
+    }
+
+    /// Returns bit-flag for operation being a return as field element
+    pub fn fOPC_RET(&self) -> F {
+        F::from(self.flag_at(13))
+    }
+
+    /// Returns bit-flag for operation being an assert-equal as field element
+    pub fn fOPC_AEQ(&self) -> F {
+        F::from(self.flag_at(14))
+    }
+
+    /// Returns bit-flag for 16th position
+    pub fn f15(&self) -> F {
+        F::from(self.flag_at(15))
+    }
+
+    /// Returns flagset for destination register
+    pub fn dst_reg(&self) -> u64 {
+        // dst_reg = fDST_REG
+        self.fDST_REG() as u64
+    }
+
+    /// Returns flagset for first operand register
+    pub fn op0_reg(&self) -> u64 {
+        // op0_reg = fOP0_REG
+        self.fOP0_REG() as u64
+    }
+
+    /// Returns flagset for second operand register
+    pub fn op1_src(&self) -> u64 {
+        // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
+        ((self.fOP1_AP().double() + self.fOP1_FP()).double() + self.fOP1_VAL()) as u64
+    }
+
+    /// Returns flagset for result logics
+    pub fn res_log(&self) -> u64 {
+        // res_log = 2*fRES_MUL + fRES_ADD
+        (self.fRES_MUL().double() + self.fRES_ADD()) as u64
+    }
+
+    /// Returns flagset for program counter update
+    pub fn pc_up(&self) -> u64 {
+        // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
+        ((self.fPC_JNZ().double() + self.fPC_REL()).double() + self.fPC_ABS()) as u64
+    }
+
+    /// Returns flagset for allocation pointer update
+    pub fn ap_up(&self) -> u64 {
+        // ap_up = 2*fAP_ONE + fAP_ADD
+        (self.fAP_ONE().double() + self.fAP_ADD()) as u64
+    }
+
+    /// Returns flagset for operation code
+    pub fn opcode(&self) -> u64 {
+        // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
+        ((self.fOPC_AEQ().double() + self.fOPC_RET()).double() + self.fOPC_CALL()) as u64
     }
 
     /// Converts a 64bit word Cairo bytecode instruction into a tuple of flags and 3 offsets
@@ -61,7 +195,7 @@ pub impl CairoInstruction {
         off_op1 = biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16);
         // The most significant 16 bits
         for i in 0..NUM_FLAGS {
-            flags.push((self.word >> (48 + i)) % 2);
+            flags.push(self.flag_at(i));
         }
         (flags, off_op1, off_op0, off_dst)
     }
@@ -88,45 +222,9 @@ pub impl CairoInstruction {
             F::from(item as u32)
         }
     }
-
-    /// Converts a 64bit word Cairo bytecode instruction into a vector of 19 field elements
-    fn word_to_field<F: FftField>(word: u64) -> (Vec<F>, F, F, F) {
-        let mut flags = Vec::with_capacity(NUM_FLAGS);
-        let (off_dst, off_op0, off_op1): (i16, i16, i16);
-        // The least significant 16 bits
-        off_dst = biased_rep((word % 2u64.pow(16u32)) as u16);
-        // From the 32nd bit to the 17th
-        off_op0 = biased_rep(((word % (2u64.pow(32u32))) >> 16) as u16);
-        // From the 48th bit to the 33rd
-        off_op1 = biased_rep(((word % (2u64.pow(48u32))) >> 32) as u16);
-        // The most significant 16 bits
-        for i in 0..NUM_FLAGS {
-            flags.push(F::from((word >> (48 + i)) % 2));
-        }
-        (flags, to_field::<F>(off_dst), to_field::<F>(off_op0), to_field::<F>(off_op1))
-    }
-
 }
 
-
-
-
-
-
-
-
-
-
-
 impl<F: FftField> CircuitGate<F> {
-    pub fn create_cairo(wires: GateWires, instr: u64) -> Self {
-        CircuitGate {
-            typ: GateType::Cairo,
-            wires,
-            c: deserialize_vec(instr),
-        }
-    }
-
     /// verifies that the Cairo gate constraints are solved by the witness
     pub fn verify_gate_cairo(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // witness layout:
@@ -157,37 +255,6 @@ impl<F: FftField> CircuitGate<F> {
         let one = F::one();
         let two: F = 2u32.into();
         let four: F = 4u32.into();
-
-        // flags and offsets in the gate instruction
-        let off_dst = self.c[DST_COEFF];
-        let off_op0 = self.c[OP0_COEFF];
-        let off_op1 = self.c[OP1_COEFF];
-        let flags = &self.c[0..NUM_FLAGS];
-        let fDST_REG = flags[0];
-        let fOP0_REG = flags[1];
-        let fOP1_VAL = flags[2];
-        let fOP1_FP = flags[3];
-        let fOP1_AP = flags[4];
-        let fRES_ADD = flags[5];
-        let fRES_MUL = flags[6];
-        let fPC_ABS = flags[7];
-        let fPC_REL = flags[8];
-        let fPC_JNZ = flags[9];
-        let fAP_INC = flags[10];
-        let fAP_ADD1 = flags[11];
-        let fOP_CALL = flags[12];
-        let fOP_RET = flags[13];
-        let fOP_AEQ = flags[14];
-        let f15 = flags[15];
-
-        // compute the seven sets of Cairo flags PARECE QUE NO
-        let dst_reg = fDST_REG;
-        let op0_reg = fOP0_REG;
-        let op1_src = fOP1_AP.double().double() + fOP1_FP.double() + fOP1_VAL;
-        let res_log = fRES_MUL.double() + fRES_ADD;
-        let pc_up = fPC_JNZ.double().double() + fPC_REL.double() + fPC_ABS;
-        let ap_up = fAP_ADD1.double() + fAP_INC;
-        let opcode = fOP_AEQ.double().double() + fOP_RET.double() + fOP_CALL;
 
         // FLAGS RELATED
 
@@ -333,17 +400,6 @@ impl<F: FftField> CircuitGate<F> {
 
         Ok(())
     }
-
-    /// This function verifies a vector of Cairo gates. Internally uses `verify_gate_cairo()` iteratively
-    pub fn verify_gadget_cairo(gates: &<Vec<Self>>, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
-        for i in 0..gates.len() {
-            verify_gate_cairo(&gates[i], i, witness);
-        }
-        Ok(())
-    }
-
-
-    
 }
 
 #[cfg(test)]
@@ -374,34 +430,6 @@ mod tests {
         gates.push(CircuitGate::create_cairo(wires, instr2));
 
         let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); 2]);
-
-        // Create a memory stack simulator
-        // TODO(querolita)
-        // This function is not intended to be implemented this way
-        // This only simulates the following memory stack:
-        // 1 0x480680017fff8000
-        // 2 10
-        // 3 0x208b7fff7fff7ffe
-        // 4 7
-        // 5 7
-        // 6 10
-        // 7
-        fn memory(addr: Fp) -> Fp {
-            if (addr - Fp::from(1)) == Fp::from(0) {
-                return Fp::from(0x480680017fff8000u64);
-            } else if (addr - Fp::from(2)) == Fp::from(0) {
-                return Fp::from(10);
-            } else if (addr - Fp::from(3)) == Fp::from(0) {
-                return Fp::from(0x208b7fff7fff7ffeu64);
-            } else if (addr - Fp::from(4)) == Fp::from(0) {
-                return Fp::from(7);
-            } else if (addr - Fp::from(5)) == Fp::from(0) {
-                return Fp::from(7);
-            } else if (addr - Fp::from(6)) == Fp::from(0) {
-                return Fp::from(10);
-            }
-            return Fp::from(0);
-        }
 
         // indices for columns and rows
         let pc_idx = 0;
@@ -545,26 +573,6 @@ mod tests {
 
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     //++++++++++++++++++++++++++ AUXILIARY FUNCTIONS ++++++++++++++++++++++++++
-
-    // Given a vector with 16 flags, returns the 7 sets of Cairo flags
-    fn sets_of_flags(flags: Vec<Fp>) -> (Fp, Fp, Fp, Fp, Fp, Fp, Fp) {
-        let dst_reg = flags[0];
-        let op0_reg = flags[1];
-        let op1_src = Fp::from(4) * flags[4] + Fp::from(2) * flags[3] + flags[2];
-        let res_log = Fp::from(2) * flags[6] + flags[5];
-        let pc_up = Fp::from(4) * flags[9] + Fp::from(2) * flags[8] + flags[7];
-        let ap_up = Fp::from(2) * flags[11] + flags[10];
-        let opcode = Fp::from(4) * flags[14] + Fp::from(2) * flags[13] + flags[12];
-        return (dst_reg, op0_reg, op1_src, res_log, pc_up, ap_up, opcode);
-    }
-
-    // Given a vector encoding the instruction, returns the three offsets
-    fn sets_of_offsets(ins_vec: Vec<Fp>) -> (Fp, Fp, Fp) {
-        let off_op1 = ins_vec[OP1_COEFF];
-        let off_op0 = ins_vec[OP0_COEFF];
-        let off_dst = ins_vec[DST_COEFF];
-        return (off_op1, off_op0, off_dst);
-    }
 
     // This function computes the destination address
     fn get_dst_dir(dst_reg: Fp, off_dst: Fp, ap: Fp, fp: Fp) -> Fp {
