@@ -14,7 +14,7 @@
    (run rm -rf ./target)
    (run rm -rf ./Cargo.lock)
    (run sh -c "touch dllocamlgen_test_stubs.so")
-   (run cargo +nightly build --release)
+   (run cargo build --release)
    (run sh -c "cp ../target/release/libocamlgen_test_stubs.a ."))))
 
 ;; generate the OCaml bindings from rust code
@@ -61,6 +61,6 @@
 ;; rule for running the tests
 
 (rule
- (alias test)
+ (alias runtest)
  (action
   (run ./ocamlgen_test.exe)))
