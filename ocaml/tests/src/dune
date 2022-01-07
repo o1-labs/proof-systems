@@ -36,7 +36,7 @@
    (run rm -rf ./Cargo.lock)
    (with-stdout-to
     bindings.ml
-    (run cargo +nightly run)))))
+    (run cargo run)))))
 
 ;; test library
 
