@@ -38,15 +38,29 @@
     bindings.ml
     (run cargo +nightly run)))))
 
-;; library
+;; test library
 
 (library
- (name ocamlgen_test)
+ (name ocamlgen_test_lib)
  (public_name ocamlgen-test)
- (inline_tests)
+ (modules lib bindings)
  (preprocess
   (pps ppx_inline_test))
  (libraries unix)
  ; Link the Rust library
  (foreign_archives ocamlgen_test_stubs)
  (c_library_flags :standard "-lpthread"))
+
+;; test executable
+
+(executable
+ (name ocamlgen_test)
+ (modules ocamlgen_test)
+ (libraries ocamlgen_test_lib))
+
+;; rule for running the tests
+
+(rule
+ (alias test)
+ (action
+  (run ./ocamlgen_test.exe)))
