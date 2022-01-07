@@ -1,9 +1,14 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use kimchi::bench::proof;
+use criterion::{criterion_group, criterion_main, Criterion};
+use kimchi::bench::BenchmarkCtx;
+use std::time::Duration;
 
-pub fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("proof 20", |b| b.iter(|| proof(black_box(20))));
+pub fn bench_proof_creation(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Proof creation");
+    group.measurement_time(Duration::from_secs(100));
+
+    let ctx = BenchmarkCtx::default();
+    group.bench_function("single proof", |b| b.iter(|| ctx.create_proof()));
 }
 
-criterion_group!(benches, criterion_benchmark);
+criterion_group!(benches, bench_proof_creation);
 criterion_main!(benches);

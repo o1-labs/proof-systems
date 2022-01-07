@@ -5,7 +5,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 *****************************************************************************************************************/
 
 use crate::wires::*;
-use ark_ff::{FftField, Field};
+use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use o1_utils::ExtendedDensePolynomial;
@@ -38,6 +38,19 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+}
+
+impl<F: Zero> ProofEvaluations<F> {
+    pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
+        ProofEvaluations {
+            w,
+            z: F::zero(),
+            s: array_init(|_| F::zero()),
+            lookup: None,
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+        }
+    }
 }
 
 impl<F: FftField> ProofEvaluations<Vec<F>> {

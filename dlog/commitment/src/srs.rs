@@ -10,7 +10,7 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use blake2::{Blake2b, Digest};
+use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -172,7 +172,7 @@ where
 
         let g: Vec<_> = (0..depth)
             .map(|i| {
-                let mut h = Blake2b::new();
+                let mut h = Blake2b512::new();
                 h.update(&(i as u32).to_be_bytes());
                 point_of_random_bytes(&m, &h.finalize())
             })
@@ -182,7 +182,7 @@ where
 
         const MISC: usize = 1;
         let [h]: [G; MISC] = array_init(|i| {
-            let mut h = Blake2b::new();
+            let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
             h.update(&(i as u32).to_be_bytes());
             point_of_random_bytes(&m, &h.finalize())

@@ -2,6 +2,7 @@
 name = "kimchi-circuits"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 
 [lib]
 path = "src/lib.rs"
@@ -11,11 +12,11 @@ ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
-array-init = { version = "1.0.0" }
-rayon = { version = "1" }
-blake2 = "0.9.1"
+array-init = "2.0.0"
+rayon = "1"
+blake2 = "0.10.0"
 rand = "0.8.0"
-rand_core = { version = "0.5" }
+rand_core = "0.6.3"
 num-derive = "0.3"
 num-traits = "0.2"
 itertools = "0.10.1"
@@ -29,6 +30,8 @@ oracle = { path = "../../oracle" }
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../../ocaml/ocaml-gen", optional = true }
 
+wasm-bindgen = { version = "0.2", optional = true }
+
 [dev-dependencies]
 rmp-serde = "0.15.5"
 proptest = "1.0.0"
@@ -37,3 +40,4 @@ proptest-derive = "0.3.0"
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "oracle/ocaml_types" ]
+wasm_types = [ "wasm-bindgen" ]

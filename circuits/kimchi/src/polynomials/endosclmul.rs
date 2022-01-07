@@ -35,8 +35,8 @@ use crate::wires::COLUMNS;
 use ark_ff::{Field, One};
 use CurrOrNext::*;
 
-/// The constraint for endoscaling.
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
+/// The constraints for endoscaling.
+pub fn constraints<F: Field>() -> Vec<E<F>> {
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
 
@@ -85,7 +85,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let ys_yr = cache.cache(ys + yr.clone());
     let yr_yp = cache.cache(yr.clone() + yp.clone());
 
-    let p = vec![
+    vec![
         // verify booleanity of the scalar bits
         b1.clone() - b1.square(),
         b2.clone() - b2.square(),
@@ -108,8 +108,12 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
         // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
         ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
         n_constraint,
-    ];
-    E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::Endomul), Curr)
+    ]
+}
+
+/// The combined constraint for endoscaling.
+pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
+    E::combine_constraints(alpha0, constraints()) * E::cell(Column::Index(GateType::EndoMul), Curr)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point

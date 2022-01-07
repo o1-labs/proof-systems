@@ -44,7 +44,6 @@ fn ec_test() {
 
     for row in 0..(num_doubles + num_additions + num_infs) {
         gates.push(CircuitGate {
-            row,
             typ: GateType::CompleteAdd,
             wires: Wire::new(row),
             c: vec![],

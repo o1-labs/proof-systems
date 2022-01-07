@@ -23,7 +23,6 @@ use oracle::poseidon::PlonkSpongeConstants3W;
 
 #[derive(Debug, Deserialize)]
 struct TestVectors {
-    name: String,
     test_vectors: Vec<TestVector>,
 }
 

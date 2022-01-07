@@ -17,7 +17,14 @@ use std::io::{Result as IoResult, Write};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum CurrOrNext {
     Curr,
     Next,
@@ -119,27 +126,28 @@ impl<F: Field> JointLookup<F> {
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
-    /// zero gate
+    /// Zero gate
     Zero = 0,
-    /// generic arithmetic gate
-    Generic,
+    /// Generic arithmetic gate
+    Generic = 1,
     /// Poseidon permutation gate
-    Poseidon,
+    Poseidon = 2,
     /// Complete EC addition in Affine form
-    CompleteAdd,
+    CompleteAdd = 3,
     /// EC variable base scalar multiplication
-    Vbmul,
+    VarBaseMul = 4,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    Endomul,
+    EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndomulScalar,
+    EndoMulScalar = 6,
     /// ChaCha
-    ChaCha0,
-    ChaCha1,
-    ChaCha2,
-    ChaChaFinal,
+    ChaCha0 = 7,
+    ChaCha1 = 8,
+    ChaCha2 = 9,
+    ChaChaFinal = 10,
 }
 
 /// Describes the desired lookup configuration.
@@ -366,9 +374,6 @@ impl GateType {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CircuitGate<F: FftField> {
-    /// row position in the circuit
-    // TODO(mimoo): shouldn't this be u32 since we serialize it as a u32?
-    pub row: usize,
     /// type of the gate
     pub typ: GateType,
     /// gate wires
@@ -382,7 +387,6 @@ pub struct CircuitGate<F: FftField> {
 impl<F: FftField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        (self.row as u32).write(&mut w)?;
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
         typ.write(&mut w)?;
         for i in 0..COLUMNS {
@@ -399,9 +403,8 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
 
 impl<F: FftField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
-    pub fn zero(row: usize, wires: GateWires) -> Self {
+    pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
-            row,
             typ: GateType::Zero,
             c: Vec::new(),
             wires,
@@ -412,18 +415,19 @@ impl<F: FftField> CircuitGate<F> {
     /// assignements (witness) against the constraints
     pub fn verify(
         &self,
+        row: usize,
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
-            Generic => self.verify_generic(witness),
-            Poseidon => self.verify_poseidon(witness, cs),
-            CompleteAdd => self.verify_complete_add(witness),
-            Vbmul => self.verify_vbmul(witness),
-            Endomul => self.verify_endomul(witness, cs),
-            EndomulScalar => self.verify_endomul_scalar(witness, cs),
+            Generic => self.verify_generic(row, witness),
+            Poseidon => self.verify_poseidon(row, witness, cs),
+            CompleteAdd => self.verify_complete_add(row, witness),
+            VarBaseMul => self.verify_vbmul(row, witness),
+            EndoMul => self.verify_endomul(row, witness, cs),
+            EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
         }
     }
@@ -438,7 +442,6 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
-        pub row: ocaml::Int,
         pub typ: GateType,
         pub wires: (
             CamlWire,
@@ -459,7 +462,6 @@ pub mod caml {
     {
         fn from(cg: CircuitGate<F>) -> Self {
             Self {
-                row: cg.row.try_into().expect("usize -> isize"),
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
                 c: cg.c.into_iter().map(Into::into).collect(),
@@ -474,7 +476,6 @@ pub mod caml {
     {
         fn from(cg: &CircuitGate<F>) -> Self {
             Self {
-                row: cg.row.try_into().expect("usize -> isize"),
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
                 c: cg.c.clone().into_iter().map(Into::into).collect(),
@@ -489,7 +490,6 @@ pub mod caml {
     {
         fn from(ccg: CamlCircuitGate<CamlF>) -> Self {
             Self {
-                row: ccg.row.try_into().expect("isize -> usize"),
                 typ: ccg.typ,
                 wires: tuple_to_array(ccg.wires),
                 c: ccg.c.into_iter().map(Into::into).collect(),
@@ -558,9 +558,8 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(row in any::<usize>(), typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
-                row,
                 typ,
                 wires,
                 c,
@@ -572,12 +571,7 @@ mod tests {
         #[test]
         fn test_gate_serialization(cg in arb_circuit_gate()) {
             let encoded = rmp_serde::to_vec(&cg).unwrap();
-            println!("gate: {:?}", cg);
-            println!("encoded gate: {:?}", encoded);
             let decoded: CircuitGate<Fp> = rmp_serde::from_read_ref(&encoded).unwrap();
-
-            println!("decoded gate: {:?}", decoded);
-            prop_assert_eq!(cg.row, decoded.row);
             prop_assert_eq!(cg.typ, decoded.typ);
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);

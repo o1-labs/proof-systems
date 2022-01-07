@@ -47,7 +47,6 @@ fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
     let multiplication = on;
     let constant = off;
     gates.push(CircuitGate::<Fp>::create_generic(
-        abs_row,
         wires,
         qw,
         multiplication,
@@ -57,7 +56,7 @@ fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
 
     // add a zero gate, just because
     let wires = Wire::new(abs_row);
-    gates.push(CircuitGate::<Fp>::zero(abs_row, wires));
+    gates.push(CircuitGate::<Fp>::zero(wires));
     //abs_row += 1;
 
     //

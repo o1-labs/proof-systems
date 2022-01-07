@@ -8,7 +8,7 @@ pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
@@ -58,6 +58,7 @@ where
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
+    G::BaseField: PrimeField,
 {
     pub fn prev_chal_evals(
         &self,
@@ -150,13 +151,9 @@ where
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
         // absorb the polycommitments into the argument and sample zeta
-        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
-        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
+        let expected_t_size = PERMUTS;
+        assert_eq!(expected_t_size, self.commitments.t_comm.unshifted.len());
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
-        fq_sponge.absorb_g(&vec![
-            dummy;
-            max_t_size - self.commitments.t_comm.unshifted.len()
-        ]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
@@ -310,18 +307,32 @@ where
                 .map(|(_, e)| (e.iter().collect(), None))
                 .collect();
             es.push((p_eval.iter().collect::<Vec<_>>(), None));
+            es.push((vec![&ft_eval0, &ft_eval1], None));
+            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| &e.generic_selector)
+                    .collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| &e.poseidon_selector)
+                    .collect::<Vec<_>>(),
+                None,
+            ));
             es.extend(
                 (0..COLUMNS)
                     .map(|c| (self.evals.iter().map(|e| &e.w[c]).collect::<Vec<_>>(), None))
                     .collect::<Vec<_>>(),
             );
-            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
             es.extend(
                 (0..PERMUTS - 1)
                     .map(|c| (self.evals.iter().map(|e| &e.s[c]).collect::<Vec<_>>(), None))
                     .collect::<Vec<_>>(),
             );
-            es.push((vec![&ft_eval0, &ft_eval1], None));
 
             combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.g.len())
         };
@@ -391,7 +402,7 @@ where
                 p_eval,
                 powers_of_eval_points_for_chunks,
                 polys,
-                zeta1,
+                zeta1: zeta_to_domain_size,
                 ft_eval0,
                 ..
             } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
@@ -498,9 +509,9 @@ where
                                 let c = match t {
                                     Zero | Generic => panic!("Selector for {:?} not defined", t),
                                     CompleteAdd => &index.complete_add_comm,
-                                    Vbmul => &index.mul_comm,
-                                    Endomul => &index.emul_comm,
-                                    EndomulScalar => &index.endomul_scalar_comm,
+                                    VarBaseMul => &index.mul_comm,
+                                    EndoMul => &index.emul_comm,
+                                    EndoMulScalar => &index.endomul_scalar_comm,
                                     Poseidon => &index.psm_comm,
                                     ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
                                     ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
@@ -518,10 +529,12 @@ where
                 PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)
             };
 
+            let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
             // Maller's optimization (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
-            let chunked_f_comm = f_comm.chunk_commitment(zeta1);
-            let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta1);
-            let ft_comm = &chunked_f_comm - &chunked_t_comm.scale(zeta1 - Fr::<G>::one());
+            let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
+            let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
+            let ft_comm =
+                &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - Fr::<G>::one());
 
             params.push((
                 p_eval,
