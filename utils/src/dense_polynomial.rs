@@ -2,6 +2,7 @@
 
 use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use rayon::prelude::*;
 
 //
 // ExtendedDensePolynomial trait
@@ -28,9 +29,9 @@ pub trait ExtendedDensePolynomial<F: Field> {
 impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
-        for coeff in &mut result.coeffs {
+        result.coeffs.par_iter_mut().for_each(|coeff| {
             *coeff *= &elm
-        }
+        });
         result
     }
 

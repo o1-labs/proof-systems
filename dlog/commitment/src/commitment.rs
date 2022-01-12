@@ -481,6 +481,11 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     res
 }
 
+enum OptShiftedPolynomial<P> {
+    Unshifted(P),
+    Shifted(P, usize),
+}
+
 impl<G: CommitmentCurve> SRS<G>
 where
     G::ScalarField: CommitmentField,
@@ -660,16 +665,11 @@ where
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
 
-        let mut combined_polynomial_terms = vec![];
-
-        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
         let (p, blinding_factor) = {
-            let mut p = DensePolynomial::<Fr<G>>::zero();
-
-            let mut omega = Fr::<G>::zero();
+            let start = std::time::Instant::now();
             let mut scale = Fr::<G>::one();
-
-            // iterating over polynomials in the batch
+            let mut omega = Fr::<G>::zero();
+            let mut plnm_chunks : Vec<(Fr::<G>, OptShiftedPolynomial<_>)> = vec![];
             for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
                 let mut offset = 0;
                 let mut j = 0;
@@ -677,15 +677,14 @@ where
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
                     while j < omegas.unshifted.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
+                        let segment =
                             &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
-                            }],
-                        );
+                            }];
                         // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
+                        plnm_chunks.push((scale, OptShiftedPolynomial::Unshifted(segment)));
 
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
@@ -693,7 +692,7 @@ where
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            p += &(segment.shiftr(self.g.len() - m % self.g.len()).scale(scale));
+                            plnm_chunks.push((scale, OptShiftedPolynomial::Shifted(segment, self.g.len() - m % self.g.len())));
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
@@ -701,21 +700,15 @@ where
                 } else {
                     assert!(omegas.shifted.is_none());
                     while j < omegas.unshifted.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
+                        let segment =
                             &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
-                            }],
-                        );
-
-                        combined_polynomial_terms.push(
-                            self.commit_non_hiding(&segment, None).unshifted[0]
-                                + self.h.mul(omegas.unshifted[j]).into_affine(),
-                        );
+                            }];
 
                         // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
+                        plnm_chunks.push((scale, OptShiftedPolynomial::Unshifted(segment)));
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
@@ -724,8 +717,35 @@ where
                 }
                 assert_eq!(j, omegas.unshifted.len());
             }
-            (p, omega)
+
+            let mut res = DensePolynomial::<Fr<G>>::zero();
+
+            let scaled: Vec<_> = plnm_chunks.par_iter().map(|(scale, segment)| {
+                let scale = *scale;
+                match segment {
+                    OptShiftedPolynomial::Unshifted(segment) => {
+                        let v = segment.par_iter().map(|x| scale * *x).collect();
+                        DensePolynomial::from_coefficients_vec(v)
+                    },
+                    OptShiftedPolynomial::Shifted(segment, shift) => {
+                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
+                        let mut res = vec![Fr::<G>::zero(); *shift];
+                        res.append(&mut v);
+                        DensePolynomial::from_coefficients_vec(res)
+                    },
+                }
+            }).collect();
+
+            for p in scaled {
+                res += &p;
+            }
+
+            println!("palt {:?}", start.elapsed());
+            (res, omega)
         };
+
+        let start = std::time::Instant::now();
+        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
 
         let rounds = ceil_log2(self.g.len());
 
