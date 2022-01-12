@@ -29,9 +29,10 @@ pub trait ExtendedDensePolynomial<F: Field> {
 impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
     fn scale(&self, elm: F) -> Self {
         let mut result = self.clone();
-        result.coeffs.par_iter_mut().for_each(|coeff| {
-            *coeff *= &elm
-        });
+        result
+            .coeffs
+            .par_iter_mut()
+            .for_each(|coeff| *coeff *= &elm);
         result
     }
 

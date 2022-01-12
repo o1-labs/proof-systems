@@ -666,7 +666,7 @@ where
         g.extend(vec![G::zero(); padding]);
 
         let (p, blinding_factor) = {
-            let mut plnm_chunks : Vec<(Fr::<G>, OptShiftedPolynomial<_>)> = vec![];
+            let mut plnm_chunks: Vec<(Fr<G>, OptShiftedPolynomial<_>)> = vec![];
 
             let mut omega = Fr::<G>::zero();
             let mut scale = Fr::<G>::one();
@@ -679,8 +679,8 @@ where
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
                     while j < omegas.unshifted.len() {
-                        let segment =
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                        let segment = &p_i.coeffs[offset
+                            ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
@@ -694,7 +694,13 @@ where
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            plnm_chunks.push((scale, OptShiftedPolynomial::Shifted(segment, self.g.len() - m % self.g.len())));
+                            plnm_chunks.push((
+                                scale,
+                                OptShiftedPolynomial::Shifted(
+                                    segment,
+                                    self.g.len() - m % self.g.len(),
+                                ),
+                            ));
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
@@ -702,8 +708,8 @@ where
                 } else {
                     assert!(omegas.shifted.is_none());
                     while j < omegas.unshifted.len() {
-                        let segment =
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                        let segment = &p_i.coeffs[offset
+                            ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
@@ -722,21 +728,24 @@ where
 
             let mut res = DensePolynomial::<Fr<G>>::zero();
 
-            let scaled: Vec<_> = plnm_chunks.par_iter().map(|(scale, segment)| {
-                let scale = *scale;
-                match segment {
-                    OptShiftedPolynomial::Unshifted(segment) => {
-                        let v = segment.par_iter().map(|x| scale * *x).collect();
-                        DensePolynomial::from_coefficients_vec(v)
-                    },
-                    OptShiftedPolynomial::Shifted(segment, shift) => {
-                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
-                        let mut res = vec![Fr::<G>::zero(); *shift];
-                        res.append(&mut v);
-                        DensePolynomial::from_coefficients_vec(res)
-                    },
-                }
-            }).collect();
+            let scaled: Vec<_> = plnm_chunks
+                .par_iter()
+                .map(|(scale, segment)| {
+                    let scale = *scale;
+                    match segment {
+                        OptShiftedPolynomial::Unshifted(segment) => {
+                            let v = segment.par_iter().map(|x| scale * *x).collect();
+                            DensePolynomial::from_coefficients_vec(v)
+                        }
+                        OptShiftedPolynomial::Shifted(segment, shift) => {
+                            let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
+                            let mut res = vec![Fr::<G>::zero(); *shift];
+                            res.append(&mut v);
+                            DensePolynomial::from_coefficients_vec(res)
+                        }
+                    }
+                })
+                .collect();
 
             for p in scaled {
                 res += &p;
