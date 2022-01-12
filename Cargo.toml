@@ -2,6 +2,7 @@
 members = [
     "circuits/plonk",
     "circuits/kimchi",
+    "circuits/cairo",
     "curves",
     "dlog",
     "dlog/commitment",

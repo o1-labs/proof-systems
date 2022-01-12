@@ -90,6 +90,7 @@ The transition function uses 4 auxiliary values:
  ------------------------------------------------------------------------------------------------------------------------------
  */
 
+/*
 use crate::expr::{Cache, Column, ConstantExpr, Expr, E};
 use crate::gate::{CircuitGate, CurrOrNext, GateType};
 use crate::wires::COLUMNS;
@@ -513,3 +514,4 @@ mod tests {
         constraint();
     }
 }
+*/

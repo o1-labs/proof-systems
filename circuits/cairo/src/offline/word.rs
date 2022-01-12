@@ -4,54 +4,55 @@ This source file implements Cairo instruction gate primitive.
 
 *****************************************************************************************************************/
 
-use ark_ec::AffineCurve;
-use ark_ff::{BigInteger, FftField, Field, PrimeField};
-use ark_serialize::CanonicalSerialize;
-use array_init::array_init;
-use mina_curves::pasta::pallas as Pallas;
+pub const NUM_FLAGS: usize = 16;
 
-/// Affine curve point type
-pub use Pallas::Affine as CurvePoint;
-/// Base field element type
-pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
-/// Scalar field element type
-pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
-
-/// A Cairo instruction
-pub struct CairoInstruction {
+/// A Cairo instruction for simulation
+#[derive(Clone, Copy)]
+pub struct CairoWord {
     /// 64bit word
     pub word: u64,
 }
 
-pub impl<F: FftField> CairoInstruction {
-    pub const NUM_FLAGS: usize = 16;
+/// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15)
+fn biased_rep(offset: u16) -> i16 {
+    let mut num: i32 = -2i32.pow(15u32);
+    for i in 0..16 {
+        // num = -2^15 + sum_(i=0..15) b_i * 2^i
+        num += 2i32.pow(i) * ((offset as i32 >> i) % 2);
+    }
+    num as i16
+}
 
-    /// Creates a CairoInstruction from a 64bit word
-    pub fn create(word: u64) -> CairoInstruction {
-        CairoInstruction { word }
+impl CairoWord {
+    /// Creates a CairoWord from a 64bit unsigned integer
+    pub fn new(word: u64) -> CairoWord {
+        CairoWord { word }
     }
 
-    pub fn off_dst(&self) -> F {
+    /// Returns the destination offset in biased representation as i16
+    pub fn off_dst(&self) -> i16 {
         // The least significant 16 bits
-        to_field::<F>(biased_rep((self.word % 2u64.pow(16u32)) as u16))
+        biased_rep((self.word % 2u64.pow(16u32)) as u16)
     }
 
-    pub fn off_op0(&self) -> F {
+    /// Returns the first operand offset in biased representation as i16
+    pub fn off_op0(&self) -> i16 {
         // From the 32nd bit to the 17th
-        to_field::<F>(biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16))
+        biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16)
     }
 
-    pub fn off_op1(&self) -> F {
+    /// Returns the second operand offset in biased representation as i16
+    pub fn off_op1(&self) -> i16 {
         // From the 48th bit to the 33rd
-        to_field::<F>(biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16))
+        biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16)
     }
 
     /// Returns vector of 16 flags
-    pub fn flags(&self) -> Vec<F> {
+    pub fn flags(&self) -> Vec<u64> {
         let mut flags = Vec::with_capacity(NUM_FLAGS);
         // The most significant 16 bits
         for i in 0..NUM_FLAGS {
-            flags.push(F::from(word.flag_at(i)));
+            flags.push(self.flag_at(i));
         }
         flags
     }
@@ -61,169 +62,130 @@ pub impl<F: FftField> CairoInstruction {
         (self.word >> (48 + pos)) % 2
     }
 
-    /// Returns bit-flag for destination register as field element
-    pub fn fDST_REG(&self) -> F {
-        F::from(self.flag_at(0))
+    /// Returns bit-flag for destination register as u64
+    pub fn f_dst_reg(&self) -> u64 {
+        self.flag_at(0)
     }
 
-    /// Returns bit-flag for first operand register as field element
-    pub fn fOP0_REG(&self) -> F {
-        F::from(self.flag_at(1))
+    /// Returns bit-flag for first operand register as u64
+    pub fn f_op0_reg(&self) -> u64 {
+        self.flag_at(1)
     }
 
-    /// Returns bit-flag for immediate value for second register as field element
-    pub fn fOP1_VAL(&self) -> F {
-        F::from(self.flag_at(2))
+    /// Returns bit-flag for immediate value for second register as u64
+    pub fn f_op1_val(&self) -> u64 {
+        self.flag_at(2)
     }
 
-    /// Returns bit-flag for frame pointer for second register as field element
-    pub fn fOP1_FP(&self) -> F {
-        F::from(self.flag_at(3))
+    /// Returns bit-flag for frame pointer for second register as u64
+    pub fn f_op1_fp(&self) -> u64 {
+        self.flag_at(3)
     }
 
-    /// Returns bit-flag for allocation pointer for second regsiter as field element
-    pub fn fOP1_AP(&self) -> F {
-        F::from(self.flag_at(4))
+    /// Returns bit-flag for allocation pointer for second regsiter as u64
+    pub fn f_op1_ap(&self) -> u64 {
+        self.flag_at(4)
     }
 
-    /// Returns bit-flag for addition operation in right side as field element
-    pub fn fRES_ADD(&self) -> F {
-        F::from(self.flag_at(5))
+    /// Returns bit-flag for addition operation in right side as u64
+    pub fn f_res_add(&self) -> u64 {
+        self.flag_at(5)
     }
 
-    /// Returns bit-flag for multiplication operation in right side as field element
-    pub fn fRES_MUL(&self) -> F {
-        F::from(self.flag_at(6))
+    /// Returns bit-flag for multiplication operation in right side as u64
+    pub fn f_res_mul(&self) -> u64 {
+        self.flag_at(6)
     }
 
-    /// Returns bit-flag for program counter update being absolute jump as field element
-    pub fn fPC_ABS(&self) -> F {
-        F::from(self.flag_at(7))
+    /// Returns bit-flag for program counter update being absolute jump as u64
+    pub fn f_pc_abs(&self) -> u64 {
+        self.flag_at(7)
     }
 
-    /// Returns bit-flag for program counter update being relative jump as field element
-    pub fn fPC_REL(&self) -> F {
-        F::from(self.flag_at(8))
+    /// Returns bit-flag for program counter update being relative jump as u64
+    pub fn f_pc_rel(&self) -> u64 {
+        self.flag_at(8)
     }
 
-    /// Returns bit-flag for program counter update being conditional jump as field element
-    pub fn fPC_JNZ(&self) -> F {
-        F::from(self.flag_at(9))
+    /// Returns bit-flag for program counter update being conditional jump as u64
+    pub fn f_pc_jnz(&self) -> u64 {
+        self.flag_at(9)
     }
 
-    /// Returns bit-flag for allocation counter update being a manual addition as field element
-    pub fn fAP_ADD(&self) -> F {
-        F::from(self.flag_at(10))
+    /// Returns bit-flag for allocation counter update being a manual addition as u64
+    pub fn f_ap_add(&self) -> u64 {
+        self.flag_at(10)
     }
 
-    /// Returns bit-flag for allocation counter update being a self increment as field element
-    pub fn fAP_ONE(&self) -> F {
-        F::from(self.flag_at(11))
+    /// Returns bit-flag for allocation counter update being a self increment as u64
+    pub fn f_ap_one(&self) -> u64 {
+        self.flag_at(11)
     }
 
-    /// Returns bit-flag for operation being a call as field element
-    pub fn fOPC_CALL(&self) -> F {
-        F::from(self.flag_at(12))
+    /// Returns bit-flag for operation being a call as u64
+    pub fn f_opc_call(&self) -> u64 {
+        self.flag_at(12)
     }
 
-    /// Returns bit-flag for operation being a return as field element
-    pub fn fOPC_RET(&self) -> F {
-        F::from(self.flag_at(13))
+    /// Returns bit-flag for operation being a return as u64
+    pub fn f_opc_ret(&self) -> u64 {
+        self.flag_at(13)
     }
 
-    /// Returns bit-flag for operation being an assert-equal as field element
-    pub fn fOPC_AEQ(&self) -> F {
-        F::from(self.flag_at(14))
+    /// Returns bit-flag for operation being an assert-equal as u64
+    pub fn f_opc_aeq(&self) -> u64 {
+        self.flag_at(14)
     }
 
     /// Returns bit-flag for 16th position
-    pub fn f15(&self) -> F {
-        F::from(self.flag_at(15))
+    pub fn f15(&self) -> u64 {
+        self.flag_at(15)
     }
 
     /// Returns flagset for destination register
     pub fn dst_reg(&self) -> u64 {
         // dst_reg = fDST_REG
-        self.fDST_REG() as u64
+        self.f_dst_reg()
     }
 
     /// Returns flagset for first operand register
     pub fn op0_reg(&self) -> u64 {
         // op0_reg = fOP0_REG
-        self.fOP0_REG() as u64
+        self.f_op0_reg()
     }
 
     /// Returns flagset for second operand register
     pub fn op1_src(&self) -> u64 {
         // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
-        ((self.fOP1_AP().double() + self.fOP1_FP()).double() + self.fOP1_VAL()) as u64
+        2 * (2 * self.f_op1_ap() + self.f_op1_fp()) + self.f_op1_val()
     }
 
     /// Returns flagset for result logics
     pub fn res_log(&self) -> u64 {
         // res_log = 2*fRES_MUL + fRES_ADD
-        (self.fRES_MUL().double() + self.fRES_ADD()) as u64
+        2 * self.f_res_mul() + self.f_res_add()
     }
 
     /// Returns flagset for program counter update
     pub fn pc_up(&self) -> u64 {
         // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
-        ((self.fPC_JNZ().double() + self.fPC_REL()).double() + self.fPC_ABS()) as u64
+        2 * (2 * self.f_pc_jnz() + self.f_pc_rel()) + self.f_pc_abs()
     }
 
     /// Returns flagset for allocation pointer update
     pub fn ap_up(&self) -> u64 {
         // ap_up = 2*fAP_ONE + fAP_ADD
-        (self.fAP_ONE().double() + self.fAP_ADD()) as u64
+        2 * self.f_ap_one() + self.f_ap_add()
     }
 
     /// Returns flagset for operation code
     pub fn opcode(&self) -> u64 {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
-        ((self.fOPC_AEQ().double() + self.fOPC_RET()).double() + self.fOPC_CALL()) as u64
-    }
-
-    /// Converts a 64bit word Cairo bytecode instruction into a tuple of flags and 3 offsets
-    pub fn deserialize(&self) -> (Vec<u64>, i16, i16, i16) {
-        let mut flags = Vec::with_capacity(NUM_FLAGS);
-        let (off_dst, off_op0, off_op1): (i16, i16, i16);
-        // The least significant 16 bits
-        off_dst = biased_rep((self.word % 2u64.pow(16u32)) as u16);
-        // From the 32nd bit to the 17th
-        off_op0 = biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16);
-        // From the 48th bit to the 33rd
-        off_op1 = biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16);
-        // The most significant 16 bits
-        for i in 0..NUM_FLAGS {
-            flags.push(self.flag_at(i));
-        }
-        (flags, off_op1, off_op0, off_dst)
-    }
-
-    /// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15)
-    fn biased_rep(offset: u16) -> i16 {
-        let mut num: i32 = -2i32.pow(15u32);
-        for i in 0..16 {
-            // num = -2^15 + sum_(i=0..15) b_i * 2^i
-            num += 2i32.pow(i) * ((offset as i32 >> i) % 2);
-        }
-        num as i16
-    }
-
-    /// Transforms a signed i16 element to a field element. This is used to compute offsets.
-    fn to_field<F: FftField>(item: i16) -> F {
-        if item < 0 {
-            // 1. Convert item to i32, so that the absolute value fits (e.g. 2^15 could not fit in i16 otherwise)
-            // 2. Once it is a positive value, store it as u32
-            // 3. Then it can be transformed to a field element
-            // 4. The transformed value is the negate of that field element (<=> F::from(0) - elem)
-            (F::from((i32::from(item)).abs() as u32)).neg()
-        } else {
-            F::from(item as u32)
-        }
+        2 * (2 * self.f_opc_aeq() + self.f_opc_ret()) + self.f_opc_call()
     }
 }
 
+/*
 impl<F: FftField> CircuitGate<F> {
     /// verifies that the Cairo gate constraints are solved by the witness
     pub fn verify_gate_cairo(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
@@ -322,9 +284,9 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(
             op1_dir, //                                        op1_dir = ..
             (fOP1_AP * ap                                // if op1_src == 4 : ap
-            + fOP1_FP * fp                               // if op1_src == 2 : fp 
+            + fOP1_FP * fp                               // if op1_src == 2 : fp
             + fOP1_VAL * pc                              // if op1_src == 1 : pc
-            + (one - fOP1_FP - fOP1_AP - fOP1_VAL) * op0 // if op1_src == 0 : op0 
+            + (one - fOP1_FP - fOP1_AP - fOP1_VAL) * op0 // if op1_src == 0 : op0
             + off_op1), //                                                        + off_op1
             "invalid second operand address"
         );
@@ -362,7 +324,7 @@ impl<F: FftField> CircuitGate<F> {
         // * Check next allocation pointer
         ensure_eq!(
             next_ap, //               next_ap =
-            ap                   //             ap + 
+            ap                   //             ap +
             + fAP_INC * res      //  if ap_up == 1 : res
             + fAP_ADD1           //  if ap_up == 2 : 1
             + fOP_CALL.double(), // if opcode == 1 : 2
@@ -764,3 +726,4 @@ mod tests {
         );
     }
 }
+*/
