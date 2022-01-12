@@ -666,10 +666,12 @@ where
         g.extend(vec![G::zero(); padding]);
 
         let (p, blinding_factor) = {
-            let start = std::time::Instant::now();
-            let mut scale = Fr::<G>::one();
-            let mut omega = Fr::<G>::zero();
             let mut plnm_chunks : Vec<(Fr::<G>, OptShiftedPolynomial<_>)> = vec![];
+
+            let mut omega = Fr::<G>::zero();
+            let mut scale = Fr::<G>::one();
+
+            // iterating over polynomials in the batch
             for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
                 let mut offset = 0;
                 let mut j = 0;
@@ -740,12 +742,8 @@ where
                 res += &p;
             }
 
-            println!("palt {:?}", start.elapsed());
             (res, omega)
         };
-
-        let start = std::time::Instant::now();
-        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
 
         let rounds = ceil_log2(self.g.len());
 
