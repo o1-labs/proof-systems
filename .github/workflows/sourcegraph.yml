@@ -1,0 +1,19 @@
+# This Github action allows us to obtain better browsable code
+# on https://sourcegraph.com/github.com/o1-labs/proof-systems
+
+name: Sourcegraph (LSIF)
+
+on:
+  - push
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Generate LSIF data
+        uses: sourcegraph/lsif-rust-action@main
+      - name: Upload LSIF data
+        uses: sourcegraph/lsif-upload-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
