@@ -4,6 +4,7 @@ use ark_ec::{
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
+use oracle::sponge::ScalarChallenge;
 use rayon::prelude::*;
 
 fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
@@ -62,6 +63,36 @@ fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
     } else {
         pairs.truncate(len / 2);
     }
+}
+
+fn batch_add_assign_no_branch<P: SWModelParameters>(
+    denominators: &mut [P::BaseField],
+    v0: &mut [SWJAffine<P>],
+    v1: &[SWJAffine<P>],
+) {
+    denominators
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, denom)| {
+            let p0 = v0[i];
+            let p1 = v1[i];
+            let d = p0.x - p1.x;
+            *denom = d;
+        });
+
+    ark_ff::batch_inversion::<P::BaseField>(denominators);
+
+    denominators
+        .par_iter()
+        .zip(v0.par_iter_mut())
+        .zip(v1.par_iter())
+        .for_each(|((d, p0), p1)| {
+            let s = (p0.y - p1.y) * d;
+            let x = s.square() - p0.x - p1.x;
+            let y = -p0.y - (s * (x - p0.x));
+            p0.x = x;
+            p0.y = y;
+        });
 }
 
 fn batch_add_assign<P: SWModelParameters>(
@@ -221,6 +252,90 @@ fn affine_window_combine_base<P: SWModelParameters>(
     points
 }
 
+fn batch_endo_in_place<P: SWModelParameters>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
+    ps.par_iter_mut().for_each(|p| p.x *= endo_coeff);
+}
+
+fn batch_negate_in_place<P: SWModelParameters>(ps: &mut [SWJAffine<P>]) {
+    ps.par_iter_mut().for_each(|p| {
+        p.y = -p.y;
+    });
+}
+
+fn affine_window_combine_one_endo_base<P: SWModelParameters>(
+    endo_coeff: P::BaseField,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
+    chal: ScalarChallenge<P::ScalarField>,
+) -> Vec<SWJAffine<P>> {
+    fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
+        let n = dst.len();
+        dst[..n].clone_from_slice(&src[..n]);
+    }
+
+    fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
+        let limb = i / 64;
+        let j = i % 64;
+        (limbs_lsb[limb as usize] >> j) & 1
+    }
+
+    let rep = chal.0.into_repr();
+    let r = rep.as_ref();
+
+    let mut denominators = vec![P::BaseField::zero(); g1.len()];
+    // acc = 2 (phi(g2) + g2)
+    let mut points = g2.to_vec();
+    batch_endo_in_place(endo_coeff, &mut points);
+    batch_add_assign_no_branch(&mut denominators, &mut points, &g2);
+    batch_double_in_place(&mut denominators, &mut points);
+
+    let mut tmp_s = g2.to_vec();
+    let mut tmp_acc = g2.to_vec();
+    for i in (0..(128 / 2)).rev() {
+        assign(&mut tmp_s, &g2);
+        assign(&mut tmp_acc, &points);
+
+        let r_2i = get_bit(r, 2 * i);
+        if r_2i == 0 {
+            batch_negate_in_place(&mut tmp_s);
+        }
+        if get_bit(r, 2 * i + 1) == 1 {
+            batch_endo_in_place(endo_coeff, &mut tmp_s);
+        }
+
+        batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_s);
+        batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
+    }
+    batch_add_assign(&mut denominators, &mut points, &g1);
+    points
+}
+
+fn batch_double_in_place<P: SWModelParameters>(
+    denominators: &mut Vec<P::BaseField>,
+    points: &mut [SWJAffine<P>],
+) {
+    denominators
+        .par_iter_mut()
+        .zip(points.par_iter())
+        .for_each(|(d, p)| {
+            *d = p.y.double();
+        });
+    ark_ff::batch_inversion::<P::BaseField>(denominators);
+
+    // TODO: Use less memory
+    denominators
+        .par_iter()
+        .zip(points.par_iter_mut())
+        .for_each(|(d, p)| {
+            let sq = p.x.square();
+            let s = (sq.double() + sq + P::COEFF_A) * d;
+            let x = s.square() - p.x.double();
+            let y = -p.y - (s * (x - p.x));
+            p.x = x;
+            p.y = y;
+        });
+}
+
 fn affine_window_combine_one_base<P: SWModelParameters>(
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
@@ -282,6 +397,20 @@ pub fn affine_window_combine<P: SWModelParameters>(
     v.concat()
 }
 
+pub fn affine_window_combine_one_endo<P: SWModelParameters>(
+    endo_coeff: P::BaseField,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
+    chal: ScalarChallenge<P::ScalarField>,
+) -> Vec<SWJAffine<P>> {
+    const CHUNK_SIZE: usize = 10_000;
+    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    let v: Vec<_> = b
+        .into_par_iter()
+        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
+        .collect();
+    v.concat()
+}
 pub fn affine_window_combine_one<P: SWModelParameters>(
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
