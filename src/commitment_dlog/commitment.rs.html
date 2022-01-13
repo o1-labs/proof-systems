@@ -1350,6 +1350,57 @@
 <span id="1347">1347</span>
 <span id="1348">1348</span>
 <span id="1349">1349</span>
+<span id="1350">1350</span>
+<span id="1351">1351</span>
+<span id="1352">1352</span>
+<span id="1353">1353</span>
+<span id="1354">1354</span>
+<span id="1355">1355</span>
+<span id="1356">1356</span>
+<span id="1357">1357</span>
+<span id="1358">1358</span>
+<span id="1359">1359</span>
+<span id="1360">1360</span>
+<span id="1361">1361</span>
+<span id="1362">1362</span>
+<span id="1363">1363</span>
+<span id="1364">1364</span>
+<span id="1365">1365</span>
+<span id="1366">1366</span>
+<span id="1367">1367</span>
+<span id="1368">1368</span>
+<span id="1369">1369</span>
+<span id="1370">1370</span>
+<span id="1371">1371</span>
+<span id="1372">1372</span>
+<span id="1373">1373</span>
+<span id="1374">1374</span>
+<span id="1375">1375</span>
+<span id="1376">1376</span>
+<span id="1377">1377</span>
+<span id="1378">1378</span>
+<span id="1379">1379</span>
+<span id="1380">1380</span>
+<span id="1381">1381</span>
+<span id="1382">1382</span>
+<span id="1383">1383</span>
+<span id="1384">1384</span>
+<span id="1385">1385</span>
+<span id="1386">1386</span>
+<span id="1387">1387</span>
+<span id="1388">1388</span>
+<span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
+<span id="1392">1392</span>
+<span id="1393">1393</span>
+<span id="1394">1394</span>
+<span id="1395">1395</span>
+<span id="1396">1396</span>
+<span id="1397">1397</span>
+<span id="1398">1398</span>
+<span id="1399">1399</span>
+<span id="1400">1400</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Dlog-based polynomial commitment schema.
@@ -1833,6 +1884,65 @@ The folowing functionality is implemented
     <span class="ident">res</span>
 }
 
+<span class="kw">enum</span> <span class="ident">OptShiftedPolynomial</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span> {
+    <span class="ident">Unshifted</span>(<span class="ident">P</span>),
+    <span class="ident">Shifted</span>(<span class="ident">P</span>, <span class="ident">usize</span>),
+}
+
+<span class="doccomment">/// A formal sum of the form</span>
+<span class="doccomment">/// `s_0 * p_0 + ... s_n * p_n`</span>
+<span class="doccomment">/// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.</span>
+<span class="kw">struct</span> <span class="ident">ChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">F</span>, <span class="ident">OptShiftedPolynomial</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span>)<span class="op">&gt;</span>);
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="ident">ChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> {
+        <span class="ident">ChunkedPolynomial</span>(<span class="macro">vec!</span>[])
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> <span class="ident">ChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">P</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">add_unshifted</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">scale</span>: <span class="ident">F</span>, <span class="ident">p</span>: <span class="ident">P</span>) {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">push</span>((<span class="ident">scale</span>, <span class="ident">OptShiftedPolynomial::Unshifted</span>(<span class="ident">p</span>)))
+    }
+
+    <span class="kw">fn</span> <span class="ident">add_shifted</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">scale</span>: <span class="ident">F</span>, <span class="ident">shift</span>: <span class="ident">usize</span>, <span class="ident">p</span>: <span class="ident">P</span>) {
+        <span class="self">self</span>.<span class="number">0</span>
+            .<span class="ident">push</span>((<span class="ident">scale</span>, <span class="ident">OptShiftedPolynomial::Shifted</span>(<span class="ident">p</span>, <span class="ident">shift</span>)))
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">ChunkedPolynomial</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">F</span>]<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">to_dense_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">DensePolynomial</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::zero</span>();
+
+        <span class="kw">let</span> <span class="ident">scaled</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="number">0</span>
+            .<span class="ident">par_iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">scale</span>, <span class="ident">segment</span>)<span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">scale</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">scale</span>;
+                <span class="kw">match</span> <span class="ident">segment</span> {
+                    <span class="ident">OptShiftedPolynomial::Unshifted</span>(<span class="ident">segment</span>) =&gt; {
+                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">segment</span>.<span class="ident">par_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">scale</span> <span class="op">*</span> <span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">collect</span>();
+                        <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">v</span>)
+                    }
+                    <span class="ident">OptShiftedPolynomial::Shifted</span>(<span class="ident">segment</span>, <span class="ident">shift</span>) =&gt; {
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">segment</span>.<span class="ident">par_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">scale</span> <span class="op">*</span> <span class="kw-2">*</span><span class="ident">x</span>).<span class="ident">collect</span>();
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="kw-2">*</span><span class="ident">shift</span>];
+                        <span class="ident">res</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">v</span>);
+                        <span class="ident">DensePolynomial::from_coefficients_vec</span>(<span class="ident">res</span>)
+                    }
+                }
+            })
+            .<span class="ident">collect</span>();
+
+        <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">scaled</span> {
+            <span class="ident">res</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">p</span>;
+        }
+
+        <span class="ident">res</span>
+    }
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
@@ -2012,11 +2122,9 @@ The folowing functionality is implemented
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">g</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">clone</span>();
         <span class="ident">g</span>.<span class="ident">extend</span>(<span class="macro">vec!</span>[<span class="ident">G::zero</span>(); <span class="ident">padding</span>]);
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">combined_polynomial_terms</span> <span class="op">=</span> <span class="macro">vec!</span>[];
-
-        <span class="comment">// scale the polynoms in accumulator shifted, if bounded, to the end of SRS</span>
         <span class="kw">let</span> (<span class="ident">p</span>, <span class="ident">blinding_factor</span>) <span class="op">=</span> {
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::zero</span>();
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plnm</span> <span class="op">=</span> <span class="ident">ChunkedPolynomial</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span>[<span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>]<span class="op">&gt;</span><span class="ident">::default</span>();
+            <span class="comment">// let mut plnm_chunks: Vec&lt;(Fr&lt;G&gt;, OptShiftedPolynomial&lt;_&gt;)&gt; = vec![];</span>
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">omega</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">scale</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
@@ -2029,15 +2137,14 @@ The folowing functionality is implemented
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">m</span>) <span class="op">=</span> <span class="ident">degree_bound</span> {
                     <span class="macro">assert!</span>(<span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">m</span> <span class="op">+</span> <span class="number">1</span>);
                     <span class="kw">while</span> <span class="ident">j</span> <span class="op">&lt;</span> <span class="ident">omegas</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>() {
-                        <span class="kw">let</span> <span class="ident">segment</span> <span class="op">=</span> <span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_coefficients_slice</span>(
-                            <span class="kw-2">&amp;</span><span class="ident">p_i</span>.<span class="ident">coeffs</span>[<span class="ident">offset</span>..<span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
+                        <span class="kw">let</span> <span class="ident">segment</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">p_i</span>.<span class="ident">coeffs</span>[<span class="ident">offset</span>
+                            ..<span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
                                 <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>()
                             } <span class="kw">else</span> {
                                 <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()
-                            }],
-                        );
+                            }];
                         <span class="comment">// always mixing in the unshifted segments</span>
-                        <span class="ident">p</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">segment</span>.<span class="ident">scale</span>(<span class="ident">scale</span>);
+                        <span class="ident">plnm</span>.<span class="ident">add_unshifted</span>(<span class="ident">scale</span>, <span class="ident">segment</span>);
 
                         <span class="ident">omega</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">omegas</span>.<span class="ident">unshifted</span>[<span class="ident">j</span>] <span class="op">*</span> <span class="ident">scale</span>);
                         <span class="ident">j</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
@@ -2045,7 +2152,7 @@ The folowing functionality is implemented
                         <span class="ident">offset</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>();
                         <span class="kw">if</span> <span class="ident">offset</span> <span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">m</span> {
                             <span class="comment">// mixing in the shifted segment since degree is bounded</span>
-                            <span class="ident">p</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">segment</span>.<span class="ident">shiftr</span>(<span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">m</span> <span class="op">%</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()).<span class="ident">scale</span>(<span class="ident">scale</span>));
+                            <span class="ident">plnm</span>.<span class="ident">add_shifted</span>(<span class="ident">scale</span>, <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">m</span> <span class="op">%</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>(), <span class="ident">segment</span>);
                             <span class="ident">omega</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">omegas</span>.<span class="ident">shifted</span>.<span class="ident">unwrap</span>() <span class="op">*</span> <span class="ident">scale</span>);
                             <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">polyscale</span>;
                         }
@@ -2053,21 +2160,15 @@ The folowing functionality is implemented
                 } <span class="kw">else</span> {
                     <span class="macro">assert!</span>(<span class="ident">omegas</span>.<span class="ident">shifted</span>.<span class="ident">is_none</span>());
                     <span class="kw">while</span> <span class="ident">j</span> <span class="op">&lt;</span> <span class="ident">omegas</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>() {
-                        <span class="kw">let</span> <span class="ident">segment</span> <span class="op">=</span> <span class="ident">DensePolynomial</span>::<span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_coefficients_slice</span>(
-                            <span class="kw-2">&amp;</span><span class="ident">p_i</span>.<span class="ident">coeffs</span>[<span class="ident">offset</span>..<span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
+                        <span class="kw">let</span> <span class="ident">segment</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">p_i</span>.<span class="ident">coeffs</span>[<span class="ident">offset</span>
+                            ..<span class="kw">if</span> <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
                                 <span class="ident">p_i</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>()
                             } <span class="kw">else</span> {
                                 <span class="ident">offset</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>()
-                            }],
-                        );
-
-                        <span class="ident">combined_polynomial_terms</span>.<span class="ident">push</span>(
-                            <span class="self">self</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="ident">segment</span>, <span class="prelude-val">None</span>).<span class="ident">unshifted</span>[<span class="number">0</span>]
-                                <span class="op">+</span> <span class="self">self</span>.<span class="ident">h</span>.<span class="ident">mul</span>(<span class="ident">omegas</span>.<span class="ident">unshifted</span>[<span class="ident">j</span>]).<span class="ident">into_affine</span>(),
-                        );
+                            }];
 
                         <span class="comment">// always mixing in the unshifted segments</span>
-                        <span class="ident">p</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">segment</span>.<span class="ident">scale</span>(<span class="ident">scale</span>);
+                        <span class="ident">plnm</span>.<span class="ident">add_unshifted</span>(<span class="ident">scale</span>, <span class="ident">segment</span>);
                         <span class="ident">omega</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="ident">omegas</span>.<span class="ident">unshifted</span>[<span class="ident">j</span>] <span class="op">*</span> <span class="ident">scale</span>);
                         <span class="ident">j</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
                         <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">polyscale</span>;
@@ -2076,7 +2177,8 @@ The folowing functionality is implemented
                 }
                 <span class="macro">assert_eq!</span>(<span class="ident">j</span>, <span class="ident">omegas</span>.<span class="ident">unshifted</span>.<span class="ident">len</span>());
             }
-            (<span class="ident">p</span>, <span class="ident">omega</span>)
+
+            (<span class="ident">plnm</span>.<span class="ident">to_dense_polynomial</span>(), <span class="ident">omega</span>)
         };
 
         <span class="kw">let</span> <span class="ident">rounds</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>());
@@ -2700,5 +2802,5 @@ The folowing functionality is implemented
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1409c015b 2022-01-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1bd4fdc94 2022-01-12)" ></div>
 </body></html>
