@@ -1,4 +1,4 @@
-use crate::offline::word::CairoWord;
+use crate::witness::word::CairoWord;
 
 pub struct CairoMemory {
     /// length of the public memory
@@ -26,8 +26,8 @@ impl CairoMemory {
         self.stack.len() as u64
     }
 
-    /// Write field element in memory address
-    pub fn write(&mut self, index: u64, elem: u64) {
+    /// Enlarges memory with enough additional slots if necessary before writing or reading
+    fn enlarge(&mut self, index: u64) {
         if self.len() <= index {
             let additional = index - self.len() + 1;
             self.stack.reserve(additional.try_into().unwrap());
@@ -36,13 +36,27 @@ impl CairoMemory {
                 self.stack.push(CairoWord::new(0));
             }
         }
+    }
+
+    /// Write u64 element in memory address
+    pub fn write(&mut self, index: u64, elem: u64) {
+        self.enlarge(index);
+        println!("len {} y cap {}", self.stack.len(), self.stack.capacity());
         self.stack[index as usize] = CairoWord::new(elem);
         //std::mem::replace(self.stack[index], CairoWord::new(elem));
     }
 
     /// Read field element in memory address
-    pub fn read(&self, index: u64) -> u64 {
+    pub fn read(&mut self, index: u64) -> u64 {
+        self.enlarge(index);
         self.stack[index as usize].word
+    }
+
+    /// Visualize content of memory
+    pub fn view(&mut self) {
+        for i in 0..self.len() {
+            println!("{}: 0x{:x}", i, self.read(i));
+        }
     }
 }
 
@@ -61,8 +75,8 @@ mod tests {
         // the total memory of executing the program
         let instrs: Vec<u64> = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe];
         let mut memo = CairoMemory::new(instrs);
-        memo.write(memo.len(), 7);
-        memo.write(memo.len(), 7);
+        memo.write(memo.len(), 6);
+        memo.write(memo.len(), 6);
         memo.write(memo.len(), 10);
         for i in 0..memo.len() {
             println!("0x{:x}", memo.read(i));

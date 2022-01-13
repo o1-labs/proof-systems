@@ -186,7 +186,7 @@ impl CairoWord {
 }
 
 mod tests {
-    use super::*;
+    use super::CairoWord;
 
     #[test]
     fn test_cairo_word() {

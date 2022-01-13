@@ -1,5 +1,5 @@
-use crate::offline::memory::CairoMemory;
-use crate::offline::word::CairoWord;
+use crate::witness::memory::CairoMemory;
+use crate::witness::word::CairoWord;
 
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]
@@ -59,6 +59,7 @@ struct CairoStep {
 
 /// Performs the addition of a u64 register with a i16 offset
 fn add_off(reg: u64, off: i16) -> u64 {
+    println!("reg {}, off {}", reg, off);
     if off.is_negative() {
         // 1. Convert item to i64, so that the absolute value fits (e.g. 2^15 could not fit in i16 otherwise)
         // 2. Once it is a positive value, store it as u64
@@ -81,10 +82,10 @@ impl CairoStep {
     }
 
     pub fn execute(&mut self) -> bool {
-        self.set_dst();
         self.set_op0();
         self.set_op1();
         self.set_res();
+        self.set_dst();
         let next_pc = self.next_pc();
         let (next_ap, next_fp) = self.next_apfp();
         self.next = Some(CairoRegisters::new(
@@ -96,16 +97,20 @@ impl CairoStep {
     }
 
     /// This function returns the current word instruction being executed
-    pub fn instr(&self) -> CairoWord {
+    pub fn instr(&mut self) -> CairoWord {
+        println!("this instr 0x{:x}", self.memo.read(self.curr.pc));
         CairoWord::new(self.memo.read(self.curr.pc))
     }
 
     /// This function computes the destination address
     pub fn set_dst(&mut self) {
+        println!("set_dst");
         if self.instr().dst_reg() == 0 {
+            println!("set_dst dstreg = 0");
             self.vars.dst_dir = add_off(self.curr.ap, self.instr().off_dst());
         // read from stack
         } else {
+            println!("set_dst dstreg = 1");
             self.vars.dst_dir = add_off(self.curr.fp, self.instr().off_dst()); // read from parameters
         }
         self.vars.dst = self.memo.read(self.vars.dst_dir);
@@ -113,6 +118,7 @@ impl CairoStep {
 
     /// This function computes the first operand address
     pub fn set_op0(&mut self) {
+        println!("set_op0");
         if self.instr().op0_reg() == 0 {
             // reads first word from memory
             self.vars.op0_dir = add_off(self.curr.ap, self.instr().off_op0());
@@ -124,6 +130,7 @@ impl CairoStep {
     }
 
     pub fn set_op1(&mut self) {
+        println!("set_op1");
         if self.instr().op1_src() == 0 {
             // op1_src = 000
             self.vars.size = 1; // double indexing
@@ -151,6 +158,7 @@ impl CairoStep {
 
     /// This function computes the value of the result of the arithmetic operation
     pub fn set_res(&mut self) {
+        println!("set_res");
         if self.instr().pc_up() == 4 {
             // jnz instruction
             if self.instr().res_log() == 0
@@ -184,6 +192,7 @@ impl CairoStep {
 
     // This function computes the next program counter
     pub fn next_pc(&mut self) -> Option<u64> {
+        println!("next_pc");
         if self.instr().pc_up() == 0 {
             // next instruction is right after the current one
             Some(self.curr.pc + self.vars.size) // the common case
@@ -207,6 +216,7 @@ impl CairoStep {
     }
     // This function computes the next values of the allocation and frame pointers
     fn next_apfp(&mut self) -> (Option<u64>, Option<u64>) {
+        println!("set_apfp");
         let (next_ap, next_fp);
         // The following branches don't include the assertions. That is done in the verification.
         if self.instr().opcode() == 1 {
@@ -282,4 +292,27 @@ impl CairoProgram {
         }
     }
     */
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cairo_step() {
+        // This tests that CairoStep works for a 2 word instruction
+        //    tempvar x = 10;
+        let instrs: Vec<u64> = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe];
+        let mut memo = CairoMemory::new(instrs);
+        memo.write(3, 6);
+        memo.write(4, 6);
+        let regs = CairoRegisters::new(0, 5, 5);
+        let mut step = CairoStep::new(0, memo, regs);
+
+        let _next = step.execute();
+        assert_eq!(step.next.unwrap().pc, 2);
+        assert_eq!(step.next.unwrap().ap, 6);
+        assert_eq!(step.next.unwrap().fp, 5);
+
+        step.memo.view();
+    }
 }
