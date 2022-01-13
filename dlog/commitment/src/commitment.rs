@@ -481,6 +481,65 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     res
 }
 
+enum OptShiftedPolynomial<P> {
+    Unshifted(P),
+    Shifted(P, usize),
+}
+
+/// A formal sum of the form
+/// `s_0 * p_0 + ... s_n * p_n`
+/// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
+struct ChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
+
+impl<F, P> Default for ChunkedPolynomial<F, P> {
+    fn default() -> ChunkedPolynomial<F, P> {
+        ChunkedPolynomial(vec![])
+    }
+}
+
+impl<F, P> ChunkedPolynomial<F, P> {
+    fn add_unshifted(&mut self, scale: F, p: P) {
+        self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
+    }
+
+    fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
+        self.0
+            .push((scale, OptShiftedPolynomial::Shifted(p, shift)))
+    }
+}
+
+impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
+    fn to_dense_polynomial(&self) -> DensePolynomial<F> {
+        let mut res = DensePolynomial::<F>::zero();
+
+        let scaled: Vec<_> = self
+            .0
+            .par_iter()
+            .map(|(scale, segment)| {
+                let scale = *scale;
+                match segment {
+                    OptShiftedPolynomial::Unshifted(segment) => {
+                        let v = segment.par_iter().map(|x| scale * *x).collect();
+                        DensePolynomial::from_coefficients_vec(v)
+                    }
+                    OptShiftedPolynomial::Shifted(segment, shift) => {
+                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
+                        let mut res = vec![F::zero(); *shift];
+                        res.append(&mut v);
+                        DensePolynomial::from_coefficients_vec(res)
+                    }
+                }
+            })
+            .collect();
+
+        for p in scaled {
+            res += &p;
+        }
+
+        res
+    }
+}
+
 impl<G: CommitmentCurve> SRS<G>
 where
     G::ScalarField: CommitmentField,
@@ -660,11 +719,9 @@ where
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
 
-        let mut combined_polynomial_terms = vec![];
-
-        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
         let (p, blinding_factor) = {
-            let mut p = DensePolynomial::<Fr<G>>::zero();
+            let mut plnm = ChunkedPolynomial::<Fr<G>, &[Fr<G>]>::default();
+            // let mut plnm_chunks: Vec<(Fr<G>, OptShiftedPolynomial<_>)> = vec![];
 
             let mut omega = Fr::<G>::zero();
             let mut scale = Fr::<G>::one();
@@ -677,15 +734,14 @@ where
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
                     while j < omegas.unshifted.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                        let segment = &p_i.coeffs[offset
+                            ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
-                            }],
-                        );
+                            }];
                         // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
+                        plnm.add_unshifted(scale, segment);
 
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
@@ -693,7 +749,7 @@ where
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            p += &(segment.shiftr(self.g.len() - m % self.g.len()).scale(scale));
+                            plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
@@ -701,21 +757,15 @@ where
                 } else {
                     assert!(omegas.shifted.is_none());
                     while j < omegas.unshifted.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                        let segment = &p_i.coeffs[offset
+                            ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
-                            }],
-                        );
-
-                        combined_polynomial_terms.push(
-                            self.commit_non_hiding(&segment, None).unshifted[0]
-                                + self.h.mul(omegas.unshifted[j]).into_affine(),
-                        );
+                            }];
 
                         // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
+                        plnm.add_unshifted(scale, segment);
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
@@ -724,7 +774,8 @@ where
                 }
                 assert_eq!(j, omegas.unshifted.len());
             }
-            (p, omega)
+
+            (plnm.to_dense_polynomial(), omega)
         };
 
         let rounds = ceil_log2(self.g.len());
