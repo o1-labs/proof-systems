@@ -81,6 +81,7 @@ impl CairoStep {
         }
     }
 
+    /// Executes a Cairo step from the current registers
     pub fn execute(&mut self) -> bool {
         self.set_op0();
         self.set_op1();
@@ -247,10 +248,13 @@ impl CairoStep {
             } else {
                 unimplemented!(); // invalid instruction}
             }
-            if self.instr().opcode() == 0 || self.instr().opcode() == 4 {
+            if self.instr().opcode() == 0 {
                 next_fp = Some(self.curr.fp); // no modification on fp
             } else if self.instr().opcode() == 2 {
                 next_fp = Some(self.vars.dst); // ret sets fp to previous fp that was in [ap-2]
+            } else if self.instr().opcode() == 4 {
+                self.memo.write(self.vars.dst_dir, self.vars.res); // dst = res
+                next_fp = Some(self.curr.fp); // no modification on fp
             } else {
                 unimplemented!();
             }
