@@ -1,9 +1,27 @@
+//! Batch elliptic curve algorithms based on the batch-affine principle.
+//!
+//! The principle is the following:
+//!
+//! Usually, affine coordinates are not used because curve operations require
+//! division, which is very inefficient. However, if one is performing a large
+//! number of curve operations at the same time, then the inverses can be computed
+//! efficiently using the *batch inversion algorithm* which allows you to compute
+//! the inverses for an array of elements at a cost of 3 multiplications per element.
+//!
+//! With the reduced cost of inversion, in settings where you are computing many
+//! parallel elliptic curve operations, it is actually cheaper to use affine coordinates.
+//!
+//! Most algorithms in this module take an argument `denominators: &mut Vec<F>` which
+//! is a scratch array used for performing inversions. It is passed around to avoid re-allocating
+//! such a scratch array within each algorithm.
+
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, ProjectiveCurve,
     SWModelParameters,
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
+use oracle::sponge::ScalarChallenge;
 use rayon::prelude::*;
 
 fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
@@ -64,54 +82,90 @@ fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
     }
 }
 
-fn batch_add_assign<P: SWModelParameters>(
+/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i,
+/// assuming that for each `i`, `v0[i].x != v1[i].x` so we can use the ordinary
+/// addition formula and don't have to handle the edge cases of doubling and
+/// hitting the point at infinity.
+fn batch_add_assign_no_branch<P: SWModelParameters>(
     denominators: &mut [P::BaseField],
     v0: &mut [SWJAffine<P>],
     v1: &[SWJAffine<P>],
 ) {
-    let n = v0.len();
-
-    for i in 0..n {
-        let p0 = v0[i];
-        let p1 = v1[i];
-        let d = if p0.x == p1.x {
-            if p1.y.is_zero() {
-                P::BaseField::one()
-            } else {
-                p1.y.double()
-            }
-        } else {
-            p0.x - p1.x
-        };
-        denominators[i] = d;
-    }
+    denominators
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, denom)| {
+            let p0 = v0[i];
+            let p1 = v1[i];
+            let d = p0.x - p1.x;
+            *denom = d;
+        });
 
     ark_ff::batch_inversion::<P::BaseField>(denominators);
 
-    for (i, d) in (0..n).zip(denominators.iter()) {
-        let p0 = v0[i];
-        let p1 = v1[i];
-
-        if p1.is_zero() {
-        } else if p0.is_zero() {
-            v0[i] = p1;
-        } else if p1.x == p0.x && (p1.y != p0.y || p1.y == P::BaseField::zero()) {
-            v0[i] = SWJAffine::<P>::zero();
-        } else if p1.x == p0.x && p1.y == p0.y {
-            let sq = p0.x.square();
-            let s = (sq.double() + sq + P::COEFF_A) * d;
-            let x = s.square() - p0.x.double();
-            let y = -p0.y - (s * (x - p0.x));
-            v0[i].x = x;
-            v0[i].y = y;
-        } else {
+    denominators
+        .par_iter()
+        .zip(v0.par_iter_mut())
+        .zip(v1.par_iter())
+        .for_each(|((d, p0), p1)| {
             let s = (p0.y - p1.y) * d;
             let x = s.square() - p0.x - p1.x;
             let y = -p0.y - (s * (x - p0.x));
-            v0[i].x = x;
-            v0[i].y = y;
-        }
-    }
+            p0.x = x;
+            p0.y = y;
+        });
+}
+
+/// Given arrays of curve points `v0` and `v1` do `v0[i] += v1[i]` for each i.
+pub fn batch_add_assign<P: SWModelParameters>(
+    denominators: &mut [P::BaseField],
+    v0: &mut [SWJAffine<P>],
+    v1: &[SWJAffine<P>],
+) {
+    denominators
+        .par_iter_mut()
+        .zip(v0.par_iter())
+        .zip(v1.par_iter())
+        .for_each(|((denom, p0), p1)| {
+            let d = if p0.x == p1.x {
+                if p1.y.is_zero() {
+                    P::BaseField::one()
+                } else {
+                    p1.y.double()
+                }
+            } else {
+                p0.x - p1.x
+            };
+            *denom = d;
+        });
+
+    ark_ff::batch_inversion::<P::BaseField>(denominators);
+
+    denominators
+        .par_iter()
+        .zip(v0.par_iter_mut())
+        .zip(v1.par_iter())
+        .for_each(|((d, p0), p1)| {
+            if p1.is_zero() {
+            } else if p0.is_zero() {
+                *p0 = *p1;
+            } else if p1.x == p0.x && (p1.y != p0.y || p1.y == P::BaseField::zero()) {
+                *p0 = SWJAffine::<P>::zero();
+            } else if p1.x == p0.x && p1.y == p0.y {
+                let sq = p0.x.square();
+                let s = (sq.double() + sq + P::COEFF_A) * d;
+                let x = s.square() - p0.x.double();
+                let y = -p0.y - (s * (x - p0.x));
+                p0.x = x;
+                p0.y = y;
+            } else {
+                let s = (p0.y - p1.y) * d;
+                let x = s.square() - p0.x - p1.x;
+                let y = -p0.y - (s * (x - p0.x));
+                p0.x = x;
+                p0.y = y;
+            }
+        });
 }
 
 fn affine_window_combine_base<P: SWModelParameters>(
@@ -221,6 +275,97 @@ fn affine_window_combine_base<P: SWModelParameters>(
     points
 }
 
+fn batch_endo_in_place<P: SWModelParameters>(endo_coeff: P::BaseField, ps: &mut [SWJAffine<P>]) {
+    ps.par_iter_mut().for_each(|p| p.x *= endo_coeff);
+}
+
+fn batch_negate_in_place<P: SWModelParameters>(ps: &mut [SWJAffine<P>]) {
+    ps.par_iter_mut().for_each(|p| {
+        p.y = -p.y;
+    });
+}
+
+/// Uses a batch version of Algorithm 1 of https://eprint.iacr.org/2019/1021.pdf (on page 19) to
+/// compute `g1 + g2.scale(chal.to_field(endo_coeff))`
+fn affine_window_combine_one_endo_base<P: SWModelParameters>(
+    endo_coeff: P::BaseField,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
+    chal: ScalarChallenge<P::ScalarField>,
+) -> Vec<SWJAffine<P>> {
+    fn assign<A: Copy>(dst: &mut [A], src: &[A]) {
+        let n = dst.len();
+        dst[..n].clone_from_slice(&src[..n]);
+    }
+
+    fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
+        let limb = i / 64;
+        let j = i % 64;
+        (limbs_lsb[limb as usize] >> j) & 1
+    }
+
+    let rep = chal.0.into_repr();
+    let r = rep.as_ref();
+
+    let mut denominators = vec![P::BaseField::zero(); g1.len()];
+    // acc = 2 (phi(g2) + g2)
+    let mut points = g2.to_vec();
+    batch_endo_in_place(endo_coeff, &mut points);
+    batch_add_assign_no_branch(&mut denominators, &mut points, g2);
+    batch_double_in_place(&mut denominators, &mut points);
+
+    let mut tmp_s = g2.to_vec();
+    let mut tmp_acc = g2.to_vec();
+    for i in (0..(128 / 2)).rev() {
+        // s = g2
+        assign(&mut tmp_s, g2);
+        // tmp = acc
+        assign(&mut tmp_acc, &points);
+
+        let r_2i = get_bit(r, 2 * i);
+        if r_2i == 0 {
+            batch_negate_in_place(&mut tmp_s);
+        }
+        if get_bit(r, 2 * i + 1) == 1 {
+            batch_endo_in_place(endo_coeff, &mut tmp_s);
+        }
+
+        // acc = (acc + s) + acc
+        batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_s);
+        batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
+    }
+    // acc += g1
+    batch_add_assign(&mut denominators, &mut points, g1);
+    points
+}
+
+///! Double an array of curve points in-place.
+fn batch_double_in_place<P: SWModelParameters>(
+    denominators: &mut Vec<P::BaseField>,
+    points: &mut [SWJAffine<P>],
+) {
+    denominators
+        .par_iter_mut()
+        .zip(points.par_iter())
+        .for_each(|(d, p)| {
+            *d = p.y.double();
+        });
+    ark_ff::batch_inversion::<P::BaseField>(denominators);
+
+    // TODO: Use less memory
+    denominators
+        .par_iter()
+        .zip(points.par_iter_mut())
+        .for_each(|(d, p)| {
+            let sq = p.x.square();
+            let s = (sq.double() + sq + P::COEFF_A) * d;
+            let x = s.square() - p.x.double();
+            let y = -p.y - (s * (x - p.x));
+            p.x = x;
+            p.y = y;
+        });
+}
+
 fn affine_window_combine_one_base<P: SWModelParameters>(
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],
@@ -282,6 +427,24 @@ pub fn affine_window_combine<P: SWModelParameters>(
     v.concat()
 }
 
+/// Given vectors of curve points `g1` and `g2`, compute a vector whose ith entry is
+/// `g1[i] + g2[i].scale(chal.to_field(endo_coeff))`
+///
+/// Internally, it uses the curve endomorphism to speed up this operation.
+pub fn affine_window_combine_one_endo<P: SWModelParameters>(
+    endo_coeff: P::BaseField,
+    g1: &[SWJAffine<P>],
+    g2: &[SWJAffine<P>],
+    chal: ScalarChallenge<P::ScalarField>,
+) -> Vec<SWJAffine<P>> {
+    const CHUNK_SIZE: usize = 4096;
+    let b: Vec<_> = g1.chunks(CHUNK_SIZE).zip(g2.chunks(CHUNK_SIZE)).collect();
+    let v: Vec<_> = b
+        .into_par_iter()
+        .map(|(v1, v2)| affine_window_combine_one_endo_base(endo_coeff, v1, v2, chal))
+        .collect();
+    v.concat()
+}
 pub fn affine_window_combine_one<P: SWModelParameters>(
     g1: &[SWJAffine<P>],
     g2: &[SWJAffine<P>],

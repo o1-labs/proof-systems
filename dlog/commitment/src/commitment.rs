@@ -382,6 +382,17 @@ pub trait CommitmentCurve: AffineCurve {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2)
     }
 
+    // Combine where x1 = one
+    fn combine_one_endo(
+        endo_r: Self::ScalarField,
+        _endo_q: Self::BaseField,
+        g1: &[Self],
+        g2: &[Self],
+        x2: ScalarChallenge<Self::ScalarField>,
+    ) -> Vec<Self> {
+        crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2.to_field(&endo_r))
+    }
+
     fn combine(
         g1: &[Self],
         g2: &[Self],
@@ -413,6 +424,16 @@ where
 
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::affine_window_combine_one(g1, g2, x2)
+    }
+
+    fn combine_one_endo(
+        _endo_r: Self::ScalarField,
+        endo_q: Self::BaseField,
+        g1: &[Self],
+        g2: &[Self],
+        x2: ScalarChallenge<Self::ScalarField>,
+    ) -> Vec<Self> {
+        crate::combine::affine_window_combine_one_endo(endo_q, g1, g2, x2)
     }
 
     fn combine(
@@ -854,7 +875,8 @@ where
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
-            let u = squeeze_challenge(&self.endo_r, &mut sponge);
+            let u_pre = squeeze_prechallenge(&mut sponge);
+            let u = u_pre.to_field(&self.endo_r);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -884,7 +906,7 @@ where
                 })
                 .collect();
 
-            g = G::combine_one(&g_lo, &g_hi, u);
+            g = G::combine_one_endo(self.endo_r, self.endo_q, &g_lo, &g_hi, u_pre);
         }
 
         assert!(g.len() == 1);
