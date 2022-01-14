@@ -127,7 +127,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
 
 fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
-    state: &Vec<F>,
+    state: &[F],
 ) -> Vec<F> {
     if SC::FULL_MDS {
         params
@@ -142,9 +142,9 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
             .collect()
     } else {
         vec![
-            state[0] + &state[2],
-            state[0] + &state[1],
-            state[1] + &state[2],
+            state[0] + state[2],
+            state[0] + state[1],
+            state[1] + state[2],
         ]
     }
 }
@@ -154,8 +154,8 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     state: &mut Vec<F>,
     r: usize,
 ) {
-    for i in 0..state.len() {
-        state[i] = sbox::<F, SC>(state[i]);
+    for state_i in state.iter_mut() {
+        *state_i = sbox::<F, SC>(*state_i);
     }
     *state = apply_mds_matrix::<F, SC>(params, state);
     for (i, x) in params.round_constants[r].iter().enumerate() {
@@ -171,8 +171,8 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
         for (i, x) in params.round_constants[r].iter().enumerate() {
             state[i].add_assign(x);
         }
-        for i in 0..state.len() {
-            state[i] = sbox::<F, SC>(state[i]);
+        for state_i in state.iter_mut() {
+            *state_i = sbox::<F, SC>(*state_i);
         }
         apply_mds_matrix::<F, SC>(params, state);
     }
@@ -195,8 +195,8 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
         {
             state[i].add_assign(x);
         }
-        for i in 0..state.len() {
-            state[i] = sbox::<F, SC>(state[i]);
+        for state_i in state.iter_mut() {
+            *state_i = sbox::<F, SC>(*state_i);
         }
         apply_mds_matrix::<F, SC>(params, state);
     }
@@ -207,7 +207,7 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
     state: &mut Vec<F>,
 ) {
     if SC::HALF_ROUNDS_FULL == 0 {
-        if SC::INITIAL_ARK == true {
+        if SC::INITIAL_ARK {
             for (i, x) in params.round_constants[0].iter().enumerate() {
                 state[i].add_assign(x);
             }

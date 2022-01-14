@@ -156,21 +156,20 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let expr = expr + complete_add;
     let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
     let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
-    let expr = if dummy_lookup_value.is_some() {
-        expr + Expr::combine_constraints(
-            2 + super::range::CHACHA.end,
-            lookup::constraints(dummy_lookup_value.unwrap(), domain),
-        )
-    } else {
-        expr
-    };
-    let expr = if chacha {
-        expr + chacha::constraint(super::range::CHACHA.start)
+
+    let expr = if let Some(dummy) = dummy_lookup_value {
+        let constraints = lookup::constraints(dummy, domain);
+        let combined = Expr::combine_constraints(2 + super::range::CHACHA.end, constraints);
+        expr + combined
     } else {
         expr
     };
 
-    expr
+    if chacha {
+        expr + chacha::constraint(super::range::CHACHA.start)
+    } else {
+        expr
+    }
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
