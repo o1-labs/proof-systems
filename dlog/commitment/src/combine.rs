@@ -311,14 +311,14 @@ fn affine_window_combine_one_endo_base<P: SWModelParameters>(
     // acc = 2 (phi(g2) + g2)
     let mut points = g2.to_vec();
     batch_endo_in_place(endo_coeff, &mut points);
-    batch_add_assign_no_branch(&mut denominators, &mut points, &g2);
+    batch_add_assign_no_branch(&mut denominators, &mut points, g2);
     batch_double_in_place(&mut denominators, &mut points);
 
     let mut tmp_s = g2.to_vec();
     let mut tmp_acc = g2.to_vec();
     for i in (0..(128 / 2)).rev() {
         // s = g2
-        assign(&mut tmp_s, &g2);
+        assign(&mut tmp_s, g2);
         // tmp = acc
         assign(&mut tmp_acc, &points);
 
@@ -335,7 +335,7 @@ fn affine_window_combine_one_endo_base<P: SWModelParameters>(
         batch_add_assign_no_branch(&mut denominators, &mut points, &tmp_acc);
     }
     // acc += g1
-    batch_add_assign(&mut denominators, &mut points, &g1);
+    batch_add_assign(&mut denominators, &mut points, g1);
     points
 }
 
