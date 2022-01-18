@@ -30,6 +30,8 @@ pub struct Constants<F> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: Vec<Vec<F>>,
+    // Foreign field moduli
+    pub foreign_moduli: Vec<Vec<F>>,
 }
 
 /// The polynomials specific to the lookup argument.

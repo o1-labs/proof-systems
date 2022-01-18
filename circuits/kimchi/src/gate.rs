@@ -148,8 +148,9 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
-    /// Non-native modular multiplication
-    NonNativeMul,
+    /// Foreign field multiplication (reserving 11-17)
+    ForeignMulPastaPallas = 11,
+    ForeignMulPastaVesta = 12,
 }
 
 /// Describes the desired lookup configuration.
@@ -431,7 +432,8 @@ impl<F: FftField> CircuitGate<F> {
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
-            NonNativeMul => self.verify_nnmul(row, witness),
+            ForeignMulPastaPallas => self.verify_foreign_mul(self.typ, row, witness, cs),
+            ForeignMulPastaVesta => self.verify_foreign_mul(self.typ, row, witness, cs),
         }
     }
 }
