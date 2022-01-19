@@ -261,10 +261,7 @@ where
                 .iter()
                 .zip(evals[0].s.iter())
                 .map(|(w, s)| (beta * s) + w + gamma)
-                .fold(
-                    (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alpha0 * zkp,
-                    |x, y| x * y,
-                );
+                .fold(init * zkp, |x, y| x * y);
 
             ft_eval0 -= if !p_eval[0].is_empty() {
                 p_eval[0][0]

@@ -157,28 +157,34 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
+    powers_of_alpha: &mut alphas::Builder,
 ) -> E<F> {
-    let expr = poseidon::constraint();
-    let expr = expr + varbasemul::constraint(super::range::MUL.start);
-    let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
-    assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
-    let expr = expr + complete_add;
-    let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
-    let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
+    // gates
+    let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
 
-    let expr = if let Some(dummy) = dummy_lookup_value {
-        let constraints = lookup::constraints(dummy, domain);
-        let combined = Expr::combine_constraints(2 + super::range::CHACHA.end, constraints);
-        expr + combined
-    } else {
-        expr
-    };
+    let mut expr = poseidon::constraint(alphas.clone().take(15));
+    expr += varbasemul::constraint(alphas.clone().take(21));
+    expr += complete_add::constraint(alphas.clone().take(7));
+    expr += endosclmul::constraint(alphas.clone().take(11));
+    expr += endomul_scalar::constraint(alphas.clone().take(11));
 
     if chacha {
-        expr + chacha::constraint(super::range::CHACHA.start)
-    } else {
-        expr
+        expr += chacha::constraint_chacha0(alphas.clone().take(5));
+        expr += chacha::constraint_chacha1(alphas.clone().take(5));
+        expr += chacha::constraint_chacha2(alphas.clone().take(5));
+        expr += chacha::constraint_chacha_final(alphas.clone().take(9))
     }
+
+    // lookup
+    if let Some(dummy) = dummy_lookup_value {
+        let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
+        let constraints = lookup::constraints(dummy, domain);
+        let combined = Expr::combine_constraints(alphas, constraints);
+        expr += combined
+    }
+
+    // return the expression
+    expr
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
@@ -203,10 +209,11 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
+    powers_of_alpha: &mut alphas::Builder,
 ) -> Linearization<Vec<PolishToken<F>>> {
     let evaluated_cols = linearization_columns::<F>();
 
-    constraints_expr(domain, chacha, dummy_lookup_value)
+    constraints_expr(domain, chacha, dummy_lookup_value, powers_of_alpha)
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish())
@@ -315,14 +322,6 @@ where
         // permutation
         let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
 
-        // lookup
-        if lookup_used.is_some() {
-            let _alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
-        }
-
-        // gates
-        let _alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
-
         //
         // Lookup
         //
@@ -333,8 +332,12 @@ where
             None
         };
 
-        let linearization =
-            expr_linearization(cs.domain.d1, cs.chacha8.is_some(), dummy_lookup_value);
+        let linearization = expr_linearization(
+            cs.domain.d1,
+            cs.chacha8.is_some(),
+            dummy_lookup_value,
+            &mut powers_of_alpha,
+        );
 
         let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
 

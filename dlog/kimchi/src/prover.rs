@@ -2,8 +2,7 @@
 
 use crate::{index::Index, plonk_sponge::FrSponge};
 use ark_ec::AffineCurve;
-use ark_ff::UniformRand;
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -706,7 +705,8 @@ where
             let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
             let mut f = index
                 .cs
-                .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector);
+                .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                .interpolate();
 
             // permutation
             let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);

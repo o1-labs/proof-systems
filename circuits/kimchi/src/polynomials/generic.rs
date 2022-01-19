@@ -301,7 +301,7 @@ mod tests {
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
         let f = cs
-            .gnrc_lnrz(&mut alphas.clone(), &w_zeta, generic_zeta)
+            .gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta)
             .interpolate();
         let f_zeta = f.evaluate(&zeta);
 
