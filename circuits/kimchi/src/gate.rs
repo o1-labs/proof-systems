@@ -188,6 +188,7 @@ pub enum LookupsUsed {
 
 impl<F: FftField> LookupInfo<F> {
     /// Create the default lookup configuration.
+    // TODO: move this to a Default implementation
     pub fn create() -> Self {
         let kinds = lookup_kinds::<F>();
         let max_per_row = max_lookups_per_row(&kinds);

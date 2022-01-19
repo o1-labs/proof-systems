@@ -142,6 +142,7 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
     /// coefficient for the group endomorphism
+    // TODO: move out of constraint system, into index
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endo: F,
 

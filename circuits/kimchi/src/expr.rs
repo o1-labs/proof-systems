@@ -1535,6 +1535,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
     // a small input when producing the verification key.
+    /// Returns true if the expression is a constant.
     fn is_constant(&self, evaluated: &HashSet<Column>) -> bool {
         use Expr::*;
         match self {
@@ -1550,6 +1551,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         }
     }
 
+    /// Returns a mapping from variables to their coefficients in the expression.
     fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable>, Expr<F>> {
         let sing = |v: Vec<Variable>, c: Expr<F>| {
             let mut h = HashMap::new();
@@ -1595,6 +1597,8 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             BinOp(Op2::Add, e1, e2) => {
                 let mut res = e1.monomials(ev);
                 for (m, c) in e2.monomials(ev) {
+                    // TODO: this line is simpler and should do the same:
+                    // res.entry(&m).and_modify(|e| e + c).or_insert(c);
                     let v = match res.remove(&m) {
                         None => c,
                         Some(v) => v + c,

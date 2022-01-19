@@ -28,8 +28,16 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::SeekFrom::Start;
 
+//
+// handy aliases
+//
+
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
+
+//
+// data structures
+//
 
 /// The index common to both the prover and verifier
 #[serde_as]
@@ -140,11 +148,17 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
+//
+// logic
+//
+
+/// construct the circuit constraint in expression form.
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
 ) -> E<F> {
+    // gates
     let expr = poseidon::constraint();
     let expr = expr + varbasemul::constraint(super::range::MUL.start);
     let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
@@ -153,6 +167,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
     let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
 
+    // lookup
     let expr = if let Some(dummy) = dummy_lookup_value {
         let constraints = lookup::constraints(dummy, domain);
         let combined = Expr::combine_constraints(2 + super::range::CHACHA.end, constraints);
@@ -161,13 +176,18 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr
     };
 
+    // chacha
     if chacha {
         expr + chacha::constraint(super::range::CHACHA.start)
     } else {
         expr
     }
+
+    // TODO: where is the permutation?
 }
 
+/// Produces the set of columns used in the linearization.
+/// Columns here refer to the polynomials that are not evaluated by the verifier.
 pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
     let lookup_info = LookupInfo::<F>::create();
     let mut h = std::collections::HashSet::new();
@@ -186,6 +206,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collection
     h
 }
 
+/// ?
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
@@ -198,6 +219,10 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
         .unwrap()
         .map(|e| e.to_polish())
 }
+
+//
+// methods to create indexes
+//
 
 impl<'a, G: CommitmentCurve> Index<G>
 where
@@ -292,15 +317,20 @@ where
         srs: Arc<SRS<G>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
+
         if cs.public > 0 {
+            // TODO: why do this check only if there's public input?
             assert!(
                 max_poly_size >= cs.domain.d1.size as usize,
                 "polynomial segment size has to be not smaller that that of the circuit!"
             );
         }
-        cs.endo = endo_q;
 
-        //~ 1. do the lookup stuff
+        //~ 1. set the endomorphism value to endo_q
+
+        cs.endo = endo_q; // TODO: this seems unrelated to the constraint system, store in index instead
+
+        //~ 2. do the lookup stuff
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
@@ -311,8 +341,12 @@ where
             None
         };
 
+        //~ 3. linearize the circuit
+
         let linearization =
             expr_linearization(cs.domain.d1, cs.chacha8.is_some(), dummy_lookup_value);
+
+        //~ 4. set the max quotient size to the number of IO registers times the domain size
 
         Index {
             // TODO(mimoo): re-order field like in the type def
@@ -327,6 +361,10 @@ where
         }
     }
 }
+
+//
+// (de)serialization methods
+//
 
 impl<G> VerifierIndex<G>
 where
