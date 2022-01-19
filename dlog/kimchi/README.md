@@ -36,8 +36,6 @@ Estimated Cycles: 27476974171
 
 ## Flamegraph
 
-This won't work on MacOS unfortunately.
-
 To obtain a flamegraph:
 
 1. [install required dependencies based on your OS](https://github.com/flamegraph-rs/flamegraph#installation)
@@ -45,7 +43,10 @@ To obtain a flamegraph:
     ```console
     $ cargo install flamegraph
     ```
-3. run cargo flamegraph:
+3. run cargo flamegraph with `sudo` (or with the option `--root` on mac):
     ```console
-    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph
+    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof creation"
     ```
+    this won't stop automatically and will re-run the [binary](src/bin/flamegraph.rs) over and over, you need to C-c to exit and produce the `flamegraph.svg`
+
+Note: lots of good advice on system performance in the [flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).
