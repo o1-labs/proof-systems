@@ -47,5 +47,5 @@ To obtain a flamegraph:
     ```
 3. run cargo flamegraph:
     ```console
-    $ CARGO_PROFILE_BENCH_DEBUG=true cargo flamegraph --bench proof_criterion -- --bench
+    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph
     ```
