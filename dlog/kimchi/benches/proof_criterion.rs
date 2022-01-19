@@ -11,7 +11,7 @@ pub fn bench_proof_creation(c: &mut Criterion) {
     let num_gates = (GATES as f64).log2();
 
     let ctx = BenchmarkCtx::default();
-    group.bench_function(format!("proof creation ({} gates)", num_gates), |b| {
+    group.bench_function(format!("proof creation (2^{} gates)", num_gates), |b| {
         b.iter(|| ctx.create_proof())
     });
 }
