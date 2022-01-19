@@ -46,6 +46,7 @@ impl Default for BenchmarkCtx {
         let mut gates = vec![];
         let mut abs_row = 0;
 
+        #[allow(clippy::explicit_counter_loop)] // TODO: fix this clippy
         for _ in 0..GATES {
             let wires = Wire::new(abs_row);
             gates.push(CircuitGate::<Fp>::create_generic_mul(wires));

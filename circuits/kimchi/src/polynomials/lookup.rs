@@ -214,7 +214,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 }
 
 /// Checks that all the lookup constraints are satisfied.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // TODO: fix this clippy
 pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: G,
@@ -491,7 +491,7 @@ pub fn sorted<
 ///
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // TODO: fix this clippy
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     dummy_lookup_value: F,
     lookup_table: I,

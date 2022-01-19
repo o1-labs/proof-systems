@@ -20,7 +20,7 @@ use rand::{CryptoRng, RngCore};
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
-    #[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity)] // TODO: fix this clippy
     pub fn perm_quot(
         &self,
         lagrange: &WitnessOverDomains<F>,

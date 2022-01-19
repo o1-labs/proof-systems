@@ -45,7 +45,7 @@ where
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: [Fr<G>; 2],
     /// ?
-    #[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity)] // TODO: fix this clippy
     pub polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
     /// pre-computed zeta^n
     pub zeta1: Fr<G>,
@@ -301,7 +301,7 @@ where
             let ft_eval0 = vec![ft_eval0];
             let ft_eval1 = vec![self.ft_eval1];
 
-            #[allow(clippy::type_complexity)]
+            #[allow(clippy::type_complexity)] // TODO: fix this clippy
             let mut es: Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys
                 .iter()
                 .map(|(_, e)| (e.iter().collect(), None))
@@ -369,7 +369,7 @@ where
     ///     proofs: vector of Plonk proofs
     ///     index: Index
     ///     RETURN: verification status
-    #[allow(clippy::type_complexity)]
+    #[allow(clippy::type_complexity)] // TODO: fix this clippy
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         proofs: &[(&Index<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],

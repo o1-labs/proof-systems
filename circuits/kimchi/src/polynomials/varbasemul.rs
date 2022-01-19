@@ -29,7 +29,7 @@ fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // TODO: fix this clippy
 fn single_bit_witness<F: FftField>(
     w: &mut [Vec<F>; COLUMNS],
     row: usize,
