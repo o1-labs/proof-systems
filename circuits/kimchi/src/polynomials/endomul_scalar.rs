@@ -7,16 +7,12 @@ use array_init::array_init;
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
         &self,
+        row: usize,
         witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        ensure_eq!(
-            self.typ,
-            GateType::EndomulScalar,
-            "incorrect gate type (should be EndomulScalar)"
-        );
+        ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
 
-        let row = self.row;
         let n0 = witness[0][row];
         let n8 = witness[1][row];
         let a0 = witness[2][row];
@@ -159,12 +155,12 @@ pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alphas, constraints) * curr_row(Column::Index(GateType::EndomulScalar))
+    E::combine_constraints(alphas, constraints) * curr_row(Column::Index(GateType::EndoMulScalar))
 }
 
 pub fn witness<F: PrimeField + std::fmt::Display>(
-    w: &mut [Vec<F>; COLUMNS],
-    x: F,
+    witness_cols: &mut [Vec<F>; COLUMNS],
+    scalar: F,
     endo_scalar: F,
     num_bits: usize,
 ) -> F {
@@ -172,7 +168,9 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let bits_per_row = 2 * crumbs_per_row;
     assert_eq!(num_bits % bits_per_row, 0);
 
-    let bits_lsb: Vec<_> = BitIteratorLE::new(x.into_repr()).take(num_bits).collect();
+    let bits_lsb: Vec<_> = BitIteratorLE::new(scalar.into_repr())
+        .take(num_bits)
+        .collect();
     let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
 
     let mut a = F::from(2u64);
@@ -183,16 +181,16 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
     let neg_one = -one;
 
     for row_bits in bits_msb[..].chunks(bits_per_row) {
-        w[0].push(n);
-        w[2].push(a);
-        w[3].push(b);
+        witness_cols[0].push(n);
+        witness_cols[2].push(a);
+        witness_cols[3].push(b);
 
         for (j, crumb_bits) in row_bits.chunks(2).enumerate() {
             let b0 = *crumb_bits[1];
             let b1 = *crumb_bits[0];
 
             let crumb = F::from(b0 as u64) + F::from(b1 as u64).double();
-            w[6 + j].push(crumb);
+            witness_cols[6 + j].push(crumb);
 
             a.double_in_place();
             b.double_in_place();
@@ -211,14 +209,14 @@ pub fn witness<F: PrimeField + std::fmt::Display>(
             n += crumb;
         }
 
-        w[1].push(n);
-        w[4].push(a);
-        w[5].push(b);
+        witness_cols[1].push(n);
+        witness_cols[4].push(a);
+        witness_cols[5].push(b);
 
-        w[14].push(F::zero()); // unused
+        witness_cols[14].push(F::zero()); // unused
     }
 
-    assert_eq!(x, n);
+    assert_eq!(scalar, n);
 
     a * endo_scalar + b
 }

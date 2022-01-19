@@ -410,7 +410,7 @@ where
             },
             proof: index.srs.get_ref().open(
                 group_map,
-                polynoms,
+                &polynoms,
                 &evlp.to_vec(),
                 oracles.v,
                 oracles.u,

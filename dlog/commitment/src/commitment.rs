@@ -16,7 +16,9 @@ use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
-use ark_ff::{Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero};
+use ark_ff::{
+    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
+};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
     UVPolynomial,
@@ -75,9 +77,51 @@ where
     }
 }
 
-pub fn shift_scalar<F: PrimeField>(x: F) -> F {
-    let two: F = 2_u64.into();
-    x - two.pow(&[F::Params::MODULUS_BITS as u64])
+/// Inside the circuit, we have a specialized scalar multiplication which computes
+/// either
+///
+/// ```ignore
+/// |g: G, x: G::ScalarField| g.scale(x + 2^n)
+/// ```
+///
+/// if the scalar field of G is greater than the size of the base field
+/// and
+///
+/// ```ignore
+/// |g: G, x: G::ScalarField| g.scale(2*x + 2^n)
+/// ```
+///
+/// otherwise. So, if we want to actually scale by `s`, we need to apply the inverse function
+/// of `|x| x + 2^n` (or of `|x| 2*x + 2^n` in the other case), before supplying the scalar
+/// to our in-circuit scalar-multiplication function. This computes that inverse function.
+/// Namely,
+///
+/// ```ignore
+/// |x: G::ScalarField| x - 2^n
+/// ```
+///
+/// when the scalar field is larger than the base field and
+///
+/// ```ignore
+/// |x: G::ScalarField| (x - 2^n) / 2
+/// ```
+///
+/// in the other case.
+pub fn shift_scalar<G: AffineCurve>(x: G::ScalarField) -> G::ScalarField
+where
+    G::BaseField: PrimeField,
+{
+    let n1 = <G::ScalarField as PrimeField>::Params::MODULUS;
+    let n2 = <G::ScalarField as PrimeField>::BigInt::from_bits_le(
+        &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
+    );
+    let two: G::ScalarField = (2u64).into();
+    let two_pow = two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
+    if n1 < n2 {
+        (x - (two_pow + G::ScalarField::one())) / two
+    } else {
+        x - two_pow
+    }
 }
 
 impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
@@ -144,7 +188,7 @@ impl<C: AffineCurve> PolyComm<C> {
         }
     }
 
-    pub fn multi_scalar_mul(com: &Vec<&PolyComm<C>>, elm: &Vec<C::ScalarField>) -> Self {
+    pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
         PolyComm::<C> {
             shifted: {
@@ -255,7 +299,7 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
 /// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...
 /// It's "step 8: Define the univariate polynomial" of
 /// appendix A.2 of https://eprint.iacr.org/2020/499
-pub fn b_poly<F: Field>(chals: &Vec<F>, x: F) -> F {
+pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     let k = chals.len();
 
     let mut pow_twos = vec![x];
@@ -264,7 +308,7 @@ pub fn b_poly<F: Field>(chals: &Vec<F>, x: F) -> F {
         pow_twos.push(pow_twos[i - 1].square());
     }
 
-    product((0..k).map(|i| (F::one() + &(chals[i] * &pow_twos[k - 1 - i]))))
+    product((0..k).map(|i| (F::one() + (chals[i] * pow_twos[k - 1 - i]))))
 }
 
 pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
@@ -276,7 +320,7 @@ pub fn b_poly_coefficients<F: Field>(chals: &[F]) -> Vec<F> {
     for i in 1..s_length {
         k += if i == pow { 1 } else { 0 };
         pow <<= if i == pow { 1 } else { 0 };
-        s[i] = s[i - (pow >> 1)] * &chals[rounds - 1 - (k - 1)];
+        s[i] = s[i - (pow >> 1)] * chals[rounds - 1 - (k - 1)];
     }
     s
 }
@@ -334,13 +378,24 @@ pub trait CommitmentCurve: AffineCurve {
     fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
 
     // Combine where x1 = one
-    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2: Self::ScalarField) -> Vec<Self> {
+    fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2)
     }
 
+    // Combine where x1 = one
+    fn combine_one_endo(
+        endo_r: Self::ScalarField,
+        _endo_q: Self::BaseField,
+        g1: &[Self],
+        g2: &[Self],
+        x2: ScalarChallenge<Self::ScalarField>,
+    ) -> Vec<Self> {
+        crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2.to_field(&endo_r))
+    }
+
     fn combine(
-        g1: &Vec<Self>,
-        g2: &Vec<Self>,
+        g1: &[Self],
+        g2: &[Self],
         x1: Self::ScalarField,
         x2: Self::ScalarField,
     ) -> Vec<Self> {
@@ -367,13 +422,23 @@ where
         SWJAffine::<P>::new(x, y, false)
     }
 
-    fn combine_one(g1: &Vec<Self>, g2: &Vec<Self>, x2: Self::ScalarField) -> Vec<Self> {
+    fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::affine_window_combine_one(g1, g2, x2)
     }
 
+    fn combine_one_endo(
+        _endo_r: Self::ScalarField,
+        endo_q: Self::BaseField,
+        g1: &[Self],
+        g2: &[Self],
+        x2: ScalarChallenge<Self::ScalarField>,
+    ) -> Vec<Self> {
+        crate::combine::affine_window_combine_one_endo(endo_q, g1, g2, x2)
+    }
+
     fn combine(
-        g1: &Vec<Self>,
-        g2: &Vec<Self>,
+        g1: &[Self],
+        g2: &[Self],
         x1: Self::ScalarField,
         x2: Self::ScalarField,
     ) -> Vec<Self> {
@@ -391,12 +456,13 @@ fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) ->
 /// and the columns represent potential segments (if a polynomial was split in several parts).
 /// Note that if one of the polynomial comes specified with a degree bound,
 /// the evaluation for the last segment is potentially shifted to meet the proof.
+#[allow(clippy::type_complexity)]
 pub fn combined_inner_product<G: CommitmentCurve>(
     evaluation_points: &[Fr<G>],
     xi: &Fr<G>,
     r: &Fr<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)>,
+    polys: &[(Vec<&Vec<Fr<G>>>, Option<usize>)],
     srs_length: usize,
 ) -> Fr<G> {
     let mut res = Fr::<G>::zero();
@@ -412,7 +478,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
         for eval in evals.iter() {
             let term = DensePolynomial::<Fr<G>>::eval_polynomial(eval, *r);
 
-            res += &(xi_i * &term);
+            res += &(xi_i * term);
             xi_i *= xi;
         }
 
@@ -429,11 +495,70 @@ pub fn combined_inner_product<G: CommitmentCurve>(
                 .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
-            res += &(xi_i * &DensePolynomial::<Fr<G>>::eval_polynomial(&shifted_evals, *r));
+            res += &(xi_i * DensePolynomial::<Fr<G>>::eval_polynomial(&shifted_evals, *r));
             xi_i *= xi;
         }
     }
     res
+}
+
+enum OptShiftedPolynomial<P> {
+    Unshifted(P),
+    Shifted(P, usize),
+}
+
+/// A formal sum of the form
+/// `s_0 * p_0 + ... s_n * p_n`
+/// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
+struct ChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
+
+impl<F, P> Default for ChunkedPolynomial<F, P> {
+    fn default() -> ChunkedPolynomial<F, P> {
+        ChunkedPolynomial(vec![])
+    }
+}
+
+impl<F, P> ChunkedPolynomial<F, P> {
+    fn add_unshifted(&mut self, scale: F, p: P) {
+        self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
+    }
+
+    fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
+        self.0
+            .push((scale, OptShiftedPolynomial::Shifted(p, shift)))
+    }
+}
+
+impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
+    fn to_dense_polynomial(&self) -> DensePolynomial<F> {
+        let mut res = DensePolynomial::<F>::zero();
+
+        let scaled: Vec<_> = self
+            .0
+            .par_iter()
+            .map(|(scale, segment)| {
+                let scale = *scale;
+                match segment {
+                    OptShiftedPolynomial::Unshifted(segment) => {
+                        let v = segment.par_iter().map(|x| scale * *x).collect();
+                        DensePolynomial::from_coefficients_vec(v)
+                    }
+                    OptShiftedPolynomial::Shifted(segment, shift) => {
+                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
+                        let mut res = vec![F::zero(); *shift];
+                        res.append(&mut v);
+                        DensePolynomial::from_coefficients_vec(res)
+                    }
+                }
+            })
+            .collect();
+
+        for p in scaled {
+            res += &p;
+        }
+
+        res
+    }
 }
 
 impl<G: CommitmentCurve> SRS<G>
@@ -482,16 +607,20 @@ where
         plnm: &DensePolynomial<Fr<G>>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        Self::commit_helper(&plnm.coeffs[..], &self.g[..], plnm.is_zero(), max)
+        Self::commit_helper(&plnm.coeffs[..], &self.g[..], None, plnm.is_zero(), max)
     }
 
-    fn commit_helper(
+    pub fn commit_helper(
         scalars: &[Fr<G>],
         basis: &[G],
+        n: Option<usize>,
         is_zero: bool,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        let n = basis.len();
+        let n = match n {
+            Some(n) => n,
+            None => basis.len(),
+        };
         let p = scalars.len();
 
         // committing all the segments without shifting
@@ -550,16 +679,20 @@ where
             None => panic!("lagrange bases for size {} not found", domain.size()),
             Some(v) => &v[..],
         };
-        if domain.size == plnm.domain().size {
-            Self::commit_helper(&plnm.evals[..], basis, is_zero, max)
-        } else if domain.size < plnm.domain().size {
-            let s = (plnm.domain().size / domain.size) as usize;
-            let v: Vec<_> = (0..(domain.size as usize))
-                .map(|i| plnm.evals[s * i])
-                .collect();
-            Self::commit_helper(&v[..], basis, is_zero, max)
-        } else {
-            panic!("desired commitment domain size greater than evaluations' domain size")
+        match domain.size.cmp(&plnm.domain().size) {
+            std::cmp::Ordering::Less => {
+                let s = (plnm.domain().size / domain.size) as usize;
+                let v: Vec<_> = (0..(domain.size as usize))
+                    .map(|i| plnm.evals[s * i])
+                    .collect();
+                Self::commit_helper(&v[..], basis, None, is_zero, max)
+            }
+            std::cmp::Ordering::Equal => {
+                Self::commit_helper(&plnm.evals[..], basis, None, is_zero, max)
+            }
+            std::cmp::Ordering::Greater => {
+                panic!("desired commitment domain size greater than evaluations' domain size")
+            }
         }
     }
 
@@ -580,12 +713,15 @@ where
     ///     evalscale: eval scaling factor for opening commitments in batch
     ///     oracle_params: parameters for the random oracle argument
     ///     RETURN: commitment opening proof
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
     pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
-        plnms: Vec<(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)>, // vector of polynomial with optional degree bound and commitment randomness
-        elm: &Vec<Fr<G>>,      // vector of evaluation points
+        plnms: &[(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)], // vector of polynomial with optional degree bound and commitment randomness
+        elm: &[Fr<G>],         // vector of evaluation points
         polyscale: Fr<G>,      // scaling factor for polynoms
         evalscale: Fr<G>,      // scaling factor for evaluation point powers
         mut sponge: EFqSponge, // sponge
@@ -594,6 +730,7 @@ where
     where
         EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
         RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
         let rounds = ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
@@ -603,9 +740,9 @@ where
         let mut g = self.g.clone();
         g.extend(vec![G::zero(); padding]);
 
-        // scale the polynoms in accumulator shifted, if bounded, to the end of SRS
         let (p, blinding_factor) = {
-            let mut p = DensePolynomial::<Fr<G>>::zero();
+            let mut plnm = ChunkedPolynomial::<Fr<G>, &[Fr<G>]>::default();
+            // let mut plnm_chunks: Vec<(Fr<G>, OptShiftedPolynomial<_>)> = vec![];
 
             let mut omega = Fr::<G>::zero();
             let mut scale = Fr::<G>::one();
@@ -617,39 +754,39 @@ where
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                    while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                    while j < omegas.unshifted.len() {
+                        let segment = &p_i.coeffs[offset
+                            ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
-                            }],
-                        );
+                            }];
                         // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
+                        plnm.add_unshifted(scale, segment);
+
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
                         offset += self.g.len();
                         if offset > *m {
                             // mixing in the shifted segment since degree is bounded
-                            p += &(segment.shiftr(self.g.len() - m % self.g.len()).scale(scale));
+                            plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
                             omega += &(omegas.shifted.unwrap() * scale);
                             scale *= &polyscale;
                         }
                     }
                 } else {
                     assert!(omegas.shifted.is_none());
-                    while offset < p_i.coeffs.len() {
-                        let segment = DensePolynomial::<Fr<G>>::from_coefficients_slice(
-                            &p_i.coeffs[offset..if offset + self.g.len() > p_i.coeffs.len() {
+                    while j < omegas.unshifted.len() {
+                        let segment = &p_i.coeffs[offset
+                            ..if offset + self.g.len() > p_i.coeffs.len() {
                                 p_i.coeffs.len()
                             } else {
                                 offset + self.g.len()
-                            }],
-                        );
+                            }];
+
                         // always mixing in the unshifted segments
-                        p += &segment.scale(scale);
+                        plnm.add_unshifted(scale, segment);
                         omega += &(omegas.unshifted[j] * scale);
                         j += 1;
                         scale *= &polyscale;
@@ -658,7 +795,8 @@ where
                 }
                 assert_eq!(j, omegas.unshifted.len());
             }
-            (p, omega)
+
+            (plnm.to_dense_polynomial(), omega)
         };
 
         let rounds = ceil_log2(self.g.len());
@@ -684,7 +822,7 @@ where
             .map(|(a, b)| *a * b)
             .fold(Fr::<G>::zero(), |acc, x| acc + x);
 
-        sponge.absorb_fr(&[shift_scalar(combined_inner_product)]);
+        sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();
         let u: G = to_group(group_map, t);
@@ -737,7 +875,8 @@ where
             sponge.absorb_g(&[l]);
             sponge.absorb_g(&[r]);
 
-            let u = squeeze_challenge(&self.endo_r, &mut sponge);
+            let u_pre = squeeze_prechallenge(&mut sponge);
+            let u = u_pre.to_field(&self.endo_r);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -767,7 +906,7 @@ where
                 })
                 .collect();
 
-            g = G::combine_one(&g_lo, &g_hi, u);
+            g = G::combine_one_endo(self.endo_r, self.endo_q, &g_lo, &g_hi, u_pre);
         }
 
         assert!(g.len() == 1);
@@ -778,21 +917,21 @@ where
         let r_prime = blinders
             .iter()
             .zip(chals.iter().zip(chal_invs.iter()))
-            .map(|((l, r), (u, u_inv))| ((*l) * u_inv) + &(*r * u))
-            .fold(blinding_factor, |acc, x| acc + &x);
+            .map(|((l, r), (u, u_inv))| ((*l) * u_inv) + (*r * u))
+            .fold(blinding_factor, |acc, x| acc + x);
 
         let d = Fr::<G>::rand(rng);
         let r_delta = Fr::<G>::rand(rng);
 
-        let delta = ((g0.into_projective() + &(u.mul(b0))).into_affine().mul(d)
-            + &self.h.mul(r_delta))
-            .into_affine();
+        let delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
+            + self.h.mul(r_delta))
+        .into_affine();
 
         sponge.absorb_g(&[delta]);
         let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
 
-        let z1 = a0 * &c + &d;
-        let z2 = c * &r_prime + &r_delta;
+        let z1 = a0 * c + d;
+        let z2 = c * r_prime + r_delta;
 
         OpeningProof {
             delta,
@@ -813,6 +952,7 @@ where
     ///     oracle_params: parameters for the random oracle argument
     ///     randomness source context
     ///     RETURN: verification status
+    #[allow(clippy::type_complexity)]
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
@@ -833,6 +973,7 @@ where
     where
         EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
         RNG: RngCore + CryptoRng,
+        G::BaseField: PrimeField,
     {
         // Verifier checks for all i,
         // c_i Q_i + delta_i = z1_i (G_i + b_i U_i) + z2_i H
@@ -897,7 +1038,7 @@ where
                 combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
             };
 
-            sponge.absorb_fr(&[shift_scalar(combined_inner_product0)]);
+            sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
 
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
@@ -916,7 +1057,7 @@ where
                 let mut res = Fr::<G>::zero();
                 for &e in evaluation_points.iter() {
                     let term = b_poly(&chal, e);
-                    res += &(scale * &term);
+                    res += &(scale * term);
                     scale *= *r;
                 }
                 res
@@ -931,7 +1072,7 @@ where
             //
             // we also add -sg_rand_base_i * G to check correctness of sg.
             points.push(opening.sg);
-            scalars.push(neg_rand_base_i * &opening.z1 - &sg_rand_base_i);
+            scalars.push(neg_rand_base_i * opening.z1 - sg_rand_base_i);
 
             // Here we add
             // sg_rand_base_i * ( < s, self.g > )
@@ -949,11 +1090,11 @@ where
 
             // TERM
             // - rand_base_i * z2 * H
-            scalars[0] -= &(rand_base_i * &opening.z2);
+            scalars[0] -= &(rand_base_i * opening.z2);
 
             // TERM
             // -rand_base_i * (z1 * b0 * U)
-            scalars.push(neg_rand_base_i * &(opening.z1 * &b0));
+            scalars.push(neg_rand_base_i * (opening.z1 * b0));
             points.push(u);
 
             // TERM
@@ -961,7 +1102,7 @@ where
             // = rand_base_i c_i
             //   (sum_j (chal_invs[j] L_j + chals[j] R_j) + P_prime)
             // where P_prime = combined commitment + combined_inner_product * U
-            let rand_base_i_c_i = c * &rand_base_i;
+            let rand_base_i_c_i = c * rand_base_i;
             for ((l, r), (u_inv, u)) in opening.lr.iter().zip(chal_inv.iter().zip(chal.iter())) {
                 points.push(*l);
                 scalars.push(rand_base_i_c_i * u_inv);
@@ -981,8 +1122,9 @@ where
                 {
                     // iterating over the polynomial segments
                     for comm_ch in comm.unshifted.iter() {
-                        scalars.push(rand_base_i_c_i * &xi_i);
+                        scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
+
                         xi_i *= *xi;
                     }
 
@@ -990,8 +1132,9 @@ where
                         if let Some(comm_ch) = comm.shifted {
                             if !comm_ch.is_zero() {
                                 // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
-                                scalars.push(rand_base_i_c_i * &xi_i);
+                                scalars.push(rand_base_i_c_i * xi_i);
                                 points.push(comm_ch);
+
                                 xi_i *= *xi;
                             }
                         }
@@ -999,7 +1142,7 @@ where
                 }
             };
 
-            scalars.push(rand_base_i_c_i * &combined_inner_product0);
+            scalars.push(rand_base_i_c_i * combined_inner_product0);
             points.push(u);
 
             scalars.push(rand_base_i);
@@ -1112,7 +1255,7 @@ mod tests {
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
 
-        let opening_proof = srs.open(&group_map, polys, &elm, v, u, sponge.clone(), rng);
+        let opening_proof = srs.open(&group_map, &polys, &elm, v, u, sponge.clone(), rng);
 
         // evaluate the polynomials at these two points
         let poly1_chunked_evals = vec![

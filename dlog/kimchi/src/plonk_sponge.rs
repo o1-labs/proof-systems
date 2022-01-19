@@ -35,9 +35,30 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.sponge.absorb(p);
 
         let points = [
-            &e.w[0], &e.w[1], &e.w[2], &e.w[3], &e.w[4], &e.w[5], &e.w[6], &e.w[7], &e.w[8],
-            &e.w[9], &e.w[10], &e.w[11], &e.w[12], &e.w[13], &e.w[14], &e.z, &e.s[0], &e.s[1],
-            &e.s[2], &e.s[3], &e.s[4], &e.s[5],
+            &e.z,
+            &e.generic_selector,
+            &e.poseidon_selector,
+            &e.w[0],
+            &e.w[1],
+            &e.w[2],
+            &e.w[3],
+            &e.w[4],
+            &e.w[5],
+            &e.w[6],
+            &e.w[7],
+            &e.w[8],
+            &e.w[9],
+            &e.w[10],
+            &e.w[11],
+            &e.w[12],
+            &e.w[13],
+            &e.w[14],
+            &e.s[0],
+            &e.s[1],
+            &e.s[2],
+            &e.s[3],
+            &e.s[4],
+            &e.s[5],
         ];
 
         for p in &points {

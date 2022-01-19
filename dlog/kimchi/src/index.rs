@@ -5,7 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use ark_ec::AffineCurve;
-use ark_ff::PrimeField;
+use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use commitment_dlog::{
@@ -14,7 +14,7 @@ use commitment_dlog::{
     CommitmentField,
 };
 use kimchi_circuits::{
-    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
+    expr::{Column, Expr, Linearization, PolishToken, E},
     gate::{GateType, LookupInfo, LookupsUsed},
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
@@ -153,6 +153,65 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
+pub fn constraints_expr<F: FftField + SquareRootField>(
+    domain: D<F>,
+    chacha: bool,
+    dummy_lookup_value: Option<&[F]>,
+) -> E<F> {
+    let expr = poseidon::constraint();
+    let expr = expr + varbasemul::constraint(super::range::MUL.start);
+    let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
+    assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
+    let expr = expr + complete_add;
+    let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
+    let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
+
+    let expr = if let Some(dummy) = dummy_lookup_value {
+        let constraints = lookup::constraints(dummy, domain);
+        let combined = Expr::combine_constraints(2 + super::range::CHACHA.end, constraints);
+        expr + combined
+    } else {
+        expr
+    };
+
+    if chacha {
+        expr + chacha::constraint(super::range::CHACHA.start)
+    } else {
+        expr
+    }
+}
+
+pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
+    let lookup_info = LookupInfo::<F>::create();
+    let mut h = std::collections::HashSet::new();
+    use Column::*;
+    for i in 0..COLUMNS {
+        h.insert(Witness(i));
+    }
+    for i in 0..(lookup_info.max_per_row + 1) {
+        h.insert(LookupSorted(i));
+    }
+    h.insert(Z);
+    h.insert(LookupAggreg);
+    h.insert(LookupTable);
+    h.insert(Index(GateType::Poseidon));
+    h.insert(Index(GateType::Generic));
+    h
+}
+
+pub fn expr_linearization<F: FftField + SquareRootField>(
+    domain: D<F>,
+    chacha: bool,
+    dummy_lookup_value: Option<&[F]>,
+) -> Linearization<Vec<PolishToken<F>>> {
+    let evaluated_cols = linearization_columns::<F>();
+
+    constraints_expr(domain, chacha, dummy_lookup_value)
+        .linearize(evaluated_cols)
+        .unwrap()
+        .map(|e| e.to_polish())
+}
+
 impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
@@ -170,15 +229,25 @@ where
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
             coefficients_comm: array_init(|i| {
-                self.srs.commit_non_hiding(&self.cs.coefficientsm[i], None)
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
             generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
 
             psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
-            complete_add_comm: self.srs.commit_non_hiding(&self.cs.complete_addm, None),
-            mul_comm: self.srs.commit_non_hiding(&self.cs.mulm, None),
-            emul_comm: self.srs.commit_non_hiding(&self.cs.emulm, None),
+            complete_add_comm: self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.cs.complete_addl4,
+                None,
+            ),
+            mul_comm: self
+                .srs
+                .commit_evaluations_non_hiding(domain, &self.cs.mull8, None),
+            emul_comm: self
+                .srs
+                .commit_evaluations_non_hiding(domain, &self.cs.emull, None),
+
             endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.cs.endomul_scalar8,
@@ -237,89 +306,42 @@ where
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
 
+        //
+        // register powers of alphas
+        //
+
         let mut powers_of_alpha = alphas::Builder::default();
 
-        let linearization: Linearization<Expr<ConstantExpr<Fr<G>>>> = {
-            let evaluated_cols = {
-                let mut h = std::collections::HashSet::new();
-                use Column::*;
-                for i in 0..COLUMNS {
-                    h.insert(Witness(i));
-                }
-                for i in 0..(lookup_info.max_per_row + 1) {
-                    h.insert(LookupSorted(i));
-                }
-                h.insert(Z);
-                h.insert(LookupAggreg);
-                h.insert(LookupTable);
-                h.insert(Index(GateType::Poseidon));
-                h.insert(Index(GateType::Generic));
-                h
-            };
+        // permutation
+        let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
 
-            let mut expr: Expr<ConstantExpr<Fr<G>>> = 0.into();
+        // lookup
+        if lookup_used.is_some() {
+            let _alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
+        }
 
-            //
-            // permutation
-            //
+        // gates
+        let _alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
 
-            let mut _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
-            // (not using the expression framework)
+        //
+        // Lookup
+        //
 
-            //
-            // lookup
-            //
-
-            if lookup_used.is_some() {
-                let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
-                let lookup_constraints =
-                    lookup::constraints(&cs.dummy_lookup_values[0], cs.domain.d1);
-                expr += Expr::combine_constraints(alphas, lookup_constraints)
-            }
-
-            //
-            // gates
-            //
-
-            let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
-
-            // generic gate
-            // (not using the expression framework)
-
-            // poseidon gate
-            expr += poseidon::constraint(alphas.clone().take(15));
-
-            // variable-base scalar multiplication
-            expr += varbasemul::constraint(alphas.clone().take(21));
-
-            // EC addition
-            expr += complete_add::constraint(alphas.clone().take(7));
-
-            // endo scalar multiplication
-            expr += endosclmul::constraint(alphas.clone().take(11));
-
-            // scalar of endo scalar multiplication
-            expr += endomul_scalar::constraint(alphas.clone().take(11));
-
-            // chacha
-            if cs.chacha8.is_some() {
-                expr += chacha::constraint_chacha0(alphas.clone().take(5));
-                expr += chacha::constraint_chacha1(alphas.clone().take(5));
-                expr += chacha::constraint_chacha2(alphas.clone().take(5));
-                expr += chacha::constraint_chacha_final(alphas.clone().take(9));
-            }
-
-            expr.linearize(evaluated_cols)
-                .expect("bug in the linearization")
+        let dummy_lookup_value = if lookup_used.is_some() {
+            Some(&cs.dummy_lookup_values[0][..])
+        } else {
+            None
         };
 
-        // TODO: why 7? hardcode/document it somewhere
-        let max_quot_size = cs.domain.d8.size as usize - 7;
+        let linearization =
+            expr_linearization(cs.domain.d1, cs.chacha8.is_some(), dummy_lookup_value);
+
+        let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
 
         Index {
             cs,
             lookup_used,
-            linearization: linearization.map(|e| e.to_polish()),
+            linearization,
             powers_of_alpha,
             srs,
             max_poly_size,
@@ -348,12 +370,9 @@ where
 
         // offset
         let mut reader = BufReader::new(file);
-        match offset {
-            Some(offset) => {
-                reader.seek(Start(offset)).map_err(|e| e.to_string())?;
-            }
-            None => (),
-        };
+        if let Some(offset) = offset {
+            reader.seek(Start(offset)).map_err(|e| e.to_string())?;
+        }
 
         // deserialize
         let mut verifier_index = Self::deserialize(&mut rmp_serde::Deserializer::new(reader))

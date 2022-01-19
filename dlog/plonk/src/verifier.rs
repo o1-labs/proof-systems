@@ -8,7 +8,7 @@ pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
@@ -30,6 +30,7 @@ pub struct CachedValues<Fs> {
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
+    G::BaseField: PrimeField,
 {
     pub fn prev_chal_evals(
         &self,
@@ -275,10 +276,9 @@ where
             .map(|(index, lgr_comm, proof)| {
                 let n = index.domain.size;
                 // commit to public input polynomial
-                let p_comm = PolyComm::<G>::multi_scalar_mul(
-                    &lgr_comm.iter().take(proof.public.len()).collect(),
-                    &proof.public.iter().map(|s| -*s).collect(),
-                );
+                let com: Vec<_> = lgr_comm.iter().take(proof.public.len()).collect();
+                let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+                let p_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
 
                 let (fq_sponge, _, oracles, alpha, p_eval, evlp, polys, zeta1, _) =
                     proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);

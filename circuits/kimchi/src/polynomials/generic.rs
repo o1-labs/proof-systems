@@ -11,7 +11,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D,
 };
-use o1_utils::ExtendedDensePolynomial;
+use array_init::array_init;
 use rayon::prelude::*;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
@@ -100,22 +100,38 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
-    ) -> DensePolynomial<F> {
+    ) -> Evaluations<F, D<F>> {
+        let d1 = self.domain.d1;
+
         let (scalars, alpha) = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
-        // multiplication
-        let mut res = self.coefficientsm[MUL_COEFF].scale(scalars[0]);
+        let n = d1.size as usize;
 
-        // addition
-        res += &self
-            .coefficientsm
+        let mut res = Evaluations::from_vec_and_domain(vec![F::zero(); n], d1);
+
+        let scale = self.coefficients8[0].evals.len() / n;
+
+        // w[0](zeta) * qwm[0] + w[1](zeta) * qwm[1] + w[2](zeta) * qwm[2]
+        self.coefficients8
             .iter()
-            .zip(&scalars[1..])
-            .map(|(selector, scalar)| selector.scale(*scalar))
-            .fold(DensePolynomial::<F>::zero(), |x, y| &x + &y);
+            .zip(scalars[1..].iter())
+            .for_each(|(q, s)| {
+                res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
+                    *e += *s * q.evals[scale * i];
+                });
+            });
+
+        // multiplication
+        let s = scalars[0];
+        res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
+            *e += s * self.coefficients8[MUL_COEFF][scale * i];
+        });
 
         // constant selector
-        res += &self.coefficientsm[CONSTANT_COEFF].scale(generic_zeta * alpha);
+        let alpha_generic_zeta = alpha * generic_zeta;
+        res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
+            *e += alpha_generic_zeta * self.coefficients8[CONSTANT_COEFF][scale * i];
+        });
 
         res
     }
@@ -127,17 +143,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: &DensePolynomial<F>,
     ) -> bool {
         // multiplication
-        let multiplication = &(&witness[0] * &witness[1]) * &self.coefficientsm[MUL_COEFF];
+        let coefficientsm: [_; COLUMNS] =
+            array_init(|i| self.coefficients8[i].clone().interpolate());
+        let multiplication = &(&witness[0] * &witness[1]) * &coefficientsm[MUL_COEFF];
 
         // addition (of left, right, output wires)
         let mut wires = DensePolynomial::zero();
-        for (w, q) in witness.iter().zip(self.coefficientsm.iter()).take(GENERICS) {
+        for (w, q) in witness.iter().zip(coefficientsm.iter()).take(GENERICS) {
             wires += &(w * q);
         }
 
         // compute f
         let mut f = &multiplication + &wires;
-        f += &self.coefficientsm[CONSTANT_COEFF];
+        f += &coefficientsm[CONSTANT_COEFF];
         f = &f * &self.genericm;
         f += public;
 
@@ -151,7 +169,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         //
         for (row, elem) in self.domain.d1.elements().enumerate() {
-            let qc = self.coefficientsm[CONSTANT_COEFF].evaluate(&elem);
+            let qc = coefficientsm[CONSTANT_COEFF].evaluate(&elem);
 
             // qc check
             if qc != F::zero() && -qc != values[0].0.evaluate(&elem) {
@@ -171,7 +189,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 }
                 println!(
                     "  q_M = {} | mul = {}",
-                    self.coefficientsm[MUL_COEFF].evaluate(&elem),
+                    coefficientsm[MUL_COEFF].evaluate(&elem),
                     multiplication.evaluate(&elem)
                 );
                 println!("  q_C = {}", qc);
@@ -196,8 +214,7 @@ mod tests {
         gate::CircuitGate,
         wires::{Wire, COLUMNS},
     };
-
-    use ark_ff::{UniformRand, Zero};
+    use ark_ff::{One, UniformRand, Zero};
     use array_init::array_init;
     use itertools::iterate;
     use mina_curves::pasta::fp::Fp;
@@ -211,12 +228,15 @@ mod tests {
         // create generic gates
         let mut gates_row = iterate(0usize, |&i| i + 1);
         let r = gates_row.next().unwrap();
-        gates.push(CircuitGate::create_generic_add(r, Wire::new(r))); // add
+        gates.push(CircuitGate::create_generic_add(
+            Wire::new(r),
+            Fp::one(),
+            Fp::one(),
+        )); // add
         let r = gates_row.next().unwrap();
-        gates.push(CircuitGate::create_generic_mul(r, Wire::new(r))); // mul
+        gates.push(CircuitGate::create_generic_mul(Wire::new(r))); // mul
         let r = gates_row.next().unwrap();
         gates.push(CircuitGate::create_generic_const(
-            r,
             Wire::new(r),
             19u32.into(),
         )); // const
@@ -280,7 +300,9 @@ mod tests {
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
-        let f = cs.gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta);
+        let f = cs
+            .gnrc_lnrz(&mut alphas.clone(), &w_zeta, generic_zeta)
+            .interpolate();
         let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)

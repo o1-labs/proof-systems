@@ -19,6 +19,7 @@ pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1
 /// or a final output of the circuit, the cell references itself.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Wire {
     // TODO(mimoo): shouldn't we use u32 since we serialize them as u32?
     pub row: usize,
@@ -80,6 +81,22 @@ pub mod caml {
             Self {
                 row: w.row.try_into().expect("isize -> usize"),
                 col: w.col.try_into().expect("isize -> usize"),
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wasm_types")]
+pub mod wasm {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl Wire {
+        #[wasm_bindgen::prelude::wasm_bindgen]
+        pub fn create(row: i32, col: i32) -> Self {
+            Self {
+                row: row as usize,
+                col: col as usize,
             }
         }
     }

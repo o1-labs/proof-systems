@@ -7,7 +7,7 @@ use crate::{
     prover::ProverProof,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
@@ -44,6 +44,7 @@ where
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: [Fr<G>; 2],
     /// ?
+    #[allow(clippy::type_complexity)]
     pub polys: Vec<(PolyComm<G>, Vec<Vec<Fr<G>>>)>,
     /// pre-computed zeta^n
     pub zeta1: Fr<G>,
@@ -56,6 +57,7 @@ where
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
+    G::BaseField: PrimeField,
 {
     pub fn prev_chal_evals(
         &self,
@@ -90,12 +92,12 @@ where
                                     Some(b) => b[j],
                                 };
 
-                                let ret = betaacc * &b_j;
+                                let ret = betaacc * b_j;
                                 betaacc *= &evaluation_points[i];
                                 ret
                             })
-                            .fold(Fr::<G>::zero(), |x, y| x + &y);
-                        vec![full - &(diff * &powers_of_eval_points_for_chunks[i]), diff]
+                            .fold(Fr::<G>::zero(), |x, y| x + y);
+                        vec![full - (diff * powers_of_eval_points_for_chunks[i]), diff]
                     })
                     .collect()
             })
@@ -148,13 +150,9 @@ where
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
         // absorb the polycommitments into the argument and sample zeta
-        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
-        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
+        let expected_t_size = PERMUTS;
+        assert_eq!(expected_t_size, self.commitments.t_comm.unshifted.len());
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
-        fq_sponge.absorb_g(&vec![
-            dummy;
-            max_t_size - self.commitments.t_comm.unshifted.len()
-        ]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
@@ -191,10 +189,10 @@ where
                         .iter()
                         .zip(lagrange.iter())
                         .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * &w)
-                        .fold(Fr::<G>::zero(), |x, y| x + &y))
-                        * &(zeta1 - &Fr::<G>::one())
-                        * &index.domain.size_inv,
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(Fr::<G>::zero(), |x, y| x + y))
+                        * (zeta1 - Fr::<G>::one())
+                        * index.domain.size_inv,
                 ],
                 vec![
                     (self
@@ -202,17 +200,17 @@ where
                         .iter()
                         .zip(lagrange[self.public.len()..].iter())
                         .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * &w)
-                        .fold(Fr::<G>::zero(), |x, y| x + &y))
-                        * &index.domain.size_inv
-                        * &(zetaw.pow(&[n as u64]) - &Fr::<G>::one()),
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(Fr::<G>::zero(), |x, y| x + y))
+                        * index.domain.size_inv
+                        * (zetaw.pow(&[n as u64]) - Fr::<G>::one()),
                 ],
             ]
         } else {
             [Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]
         };
-        for i in 0..2 {
-            fr_sponge.absorb_evaluations(&p_eval[i], &self.evals[i])
+        for (p, e) in p_eval.iter().zip(&self.evals) {
+            fr_sponge.absorb_evaluations(p, e);
         }
         fr_sponge.absorb(&self.ft_eval1);
 
@@ -244,7 +242,7 @@ where
         // compute evaluation of ft(zeta)
         let ft_eval0 = {
             let zkp = index.zkpm.evaluate(&zeta);
-            let zeta1m1 = zeta1 - &Fr::<G>::one();
+            let zeta1m1 = zeta1 - Fr::<G>::one();
 
             let mut alpha_powers = all_alphas.get_alphas(ConstraintType::Permutation, 3);
             let alpha0 = alpha_powers
@@ -263,7 +261,10 @@ where
                 .iter()
                 .zip(evals[0].s.iter())
                 .map(|(w, s)| (beta * s) + w + gamma)
-                .fold(init, |x, y| x * y);
+                .fold(
+                    (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alpha0 * zkp,
+                    |x, y| x * y,
+                );
 
             ft_eval0 -= if !p_eval[0].is_empty() {
                 p_eval[0][0]
@@ -278,14 +279,14 @@ where
                 .map(|(w, s)| gamma + (beta * zeta * s) + w)
                 .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
 
-            let nominator = ((zeta1m1 * alpha1 * (zeta - &index.w))
+            let nominator = ((zeta1m1 * alpha1 * (zeta - index.w))
                 + (zeta1m1 * alpha2 * (zeta - Fr::<G>::one())))
-                * &(Fr::<G>::one() - evals[0].z);
+                * (Fr::<G>::one() - evals[0].z);
 
             let denominator = (zeta - index.w) * (zeta - Fr::<G>::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
-            ft_eval0 += nominator * &denominator;
+            ft_eval0 += nominator * denominator;
 
             let cs = Constants {
                 alpha,
@@ -310,23 +311,39 @@ where
         let combined_inner_product = {
             let ft_eval0 = vec![ft_eval0];
             let ft_eval1 = vec![self.ft_eval1];
+
+            #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys
                 .iter()
                 .map(|(_, e)| (e.iter().collect(), None))
                 .collect();
             es.push((p_eval.iter().collect::<Vec<_>>(), None));
+            es.push((vec![&ft_eval0, &ft_eval1], None));
+            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| &e.generic_selector)
+                    .collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| &e.poseidon_selector)
+                    .collect::<Vec<_>>(),
+                None,
+            ));
             es.extend(
                 (0..COLUMNS)
                     .map(|c| (self.evals.iter().map(|e| &e.w[c]).collect::<Vec<_>>(), None))
                     .collect::<Vec<_>>(),
             );
-            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
             es.extend(
                 (0..PERMUTS - 1)
                     .map(|c| (self.evals.iter().map(|e| &e.s[c]).collect::<Vec<_>>(), None))
                     .collect::<Vec<_>>(),
             );
-            es.push((vec![&ft_eval0, &ft_eval1], None));
 
             combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.g.len())
         };
@@ -363,9 +380,10 @@ where
     ///     proofs: vector of Plonk proofs
     ///     index: VerifierIndex
     ///     RETURN: verification status
+    #[allow(clippy::type_complexity)]
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
-        proofs: &Vec<(&VerifierIndex<G>, &Vec<PolyComm<G>>, &ProverProof<G>)>,
+        proofs: &[(&VerifierIndex<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],
     ) -> Result<bool, ProofError> {
         // if there's no proof to verify, return early
         if proofs.is_empty() {
@@ -383,10 +401,9 @@ where
         let mut params = vec![];
         for (index, lgr_comm, proof) in proofs {
             // commit to public input polynomial
-            let p_comm = PolyComm::<G>::multi_scalar_mul(
-                &lgr_comm.iter().take(proof.public.len()).collect(),
-                &proof.public.iter().map(|s| -*s).collect(),
-            );
+            let com: Vec<_> = lgr_comm.iter().take(proof.public.len()).collect();
+            let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+            let p_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
 
             // run the oracles argument
             let OraclesResult {
@@ -396,7 +413,7 @@ where
                 p_eval,
                 powers_of_eval_points_for_chunks,
                 polys,
-                zeta1,
+                zeta1: zeta_to_domain_size,
                 ft_eval0,
                 ..
             } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
@@ -507,9 +524,9 @@ where
                                 let c = match t {
                                     Zero | Generic => panic!("Selector for {:?} not defined", t),
                                     CompleteAdd => &index.complete_add_comm,
-                                    Vbmul => &index.mul_comm,
-                                    Endomul => &index.emul_comm,
-                                    EndomulScalar => &index.endomul_scalar_comm,
+                                    VarBaseMul => &index.mul_comm,
+                                    EndoMul => &index.emul_comm,
+                                    EndoMulScalar => &index.endomul_scalar_comm,
                                     Poseidon => &index.psm_comm,
                                     ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
                                     ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
@@ -527,10 +544,12 @@ where
                 PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)
             };
 
+            let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
             // Maller's optimization (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
-            let chunked_f_comm = f_comm.chunk_commitment(zeta1);
-            let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta1);
-            let ft_comm = &chunked_f_comm - &chunked_t_comm.scale(zeta1 - Fr::<G>::one());
+            let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
+            let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
+            let ft_comm =
+                &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - Fr::<G>::one());
 
             params.push((
                 p_eval,
@@ -624,7 +643,7 @@ where
             let omega = index.domain.group_gen;
             batch.push((
                 fq_sponge.clone(),
-                vec![oracles.zeta, oracles.zeta * &omega],
+                vec![oracles.zeta, oracles.zeta * omega],
                 oracles.v,
                 oracles.u,
                 polynomials,

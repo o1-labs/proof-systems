@@ -16,5 +16,6 @@ proof-systems/
 ├── groupmap/ # TODO: description
 ├── ocaml-gen/ # ocaml bindings generator tool
 ├── oracle/ # implementation of the poseidon hash function
+├── signer/ # implementation of schnorr signature scheme
 └── utils/ # collection of useful functions and traits
 ```
