@@ -1665,39 +1665,41 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             let (evaluated, mut unevaluated): (Vec<_>, _) =
                 m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
-            if unevaluated.is_empty() {
-                constant_term = constant_term + c;
-            } else if unevaluated.len() == 1 {
-                let var = unevaluated.remove(0);
-                match var.row {
-                    Next => {
-                        return Err(
-                            "Linearization failed (needed polynomial value at \"next\" row)",
-                        )
+
+            match unevaluated.as_slice() {
+                [] => constant_term = constant_term + c,
+                [_] => {
+                    let var = unevaluated.remove(0);
+                    match var.row {
+                        Next => {
+                            return Err(
+                                "Linearization: needed unevaluated variable at \"next\" row",
+                            )
+                        }
+                        Curr => {
+                            let e = match res.remove(&var.col) {
+                                Some(v) => v + c,
+                                None => c,
+                            };
+                            res.insert(var.col, e);
+                            // This code used to be
+                            //
+                            // let v = res.entry(var.col).or_insert(0.into());
+                            // *v = v.clone() + c
+                            //
+                            // but calling clone made it extremely slow, so I replaced it
+                            // with the above that moves v out of the map with .remove and
+                            // into v + c.
+                            //
+                            // I'm not sure if there's a way to do it with the HashMap API
+                            // without calling remove.
+                        }
                     }
-                    Curr => {
-                        let e = match res.remove(&var.col) {
-                            Some(v) => v + c,
-                            None => c,
-                        };
-                        res.insert(var.col, e);
-                        // This code used to be
-                        //
-                        // let v = res.entry(var.col).or_insert(0.into());
-                        // *v = v.clone() + c
-                        //
-                        // but calling clone made it extremely slow, so I replaced it
-                        // with the above that moves v out of the map with .remove and
-                        // into v + c.
-                        //
-                        // I'm not sure if there's a way to do it with the HashMap API
-                        // without calling remove.
-                    }
-                }
-            } else {
-                return Err("Linearization failed");
-            }
+                } 
+                _ => return Err("Linearization: too many variables in monomial, and we can't multiply commitments"),
+            };
         }
+
         Ok(Linearization {
             constant_term,
             index_terms: res.into_iter().collect(),

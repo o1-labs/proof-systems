@@ -186,8 +186,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     // TODO: where is the permutation?
 }
 
-/// Produces the set of columns used in the linearization.
-/// Columns here refer to the polynomials that are not evaluated by the verifier.
+/// Produces the set of columns that will be evaluated in the linearization.
 pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
     let lookup_info = LookupInfo::<F>::create();
     let mut h = std::collections::HashSet::new();
@@ -206,7 +205,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collection
     h
 }
 
-/// ?
+/// Returns a linearized expression in polish notation
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
@@ -216,7 +215,7 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
 
     constraints_expr(domain, chacha, dummy_lookup_value)
         .linearize(evaluated_cols)
-        .unwrap()
+        .unwrap_or_else(|e| panic!("{}", e))
         .map(|e| e.to_polish())
 }
 
