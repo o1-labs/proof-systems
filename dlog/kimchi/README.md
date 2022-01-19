@@ -16,6 +16,8 @@ The result will appear in `target/criterion/single\ proof/report/index.html` and
 
 ![criterion kimchi](https://i.imgur.com/OGqiuHD.png)
 
+Note that it only does 10 passes. To have more accurate statistics, remove the `.sample_size(10)` line from the [bench](benches/proof_criterion.rs).
+
 The other benchmark uses [iai](https://github.com/bheisler/iai) to perform precise one-shot benchmarking. This is useful in CI, for example, where typical benchmarks are affected by the load of the host running CI.
 
 ```console
@@ -31,3 +33,19 @@ L2 Accesses: 32019515
 RAM Accesses: 3034134
 Estimated Cycles: 27476974171
 </pre>
+
+## Flamegraph
+
+This won't work on MacOS unfortunately.
+
+To obtain a flamegraph:
+
+1. [install required dependencies based on your OS](https://github.com/flamegraph-rs/flamegraph#installation)
+2. install cargo-flamegraph:
+    ```console
+    $ cargo install flamegraph
+    ```
+3. run cargo flamegraph:
+    ```console
+    $ CARGO_PROFILE_BENCH_DEBUG=true cargo flamegraph --bench proof_criterion -- --bench
+    ```

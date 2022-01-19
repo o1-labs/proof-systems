@@ -2,7 +2,7 @@ use crate::{
     index::{Index, VerifierIndex},
     prover::ProverProof,
 };
-use ark_ff::{One, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::{
@@ -28,8 +28,7 @@ type SpongeParams = PlonkSpongeConstants15W;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-const MUL_GATES: usize = 1000;
-const ADD_GATES: usize = 1000;
+pub const GATES: usize = 1 << 16; // 2^16 gates
 
 const LEFT: usize = 0;
 const RIGHT: usize = 1;
@@ -47,15 +46,9 @@ impl Default for BenchmarkCtx {
         let mut gates = vec![];
         let mut abs_row = 0;
 
-        for _ in 0..MUL_GATES {
+        for _ in 0..GATES {
             let wires = Wire::new(abs_row);
             gates.push(CircuitGate::<Fp>::create_generic_mul(wires));
-            abs_row += 1;
-        }
-
-        for _ in 0..ADD_GATES {
-            let wires = Wire::new(abs_row);
-            gates.push(CircuitGate::create_generic_add(wires, Fp::one(), Fp::one()));
             abs_row += 1;
         }
 
@@ -92,19 +85,12 @@ impl BenchmarkCtx {
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
         // create witness
-        let mut witness: [Vec<Fp>; COLUMNS] =
-            array_init(|_| vec![Fp::zero(); MUL_GATES + ADD_GATES]);
+        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); GATES]);
 
-        for row in 0..MUL_GATES {
+        for row in 0..GATES {
             witness[LEFT][row] = 3u32.into();
             witness[RIGHT][row] = 5u32.into();
             witness[OUTPUT][row] = Fp::from(3u32 * 5);
-        }
-
-        for row in MUL_GATES..MUL_GATES + ADD_GATES {
-            witness[LEFT][row] = 3u32.into();
-            witness[RIGHT][row] = 5u32.into();
-            witness[OUTPUT][row] = Fp::from(3u32 + 5);
         }
 
         // previous opening for recursion

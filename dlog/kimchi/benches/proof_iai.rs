@@ -5,4 +5,10 @@ fn bench_proof_creation() {
     ctx.create_proof();
 }
 
-iai::main!(bench_proof_creation);
+fn bench_proof_verification() {
+    let ctx = BenchmarkCtx::default();
+    let proof = ctx.create_proof();
+    ctx.batch_verification(vec![proof]);
+}
+
+iai::main!(bench_proof_creation, bench_proof_verification);
