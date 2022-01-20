@@ -4,7 +4,7 @@ This source file implements Plonk prover polynomial evaluations primitive.
 
 *****************************************************************************************************************/
 
-use crate::wires::*;
+use crate::circuits::wires::*;
 use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;

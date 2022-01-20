@@ -4,9 +4,9 @@ This source file implements Posedon constraint polynomials.
 
 *****************************************************************************************************************/
 
-use crate::expr::{Cache, Column, ConstantExpr, E};
-use crate::gate::{CurrOrNext, GateType};
-use crate::gates::poseidon::*;
+use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
+use crate::circuits::gate::{CurrOrNext, GateType};
+use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
 use CurrOrNext::*;

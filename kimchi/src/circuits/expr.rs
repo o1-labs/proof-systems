@@ -1,8 +1,8 @@
-use crate::domains::EvaluationDomains;
-use crate::gate::{CurrOrNext, GateType};
-use crate::nolookup::constraints::eval_vanishes_on_last_4_rows;
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::wires::COLUMNS;
+use crate::circuits::domains::EvaluationDomains;
+use crate::circuits::gate::{CurrOrNext, GateType};
+use crate::circuits::nolookup::constraints::eval_vanishes_on_last_4_rows;
+use crate::circuits::nolookup::scalars::ProofEvaluations;
+use crate::circuits::wires::COLUMNS;
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -1960,7 +1960,7 @@ pub type E<F> = Expr<ConstantExpr<F>>;
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::gate::{CurrOrNext, GateType};
+    use crate::circuits::gate::{CurrOrNext, GateType};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)]
     pub enum CamlColumn {

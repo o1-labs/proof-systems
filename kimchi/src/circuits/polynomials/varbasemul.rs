@@ -15,9 +15,9 @@ and
 for details.
 *****************************************************************************************************************/
 
-use crate::expr::{Cache, Column, Variable, E};
-use crate::gate::{CurrOrNext, GateType};
-use crate::wires::COLUMNS;
+use crate::circuits::expr::{Cache, Column, Variable, E};
+use crate::circuits::gate::{CurrOrNext, GateType};
+use crate::circuits::wires::COLUMNS;
 use ark_ff::{FftField, One};
 
 type CurveVar = (Variable, Variable);

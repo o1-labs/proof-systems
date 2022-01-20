@@ -28,10 +28,10 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
-use crate::expr;
-use crate::gate::{CircuitGate, GateType};
-use crate::polynomials::endosclmul;
-use crate::{
+use crate::circuits::expr;
+use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::polynomials::endosclmul;
+use crate::circuits::{
     nolookup::{constraints::ConstraintSystem, scalars::ProofEvaluations},
     wires::{GateWires, COLUMNS},
 };

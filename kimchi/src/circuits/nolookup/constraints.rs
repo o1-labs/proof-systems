@@ -4,10 +4,12 @@ This source file implements Plonk circuit constraint primitive.
 
 *****************************************************************************************************************/
 
-use crate::domains::EvaluationDomains;
-use crate::gate::{CircuitGate, GateType, LookupInfo};
-pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
-use crate::wires::*;
+use crate::circuits::{
+    domains::EvaluationDomains,
+    gate::{CircuitGate, GateType, LookupInfo},
+    polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    wires::*,
+};
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::UVPolynomial;
 use ark_poly::{

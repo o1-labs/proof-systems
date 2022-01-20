@@ -6,19 +6,19 @@ This source file implements zk-proof batch verifier functionality.
 
 pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
+use crate::circuits::{
+    expr::{Column, Constants, PolishToken},
+    gate::{GateType, LookupsUsed},
+    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+    nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
+    wires::*,
+};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
-};
-use kimchi_circuits::{
-    expr::{Column, Constants, PolishToken},
-    gate::{GateType, LookupsUsed},
-    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
-    nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
-    wires::*,
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;

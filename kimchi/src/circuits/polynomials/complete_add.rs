@@ -9,9 +9,9 @@
 //! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
 //! The rest of the values are inaccessible from the permutation argument, but
 //! - `same_x` is a boolean that is true iff `x1 == x2`.
-use crate::expr::{Cache, Column, E};
-use crate::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::wires::COLUMNS;
+use crate::circuits::expr::{Cache, Column, E};
+use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
+use crate::circuits::wires::COLUMNS;
 use ark_ff::{FftField, Field, One};
 use CurrOrNext::*;
 

@@ -1,7 +1,4 @@
 #[macro_use]
-extern crate num_derive;
-
-#[macro_use]
 pub mod macros;
 
 pub mod domains;

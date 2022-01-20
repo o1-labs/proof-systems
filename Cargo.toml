@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "circuits/kimchi",
     "curves",
     "poly-commitment",
     "kimchi",

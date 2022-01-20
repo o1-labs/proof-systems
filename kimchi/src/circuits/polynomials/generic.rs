@@ -4,9 +4,9 @@ This source file implements generic constraint polynomials.
 
 *****************************************************************************************************************/
 
-use crate::gates::generic::{CONSTANT_COEFF, MUL_COEFF};
-use crate::wires::GENERICS;
-use crate::{nolookup::constraints::ConstraintSystem, polynomial::COLUMNS};
+use crate::circuits::gates::generic::{CONSTANT_COEFF, MUL_COEFF};
+use crate::circuits::wires::GENERICS;
+use crate::circuits::{nolookup::constraints::ConstraintSystem, polynomial::COLUMNS};
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -177,7 +177,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use crate::circuits::{
         gate::CircuitGate,
         wires::{Wire, COLUMNS},
     };

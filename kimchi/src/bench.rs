@@ -1,3 +1,8 @@
+use crate::circuits::{
+    gate::CircuitGate,
+    nolookup::constraints::ConstraintSystem,
+    wires::{Wire, COLUMNS},
+};
 use crate::{
     index::{Index, VerifierIndex},
     prover::ProverProof,
@@ -10,11 +15,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::{BWParameters, GroupMap};
-use kimchi_circuits::{
-    gate::CircuitGate,
-    nolookup::constraints::ConstraintSystem,
-    wires::{Wire, COLUMNS},
-};
 use mina_curves::pasta::vesta::VestaParameters;
 use mina_curves::pasta::{fp::Fp, pallas::Affine as Other, vesta::Affine};
 use oracle::{

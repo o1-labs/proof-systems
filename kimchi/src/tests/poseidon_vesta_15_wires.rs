@@ -1,3 +1,9 @@
+use crate::circuits::{
+    gate::CircuitGate,
+    gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
+    nolookup::constraints::ConstraintSystem,
+    wires::{Wire, COLUMNS},
+};
 use crate::{index::Index, prover::ProverProof};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -8,12 +14,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use kimchi_circuits::{
-    gate::CircuitGate,
-    gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
-    nolookup::constraints::ConstraintSystem,
-    wires::{Wire, COLUMNS},
-};
 use mina_curves::pasta::{
     fp::Fp,
     pallas::Affine as Other,

@@ -4,8 +4,8 @@ This source file implements Plonk constraint gate primitive.
 
 *****************************************************************************************************************/
 
-use crate::domains::EvaluationDomains;
-use crate::{nolookup::constraints::ConstraintSystem, wires::*};
+use crate::circuits::domains::EvaluationDomains;
+use crate::circuits::{nolookup::constraints::ConstraintSystem, wires::*};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
@@ -436,7 +436,7 @@ impl<F: FftField> CircuitGate<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::wires::caml::CamlWire;
+    use crate::circuits::wires::caml::CamlWire;
     use itertools::Itertools;
     use std::convert::TryInto;
 

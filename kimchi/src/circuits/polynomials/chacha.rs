@@ -126,8 +126,8 @@ And we'll check that y' is the sum of the shifted nybbles.
 
 *****************************************************************************************************************/
 
-use crate::expr::{Column, ConstantExpr as C, E};
-use crate::gate::{CurrOrNext, GateType};
+use crate::circuits::expr::{Column, ConstantExpr as C, E};
+use crate::circuits::gate::{CurrOrNext, GateType};
 use ark_ff::{FftField, Field, Zero};
 use CurrOrNext::*;
 
@@ -433,8 +433,8 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::polynomials::chacha::constraint;
-    use crate::{
+    use crate::circuits::polynomials::chacha::constraint;
+    use crate::circuits::{
         expr::{Column, Constants, PolishToken},
         gate::LookupInfo,
         nolookup::scalars::{LookupEvaluations, ProofEvaluations},

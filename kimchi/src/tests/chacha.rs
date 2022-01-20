@@ -1,3 +1,9 @@
+use crate::circuits::{
+    gate::CircuitGate,
+    nolookup::constraints::ConstraintSystem,
+    polynomials::chacha,
+    wires::{Wire, COLUMNS},
+};
 use crate::{index::Index, prover::ProverProof};
 use array_init::array_init;
 use colored::Colorize;
@@ -6,12 +12,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use kimchi_circuits::{
-    gate::CircuitGate,
-    nolookup::constraints::ConstraintSystem,
-    polynomials::chacha,
-    wires::{Wire, COLUMNS},
-};
 use mina_curves::pasta::{
     fp::Fp,
     pallas::Affine as Other,

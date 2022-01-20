@@ -97,8 +97,8 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
-use crate::gate::{CircuitGate, GateType};
-use crate::wires::{GateWires, COLUMNS};
+use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
 
 impl<F: FftField> CircuitGate<F> {

@@ -11,6 +11,13 @@ use std::{
     sync::Arc,
 };
 
+use crate::circuits::{
+    expr::{Column, Expr, Linearization, PolishToken, E},
+    gate::{GateType, LookupInfo, LookupsUsed},
+    nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
+    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
+    wires::*,
+};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -19,13 +26,6 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
     CommitmentField,
-};
-use kimchi_circuits::{
-    expr::{Column, Expr, Linearization, PolishToken, E},
-    gate::{GateType, LookupInfo, LookupsUsed},
-    nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
-    wires::*,
 };
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

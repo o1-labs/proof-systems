@@ -1,5 +1,5 @@
+use crate::circuits::nolookup::scalars::ProofEvaluations;
 use ark_ff::{Field, PrimeField};
-use kimchi_circuits::nolookup::scalars::ProofEvaluations;
 use oracle::poseidon::{
     ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W as SC, Sponge,
 };

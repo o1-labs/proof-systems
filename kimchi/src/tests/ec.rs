@@ -1,3 +1,9 @@
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    nolookup::constraints::ConstraintSystem,
+    wires::*,
+};
+use crate::{index::Index, prover::ProverProof};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;
@@ -7,12 +13,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use crate::{index::Index, prover::ProverProof};
-use kimchi_circuits::{
-    gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
-    wires::*,
-};
 use mina_curves::pasta::{
     fp::Fp as F,
     pallas::Affine as Other,

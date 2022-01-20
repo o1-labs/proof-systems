@@ -5,6 +5,14 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 pub use super::{index::Index, range};
+use crate::circuits::nolookup::constraints::ZK_ROWS;
+use crate::circuits::{
+    expr::{l0_1, Constants, Environment, LookupEnvironment},
+    gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
+    nolookup::scalars::{LookupEvaluations, ProofEvaluations},
+    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
+    wires::{COLUMNS, PERMUTS},
+};
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
@@ -15,14 +23,6 @@ use ark_poly::{
 use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
-};
-use kimchi_circuits::nolookup::constraints::ZK_ROWS;
-use kimchi_circuits::{
-    expr::{l0_1, Constants, Environment, LookupEnvironment},
-    gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
-    nolookup::scalars::{LookupEvaluations, ProofEvaluations},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
-    wires::{COLUMNS, PERMUTS},
 };
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
@@ -733,8 +733,8 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::circuits::nolookup::scalars::caml::CamlProofEvaluations;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
-    use kimchi_circuits::nolookup::scalars::caml::CamlProofEvaluations;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {

@@ -1,3 +1,10 @@
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    nolookup::constraints::ConstraintSystem,
+    polynomials::endomul_scalar,
+    wires::*,
+};
+use crate::{index::Index, prover::ProverProof};
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use array_init::array_init;
 use colored::Colorize;
@@ -6,13 +13,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use crate::{index::Index, prover::ProverProof};
-use kimchi_circuits::{
-    gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
-    polynomials::endomul_scalar,
-    wires::*,
-};
 use mina_curves::pasta::{
     fp::Fp as F,
     pallas::Affine as Other,

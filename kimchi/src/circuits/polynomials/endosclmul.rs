@@ -29,9 +29,9 @@
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //! </pre>
 
-use crate::expr::{Cache, Column, ConstantExpr, E};
-use crate::gate::{CurrOrNext, GateType};
-use crate::wires::COLUMNS;
+use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
+use crate::circuits::gate::{CurrOrNext, GateType};
+use crate::circuits::wires::COLUMNS;
 use ark_ff::{Field, One};
 use CurrOrNext::*;
 
