@@ -23,15 +23,15 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 sprs = "0.11.0"
 
-commitment_dlog = { path = "../../poly-commitment" }
-groupmap = { path = "../../groupmap" }
-mina-curves = { path = "../../curves" }
-o1-utils = { path = "../../utils" }
-oracle = { path = "../../oracle" }
-kimchi-circuits = { path = "../../circuits/kimchi" }
+commitment_dlog = { path = "../poly-commitment" }
+groupmap = { path = "../groupmap" }
+mina-curves = { path = "../curves" }
+o1-utils = { path = "../utils" }
+oracle = { path = "../oracle" }
+kimchi-circuits = { path = "../circuits/kimchi" }
 
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../../ocaml/ocaml-gen", optional = true}
+ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true}
 
 [dev-dependencies]
 # benchmarks
