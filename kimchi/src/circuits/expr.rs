@@ -1,8 +1,10 @@
-use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::gate::{CurrOrNext, GateType};
-use crate::circuits::nolookup::constraints::eval_vanishes_on_last_4_rows;
-use crate::circuits::nolookup::scalars::ProofEvaluations;
-use crate::circuits::wires::COLUMNS;
+use crate::circuits::{
+    constraints::eval_vanishes_on_last_4_rows,
+    domains::EvaluationDomains,
+    gate::{CurrOrNext, GateType},
+    scalars::ProofEvaluations,
+    wires::COLUMNS,
+};
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,

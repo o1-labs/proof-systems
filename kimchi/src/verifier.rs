@@ -7,10 +7,11 @@ This source file implements zk-proof batch verifier functionality.
 pub use super::index::VerifierIndex as Index;
 pub use super::prover::{range, ProverProof};
 use crate::circuits::{
+    constraints::ConstraintSystem,
     expr::{Column, Constants, PolishToken},
     gate::{GateType, LookupsUsed},
     gates::generic::{CONSTANT_COEFF, MUL_COEFF},
-    nolookup::{constraints::ConstraintSystem, scalars::RandomOracles},
+    scalars::RandomOracles,
     wires::*,
 };
 use crate::plonk_sponge::FrSponge;

@@ -1,6 +1,6 @@
 use crate::circuits::{
+    constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
     polynomials::varbasemul,
     wires::*,
 };

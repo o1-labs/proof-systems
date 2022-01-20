@@ -1,9 +1,9 @@
-use crate::circuits::{
-    gate::CircuitGate,
-    nolookup::constraints::ConstraintSystem,
-    wires::{Wire, COLUMNS},
-};
 use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        wires::{Wire, COLUMNS},
+    },
     index::{Index, VerifierIndex},
     prover::ProverProof,
 };

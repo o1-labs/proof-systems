@@ -1,7 +1,7 @@
 use crate::circuits::{
+    constraints::ConstraintSystem,
     gate::CircuitGate,
     gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
-    nolookup::constraints::ConstraintSystem,
     wires::{Wire, COLUMNS},
 };
 use crate::{index::Index, prover::ProverProof};

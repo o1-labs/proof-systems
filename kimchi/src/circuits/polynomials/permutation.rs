@@ -4,10 +4,10 @@ This source file implements permutation constraint polynomials.
 
 *****************************************************************************************************************/
 
-use crate::circuits::nolookup::constraints::ConstraintSystem;
-use crate::circuits::nolookup::scalars::ProofEvaluations;
-use crate::circuits::polynomial::WitnessOverDomains;
-use crate::circuits::wires::*;
+use crate::circuits::{
+    constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
+    wires::*,
+};
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
     univariate::{DenseOrSparsePolynomial, DensePolynomial},

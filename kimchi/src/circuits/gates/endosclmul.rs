@@ -32,7 +32,8 @@ use crate::circuits::expr;
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::endosclmul;
 use crate::circuits::{
-    nolookup::{constraints::ConstraintSystem, scalars::ProofEvaluations},
+    constraints::ConstraintSystem,
+    scalars::ProofEvaluations,
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::FftField;

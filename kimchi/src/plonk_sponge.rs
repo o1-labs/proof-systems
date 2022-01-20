@@ -1,4 +1,4 @@
-use crate::circuits::nolookup::scalars::ProofEvaluations;
+use crate::circuits::scalars::ProofEvaluations;
 use ark_ff::{Field, PrimeField};
 use oracle::poseidon::{
     ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W as SC, Sponge,

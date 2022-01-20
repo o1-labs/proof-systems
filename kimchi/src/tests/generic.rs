@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::circuits::{
+    constraints::ConstraintSystem,
     gate::CircuitGate,
-    nolookup::constraints::ConstraintSystem,
     wires::{Wire, COLUMNS, GENERICS},
 };
 use crate::{index::Index, prover::ProverProof};

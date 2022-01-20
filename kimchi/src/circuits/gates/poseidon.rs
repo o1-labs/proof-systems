@@ -8,9 +8,11 @@ Constraint vector format:
 
 *****************************************************************************************************************/
 
-use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::wires::Wire;
-use crate::circuits::{nolookup::constraints::ConstraintSystem, wires::GateWires, wires::COLUMNS};
+use crate::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, GateType},
+    wires::{GateWires, Wire, COLUMNS},
+};
 use ark_ff::FftField;
 use array_init::array_init;
 use oracle::poseidon::{sbox, PlonkSpongeConstants15W, SpongeConstants};

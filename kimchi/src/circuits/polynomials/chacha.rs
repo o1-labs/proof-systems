@@ -433,11 +433,11 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::polynomials::chacha::constraint;
     use crate::circuits::{
         expr::{Column, Constants, PolishToken},
         gate::LookupInfo,
-        nolookup::scalars::{LookupEvaluations, ProofEvaluations},
+        polynomials::chacha::constraint,
+        scalars::{LookupEvaluations, ProofEvaluations},
         wires::*,
     };
     use ark_ff::UniformRand;

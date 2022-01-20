@@ -1,9 +1,12 @@
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
-    wires::*,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, GateType},
+        wires::*,
+    },
+    index::Index,
+    prover::ProverProof,
 };
-use crate::{index::Index, prover::ProverProof};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;

@@ -1,10 +1,13 @@
-use crate::circuits::{
-    gate::CircuitGate,
-    nolookup::constraints::ConstraintSystem,
-    polynomials::chacha,
-    wires::{Wire, COLUMNS},
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::CircuitGate,
+        polynomials::chacha,
+        wires::{Wire, COLUMNS},
+    },
+    index::Index,
+    prover::ProverProof,
 };
-use crate::{index::Index, prover::ProverProof};
 use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::{

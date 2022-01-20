@@ -5,12 +5,12 @@ This source file implements prover's zk-proof primitive.
 *********************************************************************************************/
 
 pub use super::{index::Index, range};
-use crate::circuits::nolookup::constraints::ZK_ROWS;
 use crate::circuits::{
+    constraints::ZK_ROWS,
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
-    nolookup::scalars::{LookupEvaluations, ProofEvaluations},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
+    scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
 };
 use crate::plonk_sponge::FrSponge;
@@ -733,7 +733,7 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::circuits::nolookup::scalars::caml::CamlProofEvaluations;
+    use crate::circuits::scalars::caml::CamlProofEvaluations;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]

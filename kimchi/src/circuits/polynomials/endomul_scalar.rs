@@ -1,6 +1,9 @@
-use crate::circuits::expr::{Cache, Column, E};
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::circuits::{nolookup::constraints::ConstraintSystem, wires::COLUMNS};
+use crate::circuits::{
+    constraints::ConstraintSystem,
+    expr::{Cache, Column, E},
+    gate::{CircuitGate, CurrOrNext, GateType},
+    wires::COLUMNS,
+};
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
 

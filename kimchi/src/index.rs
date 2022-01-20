@@ -12,9 +12,9 @@ use std::{
 };
 
 use crate::circuits::{
+    constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     expr::{Column, Expr, Linearization, PolishToken, E},
     gate::{GateType, LookupInfo, LookupsUsed},
-    nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
 };

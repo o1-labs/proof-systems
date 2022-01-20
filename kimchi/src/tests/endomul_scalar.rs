@@ -1,10 +1,13 @@
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
-    polynomials::endomul_scalar,
-    wires::*,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, GateType},
+        polynomials::endomul_scalar,
+        wires::*,
+    },
+    index::Index,
+    prover::ProverProof,
 };
-use crate::{index::Index, prover::ProverProof};
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use array_init::array_init;
 use colored::Colorize;

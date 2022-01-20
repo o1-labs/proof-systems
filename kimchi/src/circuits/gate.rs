@@ -4,8 +4,7 @@ This source file implements Plonk constraint gate primitive.
 
 *****************************************************************************************************************/
 
-use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::{nolookup::constraints::ConstraintSystem, wires::*};
+use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
