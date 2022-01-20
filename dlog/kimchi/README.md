@@ -45,8 +45,11 @@ To obtain a flamegraph:
     ```
 3. run cargo flamegraph with `sudo` (or with the option `--root` on mac):
     ```console
-    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof creation"
+    $ # flamegraph of the proof creation:
+    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof creation" -- prove
+    $ # flamegraph of the proof verification:
+    $ CARGO_PROFILE_RELEASE_DEBUG=true cargo flamegraph --bin flamegraph --notes "proof verification" -- verify
     ```
-    this won't stop automatically and will re-run the [binary](src/bin/flamegraph.rs) over and over, you need to C-c to exit and produce the `flamegraph.svg`
+    the [binary](src/bin/flamegraph.rs) will run forever, so you have to C-c to exit and produce the `flamegraph.svg` file.
 
 Note: lots of good advice on system performance in the [flamegraph repo](https://github.com/flamegraph-rs/flamegraph#systems-performance-work-guided-by-flamegraphs).
