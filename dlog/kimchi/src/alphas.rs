@@ -74,6 +74,22 @@ impl Builder {
         self.next_power = new_power;
         range
     }
+
+    /// Creates a new instance of [Alphas] via a [Builder] and value `alpha`.
+    pub fn into_alphas<F: Field>(self, alpha: F) -> Alphas<F> {
+        let mut last_power = F::one();
+        let mut alphas = Vec::with_capacity(self.next_power);
+        alphas.push(F::one());
+        for _ in 0..self.next_power {
+            last_power *= alpha;
+            alphas.push(last_power);
+        }
+
+        Alphas {
+            alphas,
+            mapping: self.mapping.clone(),
+        }
+    }
 }
 
 // ------------------------------------------

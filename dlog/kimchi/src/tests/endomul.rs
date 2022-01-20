@@ -1,3 +1,4 @@
+use crate::{index::Index, prover::ProverProof};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;
@@ -7,7 +8,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use crate::{index::Index, prover::ProverProof};
 use kimchi_circuits::{
     gate::{CircuitGate, GateType},
     nolookup::constraints::ConstraintSystem,
