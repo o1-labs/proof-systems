@@ -172,7 +172,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += chacha::constraint_chacha0(alphas.clone().take(5));
         expr += chacha::constraint_chacha1(alphas.clone().take(5));
         expr += chacha::constraint_chacha2(alphas.clone().take(5));
-        expr += chacha::constraint_chacha_final(alphas.clone().take(9))
+        expr += chacha::constraint_chacha_final(alphas.take(9))
     }
 
     // lookup

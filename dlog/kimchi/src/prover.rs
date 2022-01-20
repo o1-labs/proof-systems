@@ -563,17 +563,16 @@ where
             // lookup
             if lookup_used.is_some() {
                 let lookup_alphas = all_alphas.get_alphas(ConstraintType::Lookup, 7);
-                let evals: Vec<Evaluations<Fr<G>, D<Fr<G>>>> =
-                    lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1)
-                        .iter()
-                        .map(|e| e.evaluations(&env))
-                        .collect();
-                for (mut e, alpha_pow) in evals.into_iter().zip_eq(lookup_alphas) {
-                    e.evals.iter_mut().for_each(|x| *x *= alpha_pow);
-                    if e.domain().size == t4.domain().size {
-                        t4 += &e;
-                    } else if e.domain().size == t8.domain().size {
-                        t8 += &e;
+                let constraints =
+                    lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1);
+                for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
+                    let mut eval = constraint.evaluations(&env);
+                    eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
                     } else {
                         panic!("Bad evaluation")
                     }

@@ -28,7 +28,13 @@
 
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, iter::Take, ops::Range, thread, vec::IntoIter};
+use std::{
+    collections::HashMap,
+    iter::{Cloned, Take},
+    ops::Range,
+    slice::Iter,
+    thread,
+};
 
 // ------------------------------------------
 
@@ -87,7 +93,7 @@ impl Builder {
 
         Alphas {
             alphas,
-            mapping: self.mapping.clone(),
+            mapping: self.mapping,
         }
     }
 }
@@ -143,17 +149,13 @@ impl<F: Field> Alphas<F> {
         &self,
         ty: ConstraintType,
         num: usize,
-    ) -> MustConsumeIterator<IntoIter<F>, F> {
+    ) -> MustConsumeIterator<Cloned<Take<Iter<F>>>, F> {
         let range = self
             .mapping
             .get(&ty)
             .unwrap_or_else(|| panic!("you attempted to retrieve powers of alphas of the constraint {:?} when it has either not been registered or already been retrieved once", ty));
-        let alphas: Vec<_> = self.alphas[range.clone()]
-            .iter()
-            .take(num)
-            .cloned()
-            .collect();
-        MustConsumeIterator(alphas.into_iter(), ty)
+        let alphas = self.alphas[range.clone()].iter().take(num).cloned();
+        MustConsumeIterator(alphas, ty)
     }
 
     /// As the new expression framework does not make use of pre-computed

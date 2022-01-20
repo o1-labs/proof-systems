@@ -165,7 +165,7 @@ where
 
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
-        let zetaw = zeta * &index.domain.group_gen;
+        let zetaw = zeta * index.domain.group_gen;
         let all_alphas = Alphas::new(alpha, &index.powers_of_alpha);
 
         // compute Lagrange base evaluation denominators

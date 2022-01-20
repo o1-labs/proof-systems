@@ -1663,7 +1663,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
             if unevaluated.is_empty() {
-                constant_term = constant_term + c;
+                constant_term += c;
             } else if unevaluated.len() == 1 {
                 let var = unevaluated.remove(0);
                 match var.row {
