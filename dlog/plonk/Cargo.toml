@@ -18,7 +18,7 @@ sprs = "0.7.1"
 rayon = "1.3.0"
 array-init = "1.0.0"
 
-commitment_dlog = { path = "../commitment" }
+commitment_dlog = { path = "../../poly-commitment" }
 mina-curves = { path = "../../curves" }
 o1-utils = { path = "../../utils" }
 oracle = { path = "../../oracle" }

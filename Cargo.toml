@@ -4,7 +4,7 @@ members = [
     "circuits/kimchi",
     "curves",
     "dlog",
-    "dlog/commitment",
+    "poly-commitment",
     "dlog/plonk",
     "dlog/kimchi",
     "groupmap",

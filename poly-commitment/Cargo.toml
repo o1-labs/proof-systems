@@ -20,13 +20,13 @@ itertools = "0.10.3"
 serde = "1.0.130"
 serde_with = "1.10.0"
 
-groupmap = { path = "../../groupmap" }
-mina-curves = { path = "../../curves" }
-o1-utils = { path = "../../utils" }
-oracle = { path = "../../oracle" }
+groupmap = { path = "../groupmap" }
+mina-curves = { path = "../curves" }
+o1-utils = { path = "../utils" }
+oracle = { path = "../oracle" }
 
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { path = "../../ocaml/ocaml-gen", optional = true }
+ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
 
 [features]
 ocaml_types = [ "ocaml", "ocaml-gen" ]
