@@ -1,11 +1,8 @@
 [workspace]
 members = [
-    "circuits/plonk",
     "circuits/kimchi",
     "curves",
-    "dlog",
     "poly-commitment",
-    "dlog/plonk",
     "kimchi",
     "groupmap",
     "ocaml/ocaml-gen",
