@@ -1,14 +1,14 @@
 use kimchi::bench::BenchmarkCtx;
 
 fn bench_proof_creation() {
-    let ctx = BenchmarkCtx::default();
+    let ctx = BenchmarkCtx::new(1 << 16);
     ctx.create_proof();
 }
 
-fn bench_proof_verification() {
-    let ctx = BenchmarkCtx::default();
+fn bench_proof_creation_and_verification() {
+    let ctx = BenchmarkCtx::new(1 << 16);
     let proof = ctx.create_proof();
     ctx.batch_verification(vec![proof]);
 }
 
-iai::main!(bench_proof_creation, bench_proof_verification);
+iai::main!(bench_proof_creation, bench_proof_creation_and_verification);
