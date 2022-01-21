@@ -6,4 +6,4 @@ authors = ["David Wong"]
 
 [sections]
 overview = ["overview.md"]
-verifier = ["../../dlog/commitment/src/lib.rs"]
+verifier = ["../../poly-commitment/src/lib.rs"]

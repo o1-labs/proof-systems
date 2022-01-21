@@ -8,19 +8,19 @@ authors = ["TODO: ENTER ALL THE NAMES"]
 template = "specification.md"
 
 [sections]
-permutation = "../../circuits/kimchi/src/polynomials/permutation.rs"
-lookup = "../../circuits/kimchi/src/polynomials/lookup.rs"
+permutation = "../../kimchi/src/circuits/polynomials/permutation.rs"
+lookup = "../../kimchi/src/circuits/polynomials/lookup.rs"
 
 # gates
-chacha = "../../circuits/kimchi/src/polynomials/chacha.rs"
-complete_add = "../../circuits/kimchi/src/polynomials/complete_add.rs"
-endomul_scalar = "../../circuits/kimchi/src/polynomials/endomul_scalar.rs"
-endosclmul = "../../circuits/kimchi/src/polynomials/endosclmul.rs"
-generic = "../../circuits/kimchi/src/polynomials/generic.rs"
-poseidon = "../../circuits/kimchi/src/polynomials/poseidon.rs"
-varbasemul = "../../circuits/kimchi/src/polynomials/varbasemul.rs"
+chacha = "../../kimchi/src/circuits/polynomials/chacha.rs"
+complete_add = "../../kimchi/src/circuits/polynomials/complete_add.rs"
+endomul_scalar = "../../kimchi/src/circuits/polynomials/endomul_scalar.rs"
+endosclmul = "../../kimchi/src/circuits/polynomials/endosclmul.rs"
+generic = "../../kimchi/src/circuits/polynomials/generic.rs"
+poseidon = "../../kimchi/src/circuits/polynomials/poseidon.rs"
+varbasemul = "../../kimchi/src/circuits/polynomials/varbasemul.rs"
 
-constraint_system = "../../circuits/kimchi/src/nolookup/constraints.rs"
-indexes = "../../dlog/kimchi/src/index.rs"
-prover = "../../dlog/kimchi/src/prover.rs"
-verifier = "../../dlog/kimchi/src/verifier.rs"
+constraint_system = "../../kimchi/src/circuits/nolookup/constraints.rs"
+indexes = "../../kimchi/src/index.rs"
+prover = "../../kimchi/src/prover.rs"
+verifier = "../../kimchi/src/verifier.rs"
