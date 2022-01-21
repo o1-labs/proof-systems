@@ -29,7 +29,7 @@
 
 use crate::circuits::{
     constraints::ConstraintSystem,
-    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+    gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::{GateWires, GENERICS},
 };
@@ -91,16 +91,16 @@ impl<F: FftField> CircuitGate<F> {
                 right_coeff,
                 output_coeff,
             } => {
-                coeffs[0] = left_coeff.unwrap_or(F::one());
-                coeffs[1] = right_coeff.unwrap_or(F::one());
-                coeffs[2] = output_coeff.unwrap_or(-F::one());
+                coeffs[0] = left_coeff.unwrap_or_else(F::one);
+                coeffs[1] = right_coeff.unwrap_or_else(F::one);
+                coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
             }
             GenericGate::Mul {
                 output_coeff,
                 mul_coeff,
             } => {
-                coeffs[2] = output_coeff.unwrap_or(-F::one());
-                coeffs[6] = mul_coeff.unwrap_or(F::one());
+                coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[6] = mul_coeff.unwrap_or_else(F::one);
             }
             GenericGate::Const(cst) => {
                 coeffs[0] = F::one();
@@ -116,16 +116,16 @@ impl<F: FftField> CircuitGate<F> {
                 right_coeff,
                 output_coeff,
             }) => {
-                coeffs[3] = left_coeff.unwrap_or(F::one());
-                coeffs[4] = right_coeff.unwrap_or(F::one());
-                coeffs[5] = output_coeff.unwrap_or(-F::one());
+                coeffs[3] = left_coeff.unwrap_or_else(F::one);
+                coeffs[4] = right_coeff.unwrap_or_else(F::one);
+                coeffs[5] = output_coeff.unwrap_or_else(|| -F::one());
             }
             Some(GenericGate::Mul {
                 output_coeff,
                 mul_coeff,
             }) => {
-                coeffs[5] = output_coeff.unwrap_or(-F::one());
-                coeffs[7] = mul_coeff.unwrap_or(F::one());
+                coeffs[5] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[7] = mul_coeff.unwrap_or_else(F::one);
             }
             Some(GenericGate::Const(cst)) => {
                 coeffs[3] = F::one();
@@ -387,7 +387,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
 pub mod testing {
     use super::*;
-    use crate::wires::Wire;
+    use crate::circuits::wires::Wire;
     use itertools::iterate;
 
     /// handy function to create a generic circuit
@@ -456,11 +456,9 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::{
-        gate::CircuitGate,
-        wires::{Wire, COLUMNS},
-    };
-    use ark_ff::{One, UniformRand, Zero};
+    use crate::circuits::wires::COLUMNS;
+    use ark_ff::{UniformRand, Zero};
+    use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
     use rand::SeedableRng;

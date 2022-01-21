@@ -1,10 +1,7 @@
 use std::sync::Arc;
 
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::CircuitGate,
-    wires::{Wire, COLUMNS, GENERICS},
-};
+use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
+use crate::circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::COLUMNS};
 use crate::{index::Index, prover::ProverProof};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};

@@ -2,6 +2,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::CircuitGate,
+        polynomials::generic::GenericGate,
         wires::{Wire, COLUMNS},
     },
     index::{Index, VerifierIndex},
