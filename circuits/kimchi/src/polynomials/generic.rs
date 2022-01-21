@@ -34,13 +34,13 @@ use crate::{
     wires::{GateWires, GENERICS},
 };
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as D,
-};
+use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use array_init::array_init;
-use o1_utils::ExtendedDensePolynomial;
 use rayon::prelude::*;
+
+//
+// Gadgets
+//
 
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [create_generic_easy] function.
@@ -73,7 +73,7 @@ impl<F: FftField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::Generic,
             wires,
-            c: c.to_vec(),
+            coeffs: c.to_vec(),
         }
     }
 
@@ -152,25 +152,25 @@ impl<F: FftField> CircuitGate<F> {
 
         // toggling each column x[i] depending on the selectors c[i]
         let sum1 = (0..GENERICS)
-            .map(|i| self.c[i] * this[i])
+            .map(|i| self.coeffs[i] * this[i])
             .fold(zero, |x, y| x + y);
         let sum2 = (GENERICS..(GENERICS * 2))
-            .map(|i| self.c[i] * this[i])
+            .map(|i| self.coeffs[i] * this[i])
             .fold(zero, |x, y| x + y);
 
         // multiplication
-        let mul1 = self.c[6] * this[0] * this[1];
-        let mul2 = self.c[7] * this[3] * this[4];
+        let mul1 = self.coeffs[6] * this[0] * this[1];
+        let mul2 = self.coeffs[7] * this[3] * this[4];
 
         ensure_eq!(
             zero,
-            sum1 + mul1 + self.c[8],
+            sum1 + mul1 + self.coeffs[8],
             "generic: incorrect first gate"
         );
 
         ensure_eq!(
             zero,
-            sum2 + mul2 + self.c[9],
+            sum2 + mul2 + self.coeffs[9],
             "generic: incorrect second gate"
         );
 

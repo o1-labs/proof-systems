@@ -467,7 +467,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
             let padded = gates
                 .iter()
-                .map(|gate| gate.c.get(i).cloned().unwrap_or_else(F::zero))
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
                 .collect();
             let eval = E::from_vec_and_domain(padded, domain.d1);
             eval.interpolate()
@@ -623,7 +623,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.c != left_wire {
+            if row < self.public && gate.coeffs != left_wire {
                 return Err(GateError::IncorrectPublic(row));
             }
 

@@ -51,7 +51,7 @@ fn endomul_scalar_test() {
             gates.push(CircuitGate {
                 typ: GateType::EndoMulScalar,
                 wires: Wire::new(row),
-                c: vec![],
+                coeffs: vec![],
             });
         }
     }

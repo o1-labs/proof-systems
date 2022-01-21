@@ -54,12 +54,12 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order
-        c: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
+        rc: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         CircuitGate {
             typ: GateType::Poseidon,
             wires,
-            c: c.iter().flatten().copied().collect(),
+            coeffs: rc.iter().flatten().copied().collect(),
         }
     }
 
@@ -178,7 +178,7 @@ impl<F: FftField> CircuitGate<F> {
         array_init(|round| {
             array_init(|col| {
                 if self.typ == GateType::Poseidon {
-                    self.c[SPONGE_WIDTH * round + col]
+                    self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
                     F::zero()
                 }

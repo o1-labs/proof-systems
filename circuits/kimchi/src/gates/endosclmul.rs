@@ -43,7 +43,7 @@ impl<F: FftField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::EndoMul,
             wires,
-            c: vec![],
+            coeffs: vec![],
         }
     }
 

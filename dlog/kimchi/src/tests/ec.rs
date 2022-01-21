@@ -46,7 +46,7 @@ fn ec_test() {
         gates.push(CircuitGate {
             typ: GateType::CompleteAdd,
             wires: Wire::new(row),
-            c: vec![],
+            coeffs: vec![],
         });
     }
 
