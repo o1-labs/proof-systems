@@ -13,7 +13,7 @@ pub fn black_box<T>(dummy: T) -> T {
 }
 
 fn main() {
-    let mode = env::args().skip(1).next();
+    let mode = env::args().nth(1);
     match mode.as_deref() {
         Some("prove") => {
             let ctx = BenchmarkCtx::new(1 << 16);

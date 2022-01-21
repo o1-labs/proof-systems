@@ -7,7 +7,7 @@ use crate::{
     index::{Index, VerifierIndex},
     prover::ProverProof,
 };
-use ark_ff::{UniformRand, Zero};
+use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::{
