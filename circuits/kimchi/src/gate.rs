@@ -500,7 +500,7 @@ pub mod caml {
             Self {
                 typ: ccg.typ,
                 wires: tuple_to_array(ccg.wires),
-                coeffs: ccg.c.into_iter().map(Into::into).collect(),
+                coeffs: ccg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
