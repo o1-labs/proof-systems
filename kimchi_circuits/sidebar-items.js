@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["domains",""],["expr",""],["gate",""],["gates",""],["macros",""],["nolookup",""],["polynomial",""],["polynomials",""],["wires",""]]});
