@@ -308,7 +308,7 @@ where
     //~ generate the proof.
     //~
 
-    // this function compiles the index from constraints
+    /// this function compiles the index from constraints
     pub fn create(
         mut cs: ConstraintSystem<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,

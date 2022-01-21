@@ -267,7 +267,10 @@ You can create the verifier index from the prover index, by commiting to a numbe
 The prover index is a structure that contains all the information needed to
 generate the proof.
 
-1. do the lookup stuff
+1. set the endomorphism value to endo_q
+2. do the lookup stuff
+3. linearize the circuit
+4. set the max quotient size to the number of IO registers times the domain size
 
 
 ## proof data structure
