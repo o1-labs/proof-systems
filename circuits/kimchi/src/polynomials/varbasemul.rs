@@ -21,6 +21,7 @@ fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn single_bit_witness<F: FftField>(
     w: &mut [Vec<F>; COLUMNS],
     row: usize,
@@ -191,7 +192,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     VarbaseMulResult { acc, n: n_acc }
 }
 
-pub fn constraint<F: FftField>(alphas: &mut impl Iterator<Item = usize>) -> E<F> {
+pub fn constraint<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let Layout {
         base,
         accs,
@@ -221,5 +222,6 @@ pub fn constraint<F: FftField>(alphas: &mut impl Iterator<Item = usize>) -> E<F>
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    E::cell(Column::Index(GateType::Vbmul), CurrOrNext::Curr) * E::combine_constraints(alphas, res)
+    E::cell(Column::Index(GateType::VarBaseMul), CurrOrNext::Curr)
+        * E::combine_constraints(alphas, res)
 }

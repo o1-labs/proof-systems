@@ -1,3 +1,4 @@
+use crate::{index::Index, prover::ProverProof};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;
@@ -7,7 +8,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-use kimchi::{index::Index, prover::ProverProof};
 use kimchi_circuits::{
     gate::{CircuitGate, GateType},
     nolookup::constraints::ConstraintSystem,
@@ -52,8 +52,7 @@ fn endomul_test() {
         for i in 0..chunks {
             let row = rows_per_scalar * s + i;
             gates.push(CircuitGate {
-                row,
-                typ: GateType::Endomul,
+                typ: GateType::EndoMul,
                 wires: Wire::new(row),
                 c: vec![],
             });
@@ -61,7 +60,6 @@ fn endomul_test() {
 
         let row = rows_per_scalar * s + chunks;
         gates.push(CircuitGate {
-            row,
             typ: GateType::Zero,
             wires: Wire::new(row),
             c: vec![],

@@ -11,6 +11,7 @@ members = [
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
+    "signer",
     "utils",
 ]
 

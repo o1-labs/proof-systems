@@ -3,13 +3,14 @@ name = "groupmap"
 version = "0.1.0"
 authors = ["Rebekah Mercer <github@rbkhmrcr.com>", "Izaak Meckler <izaak@o1labs.org>"]
 edition = "2021"
+license = "Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
-rand = { version = "0.8.0" }
+rand = "0.8.4"
 
 [dev-dependencies]
 mina-curves = { path = "../curves" }

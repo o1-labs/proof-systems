@@ -34,7 +34,10 @@ use crate::{
     wires::{GateWires, GENERICS},
 };
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
+use ark_poly::{
+    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D,
+};
 use array_init::array_init;
 use o1_utils::ExtendedDensePolynomial;
 use rayon::prelude::*;
@@ -66,9 +69,8 @@ pub enum GenericGate<F> {
 
 impl<F: FftField> CircuitGate<F> {
     /// This allows you to create two generic gates that will fit in one row, check [create_generic_easy] for a better to way to create these gates.
-    pub fn create_generic(row: usize, wires: GateWires, c: [F; GENERICS * 2 + 2 + 2]) -> Self {
+    pub fn create_generic(wires: GateWires, c: [F; GENERICS * 2 + 2 + 2]) -> Self {
         CircuitGate {
-            row,
             typ: GateType::Generic,
             wires,
             c: c.to_vec(),
@@ -78,7 +80,6 @@ impl<F: FftField> CircuitGate<F> {
     /// This allows you to create two generic gates by passing the desired
     /// `gate1` and `gate2` as two [GenericGate].
     pub fn create_generic_easy(
-        row: usize,
         wires: GateWires,
         gate1: GenericGate<F>,
         gate2: GenericGate<F>,
@@ -135,13 +136,13 @@ impl<F: FftField> CircuitGate<F> {
                 unimplemented!();
             }
         };
-        Self::create_generic(row, wires, coeffs)
+        Self::create_generic(wires, coeffs)
     }
 
     /// verifies that the generic gate constraints are solved by the witness
-    pub fn verify_generic(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
+    pub fn verify_generic(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // assignments
-        let this: [F; COLUMNS] = array_init(|i| witness[i][self.row]);
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
         // constants
         let zero = F::zero();
@@ -188,7 +189,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
         &self,
-        alphas: &mut impl Iterator<Item = F>,
+        mut alphas: impl Iterator<Item = F>,
         witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
         // init
@@ -282,7 +283,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// alpha * generic(zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[2](zeta)
     pub fn gnrc_scalars(
-        alphas: &mut impl Iterator<Item = F>,
+        mut alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
     ) -> Vec<F> {
@@ -320,20 +321,26 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint linearization poly contribution computation
     pub fn gnrc_lnrz(
         &self,
-        alphas: &mut impl Iterator<Item = F>,
+        alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
         generic_zeta: F,
-    ) -> DensePolynomial<F> {
+    ) -> Evaluations<F, D<F>> {
+        let d1 = self.domain.d1;
+        let n = d1.size as usize;
+
         // get scalars
         let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
-        // setup
-        let mut res = DensePolynomial::<F>::zero();
+        //
+        let mut res = Evaluations::from_vec_and_domain(vec![F::zero(); n], d1);
 
-        // multiply them with selectors
-        let coeffs = self.coefficientsm.iter();
+        let scale = self.coefficients8[0].evals.len() / n;
+
+        let coeffs = self.coefficients8.iter();
         for (scalar, coeff) in scalars.into_iter().zip(coeffs) {
-            res += &coeff.scale(scalar);
+            res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
+                *e += scalar * coeff[scale * i];
+            });
         }
 
         res
@@ -346,27 +353,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         public: &DensePolynomial<F>,
     ) -> bool {
         // addition (of left, right, output wires)
+        let coefficientsm: [_; COLUMNS] =
+            array_init(|i| self.coefficients8[i].clone().interpolate());
         let mut ff = DensePolynomial::zero();
-        for (w, q) in witness
-            .iter()
-            .zip(self.coefficientsm.iter())
-            .take(GENERICS * 2)
-        {
+        for (w, q) in witness.iter().zip(&coefficientsm).take(GENERICS * 2) {
             ff += &(w * q);
         }
 
         // multiplication
-        ff += &(&(&witness[0] * &witness[1]) * &self.coefficientsm[6]);
-        ff += &(&(&witness[3] * &witness[4]) * &self.coefficientsm[7]);
+        ff += &(&(&witness[0] * &witness[1]) * &coefficientsm[6]);
+        ff += &(&(&witness[3] * &witness[4]) * &coefficientsm[7]);
 
         // constant
-        ff += &self.coefficientsm[8];
-        ff += &self.coefficientsm[9];
+        ff += &coefficientsm[8];
+        ff += &coefficientsm[9];
 
-        // generic gate
-        ff = &ff * &self.genericm;
-
-        // note: no need to use the powers of alpha here
+        // note: no need to use the powers of alpha or the selector poly
 
         // public inputs
         ff += public;
@@ -408,7 +410,7 @@ pub mod testing {
                 output_coeff: None,
                 mul_coeff: Some(2u32.into()),
             };
-            gates.push(CircuitGate::create_generic_easy(r, Wire::new(r), g1, g2));
+            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, g2));
         }
 
         // two consts
@@ -416,7 +418,7 @@ pub mod testing {
             let r = gates_row.next().unwrap();
             let g1 = GenericGate::Const(3u32.into());
             let g2 = GenericGate::Const(5u32.into());
-            gates.push(CircuitGate::create_generic_easy(r, Wire::new(r), g1, g2));
+            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, g2));
         }
 
         gates
@@ -454,9 +456,11 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::wires::COLUMNS;
-
-    use ark_ff::{UniformRand, Zero};
+    use crate::{
+        gate::CircuitGate,
+        wires::{Wire, COLUMNS},
+    };
+    use ark_ff::{One, UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;
@@ -508,7 +512,9 @@ mod tests {
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
-        let f = cs.gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta);
+        let f = cs
+            .gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta)
+            .interpolate();
         let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)

@@ -25,6 +25,100 @@
 //! last element of LookupSorted(i) = last element of LookupSorted(i + 1),
 //! and if i % 2 = 1, we enforce that the
 //! first element of LookupSorted(i) = first element of LookupSorted(i + 1)
+//!
+//! Overview of the protocol
+//! ========================
+//! * We have our initial table `lookup_table`, with our desired values listed.
+//! * We have the implicit table `lookups(witness)` representing the values looked up in each row
+//!   of the witness.
+//!   - This table is initially variable-width, where some rows have no lookups, and others have
+//!     several.
+//!   - We explicitly compute this table, and where the width for a particular row is less than the
+//!     maximum width, we insert a 'dummy' lookup value as many times as we need to to give every
+//!     row the same number of lookups.
+//!   - We'll call this padded table `witness_lookups`.
+//! * We want to generate a `sorted_table` that contains every entry from the concatenated table
+//! `lookup_table||witness_lookups`, where values are in the same order as `lookup_table`, with all
+//! duplicates placed next to each other.
+//!   - There's an edge case around duplicate values in the `lookup_table` itself: these should
+//!     appear in `sorted_table` at least once each time they appeared in the `lookup_table`.
+//!   - This ensures that, for any `beta` and for each `i`, the pair `lookup_table[i] + beta *
+//!     lookup_table[i+1]` corresponds to some distinct `j` such that `sorted_table[j] + beta *
+//!     sorted_table[j+1]`.
+//!   - For all other values of `j`, `sorted_table[j] = sorted_table[j+1]`: since we've dealt with
+//!     all of the 'different' pairs corresponding from moving from one value in `lookup_table` to
+//!     the next, the only remaining pairs are those corresponding to the duplicates provided by the
+//!     lookups in `witness_lookups`.
+//!   - For example, if `lookup_table` is `[0, 1, 2, 3, 4, 5]` and `witness_lookups` is
+//!     `[0, 0, 0, 2, 2, 4]`, then `sorted_table` is `[0, 0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 5]`, and
+//!     the differences are
+//!     `[(0, 0), (0, 0), (0, 0), (0, 1), (1, 2), (2, 2), (2, 2), (2, 3), (3, 4), (4, 4), (4, 5)]`.
+//!     The entries where the pairs are different are those that match with the `lookup_table`, and
+//!     the equal pairs can be paired with the `witness_lookups`. This `sorted_table` is computed
+//!     by the `sorted` function.
+//! * in order to check the multiset inclusion, we calculate the product over our sorted table:
+//!   `gamma * (1 + beta) + sorted_table[i] + beta * sorted_table[i+1]`
+//!   - again, when the adjacent terms `sorted_table[i]` and `sorted_table[i+1]` are equal, this
+//!     simplifies to `(gamma + sorted_table[i]) * (1 + beta)`
+//!   - when they are different, there is some `j` such that it equals `gamma * (1 + beta) +
+//!     lookup_table[i] + beta * lookup_table[i+1]`
+//!   - using the example above, this becomes
+//!     ```ignore
+//!         gamma * (1 + beta) + 0 + beta * 0
+//!       * gamma * (1 + beta) + 0 + beta * 0
+//!       * gamma * (1 + beta) + 0 + beta * 0
+//!       * gamma * (1 + beta) + 0 + beta * 1
+//!       * gamma * (1 + beta) + 1 + beta * 2
+//!       * gamma * (1 + beta) + 2 + beta * 2
+//!       * gamma * (1 + beta) + 2 + beta * 2
+//!       * gamma * (1 + beta) + 2 + beta * 3
+//!       * gamma * (1 + beta) + 3 + beta * 4
+//!       * gamma * (1 + beta) + 4 + beta * 4
+//!       * gamma * (1 + beta) + 4 + beta * 5
+//!     ```
+//!     which we can simplify to
+//!     ```ignore
+//!         (gamma + 0) * (1 + beta)
+//!       * (gamma + 0) * (1 + beta)
+//!       * (gamma + 0) * (1 + beta)
+//!       * gamma * (1 + beta) + 0 + beta * 1
+//!       * gamma * (1 + beta) + 1 + beta * 2
+//!       * (gamma + 2) * (1 + beta)
+//!       * (gamma + 2) * (1 + beta)
+//!       * gamma * (1 + beta) + 2 + beta * 3
+//!       * gamma * (1 + beta) + 3 + beta * 4
+//!       * (gamma + 4) * (1 + beta)
+//!       * gamma * (1 + beta) + 4 + beta * 5
+//!     ```
+//! * because we said before that each pair corresponds to either a pair in the `lookup_table` or a
+//!   duplicate from the `witness_table`, the product over the sorted table should equal the
+//!   product of `gamma * (1 + beta) + lookup_table[i] + beta * lookup_table[i+1]` multiplied by
+//!   the product of `(gamma + witness_table[i]) * (1 + beta)`, since each term individually
+//!   cancels out.
+//!   - using the example above, the `lookup_table` terms become
+//!     ```ignore
+//!         gamma * (1 + beta) + 0 + beta * 1
+//!       * gamma * (1 + beta) + 1 + beta * 2
+//!       * gamma * (1 + beta) + 2 + beta * 3
+//!       * gamma * (1 + beta) + 3 + beta * 4
+//!       * gamma * (1 + beta) + 4 + beta * 5
+//!     ```
+//!     and the `witness_table` terms become
+//!     ```ignore
+//!         (gamma + 0) * (1 + beta)
+//!       * (gamma + 0) * (1 + beta)
+//!       * (gamma + 0) * (1 + beta)
+//!       * (gamma + 2) * (1 + beta)
+//!       * (gamma + 2) * (1 + beta)
+//!       * (gamma + 4) * (1 + beta)
+//!     ```
+//!
+//! There is some nuance around table lengths; for example, notice that `witness_table` need not be
+//! the same length as `lookup_table` (and indeed is not in our implementation, due to multiple
+//! lookups per row), and that `sorted_table` will always be longer than `lookup_table`, which is
+//! where we require 'snakifying' to check consistency. Happily, we don't have to perform
+//! snakifying on `witness_table`, because its contribution above only uses a single term rather
+//! than a pair of terms.
 
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
@@ -120,6 +214,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 }
 
 /// Checks that all the lookup constraints are satisfied.
+#[allow(clippy::too_many_arguments)]
 pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: G,
@@ -199,8 +294,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let table_entry = joint_lookup.evaluate(joint_combiner, &eval);
-            *all_lookups.entry(table_entry).or_insert(0) += 1
+            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
+            *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
         *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
@@ -296,7 +391,6 @@ pub fn sorted<
     // TODO: Multiple tables
     dummy_lookup_value: E,
     lookup_table: G,
-    lookup_table_entries: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
@@ -313,33 +407,41 @@ pub fn sorted<
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
+    for t in lookup_table().take(lookup_rows) {
+        // Don't multiply-count duplicate values in the table, or they'll be duplicated for each
+        // duplicate!
+        // E.g. A value duplicated in the table 3 times would be entered into the sorted array 3
+        // times at its first occurrence, then a further 2 times as each duplicate is encountered.
+        counts.entry(t).or_insert(1);
+    }
+
     for (i, row) in by_row.iter().enumerate().take(lookup_rows) {
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let table_entry = E::evaluate(&params, joint_lookup, witness, i);
-            let count = counts.entry(table_entry).or_insert(0);
-            *count += 1;
+            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            match counts.get_mut(&joint_lookup_evaluation) {
+                None => return Err(ProofError::ValueNotInTable),
+                Some(count) => *count += 1,
+            }
         }
         *counts.entry(dummy_lookup_value.clone()).or_insert(0) += padding;
     }
 
-    for t in lookup_table().take(lookup_rows) {
-        let count = counts.entry(t).or_insert(0);
-        *count += 1;
-    }
-
     let sorted = {
-        let mut sorted: Vec<Vec<E>> = vec![];
-        for _ in 0..max_lookups_per_row + 1 {
-            sorted.push(Vec::with_capacity(lookup_rows + 1))
-        }
+        let mut sorted: Vec<Vec<E>> =
+            vec![Vec::with_capacity(lookup_rows + 1); max_lookups_per_row + 1];
 
         let mut i = 0;
-        for t in lookup_table().take(lookup_table_entries) {
-            let t_count = match counts.get(&t) {
-                None => return Err(ProofError::ValueNotInTable),
-                Some(x) => *x,
+        for t in lookup_table().take(lookup_rows) {
+            let t_count = match counts.get_mut(&t) {
+                None => panic!("Value has disappeared from count table"),
+                Some(x) => {
+                    let res = *x;
+                    // Reset the count, any duplicate values should only appear once from now on.
+                    *x = 1;
+                    res
+                }
             };
             for j in 0..t_count {
                 let idx = i + j;
@@ -389,6 +491,7 @@ pub fn sorted<
 ///
 /// after multiplying all of the values, all of the terms will have cancelled if s is a sorting of f and t, and the final term will be 1
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
+#[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     dummy_lookup_value: F,
     lookup_table: I,

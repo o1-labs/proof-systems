@@ -93,6 +93,39 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 }
 
 /* TODO
+
+fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
+    // circuit gates
+    let mut gates = vec![];
+    let mut abs_row = 0;
+
+    // add multiplication gate (l * r = o)
+    let wires = Wire::new(abs_row);
+
+    let (on, off) = (Fp::one(), Fp::zero());
+    let qw: [Fp; GENERICS] = [
+        /* left for addition */ off, /* right for addition */ off,
+        /* output */ on, /* the rest of the columns don't matter */
+    ];
+    let multiplication = on;
+    let constant = off;
+    gates.push(CircuitGate::<Fp>::create_generic(
+        wires,
+        qw,
+        multiplication,
+        constant,
+    ));
+    abs_row += 1;
+
+    // add a zero gate, just because
+    let wires = Wire::new(abs_row);
+    gates.push(CircuitGate::<Fp>::zero(wires));
+    //abs_row += 1;
+
+    //
+    gates
+}
+
 #[test]
 fn test_index_serialization() {
     // create gates

@@ -2,8 +2,7 @@
 
 use crate::{index::Index, plonk_sponge::FrSponge};
 use ark_ec::AffineCurve;
-use ark_ff::UniformRand;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -11,6 +10,7 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
+use itertools::Itertools;
 use kimchi_circuits::{
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
@@ -68,6 +68,7 @@ pub struct ProverProof<G: AffineCurve> {
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::ScalarField: CommitmentField,
+    G::BaseField: PrimeField,
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
     //     witness: computation witness
@@ -135,7 +136,7 @@ where
         });
 
         // compute witness polynomials
-        let w: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -153,6 +154,7 @@ where
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
 
         let joint_combiner_ = {
+            // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
             let s = match lookup_used.as_ref() {
                 None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
                 Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
@@ -160,6 +162,7 @@ where
             (s, s.to_field(&index.srs.endo_r))
         };
 
+        // TODO: that seems like an unecessary line
         let joint_combiner: Fr<G> = joint_combiner_.1;
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
@@ -230,7 +233,6 @@ where
                     let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
                         dummy_lookup_value,
                         iter_lookup_table,
-                        index.cs.lookup_table_lengths[0],
                         index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
@@ -312,10 +314,9 @@ where
             };
 
         // compute permutation aggregation polynomial
-        let z = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
-
+        let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
         // commit to z
-        let z_comm = index.srs.commit(&z, None, rng);
+        let z_comm = index.srs.commit(&z_poly, None, rng);
 
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
@@ -324,7 +325,7 @@ where
         let mut all_alphas = Alphas::new(alpha, &index.powers_of_alpha);
 
         // evaluate witness and permutation polynomials over domains
-        let lagrange = index.cs.evaluate(&w, &z);
+        let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
         let lookup_table_combined = lookup_used.as_ref().map(|_| {
             let joint_table = &index.cs.lookup_tables8[0];
@@ -354,9 +355,9 @@ where
             use GateType::*;
             index_evals.insert(Poseidon, &index.cs.ps8);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
-            index_evals.insert(Vbmul, &index.cs.mull8);
-            index_evals.insert(Endomul, &index.cs.emull);
-            index_evals.insert(EndomulScalar, &index.cs.endomul_scalar8);
+            index_evals.insert(VarBaseMul, &index.cs.mull8);
+            index_evals.insert(EndoMul, &index.cs.emull);
+            index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()
@@ -386,11 +387,14 @@ where
             }
         };
 
+        //
         // compute quotient polynomial
+        //
+
         let quotient_poly = {
             // generic
-            let mut generic_alphas = all_alphas.get_alphas(ConstraintType::Gate(GateType::Generic));
-            let mut t4 = index.cs.gnrc_quot(&mut generic_alphas, &lagrange.d4.this.w);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
+            let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             // subtract the public values
             let public4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
@@ -406,9 +410,8 @@ where
             }
 
             // complete addition
-            let mut add_alphas =
-                all_alphas.take_powers(ConstraintType::Gate(GateType::CompleteAdd));
-            let add_constraint = complete_add::constraint(&mut add_alphas);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 7);
+            let add_constraint = complete_add::constraint(alphas);
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
 
@@ -424,10 +427,10 @@ where
             drop(add4);
 
             // permutation
-            let mut perm_alphas = all_alphas.get_alphas(ConstraintType::Permutation);
+            let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
             let (perm, bnd) = index
                 .cs
-                .perm_quot(&lagrange, beta, gamma, &z, &mut perm_alphas)?;
+                .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
             let mut t8 = perm;
 
             if cfg!(test) {
@@ -440,8 +443,8 @@ where
             }
 
             // scalar multiplication
-            let mut mul_alphas = all_alphas.take_powers(ConstraintType::Gate(GateType::Vbmul));
-            let mul8 = varbasemul::constraint(&mut mul_alphas).evaluations(&env);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 21);
+            let mul8 = varbasemul::constraint(alphas).evaluations(&env);
             t8 += &mul8;
 
             if cfg!(test) {
@@ -456,9 +459,8 @@ where
             drop(mul8);
 
             // endoscaling
-            let mut endomul_alphas =
-                all_alphas.take_powers(ConstraintType::Gate(GateType::Endomul));
-            let emul8 = endosclmul::constraint(&mut endomul_alphas).evaluations(&env);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 11);
+            let emul8 = endosclmul::constraint(alphas).evaluations(&env);
             t8 += &emul8;
 
             if cfg!(test) {
@@ -473,9 +475,8 @@ where
             drop(emul8);
 
             // endoscaling scalar computation
-            let mut endoscalar_alphas =
-                all_alphas.take_powers(ConstraintType::Gate(GateType::EndomulScalar));
-            let emulscalar8 = endomul_scalar::constraint(&mut endoscalar_alphas).evaluations(&env);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 11);
+            let emulscalar8 = endomul_scalar::constraint(alphas).evaluations(&env);
             t8 += &emulscalar8;
 
             if cfg!(test) {
@@ -490,9 +491,8 @@ where
             drop(emulscalar8);
 
             // poseidon
-            let mut poseidon_alphas =
-                all_alphas.take_powers(ConstraintType::Gate(GateType::Poseidon));
-            let pos8 = poseidon::constraint(&mut poseidon_alphas).evaluations(&env);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 15);
+            let pos8 = poseidon::constraint(alphas).evaluations(&env);
             t8 += &pos8;
 
             if cfg!(test) {
@@ -508,13 +508,45 @@ where
 
             // chacha
             if index.cs.chacha8.as_ref().is_some() {
-                let mut chacha_alphas =
-                    all_alphas.take_powers(ConstraintType::Gate(GateType::ChaCha0));
-                let chacha = chacha::constraint(&mut chacha_alphas).evaluations(&env);
-                t4 += &chacha;
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let chacha0 = chacha::constraint_chacha0(alphas).evaluations(&env);
+                t4 += &chacha0;
+
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let chacha1 = chacha::constraint_chacha1(alphas).evaluations(&env);
+                t4 += &chacha1;
+
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let chacha2 = chacha::constraint_chacha2(alphas).evaluations(&env);
+                t4 += &chacha2;
+
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 9);
+                let chacha_final = chacha::constraint_chacha_final(alphas).evaluations(&env);
+                t4 += &chacha_final;
 
                 if cfg!(test) {
-                    let (_, res) = chacha
+                    let (_, res) = chacha0
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha1
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha2
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha_final
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
@@ -522,23 +554,25 @@ where
                     assert!(res.is_zero());
                 }
 
-                drop(chacha);
+                drop(chacha0);
+                drop(chacha1);
+                drop(chacha2);
+                drop(chacha_final);
             }
 
             // lookup
             if lookup_used.is_some() {
-                let lookup_alphas = all_alphas.take_alphas(ConstraintType::Lookup);
-                let evals: Vec<Evaluations<Fr<G>, D<Fr<G>>>> =
-                    lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1)
-                        .iter()
-                        .map(|e| e.evaluations(&env))
-                        .collect();
-                for (mut e, alpha_pow) in evals.into_iter().zip(lookup_alphas) {
-                    e.evals.iter_mut().for_each(|x| *x *= alpha_pow);
-                    if e.domain().size == t4.domain().size {
-                        t4 += &e;
-                    } else if e.domain().size == t8.domain().size {
-                        t8 += &e;
+                let lookup_alphas = all_alphas.get_alphas(ConstraintType::Lookup, 7);
+                let constraints =
+                    lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1);
+                for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
+                    let mut eval = constraint.evaluations(&env);
+                    eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
                     } else {
                         panic!("Bad evaluation")
                     }
@@ -559,18 +593,30 @@ where
         };
 
         // commit to t
-        let t_comm = index.srs.commit(&quotient_poly, None, rng);
+        let t_comm = {
+            let (mut t_comm, mut omega_t) = index.srs.commit(&quotient_poly, None, rng);
+
+            let expected_t_size = PERMUTS;
+            let dummies = expected_t_size - t_comm.unshifted.len();
+            // Add `dummies` many hiding commitments to the 0 polynomial, since if the
+            // number of commitments in `t_comm` is less than the max size, it means that
+            // the higher degree coefficients of `t` are 0.
+            for _ in 0..dummies {
+                use ark_ec::ProjectiveCurve;
+                let w = Fr::<G>::rand(rng);
+                t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
+                omega_t.unshifted.push(w);
+            }
+            (t_comm, omega_t)
+        };
 
         // absorb the polycommitments into the argument and sample zeta
-        let max_t_size = (index.max_quot_size + index.max_poly_size - 1) / index.max_poly_size;
-        let dummy = G::of_coordinates(Fq::<G>::zero(), Fq::<G>::zero());
         fq_sponge.absorb_g(&t_comm.0.unshifted);
-        fq_sponge.absorb_g(&vec![dummy; max_t_size - t_comm.0.unshifted.len()]);
 
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
         let omega = index.cs.domain.d1.group_gen;
-        let zeta_omega = zeta * &omega;
+        let zeta_omega = zeta * omega;
 
         let lookup_evals = |e: Fr<G>| {
             lookup_aggreg_coeffs
@@ -598,8 +644,8 @@ where
         // evaluate the polynomials
         let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
-            w: array_init(|i| w[i].eval(zeta, index.max_poly_size)),
-            z: z.eval(zeta, index.max_poly_size),
+            w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
+            z: z_poly.eval(zeta, index.max_poly_size),
             lookup: lookup_evals(zeta),
             generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
@@ -608,8 +654,8 @@ where
             s: array_init(|i| {
                 index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
             }),
-            w: array_init(|i| w[i].eval(zeta_omega, index.max_poly_size)),
-            z: z.eval(zeta_omega, index.max_poly_size),
+            w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
+            z: z_poly.eval(zeta_omega, index.max_poly_size),
             lookup: lookup_evals(zeta_omega),
             generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
@@ -620,11 +666,13 @@ where
 
         let chunked_evals = [chunked_evals_zeta, chunked_evals_zeta_omega];
 
-        let zeta_n = zeta.pow(&[index.max_poly_size as u64]);
-        let zeta_omega_n = zeta_omega.pow(&[index.max_poly_size as u64]);
+        let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
+        let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
+
+        let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
         // normal evaluations
-        let power_of_eval_points_for_chunks = [zeta_n, zeta_omega_n];
+        let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
         let evals = &chunked_evals
             .iter()
             .zip(power_of_eval_points_for_chunks.iter())
@@ -653,18 +701,15 @@ where
             // the constraint system struct
 
             // generic
-            let mut generic_alphas =
-                all_alphas.take_alphas(ConstraintType::Gate(GateType::Generic));
-            let mut f =
-                index
-                    .cs
-                    .gnrc_lnrz(&mut generic_alphas, &evals[0].w, evals[0].generic_selector);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
+            let mut f = index
+                .cs
+                .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                .interpolate();
 
             // permutation
-            let mut perm_alphas = all_alphas.take_alphas(ConstraintType::Permutation);
-            f += &index
-                .cs
-                .perm_lnrz(evals, zeta, beta, gamma, &mut perm_alphas);
+            let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+            f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
             let f = {
                 let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
@@ -676,12 +721,13 @@ where
             drop(lookup_aggreg8);
             drop(lookup_table_combined);
 
-            f.chunk_polynomial(zeta_n, index.max_poly_size)
+            f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
         };
 
-        let t_chunked = quotient_poly.chunk_polynomial(zeta_n, index.max_poly_size);
+        let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
 
-        let ft: DensePolynomial<Fr<G>> = &f_chunked - &t_chunked.scale(zeta_n - Fr::<G>::one());
+        let ft: DensePolynomial<Fr<G>> =
+            &f_chunked - &t_chunked.scale(zeta_to_domain_size - Fr::<G>::one());
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
         let fq_sponge_before_evaluations = fq_sponge.clone();
@@ -728,12 +774,12 @@ where
         // construct the blinding part of the ft polynomial for Maller's optimization
         // (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
         let blinding_ft = {
-            let blinding_t = t_comm.1.chunk_blinding(zeta_n);
+            let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
             let blinding_f = Fr::<G>::zero();
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                unshifted: vec![blinding_f - (zeta_n - Fr::<G>::one()) * blinding_t],
+                unshifted: vec![blinding_f - (zeta_to_domain_size - Fr::<G>::one()) * blinding_t],
                 shifted: None,
             }
         };
@@ -745,11 +791,12 @@ where
             .collect::<Vec<_>>();
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
-        polynomials.extend(vec![(&z, None, z_comm.1)]);
+        polynomials.extend(vec![(&z_poly, None, z_comm.1)]);
         polynomials.extend(vec![(&index.cs.genericm, None, non_hiding(1))]);
         polynomials.extend(vec![(&index.cs.psm, None, non_hiding(1))]);
         polynomials.extend(
-            w.iter()
+            witness_poly
+                .iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.1.clone()))
                 .collect::<Vec<_>>(),
@@ -775,8 +822,8 @@ where
             },
             proof: index.srs.open(
                 group_map,
-                polynomials,
-                &vec![zeta, zeta_omega],
+                &polynomials,
+                &[zeta, zeta_omega],
                 v,
                 u,
                 fq_sponge_before_evaluations,
