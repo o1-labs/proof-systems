@@ -446,7 +446,6 @@ pub mod caml {
     use super::*;
     use crate::wires::caml::CamlWire;
     use itertools::Itertools;
-    use std::convert::TryInto;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
