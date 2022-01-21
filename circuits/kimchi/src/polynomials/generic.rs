@@ -82,7 +82,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn create_generic_easy(
         wires: GateWires,
         gate1: GenericGate<F>,
-        gate2: GenericGate<F>,
+        gate2: Option<GenericGate<F>>,
     ) -> Self {
         let mut coeffs = [F::zero(); GENERICS * 2 + 2 + 2];
         match gate1 {
@@ -111,30 +111,31 @@ impl<F: FftField> CircuitGate<F> {
             }
         };
         match gate2 {
-            GenericGate::Add {
+            Some(GenericGate::Add {
                 left_coeff,
                 right_coeff,
                 output_coeff,
-            } => {
+            }) => {
                 coeffs[3] = left_coeff.unwrap_or(F::one());
                 coeffs[4] = right_coeff.unwrap_or(F::one());
                 coeffs[5] = output_coeff.unwrap_or(-F::one());
             }
-            GenericGate::Mul {
+            Some(GenericGate::Mul {
                 output_coeff,
                 mul_coeff,
-            } => {
+            }) => {
                 coeffs[5] = output_coeff.unwrap_or(-F::one());
                 coeffs[7] = mul_coeff.unwrap_or(F::one());
             }
-            GenericGate::Const(cst) => {
+            Some(GenericGate::Const(cst)) => {
                 coeffs[3] = F::one();
                 coeffs[9] = -cst;
             }
-            GenericGate::Pub => {
+            Some(GenericGate::Pub) => {
                 coeffs[3] = F::one();
                 unimplemented!();
             }
+            None => (),
         };
         Self::create_generic(wires, coeffs)
     }
@@ -384,7 +385,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
 // -------------------------------------------------
 
-#[cfg(any(test, feature = "testing"))]
 pub mod testing {
     use super::*;
     use crate::wires::Wire;
@@ -410,7 +410,7 @@ pub mod testing {
                 output_coeff: None,
                 mul_coeff: Some(2u32.into()),
             };
-            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, g2));
+            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, Some(g2)));
         }
 
         // two consts
@@ -418,7 +418,7 @@ pub mod testing {
             let r = gates_row.next().unwrap();
             let g1 = GenericGate::Const(3u32.into());
             let g2 = GenericGate::Const(5u32.into());
-            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, g2));
+            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, Some(g2)));
         }
 
         gates
@@ -456,11 +456,8 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        gate::CircuitGate,
-        wires::{Wire, COLUMNS},
-    };
-    use ark_ff::{One, UniformRand, Zero};
+    use crate::wires::COLUMNS;
+    use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
     use mina_curves::pasta::fp::Fp;

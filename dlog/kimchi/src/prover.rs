@@ -393,7 +393,7 @@ where
 
         let quotient_poly = {
             // generic
-            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             // subtract the public values
@@ -701,7 +701,7 @@ where
             // the constraint system struct
 
             // generic
-            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
             let mut f = index
                 .cs
                 .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)

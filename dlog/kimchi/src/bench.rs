@@ -2,7 +2,7 @@ use crate::{
     index::{Index, VerifierIndex},
     prover::ProverProof,
 };
-use ark_ff::{One, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::{
@@ -13,6 +13,7 @@ use groupmap::{BWParameters, GroupMap};
 use kimchi_circuits::{
     gate::CircuitGate,
     nolookup::constraints::ConstraintSystem,
+    polynomials::generic::GenericGate,
     wires::{Wire, COLUMNS},
 };
 use mina_curves::pasta::vesta::VestaParameters;
@@ -49,13 +50,28 @@ impl Default for BenchmarkCtx {
 
         for _ in 0..MUL_GATES {
             let wires = Wire::new(abs_row);
-            gates.push(CircuitGate::<Fp>::create_generic_mul(wires));
+            gates.push(CircuitGate::<Fp>::create_generic_easy(
+                wires,
+                GenericGate::Mul {
+                    output_coeff: None,
+                    mul_coeff: None,
+                },
+                None,
+            ));
             abs_row += 1;
         }
 
         for _ in 0..ADD_GATES {
             let wires = Wire::new(abs_row);
-            gates.push(CircuitGate::create_generic_add(wires, Fp::one(), Fp::one()));
+            gates.push(CircuitGate::create_generic_easy(
+                wires,
+                GenericGate::Add {
+                    left_coeff: None,
+                    right_coeff: None,
+                    output_coeff: None,
+                },
+                None,
+            ));
             abs_row += 1;
         }
 
