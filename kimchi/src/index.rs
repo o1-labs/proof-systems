@@ -156,8 +156,10 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
-    powers_of_alpha: &mut alphas::Builder,
-) -> E<F> {
+) -> (E<F>, alphas::Builder) {
+    // register powers of alpha so that we don't reuse them across mutually inclusive constraints
+    let mut powers_of_alpha = alphas::Builder::default();
+
     // gates
     let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
 
@@ -184,9 +186,11 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // TODO: include the generic gate here?
     // TODO: include the permutation here?
+    // permutation
+    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
 
     // return the expression
-    expr
+    (expr, powers_of_alpha)
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
@@ -211,14 +215,17 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     dummy_lookup_value: Option<&[F]>,
-    powers_of_alpha: &mut alphas::Builder,
-) -> Linearization<Vec<PolishToken<F>>> {
+) -> (Linearization<Vec<PolishToken<F>>>, alphas::Builder) {
     let evaluated_cols = linearization_columns::<F>();
 
-    constraints_expr(domain, chacha, dummy_lookup_value, powers_of_alpha)
+    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, dummy_lookup_value);
+
+    let linearization = expr
         .linearize(evaluated_cols)
         .unwrap()
-        .map(|e| e.to_polish())
+        .map(|e| e.to_polish());
+
+    (linearization, powers_of_alpha)
 }
 
 impl<'a, G: CommitmentCurve> Index<G>
@@ -316,15 +323,6 @@ where
         let lookup_used = lookup_info.lookup_used(&cs.gates);
 
         //
-        // register powers of alphas
-        //
-
-        let mut powers_of_alpha = alphas::Builder::default();
-
-        // permutation
-        let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
-
-        //
         // Lookup
         //
 
@@ -334,12 +332,8 @@ where
             None
         };
 
-        let linearization = expr_linearization(
-            cs.domain.d1,
-            cs.chacha8.is_some(),
-            dummy_lookup_value,
-            &mut powers_of_alpha,
-        );
+        let (linearization, powers_of_alpha) =
+            expr_linearization(cs.domain.d1, cs.chacha8.is_some(), dummy_lookup_value);
 
         let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
 
