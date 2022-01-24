@@ -25,7 +25,6 @@ use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
-    CommitmentField,
 };
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -39,8 +38,6 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Index<G: CommitmentCurve>
-where
-    G::ScalarField: CommitmentField,
 {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
@@ -206,7 +203,6 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
 impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;

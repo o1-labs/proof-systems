@@ -22,7 +22,7 @@ use ark_poly::{
 };
 use array_init::array_init;
 use commitment_dlog::commitment::{
-    b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
+    b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm,
 };
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
@@ -98,7 +98,6 @@ fn combine_evaluations<F: FftField>(
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
-    G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance

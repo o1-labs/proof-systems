@@ -19,7 +19,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, CommitmentField, PolyComm,
+    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, PolyComm,
 };
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -58,7 +58,6 @@ where
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
-    G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
     pub fn prev_chal_evals(
