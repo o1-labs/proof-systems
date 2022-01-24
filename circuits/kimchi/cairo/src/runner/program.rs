@@ -448,8 +448,7 @@ mod tests {
         mem.write(23, 44); //end of program
         let mut prog = super::CairoProgram::new(&mut mem, 5, 24);
         prog.execute();
-        //prog.mem.view();
-
+        prog.mem.view();
         assert_eq!(prog.mem.read(24).unwrap(), 10);
         assert_eq!(prog.mem.read(25).unwrap(), 20);
         assert_eq!(prog.mem.read(26).unwrap(), 400);
@@ -470,7 +469,5 @@ mod tests {
         assert_eq!(prog.mem.read(41).unwrap(), 10);
         assert_eq!(prog.mem.read(42).unwrap(), 20);
         assert_eq!(prog.mem.read(43).unwrap(), 410);
-
-        prog.mem.view();
     }
 }
