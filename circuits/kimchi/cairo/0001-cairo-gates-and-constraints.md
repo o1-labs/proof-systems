@@ -1,7 +1,7 @@
 ## Summary
 [summary]: #summary
 
-This RFC serves as a documentation for the Cairo-Kimchi proof system (a.k.a. Turshi, an Egyptian pickled veggie) to be
+This RFC serves as a documentation for the Cairo-Kimchi proof system (a.k.a. Turshi, an Egyptian pickled veggie, thanks @mimoo) to be
 supported by O(1)Labs.
 
 
@@ -33,7 +33,7 @@ In the last few weeks, the team has discussed several ideas to make this happen.
 
 One approach to this problem consists of a custom Cairo gate for Kimchi, whose wires correspond to the current and next values of the registers (`pc`, `ap`, `fp`) and its coefficients correspond to Cairo bytecode instructions (16 flags and three offsets). These data, initially represented as a 64-bit word, could be more conveniently represented as 19 field elements (where 16 of them shall be boolean). Then, one could have methods creating gates for each possible Cairo bytecode instruction using the values of the flags, contained in the coefficients field of the Cairo `CircuitGate` (about a dozen of them). 
 
-The problem of this approach is that it is not clear that the 15-wire Kimchi proof system could be the most efficient way to represent this type of constraints. In particular, one would normally want to verify Cairo executions alone, so having interoperability with other types of gates is not so relevant. For that reason, we design Turshi: a Plonk-like proof system designed for Cairo programs.
+The problem of this approach is that it is not clear that the 15-wire Kimchi proof system could be the most efficient way to represent this type of constraints. A sole Cairo instruction (without any optimizations with plookups) may take 3 rows of 15 columns to be represented - i.e., it needs to keep track of all of these data: `pc, ap, fp, instr, off_dst, off_op0, off_op1, sft_dst, sft_op0, sft_op1, dst, op0, op1, dst_dir, op0_dir, op1_dir, res, size, f15, fOPC_AEQ, fOPC_RET, fOPC_CALL, fAP_ONE, fAP_ADD, fPC_JNZ, fPC_REL, fPC_ABS, fRES_MUL, fRES_ADD, fOP1_AP, fOP1_FP, fOP1_VAL, fOP0_REG, fDST_REG`. This is 34 elements, but perhaps the commitments to the shifted offsets which are defined as the corresponding offset plus $2^{15}$ could be computed by the verifier with the information in the SRS, and `f15` could be assumed to be 0 by default to reach exactly 30 values. In any case, the constraints need to access `next_pc, next_ap, next_fp`, what would require access to the $next+1$ row. But in particular, one would normally want to verify Cairo executions alone, so having interoperability with other types of gates is not so relevant. For that reason, we are designing Turshi: a Plonk-like proof system designed for Cairo programs.
 
 ## Detailed design
 [detailed-design]: #detailed-design
@@ -110,26 +110,26 @@ pub struct CairoWord {
 
 ·`word::tests::test_cairo_word()`: simple unit test to check it is working, using the word `0x480680017fff8000`. 
 
-* `CairoMemory`: this is a data structure that stores the program memory as it is being instantiated throughout computation. The first few entries of the `CairoMemory` correspond to the bytecode words resulting from the bytecode compilation of the Cairo program. As observed from various Cairo playground examples, these are normally followed by some values of the allocation and frame pointers (two entries), and it is followed by the values that will make up the witness (this includes all needed auxiliary variables created in a correct computation). We stoere in the field `publen` the original size of the memory (only compiled program). There's a couple of methods implemented for this struct.
+* `CairoBytecode`: this is a data structure that stores the program memory as it is being instantiated throughout computation. The first few entries of the `CairoBytecode` correspond to the bytecode words resulting from the bytecode compilation of the Cairo program. As observed from various Cairo playground examples, these are normally followed by some values of the allocation and frame pointers (two entries), and it is followed by the values that will make up the witness (this includes all needed auxiliary variables created in a correct computation). We stoere in the field `publen` the original size of the memory (only compiled program). There's a couple of methods implemented for this struct.
 ````rust
-pub struct CairoMemory {
+pub struct CairoBytecode {
     pub publen: u64,
-    pub stack: Vec<CairoWord>>,
+    pub vect: Vec<CairoWord>>,
 }
 ````
-·`CairoMemory::new()`: creates a new memory structure from a vector of `u64`. It internally calls the constructor of `CairoWord`. 
+·`CairoBytecode::new()`: creates a new memory structure from a vector of `u64`. It internally calls the constructor of `CairoWord`. 
 
-·`CairoMemory::public()`: gets the size of the public memory. This is not needed if `publen` is a public field.  
+·`CairoBytecode::public()`: gets the size of the public memory. This is not needed if `publen` is a public field.  
 
-·`CairoMemory::len()`: gets the length of the memory stack, not its capacity.
+·`CairoBytecode::len()`: gets the length of the memory stack, not its capacity.
 
-·`CairoMemory::enlarge()`: enlarges memory with enough additional slots if necessary before writing or reading.
+·`CairoBytecode::enlarge()`: enlarges memory with enough additional slots if necessary before writing or reading.
   
-·`CairoMemory::write()`: writes an element as a `CairoWord` in a given memory address. It reallocates if it needs to be enlarged.
+·`CairoBytecode::write()`: writes an element as a `CairoWord` in a given memory address. It reallocates if it needs to be enlarged.
 
-·`CairoMemory::read()`: returns the element in a given memory address. If the address is not yet instantiated, it reallocates new memory first.
+·`CairoBytecode::read()`: returns the element in a given memory address. If the address is not yet instantiated, it reallocates new memory first.
 
-·`CairoMemory::view()`: just a visualization function to print all the elements in the memory in hexadecimal.
+·`CairoBytecode::view()`: just a visualization function to print all the elements in the memory in hexadecimal.
 
 ·`memory::tests::test_cairo_memory()`: checks writing and reading from memory with a simple set of words.
 
@@ -163,7 +163,7 @@ struct CairoVariables {
 ````rust
 struct CairoStep {
     step: u64,
-    memo: CairoMemory,
+    memo: CairoBytecode,
     curr: CairoRegisters,
     next: Option<CairoRegisters>,
     vars: CairoVariables,
@@ -190,7 +190,7 @@ struct CairoStep {
 * `CairoProgram`: A Cairo full program. It starts with a memory and initial registers.
 ````rust
 struct CairoProgram {
-    memo: CairoMemory,
+    memo: CairoBytecode,
     regs: CairoRegisters,
 }
 ````
@@ -200,7 +200,9 @@ struct CairoProgram {
 
 · `program::tests::test_cairo_step()`: tests that CairoStep works for a simple 3 words program : tempvar x = 10 return()
 
-# UNFINISHED WORK
+
+
+## Proof generation (unfinished work)
 
 * `CairoInstruction`: this is a field element representing a Cairo bytecode word. It may include four additional, and redundant, fields that store the corresponding field elements for each of the components of the 64bit word: 16 flags as a vector of `F` and 3 offsets for destination address and first and second operands.
 ````rust
@@ -217,7 +219,7 @@ pub struct CairoInstruction<F: FftField> {
 * `ExecutionTrace`: this is a table that contains values obtained upon execution of the `CairoProgram` and describes it. Its elements are field elements.
 * `CairoTable`: this is a data structure that stores the full memory after executing the `CairoProgram`, stored as field elements.
 ````rust
-pub struct CairoTable<F: FftField> {
+pub struct CairoMemory<F: FftField> {
     pub stack: Vec<F>,
 }
 ````
@@ -242,11 +244,11 @@ fn to_field<F: FftField>(item: i16) -> F
 
 
 
-## Proof system
+# Proof system
 Both prover and verifier get as input a compiled `CairoProgram` and a set of claimed register values `ClaimedRegisters` after the execution of the program. These two will make up the so called public input of the proof system. The debug mode of the [Cairo Playground](https://www.cairo-lang.org/playground/) can be used to easily get test cases. If interesting enough, we may consider to integrate the [Cairo compiler](https://github.com/starkware-libs/cairo-lang/tree/master/src/starkware/cairo/lang/compiler) directly for our tests.
 
 ### Prover: 
-The first task to be done by the prover is execute-or simulate the execution of-the `CairoProgram` to obtain a correct instantiation of the `CairoMemory`. Together with these private values, the prover generates the `ExecutionTrace` and determines the witness of the relation. In order to prove the correctness of the memory (i.e. single-valued and continuity), it creates four pairs of lists (sorted and unsorted) to perform a permutation argument on them. It commits to the witness of the relation and receives two random field elements $z$ and $\alpha$ from the verifier. The former is used as a random point to evaluate the permutation argument, whereas the latter is used to linearly combine the four arguments securely. 
+The first task to be done by the prover is execute-or simulate the execution of-the `CairoProgram` to obtain a correct instantiation of the `CairoBytecode`. Together with these private values, the prover generates the `ExecutionTrace` and determines the witness of the relation. In order to prove the correctness of the memory (i.e. single-valued and continuity), it creates four pairs of lists (sorted and unsorted) to perform a permutation argument on them. It commits to the witness of the relation and receives two random field elements $z$ and $\alpha$ from the verifier. The former is used as a random point to evaluate the permutation argument, whereas the latter is used to linearly combine the four arguments securely. 
 
 ### Verifier
 

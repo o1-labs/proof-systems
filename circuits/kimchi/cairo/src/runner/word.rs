@@ -11,11 +11,13 @@ pub const NUM_FLAGS: usize = 16;
 pub struct CairoWord {
     /// 64bit word
     pub word: u64,
+    /// flag to indicate if word is negative
+    pub neg: bool,
 }
 
 /// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15)
 fn biased_rep(offset: u16) -> i16 {
-    let mut num: i32 = -2i32.pow(15u32);
+    let mut num: i32 = -(2i32.pow(15u32));
     for i in 0..16 {
         // num = -2^15 + sum_(i=0..15) b_i * 2^i
         num += 2i32.pow(i) * ((offset as i32 >> i) % 2);
@@ -25,8 +27,11 @@ fn biased_rep(offset: u16) -> i16 {
 
 impl CairoWord {
     /// Creates a CairoWord from a 64bit unsigned integer
-    pub fn new(word: u64) -> CairoWord {
-        CairoWord { word }
+    pub fn new(entry: i128) -> CairoWord {
+        CairoWord {
+            word: entry.abs() as u64,
+            neg: entry.is_negative(),
+        }
     }
 
     /// Returns the destination offset in biased representation as i16
@@ -58,7 +63,7 @@ impl CairoWord {
     }
 
     /// Returns i-th bit-flag as u64
-    fn flag_at(&self, pos: usize) -> u64 {
+    pub fn flag_at(&self, pos: usize) -> u64 {
         (self.word >> (48 + pos)) % 2
     }
 
@@ -183,16 +188,27 @@ impl CairoWord {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
         2 * (2 * self.f_opc_aeq() + self.f_opc_ret()) + self.f_opc_call()
     }
+
+    /// Transforms a Cairo word to the original i128 element
+    pub fn to_i128(&self) -> i128 {
+        // word * (-1)^(neg): if neg = true returns -word, else +word
+        i128::from(self.word) * (-1i128).pow(self.neg as u32)
+    }
 }
 
 mod tests {
-    use super::CairoWord;
+    //use super::*;
+
+    #[test]
+    fn test_biased() {
+        println!("offset = {}", super::biased_rep(0x7ffc));
+    }
 
     #[test]
     fn test_cairo_word() {
         // Tests the structure of a Cairo word corresponding to the Cairo instruction: tempvar x = val
         // This unit test checks offsets computation, flagbits and flagsets.
-        let word = CairoWord::new(0x480680017fff8000);
+        let word = super::CairoWord::new(0x480680017fff8000);
 
         assert_eq!(word.off_dst(), 0);
         assert_eq!(word.off_op0(), -1);
@@ -233,7 +249,7 @@ mod tests {
                 + 2u64.pow(10) * word.ap_up()
                 + 2u64.pow(12) * word.opcode()
         );
-        /*
+        /* // I commented out aa different notation for the same thing
         let flags = word.flags();
         let f_dst_reg = flags[0];
         let f_op0_reg = flags[1];
