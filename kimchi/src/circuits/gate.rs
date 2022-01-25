@@ -131,29 +131,17 @@ pub enum GateType {
     /// Zero gate
     Zero = 0,
     /// Generic arithmetic gate
-<<<<<<< HEAD:circuits/kimchi/src/gate.rs
-    Generic,
-=======
     Generic = 1,
->>>>>>> master:kimchi/src/circuits/gate.rs
     /// Poseidon permutation gate
     Poseidon = 2,
     /// Complete EC addition in Affine form
     CompleteAdd = 3,
     /// EC variable base scalar multiplication
-<<<<<<< HEAD:circuits/kimchi/src/gate.rs
-    VarBaseMul,
-    /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul,
-    /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar,
-=======
     VarBaseMul = 4,
     /// EC variable base scalar multiplication with group endomorphim optimization
     EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
->>>>>>> master:kimchi/src/circuits/gate.rs
     /// ChaCha
     ChaCha0 = 7,
     ChaCha1 = 8,

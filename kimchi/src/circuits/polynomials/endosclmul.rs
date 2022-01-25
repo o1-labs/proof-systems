@@ -108,17 +108,12 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
         // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
         ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
         n_constraint,
-<<<<<<< HEAD:circuits/kimchi/src/polynomials/endosclmul.rs
-    ];
-    E::combine_constraints(alpha0, p) * E::cell(Column::Index(GateType::EndoMul), Curr)
-=======
     ]
 }
 
 /// The combined constraint for endoscaling.
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     E::combine_constraints(alpha0, constraints()) * E::cell(Column::Index(GateType::EndoMul), Curr)
->>>>>>> master:kimchi/src/circuits/polynomials/endosclmul.rs
 }
 
 /// The result of performing an endoscaling: the accumulated curve point

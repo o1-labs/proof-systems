@@ -14,15 +14,7 @@ impl<F: FftField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-<<<<<<< HEAD:circuits/kimchi/src/polynomials/endomul_scalar.rs
-        ensure_eq!(
-            self.typ,
-            GateType::EndoMulScalar,
-            "incorrect gate type (should be EndomulScalar)"
-        );
-=======
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
->>>>>>> master:kimchi/src/circuits/polynomials/endomul_scalar.rs
 
         let n0 = witness[0][row];
         let n8 = witness[1][row];
