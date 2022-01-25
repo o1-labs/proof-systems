@@ -1,17 +1,14 @@
 [workspace]
 members = [
-    "circuits/plonk",
-    "circuits/kimchi",
-    "circuits/kimchi/cairo",
     "curves",
-    "dlog",
-    "dlog/commitment",
-    "dlog/plonk",
-    "dlog/kimchi",
+    "poly-commitment",
+    "kimchi",
+    "kimchi/cairo",
     "groupmap",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
+    "signer",
     "utils",
 ]
 

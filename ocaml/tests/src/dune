@@ -14,7 +14,7 @@
    (run rm -rf ./target)
    (run rm -rf ./Cargo.lock)
    (run sh -c "touch dllocamlgen_test_stubs.so")
-   (run cargo +nightly build --release)
+   (run cargo build --release)
    (run sh -c "cp ../target/release/libocamlgen_test_stubs.a ."))))
 
 ;; generate the OCaml bindings from rust code
@@ -36,17 +36,31 @@
    (run rm -rf ./Cargo.lock)
    (with-stdout-to
     bindings.ml
-    (run cargo +nightly run)))))
+    (run cargo run)))))
 
-;; library
+;; test library
 
 (library
- (name ocamlgen_test)
+ (name ocamlgen_test_lib)
  (public_name ocamlgen-test)
- (inline_tests)
+ (modules lib bindings)
  (preprocess
   (pps ppx_inline_test))
  (libraries unix)
  ; Link the Rust library
  (foreign_archives ocamlgen_test_stubs)
  (c_library_flags :standard "-lpthread"))
+
+;; test executable
+
+(executable
+ (name ocamlgen_test)
+ (modules ocamlgen_test)
+ (libraries ocamlgen_test_lib))
+
+;; rule for running the tests
+
+(rule
+ (alias runtest)
+ (action
+  (run ./ocamlgen_test.exe)))
