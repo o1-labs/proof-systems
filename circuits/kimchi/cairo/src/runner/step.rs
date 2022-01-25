@@ -54,6 +54,11 @@ impl CairoVariables {
         }
     }
 }
+impl Default for CairoVariables {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a> {
