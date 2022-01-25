@@ -1,9 +1,7 @@
-/*****************************************************************************************************************
+// TODO(querolita):
+// - Enlarge native word type to u256
 
-This source file implements Cairo instruction gate primitive.
-
-*****************************************************************************************************************/
-
+// Number of Cairo flags
 pub const NUM_FLAGS: usize = 16;
 
 /// A Cairo instruction for simulation
@@ -29,7 +27,8 @@ impl CairoWord {
     /// Creates a CairoWord from a 64bit unsigned integer
     pub fn new(entry: i128) -> CairoWord {
         CairoWord {
-            word: entry.abs() as u64,
+            word: entry.abs() as u64, //u256,
+            //overloaded vector
             neg: entry.is_negative(),
         }
     }
@@ -68,12 +67,12 @@ impl CairoWord {
     }
 
     /// Returns bit-flag for destination register as u64
-    pub fn f_dst_reg(&self) -> u64 {
+    pub fn f_dst_fp(&self) -> u64 {
         self.flag_at(0)
     }
 
     /// Returns bit-flag for first operand register as u64
-    pub fn f_op0_reg(&self) -> u64 {
+    pub fn f_op0_fp(&self) -> u64 {
         self.flag_at(1)
     }
 
@@ -150,13 +149,13 @@ impl CairoWord {
     /// Returns flagset for destination register
     pub fn dst_reg(&self) -> u64 {
         // dst_reg = fDST_REG
-        self.f_dst_reg()
+        self.f_dst_fp()
     }
 
     /// Returns flagset for first operand register
     pub fn op0_reg(&self) -> u64 {
         // op0_reg = fOP0_REG
-        self.f_op0_reg()
+        self.f_op0_fp()
     }
 
     /// Returns flagset for second operand register
@@ -201,7 +200,9 @@ mod tests {
 
     #[test]
     fn test_biased() {
-        println!("offset = {}", super::biased_rep(0x7ffc));
+        assert_eq!(1, super::biased_rep(0x8001));
+        assert_eq!(0, super::biased_rep(0x8000));
+        assert_eq!(-1, super::biased_rep(0x7fff));
     }
 
     #[test]
@@ -214,8 +215,8 @@ mod tests {
         assert_eq!(word.off_op0(), -1);
         assert_eq!(word.off_op1(), 1);
 
-        assert_eq!(word.f_dst_reg(), 0);
-        assert_eq!(word.f_op0_reg(), 1);
+        assert_eq!(word.f_dst_fp(), 0);
+        assert_eq!(word.f_op0_fp(), 1);
         assert_eq!(word.f_op1_val(), 1);
         assert_eq!(word.f_op1_fp(), 0);
         assert_eq!(word.f_op1_ap(), 0);
@@ -251,8 +252,8 @@ mod tests {
         );
         /* // I commented out aa different notation for the same thing
         let flags = word.flags();
-        let f_dst_reg = flags[0];
-        let f_op0_reg = flags[1];
+        let f_dst_fp = flags[0];
+        let f_op0_fp = flags[1];
         let f_op1_val = flags[2];
         let f_op1_fp = flags[3];
         let f_op1_ap = flags[4];
@@ -268,16 +269,16 @@ mod tests {
         let f_opc_aeq = flags[14];
         let f15 = flags[15];
 
-        let dst_reg = f_dst_reg;
-        let op0_reg = f_op0_reg;
+        let dst_reg = f_dst_fp;
+        let op0_reg = f_op0_fp;
         let op1_src = 4 * f_op1_ap + 2 * f_op1_fp + f_op1_val;
         let res_log = 2 * f_res_mul + f_res_add;
         let pc_up = 4 * f_pc_jnz + 2 * f_pc_rel + f_pc_abs;
         let ap_up = 2 * f_ap_one + f_ap_add;
         let opcode = 4 * f_opc_aeq + 2 * f_opc_ret + f_opc_call;
 
-        assert_eq!(word.f_dst_reg(), f_dst_reg);
-        assert_eq!(word.f_op0_reg(), f_op0_reg);
+        assert_eq!(word.f_dst_fp(), f_dst_fp);
+        assert_eq!(word.f_op0_fp(), f_op0_fp);
         assert_eq!(word.f_op1_val(), f_op1_val);
         assert_eq!(word.f_op1_fp(), f_op1_fp);
         assert_eq!(word.f_op1_ap(), f_op1_ap);

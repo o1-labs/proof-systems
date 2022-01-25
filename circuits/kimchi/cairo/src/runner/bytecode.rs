@@ -1,3 +1,6 @@
+// TODO(querolita):
+// - be able to index memory with any type (u256 in particular) not only usize
+
 use crate::runner::word::CairoWord;
 
 /// This data structure stores the memory of the program
@@ -26,14 +29,17 @@ impl CairoBytecode {
         self.publen
     }
 
-    /// Get size of the full memory
+    /// Get size of the full memory including dummy 0th entry
     pub fn size(&self) -> u64 {
-        (self.vect.len() - 1) as u64
+        (self.vect.len()) as u64
     }
 
     /// Enlarges memory with enough additional None slots if necessary before writing or reading
     fn enlarge(&mut self, index: u64) {
+        // if you want to access an index of the memory but its size is less or equal than this
         if self.size() <= index {
+            // you will need to extend the vector with enough spaces (taking into account that
+            // vectors start by index 0 and size starts in 1)
             let additional = index - self.size() + 1;
             self.vect.reserve(additional.try_into().unwrap());
             for _ in 0..additional {
@@ -46,11 +52,16 @@ impl CairoBytecode {
     /// Write u64 element in memory address
     pub fn write(&mut self, index: u64, elem: i128) {
         self.enlarge(index);
-        //println!("len {} y cap {}", self.vect.len(), self.vect.capacity());
         self.vect[index as usize] = Some(CairoWord::new(elem));
     }
 
     /// Read element in memory address
+    /// Because of how assignments work in Cairo (called assert-equal), they
+    /// behave in two ways: either check two variables are equal or assign
+    /// the value of one variable to the address of the other one so that
+    /// their content will be the same. This means you may first read to
+    /// addressses of memory that were still not instantiated, and you need
+    /// to enlarge the vector before reading (with None values).
     pub fn read(&mut self, index: u64) -> Option<i128> {
         self.enlarge(index);
         if self.vect[index as usize].is_some() {
@@ -60,10 +71,10 @@ impl CairoBytecode {
         }
     }
 
-    /// Visualize content of memory
+    /// Visualize content of memory excluding the 0th dummy entry
     pub fn view(&mut self) {
-        for i in 0..self.size() {
-            println!("{}: 0x{:x}", i, self.read(i).unwrap());
+        for i in 1..self.size() {
+            println!("{}: 0x{:x}", i, self.read(i).unwrap_or_default());
         }
     }
 }
@@ -83,13 +94,13 @@ mod tests {
         // the total memory of executing the program
         let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe];
         let mut memo = CairoBytecode::new(instrs);
-        memo.write(memo.size(), 6);
-        memo.write(memo.size(), 6);
+        memo.write(memo.size(), 7);
+        memo.write(memo.size(), 7);
         memo.write(memo.size(), 10);
-        for i in 0..memo.size() {
-            println!("0x{:x}", memo.read(i).unwrap_or_default());
-        }
+        memo.view();
+        // Check that the program contained 3 words
         assert_eq!(3, memo.public());
-        assert_eq!(6, memo.size());
+        // Check we have 6 words, excluding the dummy entry
+        assert_eq!(6, memo.size() - 1);
     }
 }
