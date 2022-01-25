@@ -36,7 +36,7 @@ impl<'a> CairoProgram<'a> {
             // save allocation pointer before the execution
             let curr_ap = regs.ap;
             // create current step of computation
-            let mut step = CairoStep::new(&mut self.mem, regs);
+            let mut step = CairoStep::new(self.mem, regs);
             // execute current step and increase time counter
             step.execute();
             //i += 1;
