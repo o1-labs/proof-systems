@@ -1,6 +1,3 @@
-// TODO(querolita):
-// - Unit tests for constants and their corresponding flags
-
 /// Defining some constants for easier readability of the steps
 /// When they refer to single bit flagsets, only one constant is needed
 
