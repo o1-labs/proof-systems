@@ -1,5 +1,5 @@
 [package]
-name = "kimchi-cairo"
+name = "cairo"
 version = "0.1.0"
 edition = "2021"
 
