@@ -3,7 +3,7 @@ name: Basic rust CI stuff
 on:
   push:
     branches:
-    - main
+      - main
   pull_request:
 
 jobs:
@@ -11,13 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Run some basic checks
     steps:
-
       - name: Checkout PR
         uses: actions/checkout@v2
 
       - name: Set up cargo/rust
         run: |
-          rustup component add rustfmt 
+          rustup component add rustfmt
 
       - name: Setup OCaml (because of ocaml-gen)
         run: sudo apt update && sudo apt install ocaml
@@ -37,4 +36,4 @@ jobs:
       - name: Run cargo clippy
         run: |
           rustup component add clippy
-          cargo clippy
+          cargo clippy -- -D warnings
