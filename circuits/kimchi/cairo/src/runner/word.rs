@@ -204,6 +204,7 @@ impl CairoWord {
 
 mod tests {
     //use super::*;
+    use crate::runner::definitions::*;
 
     #[test]
     fn test_biased() {
@@ -239,13 +240,13 @@ mod tests {
         assert_eq!(word.f_opc_aeq(), 1);
         assert_eq!(word.f15(), 0);
 
-        assert_eq!(word.dst_reg(), 0);
-        assert_eq!(word.op0_reg(), 1);
-        assert_eq!(word.op1_src(), 1);
-        assert_eq!(word.res_log(), 0);
-        assert_eq!(word.pc_up(), 0);
-        assert_eq!(word.ap_up(), 2);
-        assert_eq!(word.opcode(), 4);
+        assert_eq!(word.dst_reg(), DST_AP);
+        assert_eq!(word.op0_reg(), 1 - OP0_AP);
+        assert_eq!(word.op1_src(), OP1_VAL);
+        assert_eq!(word.res_log(), RES_ONE);
+        assert_eq!(word.pc_up(), PC_SIZ);
+        assert_eq!(word.ap_up(), AP_ONE);
+        assert_eq!(word.opcode(), OPC_AEQ);
 
         assert_eq!(
             0x4806,
