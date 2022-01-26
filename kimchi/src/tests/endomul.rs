@@ -1,12 +1,9 @@
-<<<<<<< HEAD:kimchi/src/src/tests/endomul.rs
-=======
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     polynomials::endosclmul,
     wires::*,
 };
->>>>>>> master:kimchi/src/tests/endomul.rs
 use crate::{index::Index, prover::ProverProof};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
@@ -17,15 +14,6 @@ use commitment_dlog::{
     srs::{endos, SRS},
 };
 use groupmap::GroupMap;
-<<<<<<< HEAD:kimchi/src/src/tests/endomul.rs
-use kimchi_circuits::{
-    gate::{CircuitGate, GateType},
-    nolookup::constraints::ConstraintSystem,
-    polynomials::endosclmul,
-    wires::*,
-};
-=======
->>>>>>> master:kimchi/src/tests/endomul.rs
 use mina_curves::pasta::{
     fp::Fp as F,
     pallas::Affine as Other,
