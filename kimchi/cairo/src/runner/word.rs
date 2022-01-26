@@ -202,8 +202,9 @@ impl CairoWord {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use crate::runner::definitions::{AP_ONE, DST_AP, OP0_AP, OP1_VAL, OPC_AEQ, PC_SIZ, RES_ONE};
+    use crate::runner::definitions::*;
 
     #[test]
     fn test_biased() {

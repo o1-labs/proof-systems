@@ -56,6 +56,7 @@ impl<'a> CairoProgram<'a> {
     }
 }
 
+#[cfg(test)]
 mod tests {
     //use super::*;
 

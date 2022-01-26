@@ -1,6 +1,29 @@
 /// Defining some constants for easier readability of the steps
 /// When they refer to single bit flagsets, only one constant is needed
 
+/*pub enum FlagBit {
+    DSTAP = 0,
+    OP0AP = 0,
+    OP1DBL = 0,
+    OP1VAL = 1,
+    OP1FP = 2,
+    OP1AP = 4,
+    RESONE = 0,
+    RESADD = 1,
+    RESMUL = 2,
+    PCSIZ = 0,
+    PCABS = 1,
+    PCREL = 2,
+    PCJNZ = 4,
+    APZ2 = 0,
+    APADD = 1,
+    APONE = 2,
+    OPCJMPINC = 0,
+    OPCCALL = 1,
+    OPCRET = 2,
+    OPCAEQ = 4,
+}*/
+
 /// Destination refers to ap register
 pub const DST_AP: u64 = 0;
 

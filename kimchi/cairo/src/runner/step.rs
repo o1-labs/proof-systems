@@ -286,6 +286,7 @@ impl<'a> CairoStep<'a> {
     }
 }
 
+#[cfg(test)]
 mod tests {
     //use super::*;
 
