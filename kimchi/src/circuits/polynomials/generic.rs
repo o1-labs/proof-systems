@@ -12,7 +12,7 @@
 //!
 //! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
 //! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
-//! | l1 | r1 | o1 | l2 | r2 | o2 | m1 | m2 | c1 | c2 |    |    |    |    |    |
+//! | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
 //!
 //! with m1 (resp. m2) the mul selector for the first (resp. second) gate,
 //! and c1 (resp. c2) the constant selector for the first (resp. second) gate.
@@ -37,6 +37,13 @@ use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use rayon::prelude::*;
+
+//
+// Handy constants
+//
+
+/// Offset for the second generic gate
+pub const GENERICS_COEFFS: usize = GENERICS + 1 /* mul */ + 1 /* cst */;
 
 //
 // Gadgets
@@ -100,11 +107,11 @@ impl<F: FftField> CircuitGate<F> {
                 mul_coeff,
             } => {
                 coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
-                coeffs[6] = mul_coeff.unwrap_or_else(F::one);
+                coeffs[3] = mul_coeff.unwrap_or_else(F::one);
             }
             GenericGate::Const(cst) => {
                 coeffs[0] = F::one();
-                coeffs[8] = -cst;
+                coeffs[4] = -cst;
             }
             GenericGate::Pub => {
                 coeffs[0] = F::one();
@@ -116,23 +123,23 @@ impl<F: FftField> CircuitGate<F> {
                 right_coeff,
                 output_coeff,
             }) => {
-                coeffs[3] = left_coeff.unwrap_or_else(F::one);
-                coeffs[4] = right_coeff.unwrap_or_else(F::one);
-                coeffs[5] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[5] = left_coeff.unwrap_or_else(F::one);
+                coeffs[6] = right_coeff.unwrap_or_else(F::one);
+                coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
             }
             Some(GenericGate::Mul {
                 output_coeff,
                 mul_coeff,
             }) => {
-                coeffs[5] = output_coeff.unwrap_or_else(|| -F::one());
-                coeffs[7] = mul_coeff.unwrap_or_else(F::one);
+                coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
+                coeffs[8] = mul_coeff.unwrap_or_else(F::one);
             }
             Some(GenericGate::Const(cst)) => {
-                coeffs[3] = F::one();
+                coeffs[5] = F::one();
                 coeffs[9] = -cst;
             }
             Some(GenericGate::Pub) => {
-                coeffs[3] = F::one();
+                coeffs[5] = F::one();
                 unimplemented!();
             }
             None => (),
@@ -155,23 +162,24 @@ impl<F: FftField> CircuitGate<F> {
         let sum1 = (0..GENERICS)
             .map(|i| self.coeffs[i] * this[i])
             .fold(zero, |x, y| x + y);
-        let sum2 = (GENERICS..(GENERICS * 2))
-            .map(|i| self.coeffs[i] * this[i])
+
+        let sum2 = (0..GENERICS)
+            .map(|i| self.coeffs[i + GENERICS_COEFFS] * this[i + GENERICS])
             .fold(zero, |x, y| x + y);
 
         // multiplication
-        let mul1 = self.coeffs[6] * this[0] * this[1];
-        let mul2 = self.coeffs[7] * this[3] * this[4];
+        let mul1 = self.coeffs[3] * this[0] * this[1];
+        let mul2 = self.coeffs[GENERICS_COEFFS + 3] * this[3] * this[4];
 
         ensure_eq!(
             zero,
-            sum1 + mul1 + self.coeffs[8],
+            sum1 + mul1 + self.coeffs[4],
             "generic: incorrect first gate"
         );
 
         ensure_eq!(
             zero,
-            sum2 + mul2 + self.coeffs[9],
+            sum2 + mul2 + self.coeffs[GENERICS_COEFFS + 4],
             "generic: incorrect second gate"
         );
 
@@ -231,7 +239,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         for (witness_d4, selector_d8) in witness_cols_d4
             .iter()
             .skip(GENERICS)
-            .zip(self.coefficients8.iter().skip(GENERICS))
+            .zip(self.coefficients8.iter().skip(GENERICS_COEFFS))
             .take(GENERICS)
         {
             res2.evals
@@ -242,7 +250,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // + multiplication: left * right * selector
         let mut mul1 = &witness_cols_d4[0] * &witness_cols_d4[1];
-        let mul_selector_d8 = &self.coefficients8[6];
+        let mul_selector_d8 = &self.coefficients8[3];
         mul1.evals
             .par_iter_mut()
             .enumerate()
@@ -250,7 +258,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         res1 += &mul1;
 
         let mut mul2 = &witness_cols_d4[3] * &witness_cols_d4[4];
-        let mul_selector_d8 = &self.coefficients8[7];
+        let mul_selector_d8 = &self.coefficients8[GENERICS_COEFFS + 3];
         mul2.evals
             .par_iter_mut()
             .enumerate()
@@ -258,13 +266,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         res2 += &mul2;
 
         // + constant
-        let constant_d8 = &self.coefficients8[8];
+        let constant_d8 = &self.coefficients8[4];
         res1.evals
             .par_iter_mut()
             .enumerate()
             .for_each(|(i, e)| *e += constant_d8[2 * i]);
 
-        let constant_d8 = &self.coefficients8[9];
+        let constant_d8 = &self.coefficients8[GENERICS_COEFFS + 4];
         res2.evals
             .par_iter_mut()
             .enumerate()
@@ -306,14 +314,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // - r(z) * generic(z) * alpha
         // - o(z) * generic(z) * alpha
         res.extend((0..GENERICS).map(|i| alpha1_generic * w_zeta[i]));
-        res.extend((GENERICS..(GENERICS * 2)).map(|i| alpha2_generic * w_zeta[i]));
-
         // multiplication: l(z) * r(z) * generic(z) * alpha
         res.push(alpha1_generic * w_zeta[0] * w_zeta[1]);
-        res.push(alpha2_generic * w_zeta[3] * w_zeta[4]);
-
         // constant
         res.push(alpha1_generic);
+
+        // same for the second generic gate
+        res.extend((GENERICS..(GENERICS * 2)).map(|i| alpha2_generic * w_zeta[i]));
+        res.push(alpha2_generic * w_zeta[3] * w_zeta[4]);
         res.push(alpha2_generic);
 
         res
@@ -357,17 +365,25 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let coefficientsm: [_; COLUMNS] =
             array_init(|i| self.coefficients8[i].clone().interpolate());
         let mut ff = DensePolynomial::zero();
-        for (w, q) in witness.iter().zip(&coefficientsm).take(GENERICS * 2) {
+        for (w, q) in witness.iter().zip(&coefficientsm).take(GENERICS) {
+            ff += &(w * q);
+        }
+        for (w, q) in witness
+            .iter()
+            .skip(GENERICS)
+            .zip(coefficientsm.iter().skip(GENERICS_COEFFS))
+            .take(GENERICS)
+        {
             ff += &(w * q);
         }
 
         // multiplication
-        ff += &(&(&witness[0] * &witness[1]) * &coefficientsm[6]);
-        ff += &(&(&witness[3] * &witness[4]) * &coefficientsm[7]);
+        ff += &(&(&witness[0] * &witness[1]) * &coefficientsm[3]);
+        ff += &(&(&witness[3] * &witness[4]) * &coefficientsm[GENERICS_COEFFS + 3]);
 
         // constant
-        ff += &coefficientsm[8];
-        ff += &coefficientsm[9];
+        ff += &coefficientsm[4];
+        ff += &coefficientsm[GENERICS_COEFFS + 4];
 
         // note: no need to use the powers of alpha or the selector poly
 
