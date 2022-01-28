@@ -6,7 +6,6 @@ This source file implements Plonk circuit constraint primitive.
 
 use crate::domains::EvaluationDomains;
 use crate::gate::{CircuitGate, GateType, LookupInfo};
-use crate::nolookup::foreign_moduli;
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -113,12 +112,9 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
-    /// vesta foreign field multiplication constraint selector polynomial
+    /// Foreign field multiplication constraint selector polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub foreign_mul_pasta_vesta: E<F, D<F>>,
-    /// pallas foreign field multiplication constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub foreign_mul_pasta_pallas: E<F, D<F>>,
+    pub foreign_mul: E<F, D<F>>,
 
     // Constant polynomials
     // --------------------
@@ -156,6 +152,10 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 
+    /// Foreign field moduli parameters
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub foreign_modulus: Vec<F>,
+
     /// Lookup tables
     // TODO: this should be one big Option<Lookup>
     #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
@@ -171,10 +171,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// all other rows.
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
-
-    /// Foreign field moduli
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub foreign_moduli: Vec<Vec<F>>,
 }
 
 /// Shifts represent the shifts required in the permutation argument of PLONK.
@@ -323,6 +319,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         mut gates: Vec<CircuitGate<F>>,
         lookup_tables: Vec<Vec<Vec<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
+        foreign_modulus: Vec<F>,
         public: usize,
     ) -> Option<Self> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
@@ -465,19 +462,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let foreign_mul_pasta_pallasm = E::<F, D<F>>::from_vec_and_domain(
+        let foreign_mulm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
-                .map(|gate| gate.foreign_mul(GateType::ForeignMulPastaPallas))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-
-        let foreign_mul_pasta_vestam = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| gate.foreign_mul(GateType::ForeignMulPastaVesta))
+                .map(|gate| gate.foreign_mul())
                 .collect(),
             domain.d1,
         )
@@ -511,10 +499,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
         // Forieign field multiplication constraint polynomials
-        let foreign_mul_pasta_pallas =
-            foreign_mul_pasta_pallasm.evaluate_over_domain_by_ref(domain.d8);
-        let foreign_mul_pasta_vesta =
-            foreign_mul_pasta_vestam.evaluate_over_domain_by_ref(domain.d8);
+        let foreign_mul =
+            foreign_mulm.evaluate_over_domain_by_ref(domain.d8);
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
@@ -598,8 +584,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            foreign_mul_pasta_vesta,
-            foreign_mul_pasta_pallas,
+            foreign_mul,
             l1,
             l04,
             l08,
@@ -612,7 +597,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             shift: shifts.shifts,
             endo,
             fr_sponge_params,
-            foreign_moduli: foreign_moduli::get_all(),
+            foreign_modulus,
         })
     }
 
@@ -724,7 +709,7 @@ pub mod tests {
             gates: Vec<CircuitGate<F>>,
         ) -> Self {
             let public = 0;
-            ConstraintSystem::<F>::create(gates, vec![], sponge_params, public).unwrap()
+            ConstraintSystem::<F>::create(gates, vec![], sponge_params, vec![], public).unwrap()
         }
     }
 

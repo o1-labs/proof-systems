@@ -67,7 +67,7 @@ impl<F: FftField> CircuitGate<F> {
             joint_combiner: F::zero(),
             mds: vec![],
             endo_coefficient: cs.endo,
-            foreign_moduli: vec![],
+            foreign_modulus: vec![],
         };
 
         let evals: [ProofEvaluations<F>; 2] = [

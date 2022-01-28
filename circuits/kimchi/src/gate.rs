@@ -149,8 +149,7 @@ pub enum GateType {
     ChaCha2 = 9,
     ChaChaFinal = 10,
     /// Foreign field multiplication (reserving 11-17)
-    ForeignMulPastaPallas = 11,
-    ForeignMulPastaVesta = 12,
+    ForeignMul0 = 11,
 }
 
 /// Describes the desired lookup configuration.
@@ -432,8 +431,7 @@ impl<F: FftField> CircuitGate<F> {
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
-            ForeignMulPastaPallas => self.verify_foreign_mul(self.typ, row, witness, cs),
-            ForeignMulPastaVesta => self.verify_foreign_mul(self.typ, row, witness, cs),
+            ForeignMul0 => self.verify_foreign_mul(row, witness, cs),
         }
     }
 }
