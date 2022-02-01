@@ -2,6 +2,9 @@
 // - Read Cairo source code to understand how they deal with auxiliary hints
 // - Run automatic tests using Cairo's official tests and compare against them
 
+//! This module represents a full Cairo program, that is represented
+//! by the execution of consecutive Cairo steps
+
 use crate::runner::bytecode::CairoBytecode;
 use crate::runner::step::{CairoRegisters, CairoStep};
 

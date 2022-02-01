@@ -1,6 +1,9 @@
 // TODO(querolita):
 // - be able to index memory with any type (u256 in particular) not only usize
 
+//! This module represents the Cairo memory, containing the
+//! compiled Cairo program that occupies the first few entries
+
 use crate::runner::word::CairoWord;
 
 /// This data structure stores the memory of the program

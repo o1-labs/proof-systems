@@ -1,3 +1,6 @@
+//! This module represents a Cairo execution step
+//! It defines the execution logic of Cairo instructions
+
 use crate::runner::bytecode::CairoBytecode;
 use crate::runner::definitions::*;
 use crate::runner::word::CairoWord;
