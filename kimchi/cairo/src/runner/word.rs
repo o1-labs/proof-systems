@@ -6,7 +6,7 @@
 // TODO(querolita):
 // - Enlarge native word type to u256
 
-// Number of Cairo flags
+/// Number of Cairo flags
 pub const NUM_FLAGS: usize = 16;
 
 /// A Cairo instruction for simulation

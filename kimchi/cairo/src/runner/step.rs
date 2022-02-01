@@ -44,6 +44,7 @@ pub struct CairoVariables {
 }
 
 impl CairoVariables {
+    // This function creates an instance of a default CairoVariables struct
     pub fn new() -> CairoVariables {
         CairoVariables {
             dst: None,
