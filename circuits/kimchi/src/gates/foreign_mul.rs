@@ -53,72 +53,64 @@
 //    The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
 //    degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3)
 
-use ark_ec::AffineCurve;
-use array_init::array_init;
-use mina_curves::pasta;
-
 use crate::expr;
 use crate::gate::{CircuitGate, GateType};
 use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::ProofEvaluations;
 use crate::polynomials::foreign_mul;
 use crate::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
 
-type VestaBaseField = <pasta::vesta::Affine as AffineCurve>::BaseField;
-
-const ROWS_PER_FIELD: usize = 4; // Rows per foreign field element
-
-/// Foreign field element row-mapping helper
-struct ForeignField<F: FftField> {
-    rows: [[F; COLUMNS]; ROWS_PER_FIELD],
-}
-
-impl<F: FftField> ForeignField<F> {
-    fn from(witness: &[Vec<F>; COLUMNS], row: usize) -> Self {
-        ForeignField {
-            rows: [
-                array_init(|i| witness[i][row]),
-                array_init(|i| witness[i][row + 1]),
-                array_init(|i| witness[i][row + 2]),
-                array_init(|i| witness[i][row + 3]),
-            ],
-        }
-    }
-
-    fn limb(&self, i: usize) -> F {
-        assert!(i < 3);
-        self.rows[i][0]
-    }
-
-    fn row(&self, i: usize) -> [F; COLUMNS] {
-        self.rows[i]
-    }
-
-    pub fn evaluations(&self) -> Vec<ProofEvaluations<F>> {
-        self.rows
-            .into_iter()
-            .map(|row| ProofEvaluations::dummy_with_witness_evaluations(row))
-            .collect()
-    }
-}
-
 impl<F: FftField> CircuitGate<F> {
     /// Create vesta foreign multiplication gate
     pub fn create_foreign_mul(wires: GateWires) -> Self {
+        /* input: a */
         CircuitGate {
             typ: GateType::ForeignMul0,
             wires,
             c: vec![],
         }
+        // CircuitGate {
+        //     typ: GateType::ForeignMul0,
+        //     wires,
+        //     c: vec![],
+        // },
+        // CircuitGate {
+        //     typ: GateType::ForeignMul1,
+        //     wires,
+        //     c: vec![],
+        // },
+        // CircuitGate {
+        //     typ: GateType::ForeignMul1,
+        //     wires,
+        //     c: vec![],
+        // },
+        // /* input: b */
+        // CircuitGate {
+        //     typ: GateType::ForeignMul0,
+        //     wires,
+        //     c: vec![],
+        // },
+        // CircuitGate {
+        //     typ: GateType::ForeignMul0,
+        //     wires,
+        //     c: vec![],
+        // },
+        // CircuitGate {
+        //     typ: GateType::ForeignMul1,
+        //     wires,
+        //     c: vec![],
+        // },
+        // CircuitGate {
+        //     typ: GateType::ForeignMul1,
+        //     wires,
+        //     c: vec![],
+        // },
     }
-
-    pub fn create_foreign_mul_gadget() {}
 
     pub fn verify_foreign_mul(
         &self,
-        row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        _row: usize,
+        _witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::ForeignMul0, "incorrect gate type");
@@ -133,21 +125,12 @@ impl<F: FftField> CircuitGate<F> {
             foreign_modulus: cs.foreign_modulus.clone(),
         };
 
-        let a = ForeignField::from(witness, row);
-        let b = ForeignField::from(witness, row + 1);
-
-        let mut evals = a.evaluations();
-        evals.append(&mut b.evaluations());
-
         // Breadth first approach
         // Unit test from ground up (create a verify method in polynomials)
         // Use bigint lib to build test cases
         // Test code to check values
 
-        let _a0 = a.limb(0);
-        let _row = a.row(0);
-
-        let _constraints = foreign_mul::constraints::<F>();
+        let _constraints = foreign_mul::constraint::<F>(0 /* TODO: alpha */);
 
         Ok(())
     }
@@ -164,52 +147,22 @@ impl<F: FftField> CircuitGate<F> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        gate::{CircuitGate, GateType},
-        gates::foreign_mul::ForeignField,
+        gate::{CircuitGate},
         nolookup::constraints::ConstraintSystem,
         polynomial::COLUMNS,
         wires::Wire,
     };
 
-    use ark_ec::AffineCurve;
+    use ark_ec::{AffineCurve};
     use mina_curves::pasta::{pallas, vesta};
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
     type VestaField = <vesta::Affine as AffineCurve>::BaseField;
 
     #[test]
-    fn scratch() {
-        let witness: [Vec<PallasField>; COLUMNS] = [
-            vec![PallasField::from(0); 4],
-            vec![PallasField::from(1); 4],
-            vec![PallasField::from(2); 4],
-            vec![PallasField::from(3); 4],
-            vec![PallasField::from(4); 4],
-            vec![PallasField::from(5); 4],
-            vec![PallasField::from(6); 4],
-            vec![PallasField::from(7); 4],
-            vec![PallasField::from(8); 4],
-            vec![PallasField::from(9); 4],
-            vec![PallasField::from(10); 4],
-            vec![PallasField::from(11); 4],
-            vec![PallasField::from(12); 4],
-            vec![PallasField::from(13); 4],
-            vec![PallasField::from(14); 4],
-        ];
-
-        let _x = ForeignField::from(&witness, 0);
-        println!("row[0]  = {:?}", _x.row(0));
-        println!("limb(0) = {:?}", _x.limb(0));
-    }
-
-    #[test]
     fn verify() {
         let gates = vec![
-            CircuitGate::<PallasField>::create_foreign_mul(
-                Wire::new(0),
-            ),
-            CircuitGate::<PallasField>::create_foreign_mul(
-                Wire::new(0),
-            ),
+            CircuitGate::<PallasField>::create_foreign_mul(Wire::new(0)),
+            CircuitGate::<PallasField>::create_foreign_mul(Wire::new(0)),
         ];
 
         let cs = ConstraintSystem::create(
@@ -245,9 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn vesta_on_pallas_test() {
-        let _x = CircuitGate::<PallasField>::create_foreign_mul(
-            Wire::new(0),
-        );
+    fn create() {
+        let _x = CircuitGate::<PallasField>::create_foreign_mul(Wire::new(0));
     }
 }
