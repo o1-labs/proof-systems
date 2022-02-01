@@ -7,6 +7,7 @@ proof-systems/
 ├── curves/ # our curves (for now just the pasta curves)
 ├── groupmap/ # TODO: description
 ├── kimchi/ # our proof system
+├── kimchi/cairo # our Cairo friendly proof system
 ├── ocaml/ # ocaml bindings generator tool
 ├── oracle/ # implementation of the poseidon hash function
 ├── poly-commitment/ # polynomial commitment code

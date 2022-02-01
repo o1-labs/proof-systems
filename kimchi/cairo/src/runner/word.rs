@@ -1,9 +1,7 @@
-/*
-    The Cairo Language works natively for field elements in the finite field with
-    modulus 0x800000000000011000000000000000000000000000000000000000000000001
-    This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
-    Our Pallas curves have 256 bits, so Cairo native instructions will fit.
-*/
+//! The Cairo Language works natively for field elements in the finite field with
+//! modulus 0x800000000000011000000000000000000000000000000000000000000000001
+//! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
+//! Our Pallas curves have 256 bits, so Cairo native instructions will fit.
 
 // TODO(querolita):
 // - Enlarge native word type to u256
@@ -14,7 +12,7 @@ pub const NUM_FLAGS: usize = 16;
 /// A Cairo instruction for simulation
 #[derive(Clone, Copy)]
 pub struct CairoWord {
-    /// 64bit word
+    /// 64-bit word
     pub word: u64,
     /// flag to indicate if word is negative
     pub neg: bool,
