@@ -117,11 +117,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Pasta pallas foreign field multiplication polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub foreign_mul_comm: [PolyComm<G>; 1],
-
-    // Pasta vesta foreign field multiplication polynomial commitment
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub foreign_mul_pasta_vesta_comm: PolyComm<G>,
+    pub foreign_mul_comm: PolyComm<G>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -153,7 +149,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Foreign field multiplication
     #[serde(skip)] // JES: TODO?
-    pub foreign_moduli: Vec<Vec<Fr<G>>>,
+    pub foreign_modulus: Vec<Fr<G>>,
 }
 
 pub fn constraints_expr<F: FftField + SquareRootField>(
@@ -255,14 +251,9 @@ where
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
-            foreign_mul_pasta_pallas_comm: self.srs.commit_evaluations_non_hiding(
+            foreign_mul_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.foreign_mul_pasta_pallas,
-                None,
-            ),
-            foreign_mul_pasta_vesta_comm: self.srs.commit_evaluations_non_hiding(
-                domain,
-                &self.cs.foreign_mul_pasta_vesta,
+                &self.cs.foreign_mul,
                 None,
             ),
             lookup_selectors: self
@@ -285,7 +276,7 @@ where
             w: zk_w3(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
-            foreign_moduli: self.cs.foreign_moduli.clone(),
+            foreign_modulus: self.cs.foreign_modulus.clone(),
             endo: self.cs.endo,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,

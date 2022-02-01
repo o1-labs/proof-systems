@@ -465,10 +465,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         };
 
         let foreign_mulm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| gate.foreign_mul())
-                .collect(),
+            gates.iter().map(|gate| gate.foreign_mul()).collect(),
             domain.d1,
         )
         .interpolate();
@@ -501,8 +498,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
         // Forieign field multiplication constraint polynomials
-        let foreign_mul =
-            foreign_mulm.evaluate_over_domain_by_ref(domain.d8);
+        let foreign_mul = foreign_mulm.evaluate_over_domain_by_ref(domain.d8);
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
