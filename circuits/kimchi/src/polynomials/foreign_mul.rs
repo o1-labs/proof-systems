@@ -22,7 +22,7 @@
 //      a2 = a2p0a2p1a2p2a2p3a2c0a2c1a2c2a2c3a2c4a2c5a2c6a2c7a2c8a2c9a2c10a2c11a2c12a2c13a2c14a2c15a2c16a2c17a2c18a2c19
 //
 //    where
-//      * aXpi is a 12-bit sub-limb of limb aX
+//      * aXpi is a 12-bit sublimb of limb aX
 //      * aXci is a 2-bit "crumb" limb of aX
 //
 // Input structure:
@@ -40,14 +40,14 @@
 //    (*)  Row offsets
 //    (**) Some part of the limb is contained in this row
 //
-// Constraints
+// Constraints:
 //
 //   For efficiency, the foreign field element inputs are constrained
-//   by their sub-limbs according to their type.
-//     * 12-bit sub-limbs are constrainted with plookups
+//   by their sublimbs according to their type.
+//     * 12-bit sublimbs are constrainted with plookups
 //     * 2-bit crumbs are constrained with degree-4 constraints
 //
-// Example
+// Example:
 //
 //   This example shows how input a is constrained
 //
@@ -72,7 +72,7 @@
 //    The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
 //    degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3)
 //
-// Gate types
+// Gate types:
 //
 //   Each unique row structure corresponds to a unique foreign mul CircuitGate type
 //
@@ -86,7 +86,7 @@
 //     6   ForeignMul1       "
 //     7   ForeignMul1       "
 //
-//   Nb. each circuitgate type corresponds to a unique polynomial and thus
+//   Nb. each CircuitGate type corresponds to a unique polynomial and thus
 //        is assigned its own unique powers of alpha
 
 use crate::expr::{Column, E};
