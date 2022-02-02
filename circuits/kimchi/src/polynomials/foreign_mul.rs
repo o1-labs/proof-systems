@@ -27,15 +27,15 @@
 //
 // Input structure:
 //
-//   Row*  CircuitGate  Contents**
-//     0   ForeignMul0  a0
-//     1   ForeignMul0  a1
-//     2   ForeignMul1  a2
-//     3   ForeignMul1  a0,a1,a2
-//     4   ForeignMul0  b0
-//     5   ForeignMul0  b1
-//     6   ForeignMul1  b2
-//     7   ForeignMul1  b0,b1,b2
+//   Row*  Contents**
+//     0   a0
+//     1   a1
+//     2   a2
+//     3   a0,a1,a2
+//     4   b0
+//     5   b1
+//     6   b2
+//     7   b0,b1,b2
 //
 //    (*)  Row offsets
 //    (**) Some part of the limb is contained in this row
@@ -69,29 +69,32 @@
 //     13 | crumb a0c6   | crumb a1c6   | crumb a2c8   | crumb a2c18
 //     14 | crumb a0c7   | crumb a1c7   | crumb a2c9   | crumb a2c19
 //
+//          ForeignMul0    ForeignMul0    ForeignMul1    ForeignMul2  <-- Gate type of row
+//
 //    The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
 //    degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3)
 //
 // Gate types:
 //
-//   Each unique row structure corresponds to a unique foreign mul CircuitGate type
+//   Different rows are constrained differently using different CircuitGate types
 //
 //   Row   CircuitGate   Purpose
 //     0   ForeignMul0   Constrain a
 //     1   ForeignMul0       "
 //     2   ForeignMul1       "
-//     3   ForeignMul1       "
+//     3   ForeignMul2       "
 //     4   ForeignMul0   Constrain b
 //     5   ForeignMul0       "
 //     6   ForeignMul1       "
-//     7   ForeignMul1       "
+//     7   ForeignMul2       "
 //
 //   Nb. each CircuitGate type corresponds to a unique polynomial and thus
 //        is assigned its own unique powers of alpha
 
+use std::cell::RefCell;
 use std::fmt::{Formatter, Display};
 
-use crate::expr::{Column, E, Expr, ConstantExpr, PolishToken};
+use crate::expr::{Column, E, Expr, ConstantExpr, PolishToken, Cache};
 use crate::gate::{CurrOrNext, GateType};
 use crate::polynomial::COLUMNS;
 use ark_ff::{FftField, One, Zero};
@@ -115,6 +118,15 @@ impl<F: FftField> Display for Polish<F> {
     }
 }
 
+thread_local! {
+    static CACHE: std::cell::RefCell<Cache>  = RefCell::new(Cache::default());
+}
+
+fn cache<F: FftField>(mut x: E<F>) -> E<F> {
+    CACHE.with(|cache| { x = cache.borrow_mut().cache(x.clone())} );
+    x
+}
+
 // TODO: Cache or Lazy static
 fn two<F: FftField>() -> E<F> {
     Expr::Constant(ConstantExpr::Literal(2u32.into()))
@@ -129,17 +141,18 @@ fn sublimb_plookup_constraint<F: FftField>(_sublimb: &E<F>) -> E<F> {
     E::zero()
 }
 
+// Crumb constraint for 2-bit sublimb
 fn sublimb_crumb_constraint<F: FftField>(sublimb: &E<F>) -> E<F> {
-    // Crumb constraint for 2-bit sublimb
-
     // Assert sublimb \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
     sublimb.clone() * (sublimb.clone() - E::one()) * (sublimb.clone() - two()) * (sublimb.clone() - three())
 }
 
 // Constraints for ForeignMul0
+//   * Operates on Curr row
+//   * Range constrain all sublimbs except p4 and p5
+//   * Constrain that combining all sublimbs equals the limb stored in column 0
 fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
-    let v = |c| E::cell(c, Curr);
-    let w = |i| v(Column::Witness(i));
+    let w = |i| E::cell(Column::Witness(i), Curr);
 
     // Row structure
     //  Column w(i) 0    1       ... 4       5    6    7     ... 14
@@ -147,24 +160,23 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
 
     // 1) Constrain values of sublimbs
 
-    // Create 12-bit plookup constraints
+    // Create 12-bit plookup range constraints
     let mut constraints: Vec<E<F>> = (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect();
 
-    // Create 2-bit chunk constraints
+    // Create 2-bit chunk range constraints
     constraints.append(
         &mut (7..COLUMNS)
             .map(|i| sublimb_crumb_constraint(&w(i)))
             .collect::<Vec<E<F>>>(),
     );
 
-    // 2) Constrain the combined sublimbs equals the limb stored in w(0)
+    // 2) Constrain that the combined sublimbs equals the limb stored in w(0)
 
     // Check a0 = a0p0 a0p1 a0p2 a0p3 a0p4 a0p5 a0c0 a0c1 a0c2 a0c3 a0c4 a0c5 a0c6 a0c7 (little-endian byte order)
     // Column 0   1    2    3    4    5    6    7    8    9    10   11   12   13   14
     //     w(0) = a0p0*2^76 + a0p1*2^64 + ... + a0p4*2^28 + a0p5*2^16 + a0c0*2^14 + a0c1*2^12 + ... + a0c6*2^2 + a0c7*2^0
     //          = \sum i \in [1,6] 2^(12*(6 - i) + 16)*w(i) + \sum i \in [7,14] 2^(2*(14 - i))*w(i)
     let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
-        println!("i = {}", i);
         match i {
             0 => {
                 // ignore
@@ -194,27 +206,51 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
 }
 
 // Constraints for ForeignMul1
+//   * Operates on Curr and Next row
+//   * Range constrain all sublimbs
+//   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
 fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
-    let v = |c| E::cell(c, Curr);
-    let w = |i| v(Column::Witness(i));
+    let w_curr = | i | E::cell(Column::Witness(i), Curr);
+    let w_next = | i | E::cell(Column::Witness(i), Next);
 
     // Constraints structure
     //  Column      0    1       ... 4       5     ... 14
     //  Constraint  limb plookup ... plookup crumb ... crumb
 
-    // Create 12-bit plookup constraints
-    let mut constraints: Vec<E<F>> = (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect();
+    // Create 12-bit plookup range constraints
+    let mut constraints: Vec<E<F>> = (1..5).map(|i| sublimb_plookup_constraint(&w_curr(i))).collect();
 
-    // Create 2-bit chunk constraints
+    // Create 2-bit chunk range constraints on Curr row
     constraints.append(
         &mut (5..15)
-            .map(|i| sublimb_crumb_constraint(&w(i)))
+            .map(|i| sublimb_crumb_constraint(&w_curr(i)))
             .collect::<Vec<E<F>>>(),
+    );
+
+    // Create 2-bit chunk range constraints on Next row
+    constraints.append(
+        &mut (5..15)
+        .map(|i| sublimb_crumb_constraint(&w_next(i)))
+        .collect::<Vec<E<F>>>(),
     );
 
     E::combine_constraints(
         alpha,
         constraints,
+    )
+}
+
+// Constraints for ForeignMul2
+//   * Operates on Curr row
+//   * Range constrain sublimbs stored in columns 1 through 4
+//   * The contents of these cells are the 4 12-bit sublimbs that
+//     could not be plooked-up in rows Curr - 3 and Curr - 2
+//   * Copy constraints are present to make sure these cells
+//     are equal to those
+fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
+    E::combine_constraints(
+        alpha,
+        vec![],
     )
 }
 
