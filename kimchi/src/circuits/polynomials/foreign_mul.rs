@@ -89,18 +89,39 @@
 //   Nb. each CircuitGate type corresponds to a unique polynomial and thus
 //        is assigned its own unique powers of alpha
 
-use crate::expr::{Column, E};
+use std::fmt::{Formatter, Display};
+
+use crate::expr::{Column, E, Expr, ConstantExpr, PolishToken};
 use crate::gate::{CurrOrNext, GateType};
+use crate::polynomial::COLUMNS;
 use ark_ff::{FftField, One, Zero};
 use CurrOrNext::*;
 
+struct Polish<F>(Vec<PolishToken<F>>);
+impl<F: FftField> Display for Polish<F> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[")?;
+        for x in self.0.iter() {
+            match x {
+                PolishToken::Literal(a) => write!(f, "{}, ", a)?,
+                PolishToken::Add => write!(f, "+, ")?,
+                PolishToken::Mul => write!(f, "*, ")?,
+                PolishToken::Sub => write!(f, "-, ")?,
+                x => write!(f, "{:?}, ", x)?,
+            }
+        }
+        write!(f, "]")?;
+        Ok(())
+    }
+}
+
 // TODO: Cache or Lazy static
 fn two<F: FftField>() -> E<F> {
-    E::one() + E::one()
+    Expr::Constant(ConstantExpr::Literal(2u32.into()))
 }
 
 fn three<F: FftField>() -> E<F> {
-    two() + E::one()
+    Expr::Constant(ConstantExpr::Literal(3u32.into()))
 }
 
 fn sublimb_plookup_constraint<F: FftField>(_sublimb: &E<F>) -> E<F> {
@@ -115,37 +136,56 @@ fn sublimb_crumb_constraint<F: FftField>(sublimb: &E<F>) -> E<F> {
     sublimb.clone() * (sublimb.clone() - E::one()) * (sublimb.clone() - two()) * (sublimb.clone() - three())
 }
 
-// Another idea
-// fn map_rows<F: FftField>(range: Range<usize>, f: &dyn Fn(E<F>) -> E<F>) -> Vec<E<F>> {
-//     let v = |c| E::cell(c, Curr);
-//     let w = |i| v(Column::Witness(i));
-//     let constraint: Vec<E<F>> = range.map(|i| f(w(i))).collect();
-//     constraint
-// }
-// let mut constraints: Vec<E<F>> = vec![];
-// constraints.append(&mut map_rows(0..4, &sublimb_plookup_constraint));
-// constraints.append(&mut map_rows(7..15, &sublimb_crumb_constraint));
-
 // Constraints for ForeignMul0
 fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
     let v = |c| E::cell(c, Curr);
     let w = |i| v(Column::Witness(i));
 
-    // Constraints structure
-    //  Column      0    1       ... 4       5    6    7     ... 14
+    // Row structure
+    //  Column w(i) 0    1       ... 4       5    6    7     ... 14
     //  Constraint  limb plookup ... plookup copy copy crumb ... crumb
+
+    // 1) Constrain values of sublimbs
 
     // Create 12-bit plookup constraints
     let mut constraints: Vec<E<F>> = (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect();
 
-    // TODO: Must we check a0 = a0p0a0p1a0p2a0p3a0p4a0p5a0c0a0c1a0c2a0c3a0c4a0c5a0c6a0c7 ?
-
     // Create 2-bit chunk constraints
     constraints.append(
-        &mut (7..15)
+        &mut (7..COLUMNS)
             .map(|i| sublimb_crumb_constraint(&w(i)))
             .collect::<Vec<E<F>>>(),
     );
+
+    // 2) Constrain the combined sublimbs equals the limb stored in w(0)
+
+    // Check a0 = a0p0 a0p1 a0p2 a0p3 a0p4 a0p5 a0c0 a0c1 a0c2 a0c3 a0c4 a0c5 a0c6 a0c7 (little-endian byte order)
+    // Column 0   1    2    3    4    5    6    7    8    9    10   11   12   13   14
+    //     w(0) = a0p0*2^76 + a0p1*2^64 + ... + a0p4*2^28 + a0p5*2^16 + a0c0*2^14 + a0c1*2^12 + ... + a0c6*2^2 + a0c7*2^0
+    //          = \sum i \in [1,6] 2^(12*(6 - i) + 16)*w(i) + \sum i \in [7,14] 2^(2*(14 - i))*w(i)
+    let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
+        println!("i = {}", i);
+        match i {
+            0 => {
+                // ignore
+                acc
+            }
+            1..=6 =>  {
+                // 12-bit chunk
+                acc + two().pow(12*(6 - i) + 16) * w(i)
+            },
+            7..=COLUMNS => {
+                // 2-bit chunk
+                acc + two().pow(2*(14 - i)) * w(i)
+            },
+            _ => {
+                panic!("Invalid column index {}", i)
+            }
+        }
+    });
+
+    // w(0) = combined_sublimbs
+    constraints.push(combined_sublimbs - w(0));
 
     E::combine_constraints(
         alpha,
@@ -187,4 +227,20 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     ]
     .into_iter()
     .fold(E::zero(), |acc, x| acc + x)
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::polynomials::foreign_mul;
+
+    use ark_ec::{AffineCurve};
+    use mina_curves::pasta::pallas;
+    type PallasField = <pallas::Affine as AffineCurve>::BaseField;
+
+    #[test]
+    fn constraint() {
+        let constraint = foreign_mul::constraint::<PallasField>(0);
+        println!("constraint = {}", constraint);
+    }
 }
