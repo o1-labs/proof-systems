@@ -149,13 +149,11 @@ impl<F: FftField> CircuitGate<F> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        gate::{CircuitGate},
-        nolookup::constraints::ConstraintSystem,
-        polynomial::COLUMNS,
+        gate::CircuitGate, nolookup::constraints::ConstraintSystem, polynomial::COLUMNS,
         wires::Wire,
     };
 
-    use ark_ec::{AffineCurve};
+    use ark_ec::AffineCurve;
     use mina_curves::pasta::{pallas, vesta};
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
     type VestaField = <vesta::Affine as AffineCurve>::BaseField;
