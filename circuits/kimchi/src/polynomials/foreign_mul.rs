@@ -92,9 +92,9 @@
 //        is assigned its own unique powers of alpha
 
 use std::cell::RefCell;
-use std::fmt::{Formatter, Display};
+use std::fmt::{Display, Formatter};
 
-use crate::expr::{Column, E, Expr, ConstantExpr, PolishToken, Cache};
+use crate::expr::{Cache, Column, ConstantExpr, Expr, PolishToken, E};
 use crate::gate::{CurrOrNext, GateType};
 use crate::polynomial::COLUMNS;
 use ark_ff::{FftField, One, Zero};
@@ -122,8 +122,8 @@ thread_local! {
     static CACHE: std::cell::RefCell<Cache>  = RefCell::new(Cache::default());
 }
 
-fn cache<F: FftField>(mut x: E<F>) -> E<F> {
-    CACHE.with(|cache| { x = cache.borrow_mut().cache(x.clone())} );
+fn _cache<F: FftField>(mut x: E<F>) -> E<F> {
+    CACHE.with(|cache| x = cache.borrow_mut().cache(x.clone()));
     x
 }
 
@@ -144,7 +144,10 @@ fn sublimb_plookup_constraint<F: FftField>(_sublimb: &E<F>) -> E<F> {
 // Crumb constraint for 2-bit sublimb
 fn sublimb_crumb_constraint<F: FftField>(sublimb: &E<F>) -> E<F> {
     // Assert sublimb \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
-    sublimb.clone() * (sublimb.clone() - E::one()) * (sublimb.clone() - two()) * (sublimb.clone() - three())
+    sublimb.clone()
+        * (sublimb.clone() - E::one())
+        * (sublimb.clone() - two())
+        * (sublimb.clone() - three())
 }
 
 // Constraints for ForeignMul0
@@ -182,14 +185,14 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
                 // ignore
                 acc
             }
-            1..=6 =>  {
+            1..=6 => {
                 // 12-bit chunk
-                acc + two().pow(12*(6 - i) + 16) * w(i)
-            },
+                acc + two().pow(12 * (6 - i) + 16) * w(i)
+            }
             7..=COLUMNS => {
                 // 2-bit chunk
-                acc + two().pow(2*(14 - i)) * w(i)
-            },
+                acc + two().pow(2 * (14 - i)) * w(i)
+            }
             _ => {
                 panic!("Invalid column index {}", i)
             }
@@ -199,10 +202,7 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
     // w(0) = combined_sublimbs
     constraints.push(combined_sublimbs - w(0));
 
-    E::combine_constraints(
-        alpha,
-        constraints,
-    )
+    E::combine_constraints(alpha, constraints)
 }
 
 // Constraints for ForeignMul1
@@ -210,15 +210,17 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
 //   * Range constrain all sublimbs
 //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
 fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
-    let w_curr = | i | E::cell(Column::Witness(i), Curr);
-    let w_next = | i | E::cell(Column::Witness(i), Next);
+    let w_curr = |i| E::cell(Column::Witness(i), Curr);
+    let w_next = |i| E::cell(Column::Witness(i), Next);
 
     // Constraints structure
     //  Column      0    1       ... 4       5     ... 14
     //  Constraint  limb plookup ... plookup crumb ... crumb
 
     // Create 12-bit plookup range constraints
-    let mut constraints: Vec<E<F>> = (1..5).map(|i| sublimb_plookup_constraint(&w_curr(i))).collect();
+    let mut constraints: Vec<E<F>> = (1..5)
+        .map(|i| sublimb_plookup_constraint(&w_curr(i)))
+        .collect();
 
     // Create 2-bit chunk range constraints on Curr row
     constraints.append(
@@ -230,14 +232,11 @@ fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
     // Create 2-bit chunk range constraints on Next row
     constraints.append(
         &mut (5..15)
-        .map(|i| sublimb_crumb_constraint(&w_next(i)))
-        .collect::<Vec<E<F>>>(),
+            .map(|i| sublimb_crumb_constraint(&w_next(i)))
+            .collect::<Vec<E<F>>>(),
     );
 
-    E::combine_constraints(
-        alpha,
-        constraints,
-    )
+    E::combine_constraints(alpha, constraints)
 }
 
 // Constraints for ForeignMul2
@@ -247,30 +246,26 @@ fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
 //     could not be plooked-up in rows Curr - 3 and Curr - 2
 //   * Copy constraints are present to make sure these cells
 //     are equal to those
-fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
-    E::combine_constraints(
-        alpha,
-        vec![],
-    )
+fn _foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
+    E::combine_constraints(alpha, vec![])
 }
 
 /// The constraints for foreign field multiplication
 pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     let index = |g: GateType| E::cell(Column::Index(g), Curr);
     vec![
-        index(GateType::ForeignMul0) * foreign_mul0_constraints(alpha0),
-        // index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha1),
+        index(GateType::ForeignMul0) * foreign_mul0_constraints(alpha0), // TODO: fix powers of alpha from David's PR
+        index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha0),
     ]
     .into_iter()
     .fold(E::zero(), |acc, x| acc + x)
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::polynomials::foreign_mul;
 
-    use ark_ec::{AffineCurve};
+    use ark_ec::AffineCurve;
     use mina_curves::pasta::pallas;
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
