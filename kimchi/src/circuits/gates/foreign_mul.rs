@@ -60,7 +60,7 @@ use crate::polynomials::foreign_mul;
 use crate::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
 
-pub const CIRCUIT_GATE_COUNT: usize = 2;
+pub const CIRCUIT_GATE_COUNT: usize = 3;
 
 impl<F: FftField> CircuitGate<F> {
     /// Create vesta foreign multiplication gate
