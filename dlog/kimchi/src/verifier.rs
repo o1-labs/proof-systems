@@ -521,6 +521,7 @@ where
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
                                     ForeignMul0 => &index.foreign_mul_comm[0],
                                     ForeignMul1 => &index.foreign_mul_comm[1],
+                                    ForeignMul2 => &index.foreign_mul_comm[2],
                                 };
                                 scalars_part.push(e);
                                 commitments_part.push(c);

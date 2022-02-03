@@ -297,11 +297,22 @@ fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
 //   * Operates on Curr row
 //   * Range constrain sublimbs stored in columns 1 through 4
 //   * The contents of these cells are the 4 12-bit sublimbs that
-//     could not be plooked-up in rows Curr - 3 and Curr - 2
-//   * Copy constraints are present to make sure these cells
-//     are equal to those
-fn _foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
-    E::combine_constraints(alpha, vec![])
+//     could not be plookup'ed in rows Curr - 3 and Curr - 2
+//   * Copy constraints are present (elsewhere) to make sure
+//     these cells are equal to those
+fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
+    let w = |i| E::cell(Column::Witness(i), Curr);
+
+    // Row structure
+    //  Column w(i) 0    1       ... 4       5     6     7     ... 14
+    //  Constraint  limb plookup ... plookup crumb crumb crumb ... crumb
+
+    // Apply range constraints on sublimbs (create 4 12-bit plookup range constraints)
+    // crumbs were constrained by ForeignMul1 circuit gate
+    E::combine_constraints(
+        alpha,
+        (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect(),
+    )
 }
 
 /// The constraints for foreign field multiplication
@@ -310,6 +321,7 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     vec![
         index(GateType::ForeignMul0) * foreign_mul0_constraints(alpha0), // TODO: fix powers of alpha from David's PR
         index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha0),
+        index(GateType::ForeignMul2) * foreign_mul2_constraints(alpha0),
     ]
     .into_iter()
     .fold(E::zero(), |acc, x| acc + x)
