@@ -23,9 +23,10 @@ use commitment_dlog::{
 use kimchi_circuits::{
     expr::{Column, Expr, Linearization, PolishToken, E},
     gate::{GateType, LookupInfo, LookupsUsed},
+    gates::foreign_mul,
     nolookup::constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
-    wires::*, gates::foreign_mul,
+    wires::*,
 };
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
