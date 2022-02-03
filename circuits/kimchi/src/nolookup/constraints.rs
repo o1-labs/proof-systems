@@ -6,6 +6,7 @@ This source file implements Plonk circuit constraint primitive.
 
 use crate::domains::EvaluationDomains;
 use crate::gate::{CircuitGate, GateType, LookupInfo};
+use crate::gates::foreign_mul;
 pub use crate::polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts};
 use crate::wires::*;
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -113,8 +114,8 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
     /// Foreign field multiplication constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub foreign_mul: E<F, D<F>>,
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]")]
+    pub foreign_mul: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT],
 
     // Constant polynomials
     // --------------------
@@ -462,12 +463,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let foreign_mulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.foreign_mul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
             E::<F, D<F>>::from_vec_and_domain(
                 gates
@@ -496,7 +491,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
         // Forieign field multiplication constraint polynomials
-        let foreign_mul = foreign_mulm.evaluate_over_domain_by_ref(domain.d8);
+        let foreign_mul: [_; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
+            let g = match i {
+                0 => GateType::ForeignMul0,
+                1 => GateType::ForeignMul1,
+                _ => panic!("Invalid index"),
+            };
+            E::<F, D<F>>::from_vec_and_domain(
+                gates
+                    .iter()
+                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                    .collect(),
+                domain.d1,
+            )
+            .interpolate()
+            .evaluate_over_domain(domain.d8)
+        });
 
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
