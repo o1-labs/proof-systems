@@ -4,16 +4,18 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use crate::alphas::{self, ConstraintType};
-use crate::circuits::{
-    constraints::{zk_polynomial, zk_w3, ConstraintSystem},
-    expr::{Column, Expr, Linearization, PolishToken, E},
-    gate::{GateType, LookupInfo, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
-    wires::*,
+use crate::{
+    alphas,
+    circuits::{
+        constraints::{zk_polynomial, zk_w3, ConstraintSystem},
+        expr::{Linearization, PolishToken},
+        gate::{LookupInfo, LookupsUsed},
+        wires::*,
+    },
+    linearization::LinearizationAndAlphas,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
 use array_init::array_init;
 use commitment_dlog::{
@@ -21,6 +23,7 @@ use commitment_dlog::{
     srs::SRS,
     CommitmentField,
 };
+use once_cell::unsync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -51,11 +54,9 @@ where
     pub lookup_used: Option<LookupsUsed>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
+    /// Also contains the mapping to the powers of alpha
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
-
-    /// The mapping between powers of alpha and constraints
-    pub powers_of_alpha: alphas::Builder,
+    pub linearization_and_alphas: OnceCell<LinearizationAndAlphas<Fr<G>>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -83,8 +84,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-    /// The mapping between powers of alpha and constraints
-    pub powers_of_alpha: alphas::Builder,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: Arc<SRS<G>>,
@@ -142,8 +141,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub lookup_tables: Vec<Vec<PolyComm<G>>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_selectors: Vec<PolyComm<G>>,
+
+    /// linearization
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    linearization_and_alphas: OnceCell<LinearizationAndAlphas<Fr<G>>>,
 
     // random oracle argument parameters
     #[serde(skip)]
@@ -152,93 +153,53 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-pub fn constraints_expr<F: FftField + SquareRootField>(
-    domain: D<F>,
-    chacha: bool,
-    dummy_lookup_value: Option<&[F]>,
-) -> (E<F>, alphas::Builder) {
-    // register powers of alpha so that we don't reuse them across mutually inclusive constraints
-    let mut powers_of_alpha = alphas::Builder::default();
-
-    // gates
-    let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
-
-    let mut expr = poseidon::constraint(alphas.clone().take(15));
-    expr += varbasemul::constraint(alphas.clone().take(21));
-    expr += complete_add::constraint(alphas.clone().take(7));
-    expr += endosclmul::constraint(alphas.clone().take(11));
-    expr += endomul_scalar::constraint(alphas.clone().take(11));
-
-    if chacha {
-        expr += chacha::constraint_chacha0(alphas.clone().take(5));
-        expr += chacha::constraint_chacha1(alphas.clone().take(5));
-        expr += chacha::constraint_chacha2(alphas.clone().take(5));
-        expr += chacha::constraint_chacha_final(alphas.take(9))
-    }
-
-    // permutation
-    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
-
-    // lookup
-    if let Some(dummy) = dummy_lookup_value {
-        let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
-        let constraints = lookup::constraints(dummy, domain);
-        let combined = Expr::combine_constraints(alphas, constraints);
-        expr += combined
-    }
-
-    // return the expression
-    (expr, powers_of_alpha)
-}
-
-pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
-    let lookup_info = LookupInfo::<F>::create();
-    let mut h = std::collections::HashSet::new();
-    use Column::*;
-    for i in 0..COLUMNS {
-        h.insert(Witness(i));
-    }
-    for i in 0..(lookup_info.max_per_row + 1) {
-        h.insert(LookupSorted(i));
-    }
-    h.insert(Z);
-    h.insert(LookupAggreg);
-    h.insert(LookupTable);
-    h.insert(Index(GateType::Poseidon));
-    h.insert(Index(GateType::Generic));
-    h
-}
-
-pub fn expr_linearization<F: FftField + SquareRootField>(
-    domain: D<F>,
-    chacha: bool,
-    dummy_lookup_value: Option<&[F]>,
-) -> (Linearization<Vec<PolishToken<F>>>, alphas::Builder) {
-    let evaluated_cols = linearization_columns::<F>();
-
-    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, dummy_lookup_value);
-
-    let linearization = expr
-        .linearize(evaluated_cols)
-        .unwrap()
-        .map(|e| e.to_polish());
-
-    (linearization, powers_of_alpha)
-}
-
 impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
     G::ScalarField: CommitmentField,
 {
+    /// Returns the [LinearizationAndAlphas] type associated with this circuit
+    fn linearization_and_alphas(&self) -> &LinearizationAndAlphas<Fr<G>> {
+        self.linearization_and_alphas.get_or_init(|| {
+            let dummy_lookup_value = if self.lookup_used.is_some() {
+                Some(&self.cs.dummy_lookup_values[0][..])
+            } else {
+                None
+            };
+
+            LinearizationAndAlphas::expr_linearization(
+                self.cs.domain.d1,
+                self.cs.chacha8.is_some(),
+                dummy_lookup_value,
+            )
+        })
+    }
+
+    /// Returns the linearization
+    pub fn linearization(&self) -> Linearization<Vec<PolishToken<Fr<G>>>> {
+        self.linearization_and_alphas().linearization
+    }
+
+    /// Returns the mapping between constraints and their powers of alpha.
+    pub fn powers_of_alpha(&self) -> alphas::Builder {
+        self.linearization_and_alphas().powers_of_alpha
+    }
+
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
+        let linearization_and_alphas = if let Some(x) = self.linearization_and_alphas.get() {
+            let cell: OnceCell<LinearizationAndAlphas<Fr<G>>> = OnceCell::new();
+            cell.set(x.clone());
+            cell
+        } else {
+            OnceCell::new()
+        };
+
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
-            powers_of_alpha: self.powers_of_alpha.clone(),
             srs: Arc::clone(&self.srs),
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
@@ -294,7 +255,8 @@ where
                 .iter()
                 .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                 .collect(),
-            linearization: self.linearization.clone(),
+
+            linearization_and_alphas,
 
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
@@ -319,27 +281,13 @@ where
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&cs.gates);
-
-        //
-        // Lookup
-        //
-
-        let dummy_lookup_value = if lookup_used.is_some() {
-            Some(&cs.dummy_lookup_values[0][..])
-        } else {
-            None
-        };
-
-        let (linearization, powers_of_alpha) =
-            expr_linearization(cs.domain.d1, cs.chacha8.is_some(), dummy_lookup_value);
-
+        let linearization_and_alphas = OnceCell::new();
         let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
 
         Index {
             cs,
             lookup_used,
-            linearization,
-            powers_of_alpha,
+            linearization_and_alphas,
             srs,
             max_poly_size,
             max_quot_size,
@@ -352,6 +300,33 @@ impl<G> VerifierIndex<G>
 where
     G: CommitmentCurve,
 {
+    /// Returns the [LinearizationAndAlphas] type associated with this circuit
+    pub fn linearization_and_powers_of_alpha(&self) -> &LinearizationAndAlphas<Fr<G>> {
+        self.linearization_and_alphas.get_or_init(|| {
+            let dummy_lookup_value = if self.lookup_used.is_some() {
+                Some(&self.cs.dummy_lookup_values[0][..])
+            } else {
+                None
+            };
+
+            LinearizationAndAlphas::expr_linearization(
+                self.cs.domain.d1,
+                self.cs.chacha8.is_some(),
+                dummy_lookup_value,
+            )
+        })
+    }
+
+    /// Returns the linearization
+    pub fn linearization(&self) -> Linearization<Vec<PolishToken<Fr<G>>>> {
+        self.linearization_and_powers_of_alpha().linearization
+    }
+
+    /// Returns the mapping between constraints and their powers of alpha.
+    pub fn powers_of_alpha(&self) -> alphas::Builder {
+        self.linearization_and_powers_of_alpha().powers_of_alpha
+    }
+
     /// Deserializes a [VerifierIndex] from a file, given a pointer to an SRS and an optional offset in the file.
     pub fn from_file(
         srs: Arc<SRS<G>>,
