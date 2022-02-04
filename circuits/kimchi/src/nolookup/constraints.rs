@@ -495,6 +495,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             let g = match i {
                 0 => GateType::ForeignMul0,
                 1 => GateType::ForeignMul1,
+                2 => GateType::ForeignMul2,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(

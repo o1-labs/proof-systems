@@ -157,8 +157,8 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
     let w = |i| E::cell(Column::Witness(i), Curr);
 
     // Row structure
-    //  Column w(i) 0    1       ... 4       5    6    7     ... 14
-    //  Constraint  limb plookup ... plookup copy copy crumb ... crumb
+    //  Column w(i) 0    1       ... 4       5    6    7     ... 14    COLUMNS
+    //        Curr  limb plookup ... plookup copy copy crumb ... crumb
 
     // 1) Apply range constraints on sublimbs
 
@@ -221,7 +221,8 @@ fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
 
     // Constraints structure
     //  Column      0    1       ... 4       5     ... 14
-    //  Constraint  limb plookup ... plookup crumb ... crumb
+    //        Curr  limb plookup ... plookup crumb ... crumb
+    //        Next                           crumb ... crumb
 
     // 1) Apply range constraints on sublimbs
 
@@ -305,7 +306,7 @@ fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
 
     // Row structure
     //  Column w(i) 0    1       ... 4       5     6     7     ... 14
-    //  Constraint  limb plookup ... plookup crumb crumb crumb ... crumb
+    //         Curr limb plookup ... plookup crumb crumb crumb ... crumb
 
     // Apply range constraints on sublimbs (create 4 12-bit plookup range constraints)
     // crumbs were constrained by ForeignMul1 circuit gate
@@ -315,16 +316,20 @@ fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
     )
 }
 
-/// The constraints for foreign field multiplication
-pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
+pub fn constraints<F: FftField>(alpha0: usize) -> Vec<E<F>> {
     let index = |g: GateType| E::cell(Column::Index(g), Curr);
     vec![
         index(GateType::ForeignMul0) * foreign_mul0_constraints(alpha0), // TODO: fix powers of alpha from David's PR
         index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha0),
         index(GateType::ForeignMul2) * foreign_mul2_constraints(alpha0),
     ]
-    .into_iter()
-    .fold(E::zero(), |acc, x| acc + x)
+}
+
+/// The constraints for foreign field multiplication
+pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
+    constraints(alpha0)
+        .into_iter()
+        .fold(E::zero(), |acc, x| acc + x)
 }
 
 #[cfg(test)]
