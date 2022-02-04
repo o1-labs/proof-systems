@@ -176,6 +176,9 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += chacha::constraint_chacha_final(alphas.take(9))
     }
 
+    // permutation
+    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
+
     // lookup
     if let Some(dummy) = dummy_lookup_value {
         let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
@@ -183,11 +186,6 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined
     }
-
-    // TODO: include the generic gate here?
-    // TODO: include the permutation here?
-    // permutation
-    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
 
     // return the expression
     (expr, powers_of_alpha)
