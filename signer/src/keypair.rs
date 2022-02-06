@@ -2,7 +2,8 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
-use crate::{CurvePoint, FieldHelpers, PubKey, ScalarField, SecKey};
+use crate::{CurvePoint, PubKey, ScalarField, SecKey};
+use o1_utils::FieldHelpers;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use core::fmt;
 use rand::{self, CryptoRng, RngCore};

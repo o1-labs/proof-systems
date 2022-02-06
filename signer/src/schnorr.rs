@@ -22,10 +22,11 @@ use oracle::{
     poseidon::SpongeConstants,
     rndoracle::{ArithmeticSponge, Sponge},
 };
+use o1_utils::FieldHelpers;
 use std::ops::Neg;
 
 use crate::{
-    BaseField, CurvePoint, FieldHelpers, Hashable, Keypair, NetworkId, PubKey, ROInput,
+    BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput,
     ScalarField, Signable, Signature, Signer,
 };
 

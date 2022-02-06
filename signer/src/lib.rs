@@ -9,7 +9,7 @@ pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
-pub use domain::{BaseField, CurvePoint, FieldHelpers, ScalarField};
+pub use domain::{BaseField, CurvePoint, ScalarField};
 pub use keypair::Keypair;
 pub use pubkey::{CompressedPubKey, PubKey};
 pub use roinput::ROInput;
