@@ -153,37 +153,32 @@ where
 
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
         self.last_squeezed = vec![];
-        let total_length = P::ScalarField::size_in_bits();
 
         x.iter().for_each(|x| {
-            // padding (since unpadded_bits is a BigInt, it can be larger than the total_length)
-            let unpadded_bits = x.into_repr().to_bits_be();
-            let padding = total_length.saturating_sub(unpadded_bits.len());
-            let mut bits = vec![false; padding];
-            bits.extend_from_slice(&unpadded_bits);
+            let bits = x.into_repr().to_bits_le();
 
             // absorb
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
                 self.sponge.absorb(&[P::BaseField::from_repr(
-                    <P::BaseField as PrimeField>::BigInt::from_bits_be(&bits),
+                    <P::BaseField as PrimeField>::BigInt::from_bits_le(&bits),
                 )
                 .expect("padding code has a bug")]);
             } else {
-                let low_bits = P::BaseField::from_repr(
-                    <P::BaseField as PrimeField>::BigInt::from_bits_be(&bits[1..]),
-                )
-                .expect("padding code has a bug");
-
-                let high_bit = if bits[0] {
+                let low_bit = if bits[0] {
                     P::BaseField::one()
                 } else {
                     P::BaseField::zero()
                 };
 
-                self.sponge.absorb(&[low_bits]);
-                self.sponge.absorb(&[high_bit]);
+                let high_bits = P::BaseField::from_repr(
+                    <P::BaseField as PrimeField>::BigInt::from_bits_le(&bits[1..bits.len()]),
+                )
+                .expect("padding code has a bug");
+
+                self.sponge.absorb(&[high_bits]);
+                self.sponge.absorb(&[low_bit]);
             }
         });
     }
