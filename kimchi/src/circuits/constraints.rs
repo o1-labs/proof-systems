@@ -48,7 +48,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     /// For each kind of lookup-pattern, we have a selector that's
     /// 1 at the rows where that pattern should be enforced, and 0 at
     /// all other rows.
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
     /// The kind of lookups used
@@ -179,6 +179,7 @@ pub struct ConstraintSystem<F: FftField> {
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 
     /// lookup constraint system
+    #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
 }
 
