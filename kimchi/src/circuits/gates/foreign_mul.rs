@@ -56,68 +56,83 @@
 use crate::expr;
 use crate::gate::{CircuitGate, GateType};
 use crate::nolookup::constraints::ConstraintSystem;
+use crate::nolookup::scalars::ProofEvaluations;
 use crate::polynomials::foreign_mul;
 use crate::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
+use array_init::array_init;
 
 pub const CIRCUIT_GATE_COUNT: usize = 3;
+const LIMB_SIZE: usize = 88;
 
 impl<F: FftField> CircuitGate<F> {
-    /// Create vesta foreign multiplication gate
-    pub fn create_foreign_mul(wires: GateWires) -> Self {
-        /* input: a */
-        CircuitGate {
-            typ: GateType::ForeignMul0,
-            wires,
-            c: vec![],
-        }
-        // CircuitGate {
-        //     typ: GateType::ForeignMul0,
-        //     wires,
-        //     c: vec![],
-        // },
-        // CircuitGate {
-        //     typ: GateType::ForeignMul1,
-        //     wires,
-        //     c: vec![],
-        // },
-        // CircuitGate {
-        //     typ: GateType::ForeignMul1,
-        //     wires,
-        //     c: vec![],
-        // },
-        // /* input: b */
-        // CircuitGate {
-        //     typ: GateType::ForeignMul0,
-        //     wires,
-        //     c: vec![],
-        // },
-        // CircuitGate {
-        //     typ: GateType::ForeignMul0,
-        //     wires,
-        //     c: vec![],
-        // },
-        // CircuitGate {
-        //     typ: GateType::ForeignMul1,
-        //     wires,
-        //     c: vec![],
-        // },
-        // CircuitGate {
-        //     typ: GateType::ForeignMul1,
-        //     wires,
-        //     c: vec![],
-        // },
+    /// Create foreign multiplication gate
+    pub fn create_foreign_mul(wires: &[GateWires; 8]) -> Vec<Self> {
+        vec![
+            /* Input: a */
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[0],
+                c: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[1],
+                c: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul1,
+                wires: wires[2],
+                c: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul2,
+                wires: wires[3],
+                c: vec![],
+            },
+            /* Input: b */
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[4],
+                c: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[5],
+                c: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul1,
+                wires: wires[6],
+                c: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul2,
+                wires: wires[7],
+                c: vec![],
+            },
+        ]
     }
 
     pub fn verify_foreign_mul(
         &self,
-        _row: usize,
-        _witness: &[Vec<F>; COLUMNS],
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        ensure_eq!(self.typ, GateType::ForeignMul0, "incorrect gate type");
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]); // change to curr
+        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
 
-        let _constants = expr::Constants {
+        let evals: [ProofEvaluations<F>; 2] = [
+            ProofEvaluations::dummy_with_witness_evaluations(this),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
+        ];
+
+        let constraints = foreign_mul::constraints::<F>(0 /* TODO: alpha */);
+
+        let pt = F::from(1337u64);
+
+        let constants = expr::Constants {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),
@@ -127,12 +142,17 @@ impl<F: FftField> CircuitGate<F> {
             foreign_modulus: cs.foreign_modulus.clone(),
         };
 
-        // Breadth first approach
-        // Unit test from ground up (create a verify method in polynomials)
-        // Use bigint lib to build test cases
-        // Test code to check values
-
-        let _constraints = foreign_mul::constraint::<F>(0 /* TODO: alpha */);
+        for (i, c) in constraints.iter().enumerate() {
+            println!("Checking constraint {}", i);
+            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
+                Ok(x) => {
+                    if x != F::zero() {
+                        return Err(format!("Bad foreign_mul equation {}", i));
+                    }
+                }
+                Err(e) => return Err(format!("evaluation failed: {}", e)),
+            }
+        }
 
         Ok(())
     }
@@ -154,25 +174,48 @@ mod tests {
     };
 
     use ark_ec::AffineCurve;
+    use ark_ff::PrimeField;
+    use array_init::array_init;
     use mina_curves::pasta::{pallas, vesta};
+    use num_bigint::BigUint;
+
+    use super::{CIRCUIT_GATE_COUNT, LIMB_SIZE};
+
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
     type VestaField = <vesta::Affine as AffineCurve>::BaseField;
 
+    fn field_element_to_witness<F: PrimeField>(fe: BigUint) -> [[F; CIRCUIT_GATE_COUNT]; COLUMNS] {
+        let mut rows = [[F::zero(); CIRCUIT_GATE_COUNT]; COLUMNS];
+        for (i, limb) in fe.to_bytes_le().chunks(LIMB_SIZE / 8 + 1).enumerate() {
+            let mut bytes = limb.to_vec();
+            bytes.append(&mut vec![0u8; F::size_in_bits() / 8 - limb.len() + 1]); // zero pad
+            rows[0][i] = F::deserialize(&bytes[..]).expect("failed to deserialize field element");
+            // TODO: populate sublimbs
+        }
+        rows
+    }
+
+    #[test]
+    fn create() {
+        let wires = array_init(|i| Wire::new(i));
+        let _x = CircuitGate::<PallasField>::create_foreign_mul(&wires);
+    }
+
     #[test]
     fn verify() {
-        let gates = vec![
-            CircuitGate::<PallasField>::create_foreign_mul(Wire::new(0)),
-            CircuitGate::<PallasField>::create_foreign_mul(Wire::new(0)),
-        ];
+        let wires = array_init(|i| Wire::new(i));
+        let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
 
         let cs = ConstraintSystem::create(
             gates,
             vec![],
             oracle::pasta::fp::params(),
-            o1_utils::packed_modulus::<PallasField, VestaField>(),
+            o1_utils::packed_modulus::<PallasField>(o1_utils::get_modulus::<VestaField>()),
             0,
         )
         .unwrap();
+
+        let _x = field_element_to_witness::<PallasField>(BigUint::from(31459u64));
 
         let witness: [Vec<PallasField>; COLUMNS] = [
             vec![PallasField::from(0); 8],
@@ -195,10 +238,5 @@ mod tests {
         let res = cs.gates[0].verify_foreign_mul(0, &witness, &cs);
 
         println!("res = {:?}", res);
-    }
-
-    #[test]
-    fn create() {
-        let _x = CircuitGate::<PallasField>::create_foreign_mul(Wire::new(0));
     }
 }
