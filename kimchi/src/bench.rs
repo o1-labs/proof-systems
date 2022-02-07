@@ -29,7 +29,7 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 /// the circuit size. This influences the size of the SRS
-pub const CIRCUIT_SIZE: usize = (1 << 15) + 1; // SRS will be 2^16
+pub const CIRCUIT_SIZE: usize = (1 << 14) + 1; // SRS will be 2^15
 
 pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,

@@ -5,8 +5,8 @@ pub fn bench_proof_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("Proof creation");
     group.sample_size(10).sampling_mode(SamplingMode::Flat); // for slow benchmarks
 
-    let ctx = BenchmarkCtx::new(1 << 15);
-    group.bench_function("proof creation (2^16)", |b| {
+    let ctx = BenchmarkCtx::new(1 << 14);
+    group.bench_function("proof creation (2^15)", |b| {
         b.iter(|| black_box(ctx.create_proof()))
     });
 }
