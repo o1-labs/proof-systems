@@ -1,9 +1,9 @@
 //! This module implements an abstraction to keep track of the powers of alphas.
 //! As a recap, alpha is a challenge sent by the verifier in PLONK,
-//! and is used to segregate different constraints.
+//! and is used to aggregate multiple constraints into a single polynomial.
 //! It is important that different constraints use different powers of alpha,
 //! as otherwise they can interact and potentially cancel one another.
-//! (The proof is in the use of the Schwartz-Zipple lemma.)
+//! (The proof is in the use of the Schwartz-Zippel lemma.)
 //! As such, we want two properties from this:
 //!
 //! - we should keep track of a mapping between type of constraint and range of powers
@@ -43,7 +43,7 @@ use std::{
 pub enum ConstraintType {
     /// gates in the PLONK constraint system.
     /// As gates are mutually exclusive (only a single selector polynomial
-    /// will be non-zero for a given point),
+    /// will be non-zero for a given row),
     /// we can reuse the same power of alphas accross gates.
     Gate,
     /// The permutation argument
@@ -80,22 +80,6 @@ impl Builder {
         self.next_power = new_power;
         range
     }
-
-    /// Creates a new instance of [Alphas] via a [Builder] and value `alpha`.
-    pub fn into_alphas<F: Field>(self, alpha: F) -> Alphas<F> {
-        let mut last_power = F::one();
-        let mut alphas = Vec::with_capacity(self.next_power);
-        alphas.push(F::one());
-        for _ in 0..self.next_power {
-            last_power *= alpha;
-            alphas.push(last_power);
-        }
-
-        Alphas {
-            alphas,
-            mapping: self.mapping,
-        }
-    }
 }
 
 // ------------------------------------------
@@ -119,7 +103,7 @@ impl<F: Field> Alphas<F> {
         let mut last_power = F::one();
         let mut alphas = Vec::with_capacity(powers.next_power);
         alphas.push(F::one());
-        for _ in 0..powers.next_power {
+        for _ in 0..(powers.next_power - 1) {
             last_power *= alpha;
             alphas.push(last_power);
         }
