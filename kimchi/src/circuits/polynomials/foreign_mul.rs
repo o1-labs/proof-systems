@@ -94,9 +94,12 @@
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 
-use crate::expr::{Cache, Column, ConstantExpr, Expr, PolishToken, E};
-use crate::gate::{CurrOrNext, GateType};
-use crate::polynomial::COLUMNS;
+use crate::circuits::{
+    expr::{Cache, Column, ConstantExpr, Expr, PolishToken, E},
+    gate::{CurrOrNext, GateType},
+    polynomial::COLUMNS,
+};
+
 use ark_ff::{FftField, One, Zero};
 use CurrOrNext::*;
 
@@ -334,7 +337,7 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::polynomials::foreign_mul;
+    use crate::circuits::polynomials::foreign_mul;
 
     use ark_ec::AffineCurve;
     use mina_curves::pasta::pallas;

@@ -78,7 +78,8 @@ fn poseidon_vesta_15_wires() {
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
     let mut srs = SRS::<Affine>::create(max_size);
-    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
+    let cs =
+        ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, vec![], PUBLIC).unwrap();
     srs.add_lagrange_basis(cs.domain.d1);
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();

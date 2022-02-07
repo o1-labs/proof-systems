@@ -53,17 +53,16 @@
 //    The 12-bit chunks are constrained with plookups and the 2-bit crumbs constrained with
 //    degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3)
 
-use crate::expr;
-use crate::gate::{CircuitGate, GateType};
-use crate::nolookup::constraints::ConstraintSystem;
-use crate::nolookup::scalars::ProofEvaluations;
-use crate::polynomials::foreign_mul;
-use crate::wires::{GateWires, COLUMNS};
+use crate::circuits::constraints::ConstraintSystem;
+use crate::circuits::expr;
+use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::polynomials::foreign_mul;
+use crate::circuits::scalars::ProofEvaluations;
+use crate::circuits::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
 use array_init::array_init;
 
 pub const CIRCUIT_GATE_COUNT: usize = 3;
-const LIMB_SIZE: usize = 88;
 
 impl<F: FftField> CircuitGate<F> {
     /// Create foreign multiplication gate
@@ -168,9 +167,8 @@ impl<F: FftField> CircuitGate<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        gate::CircuitGate, nolookup::constraints::ConstraintSystem, polynomial::COLUMNS,
-        wires::Wire,
+    use crate::circuits::{
+        constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS, wires::Wire,
     };
 
     use ark_ec::AffineCurve;
@@ -179,10 +177,12 @@ mod tests {
     use mina_curves::pasta::{pallas, vesta};
     use num_bigint::BigUint;
 
-    use super::{CIRCUIT_GATE_COUNT, LIMB_SIZE};
+    use super::CIRCUIT_GATE_COUNT;
 
     type PallasField = <pallas::Affine as AffineCurve>::BaseField;
     type VestaField = <vesta::Affine as AffineCurve>::BaseField;
+
+    const LIMB_SIZE: usize = 88;
 
     fn field_element_to_witness<F: PrimeField>(fe: BigUint) -> [[F; CIRCUIT_GATE_COUNT]; COLUMNS] {
         let mut rows = [[F::zero(); CIRCUIT_GATE_COUNT]; COLUMNS];

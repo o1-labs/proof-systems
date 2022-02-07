@@ -1,6 +1,7 @@
-//
-// Foreign moduli helper
-//
+//!
+//! Modulus packing helper
+//!
+
 use ark_ff::{BigInteger, FftField, FpParameters, PrimeField};
 use num_bigint::BigUint;
 

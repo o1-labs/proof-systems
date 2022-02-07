@@ -59,7 +59,8 @@ fn endomul_scalar_test() {
         }
     }
 
-    let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
+    let cs =
+        ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, vec![], PUBLIC).unwrap();
     let _n = cs.domain.d1.size as usize;
 
     let mut srs = SRS::create(cs.domain.d1.size as usize);

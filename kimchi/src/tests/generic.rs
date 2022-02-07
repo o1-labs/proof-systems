@@ -98,7 +98,8 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
+    let cs =
+        ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, vec![], public).unwrap();
     let n = cs.domain.d1.size as usize;
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();

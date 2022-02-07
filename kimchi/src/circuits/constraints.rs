@@ -7,6 +7,7 @@ This source file implements Plonk circuit constraint primitive.
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType, LookupInfo},
+    gates::foreign_mul,
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
     wires::*,
 };
@@ -154,7 +155,7 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde(skip)]
     pub fr_sponge_params: ArithmeticSpongeParams<F>,
 
-    /// Foreign field moduli parameters
+    /// Foreign field modulus parameter
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub foreign_modulus: Vec<F>,
 

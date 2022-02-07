@@ -147,7 +147,7 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
-    /// Foreign field multiplication (reserving 11-17)
+    /// Foreign field multiplication (reserving 11-19)
     ForeignMul0 = 11,
     ForeignMul1 = 12,
     ForeignMul2 = 13,

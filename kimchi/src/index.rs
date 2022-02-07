@@ -15,6 +15,7 @@ use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     expr::{Column, Expr, Linearization, PolishToken, E},
     gate::{GateType, LookupInfo, LookupsUsed},
+    gates::foreign_mul,
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
 };
@@ -147,8 +148,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 
-    // Foreign field multiplication
-    #[serde(skip)] // JES: TODO?
+    // Foreign field modulus
+    #[serde(skip)] // TODO?
     pub foreign_modulus: Vec<Fr<G>>,
 }
 
