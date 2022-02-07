@@ -18,6 +18,7 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
+use o1_utils::FieldHelpers;
 use oracle::{
     poseidon::SpongeConstants,
     rndoracle::{ArithmeticSponge, Sponge},
@@ -25,8 +26,8 @@ use oracle::{
 use std::ops::Neg;
 
 use crate::{
-    BaseField, CurvePoint, FieldHelpers, Hashable, Keypair, NetworkId, PubKey, ROInput,
-    ScalarField, Signable, Signature, Signer,
+    BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput, ScalarField, Signable,
+    Signature, Signer,
 };
 
 /// Schnorr signer context for the Mina signature algorithm
