@@ -8,7 +8,8 @@ use core::fmt;
 use sha2::{Digest, Sha256};
 use std::ops::Neg;
 
-use crate::{BaseField, CurvePoint, FieldHelpers};
+use crate::{BaseField, CurvePoint};
+use o1_utils::FieldHelpers;
 
 /// Length of Mina addresses
 pub const MINA_ADDRESS_LEN: usize = 55;

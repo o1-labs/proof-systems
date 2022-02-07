@@ -1,7 +1,6 @@
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-pub mod domain;
 pub mod keypair;
 pub mod pubkey;
 pub mod roinput;
@@ -9,7 +8,6 @@ pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
-pub use domain::{BaseField, CurvePoint, FieldHelpers, ScalarField};
 pub use keypair::Keypair;
 pub use pubkey::{CompressedPubKey, PubKey};
 pub use roinput::ROInput;
@@ -24,6 +22,16 @@ use oracle::{
         SpongeConstants,
     },
 };
+
+use ark_ec::AffineCurve;
+use mina_curves::pasta::pallas;
+
+/// Affine curve point type
+pub use pallas::Affine as CurvePoint;
+/// Base field element type
+pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+/// Scalar field element type
+pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
 
 /// Mina network (or blockchain) identifier
 #[derive(Copy, Clone)]
