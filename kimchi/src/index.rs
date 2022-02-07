@@ -172,12 +172,11 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
             )
         }
     };
-    let expr = if chacha {
+    if chacha {
         expr + chacha::constraint(super::range::CHACHA.start)
     } else {
         expr
-    };
-    expr
+    }
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>(
