@@ -519,7 +519,7 @@ mod tests {
             joint_combiner: F::rand(rng),
             endo_coefficient: F::zero(),
             mds: vec![],
-            foreign_moduli: vec![],
+            foreign_modulus: vec![],
         };
 
         assert_eq!(

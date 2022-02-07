@@ -285,7 +285,7 @@ where
                 joint_combiner: joint_combiner.1,
                 endo_coefficient: index.endo,
                 mds: index.fr_sponge_params.mds.clone(),
-                foreign_moduli: vec![], // JES: TODO
+                foreign_modulus: vec![], // JES: TODO
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -458,7 +458,7 @@ where
                         joint_combiner: oracles.joint_combiner.1,
                         endo_coefficient: index.endo,
                         mds: index.fr_sponge_params.mds.clone(),
-                        foreign_moduli: vec![], // JES: TODO
+                        foreign_modulus: vec![], // JES: TODO
                     };
 
                     for (c, e) in &index.linearization.index_terms {
@@ -520,8 +520,7 @@ where
                                     ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                                     ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                                    ForeignMulPastaPallas => &index.foreign_mul_pasta_pallas_comm,
-                                    ForeignMulPastaVesta => &index.foreign_mul_pasta_vesta_comm,
+                                    ForeignMul0 => &index.foreign_mul_pasta_pallas_comm,
                                 };
                                 scalars_part.push(e);
                                 commitments_part.push(c);

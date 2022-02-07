@@ -117,7 +117,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Pasta pallas foreign field multiplication polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub foreign_mul_pasta_pallas_comm: PolyComm<G>,
+    pub foreign_mul_comm: [PolyComm<G>; 1],
 
     // Pasta vesta foreign field multiplication polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]

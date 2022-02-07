@@ -407,7 +407,7 @@ where
                     joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds: index.cs.fr_sponge_params.mds.clone(),
-                    foreign_moduli: index.cs.foreign_moduli.clone(),
+                    foreign_modulus: index.cs.foreign_modulus,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
