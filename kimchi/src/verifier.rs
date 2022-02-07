@@ -10,7 +10,6 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     expr::{Column, Constants, PolishToken},
     gate::{GateType, LookupsUsed},
-    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
     scalars::RandomOracles,
     wires::*,
 };
@@ -430,23 +429,6 @@ where
                     &alphas[range::PERM],
                     zkp,
                 )];
-
-                // generic
-                commitments_part.push(&index.coefficients_comm[MUL_COEFF]);
-                commitments_part.extend(
-                    index
-                        .coefficients_comm
-                        .iter()
-                        .take(GENERICS)
-                        .collect::<Vec<_>>(),
-                );
-                scalars_part.extend(&ConstraintSystem::gnrc_scalars(
-                    &evals[0].w,
-                    evals[0].generic_selector,
-                ));
-
-                commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
-                scalars_part.push(evals[0].generic_selector);
 
                 {
                     // TODO: Reuse constants from oracles function

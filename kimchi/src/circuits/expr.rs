@@ -131,6 +131,7 @@ impl Column {
     fn domain(&self) -> Domain {
         match self {
             Column::Index(GateType::CompleteAdd) => Domain::D4,
+            Column::Index(GateType::Generic) => Domain::D4,
             _ => Domain::D8,
         }
     }

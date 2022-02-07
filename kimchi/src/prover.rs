@@ -9,7 +9,9 @@ use crate::circuits::{
     constraints::ZK_ROWS,
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
+    polynomials::{
+        chacha, complete_add, endomul_scalar, endosclmul, generic, lookup, poseidon, varbasemul,
+    },
     scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
 };
@@ -386,6 +388,7 @@ where
             let mut index_evals = HashMap::new();
             use GateType::*;
             index_evals.insert(Poseidon, &index.cs.ps8);
+            index_evals.insert(Generic, &index.cs.generic4);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
             index_evals.insert(VarBaseMul, &index.cs.mull8);
             index_evals.insert(EndoMul, &index.cs.emull);
@@ -421,7 +424,7 @@ where
 
         let t4 = {
             // generic
-            let mut t4 = index.cs.gnrc_quot(&lagrange.d4.this.w);
+            let mut t4 = generic::constraint().evaluations(&env);
             // complete addition
             let (alphas_used, add_constraint) = complete_add::constraint(range::COMPLETE_ADD.start);
             assert_eq!(alphas_used, range::COMPLETE_ADD.len());
@@ -596,13 +599,9 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &index
+            let f = index
                 .cs
-                .gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
-                .interpolate()
-                + &index
-                    .cs
-                    .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
+                .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
 
             let f = {
                 let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);

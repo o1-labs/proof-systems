@@ -15,7 +15,9 @@ use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem},
     expr::{Column, Expr, Linearization, PolishToken, E},
     gate::{GateType, LookupInfo, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
+    polynomials::{
+        chacha, complete_add, endomul_scalar, endosclmul, generic, lookup, poseidon, varbasemul,
+    },
     wires::*,
 };
 use ark_ec::AffineCurve;
@@ -151,6 +153,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 ) -> E<F> {
     let expr = poseidon::constraint();
     let expr = expr + varbasemul::constraint(super::range::MUL.start);
+    let expr = expr + generic::constraint();
     let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
     assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
     let expr = expr + complete_add;
