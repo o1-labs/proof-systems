@@ -115,9 +115,13 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    /// non-native multiplication selector polynomial commitment
+    // Pasta pallas foreign field multiplication polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub nnmul_comm: PolyComm<G>,
+    pub foreign_mul_pasta_pallas_comm: PolyComm<G>,
+
+    // Pasta vesta foreign field multiplication polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub foreign_mul_pasta_vesta_comm: PolyComm<G>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -146,6 +150,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+
+    // Foreign field multiplication
+    #[serde(skip)] // JES: TODO?
+    pub foreign_moduli: Vec<Vec<Fr<G>>>,
 }
 
 pub fn constraints_expr<F: FftField + SquareRootField>(
@@ -244,10 +252,19 @@ where
                 &self.cs.endomul_scalar8,
                 None,
             ),
-            nnmul_comm: self.srs.commit_non_hiding(&self.cs.nnmulm, None),
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
+            foreign_mul_pasta_pallas_comm: self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.cs.foreign_mul_pasta_pallas,
+                None,
+            ),
+            foreign_mul_pasta_vesta_comm: self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.cs.foreign_mul_pasta_vesta,
+                None,
+            ),
             lookup_selectors: self
                 .cs
                 .lookup_selectors
@@ -268,6 +285,7 @@ where
             w: zk_w3(self.cs.domain.d1),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
+            foreign_moduli: self.cs.foreign_moduli.clone(),
             endo: self.cs.endo,
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
