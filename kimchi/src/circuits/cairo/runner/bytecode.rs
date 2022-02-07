@@ -4,7 +4,7 @@
 //! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
-use crate::runner::word::CairoWord;
+use crate::circuits::cairo::runner::word::CairoWord;
 
 /// This data structure stores the memory of the program
 pub struct CairoBytecode {

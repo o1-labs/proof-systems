@@ -202,7 +202,7 @@ impl CairoWord {
 
 #[cfg(test)]
 mod tests {
-    use crate::runner::definitions::*;
+    use crate::circuits::cairo::runner::definitions::*;
 
     #[test]
     fn test_biased() {

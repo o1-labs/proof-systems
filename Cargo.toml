@@ -3,7 +3,6 @@ members = [
     "curves",
     "poly-commitment",
     "kimchi",
-    "kimchi/cairo",
     "groupmap",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",

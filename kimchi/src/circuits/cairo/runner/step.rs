@@ -1,9 +1,9 @@
 //! This module represents a Cairo execution step
 //! It defines the execution logic of Cairo instructions
 
-use crate::runner::bytecode::CairoBytecode;
-use crate::runner::definitions::*;
-use crate::runner::word::CairoWord;
+use crate::circuits::cairo::runner::bytecode::CairoBytecode;
+use crate::circuits::cairo::runner::definitions::*;
+use crate::circuits::cairo::runner::word::CairoWord;
 
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]

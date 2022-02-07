@@ -5,8 +5,8 @@
 //! This module represents a full Cairo program, that is represented
 //! by the execution of consecutive Cairo steps
 
-use crate::runner::bytecode::CairoBytecode;
-use crate::runner::step::{CairoRegisters, CairoStep};
+use crate::circuits::cairo::runner::bytecode::CairoBytecode;
+use crate::circuits::cairo::runner::step::{CairoRegisters, CairoStep};
 
 /// A Cairo full program
 pub struct CairoProgram<'a> {
