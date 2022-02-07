@@ -117,7 +117,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Pasta pallas foreign field multiplication polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub foreign_mul_comm: PolyComm<G>,
+    pub foreign_mul_comm: [PolyComm<G>; foreign_mul::CIRCUIT_GATE_COUNT],
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -251,11 +251,10 @@ where
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
-            foreign_mul_comm: self.srs.commit_evaluations_non_hiding(
-                domain,
-                &self.cs.foreign_mul,
-                None,
-            ),
+            foreign_mul_comm: array_init(|i| {
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.cs.foreign_mul[i], None)
+            }),
             lookup_selectors: self
                 .cs
                 .lookup_selectors
