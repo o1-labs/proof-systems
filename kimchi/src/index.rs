@@ -46,6 +46,7 @@ where
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
 
+    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 
