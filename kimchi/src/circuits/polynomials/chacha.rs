@@ -142,22 +142,24 @@
 //! And we'll check that y' is the sum of the shifted nybbles.
 //!
 
-use crate::circuits::expr::{Column, ConstantExpr as C, E};
-use crate::circuits::gate::{CurrOrNext, GateType};
+use crate::circuits::{
+    expr::{index, witness, ConstantExpr as C, E},
+    gate::{CurrOrNext, GateType},
+};
 use ark_ff::{FftField, Field, Zero};
 use CurrOrNext::*;
 
-// The lookup table for 4-bit xor.
-// Note that it is constructed so that (0, 0, 0) is the last position in the table.
-//
-// This is because tables are extended to the full size of a column (essentially)
-// by padding them with their final value. And, having the value (0, 0, 0) here means
-// that when we commit to this table and use the dummy value in the `lookup_sorted`
-// columns, those entries that have the dummy value of
-//
-// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
-//
-// will translate into a scalar multiplication by 0, which is free.
+/// The lookup table for 4-bit xor.
+/// Note that it is constructed so that (0, 0, 0) is the last position in the table.
+///
+/// This is because tables are extended to the full size of a column (essentially)
+/// by padding them with their final value. And, having the value (0, 0, 0) here means
+/// that when we commit to this table and use the dummy value in the `lookup_sorted`
+/// columns, those entries that have the dummy value of
+///
+/// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
+///
+/// will translate into a scalar multiplication by 0, which is free.
 pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
     let mut res = vec![vec![]; 3];
 
@@ -180,270 +182,282 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
     res
 }
 
-// This is just for tests. It doesn't set up the permutations
-pub fn chacha20_gates() -> Vec<GateType> {
-    let mut gs = vec![];
-    for _ in 0..20 {
-        use GateType::*;
-        for _ in 0..4 {
-            for &g in &[ChaCha0, ChaCha1, ChaCha2, ChaCha0, ChaChaFinal] {
-                gs.push(g);
-                gs.push(Zero);
-            }
-        }
-    }
-    gs
+//
+// Implementation internals
+//
+
+/// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
+/// like y^x' or x+z
+fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
+    (0..8)
+        .map(|i| {
+            let r = if i < 4 { Curr } else { Next };
+            witness(col_offset + (i % 4), r)
+        })
+        .collect()
 }
 
-const CHACHA20_ROTATIONS: [u32; 4] = [16, 12, 8, 7];
-const CHACHA20_QRS: [[usize; 4]; 8] = [
-    [0, 4, 8, 12],
-    [1, 5, 9, 13],
-    [2, 6, 10, 14],
-    [3, 7, 11, 15],
-    [0, 5, 10, 15],
-    [1, 6, 11, 12],
-    [2, 7, 8, 13],
-    [3, 4, 9, 14],
-];
+/// Creates a constraint to enforce that b is either 0 or 1.
+fn boolean<F: Field>(b: &E<F>) -> E<F> {
+    b.clone() * b.clone() - b.clone()
+}
 
-pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
-    let mut rows = vec![];
+fn combine_nybbles<F: Field>(ns: Vec<E<F>>) -> E<F> {
+    ns.into_iter()
+        .enumerate()
+        .fold(E::zero(), |acc: E<F>, (i, t)| {
+            acc + E::from(1 << (4 * i)) * t
+        })
+}
 
-    let mut s = s0;
-    let mut line = |x: usize, y: usize, z: usize, k: u32| {
-        let f = |t: u32| F::from(t);
-        let nyb = |t: u32, i: usize| f((t >> (4 * i)) & 0b1111);
+/// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
+fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
+    let y_xor_xprime_nybbles = chunks_over_2_rows(3);
+    let x_plus_z_nybbles = chunks_over_2_rows(7);
+    let y_nybbles = chunks_over_2_rows(11);
 
-        let top_bit = (((s[x] as u64) + (s[z] as u64)) >> 32) as u32;
-        let xprime = u32::wrapping_add(s[x], s[z]);
-        let y_xor_xprime = s[y] ^ xprime;
-        let yprime = y_xor_xprime.rotate_left(k);
+    let x_plus_z_overflow_bit = witness(2, Next);
 
-        let yprime_in_row =
-            // When k = 7, we use a ChaCha0 gate and throw away the yprime value
-            // (which will need to be y_xor_xprime.rotate_left(16))
-            // in the second row corresponding to that gate
-            if k == 7 { y_xor_xprime.rotate_left(16) } else { yprime };
+    let x = witness(0, Curr);
+    let xprime = witness(0, Next);
+    let y = witness(1, Curr);
+    let yprime = witness(1, Next);
+    let z = witness(2, Curr);
 
-        rows.push(vec![
-            f(s[x]),
-            f(s[y]),
-            f(s[z]),
-            nyb(y_xor_xprime, 0),
-            nyb(y_xor_xprime, 1),
-            nyb(y_xor_xprime, 2),
-            nyb(y_xor_xprime, 3),
-            nyb(xprime, 0),
-            nyb(xprime, 1),
-            nyb(xprime, 2),
-            nyb(xprime, 3),
-            nyb(s[y], 0),
-            nyb(s[y], 1),
-            nyb(s[y], 2),
-            nyb(s[y], 3),
-        ]);
-        rows.push(vec![
-            f(xprime),
-            f(yprime_in_row),
-            f(top_bit),
-            nyb(y_xor_xprime, 4),
-            nyb(y_xor_xprime, 5),
-            nyb(y_xor_xprime, 6),
-            nyb(y_xor_xprime, 7),
-            nyb(xprime, 4),
-            nyb(xprime, 5),
-            nyb(xprime, 6),
-            nyb(xprime, 7),
-            nyb(s[y], 4),
-            nyb(s[y], 5),
-            nyb(s[y], 6),
-            nyb(s[y], 7),
-        ]);
+    // Because the nybbles are little-endian, rotating the vector "right"
+    // is equivalent to left-shifting the nybbles.
+    let mut y_xor_xprime_rotated = y_xor_xprime_nybbles;
+    y_xor_xprime_rotated.rotate_right(nybble_rotation);
 
-        s[x] = xprime;
-        s[y] = yprime;
+    E::combine_constraints(
+        alpha0,
+        vec![
+            // booleanity of overflow bit
+            boolean(&x_plus_z_overflow_bit),
+            // x' = x + z (mod 2^32)
+            combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
+            // Correctness of x+z nybbles
+            xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
+            // Correctness of y nybbles
+            combine_nybbles(y_nybbles) - y,
+            // y' = (y ^ x') <<< 4 * nybble_rotation
+            combine_nybbles(y_xor_xprime_rotated) - yprime,
+        ],
+    )
+}
 
-        if k == 7 {
-            let lo = |t: u32, i: usize| f((t >> (4 * i)) & 1);
+//
+// Gates
+//
+
+/// a += b; d ^= a; d <<<= 16 (=4*4)
+pub fn constraint_chacha0<F: FftField>(alpha0: usize) -> E<F> {
+    index(GateType::ChaCha0, Curr) * line(alpha0, 4)
+}
+
+/// c += d; b ^= c; b <<<= 12 (=3*4)
+pub fn constraint_chacha1<F: FftField>(alpha0: usize) -> E<F> {
+    index(GateType::ChaCha1, Curr) * line(alpha0, 3)
+}
+
+/// a += b; d ^= a; d <<<= 8  (=2*4)
+pub fn constraint_chacha2<F: FftField>(alpha0: usize) -> E<F> {
+    index(GateType::ChaCha2, Curr) * line(alpha0, 2)
+}
+
+/// The last line, namely,
+/// c += d; b ^= c; b <<<= 7;
+/// is special.
+/// We don't use the y' value computed by this one, so we
+/// will use a ChaCha0 gate to compute the nybbles of
+/// all the relevant values, and the xors, and then do
+/// the shifting using a ChaChaFinal gate.
+pub fn constraint_chacha_final<F: FftField>(alpha0: usize) -> E<F> {
+    let y_xor_xprime_nybbles = chunks_over_2_rows(1);
+    let low_bits = chunks_over_2_rows(5);
+    let yprime = witness(0, Curr);
+
+    let one_half = F::from(2u64).inverse().unwrap();
+
+    // (y xor xprime) <<< 7
+    // per the comment at the top of the file
+    let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
+        .iter()
+        .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
+        .map(|(&i, &j)| -> E<F> {
+            E::from(8) * low_bits[i].clone()
+                + E::Constant(C::Literal(one_half))
+                    * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+        })
+        .collect();
+
+    let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
+    constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
+    E::combine_constraints(alpha0, constraints) * index(GateType::ChaChaFinal, Curr)
+}
+
+// TODO: move this to test file
+pub mod testing {
+    use super::*;
+
+    /// This is just for tests. It doesn't set up the permutations
+    pub fn chacha20_gates() -> Vec<GateType> {
+        let mut gs = vec![];
+        for _ in 0..20 {
+            use GateType::*;
+            for _ in 0..4 {
+                for &g in &[ChaCha0, ChaCha1, ChaCha2, ChaCha0, ChaChaFinal] {
+                    gs.push(g);
+                    gs.push(Zero);
+                }
+            }
+        }
+        gs
+    }
+
+    const CHACHA20_ROTATIONS: [u32; 4] = [16, 12, 8, 7];
+    const CHACHA20_QRS: [[usize; 4]; 8] = [
+        [0, 4, 8, 12],
+        [1, 5, 9, 13],
+        [2, 6, 10, 14],
+        [3, 7, 11, 15],
+        [0, 5, 10, 15],
+        [1, 6, 11, 12],
+        [2, 7, 8, 13],
+        [3, 4, 9, 14],
+    ];
+
+    pub fn chacha20_rows<F: FftField>(s0: Vec<u32>) -> Vec<Vec<F>> {
+        let mut rows = vec![];
+
+        let mut s = s0;
+        let mut line = |x: usize, y: usize, z: usize, k: u32| {
+            let f = |t: u32| F::from(t);
+            let nyb = |t: u32, i: usize| f((t >> (4 * i)) & 0b1111);
+
+            let top_bit = (((s[x] as u64) + (s[z] as u64)) >> 32) as u32;
+            let xprime = u32::wrapping_add(s[x], s[z]);
+            let y_xor_xprime = s[y] ^ xprime;
+            let yprime = y_xor_xprime.rotate_left(k);
+
+            let yprime_in_row =
+                // When k = 7, we use a ChaCha0 gate and throw away the yprime value
+                // (which will need to be y_xor_xprime.rotate_left(16))
+                // in the second row corresponding to that gate
+                if k == 7 { y_xor_xprime.rotate_left(16) } else { yprime };
+
             rows.push(vec![
-                f(yprime),
+                f(s[x]),
+                f(s[y]),
+                f(s[z]),
                 nyb(y_xor_xprime, 0),
                 nyb(y_xor_xprime, 1),
                 nyb(y_xor_xprime, 2),
                 nyb(y_xor_xprime, 3),
-                lo(y_xor_xprime, 0),
-                lo(y_xor_xprime, 1),
-                lo(y_xor_xprime, 2),
-                lo(y_xor_xprime, 3),
-                F::zero(),
-                F::zero(),
-                F::zero(),
-                F::zero(),
-                F::zero(),
-                F::zero(),
+                nyb(xprime, 0),
+                nyb(xprime, 1),
+                nyb(xprime, 2),
+                nyb(xprime, 3),
+                nyb(s[y], 0),
+                nyb(s[y], 1),
+                nyb(s[y], 2),
+                nyb(s[y], 3),
             ]);
             rows.push(vec![
-                F::zero(),
+                f(xprime),
+                f(yprime_in_row),
+                f(top_bit),
                 nyb(y_xor_xprime, 4),
                 nyb(y_xor_xprime, 5),
                 nyb(y_xor_xprime, 6),
                 nyb(y_xor_xprime, 7),
-                lo(y_xor_xprime, 4),
-                lo(y_xor_xprime, 5),
-                lo(y_xor_xprime, 6),
-                lo(y_xor_xprime, 7),
-                F::zero(),
-                F::zero(),
-                F::zero(),
-                F::zero(),
-                F::zero(),
-                F::zero(),
+                nyb(xprime, 4),
+                nyb(xprime, 5),
+                nyb(xprime, 6),
+                nyb(xprime, 7),
+                nyb(s[y], 4),
+                nyb(s[y], 5),
+                nyb(s[y], 6),
+                nyb(s[y], 7),
             ]);
-        }
-    };
 
-    let mut qr = |a, b, c, d| {
-        line(a, d, b, CHACHA20_ROTATIONS[0]);
-        line(c, b, d, CHACHA20_ROTATIONS[1]);
-        line(a, d, b, CHACHA20_ROTATIONS[2]);
-        line(c, b, d, CHACHA20_ROTATIONS[3]);
-    };
-    for _ in 0..10 {
-        for [a, b, c, d] in CHACHA20_QRS {
-            qr(a, b, c, d);
+            s[x] = xprime;
+            s[y] = yprime;
+
+            if k == 7 {
+                let lo = |t: u32, i: usize| f((t >> (4 * i)) & 1);
+                rows.push(vec![
+                    f(yprime),
+                    nyb(y_xor_xprime, 0),
+                    nyb(y_xor_xprime, 1),
+                    nyb(y_xor_xprime, 2),
+                    nyb(y_xor_xprime, 3),
+                    lo(y_xor_xprime, 0),
+                    lo(y_xor_xprime, 1),
+                    lo(y_xor_xprime, 2),
+                    lo(y_xor_xprime, 3),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                ]);
+                rows.push(vec![
+                    F::zero(),
+                    nyb(y_xor_xprime, 4),
+                    nyb(y_xor_xprime, 5),
+                    nyb(y_xor_xprime, 6),
+                    nyb(y_xor_xprime, 7),
+                    lo(y_xor_xprime, 4),
+                    lo(y_xor_xprime, 5),
+                    lo(y_xor_xprime, 6),
+                    lo(y_xor_xprime, 7),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                    F::zero(),
+                ]);
+            }
+        };
+
+        let mut qr = |a, b, c, d| {
+            line(a, d, b, CHACHA20_ROTATIONS[0]);
+            line(c, b, d, CHACHA20_ROTATIONS[1]);
+            line(a, d, b, CHACHA20_ROTATIONS[2]);
+            line(c, b, d, CHACHA20_ROTATIONS[3]);
+        };
+        for _ in 0..10 {
+            for [a, b, c, d] in CHACHA20_QRS {
+                qr(a, b, c, d);
+            }
         }
+
+        rows
     }
 
-    rows
-}
-
-pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
-    let mut line = |x, y, z, k| {
-        s[x] = u32::wrapping_add(s[x], s[z]);
-        s[y] ^= s[x];
-        let yy: u32 = s[y];
-        s[y] = yy.rotate_left(k);
-    };
-    let mut qr = |a, b, c, d| {
-        line(a, d, b, CHACHA20_ROTATIONS[0]);
-        line(c, b, d, CHACHA20_ROTATIONS[1]);
-        line(a, d, b, CHACHA20_ROTATIONS[2]);
-        line(c, b, d, CHACHA20_ROTATIONS[3]);
-    };
-    for _ in 0..10 {
-        for [a, b, c, d] in CHACHA20_QRS {
-            qr(a, b, c, d);
+    pub fn chacha20(mut s: Vec<u32>) -> Vec<u32> {
+        let mut line = |x, y, z, k| {
+            s[x] = u32::wrapping_add(s[x], s[z]);
+            s[y] ^= s[x];
+            let yy: u32 = s[y];
+            s[y] = yy.rotate_left(k);
+        };
+        let mut qr = |a, b, c, d| {
+            line(a, d, b, CHACHA20_ROTATIONS[0]);
+            line(c, b, d, CHACHA20_ROTATIONS[1]);
+            line(a, d, b, CHACHA20_ROTATIONS[2]);
+            line(c, b, d, CHACHA20_ROTATIONS[3]);
+        };
+        for _ in 0..10 {
+            for [a, b, c, d] in CHACHA20_QRS {
+                qr(a, b, c, d);
+            }
         }
+        s
     }
-    s
-}
-
-// TODO: Assert somehow that we're using the right number of alphas.
-pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
-    let w = |i: usize, r: CurrOrNext| E::<F>::cell(Column::Witness(i), r);
-
-    // 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
-    // like y^x' or x+z
-    let chunks_over_2_rows = |col_offset: usize| -> Vec<_> {
-        (0..8)
-            .map(|i| {
-                let r = if i < 4 { Curr } else { Next };
-                w(col_offset + (i % 4), r)
-            })
-            .collect()
-    };
-
-    let boolean = |b: &E<F>| b.clone() * b.clone() - b.clone();
-
-    let combine_nybbles = |ns: Vec<E<F>>| -> E<F> {
-        ns.into_iter()
-            .enumerate()
-            .fold(E::zero(), |acc: E<F>, (i, t)| {
-                acc + E::from(1 << (4 * i)) * t
-            })
-    };
-
-    // Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-    let line = |nybble_rotation: usize| -> E<F> {
-        let y_xor_xprime_nybbles = chunks_over_2_rows(3);
-        let x_plus_z_nybbles = chunks_over_2_rows(7);
-        let y_nybbles = chunks_over_2_rows(11);
-
-        let x_plus_z_overflow_bit = w(2, Next);
-
-        let x = w(0, Curr);
-        let xprime = w(0, Next);
-        let y = w(1, Curr);
-        let yprime = w(1, Next);
-        let z = w(2, Curr);
-
-        // Because the nybbles are little-endian, rotating the vector "right"
-        // is equivalent to left-shifting the nybbles.
-        let mut y_xor_xprime_rotated = y_xor_xprime_nybbles;
-        y_xor_xprime_rotated.rotate_right(nybble_rotation);
-
-        E::combine_constraints(
-            alpha0,
-            vec![
-                // booleanity of overflow bit
-                boolean(&x_plus_z_overflow_bit),
-                // x' = x + z (mod 2^32)
-                combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
-                // Correctness of x+z nybbles
-                xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
-                // Correctness of y nybbles
-                combine_nybbles(y_nybbles) - y,
-                // y' = (y ^ x') <<< 4 * nybble_rotation
-                combine_nybbles(y_xor_xprime_rotated) - yprime,
-            ],
-        )
-    };
-
-    let chacha_final = {
-        let y_xor_xprime_nybbles = chunks_over_2_rows(1);
-        let low_bits = chunks_over_2_rows(5);
-        let yprime = w(0, Curr);
-
-        let one_half = F::from(2u64).inverse().unwrap();
-
-        // (y xor xprime) <<< 7
-        // per the comment at the top of the file
-        let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
-            .iter()
-            .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
-            .map(|(&i, &j)| -> E<F> {
-                E::from(8) * low_bits[i].clone()
-                    + E::Constant(C::Literal(one_half))
-                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
-            })
-            .collect();
-
-        let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
-        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
-        E::combine_constraints(alpha0, constraints)
-    };
-
-    let index = |g: GateType| E::cell(Column::Index(g), Curr);
-    use GateType::*;
-    vec![
-        // a += b; d ^= a; d <<<= 16 (=4*4);
-        index(ChaCha0) * line(4),
-        // c += d; b ^= c; b <<<= 12 (=3*4);
-        index(ChaCha1) * line(3),
-        // a += b; d ^= a; d <<<= 8  (=2*4);
-        index(ChaCha2) * line(2),
-        // The last line, namely,
-        // c += d; b ^= c; b <<<= 7;
-        // is special.
-        // We don't use the y' value computed by this one, so we
-        // will use a ChaCha0 gate to compute the nybbles of
-        // all the relevant values, and the xors, and then do
-        // the shifting using a ChaChaFinal gate.
-        index(ChaChaFinal) * chacha_final,
-    ]
-    .into_iter()
-    .fold(0.into(), |acc, x| acc + x)
 }
 
 #[cfg(test)]
@@ -452,7 +466,6 @@ mod tests {
     use crate::circuits::{
         expr::{Column, Constants, PolishToken},
         gate::LookupInfo,
-        polynomials::chacha::constraint,
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::*,
     };
@@ -501,8 +514,10 @@ mod tests {
             h.insert(Column::Index(GateType::Generic));
             h
         };
-
-        let expr = constraint::<F>(10);
+        let mut expr = constraint_chacha0(0);
+        expr = expr + constraint_chacha1(0);
+        expr = expr + constraint_chacha2(0);
+        expr = expr + constraint_chacha_final(0);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

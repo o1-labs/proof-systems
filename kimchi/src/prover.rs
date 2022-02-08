@@ -419,7 +419,7 @@ where
             }
         };
 
-        let t4 = {
+        let mut t4 = {
             // generic
             let mut t4 = index.cs.gnrc_quot(&lagrange.d4.this.w);
             // complete addition
@@ -454,16 +454,21 @@ where
         t8 += &pos8;
         drop(pos8);
 
-        let t4 = match index.cs.chacha8.as_ref() {
-            None => t4,
-            Some(_) => {
-                let mut t4 = t4;
-                let chacha = chacha::constraint(range::CHACHA.start).evaluations(&env);
-                t4 += &chacha;
-                drop(chacha);
-                t4
-            }
-        };
+        // chacha
+        if index.cs.chacha8.as_ref().is_some() {
+            let chacha0 = chacha::constraint_chacha0(range::CHACHA.start).evaluations(&env);
+            t4 += &chacha0;
+
+            let chacha1 = chacha::constraint_chacha1(range::CHACHA.start).evaluations(&env);
+            t4 += &chacha1;
+
+            let chacha2 = chacha::constraint_chacha2(range::CHACHA.start).evaluations(&env);
+            t4 += &chacha2;
+
+            let chacha_final =
+                chacha::constraint_chacha_final(range::CHACHA.start).evaluations(&env);
+            t4 += &chacha_final;
+        }
 
         // quotient polynomial for lookup
         let (t4, t8) = match index.cs.lookup_constraint_system.as_ref() {
