@@ -10,7 +10,7 @@ use crate::circuits::{
 };
 use crate::{
     alphas::{Alphas, ConstraintType},
-    index::VerifierIndex,
+    index::{LookupVerifierIndex, VerifierIndex},
     plonk_sponge::FrSponge,
     prover::ProverProof,
 };
@@ -124,9 +124,16 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
         let joint_combiner = {
-            let s = match index.lookup_used.as_ref() {
-                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            let s = match index.lookup_index {
+                None
+                | Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Single,
+                    ..
+                }) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Joint,
+                    ..
+                }) => ScalarChallenge(fq_sponge.challenge()),
             };
             (s, s.to_field(&index.srs.endo_r))
         };
@@ -503,20 +510,32 @@ where
                                 scalars.push(scalar);
                                 commitments.push(&l.unwrap().aggreg)
                             }
-                            LookupKindIndex(i) => {
-                                scalars.push(scalar);
-                                commitments.push(&index.lookup_selectors[*i]);
-                            }
-                            LookupTable => {
-                                let mut j = Fr::<G>::one();
-                                scalars.push(scalar);
-                                commitments.push(&index.lookup_tables[0][0]);
-                                for t in index.lookup_tables[0].iter().skip(1) {
-                                    j *= constants.joint_combiner;
-                                    scalars.push(scalar * j);
-                                    commitments.push(t);
+                            LookupKindIndex(i) => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    col
+                                ),
+                                Some(lindex) => {
+                                    scalars.push(scalar);
+                                    commitments.push(&lindex.lookup_selectors[*i]);
                                 }
-                            }
+                            },
+                            LookupTable => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    col
+                                ),
+                                Some(lindex) => {
+                                    let mut j = Fr::<G>::one();
+                                    scalars.push(scalar);
+                                    commitments.push(&lindex.lookup_tables[0][0]);
+                                    for t in lindex.lookup_tables[0].iter().skip(1) {
+                                        j *= constants.joint_combiner;
+                                        scalars.push(scalar * j);
+                                        commitments.push(t);
+                                    }
+                                }
+                            },
                             Index(t) => {
                                 use GateType::*;
                                 let c = match t {

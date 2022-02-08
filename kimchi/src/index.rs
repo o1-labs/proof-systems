@@ -6,9 +6,9 @@ This source file implements Plonk Protocol Index primitive.
 
 use crate::alphas::{self, ConstraintType};
 use crate::circuits::{
-    constraints::{zk_polynomial, zk_w3, ConstraintSystem},
+    constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, Expr, Linearization, PolishToken, E},
-    gate::{GateType, LookupInfo, LookupsUsed},
+    gate::{GateType, LookupsUsed},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
 };
@@ -47,9 +47,6 @@ where
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
 
-    /// The type of lookup used in the circuit. This is important to figure out what type of constraint we should include when building the polynomials for proofs (and proof verifications).
-    pub lookup_used: Option<LookupsUsed>,
-
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
@@ -73,6 +70,17 @@ where
 }
 
 /// The verifier index
+
+#[serde_as]
+#[derive(Serialize, Deserialize)]
+pub struct LookupVerifierIndex<G: CommitmentCurve> {
+    pub lookup_used: LookupsUsed,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_selectors: Vec<PolyComm<G>>,
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize)]
 pub struct VerifierIndex<G: CommitmentCurve> {
@@ -137,11 +145,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub endo: Fr<G>,
 
-    pub lookup_used: Option<LookupsUsed>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_selectors: Vec<PolyComm<G>>,
+    pub lookup_index: Option<LookupVerifierIndex<G>>,
+
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 
@@ -155,7 +161,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
-    dummy_lookup_value: Option<&[F]>,
+    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
     powers_of_alpha: &mut alphas::Builder,
 ) -> E<F> {
     // gates
@@ -175,26 +181,32 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     // lookup
-    if let Some(dummy) = dummy_lookup_value {
+    if let Some(lcs) = lookup_constraint_system.as_ref() {
         let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
-        let constraints = lookup::constraints(dummy, domain);
+        let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
         let combined = Expr::combine_constraints(alphas, constraints);
-        expr += combined
+        expr += combined;
     }
 
     // return the expression
     expr
 }
 
-pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collections::HashSet<Column> {
-    let lookup_info = LookupInfo::<F>::create();
+pub fn linearization_columns<F: FftField + SquareRootField>(
+    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
     use Column::*;
     for i in 0..COLUMNS {
         h.insert(Witness(i));
     }
-    for i in 0..(lookup_info.max_per_row + 1) {
-        h.insert(LookupSorted(i));
+    match lookup_constraint_system.as_ref() {
+        None => (),
+        Some(lcs) => {
+            for i in 0..(lcs.max_lookups_per_row + 1) {
+                h.insert(LookupSorted(i));
+            }
+        }
     }
     h.insert(Z);
     h.insert(LookupAggreg);
@@ -207,12 +219,12 @@ pub fn linearization_columns<F: FftField + SquareRootField>() -> std::collection
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
-    dummy_lookup_value: Option<&[F]>,
+    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
     powers_of_alpha: &mut alphas::Builder,
 ) -> Linearization<Vec<PolishToken<F>>> {
-    let evaluated_cols = linearization_columns::<F>();
+    let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    constraints_expr(domain, chacha, dummy_lookup_value, powers_of_alpha)
+    constraints_expr(domain, chacha, lookup_constraint_system, powers_of_alpha)
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish())
@@ -225,6 +237,28 @@ where
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
+        let lookup_index = {
+            self.cs
+                .lookup_constraint_system
+                .as_ref()
+                .map(|cs| LookupVerifierIndex {
+                    lookup_used: cs.lookup_used,
+                    lookup_selectors: cs
+                        .lookup_selectors
+                        .iter()
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                        .collect(),
+                    lookup_tables: cs
+                        .lookup_tables8
+                        .iter()
+                        .map(|v| {
+                            v.iter()
+                                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                                .collect()
+                        })
+                        .collect(),
+                })
+        };
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
@@ -268,24 +302,7 @@ where
             zkpm: self.cs.zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
             endo: self.cs.endo,
-
-            lookup_used: self.lookup_used,
-            lookup_tables: self
-                .cs
-                .lookup_tables8
-                .iter()
-                .map(|v| {
-                    v.iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                        .collect()
-                })
-                .collect(),
-            lookup_selectors: self
-                .cs
-                .lookup_selectors
-                .iter()
-                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                .collect(),
+            lookup_index,
             linearization: self.linearization.clone(),
 
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
@@ -309,9 +326,6 @@ where
         }
         cs.endo = endo_q;
 
-        let lookup_info = LookupInfo::<Fr<G>>::create();
-        let lookup_used = lookup_info.lookup_used(&cs.gates);
-
         //
         // register powers of alphas
         //
@@ -325,16 +339,10 @@ where
         // Lookup
         //
 
-        let dummy_lookup_value = if lookup_used.is_some() {
-            Some(&cs.dummy_lookup_values[0][..])
-        } else {
-            None
-        };
-
         let linearization = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
-            dummy_lookup_value,
+            &cs.lookup_constraint_system,
             &mut powers_of_alpha,
         );
 
@@ -342,7 +350,6 @@ where
 
         Index {
             cs,
-            lookup_used,
             linearization,
             powers_of_alpha,
             srs,
