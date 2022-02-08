@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["bench","Hosts the benchmarking logic"],["circuits",""],["index",""],["plonk_sponge",""],["prover",""],["range",""],["verifier",""]]});
+initSidebarItems({"mod":[["bench","Hosts the benchmarking logic"],["circuits",""],["index",""],["plonk_sponge",""],["prover","This module implements prover’s zk-proof primitive."],["range",""],["verifier","This module implements zk-proof batch verifier functionality."]]});

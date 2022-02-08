@@ -230,30 +230,14 @@
 <span id="225">225</span>
 <span id="226">226</span>
 <span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
-
-Acc := [2]T
-for i = n-1 ... 0:
-   Q := (r_i == 1) ? T : -T
-   Acc := Acc + (Q + Acc)
-
-
-See
-https://github.com/zcash/zcash/issues/3924
-and
-3.1 of https://arxiv.org/pdf/math/0208038.pdf
-for details.
-*****************************************************************************************************************/</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Acc := [2]T</span>
+<span class="doccomment">//! for i = n-1 ... 0:</span>
+<span class="doccomment">//!   Q := (r_i == 1) ? T : -T</span>
+<span class="doccomment">//!   Acc := Acc + (Q + Acc)</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::expr</span>::{<span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">Variable</span>, <span class="ident">E</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};

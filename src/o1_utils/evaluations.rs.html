@@ -56,6 +56,9 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [Evaluations] arkworks type.</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::FftField</span>;
@@ -67,11 +70,14 @@
     <span class="doccomment">/// This function &quot;scales&quot; (multiplies) a polynomial with a scalar</span>
     <span class="doccomment">/// It is implemented to have the desired functionality for DensePolynomial</span>
     <span class="kw">fn</span> <span class="ident">scale</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">elm</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span>;
-    <span class="doccomment">/// square each evaluation</span>
+
+    <span class="doccomment">/// Square each evaluation</span>
     <span class="kw">fn</span> <span class="ident">square</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>;
-    <span class="doccomment">/// raise each evaluation to some power `pow`</span>
+
+    <span class="doccomment">/// Raise each evaluation to some power `pow`</span>
     <span class="kw">fn</span> <span class="ident">pow</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pow</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span>;
-    <span class="doccomment">/// utility function for shifting poly along domain coordinate</span>
+
+    <span class="doccomment">/// Utility function for shifting poly along domain coordinate</span>
     <span class="kw">fn</span> <span class="ident">shift</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">len</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span>;
 }
 

@@ -584,6 +584,12 @@
 <span id="579">579</span>
 <span id="580">580</span>
 <span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk constraint gate primitive.
@@ -692,6 +698,11 @@ This source file implements Plonk constraint gate primitive.
     }
 }
 
+<span class="doccomment">/// The different types of gates the system supports.</span>
+<span class="doccomment">/// Note that all the gates are mutually exclusive:</span>
+<span class="doccomment">/// they cannot be used at the same time on single row.</span>
+<span class="doccomment">/// If we were ever to support this feature, we would have to make sure</span>
+<span class="doccomment">/// not to re-use powers of alpha across constraints.</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Clone</span>,
@@ -1013,7 +1024,8 @@ This source file implements Plonk constraint gate primitive.
             <span class="ident">VarBaseMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
             <span class="ident">EndoMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="ident">EndoMulScalar</span> =&gt; <span class="self">self</span>.<span class="ident">verify_endomul_scalar</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
-            <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;todo&quot;</span>),
+            <span class="comment">// TODO: implement the verification for chacha</span>
+            <span class="ident">ChaCha0</span> <span class="op">|</span> <span class="ident">ChaCha1</span> <span class="op">|</span> <span class="ident">ChaCha2</span> <span class="op">|</span> <span class="ident">ChaChaFinal</span> =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }
 }
