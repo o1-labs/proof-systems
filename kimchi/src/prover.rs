@@ -1,6 +1,5 @@
 //! This module implements prover's zk-proof primitive.
 
-
 pub use super::{index::Index, range};
 use crate::circuits::{
     constraints::{LookupConstraintSystem, ZK_ROWS},
