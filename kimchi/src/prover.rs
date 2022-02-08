@@ -502,11 +502,42 @@ where
 
             // chacha
             if index.cs.chacha8.as_ref().is_some() {
-                let chacha = chacha::constraint(range::CHACHA.start).evaluations(&env);
-                t4 += &chacha;
+                let chacha0 = chacha::constraint_chacha0(range::CHACHA.start).evaluations(&env);
+                t4 += &chacha0;
+
+                let chacha1 = chacha::constraint_chacha1(range::CHACHA.start).evaluations(&env);
+                t4 += &chacha1;
+
+                let chacha2 = chacha::constraint_chacha2(range::CHACHA.start).evaluations(&env);
+                t4 += &chacha2;
+
+                let chacha_final =
+                    chacha::constraint_chacha_final(range::CHACHA.start).evaluations(&env);
+                t4 += &chacha_final;
 
                 if cfg!(test) {
-                    let (_, res) = chacha
+                    let (_, res) = chacha0
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha1
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha2
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha_final
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)

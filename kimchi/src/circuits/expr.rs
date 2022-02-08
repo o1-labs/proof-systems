@@ -1969,6 +1969,16 @@ impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
 /// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
 
+/// Handy function to quickly create an expression for a witness.
+pub fn witness<F>(i: usize, r: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), r)
+}
+
+/// Handy function to quickly create an expression for a gate.
+pub fn index<F>(g: GateType, r: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Index(g), r)
+}
+
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
