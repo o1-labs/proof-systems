@@ -649,13 +649,32 @@
 <span id="644">644</span>
 <span id="645">645</span>
 <span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
 </pre><pre class="rust"><code><span class="comment">/********************************************************************************************
 
 This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/</span>
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::index::VerifierIndex</span> <span class="kw">as</span> <span class="ident">Index</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::index</span>::{<span class="ident">LookupVerifierIndex</span>, <span class="ident">VerifierIndex</span> <span class="kw">as</span> <span class="ident">Index</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::prover</span>::{<span class="ident">range</span>, <span class="ident">ProverProof</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::ConstraintSystem</span>,
@@ -776,9 +795,16 @@ This source file implements zk-proof batch verifier functionality.
             .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">fq_sponge</span>.<span class="ident">absorb_g</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">unshifted</span>));
 
         <span class="kw">let</span> <span class="ident">joint_combiner</span> <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">lookup_used</span>.<span class="ident">as_ref</span>() {
-                <span class="prelude-val">None</span> <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Single</span>) =&gt; <span class="ident">ScalarChallenge</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()),
-                <span class="prelude-val">Some</span>(<span class="ident">LookupsUsed::Joint</span>) =&gt; <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>()),
+            <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">lookup_index</span> {
+                <span class="prelude-val">None</span>
+                <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">LookupVerifierIndex</span> {
+                    <span class="ident">lookup_used</span>: <span class="ident">LookupsUsed::Single</span>,
+                    ..
+                }) =&gt; <span class="ident">ScalarChallenge</span>(<span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::zero</span>()),
+                <span class="prelude-val">Some</span>(<span class="ident">LookupVerifierIndex</span> {
+                    <span class="ident">lookup_used</span>: <span class="ident">LookupsUsed::Joint</span>,
+                    ..
+                }) =&gt; <span class="ident">ScalarChallenge</span>(<span class="ident">fq_sponge</span>.<span class="ident">challenge</span>()),
             };
             (<span class="ident">s</span>, <span class="ident">s</span>.<span class="ident">to_field</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">endo_r</span>))
         };
@@ -1142,20 +1168,32 @@ This source file implements zk-proof batch verifier functionality.
                                 <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
                                 <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">l</span>.<span class="ident">unwrap</span>().<span class="ident">aggreg</span>)
                             }
-                            <span class="ident">LookupKindIndex</span>(<span class="ident">i</span>) =&gt; {
-                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_selectors</span>[<span class="kw-2">*</span><span class="ident">i</span>]);
-                            }
-                            <span class="ident">LookupTable</span> =&gt; {
-                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">j</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
-                                <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
-                                <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">index</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>][<span class="number">0</span>]);
-                                <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">index</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="number">1</span>) {
-                                    <span class="ident">j</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">constants</span>.<span class="ident">joint_combiner</span>;
-                                    <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span> <span class="op">*</span> <span class="ident">j</span>);
-                                    <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="ident">t</span>);
+                            <span class="ident">LookupKindIndex</span>(<span class="ident">i</span>) =&gt; <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">lookup_index</span>.<span class="ident">as_ref</span>() {
+                                <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(
+                                    <span class="string">&quot;Attempted to use {:?}, but no lookup index was given&quot;</span>,
+                                    <span class="ident">c</span>
+                                ),
+                                <span class="prelude-val">Some</span>(<span class="ident">lindex</span>) =&gt; {
+                                    <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                    <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">lindex</span>.<span class="ident">lookup_selectors</span>[<span class="kw-2">*</span><span class="ident">i</span>]);
                                 }
-                            }
+                            },
+                            <span class="ident">LookupTable</span> =&gt; <span class="kw">match</span> <span class="ident">index</span>.<span class="ident">lookup_index</span>.<span class="ident">as_ref</span>() {
+                                <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(
+                                    <span class="string">&quot;Attempted to use {:?}, but no lookup index was given&quot;</span>,
+                                    <span class="ident">c</span>
+                                ),
+                                <span class="prelude-val">Some</span>(<span class="ident">lindex</span>) =&gt; {
+                                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">j</span> <span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>();
+                                    <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span>);
+                                    <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="ident">lindex</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>][<span class="number">0</span>]);
+                                    <span class="kw">for</span> <span class="ident">t</span> <span class="kw">in</span> <span class="ident">lindex</span>.<span class="ident">lookup_tables</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">skip</span>(<span class="number">1</span>) {
+                                        <span class="ident">j</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">constants</span>.<span class="ident">joint_combiner</span>;
+                                        <span class="ident">scalars_part</span>.<span class="ident">push</span>(<span class="ident">e</span> <span class="op">*</span> <span class="ident">j</span>);
+                                        <span class="ident">commitments_part</span>.<span class="ident">push</span>(<span class="ident">t</span>);
+                                    }
+                                }
+                            },
                             <span class="ident">Index</span>(<span class="ident">t</span>) =&gt; {
                                 <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
                                 <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">t</span> {
@@ -1296,5 +1334,5 @@ This source file implements zk-proof batch verifier functionality.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (f624427f8 2022-02-06)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (734368a20 2022-02-07)" ></div>
 </body></html>
