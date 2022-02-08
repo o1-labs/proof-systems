@@ -12,7 +12,7 @@ use crate::circuits::{
 use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::UniformRand;
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -20,6 +20,7 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
+use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
@@ -62,34 +63,6 @@ pub struct ProverProof<G: AffineCurve> {
 
     // The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
-}
-
-fn combine_evaluations<F: FftField>(
-    init: (Evaluations<F, D<F>>, Evaluations<F, D<F>>),
-    alpha: F,
-    prev_alpha_pow: F,
-    es: Vec<Evaluations<F, D<F>>>,
-) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>) {
-    let mut alpha_pow = prev_alpha_pow;
-    let pows = (0..).map(|_| {
-        alpha_pow *= alpha;
-        alpha_pow
-    });
-
-    es.into_iter()
-        .zip(pows)
-        .fold(init, |(mut a4, mut a8), (mut e, alpha_pow)| {
-            e.evals.iter_mut().for_each(|x| *x *= alpha_pow);
-            if e.domain().size == a4.domain().size {
-                a4 += &e;
-            } else if e.domain().size == a8.domain().size {
-                a8 += &e;
-            } else {
-                panic!("Bad evaluation")
-            }
-            drop(e);
-            (a4, a8)
-        })
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -454,7 +427,7 @@ where
         t8 += &pos8;
         drop(pos8);
 
-        let t4 = match index.cs.chacha8.as_ref() {
+        let mut t4 = match index.cs.chacha8.as_ref() {
             None => t4,
             Some(_) => {
                 let mut t4 = t4;
@@ -465,19 +438,28 @@ where
             }
         };
 
-        // quotient polynomial for lookup
-        let (t4, t8) = match index.cs.lookup_constraint_system.as_ref() {
-            None => (t4, t8),
-            Some(lcs) => combine_evaluations(
-                (t4, t8),
-                alpha,
-                alphas[alphas.len() - 1],
-                lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1)
-                    .iter()
-                    .map(|e| e.evaluations(&env))
-                    .collect(),
-            ),
-        };
+        // lookup
+        if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+            let mut alpha_pow = alphas[alphas.len() - 1];
+            let pows = (0..).map(|_| {
+                alpha_pow *= alpha;
+                alpha_pow
+            });
+
+            let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+            for (constraint, alpha_pow) in constraints.into_iter().zip_eq(pows) {
+                let mut eval = constraint.evaluations(&env);
+                eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+
+                if eval.domain().size == t4.domain().size {
+                    t4 += &eval;
+                } else if eval.domain().size == t8.domain().size {
+                    t8 += &eval;
+                } else {
+                    panic!("Bad evaluation")
+                }
+            }
+        }
 
         // divide contributions with vanishing polynomial
         let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &public_poly)
