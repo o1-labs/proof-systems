@@ -1,8 +1,4 @@
-/********************************************************************************************
-
-This source file implements prover's zk-proof primitive.
-
-*********************************************************************************************/
+//! This module implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::circuits::{
@@ -357,7 +353,7 @@ where
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
         let alphas = range::alpha_powers(alpha);
 
-        // evaluate polynomials over domains
+        // evaluate witness and permutation polynomials over domains
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
         let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
@@ -386,7 +382,6 @@ where
                 },
             );
 
-        // compute quotient polynomial
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;

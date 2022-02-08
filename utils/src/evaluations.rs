@@ -9,11 +9,14 @@ pub trait ExtendedEvaluations<F: FftField> {
     /// This function "scales" (multiplies) a polynomial with a scalar
     /// It is implemented to have the desired functionality for DensePolynomial
     fn scale(&self, elm: F) -> Self;
-    /// square each evaluation
+
+    /// Square each evaluation
     fn square(&self) -> Self;
-    /// raise each evaluation to some power `pow`
+
+    /// Raise each evaluation to some power `pow`
     fn pow(&self, pow: usize) -> Self;
-    /// utility function for shifting poly along domain coordinate
+
+    /// Utility function for shifting poly along domain coordinate
     fn shift(&self, len: usize) -> Self;
 }
 

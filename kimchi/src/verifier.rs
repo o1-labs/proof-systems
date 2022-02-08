@@ -1,8 +1,4 @@
-/********************************************************************************************
-
-This source file implements zk-proof batch verifier functionality.
-
-*********************************************************************************************/
+//! This module implements zk-proof batch verifier functionality.
 
 pub use super::index::{LookupVerifierIndex, VerifierIndex as Index};
 pub use super::prover::{range, ProverProof};

@@ -36,6 +36,7 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 /// The index common to both the prover and verifier
+// TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Index<G: CommitmentCurve>
@@ -46,6 +47,7 @@ where
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
 
+    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 

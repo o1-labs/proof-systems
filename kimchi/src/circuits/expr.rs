@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::iter::FromIterator;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use CurrOrNext::*;
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -1664,7 +1664,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
             if unevaluated.is_empty() {
-                constant_term = constant_term + c;
+                constant_term += c;
             } else if unevaluated.len() == 1 {
                 let var = unevaluated.remove(0);
                 match var.row {
@@ -1841,6 +1841,16 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
             return self;
         }
         Expr::BinOp(Op2::Add, Box::new(self), Box::new(other))
+    }
+}
+
+impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
+    fn add_assign(&mut self, other: Self) {
+        if self.is_zero() {
+            *self = other;
+        } else if !other.is_zero() {
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+        }
     }
 }
 

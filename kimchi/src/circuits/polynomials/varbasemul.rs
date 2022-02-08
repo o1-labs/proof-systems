@@ -1,19 +1,11 @@
-/*****************************************************************************************************************
-
-This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
-
-Acc := [2]T
-for i = n-1 ... 0:
-   Q := (r_i == 1) ? T : -T
-   Acc := Acc + (Q + Acc)
-
-
-See
-https://github.com/zcash/zcash/issues/3924
-and
-3.1 of https://arxiv.org/pdf/math/0208038.pdf
-for details.
-*****************************************************************************************************************/
+//! This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
+//!
+//! Acc := [2]T
+//! for i = n-1 ... 0:
+//!   Q := (r_i == 1) ? T : -T
+//!   Acc := Acc + (Q + Acc)
+//!
+//! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.
 
 use crate::circuits::expr::{Cache, Column, Variable, E};
 use crate::circuits::gate::{CurrOrNext, GateType};
