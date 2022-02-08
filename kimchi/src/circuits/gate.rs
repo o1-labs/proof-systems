@@ -432,7 +432,8 @@ impl<F: FftField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            // TODO: implement the verification for chacha
+            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
         }
     }
 }
