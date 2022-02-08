@@ -6,9 +6,9 @@ This source file implements prover's zk-proof primitive.
 
 pub use super::{index::Index, range};
 use crate::circuits::{
-    constraints::ZK_ROWS,
+    constraints::{LookupConstraintSystem, ZK_ROWS},
     expr::{l0_1, Constants, Environment, LookupEnvironment},
-    gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
+    gate::{combine_table_entry, GateType, LookupsUsed},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
@@ -181,14 +181,18 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
-        let lookup_info = LookupInfo::<Fr<G>>::create();
-        let lookup_used = lookup_info.lookup_used(&index.cs.gates);
-
         let joint_combiner_ = {
             // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
-            let s = match lookup_used.as_ref() {
-                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            let s = match index.cs.lookup_constraint_system.as_ref() {
+                None
+                | Some(LookupConstraintSystem {
+                    lookup_used: LookupsUsed::Single,
+                    ..
+                }) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupConstraintSystem {
+                    lookup_used: LookupsUsed::Joint,
+                    ..
+                }) => ScalarChallenge(fq_sponge.challenge()),
             };
             (s, s.to_field(&index.srs.endo_r))
         };
@@ -238,22 +242,20 @@ where
         // their average length or something like that.
 
         let dummy_lookup_value = {
-            let x = match lookup_used.as_ref() {
+            let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(_) => {
-                    combine_table_entry(joint_combiner, index.cs.dummy_lookup_values[0].iter())
-                }
+                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_values[0].iter()),
             };
             CombinedEntry(x)
         };
 
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
-            match lookup_used.as_ref() {
+            match index.cs.lookup_constraint_system.as_ref() {
                 None => (None, None, None, None),
-                Some(_) => {
+                Some(lcs) => {
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
-                            let row = index.cs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
+                            let row = lcs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
                     };
@@ -307,11 +309,11 @@ where
 
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
-            match lookup_sorted {
-                None => (None, None, None),
-                Some(lookup_sorted) => {
+            match (index.cs.lookup_constraint_system.as_ref(), lookup_sorted) {
+                (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
+                (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        let row = lcs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
 
@@ -358,8 +360,8 @@ where
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
-        let lookup_table_combined = lookup_used.as_ref().map(|_| {
-            let joint_table = &index.cs.lookup_tables8[0];
+        let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
+            let joint_table = &lcs.lookup_tables8[0];
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
@@ -372,12 +374,15 @@ where
             .as_ref()
             .zip(lookup_sorted8.as_ref())
             .zip(lookup_aggreg8.as_ref())
+            .zip(index.cs.lookup_constraint_system.as_ref())
             .map(
-                |((lookup_table_combined, lookup_sorted), lookup_aggreg)| LookupEnvironment {
-                    aggreg: lookup_aggreg,
-                    sorted: lookup_sorted,
-                    table: lookup_table_combined,
-                    selectors: &index.cs.lookup_selectors,
+                |(((lookup_table_combined, lookup_sorted), lookup_aggreg), lcs)| {
+                    LookupEnvironment {
+                        aggreg: lookup_aggreg,
+                        sorted: lookup_sorted,
+                        table: lookup_table_combined,
+                        selectors: &lcs.lookup_selectors,
+                    }
                 },
             );
 
@@ -466,13 +471,13 @@ where
         };
 
         // quotient polynomial for lookup
-        let (t4, t8) = match lookup_used {
+        let (t4, t8) = match index.cs.lookup_constraint_system.as_ref() {
             None => (t4, t8),
-            Some(_) => combine_evaluations(
+            Some(lcs) => combine_evaluations(
                 (t4, t8),
                 alpha,
                 alphas[alphas.len() - 1],
-                lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1)
+                lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1)
                     .iter()
                     .map(|e| e.evaluations(&env))
                     .collect(),
@@ -519,13 +524,14 @@ where
             lookup_aggreg_coeffs
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
-                .map(|(aggreg, sorted)| LookupEvaluations {
+                .zip(index.cs.lookup_constraint_system.as_ref())
+                .map(|((aggreg, sorted), lcs)| LookupEvaluations {
                     aggreg: aggreg.eval(e, index.max_poly_size),
                     sorted: sorted
                         .iter()
                         .map(|c| c.eval(e, index.max_poly_size))
                         .collect(),
-                    table: index.cs.lookup_tables[0]
+                    table: lcs.lookup_tables[0]
                         .iter()
                         .map(|p| p.eval(e, index.max_poly_size))
                         .rev()

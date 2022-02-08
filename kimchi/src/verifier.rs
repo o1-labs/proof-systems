@@ -4,7 +4,7 @@ This source file implements zk-proof batch verifier functionality.
 
 *********************************************************************************************/
 
-pub use super::index::VerifierIndex as Index;
+pub use super::index::{LookupVerifierIndex, VerifierIndex as Index};
 pub use super::prover::{range, ProverProof};
 use crate::circuits::{
     constraints::ConstraintSystem,
@@ -125,9 +125,16 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
         let joint_combiner = {
-            let s = match index.lookup_used.as_ref() {
-                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            let s = match index.lookup_index {
+                None
+                | Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Single,
+                    ..
+                }) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Joint,
+                    ..
+                }) => ScalarChallenge(fq_sponge.challenge()),
             };
             (s, s.to_field(&index.srs.endo_r))
         };
@@ -491,20 +498,32 @@ where
                                 scalars_part.push(e);
                                 commitments_part.push(&l.unwrap().aggreg)
                             }
-                            LookupKindIndex(i) => {
-                                scalars_part.push(e);
-                                commitments_part.push(&index.lookup_selectors[*i]);
-                            }
-                            LookupTable => {
-                                let mut j = Fr::<G>::one();
-                                scalars_part.push(e);
-                                commitments_part.push(&index.lookup_tables[0][0]);
-                                for t in index.lookup_tables[0].iter().skip(1) {
-                                    j *= constants.joint_combiner;
-                                    scalars_part.push(e * j);
-                                    commitments_part.push(t);
+                            LookupKindIndex(i) => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    c
+                                ),
+                                Some(lindex) => {
+                                    scalars_part.push(e);
+                                    commitments_part.push(&lindex.lookup_selectors[*i]);
                                 }
-                            }
+                            },
+                            LookupTable => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    c
+                                ),
+                                Some(lindex) => {
+                                    let mut j = Fr::<G>::one();
+                                    scalars_part.push(e);
+                                    commitments_part.push(&lindex.lookup_tables[0][0]);
+                                    for t in lindex.lookup_tables[0].iter().skip(1) {
+                                        j *= constants.joint_combiner;
+                                        scalars_part.push(e * j);
+                                        commitments_part.push(t);
+                                    }
+                                }
+                            },
                             Index(t) => {
                                 use GateType::*;
                                 let c = match t {
