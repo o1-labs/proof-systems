@@ -4,22 +4,35 @@
 //! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
+use std::ops::Index;
+
 use crate::circuits::cairo::runner::word::CairoWord;
+use ark_ff::FftField;
 
 /// This data structure stores the memory of the program
-pub struct CairoBytecode {
+pub struct CairoMemory<F: FftField> {
     /// length of the public memory
     publen: u64,
     /// full memory vector, None if non initialized
-    pub mem: Vec<Option<CairoWord>>,
+    pub data: Vec<Option<CairoWord<F>>>,
 }
 
-impl CairoBytecode {
-    /// Create a new memory structure from a vector of u64
-    pub fn new(input: Vec<i128>) -> CairoBytecode {
+impl<F: FftField> Index<F> for CairoMemory<F> {
+    type Output = F;
+    fn index<'a>(&'a self, idx: F) -> &Self::Output {
+        // Safely convert idx from F to usize (since this is a memory address
+        // idx should not be too big, this should be safe)
+        let addr: usize = idx.try_into();
+        &self.data[addr]
+    }
+}
+
+impl<F: FftField> CairoMemory<F: FftField> {
+    /// Create a new memory structure from a vector of field elements
+    pub fn new(input: Vec<F>) -> CairoMemory<F: FftField> {
         // Initialized with the public memory (compiled instructions only)
         // starts intentionally with a zero word for ease of testing
-        let mut aux = vec![0];
+        let mut aux = vec![F::zero()];
         aux.extend(input);
         CairoBytecode {
             publen: (aux.len() - 1) as u64,
@@ -109,7 +122,6 @@ mod tests {
     }
 }
 
-/*
 #[test]
 fn test_awesome_index() {
     struct Memo<F: FftField> {
@@ -133,5 +145,3 @@ fn test_awesome_index() {
     println!("memo[0] = {}", memo[PallasField::zero()]);
     println!("memo[1] = {}", memo[PallasField::from(1)]);
 }
-
-*/
