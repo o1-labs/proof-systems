@@ -52,7 +52,6 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    table_id: usize,
     // Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
@@ -89,6 +88,7 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
+    pub table_id: usize,
     pub entry: Vec<SingleLookup<F>>,
 }
 
@@ -304,10 +304,10 @@ impl GateType {
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
                 let l = |loc: LocalPosition| SingleLookup {
-                    table_id: 0,
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
+                    table_id: 0,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -332,15 +332,14 @@ impl GateType {
                 // Check
                 // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
                 let x = SingleLookup {
-                    table_id: 0,
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
+                    table_id: 0,
                     entry: vec![
                         x.clone(),
                         x,
                         SingleLookup {
-                            table_id: 0,
                             value: vec![],
                         },
                     ],
