@@ -336,13 +336,7 @@ impl GateType {
                 };
                 JointLookup {
                     table_id: 0,
-                    entry: vec![
-                        x.clone(),
-                        x,
-                        SingleLookup {
-                            value: vec![],
-                        },
-                    ],
+                    entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
             .collect();
