@@ -1,6 +1,5 @@
 //! This module implements prover's zk-proof primitive.
 
-pub use super::{index::Index, range};
 use crate::circuits::{
     constraints::{LookupConstraintSystem, ZK_ROWS},
     expr::{l0_1, Constants, Environment, LookupEnvironment},
@@ -9,10 +8,9 @@ use crate::circuits::{
     scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
 };
-use crate::plonk_sponge::FrSponge;
+use crate::{index::Index, plonk_sponge::FrSponge, range};
 use ark_ec::AffineCurve;
-use ark_ff::UniformRand;
-use ark_ff::{Field, One, PrimeField, Zero};
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -20,7 +18,6 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
-use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
@@ -392,88 +389,172 @@ where
             }
         };
 
-        let t4 = {
+        //
+        // compute quotient polynomial
+        //
+
+        let quotient_poly = {
             // generic
             let mut t4 = index.cs.gnrc_quot(&lagrange.d4.this.w);
+
+            if cfg!(test) {
+                let (_, res) = t4
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             // complete addition
             let (alphas_used, add_constraint) = complete_add::constraint(range::COMPLETE_ADD.start);
             assert_eq!(alphas_used, range::COMPLETE_ADD.len());
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
+
+            if cfg!(test) {
+                let (_, res) = add4
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             drop(add4);
-            t4
-        };
 
-        // permutation
-        let (perm, bnd) =
-            index
-                .cs
-                .perm_quot(&lagrange, beta, gamma, &z_poly, &alphas[range::PERM])?;
-        let mut t8 = perm;
-        // scalar multiplication
-        let mul8 = varbasemul::constraint(range::MUL.start).evaluations(&env);
-        t8 += &mul8;
-        drop(mul8);
-        // endoscaling
-        let emul8 = endosclmul::constraint(2 + range::ENDML.start).evaluations(&env);
-        t8 += &emul8;
-        drop(emul8);
-        // endoscaling scalar computation
-        let emulscalar8 = endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
-        t8 += &emulscalar8;
-        drop(emulscalar8);
-        // poseidon
-        let pos8 = poseidon::constraint().evaluations(&env);
-        t8 += &pos8;
-        drop(pos8);
+            // permutation
+            let (perm, bnd) =
+                index
+                    .cs
+                    .perm_quot(&lagrange, beta, gamma, &z_poly, &alphas[range::PERM])?;
+            let mut t8 = perm;
 
-        let mut t4 = match index.cs.chacha8.as_ref() {
-            None => t4,
-            Some(_) => {
-                let mut t4 = t4;
+            if cfg!(test) {
+                let (_, res) = t8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            // scalar multiplication
+            let mul8 = varbasemul::constraint(range::MUL.start).evaluations(&env);
+            t8 += &mul8;
+
+            if cfg!(test) {
+                let (_, res) = mul8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(mul8);
+
+            // endoscaling
+            let emul8 = endosclmul::constraint(2 + range::ENDML.start).evaluations(&env);
+            t8 += &emul8;
+
+            if cfg!(test) {
+                let (_, res) = emul8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(emul8);
+
+            // endoscaling scalar computation
+            let emulscalar8 =
+                endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
+            t8 += &emulscalar8;
+
+            if cfg!(test) {
+                let (_, res) = emulscalar8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(emulscalar8);
+
+            // poseidon
+            let pos8 = poseidon::constraint().evaluations(&env);
+            t8 += &pos8;
+
+            if cfg!(test) {
+                let (_, res) = pos8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(pos8);
+
+            // chacha
+            if index.cs.chacha8.as_ref().is_some() {
                 let chacha = chacha::constraint(range::CHACHA.start).evaluations(&env);
                 t4 += &chacha;
-                drop(chacha);
-                t4
-            }
-        };
 
-        // lookup
-        if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-            let mut alpha_pow = alphas[alphas.len() - 1];
-            let pows = (0..).map(|_| {
-                alpha_pow *= alpha;
-                alpha_pow
-            });
-
-            let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
-            for (constraint, alpha_pow) in constraints.into_iter().zip_eq(pows) {
-                let mut eval = constraint.evaluations(&env);
-                eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
-
-                if eval.domain().size == t4.domain().size {
-                    t4 += &eval;
-                } else if eval.domain().size == t8.domain().size {
-                    t8 += &eval;
-                } else {
-                    panic!("Bad evaluation")
+                if cfg!(test) {
+                    let (_, res) = chacha
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
                 }
             }
-        }
 
-        // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &public_poly)
-            .divide_by_vanishing_poly(index.cs.domain.d1)
-            .map_or(Err(ProofError::PolyDivision), Ok)?;
-        if !res.is_zero() {
-            return Err(ProofError::PolyDivision);
-        }
+            // lookup
+            if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                let mut alpha_pow = alphas[alphas.len() - 1];
 
-        t += &bnd;
+                let constraints =
+                    lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+                for constraint in constraints {
+                    alpha_pow *= alpha;
+                    let mut eval = constraint.evaluations(&env);
+                    eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation")
+                    }
+                }
+            }
+
+            // public polynomial
+            let mut f = t4.interpolate() + t8.interpolate();
+            f += &public_poly;
+
+            // divide contributions with vanishing polynomial
+            let (mut quotient, res) = f
+                .divide_by_vanishing_poly(index.cs.domain.d1)
+                .ok_or(ProofError::PolyDivision)?;
+            if !res.is_zero() {
+                return Err(ProofError::PolyDivision);
+            }
+
+            quotient += &bnd; // already divided by Z_H
+            quotient
+        };
 
         // commit to t
         let t_comm = {
-            let (mut t_comm, mut omega_t) = index.srs.commit(&t, None, rng);
+            let (mut t_comm, mut omega_t) = index.srs.commit(&quotient_poly, None, rng);
 
             let expected_t_size = PERMUTS;
             let dummies = expected_t_size - t_comm.unshifted.len();
@@ -579,13 +660,17 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &index
+
+            // generic
+            let mut f = index
                 .cs
                 .gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
-                .interpolate()
-                + &index
-                    .cs
-                    .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
+                .interpolate();
+
+            // permutation
+            f += &index
+                .cs
+                .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
 
             let f = {
                 let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
@@ -600,7 +685,7 @@ where
             f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
         };
 
-        let t_chunked = t.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
+        let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
 
         let ft: DensePolynomial<Fr<G>> =
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - Fr::<G>::one());
