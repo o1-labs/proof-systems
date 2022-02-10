@@ -731,11 +731,10 @@
 <span class="doccomment">//!</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">expr</span>::{<span class="ident">boolean</span>, <span class="ident">index</span>, <span class="ident">witness</span>, <span class="ident">ConstantExpr</span> <span class="kw">as</span> <span class="ident">C</span>, <span class="ident">E</span>},
+    <span class="ident">expr</span>::{<span class="ident">constraints::boolean</span>, <span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">ConstantExpr</span> <span class="kw">as</span> <span class="ident">C</span>},
     <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// The lookup table for 4-bit xor.</span>
 <span class="doccomment">/// Note that it is constructed so that (0, 0, 0) is the last position in the table.</span>
@@ -779,6 +778,7 @@
 <span class="kw">fn</span> <span class="ident">chunks_over_2_rows</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">col_offset</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     (<span class="number">0</span>..<span class="number">8</span>)
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+            <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
             <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">4</span> { <span class="ident">Curr</span> } <span class="kw">else</span> { <span class="ident">Next</span> };
             <span class="ident">witness</span>(<span class="ident">col_offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">%</span> <span class="number">4</span>), <span class="ident">r</span>)
         })
@@ -799,13 +799,13 @@
     <span class="kw">let</span> <span class="ident">x_plus_z_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">7</span>);
     <span class="kw">let</span> <span class="ident">y_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">11</span>);
 
-    <span class="kw">let</span> <span class="ident">x_plus_z_overflow_bit</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">2</span>, <span class="ident">Next</span>);
+    <span class="kw">let</span> <span class="ident">x_plus_z_overflow_bit</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">2</span>);
 
-    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">0</span>, <span class="ident">Curr</span>);
-    <span class="kw">let</span> <span class="ident">xprime</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">0</span>, <span class="ident">Next</span>);
-    <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">1</span>, <span class="ident">Curr</span>);
-    <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">1</span>, <span class="ident">Next</span>);
-    <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">2</span>, <span class="ident">Curr</span>);
+    <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
+    <span class="kw">let</span> <span class="ident">xprime</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">0</span>);
+    <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
+    <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">1</span>);
+    <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
 
     <span class="comment">// Because the nybbles are little-endian, rotating the vector &quot;right&quot;</span>
     <span class="comment">// is equivalent to left-shifting the nybbles.</span>
@@ -835,17 +835,17 @@
 
 <span class="doccomment">/// a += b; d ^= a; d &lt;&lt;&lt;= 16 (=4*4)</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint_chacha0</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">index</span>(<span class="ident">GateType::ChaCha0</span>, <span class="ident">Curr</span>) <span class="op">*</span> <span class="ident">line</span>(<span class="ident">alpha0</span>, <span class="number">4</span>)
+    <span class="ident">index</span>(<span class="ident">GateType::ChaCha0</span>) <span class="op">*</span> <span class="ident">line</span>(<span class="ident">alpha0</span>, <span class="number">4</span>)
 }
 
 <span class="doccomment">/// c += d; b ^= c; b &lt;&lt;&lt;= 12 (=3*4)</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint_chacha1</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">index</span>(<span class="ident">GateType::ChaCha1</span>, <span class="ident">Curr</span>) <span class="op">*</span> <span class="ident">line</span>(<span class="ident">alpha0</span>, <span class="number">3</span>)
+    <span class="ident">index</span>(<span class="ident">GateType::ChaCha1</span>) <span class="op">*</span> <span class="ident">line</span>(<span class="ident">alpha0</span>, <span class="number">3</span>)
 }
 
 <span class="doccomment">/// a += b; d ^= a; d &lt;&lt;&lt;= 8  (=2*4)</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint_chacha2</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">index</span>(<span class="ident">GateType::ChaCha2</span>, <span class="ident">Curr</span>) <span class="op">*</span> <span class="ident">line</span>(<span class="ident">alpha0</span>, <span class="number">2</span>)
+    <span class="ident">index</span>(<span class="ident">GateType::ChaCha2</span>) <span class="op">*</span> <span class="ident">line</span>(<span class="ident">alpha0</span>, <span class="number">2</span>)
 }
 
 <span class="doccomment">/// The last line, namely,</span>
@@ -858,7 +858,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint_chacha_final</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">y_xor_xprime_nybbles</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">1</span>);
     <span class="kw">let</span> <span class="ident">low_bits</span> <span class="op">=</span> <span class="ident">chunks_over_2_rows</span>(<span class="number">5</span>);
-    <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="number">0</span>, <span class="ident">Curr</span>);
+    <span class="kw">let</span> <span class="ident">yprime</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
 
     <span class="kw">let</span> <span class="ident">one_half</span> <span class="op">=</span> <span class="ident">F::from</span>(<span class="number">2u64</span>).<span class="ident">inverse</span>().<span class="ident">unwrap</span>();
 
@@ -876,7 +876,7 @@
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">low_bits</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">boolean</span>).<span class="ident">collect</span>();
     <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">combine_nybbles</span>(<span class="ident">y_xor_xprime_rotated</span>) <span class="op">-</span> <span class="ident">yprime</span>);
-    <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">constraints</span>) <span class="op">*</span> <span class="ident">index</span>(<span class="ident">GateType::ChaChaFinal</span>, <span class="ident">Curr</span>)
+    <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">constraints</span>) <span class="op">*</span> <span class="ident">index</span>(<span class="ident">GateType::ChaChaFinal</span>)
 }
 
 <span class="comment">// TODO: move this to test file</span>

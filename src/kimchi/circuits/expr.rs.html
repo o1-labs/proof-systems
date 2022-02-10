@@ -2292,6 +2292,39 @@
 <span id="2287">2287</span>
 <span id="2288">2288</span>
 <span id="2289">2289</span>
+<span id="2290">2290</span>
+<span id="2291">2291</span>
+<span id="2292">2292</span>
+<span id="2293">2293</span>
+<span id="2294">2294</span>
+<span id="2295">2295</span>
+<span id="2296">2296</span>
+<span id="2297">2297</span>
+<span id="2298">2298</span>
+<span id="2299">2299</span>
+<span id="2300">2300</span>
+<span id="2301">2301</span>
+<span id="2302">2302</span>
+<span id="2303">2303</span>
+<span id="2304">2304</span>
+<span id="2305">2305</span>
+<span id="2306">2306</span>
+<span id="2307">2307</span>
+<span id="2308">2308</span>
+<span id="2309">2309</span>
+<span id="2310">2310</span>
+<span id="2311">2311</span>
+<span id="2312">2312</span>
+<span id="2313">2313</span>
+<span id="2314">2314</span>
+<span id="2315">2315</span>
+<span id="2316">2316</span>
+<span id="2317">2317</span>
+<span id="2318">2318</span>
+<span id="2319">2319</span>
+<span id="2320">2320</span>
+<span id="2321">2321</span>
+<span id="2322">2322</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
     <span class="ident">domains::EvaluationDomains</span>,
@@ -4260,24 +4293,57 @@
     }
 }
 
+<span class="doccomment">/// A number of useful constraints</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constraints</span> {
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
+    <span class="doccomment">/// Creates a constraint to enforce that b is either 0 or 1.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">boolean</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="ident">b</span>.<span class="ident">clone</span>().<span class="ident">square</span>() <span class="op">-</span> <span class="ident">b</span>.<span class="ident">clone</span>()
+    }
+}
+
+<span class="comment">//</span>
+<span class="comment">// Helpers</span>
+<span class="comment">//</span>
+
 <span class="doccomment">/// An alias for the intended usage of the expression type in constructing constraints.</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
 <span class="doccomment">/// Handy function to quickly create an expression for a witness.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">witness</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">usize</span>, <span class="ident">r</span>: <span class="ident">CurrOrNext</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::cell</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>), <span class="ident">r</span>)
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">witness</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">usize</span>, <span class="ident">row</span>: <span class="ident">CurrOrNext</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::cell</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>), <span class="ident">row</span>)
+}
+
+<span class="doccomment">/// Same as [witness] but for the next row.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">witness_curr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="ident">witness</span>(<span class="ident">i</span>, <span class="ident">CurrOrNext::Curr</span>)
+}
+
+<span class="doccomment">/// Same as [witness] but for the next row.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">witness_next</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="ident">witness</span>(<span class="ident">i</span>, <span class="ident">CurrOrNext::Next</span>)
 }
 
 <span class="doccomment">/// Handy function to quickly create an expression for a gate.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">index</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">g</span>: <span class="ident">GateType</span>, <span class="ident">r</span>: <span class="ident">CurrOrNext</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">g</span>), <span class="ident">r</span>)
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">index</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">g</span>: <span class="ident">GateType</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::cell</span>(<span class="ident">Column::Index</span>(<span class="ident">g</span>), <span class="ident">CurrOrNext::Curr</span>)
 }
 
-<span class="doccomment">/// Creates a constraint to enforce that b is either 0 or 1.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">boolean</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">b</span>: <span class="kw-2">&amp;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="ident">b</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">b</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">b</span>.<span class="ident">clone</span>()
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">coeff</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">i</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+    <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::cell</span>(<span class="ident">Column::Coefficient</span>(<span class="ident">i</span>), <span class="ident">CurrOrNext::Curr</span>)
 }
 
+<span class="doccomment">/// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prologue</span> {
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">coeff</span>, <span class="ident">index</span>, <span class="ident">witness</span>, <span class="ident">witness_curr</span>, <span class="ident">witness_next</span>, <span class="ident">E</span>};
+}
+
+<span class="comment">//</span>
+<span class="comment">// OCaml-related code</span>
+<span class="comment">//</span>
+
+<span class="doccomment">/// bindings for OCaml</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;ocaml_types&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">caml</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;

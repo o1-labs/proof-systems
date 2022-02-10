@@ -242,8 +242,6 @@
 <span id="237">237</span>
 <span id="238">238</span>
 <span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This implements a complete EC addition gate.</span>
 <span class="doccomment">//! The layout is</span>
 <span class="doccomment">//!</span>
@@ -255,11 +253,12 @@
 <span class="doccomment">//! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.</span>
 <span class="doccomment">//! The rest of the values are inaccessible from the permutation argument, but</span>
 <span class="doccomment">//! - `same_x` is a boolean that is true iff `x1 == x2`.</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::expr</span>::{<span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">E</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires::COLUMNS</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
+    <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>},
+    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
+    <span class="ident">wires::COLUMNS</span>,
+};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>};
-<span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// This enforces that</span>
 <span class="doccomment">///</span>
@@ -289,27 +288,24 @@
 <span class="doccomment">/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
     <span class="comment">// This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints</span>
-    <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">E::cell</span>(<span class="ident">c</span>, <span class="ident">Curr</span>);
-    <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">v</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>));
+    <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
+    <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
+    <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
+    <span class="kw">let</span> <span class="ident">y2</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">3</span>);
+    <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">4</span>);
+    <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">5</span>);
 
-    <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">0</span>);
-    <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">1</span>);
-    <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">2</span>);
-    <span class="kw">let</span> <span class="ident">y2</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">3</span>);
-    <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">4</span>);
-    <span class="kw">let</span> <span class="ident">y3</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">5</span>);
-
-    <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">6</span>);
+    <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">6</span>);
     <span class="comment">// same_x is 1 if x1 == x2, 0 otherwise</span>
-    <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">7</span>);
+    <span class="kw">let</span> <span class="ident">same_x</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">7</span>);
 
-    <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">8</span>);
+    <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">8</span>);
 
     <span class="comment">// This variable is used to constrain inf</span>
-    <span class="kw">let</span> <span class="ident">inf_z</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">9</span>);
+    <span class="kw">let</span> <span class="ident">inf_z</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">9</span>);
 
     <span class="comment">// This variable is used to constrain same_x</span>
-    <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="ident">w</span>(<span class="number">10</span>);
+    <span class="kw">let</span> <span class="ident">x21_inv</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">10</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
 
@@ -410,7 +406,7 @@
 
     (
         <span class="ident">res</span>.<span class="ident">len</span>(),
-        <span class="ident">v</span>(<span class="ident">Column::Index</span>(<span class="ident">GateType::CompleteAdd</span>)) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>),
+        <span class="ident">index</span>(<span class="ident">GateType::CompleteAdd</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>),
     )
 }
 
