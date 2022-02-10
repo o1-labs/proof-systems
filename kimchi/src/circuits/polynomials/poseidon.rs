@@ -1,6 +1,6 @@
 //! This module implements the Poseidon constraint polynomials.
 
-use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
+use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, SquareRootField};
@@ -78,24 +78,24 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
             target: (target_row, target_round),
         } = e;
         let sboxed: Vec<_> = round_to_cols(source)
-            .map(|i| {
-                cache.cache(
-                    E::cell(Column::Witness(i), Curr).pow(PlonkSpongeConstants15W::SPONGE_BOX),
-                )
-            })
+            .map(|i| cache.cache(witness(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
             .collect();
 
         res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
-            let rc = E::cell(Column::Coefficient(idx), Curr);
+            let rc = coeff(idx);
 
             idx += 1;
 
-            E::cell(Column::Witness(col), target_row)
-                - sboxed
-                    .iter()
-                    .zip(mds[j].iter())
-                    .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
+            let w = if target_row == CurrOrNext::Curr {
+                witness(col)
+            } else {
+                witness_next(col)
+            };
+            w - sboxed
+                .iter()
+                .zip(mds[j].iter())
+                .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
         }));
     }
-    E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(0, res)
+    index(GateType::Poseidon) * E::combine_constraints(0, res)
 }

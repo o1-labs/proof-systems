@@ -1,7 +1,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
-    expr::{Cache, Column, E},
-    gate::{CircuitGate, CurrOrNext, GateType},
+    expr::{prologue::*, Cache},
+    gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
@@ -113,17 +113,14 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    let curr_row = |c| E::cell(c, CurrOrNext::Curr);
-    let witness_column = |i| curr_row(Column::Witness(i));
+    let n0 = witness(0);
+    let n8 = witness(1);
+    let a0 = witness(2);
+    let b0 = witness(3);
+    let a8 = witness(4);
+    let b8 = witness(5);
 
-    let n0 = witness_column(0);
-    let n8 = witness_column(1);
-    let a0 = witness_column(2);
-    let b0 = witness_column(3);
-    let a8 = witness_column(4);
-    let b8 = witness_column(5);
-
-    let xs: [_; 8] = array_init(|i| witness_column(6 + i));
+    let xs: [_; 8] = array_init(|i| witness(6 + i));
 
     let mut cache = Cache::default();
 
@@ -158,10 +155,10 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints) * curr_row(Column::Index(GateType::EndoMulScalar))
+    E::combine_constraints(alpha0, constraints) * index(GateType::EndoMulScalar)
 }
 
-pub fn witness<F: PrimeField + std::fmt::Display>(
+pub fn gen_witness<F: PrimeField + std::fmt::Display>(
     witness_cols: &mut [Vec<F>; COLUMNS],
     scalar: F,
     endo_scalar: F,

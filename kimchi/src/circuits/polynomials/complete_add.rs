@@ -9,11 +9,12 @@
 //! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
 //! The rest of the values are inaccessible from the permutation argument, but
 //! - `same_x` is a boolean that is true iff `x1 == x2`.
-use crate::circuits::expr::{Cache, Column, E};
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::circuits::wires::COLUMNS;
+use crate::circuits::{
+    expr::{prologue::*, Cache},
+    gate::{CircuitGate, GateType},
+    wires::COLUMNS,
+};
 use ark_ff::{FftField, Field, One};
-use CurrOrNext::*;
 
 /// This enforces that
 ///
@@ -43,27 +44,24 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
 pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
-    let v = |c| E::cell(c, Curr);
-    let w = |i| v(Column::Witness(i));
+    let x1 = witness(0);
+    let y1 = witness(1);
+    let x2 = witness(2);
+    let y2 = witness(3);
+    let x3 = witness(4);
+    let y3 = witness(5);
 
-    let x1 = w(0);
-    let y1 = w(1);
-    let x2 = w(2);
-    let y2 = w(3);
-    let x3 = w(4);
-    let y3 = w(5);
-
-    let inf = w(6);
+    let inf = witness(6);
     // same_x is 1 if x1 == x2, 0 otherwise
-    let same_x = w(7);
+    let same_x = witness(7);
 
-    let s = w(8);
+    let s = witness(8);
 
     // This variable is used to constrain inf
-    let inf_z = w(9);
+    let inf_z = witness(9);
 
     // This variable is used to constrain same_x
-    let x21_inv = w(10);
+    let x21_inv = witness(10);
 
     let mut cache = Cache::default();
 
@@ -164,7 +162,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
 
     (
         res.len(),
-        v(Column::Index(GateType::CompleteAdd)) * E::combine_constraints(alpha0, res),
+        index(GateType::CompleteAdd) * E::combine_constraints(alpha0, res),
     )
 }
 
