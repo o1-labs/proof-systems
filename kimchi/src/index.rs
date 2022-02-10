@@ -254,13 +254,16 @@ where
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
+            max_poly_size: self.max_poly_size,
+            max_quot_size: self.max_quot_size,
+            srs: Arc::clone(&self.srs),
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
-            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
             coefficients_comm: array_init(|i| {
                 self.srs
                     .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
+            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
 
             psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
@@ -285,18 +288,14 @@ where
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            lookup_index,
-
+            shift: self.cs.shift,
+            zkpm: self.cs.zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
+            endo: self.cs.endo,
+            lookup_index,
+            linearization: self.linearization.clone(),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
-            endo: self.cs.endo,
-            max_poly_size: self.max_poly_size,
-            max_quot_size: self.max_quot_size,
-            zkpm: self.cs.zkpm.clone(),
-            shift: self.cs.shift,
-            linearization: self.linearization.clone(),
-            srs: Arc::clone(&self.srs),
         }
     }
 
