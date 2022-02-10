@@ -6,6 +6,7 @@ use std::ops::{Index, IndexMut};
 use crate::circuits::cairo::runner::helper::*;
 use crate::circuits::cairo::runner::word::CairoWord;
 use ark_ff::PrimeField;
+use core::iter::repeat;
 use o1_utils::FieldHelpers;
 
 /// This data structure stores the memory of the program
@@ -57,18 +58,12 @@ impl<F: PrimeField> CairoMemory<F> {
     }
 
     /// Resizes memory with enough additional None slots if necessary before writing or reading
-    /// addr: starts with position 1
     fn resize(&mut self, addr: u64) {
         // if you want to access an index of the memory but its size is less or equal than this
-        if self.size() <= addr {
-            // you will need to extend the vector with enough spaces (taking into account that
-            // vectors start by index 0 and size starts in 1)
-            let additional = addr - self.size() + 1;
-            self.data.reserve(additional.try_into().unwrap());
-            for _ in 0..additional {
-                // Consider CairoBytecode having Option<CairoWord> so one can have None here
-                self.data.push(None);
-            }
+        // you will need to extend the vector with enough spaces (taking into account that
+        // vectors start by index 0, the 0 address is dummy, and size starts in 1)
+        if let Some(additional) = addr.checked_sub(self.size() - 1) {
+            self.data.extend(repeat(None).take(additional as usize));
         }
     }
 
