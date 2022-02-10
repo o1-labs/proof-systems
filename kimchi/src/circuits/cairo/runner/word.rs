@@ -1,15 +1,11 @@
-//! The Cairo Language works natively for field elements in the finite field with
+//! The Cairo language works natively for field elements in the finite field with
 //! modulus 0x800000000000011000000000000000000000000000000000000000000000001
 //! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
 //! Our Pallas curves have 256 bits, so Cairo native instructions will fit.
 
-// TODO(querolita):
-// - Enlarge native word type to F
-
 use crate::circuits::cairo::runner::definitions::*;
 use crate::circuits::cairo::runner::helper::*;
-use ark_ff::{FftField, PrimeField};
-use o1_utils::field_helpers;
+use ark_ff::PrimeField;
 
 /// A Cairo instruction for simulation
 #[derive(Clone, Copy)]
@@ -36,11 +32,12 @@ fn bias<F: PrimeField>(offset: F) -> F {
 }
 
 impl<F: PrimeField> CairoWord<F> {
-    /// Creates a CairoWord from a field element
+    /// Creates a [CairoWord] from a field element
     pub fn new(word: F) -> CairoWord<F> {
         CairoWord { word }
     }
 
+    /// Returns the content of the word as a field element
     pub fn get_word(&self) -> F {
         self.word
     }

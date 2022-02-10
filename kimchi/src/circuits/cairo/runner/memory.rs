@@ -1,53 +1,59 @@
-// TODO(querolita):
-// - be able to index memory with any type (u256 in particular) not only usize
-
 //! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
+use crate::circuits::cairo::runner::helper::*;
 use crate::circuits::cairo::runner::word::CairoWord;
-use ark_ff::FftField;
+use ark_ff::PrimeField;
+use o1_utils::FieldHelpers;
 
 /// This data structure stores the memory of the program
-pub struct CairoMemory<F: FftField> {
+pub struct CairoMemory<F: PrimeField> {
     /// length of the public memory
-    publen: u64,
+    codelen: usize,
     /// full memory vector, None if non initialized
     pub data: Vec<Option<CairoWord<F>>>,
 }
 
-impl<F: FftField> Index<F> for CairoMemory<F> {
-    type Output = F;
-    fn index<'a>(&'a self, idx: F) -> &Self::Output {
+impl<F: PrimeField> Index<F> for CairoMemory<F> {
+    type Output = Option<CairoWord<F>>;
+    fn index(&self, idx: F) -> &Self::Output {
         // Safely convert idx from F to usize (since this is a memory address
         // idx should not be too big, this should be safe)
-        let addr: usize = idx.try_into();
-        &self.data[addr]
+        let addr: u64 = idx.to_u64();
+        &self.data[addr as usize]
     }
 }
 
-impl<F: FftField> CairoMemory<F: FftField> {
+impl<F: PrimeField> IndexMut<F> for CairoMemory<F> {
+    fn index_mut(&mut self, idx: F) -> &mut Self::Output {
+        let addr: u64 = idx.to_u64();
+        &mut self.data[addr as usize]
+    }
+}
+
+impl<F: PrimeField> CairoMemory<F> {
     /// Create a new memory structure from a vector of field elements
-    pub fn new(input: Vec<F>) -> CairoMemory<F: FftField> {
+    pub fn new(input: Vec<F>) -> CairoMemory<F> {
         // Initialized with the public memory (compiled instructions only)
         // starts intentionally with a zero word for ease of testing
         let mut aux = vec![F::zero()];
         aux.extend(input);
-        CairoBytecode {
-            publen: (aux.len() - 1) as u64,
-            mem: aux.into_iter().map(|i| Some(CairoWord::new(i))).collect(),
+        CairoMemory {
+            codelen: aux.len() - 1,
+            data: aux.into_iter().map(|i| Some(CairoWord::new(i))).collect(),
         }
     }
 
     /// Get size of the public memory
-    pub fn public(&self) -> u64 {
-        self.publen
+    pub fn get_codelen(&self) -> usize {
+        self.codelen
     }
 
     /// Get size of the full memory including dummy 0th entry
     pub fn size(&self) -> u64 {
-        (self.mem.len()) as u64
+        self.data.len() as u64
     }
 
     /// Resizes memory with enough additional None slots if necessary before writing or reading
@@ -58,18 +64,18 @@ impl<F: FftField> CairoMemory<F: FftField> {
             // you will need to extend the vector with enough spaces (taking into account that
             // vectors start by index 0 and size starts in 1)
             let additional = addr - self.size() + 1;
-            self.mem.reserve(additional.try_into().unwrap());
+            self.data.reserve(additional.try_into().unwrap());
             for _ in 0..additional {
                 // Consider CairoBytecode having Option<CairoWord> so one can have None here
-                self.mem.push(None);
+                self.data.push(None);
             }
         }
     }
 
     /// Write u64 element in memory address
-    pub fn write(&mut self, addr: u64, elem: i128) {
-        self.resize(addr);
-        self.mem[addr as usize] = Some(CairoWord::new(elem));
+    pub fn write(&mut self, addr: F, elem: F) {
+        self.resize(addr.to_u64());
+        self[addr] = Some(CairoWord::new(elem));
     }
 
     /// Read element in memory address
@@ -79,10 +85,10 @@ impl<F: FftField> CairoMemory<F: FftField> {
     /// their content will be the same. This means you may first read to
     /// addresses of memory that were still not instantiated, and you need
     /// to enlarge the vector before reading (with None values).
-    pub fn read(&mut self, addr: u64) -> Option<i128> {
-        self.resize(addr);
-        if self.mem[addr as usize].is_some() {
-            Some(self.mem[addr as usize].unwrap().to_i128())
+    pub fn read(&mut self, addr: F) -> Option<F> {
+        self.resize(addr.to_u64());
+        if self[addr].is_some() {
+            Some(self[addr].unwrap().get_word())
         } else {
             None
         }
@@ -91,7 +97,9 @@ impl<F: FftField> CairoMemory<F: FftField> {
     /// Visualize content of memory excluding the 0th dummy entry
     pub fn view(&mut self) {
         for i in 1..self.size() {
-            println!("{}: 0x{:x}", i, self.read(i).unwrap_or_default());
+            if self.read(F::from(i)).is_some() {
+                println!("{}: 0x{:?}", i, self.read(F::from(i)).unwrap().to_hex());
+            }
         }
     }
 }
@@ -99,6 +107,8 @@ impl<F: FftField> CairoMemory<F: FftField> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ark_ff::One;
+    use mina_curves::pasta::fp::Fp as F;
 
     #[test]
     fn test_cairo_bytecode() {
@@ -109,39 +119,24 @@ mod tests {
         // end
         // And checks that memory writing and reading works as expected by completing
         // the total memory of executing the program
-        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe];
-        let mut memory = CairoBytecode::new(instrs);
-        memory.write(memory.size(), 7);
-        memory.write(memory.size(), 7);
-        memory.write(memory.size(), 10);
+        let instrs = vec![
+            F::from(0x480680017fff8000u64),
+            F::from(10u64),
+            F::from(0x208b7fff7fff7ffeu64),
+        ];
+        let mut memory = CairoMemory::new(instrs);
+        memory.write(F::from(memory.size()), F::from(7u64));
+        memory.write(F::from(memory.size()), F::from(7u64));
+        memory.write(F::from(memory.size()), F::from(10u64));
         memory.view();
+        // Check content of an address
+        assert_eq!(
+            memory.read(F::one()).unwrap(),
+            F::from(0x480680017fff8000u64)
+        );
         // Check that the program contained 3 words
-        assert_eq!(3, memory.public());
+        assert_eq!(3, memory.get_codelen());
         // Check we have 6 words, excluding the dummy entry
         assert_eq!(6, memory.size() - 1);
     }
-}
-
-#[test]
-fn test_awesome_index() {
-    struct Memo<F: FftField> {
-        data: Vec<F>,
-    }
-
-    impl<F: FftField> Index<F> for Memo<F> {
-        type Output = F;
-        fn index<'a>(&'a self, idx: F) -> &Self::Output {
-            // Safely convert i from F to usize (since this is memory address [0, n]
-            // n should not be too big, this should be safe)
-            let addr: usize = 0; // idx.to_usize();
-            &self.data[addr]
-        }
-    }
-
-    let memo: Memo<PallasField> = Memo {
-        data: vec![PallasField::from(3), PallasField::from(14)],
-    };
-
-    println!("memo[0] = {}", memo[PallasField::zero()]);
-    println!("memo[1] = {}", memo[PallasField::from(1)]);
 }
