@@ -19,53 +19,52 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_quot(
         &self,
         mut alphas: impl Iterator<Item = F>,
-        witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
+        witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
-        // multiplication: left * right
-        let mut res_d4 = &witness_cols_d4[0] * &witness_cols_d4[1];
-
-        // * multiplication selector
-        let mul_selector_d8 = &self.coefficients8[MUL_COEFF];
-        res_d4
+        // w[0](x) * w[1](x) * qml(x)
+        let mut multiplication = &witness_d4[0] * &witness_d4[1];
+        let m8 = &self.coefficients8[MUL_COEFF];
+        multiplication
             .evals
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, eval)| *eval *= mul_selector_d8[2 * i]);
+            .for_each(|(i, e)| *e *= m8[2 * i]);
 
-        // + addition: L * selector_L + R * selector_R + O * selector_O
-        for (witness_d4, selector_d8) in witness_cols_d4
+        // presence of left, right, and output wire
+        // w[0](x) * qwl[0](x) + w[1](x) * qwl[1](x) + w[2](x) * qwl[2](x)
+        let mut eval_part = multiplication;
+        for (w, q) in witness_d4
             .iter()
             .zip(self.coefficients8.iter())
             .take(GENERICS)
         {
-            res_d4
+            eval_part
                 .evals
                 .par_iter_mut()
                 .enumerate()
-                .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
+                .for_each(|(i, e)| *e += w.evals[i] * q[2 * i])
+            // eval_part += &(w * q);
         }
 
-        // + constant
-        let constant_d8 = &self.coefficients8[CONSTANT_COEFF];
-        res_d4
+        let c = &self.coefficients8[CONSTANT_COEFF];
+        eval_part
             .evals
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, e)| *e += constant_d8[2 * i]);
+            .for_each(|(i, e)| *e += c[2 * i]);
 
-        // * generic selector
-        res_d4 *= &self.generic4;
+        // generic selector
+        eval_part *= &self.generic4;
 
-        // * alpha
+        // alpha
         let alpha = alphas
             .next()
             .expect("not enough powers of alpha for the generic gate");
         let mut alpha4 = self.l04.clone();
         alpha4.evals.iter_mut().for_each(|x| *x *= alpha);
-        res_d4 *= &alpha4;
+        eval_part *= &alpha4;
 
-        // return the result
-        res_d4
+        eval_part
     }
 
     /// produces
