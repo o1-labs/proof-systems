@@ -292,6 +292,7 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
     }
 }
 
+/// This struct stores the needed information to run a program
 pub struct CairoProgram<'a, F: PrimeField> {
     /// full execution memory
     mem: &'a mut CairoMemory<F>,
