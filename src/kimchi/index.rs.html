@@ -389,6 +389,10 @@
 <span id="384">384</span>
 <span id="385">385</span>
 <span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk Protocol Index primitive.
@@ -565,8 +569,12 @@ This source file implements Plonk Protocol Index primitive.
             )
         }
     };
+
     <span class="kw">if</span> <span class="ident">chacha</span> {
-        <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>)
+        <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha0</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>);
+        <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha1</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>);
+        <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha2</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>);
+        <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha_final</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>)
     } <span class="kw">else</span> {
         <span class="ident">expr</span>
     }
