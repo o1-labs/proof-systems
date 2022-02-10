@@ -174,8 +174,12 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
             )
         }
     };
+
     if chacha {
-        expr + chacha::constraint(super::range::CHACHA.start)
+        let expr = expr + chacha::constraint_chacha0(super::range::CHACHA.start);
+        let expr = expr + chacha::constraint_chacha1(super::range::CHACHA.start);
+        let expr = expr + chacha::constraint_chacha2(super::range::CHACHA.start);
+        expr + chacha::constraint_chacha_final(super::range::CHACHA.start)
     } else {
         expr
     }
