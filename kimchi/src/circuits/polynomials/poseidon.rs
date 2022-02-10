@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Posedon constraint polynomials.
-
-*****************************************************************************************************************/
+//! This module implements the Poseidon constraint polynomials.
 
 use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
 use crate::circuits::gate::{CurrOrNext, GateType};
