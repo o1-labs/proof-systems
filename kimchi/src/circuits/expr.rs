@@ -1979,6 +1979,11 @@ pub fn index<F>(g: GateType, r: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Index(g), r)
 }
 
+/// Creates a constraint to enforce that b is either 0 or 1.
+pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
+    b.clone() * b.clone() - b.clone()
+}
+
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;

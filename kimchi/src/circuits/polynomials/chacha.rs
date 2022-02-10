@@ -143,7 +143,7 @@
 //!
 
 use crate::circuits::{
-    expr::{index, witness, ConstantExpr as C, E},
+    expr::{boolean, index, witness, ConstantExpr as C, E},
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field, Zero};
@@ -195,11 +195,6 @@ fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
             witness(col_offset + (i % 4), r)
         })
         .collect()
-}
-
-/// Creates a constraint to enforce that b is either 0 or 1.
-fn boolean<F: Field>(b: &E<F>) -> E<F> {
-    b.clone() * b.clone() - b.clone()
 }
 
 fn combine_nybbles<F: Field>(ns: Vec<E<F>>) -> E<F> {
