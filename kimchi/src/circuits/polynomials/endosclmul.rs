@@ -38,27 +38,27 @@ use ark_ff::{Field, One};
 
 /// The constraints for endoscaling.
 pub fn constraints<F: Field>() -> Vec<E<F>> {
-    let b1 = witness(11);
-    let b2 = witness(12);
-    let b3 = witness(13);
-    let b4 = witness(14);
+    let b1 = witness_curr(11);
+    let b2 = witness_curr(12);
+    let b3 = witness_curr(13);
+    let b4 = witness_curr(14);
 
-    let xt = witness(0);
-    let yt = witness(1);
+    let xt = witness_curr(0);
+    let yt = witness_curr(1);
 
     let xs = witness_next(4);
     let ys = witness_next(5);
 
-    let xp = witness(4);
-    let yp = witness(5);
+    let xp = witness_curr(4);
+    let yp = witness_curr(5);
 
-    let xr = witness(7);
-    let yr = witness(8);
+    let xr = witness_curr(7);
+    let yr = witness_curr(8);
 
     let mut cache = Cache::default();
 
-    let s1 = witness(9);
-    let s3 = witness(10);
+    let s1 = witness_curr(9);
+    let s3 = witness_curr(10);
 
     let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
     let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
@@ -71,7 +71,7 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
     let s3_squared = cache.cache(s3.clone().square());
 
     // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-    let n = witness(6);
+    let n = witness_curr(6);
     let n_constraint = (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone())
         .double()
         + b4.clone()
@@ -121,7 +121,7 @@ pub struct EndoMulResult<F> {
     pub n: F,
 }
 
-/// Generates the witness values for a series of endoscaling constraints.
+/// Generates the witness_curr values for a series of endoscaling constraints.
 pub fn gen_witness<F: Field + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,

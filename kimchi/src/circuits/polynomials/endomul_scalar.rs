@@ -113,14 +113,14 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    let n0 = witness(0);
-    let n8 = witness(1);
-    let a0 = witness(2);
-    let b0 = witness(3);
-    let a8 = witness(4);
-    let b8 = witness(5);
+    let n0 = witness_curr(0);
+    let n8 = witness_curr(1);
+    let a0 = witness_curr(2);
+    let b0 = witness_curr(3);
+    let a8 = witness_curr(4);
+    let b8 = witness_curr(5);
 
-    let xs: [_; 8] = array_init(|i| witness(6 + i));
+    let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
 
     let mut cache = Cache::default();
 

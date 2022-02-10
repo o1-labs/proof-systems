@@ -78,23 +78,18 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
             target: (target_row, target_round),
         } = e;
         let sboxed: Vec<_> = round_to_cols(source)
-            .map(|i| cache.cache(witness(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
+            .map(|i| cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
             .collect();
 
         res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
             let rc = coeff(idx);
 
             idx += 1;
-
-            let w = if target_row == CurrOrNext::Curr {
-                witness(col)
-            } else {
-                witness_next(col)
-            };
-            w - sboxed
-                .iter()
-                .zip(mds[j].iter())
-                .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
+            witness(col, target_row)
+                - sboxed
+                    .iter()
+                    .zip(mds[j].iter())
+                    .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
         }));
     }
     index(GateType::Poseidon) * E::combine_constraints(0, res)

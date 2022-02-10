@@ -192,7 +192,7 @@ fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
         .map(|i| {
             let w = col_offset + (i % 4);
             if i < 4 {
-                witness(w)
+                witness_curr(w)
             } else {
                 witness_next(w)
             }
@@ -216,11 +216,11 @@ fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
 
     let x_plus_z_overflow_bit = witness_next(2);
 
-    let x = witness(0);
+    let x = witness_curr(0);
     let xprime = witness_next(0);
-    let y = witness(1);
+    let y = witness_curr(1);
     let yprime = witness_next(1);
-    let z = witness(2);
+    let z = witness_curr(2);
 
     // Because the nybbles are little-endian, rotating the vector "right"
     // is equivalent to left-shifting the nybbles.
@@ -273,7 +273,7 @@ pub fn constraint_chacha2<F: FftField>(alpha0: usize) -> E<F> {
 pub fn constraint_chacha_final<F: FftField>(alpha0: usize) -> E<F> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(1);
     let low_bits = chunks_over_2_rows(5);
-    let yprime = witness(0);
+    let yprime = witness_curr(0);
 
     let one_half = F::from(2u64).inverse().unwrap();
 

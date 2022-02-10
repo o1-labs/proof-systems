@@ -1984,13 +1984,18 @@ pub mod constraints {
 pub type E<F> = Expr<ConstantExpr<F>>;
 
 /// Handy function to quickly create an expression for a witness.
-pub fn witness<F>(i: usize) -> E<F> {
-    E::<F>::cell(Column::Witness(i), CurrOrNext::Curr)
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), row)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_curr<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Curr)
 }
 
 /// Same as [witness] but for the next row.
 pub fn witness_next<F>(i: usize) -> E<F> {
-    E::<F>::cell(Column::Witness(i), CurrOrNext::Next)
+    witness(i, CurrOrNext::Next)
 }
 
 /// Handy function to quickly create an expression for a gate.
@@ -2004,7 +2009,7 @@ pub fn coeff<F>(i: usize) -> E<F> {
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, index, witness, witness_next, E};
+    pub use super::{coeff, index, witness, witness_curr, witness_next, E};
 }
 
 //

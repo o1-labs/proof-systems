@@ -44,24 +44,24 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
 pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
-    let x1 = witness(0);
-    let y1 = witness(1);
-    let x2 = witness(2);
-    let y2 = witness(3);
-    let x3 = witness(4);
-    let y3 = witness(5);
+    let x1 = witness_curr(0);
+    let y1 = witness_curr(1);
+    let x2 = witness_curr(2);
+    let y2 = witness_curr(3);
+    let x3 = witness_curr(4);
+    let y3 = witness_curr(5);
 
-    let inf = witness(6);
+    let inf = witness_curr(6);
     // same_x is 1 if x1 == x2, 0 otherwise
-    let same_x = witness(7);
+    let same_x = witness_curr(7);
 
-    let s = witness(8);
+    let s = witness_curr(8);
 
     // This variable is used to constrain inf
-    let inf_z = witness(9);
+    let inf_z = witness_curr(9);
 
     // This variable is used to constrain same_x
-    let x21_inv = witness(10);
+    let x21_inv = witness_curr(10);
 
     let mut cache = Cache::default();
 
