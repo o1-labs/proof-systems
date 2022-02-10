@@ -7,9 +7,11 @@
 //!
 //! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.
 
-use crate::circuits::expr::{Cache, Column, Variable, E};
-use crate::circuits::gate::{CurrOrNext, GateType};
-use crate::circuits::wires::COLUMNS;
+use crate::circuits::{
+    expr::{prologue::*, Cache, Column, Variable},
+    gate::{CurrOrNext, GateType},
+    wires::COLUMNS,
+};
 use ark_ff::{FftField, One};
 
 type CurveVar = (Variable, Variable);
@@ -222,6 +224,5 @@ pub fn constraint<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    E::cell(Column::Index(GateType::VarBaseMul), CurrOrNext::Curr)
-        * E::combine_constraints(alphas, res)
+    index(GateType::VarBaseMul) * E::combine_constraints(alphas, res)
 }

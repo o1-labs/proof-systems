@@ -1,15 +1,17 @@
 //! This module implements prover's zk-proof primitive.
 
-use crate::circuits::{
-    constraints::{LookupConstraintSystem, ZK_ROWS},
-    expr::{l0_1, Constants, Environment, LookupEnvironment},
-    gate::{combine_table_entry, GateType, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
-    scalars::{LookupEvaluations, ProofEvaluations},
-    wires::{COLUMNS, PERMUTS},
-};
 use crate::{
     alphas::{Alphas, ConstraintType},
+    circuits::{
+        constraints::{LookupConstraintSystem, ZK_ROWS},
+        expr::{l0_1, Constants, Environment, LookupEnvironment},
+        gate::{combine_table_entry, GateType, LookupsUsed},
+        polynomials::{
+            chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul,
+        },
+        scalars::{LookupEvaluations, ProofEvaluations},
+        wires::{COLUMNS, PERMUTS},
+    },
     index::Index,
     plonk_sponge::FrSponge,
 };
@@ -403,10 +405,6 @@ where
             let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
-            // subtract the public values
-            let public4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-            t4 += &public4; // already negated earlier
-
             if cfg!(test) {
                 let (_, res) = t4
                     .clone()
@@ -560,11 +558,6 @@ where
                         .unwrap();
                     assert!(res.is_zero());
                 }
-
-                drop(chacha0);
-                drop(chacha1);
-                drop(chacha2);
-                drop(chacha_final);
             }
 
             // lookup
@@ -586,8 +579,11 @@ where
                 }
             }
 
+            // public polynomial
+            let mut f = t4.interpolate() + t8.interpolate();
+            f += &public_poly;
+
             // divide contributions with vanishing polynomial
-            let f = t4.interpolate() + t8.interpolate();
             let (mut quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
                 .ok_or(ProofError::PolyDivision)?;

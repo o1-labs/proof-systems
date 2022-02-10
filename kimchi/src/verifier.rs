@@ -1,15 +1,15 @@
 //! This module implements zk-proof batch verifier functionality.
 
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    expr::{Column, Constants, PolishToken},
-    gate::{GateType, LookupsUsed},
-    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
-    scalars::RandomOracles,
-    wires::*,
-};
 use crate::{
     alphas::{Alphas, ConstraintType},
+    circuits::{
+        constraints::ConstraintSystem,
+        expr::{Column, Constants, PolishToken},
+        gate::{GateType, LookupsUsed},
+        gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+        scalars::RandomOracles,
+        wires::*,
+    },
     index::{LookupVerifierIndex, VerifierIndex},
     plonk_sponge::FrSponge,
     prover::ProverProof,
@@ -437,9 +437,11 @@ where
             let f_comm = {
                 // permutation
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
-                let mut commitments_part = vec![&index.sigma_comm[PERMUTS - 1]];
+
                 let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
-                let mut scalars_part = vec![ConstraintSystem::perm_scalars(
+
+                let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
+                let mut scalars = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     oracles.beta,
                     oracles.gamma,
@@ -448,8 +450,8 @@ where
                 )];
 
                 // generic
-                commitments_part.push(&index.coefficients_comm[MUL_COEFF]);
-                commitments_part.extend(
+                commitments.push(&index.coefficients_comm[MUL_COEFF]);
+                commitments.extend(
                     index
                         .coefficients_comm
                         .iter()
@@ -459,10 +461,10 @@ where
                 let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
                 let (scalars, _) =
                     &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
-                scalars_part.extend(scalars);
+                scalars.extend(scalars);
 
-                commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
-                scalars_part.push(evals[0].generic_selector);
+                commitments.push(&index.coefficients_comm[CONSTANT_COEFF]);
+                scalars.push(evals[0].generic_selector);
 
                 // other gates are implemented using the expression framework
                 {
@@ -476,8 +478,6 @@ where
                         mds: index.fr_sponge_params.mds.clone(),
                     };
 
-                    let scalars = &mut scalars_part;
-                    let commitments = &mut commitments_part;
                     for (col, tokens) in &index.linearization.index_terms {
                         let scalar = PolishToken::evaluate(
                             tokens,
@@ -558,7 +558,7 @@ where
                 }
 
                 // MSM
-                PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)
+                PolyComm::multi_scalar_mul(&commitments, &scalars)
             };
 
             let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);

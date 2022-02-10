@@ -142,100 +142,119 @@
 //! And we'll check that y' is the sum of the shifted nybbles.
 //!
 
-use std::marker::PhantomData;
-
-use crate::circuits::expr::{Column, ConstantExpr as C, E};
-use crate::circuits::gate::{CurrOrNext, GateType};
+use crate::circuits::{
+    expr::{constraints::boolean, prologue::*, ConstantExpr as C},
+    gate::{CurrOrNext, GateType},
+};
 use ark_ff::{FftField, Field, Zero};
-use CurrOrNext::*;
 
-/// Implementation details
-struct Impl<F>(PhantomData<F>);
+/// The lookup table for 4-bit xor.
+/// Note that it is constructed so that (0, 0, 0) is the last position in the table.
+///
+/// This is because tables are extended to the full size of a column (essentially)
+/// by padding them with their final value. And, having the value (0, 0, 0) here means
+/// that when we commit to this table and use the dummy value in the `lookup_sorted`
+/// columns, those entries that have the dummy value of
+///
+/// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
+///
+/// will translate into a scalar multiplication by 0, which is free.
+pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
+    let mut res = vec![vec![]; 3];
 
-impl<F> Impl<F>
-where
-    F: FftField,
-{
-    fn w(i: usize, r: CurrOrNext) -> E<F> {
-        E::<F>::cell(Column::Witness(i), r)
+    // XOR for all possible four-bit arguments.
+    // I suppose this could be computed a bit faster using symmetry but it's quite
+    // small (16*16 = 256 entries) so let's just keep it simple.
+    for i in 0u32..=0b1111 {
+        for j in 0u32..=0b1111 {
+            res[0].push(F::from(i));
+            res[1].push(F::from(j));
+            res[2].push(F::from(i ^ j));
+        }
     }
 
-    /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
-    /// like y^x' or x+z
-    fn chunks_over_2_rows(col_offset: usize) -> Vec<E<F>> {
-        (0..8)
-            .map(|i| {
-                let r = if i < 4 { Curr } else { Next };
-                Self::w(col_offset + (i % 4), r)
-            })
-            .collect()
+    for r in &mut res {
+        r.reverse();
+        // Just to be safe.
+        assert!(r[r.len() - 1].is_zero());
     }
-
-    fn boolean(b: &E<F>) -> E<F> {
-        b.clone() * b.clone() - b.clone()
-    }
-
-    fn combine_nybbles(ns: Vec<E<F>>) -> E<F> {
-        ns.into_iter()
-            .enumerate()
-            .fold(E::zero(), |acc: E<F>, (i, t)| {
-                acc + E::from(1 << (4 * i)) * t
-            })
-    }
-
-    /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-    fn line(alphas: impl Iterator<Item = usize>, nybble_rotation: usize) -> E<F> {
-        let y_xor_xprime_nybbles = Self::chunks_over_2_rows(3);
-        let x_plus_z_nybbles = Self::chunks_over_2_rows(7);
-        let y_nybbles = Self::chunks_over_2_rows(11);
-
-        let x_plus_z_overflow_bit = Self::w(2, Next);
-
-        let x = Self::w(0, Curr);
-        let xprime = Self::w(0, Next);
-        let y = Self::w(1, Curr);
-        let yprime = Self::w(1, Next);
-        let z = Self::w(2, Curr);
-
-        // Because the nybbles are little-endian, rotating the vector "right"
-        // is equivalent to left-shifting the nybbles.
-        let mut y_xor_xprime_rotated = y_xor_xprime_nybbles;
-        y_xor_xprime_rotated.rotate_right(nybble_rotation);
-
-        E::combine_constraints(
-            alphas,
-            vec![
-                // booleanity of overflow bit
-                Self::boolean(&x_plus_z_overflow_bit),
-                // x' = x + z (mod 2^32)
-                Self::combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
-                // Correctness of x+z nybbles
-                xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
-                // Correctness of y nybbles
-                Self::combine_nybbles(y_nybbles) - y,
-                // y' = (y ^ x') <<< 4 * nybble_rotation
-                Self::combine_nybbles(y_xor_xprime_rotated) - yprime,
-            ],
-        )
-    }
+    res
 }
+
+//
+// Implementation internals
+//
+
+/// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
+/// like y^x' or x+z
+fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
+    (0..8)
+        .map(|i| {
+            use CurrOrNext::*;
+            let r = if i < 4 { Curr } else { Next };
+            witness(col_offset + (i % 4), r)
+        })
+        .collect()
+}
+
+fn combine_nybbles<F: Field>(ns: Vec<E<F>>) -> E<F> {
+    ns.into_iter()
+        .enumerate()
+        .fold(E::zero(), |acc: E<F>, (i, t)| {
+            acc + E::from(1 << (4 * i)) * t
+        })
+}
+
+/// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
+fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
+    let y_xor_xprime_nybbles = chunks_over_2_rows(3);
+    let x_plus_z_nybbles = chunks_over_2_rows(7);
+    let y_nybbles = chunks_over_2_rows(11);
+
+    let x_plus_z_overflow_bit = witness_next(2);
+
+    let x = witness_curr(0);
+    let xprime = witness_next(0);
+    let y = witness_curr(1);
+    let yprime = witness_next(1);
+    let z = witness_curr(2);
+
+    // Because the nybbles are little-endian, rotating the vector "right"
+    // is equivalent to left-shifting the nybbles.
+    let mut y_xor_xprime_rotated = y_xor_xprime_nybbles;
+    y_xor_xprime_rotated.rotate_right(nybble_rotation);
+
+    vec![
+        // booleanity of overflow bit
+        boolean(&x_plus_z_overflow_bit),
+        // x' = x + z (mod 2^32)
+        combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
+        // Correctness of x+z nybbles
+        xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
+        // Correctness of y nybbles
+        combine_nybbles(y_nybbles) - y,
+        // y' = (y ^ x') <<< 4 * nybble_rotation
+        combine_nybbles(y_xor_xprime_rotated) - yprime,
+    ]
+}
+
+//
+// Gates
+//
 
 /// a += b; d ^= a; d <<<= 16 (=4*4)
 pub fn constraint_chacha0<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let index = |g: GateType| E::cell(Column::Index(g), Curr);
-    index(GateType::ChaCha0) * Impl::line(alphas, 4)
+    index(GateType::ChaCha0) * E::combine_constraints(alphas, line(4))
 }
 
 /// c += d; b ^= c; b <<<= 12 (=3*4)
 pub fn constraint_chacha1<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let index = |g: GateType| E::cell(Column::Index(g), Curr);
-    index(GateType::ChaCha1) * Impl::line(alphas, 3)
+    index(GateType::ChaCha1) * E::combine_constraints(alphas, line(3))
 }
 
 /// a += b; d ^= a; d <<<= 8  (=2*4)
 pub fn constraint_chacha2<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let index = |g: GateType| E::cell(Column::Index(g), Curr);
-    index(GateType::ChaCha2) * Impl::line(alphas, 2)
+    index(GateType::ChaCha2) * E::combine_constraints(alphas, line(2))
 }
 
 /// The last line, namely,
@@ -246,11 +265,9 @@ pub fn constraint_chacha2<F: FftField>(alphas: impl Iterator<Item = usize>) -> E
 /// all the relevant values, and the xors, and then do
 /// the shifting using a ChaChaFinal gate.
 pub fn constraint_chacha_final<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let index = |g: GateType| E::cell(Column::Index(g), Curr);
-
-    let y_xor_xprime_nybbles = Impl::chunks_over_2_rows(1);
-    let low_bits = Impl::chunks_over_2_rows(5);
-    let yprime = Impl::w(0, Curr);
+    let y_xor_xprime_nybbles = chunks_over_2_rows(1);
+    let low_bits = chunks_over_2_rows(5);
+    let yprime = witness_curr(0);
 
     let one_half = F::from(2u64).inverse().unwrap();
 
@@ -266,8 +283,8 @@ pub fn constraint_chacha_final<F: FftField>(alphas: impl Iterator<Item = usize>)
         })
         .collect();
 
-    let mut constraints: Vec<E<F>> = low_bits.iter().map(Impl::boolean).collect();
-    constraints.push(Impl::combine_nybbles(y_xor_xprime_rotated) - yprime);
+    let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
+    constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
     E::combine_constraints(alphas, constraints) * index(GateType::ChaChaFinal)
 }
 
@@ -275,41 +292,7 @@ pub fn constraint_chacha_final<F: FftField>(alphas: impl Iterator<Item = usize>)
 pub mod testing {
     use super::*;
 
-    /// The lookup table for 4-bit xor.
-    /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
-    ///
-    /// This is because tables are extended to the full size of a column (essentially)
-    /// by padding them with their final value. And, having the value (0, 0, 0) here means
-    /// that when we commit to this table and use the dummy value in the `lookup_sorted`
-    /// columns, those entries that have the dummy value of
-    ///
-    /// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
-    ///
-    /// will translate into a scalar multiplication by 0, which is free.
-    pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
-        let mut res = vec![vec![]; 3];
-
-        // XOR for all possible four-bit arguments.
-        // I suppose this could be computed a bit faster using symmetry but it's quite
-        // small (16*16 = 256 entries) so let's just keep it simple.
-        for i in 0u32..0b10000 {
-            for j in 0u32..0b10000 {
-                res[0].push(F::from(i));
-                res[1].push(F::from(j));
-                res[2].push(F::from(i ^ j));
-            }
-        }
-
-        for r in res.iter_mut().take(3) {
-            r.reverse();
-            // Just to be safe.
-            assert!(r[r.len() - 1].is_zero());
-        }
-        res
-    }
-
     /// This is just for tests. It doesn't set up the permutations
-    // TODO: add #[cfg(test)]
     pub fn chacha20_gates() -> Vec<GateType> {
         let mut gs = vec![];
         for _ in 0..20 {

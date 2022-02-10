@@ -1967,9 +1967,57 @@ impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
     }
 }
 
+/// A number of useful constraints
+pub mod constraints {
+    use super::*;
+
+    /// Creates a constraint to enforce that b is either 0 or 1.
+    pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
+        b.clone().square() - b.clone()
+    }
+}
+
+//
+// Helpers
+//
+
 /// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
 
+/// Handy function to quickly create an expression for a witness.
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), row)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_curr<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Curr)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_next<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Next)
+}
+
+/// Handy function to quickly create an expression for a gate.
+pub fn index<F>(g: GateType) -> E<F> {
+    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+}
+
+pub fn coeff<F>(i: usize) -> E<F> {
+    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
+}
+
+/// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
+pub mod prologue {
+    pub use super::{coeff, index, witness, witness_curr, witness_next, E};
+}
+
+//
+// OCaml-related code
+//
+
+/// bindings for OCaml
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;

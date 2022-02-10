@@ -7,7 +7,7 @@ This source file implements Plonk Protocol Index primitive.
 use crate::alphas::{self, ConstraintType};
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
-    expr::{Column, Expr, Linearization, PolishToken, E},
+    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupsUsed},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
@@ -163,7 +163,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
     powers_of_alpha: &mut alphas::Builder,
-) -> E<F> {
+) -> Expr<ConstantExpr<F>> {
     // gates
     let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
 
