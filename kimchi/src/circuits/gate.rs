@@ -52,7 +52,7 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    // Linear combination of local-positions
+    /// Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
 

@@ -34,7 +34,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
-    // polynomial commitments
+    /// polynomial commitments
     pub w_comm: [PolyComm<G>; COLUMNS],
     pub z_comm: PolyComm<G>,
     pub t_comm: PolyComm<G>,
@@ -43,22 +43,22 @@ pub struct ProverCommitments<G: AffineCurve> {
 
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
-    // polynomial commitments
+    /// polynomial commitments
     pub commitments: ProverCommitments<G>,
 
-    // batched commitment opening proof
+    /// batched commitment opening proof
     pub proof: OpeningProof<G>,
 
-    // polynomial evaluations
+    /// polynomial evaluations
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
 
     pub ft_eval1: Fr<G>,
 
-    // public part of the witness
+    /// public part of the witness
     pub public: Vec<Fr<G>>,
 
-    // The challenges underlying the optional polynomials folded into the proof
+    /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
@@ -67,10 +67,10 @@ where
     G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
-    // This function constructs prover's zk-proof from the witness & the Index against SRS instance
-    //     witness: computation witness
-    //     index: Index
-    //     RETURN: prover's zk-proof
+    /// This function constructs prover's zk-proof from the witness & the Index against SRS instance
+    ///     witness: computation witness
+    ///     index: Index
+    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
@@ -839,7 +839,7 @@ pub mod caml {
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
-        // OCaml doesn't have sized arrays, so we have to convert to a tuple..
+        /// OCaml doesn't have sized arrays, so we have to convert to a tuple..
         pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,
