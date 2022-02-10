@@ -143,11 +143,10 @@
 //!
 
 use crate::circuits::{
-    expr::{boolean, index, witness, ConstantExpr as C, E},
+    expr::{constraints::boolean, prologue::*, ConstantExpr as C},
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field, Zero};
-use CurrOrNext::*;
 
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
@@ -191,6 +190,7 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
 fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
     (0..8)
         .map(|i| {
+            use CurrOrNext::*;
             let r = if i < 4 { Curr } else { Next };
             witness(col_offset + (i % 4), r)
         })
@@ -211,13 +211,13 @@ fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
     let x_plus_z_nybbles = chunks_over_2_rows(7);
     let y_nybbles = chunks_over_2_rows(11);
 
-    let x_plus_z_overflow_bit = witness(2, Next);
+    let x_plus_z_overflow_bit = witness_next(2);
 
-    let x = witness(0, Curr);
-    let xprime = witness(0, Next);
-    let y = witness(1, Curr);
-    let yprime = witness(1, Next);
-    let z = witness(2, Curr);
+    let x = witness_curr(0);
+    let xprime = witness_next(0);
+    let y = witness_curr(1);
+    let yprime = witness_next(1);
+    let z = witness_curr(2);
 
     // Because the nybbles are little-endian, rotating the vector "right"
     // is equivalent to left-shifting the nybbles.
@@ -247,17 +247,17 @@ fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
 
 /// a += b; d ^= a; d <<<= 16 (=4*4)
 pub fn constraint_chacha0<F: FftField>(alpha0: usize) -> E<F> {
-    index(GateType::ChaCha0, Curr) * line(alpha0, 4)
+    index(GateType::ChaCha0) * line(alpha0, 4)
 }
 
 /// c += d; b ^= c; b <<<= 12 (=3*4)
 pub fn constraint_chacha1<F: FftField>(alpha0: usize) -> E<F> {
-    index(GateType::ChaCha1, Curr) * line(alpha0, 3)
+    index(GateType::ChaCha1) * line(alpha0, 3)
 }
 
 /// a += b; d ^= a; d <<<= 8  (=2*4)
 pub fn constraint_chacha2<F: FftField>(alpha0: usize) -> E<F> {
-    index(GateType::ChaCha2, Curr) * line(alpha0, 2)
+    index(GateType::ChaCha2) * line(alpha0, 2)
 }
 
 /// The last line, namely,
@@ -270,7 +270,7 @@ pub fn constraint_chacha2<F: FftField>(alpha0: usize) -> E<F> {
 pub fn constraint_chacha_final<F: FftField>(alpha0: usize) -> E<F> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(1);
     let low_bits = chunks_over_2_rows(5);
-    let yprime = witness(0, Curr);
+    let yprime = witness_curr(0);
 
     let one_half = F::from(2u64).inverse().unwrap();
 
@@ -288,7 +288,7 @@ pub fn constraint_chacha_final<F: FftField>(alpha0: usize) -> E<F> {
 
     let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
     constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
-    E::combine_constraints(alpha0, constraints) * index(GateType::ChaChaFinal, Curr)
+    E::combine_constraints(alpha0, constraints) * index(GateType::ChaChaFinal)
 }
 
 // TODO: move this to test file
