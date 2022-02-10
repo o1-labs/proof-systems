@@ -71,13 +71,9 @@ fn chacha_prover() {
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(
-        gates,
-        vec![chacha::testing::xor_table()],
-        fp_sponge_params,
-        PUBLIC,
-    )
-    .unwrap();
+    let cs =
+        ConstraintSystem::<Fp>::create(gates, vec![chacha::xor_table()], fp_sponge_params, PUBLIC)
+            .unwrap();
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
     let mut srs = SRS::create(max_size);

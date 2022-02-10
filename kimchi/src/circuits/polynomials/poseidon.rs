@@ -5,7 +5,6 @@ use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
-use std::ops::RangeInclusive;
 use CurrOrNext::*;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`

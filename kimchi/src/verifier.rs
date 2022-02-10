@@ -459,9 +459,9 @@ where
                         .collect::<Vec<_>>(),
                 );
                 let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
-                let (scalars, _) =
+                let (generic_scalars, _) =
                     &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
-                scalars.extend(scalars);
+                scalars.extend(generic_scalars);
 
                 commitments.push(&index.coefficients_comm[CONSTANT_COEFF]);
                 scalars.push(evals[0].generic_selector);
