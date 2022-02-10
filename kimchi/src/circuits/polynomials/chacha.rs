@@ -144,7 +144,7 @@
 
 use crate::circuits::{
     expr::{constraints::boolean, prologue::*, ConstantExpr as C},
-    gate::GateType,
+    gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field, Zero};
 
@@ -190,12 +190,9 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
 fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
     (0..8)
         .map(|i| {
-            let w = col_offset + (i % 4);
-            if i < 4 {
-                witness_curr(w)
-            } else {
-                witness_next(w)
-            }
+            use CurrOrNext::*;
+            let r = if i < 4 { Curr } else { Next };
+            witness(col_offset + (i % 4), r)
         })
         .collect()
 }
