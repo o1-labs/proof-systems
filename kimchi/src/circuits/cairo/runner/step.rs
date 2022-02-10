@@ -1,84 +1,86 @@
 //! This module represents a Cairo execution step
 //! It defines the execution logic of Cairo instructions
 
-use crate::circuits::cairo::runner::bytecode::CairoBytecode;
 use crate::circuits::cairo::runner::definitions::*;
+use crate::circuits::cairo::runner::memory::CairoMemory;
 use crate::circuits::cairo::runner::word::CairoWord;
+use ark_ff::PrimeField;
 
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]
-pub struct CairoRegisters {
+pub struct CairoPointers<F: PrimeField> {
     /// Program counter: points to address in memory
-    pub pc: u64,
+    pub pc: F,
     /// Allocation pointer: points to first free space in memory
-    pub ap: u64,
+    pub ap: F,
     /// Frame pointer: points to the beginning of the stack in memory (for arguments)
-    pub fp: u64,
+    pub fp: F,
 }
 
-impl CairoRegisters {
-    /// Creates a new triple of registers
-    pub fn new(pc: u64, ap: u64, fp: u64) -> CairoRegisters {
-        CairoRegisters { pc, ap, fp }
+impl<F: PrimeField> CairoPointers<F> {
+    /// Creates a new triple of pointers
+    pub fn new(pc: F, ap: F, fp: F) -> CairoPointers<F> {
+        CairoPointers { pc, ap, fp }
     }
 }
 
 /// A structure to store auxiliary variables throughout computation
-pub struct CairoVariables {
+pub struct CairoVariables<F: PrimeField> {
     /// Destination
-    pub dst: Option<i128>,
+    dst: Option<F>,
     /// First operand
-    pub op0: Option<i128>,
+    op0: Option<F>,
     /// Second operand
-    pub op1: Option<i128>,
+    op1: Option<F>,
     /// Result
-    pub res: Option<i128>,
+    res: Option<F>,
     /// Destination address
-    pub dst_addr: u64,
+    dst_addr: F,
     /// First operand address
-    pub op0_addr: u64,
+    op0_addr: F,
     /// Second operand address
-    pub op1_addr: u64,
+    op1_addr: F,
     /// Size of the instruction
-    pub size: u64,
+    size: F,
 }
 
-impl CairoVariables {
+impl<F: PrimeField> CairoVariables<F> {
     /// This function creates an instance of a default CairoVariables struct
-    pub fn new() -> CairoVariables {
+    pub fn new() -> CairoVariables<F> {
         CairoVariables {
             dst: None,
             op0: None,
             op1: None,
             res: None,
-            dst_addr: 0,
-            op0_addr: 0,
-            op1_addr: 0,
-            size: 0,
+            dst_addr: F::zero(),
+            op0_addr: F::zero(),
+            op1_addr: F::zero(),
+            size: F::zero(),
         }
     }
 }
-impl Default for CairoVariables {
+impl<F: PrimeField> Default for CairoVariables<F> {
     fn default() -> Self {
         Self::new()
     }
 }
 
 /// A data structure to store a current step of Cairo computation
-pub struct CairoStep<'a> {
+pub struct CairoStep<'a, F: PrimeField> {
     // current step of computation
     //step: u64,
     /// current word of the program
-    pub mem: &'a mut CairoBytecode,
+    pub mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
-    /// current registers
-    pub curr: CairoRegisters,
-    /// (if any) next registers
-    pub next: Option<CairoRegisters>,
+    /// current pointers
+    curr: CairoPointers<F>,
+    /// (if any) next pointers
+    next: Option<CairoPointers<F>>,
     /// state auxiliary variables
-    pub vars: CairoVariables,
+    vars: CairoVariables<F>,
 }
 
+/*
 /// Performs the addition of a u64 register with a signed offset
 fn add_off(reg: u64, off: i128) -> u64 {
     // TODO(@querolita) check helper to avoid casting manually
@@ -91,14 +93,15 @@ fn add_off(reg: u64, off: i128) -> u64 {
         reg + (off.abs() as u64)
     }
 }
+*/
 
-impl<'a> CairoStep<'a> {
-    /// Creates a new Cairo execution step from a step index, a Cairo word, and current registers
-    pub fn new(mem: &mut CairoBytecode, regs: CairoRegisters) -> CairoStep {
+impl<'a, F: PrimeField> CairoStep<'a, F> {
+    /// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
+    pub fn new(mem: &mut CairoMemory<F>, ptrs: CairoPointers<F>) -> CairoStep<F> {
         CairoStep {
             //step: idx,
             mem,
-            curr: regs,
+            curr: ptrs,
             next: None,
             vars: CairoVariables::new(),
         }
@@ -114,7 +117,7 @@ impl<'a> CairoStep<'a> {
         // If the Option<> thing is not a guarantee for continuation of the program, we may be removing this
         let next_pc = self.next_pc();
         let (next_ap, next_fp) = self.next_apfp();
-        self.next = Some(CairoRegisters::new(
+        self.next = Some(CairoPointers::new(
             next_pc.unwrap(),
             next_ap.unwrap(),
             next_fp.unwrap(),
@@ -122,7 +125,7 @@ impl<'a> CairoStep<'a> {
     }
 
     /// This function returns the current word instruction being executed
-    pub fn instr(&mut self) -> CairoWord {
+    pub fn instr(&mut self) -> CairoWord<F> {
         CairoWord::new(self.mem.read(self.curr.pc).unwrap())
     }
 
@@ -130,10 +133,10 @@ impl<'a> CairoStep<'a> {
     pub fn set_op0(&mut self) {
         if self.instr().op0_reg() == OP0_AP {
             // reads first word from allocated memory
-            self.vars.op0_addr = add_off(self.curr.ap, self.instr().off_op0().into());
+            self.vars.op0_addr = self.curr.ap + self.instr().off_op0();
         } else {
             // reads first word from input parameters
-            self.vars.op0_addr = add_off(self.curr.fp, self.instr().off_op0().into());
+            self.vars.op0_addr = self.curr.fp + self.instr().off_op0();
         } // no more values than 0 and 1 because op0_reg is one bit
         self.vars.op0 = self.mem.read(self.vars.op0_addr);
     }
@@ -141,21 +144,20 @@ impl<'a> CairoStep<'a> {
     /// This function computes the second operand address and content and the instruction size
     pub fn set_op1(&mut self) {
         if self.instr().op1_src() == OP1_DBL {
-            self.vars.size = 1; // double indexing
-            self.vars.op1_addr =
-                add_off(self.vars.op0.unwrap() as u64, self.instr().off_op1().into()); // should be positive for address
+            self.vars.size = F::one(); // double indexing
+            self.vars.op1_addr = self.vars.op0.unwrap() + self.instr().off_op1(); // should be positive for address
             self.vars.op1 = self.mem.read(self.vars.op1_addr);
         } else if self.instr().op1_src() == OP1_VAL {
-            self.vars.size = 2; // immediate value
-            self.vars.op1_addr = add_off(self.curr.pc, self.instr().off_op1().into()); // if off_op1=1 then op1 contains a plain value
+            self.vars.size = F::from(2u32); // immediate value
+            self.vars.op1_addr = self.curr.pc + self.instr().off_op1(); // if off_op1=1 then op1 contains a plain value
             self.vars.op1 = self.mem.read(self.vars.op1_addr);
         } else if self.instr().op1_src() == OP1_FP {
-            self.vars.size = 1;
-            self.vars.op1_addr = add_off(self.curr.fp, self.instr().off_op1().into()); // second operand offset relative to fp
+            self.vars.size = F::one();
+            self.vars.op1_addr = self.curr.fp + self.instr().off_op1(); // second operand offset relative to fp
             self.vars.op1 = self.mem.read(self.vars.op1_addr);
         } else if self.instr().op1_src() == OP1_AP {
-            self.vars.size = 1;
-            self.vars.op1_addr = add_off(self.curr.ap, self.instr().off_op1().into()); // second operand offset relative to ap
+            self.vars.size = F::one();
+            self.vars.op1_addr = self.curr.ap + self.instr().off_op1(); // second operand offset relative to ap
             self.vars.op1 = self.mem.read(self.vars.op1_addr);
         } else {
             unimplemented!(); // invalid instruction, no single one bit flagset
@@ -170,7 +172,7 @@ impl<'a> CairoStep<'a> {
                 && self.instr().opcode() == OPC_JMP_INC
                 && self.instr().ap_up() != AP_ADD
             {
-                self.vars.res = Some(0); // "unused"
+                self.vars.res = Some(F::zero()); // "unused"
             } else {
                 unimplemented!(); // invalid instruction
             }
@@ -200,52 +202,52 @@ impl<'a> CairoStep<'a> {
     /// This function computes the destination address
     pub fn set_dst(&mut self) {
         if self.instr().dst_reg() == DST_AP {
-            self.vars.dst_addr = add_off(self.curr.ap, self.instr().off_dst().into());
+            self.vars.dst_addr = self.curr.ap + self.instr().off_dst();
             // read from stack
         } else {
-            self.vars.dst_addr = add_off(self.curr.fp, self.instr().off_dst().into());
+            self.vars.dst_addr = self.curr.fp + self.instr().off_dst();
             // read from parameters
         }
         self.vars.dst = self.mem.read(self.vars.dst_addr);
     }
 
     /// This function computes the next program counter
-    pub fn next_pc(&mut self) -> Option<u64> {
+    pub fn next_pc(&mut self) -> Option<F> {
         if self.instr().pc_up() == PC_SIZ {
             // next instruction is right after the current one
             Some(self.curr.pc + self.vars.size) // the common case
         } else if self.instr().pc_up() == PC_ABS {
             // next instruction is in res
-            Some(self.vars.res.unwrap() as u64) // absolute jump
+            Some(self.vars.res.unwrap()) // absolute jump
         } else if self.instr().pc_up() == PC_REL {
             // relative jump
-            Some(add_off(self.curr.pc, self.vars.res.unwrap())) // go to some address relative to pc
+            Some(self.curr.pc + self.vars.res.unwrap()) // go to some address relative to pc
         } else if self.instr().pc_up() == PC_JNZ {
             // conditional relative jump (jnz)
-            if self.vars.dst == Some(0) {
+            if self.vars.dst == Some(F::zero()) {
                 Some(self.curr.pc + self.vars.size) // if condition false, common case
             } else {
                 // if condition true, relative jump with second operand
-                Some(add_off(self.curr.pc, self.vars.op1.unwrap()))
+                Some(self.curr.pc + self.vars.op1.unwrap())
             }
         } else {
             unimplemented!(); // invalid instruction
         }
     }
     // This function computes the next values of the allocation and frame pointers
-    fn next_apfp(&mut self) -> (Option<u64>, Option<u64>) {
+    fn next_apfp(&mut self) -> (Option<F>, Option<F>) {
         let (next_ap, next_fp);
         // The following branches don't include the assertions. That is done in the verification.
         if self.instr().opcode() == OPC_CALL {
             // "call" instruction
-            self.mem.write(self.curr.ap, self.curr.fp.into()); // Save current fp
+            self.mem.write(self.curr.ap, self.curr.fp); // Save current fp
             self.mem
-                .write(self.curr.ap + 1, (self.curr.pc + self.vars.size).into()); // Save next instruction
-                                                                                  // Update fp
-            next_fp = Some(self.curr.ap + 2); // pointer for next frame is after current fp and instruction after call
-                                              // Update ap
+                .write(self.curr.ap + F::one(), self.curr.pc + self.vars.size); // Save next instruction
+                                                                                // Update fp
+            next_fp = Some(self.curr.ap + F::from(2u32)); // pointer for next frame is after current fp and instruction after call
+                                                          // Update ap
             if self.instr().ap_up() == AP_Z2 {
-                next_ap = Some(self.curr.ap + 2); // two words were written so advance 2 positions
+                next_ap = Some(self.curr.ap + F::from(2u32)); // two words were written so advance 2 positions
             } else {
                 unimplemented!(); // ap increments not allowed in call instructions
             }
@@ -258,16 +260,16 @@ impl<'a> CairoStep<'a> {
             if self.instr().ap_up() == AP_Z2 {
                 next_ap = Some(self.curr.ap) // no modification on ap
             } else if self.instr().ap_up() == AP_ADD {
-                next_ap = Some(add_off(self.curr.ap, self.vars.res.unwrap())); // ap += <op> // should be larger than current
+                next_ap = Some(self.curr.ap + self.vars.res.unwrap()); // ap += <op> // should be larger than current
             } else if self.instr().ap_up() == AP_ONE {
-                next_ap = Some(self.curr.ap + 1); // ap++
+                next_ap = Some(self.curr.ap + F::one()); // ap++
             } else {
                 unimplemented!(); // invalid instruction}
             }
             if self.instr().opcode() == OPC_JMP_INC {
                 next_fp = Some(self.curr.fp); // no modification on fp
             } else if self.instr().opcode() == OPC_RET {
-                next_fp = Some(self.vars.dst.unwrap() as u64); // ret sets fp to previous fp that was in [ap-2]
+                next_fp = Some(self.vars.dst.unwrap()); // ret sets fp to previous fp that was in [ap-2]
             } else if self.instr().opcode() == OPC_AEQ {
                 // The following conditional is a fix that is not explained in the whitepaper
                 // The goal is to distinguish two types of ASSERT_EQUAL where one checks that
@@ -293,24 +295,29 @@ impl<'a> CairoStep<'a> {
 #[cfg(test)]
 mod tests {
     //use super::*;
+    use mina_curves::pasta::fp::Fp as F;
 
     #[test]
     fn test_cairo_step() {
         // This tests that CairoStep works for a 2 word instruction
         //    tempvar x = 10;
-        let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe];
-        let mut mem = super::CairoBytecode::new(instrs);
+        let instrs = vec![
+            F::from(0x480680017fff8000u64),
+            F::from(10u64),
+            F::from(0x208b7fff7fff7ffeu64),
+        ];
+        let mut mem = super::CairoMemory::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
-        mem.write(4, 7);
-        mem.write(5, 7);
-        let regs = super::CairoRegisters::new(1, 6, 6);
-        let mut step = super::CairoStep::new(&mut mem, regs);
+        mem.write(F::from(4u32), F::from(7u32));
+        mem.write(F::from(5u32), F::from(7u32));
+        let ptrs = super::CairoPointers::new(F::from(1u32), F::from(6u32), F::from(6u32));
+        let mut step = super::CairoStep::new(&mut mem, ptrs);
 
-        let _next = step.execute();
-        assert_eq!(step.next.unwrap().pc, 3);
-        assert_eq!(step.next.unwrap().ap, 7);
-        assert_eq!(step.next.unwrap().fp, 6);
+        step.execute();
+        assert_eq!(step.next.unwrap().pc, F::from(3u32));
+        assert_eq!(step.next.unwrap().ap, F::from(7u32));
+        assert_eq!(step.next.unwrap().fp, F::from(6u32));
 
         step.mem.view();
     }
