@@ -1,6 +1,6 @@
 //! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk constraints.
 //!
-//! ```
+//! ```ignore
 //! Acc := [2]T
 //! for i = n-1 ... 0:
 //!    Q := (r_i == 1) ? T : -T
