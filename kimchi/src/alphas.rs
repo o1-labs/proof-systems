@@ -61,6 +61,7 @@ pub enum ConstraintType {
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Builder {
     /// The next power of alpha to use
+    /// (the end result will be [1, alpha^next_power[)
     next_power: usize,
     /// The mapping between constraint types and powers of alpha
     mapping: HashMap<ConstraintType, Range<usize>>,
