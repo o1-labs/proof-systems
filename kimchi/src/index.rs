@@ -5,6 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use crate::alphas::{self, ConstraintType};
+use crate::circuits::gate::Gate;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
@@ -168,11 +169,11 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let mut powers_of_alpha = alphas::Builder::default();
 
     // gates
-    let largest_constraint_num = varbasemul::CONSTRAINTS;
+    let largest_constraint_num = varbasemul::VarbaseMul::CONSTRAINTS;
     let alphas = powers_of_alpha.register(ConstraintType::Gate, largest_constraint_num);
 
     let mut expr = poseidon::constraint(alphas.clone().take(poseidon::CONSTRAINTS));
-    expr += varbasemul::constraint(alphas.clone().take(varbasemul::CONSTRAINTS));
+    expr += varbasemul::VarbaseMul::constraint(&powers_of_alpha);
     expr += complete_add::constraint(alphas.clone().take(complete_add::CONSTRAINTS));
     expr += endosclmul::constraint(alphas.clone().take(endosclmul::CONSTRAINTS));
     expr += endomul_scalar::constraint(alphas.clone().take(endomul_scalar::CONSTRAINTS));

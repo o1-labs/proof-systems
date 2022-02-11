@@ -7,15 +7,15 @@
 //!
 //! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.
 
-use crate::circuits::{
-    expr::{prologue::*, Cache, Column, Variable},
-    gate::{CurrOrNext, GateType},
-    wires::COLUMNS,
+use crate::{
+    alphas::{self, Alphas, ConstraintType},
+    circuits::{
+        expr::{prologue::*, Cache, Column, Variable},
+        gate::{CurrOrNext, Gate, GateType},
+        wires::COLUMNS,
+    },
 };
 use ark_ff::{FftField, One};
-
-/// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 21;
 
 type CurveVar = (Variable, Variable);
 
@@ -197,35 +197,43 @@ pub fn witness<F: FftField + std::fmt::Display>(
     VarbaseMulResult { acc, n: n_acc }
 }
 
-pub fn constraint<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let Layout {
-        base,
-        accs,
-        bits,
-        ss,
-        n_prev,
-        n_next,
-    } = LAYOUT;
+pub struct VarbaseMul;
 
-    let mut c = Cache::default();
+impl Gate for VarbaseMul {
+    const CONSTRAINTS: usize = 21;
 
-    let mut constraint = |i| single_bit(&mut c, bits[i], base, ss[i], accs[i], accs[i + 1]);
+    fn constraint<F: FftField>(alphas: &alphas::Builder) -> E<F> {
+        let Layout {
+            base,
+            accs,
+            bits,
+            ss,
+            n_prev,
+            n_next,
+        } = LAYOUT;
 
-    // n'
-    // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
-    // = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))
+        let mut c = Cache::default();
 
-    let n_prev = E::Cell(n_prev);
-    let n_next = E::Cell(n_next);
-    let mut res = vec![
-        n_next
-            - bits
-                .iter()
-                .fold(n_prev, |acc, b| E::Cell(*b) + acc.double()),
-    ];
+        let mut constraint = |i| single_bit(&mut c, bits[i], base, ss[i], accs[i], accs[i + 1]);
 
-    for i in 0..5 {
-        res.append(&mut constraint(i));
+        // n'
+        // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
+        // = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))
+
+        let n_prev = E::Cell(n_prev);
+        let n_next = E::Cell(n_next);
+        let mut res = vec![
+            n_next
+                - bits
+                    .iter()
+                    .fold(n_prev, |acc, b| E::Cell(*b) + acc.double()),
+        ];
+
+        for i in 0..5 {
+            res.append(&mut constraint(i));
+        }
+
+        let alphas = alphas.get_powers(ConstraintType::Gate, Self::CONSTRAINTS);
+        index(GateType::VarBaseMul) * E::combine_constraints(alphas, res)
     }
-    index(GateType::VarBaseMul) * E::combine_constraints(alphas, res)
 }
