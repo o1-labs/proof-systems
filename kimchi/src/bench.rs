@@ -46,7 +46,7 @@ impl BenchmarkCtx {
         // create the circuit
         let mut gates = vec![];
 
-        #[allow(clippy::explicit_counter_loop)] // TODO: fix this clippy
+        #[allow(clippy::explicit_counter_loop)]
         for row in 0..num_gates {
             let wires = Wire::new(row);
             gates.push(CircuitGate::<Fp>::create_generic_const(wires, 1u32.into()));

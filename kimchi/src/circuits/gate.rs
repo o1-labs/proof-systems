@@ -279,7 +279,7 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    #[allow(clippy::type_complexity)] // TODO: fix this clippy
+    #[allow(clippy::type_complexity)]
     pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,

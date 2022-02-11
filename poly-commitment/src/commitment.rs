@@ -456,7 +456,7 @@ fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) ->
 /// and the columns represent potential segments (if a polynomial was split in several parts).
 /// Note that if one of the polynomial comes specified with a degree bound,
 /// the evaluation for the last segment is potentially shifted to meet the proof.
-#[allow(clippy::type_complexity)] // TODO: fix this clippy
+#[allow(clippy::type_complexity)]
 pub fn combined_inner_product<G: CommitmentCurve>(
     evaluation_points: &[Fr<G>],
     xi: &Fr<G>,
@@ -713,9 +713,9 @@ where
     ///     evalscale: eval scaling factor for opening commitments in batch
     ///     oracle_params: parameters for the random oracle argument
     ///     RETURN: commitment opening proof
-    #[allow(clippy::too_many_arguments)] // TODO: fix this clippy
-    #[allow(clippy::type_complexity)] // TODO: fix this clippy
-    #[allow(clippy::many_single_char_names)] // TODO: fix this clippy
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
     pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
@@ -952,7 +952,7 @@ where
     ///     oracle_params: parameters for the random oracle argument
     ///     randomness source context
     ///     RETURN: verification status
-    #[allow(clippy::type_complexity)] // TODO: fix this clippy
+    #[allow(clippy::type_complexity)]
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
