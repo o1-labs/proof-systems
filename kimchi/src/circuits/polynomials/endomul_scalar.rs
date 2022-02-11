@@ -1,14 +1,17 @@
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    expr::{prologue::*, Cache},
-    gate::{CircuitGate, GateType},
-    wires::COLUMNS,
+use std::marker::PhantomData;
+
+use crate::{
+    alphas::{Alphas, ConstraintType},
+    circuits::{
+        argument::Argument,
+        constraints::ConstraintSystem,
+        expr::{prologue::*, Cache},
+        gate::{CircuitGate, GateType},
+        wires::COLUMNS,
+    },
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
-
-/// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 11;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
@@ -47,118 +50,142 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
         .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(*c))
 }
 
-/// The constraint for the endomul scalar computation
-///
-/// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
-/// [this paper](https://eprint.iacr.org/2019/1021.pdf).
-///
-/// The state of the algorithm that's updated across iterations of the loop is (a, b).
-/// It's clear from that description of the algorithm that an iteration of the loop can
-/// be written as
-///
-/// ```ignore
-/// (a, b, i) ->
-///   ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),
-///     2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
-/// ```
-///
-/// for some functions c_func and d_func. If one works out what these functions are on
-/// every input (thinking of a two bit input as a number in {0, 1, 2, 3}), one finds they
-/// are given by
-///
-/// c_func(x), defined by
-/// - c_func(0) = 0
-/// - c_func(1) = 0
-/// - c_func(2) = -1
-/// - c_func(3) = 1
-///
-/// d_func(x), defined by
-/// - d_func(0) = -1
-/// - d_func(1) = 1
-/// - d_func(2) = 0
-/// - d_func(3) = 0
-///
-/// One can then interpolate to find polynomials that implement these functions on {0, 1, 2, 3}.
-///
-/// You can use sage, as
-/// ```ignore
-/// R = PolynomialRing(QQ, 'x')
-/// c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
-/// d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
-/// ```
-///
-/// Then, c_func is given by
-///
-/// ```ignore
-/// 2/3*x^3 - 5/2*x^2 + 11/6*x
-/// ```
-///
-/// and d_func is given by
-/// ```ignore
-/// 2/3*x^3 - 7/2*x^2 + 29/6*x - 1 = c_func + (-x^2 + 3x - 1)
-/// ```
-///
-/// We lay it out as
-///
-/// <pre>
-/// 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14
-/// n0   n8   a0   b0   a8   b8   x0   x1   x2   x3   x4   x5   x6   x7
-/// </pre>
-///
-/// where each `xi` is a two bit "crumb".
-///
-/// We also use a polynomial to check that each `xi` is indeed in {0, 1, 2, 3},
-///
-/// ```ignore
-/// crumb(x)
-/// = x (x - 1) (x - 2) (x - 3)
-/// = x^4 - 6*x^3 + 11*x^2 - 6*x
-/// = x *(x^3 - 6*x^2 + 11*x - 6)
-/// ```
-pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let n0 = witness_curr(0);
-    let n8 = witness_curr(1);
-    let a0 = witness_curr(2);
-    let b0 = witness_curr(3);
-    let a8 = witness_curr(4);
-    let b8 = witness_curr(5);
+/// Implementation of the EndomulScalar gate.
+#[derive(Default)]
+pub struct EndomulScalar<F>(PhantomData<F>);
 
-    let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
+impl<F> EndomulScalar<F>
+where
+    F: Field,
+{
+    /// The constraint for the endomul scalar computation
+    ///
+    /// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
+    /// [this paper](https://eprint.iacr.org/2019/1021.pdf).
+    ///
+    /// The state of the algorithm that's updated across iterations of the loop is (a, b).
+    /// It's clear from that description of the algorithm that an iteration of the loop can
+    /// be written as
+    ///
+    /// ```ignore
+    /// (a, b, i) ->
+    ///   ( 2 * a + c_func(r_{2 * i}, r_{2 * i + 1}),
+    ///     2 * b + d_func(r_{2 * i}, r_{2 * i + 1}) )
+    /// ```
+    ///
+    /// for some functions c_func and d_func. If one works out what these functions are on
+    /// every input (thinking of a two bit input as a number in {0, 1, 2, 3}), one finds they
+    /// are given by
+    ///
+    /// c_func(x), defined by
+    /// - c_func(0) = 0
+    /// - c_func(1) = 0
+    /// - c_func(2) = -1
+    /// - c_func(3) = 1
+    ///
+    /// d_func(x), defined by
+    /// - d_func(0) = -1
+    /// - d_func(1) = 1
+    /// - d_func(2) = 0
+    /// - d_func(3) = 0
+    ///
+    /// One can then interpolate to find polynomials that implement these functions on {0, 1, 2, 3}.
+    ///
+    /// You can use sage, as
+    /// ```ignore
+    /// R = PolynomialRing(QQ, 'x')
+    /// c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
+    /// d_func = R.lagrange_polynomial([(0, -1), (1, 1), (2, 0), (3, 0)])
+    /// ```
+    ///
+    /// Then, c_func is given by
+    ///
+    /// ```ignore
+    /// 2/3*x^3 - 5/2*x^2 + 11/6*x
+    /// ```
+    ///
+    /// and d_func is given by
+    /// ```ignore
+    /// 2/3*x^3 - 7/2*x^2 + 29/6*x - 1 = c_func + (-x^2 + 3x - 1)
+    /// ```
+    ///
+    /// We lay it out as
+    ///
+    /// <pre>
+    /// 0    1    2    3    4    5    6    7    8    9    10   11   12   13   14
+    /// n0   n8   a0   b0   a8   b8   x0   x1   x2   x3   x4   x5   x6   x7
+    /// </pre>
+    ///
+    /// where each `xi` is a two bit "crumb".
+    ///
+    /// We also use a polynomial to check that each `xi` is indeed in {0, 1, 2, 3},
+    ///
+    /// ```ignore
+    /// crumb(x)
+    /// = x (x - 1) (x - 2) (x - 3)
+    /// = x^4 - 6*x^3 + 11*x^2 - 6*x
+    /// = x *(x^3 - 6*x^2 + 11*x - 6)
+    /// ```
+    pub fn constraints() -> Vec<E<F>> {
+        let n0 = witness_curr(0);
+        let n8 = witness_curr(1);
+        let a0 = witness_curr(2);
+        let b0 = witness_curr(3);
+        let a8 = witness_curr(4);
+        let b8 = witness_curr(5);
 
-    let mut cache = Cache::default();
+        let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
 
-    let c_coeffs = [
-        F::zero(),
-        F::from(11u64) / F::from(6u64),
-        -F::from(5u64) / F::from(2u64),
-        F::from(2u64) / F::from(3u64),
-    ];
+        let mut cache = Cache::default();
 
-    let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
-    let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
-    let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
+        let c_coeffs = [
+            F::zero(),
+            F::from(11u64) / F::from(6u64),
+            -F::from(5u64) / F::from(2u64),
+            F::from(2u64) / F::from(3u64),
+        ];
 
-    let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
-    let d_funcs: [_; 8] =
-        array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
+        let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
+        let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
+        let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
-    let n8_expected = xs
-        .iter()
-        .fold(n0, |acc, x| acc.double().double() + x.clone());
+        let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
+        let d_funcs: [_; 8] =
+            array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
-    // This is iterating
-    //
-    // a = 2 a + c
-    // b = 2 b + d
-    //
-    // as in the paper.
-    let a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
-    let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
+        let n8_expected = xs
+            .iter()
+            .fold(n0, |acc, x| acc.double().double() + x.clone());
 
-    let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
-    constraints.extend(xs.iter().map(crumb));
+        // This is iterating
+        //
+        // a = 2 a + c
+        // b = 2 b + d
+        //
+        // as in the paper.
+        let a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
+        let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
 
-    E::combine_constraints(alphas, constraints) * index(GateType::EndoMulScalar)
+        let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
+        constraints.extend(xs.iter().map(crumb));
+
+        constraints
+    }
+}
+
+impl<F> Argument for EndomulScalar<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const CONSTRAINTS: usize = 11;
+
+    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
+        let constraints = Self::constraints();
+        assert!(constraints.len() == Self::CONSTRAINTS);
+        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
+        index(GateType::EndoMulScalar) * E::combine_constraints(alphas, constraints)
+    }
 }
 
 pub fn gen_witness<F: PrimeField + std::fmt::Display>(

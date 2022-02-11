@@ -7,11 +7,14 @@
 //!
 //! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.
 
+use std::marker::PhantomData;
+
 use crate::{
-    alphas::{self, Alphas, ConstraintType},
+    alphas::{Alphas, ConstraintType},
     circuits::{
+        argument::Argument,
         expr::{prologue::*, Cache, Column, Variable},
-        gate::{CurrOrNext, Gate, GateType},
+        gate::{CurrOrNext, GateType},
         wires::COLUMNS,
     },
 };
@@ -197,12 +200,15 @@ pub fn witness<F: FftField + std::fmt::Display>(
     VarbaseMulResult { acc, n: n_acc }
 }
 
-pub struct VarbaseMul;
+/// Implementation of the VarbaseMul gate
+#[derive(Default)]
+pub struct VarbaseMul<F>(PhantomData<F>);
 
-impl Gate for VarbaseMul {
-    const CONSTRAINTS: usize = 21;
-
-    fn constraint<F: FftField>(alphas: &alphas::Builder) -> E<F> {
+impl<F> VarbaseMul<F>
+where
+    F: FftField,
+{
+    fn constraints() -> Vec<E<F>> {
         let Layout {
             base,
             accs,
@@ -233,7 +239,21 @@ impl Gate for VarbaseMul {
             res.append(&mut constraint(i));
         }
 
-        let alphas = alphas.get_powers(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::VarBaseMul) * E::combine_constraints(alphas, res)
+        res
+    }
+}
+
+impl<F> Argument for VarbaseMul<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const CONSTRAINTS: usize = 21;
+
+    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
+        let constraints = Self::constraints();
+        assert!(constraints.len() == Self::CONSTRAINTS);
+        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
+        index(GateType::VarBaseMul) * E::combine_constraints(alphas, constraints)
     }
 }

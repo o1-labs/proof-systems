@@ -13,9 +13,11 @@ use crate::{
 
 /// The interface for a minimal argument implementation
 pub trait Argument {
+    type Field: FftField;
+
     /// The number of constraints created by the argument
     const CONSTRAINTS: usize;
 
     /// Returns constraints safely combined via the passed combinator
-    fn constraint<F: FftField>(combinator: &Alphas<F>) -> Expr<ConstantExpr<F>>;
+    fn constraint(&self, combinator: &Alphas<Self::Field>) -> Expr<ConstantExpr<Self::Field>>;
 }
