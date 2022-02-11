@@ -1,20 +1,19 @@
-/********************************************************************************************
+//! This module implements zk-proof batch verifier functionality.
 
-This source file implements zk-proof batch verifier functionality.
-
-*********************************************************************************************/
-
-pub use super::index::VerifierIndex as Index;
-pub use super::prover::{range, ProverProof};
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    expr::{Column, Constants, PolishToken},
-    gate::{GateType, LookupsUsed},
-    gates::generic::{CONSTANT_COEFF, MUL_COEFF},
-    scalars::RandomOracles,
-    wires::*,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        expr::{Column, Constants, PolishToken},
+        gate::{GateType, LookupsUsed},
+        gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+        scalars::RandomOracles,
+        wires::*,
+    },
+    index::{LookupVerifierIndex, VerifierIndex as Index},
+    plonk_sponge::FrSponge,
+    prover::ProverProof,
+    range,
 };
-use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
@@ -125,9 +124,16 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
         let joint_combiner = {
-            let s = match index.lookup_used.as_ref() {
-                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            let s = match index.lookup_index {
+                None
+                | Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Single,
+                    ..
+                }) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Joint,
+                    ..
+                }) => ScalarChallenge(fq_sponge.challenge()),
             };
             (s, s.to_field(&index.srs.endo_r))
         };
@@ -422,8 +428,8 @@ where
             let f_comm = {
                 // permutation
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
-                let mut commitments_part = vec![&index.sigma_comm[PERMUTS - 1]];
-                let mut scalars_part = vec![ConstraintSystem::perm_scalars(
+                let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
+                let mut scalars = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     oracles.beta,
                     oracles.gamma,
@@ -432,21 +438,21 @@ where
                 )];
 
                 // generic
-                commitments_part.push(&index.coefficients_comm[MUL_COEFF]);
-                commitments_part.extend(
+                commitments.push(&index.coefficients_comm[MUL_COEFF]);
+                commitments.extend(
                     index
                         .coefficients_comm
                         .iter()
                         .take(GENERICS)
                         .collect::<Vec<_>>(),
                 );
-                scalars_part.extend(&ConstraintSystem::gnrc_scalars(
+                scalars.extend(&ConstraintSystem::gnrc_scalars(
                     &evals[0].w,
                     evals[0].generic_selector,
                 ));
 
-                commitments_part.push(&index.coefficients_comm[CONSTANT_COEFF]);
-                scalars_part.push(evals[0].generic_selector);
+                commitments.push(&index.coefficients_comm[CONSTANT_COEFF]);
+                scalars.push(evals[0].generic_selector);
 
                 {
                     // TODO: Reuse constants from oracles function
@@ -459,52 +465,64 @@ where
                         mds: index.fr_sponge_params.mds.clone(),
                     };
 
-                    for (c, e) in &index.linearization.index_terms {
-                        let e = PolishToken::evaluate(
-                            e,
+                    for (col, tokens) in &index.linearization.index_terms {
+                        let scalar = PolishToken::evaluate(
+                            tokens,
                             index.domain,
                             oracles.zeta,
                             &evals,
                             &constants,
                         )
-                        .unwrap();
+                        .expect("should evaluate");
                         let l = proof.commitments.lookup.as_ref();
                         use Column::*;
-                        match c {
+                        match col {
                             Witness(i) => {
-                                scalars_part.push(e);
-                                commitments_part.push(&proof.commitments.w_comm[*i])
+                                scalars.push(scalar);
+                                commitments.push(&proof.commitments.w_comm[*i])
                             }
                             Coefficient(i) => {
-                                scalars_part.push(e);
-                                commitments_part.push(&index.coefficients_comm[*i])
+                                scalars.push(scalar);
+                                commitments.push(&index.coefficients_comm[*i])
                             }
                             Z => {
-                                scalars_part.push(e);
-                                commitments_part.push(&proof.commitments.z_comm);
+                                scalars.push(scalar);
+                                commitments.push(&proof.commitments.z_comm);
                             }
                             LookupSorted(i) => {
-                                scalars_part.push(e);
-                                commitments_part.push(&l.unwrap().sorted[*i])
+                                scalars.push(scalar);
+                                commitments.push(&l.unwrap().sorted[*i])
                             }
                             LookupAggreg => {
-                                scalars_part.push(e);
-                                commitments_part.push(&l.unwrap().aggreg)
+                                scalars.push(scalar);
+                                commitments.push(&l.unwrap().aggreg)
                             }
-                            LookupKindIndex(i) => {
-                                scalars_part.push(e);
-                                commitments_part.push(&index.lookup_selectors[*i]);
-                            }
-                            LookupTable => {
-                                let mut j = Fr::<G>::one();
-                                scalars_part.push(e);
-                                commitments_part.push(&index.lookup_tables[0][0]);
-                                for t in index.lookup_tables[0].iter().skip(1) {
-                                    j *= constants.joint_combiner;
-                                    scalars_part.push(e * j);
-                                    commitments_part.push(t);
+                            LookupKindIndex(i) => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    col
+                                ),
+                                Some(lindex) => {
+                                    scalars.push(scalar);
+                                    commitments.push(&lindex.lookup_selectors[*i]);
                                 }
-                            }
+                            },
+                            LookupTable => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    col
+                                ),
+                                Some(lindex) => {
+                                    let mut j = Fr::<G>::one();
+                                    scalars.push(scalar);
+                                    commitments.push(&lindex.lookup_tables[0][0]);
+                                    for t in lindex.lookup_tables[0].iter().skip(1) {
+                                        j *= constants.joint_combiner;
+                                        scalars.push(scalar * j);
+                                        commitments.push(t);
+                                    }
+                                }
+                            },
                             Index(t) => {
                                 use GateType::*;
                                 let c = match t {
@@ -519,15 +537,15 @@ where
                                     ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                     ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
                                 };
-                                scalars_part.push(e);
-                                commitments_part.push(c);
+                                scalars.push(scalar);
+                                commitments.push(c);
                             }
                         }
                     }
                 }
 
                 // MSM
-                PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)
+                PolyComm::multi_scalar_mul(&commitments, &scalars)
             };
 
             let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);

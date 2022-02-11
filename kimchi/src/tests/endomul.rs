@@ -109,7 +109,7 @@ fn endomul_test() {
 
         let bits_msb: Vec<_> = bits_lsb.iter().take(num_bits).copied().rev().collect();
 
-        let res = endosclmul::witness(
+        let res = endosclmul::gen_witness(
             &mut witness,
             i * rows_per_scalar,
             endo_q,
