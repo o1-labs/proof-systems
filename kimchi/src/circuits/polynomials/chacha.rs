@@ -158,7 +158,7 @@ pub const CONSTRAINTS_1: usize = 5;
 pub const CONSTRAINTS_2: usize = 5;
 
 /// Number of constraints produced by the ChaChaFinal gate.
-pub const CONSTRAINTS_FINAL: usize = 5;
+pub const CONSTRAINTS_FINAL: usize = 9;
 
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
