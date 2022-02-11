@@ -52,7 +52,6 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    table_id: usize,
     // Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
@@ -89,6 +88,7 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
+    pub table_id: usize,
     pub entry: Vec<SingleLookup<F>>,
 }
 
@@ -106,6 +106,11 @@ impl<F: Field> JointLookup<F> {
     }
 }
 
+/// The different types of gates the system supports.
+/// Note that all the gates are mutually exclusive:
+/// they cannot be used at the same time on single row.
+/// If we were ever to support this feature, we would have to make sure
+/// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
     Clone,
@@ -299,10 +304,10 @@ impl GateType {
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
                 let l = |loc: LocalPosition| SingleLookup {
-                    table_id: 0,
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
+                    table_id: 0,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -327,18 +332,11 @@ impl GateType {
                 // Check
                 // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
                 let x = SingleLookup {
-                    table_id: 0,
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    entry: vec![
-                        x.clone(),
-                        x,
-                        SingleLookup {
-                            table_id: 0,
-                            value: vec![],
-                        },
-                    ],
+                    table_id: 0,
+                    entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
             .collect();
@@ -427,7 +425,8 @@ impl<F: FftField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            // TODO: implement the verification for chacha
+            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
         }
     }
 }

@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::iter::FromIterator;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use CurrOrNext::*;
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -1664,7 +1664,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
             if unevaluated.is_empty() {
-                constant_term = constant_term + c;
+                constant_term += c;
             } else if unevaluated.len() == 1 {
                 let var = unevaluated.remove(0);
                 match var.row {
@@ -1844,6 +1844,16 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
     }
 }
 
+impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
+    fn add_assign(&mut self, other: Self) {
+        if self.is_zero() {
+            *self = other;
+        } else if !other.is_zero() {
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+        }
+    }
+}
+
 impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
     type Output = Expr<F>;
     fn mul(self, other: Self) -> Self {
@@ -1956,309 +1966,48 @@ impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
     }
 }
 
+/// A number of useful constraints
+pub mod constraints {
+    use super::*;
+
+    /// Creates a constraint to enforce that b is either 0 or 1.
+    pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
+        b.clone().square() - b.clone()
+    }
+}
+
+//
+// Helpers
+//
+
 /// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
 
-#[cfg(feature = "ocaml_types")]
-pub mod caml {
-    use super::*;
-    use crate::circuits::gate::{CurrOrNext, GateType};
+/// Handy function to quickly create an expression for a witness.
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), row)
+}
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)]
-    pub enum CamlColumn {
-        Witness(ocaml::Int),
-        Z,
-        LookupSorted(ocaml::Int),
-        LookupAggreg,
-        LookupTable,
-        LookupKindIndex(ocaml::Int),
-        Index(GateType),
-        Coefficient(ocaml::Int),
-    }
+/// Same as [witness] but for the next row.
+pub fn witness_curr<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Curr)
+}
 
-    impl From<Column> for CamlColumn {
-        fn from(c: Column) -> Self {
-            match c {
-                Column::Witness(x) => Self::Witness(x.try_into().expect("usize -> isize")),
-                Column::Z => Self::Z,
-                Column::LookupSorted(x) => {
-                    Self::LookupSorted(x.try_into().expect("usize -> isize"))
-                }
-                Column::LookupAggreg => Self::LookupAggreg,
-                Column::LookupTable => Self::LookupTable,
-                Column::LookupKindIndex(x) => {
-                    Self::LookupKindIndex(x.try_into().expect("usize -> isize"))
-                }
-                Column::Index(x) => Self::Index(x),
-                Column::Coefficient(x) => Self::Coefficient(x.try_into().expect("usize -> isize")),
-            }
-        }
-    }
+/// Same as [witness] but for the next row.
+pub fn witness_next<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Next)
+}
 
-    impl From<&Column> for CamlColumn {
-        fn from(c: &Column) -> Self {
-            match c {
-                Column::Witness(x) => Self::Witness((*x).try_into().expect("usize -> isize")),
-                Column::Z => Self::Z,
-                Column::LookupSorted(x) => {
-                    Self::LookupSorted((*x).try_into().expect("usize -> isize"))
-                }
-                Column::LookupAggreg => Self::LookupAggreg,
-                Column::LookupTable => Self::LookupTable,
-                Column::LookupKindIndex(x) => {
-                    Self::LookupKindIndex((*x).try_into().expect("usize -> isize"))
-                }
-                Column::Index(x) => Self::Index(*x),
-                Column::Coefficient(x) => {
-                    Self::Coefficient((*x).try_into().expect("usize -> isize"))
-                }
-            }
-        }
-    }
+/// Handy function to quickly create an expression for a gate.
+pub fn index<F>(g: GateType) -> E<F> {
+    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+}
 
-    impl From<CamlColumn> for Column {
-        fn from(c: CamlColumn) -> Column {
-            match c {
-                CamlColumn::Witness(x) => Column::Witness(x.try_into().expect("usize -> isize")),
-                CamlColumn::Z => Column::Z,
-                CamlColumn::LookupSorted(x) => {
-                    Column::LookupSorted(x.try_into().expect("usize -> isize"))
-                }
-                CamlColumn::LookupAggreg => Column::LookupAggreg,
-                CamlColumn::LookupTable => Column::LookupTable,
-                CamlColumn::LookupKindIndex(x) => {
-                    Column::LookupKindIndex(x.try_into().expect("usize -> isize"))
-                }
-                CamlColumn::Index(x) => Column::Index(x),
-                CamlColumn::Coefficient(x) => {
-                    Column::Coefficient(x.try_into().expect("usize -> isize"))
-                }
-            }
-        }
-    }
+pub fn coeff<F>(i: usize) -> E<F> {
+    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
+}
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlVariable {
-        pub col: CamlColumn,
-        pub row: CurrOrNext,
-    }
-
-    impl From<Variable> for CamlVariable {
-        fn from(c: Variable) -> CamlVariable {
-            CamlVariable {
-                col: c.col.into(),
-                row: c.row,
-            }
-        }
-    }
-
-    impl From<&Variable> for CamlVariable {
-        fn from(c: &Variable) -> CamlVariable {
-            CamlVariable {
-                col: c.col.into(),
-                row: c.row,
-            }
-        }
-    }
-
-    impl From<CamlVariable> for Variable {
-        fn from(c: CamlVariable) -> Variable {
-            Variable {
-                col: c.col.into(),
-                row: c.row,
-            }
-        }
-    }
-
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlLinearization<E> {
-        pub constant_term: Vec<E>,
-        pub index_terms: Vec<(CamlColumn, Vec<E>)>,
-    }
-
-    impl<E, CamlE> From<Linearization<Vec<E>>> for CamlLinearization<CamlE>
-    where
-        CamlE: From<E>,
-    {
-        fn from(c: Linearization<Vec<E>>) -> CamlLinearization<CamlE> {
-            CamlLinearization {
-                constant_term: c.constant_term.into_iter().map(Into::into).collect(),
-                index_terms: c
-                    .index_terms
-                    .into_iter()
-                    .map(|(x, y)| (x.into(), y.into_iter().map(Into::into).collect()))
-                    .collect(),
-            }
-        }
-    }
-
-    impl<E, CamlE> From<&Linearization<Vec<E>>> for CamlLinearization<CamlE>
-    where
-        CamlE: From<E>,
-        E: Clone,
-    {
-        fn from(c: &Linearization<Vec<E>>) -> CamlLinearization<CamlE> {
-            // TODO: Don't clone
-            CamlLinearization {
-                constant_term: c
-                    .constant_term
-                    .clone()
-                    .into_iter()
-                    .map(Into::into)
-                    .collect(),
-                index_terms: c
-                    .index_terms
-                    .clone()
-                    .into_iter()
-                    .map(|(x, y)| (x.into(), y.into_iter().map(Into::into).collect()))
-                    .collect(),
-            }
-        }
-    }
-
-    impl<E, CamlE> From<CamlLinearization<CamlE>> for Linearization<Vec<E>>
-    where
-        E: From<CamlE>,
-    {
-        fn from(c: CamlLinearization<CamlE>) -> Linearization<Vec<E>> {
-            Linearization {
-                constant_term: c.constant_term.into_iter().map(Into::into).collect(),
-                index_terms: c
-                    .index_terms
-                    .into_iter()
-                    .map(|(x, y)| (x.into(), y.into_iter().map(Into::into).collect()))
-                    .collect(),
-            }
-        }
-    }
-
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)]
-    pub enum CamlPolishToken<F> {
-        Alpha,
-        Beta,
-        Gamma,
-        JointCombiner,
-        EndoCoefficient,
-        Mds(ocaml::Int, ocaml::Int),
-        Literal(F),
-        Cell(CamlVariable),
-        Dup,
-        Pow(ocaml::Int),
-        Add,
-        Mul,
-        Sub,
-        VanishesOnLast4Rows,
-        UnnormalizedLagrangeBasis(ocaml::Int),
-        Store,
-        Load(ocaml::Int),
-    }
-
-    impl<F, CamlF> From<CamlPolishToken<CamlF>> for PolishToken<F>
-    where
-        F: From<CamlF>,
-    {
-        fn from(c: CamlPolishToken<CamlF>) -> PolishToken<F> {
-            match c {
-                CamlPolishToken::Alpha => PolishToken::Alpha,
-                CamlPolishToken::Beta => PolishToken::Beta,
-                CamlPolishToken::Gamma => PolishToken::Gamma,
-                CamlPolishToken::JointCombiner => PolishToken::JointCombiner,
-                CamlPolishToken::EndoCoefficient => PolishToken::EndoCoefficient,
-                CamlPolishToken::Mds(row, col) => PolishToken::Mds {
-                    row: row.try_into().expect("isize -> usize"),
-                    col: col.try_into().expect("isize -> usize"),
-                },
-                CamlPolishToken::Literal(x) => PolishToken::Literal(x.into()),
-                CamlPolishToken::Cell(x) => PolishToken::Cell(x.into()),
-                CamlPolishToken::Dup => PolishToken::Dup,
-                CamlPolishToken::Pow(x) => PolishToken::Pow(x.try_into().expect("isize -> usize")),
-                CamlPolishToken::Add => PolishToken::Add,
-                CamlPolishToken::Mul => PolishToken::Mul,
-                CamlPolishToken::Sub => PolishToken::Sub,
-                CamlPolishToken::VanishesOnLast4Rows => PolishToken::VanishesOnLast4Rows,
-                CamlPolishToken::UnnormalizedLagrangeBasis(x) => {
-                    PolishToken::UnnormalizedLagrangeBasis(x.try_into().expect("isize -> usize"))
-                }
-                CamlPolishToken::Store => PolishToken::Store,
-                CamlPolishToken::Load(x) => {
-                    PolishToken::Load(x.try_into().expect("isize -> usize"))
-                }
-            }
-        }
-    }
-
-    impl<F, CamlF> From<PolishToken<F>> for CamlPolishToken<CamlF>
-    where
-        CamlF: From<F>,
-    {
-        fn from(c: PolishToken<F>) -> CamlPolishToken<CamlF> {
-            match c {
-                PolishToken::Alpha => CamlPolishToken::Alpha,
-                PolishToken::Beta => CamlPolishToken::Beta,
-                PolishToken::Gamma => CamlPolishToken::Gamma,
-                PolishToken::JointCombiner => CamlPolishToken::JointCombiner,
-                PolishToken::EndoCoefficient => CamlPolishToken::EndoCoefficient,
-                PolishToken::Mds { row, col } => CamlPolishToken::Mds(
-                    row.try_into().expect("isize -> usize"),
-                    col.try_into().expect("isize -> usize"),
-                ),
-                PolishToken::Literal(x) => CamlPolishToken::Literal(x.into()),
-                PolishToken::Cell(x) => CamlPolishToken::Cell(x.into()),
-                PolishToken::Dup => CamlPolishToken::Dup,
-                PolishToken::Pow(x) => CamlPolishToken::Pow(x.try_into().expect("isize -> usize")),
-                PolishToken::Add => CamlPolishToken::Add,
-                PolishToken::Mul => CamlPolishToken::Mul,
-                PolishToken::Sub => CamlPolishToken::Sub,
-                PolishToken::VanishesOnLast4Rows => CamlPolishToken::VanishesOnLast4Rows,
-                PolishToken::UnnormalizedLagrangeBasis(x) => {
-                    CamlPolishToken::UnnormalizedLagrangeBasis(
-                        x.try_into().expect("isize -> usize"),
-                    )
-                }
-                PolishToken::Store => CamlPolishToken::Store,
-                PolishToken::Load(x) => {
-                    CamlPolishToken::Load(x.try_into().expect("isize -> usize"))
-                }
-            }
-        }
-    }
-
-    impl<F, CamlF> From<&PolishToken<F>> for CamlPolishToken<CamlF>
-    where
-        CamlF: From<F>,
-        F: Copy,
-    {
-        fn from(c: &PolishToken<F>) -> CamlPolishToken<CamlF> {
-            match c {
-                PolishToken::Alpha => CamlPolishToken::Alpha,
-                PolishToken::Beta => CamlPolishToken::Beta,
-                PolishToken::Gamma => CamlPolishToken::Gamma,
-                PolishToken::JointCombiner => CamlPolishToken::JointCombiner,
-                PolishToken::EndoCoefficient => CamlPolishToken::EndoCoefficient,
-                PolishToken::Mds { row, col } => CamlPolishToken::Mds(
-                    (*row).try_into().expect("isize -> usize"),
-                    (*col).try_into().expect("isize -> usize"),
-                ),
-                PolishToken::Literal(x) => CamlPolishToken::Literal((*x).into()),
-                PolishToken::Cell(x) => CamlPolishToken::Cell(x.into()),
-                PolishToken::Dup => CamlPolishToken::Dup,
-                PolishToken::Pow(x) => {
-                    CamlPolishToken::Pow((*x).try_into().expect("isize -> usize"))
-                }
-                PolishToken::Add => CamlPolishToken::Add,
-                PolishToken::Mul => CamlPolishToken::Mul,
-                PolishToken::Sub => CamlPolishToken::Sub,
-                PolishToken::VanishesOnLast4Rows => CamlPolishToken::VanishesOnLast4Rows,
-                PolishToken::UnnormalizedLagrangeBasis(x) => {
-                    CamlPolishToken::UnnormalizedLagrangeBasis(
-                        (*x).try_into().expect("isize -> usize"),
-                    )
-                }
-                PolishToken::Store => CamlPolishToken::Store,
-                PolishToken::Load(x) => {
-                    CamlPolishToken::Load((*x).try_into().expect("isize -> usize"))
-                }
-            }
-        }
-    }
+/// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
+pub mod prologue {
+    pub use super::{coeff, index, witness, witness_curr, witness_next, E};
 }

@@ -92,7 +92,7 @@ fn endomul_scalar_test() {
 
         assert_eq!(
             ScalarChallenge(x).to_field(&endo_scalar_coeff),
-            endomul_scalar::witness(&mut witness, x, endo_scalar_coeff, num_bits)
+            endomul_scalar::gen_witness(&mut witness, x, endo_scalar_coeff, num_bits)
         );
     }
 
