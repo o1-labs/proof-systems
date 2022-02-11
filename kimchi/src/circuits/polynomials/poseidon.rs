@@ -1,55 +1,38 @@
 //! This module implements the Poseidon constraint polynomials.
 
-use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
+use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
-use std::ops::RangeInclusive;
 use CurrOrNext::*;
 
-/// All the information needed to construct a round in the Poseidon custom gate.
-pub struct RoundSpec {
-    /// the columns that contain the input
-    pub input_cols: RangeInclusive<usize>,
-    /// the row that contain the output
-    pub output_row: CurrOrNext,
-    /// the columns that contain the output
-    pub output_cols: RangeInclusive<usize>,
+/// An equation of the form `(curr | next)[i] = round(curr[j])`
+pub struct RoundEquation {
+    pub source: usize,
+    pub target: (CurrOrNext, usize),
 }
 
-/// Specifies in which columns the input of a row is stored,
-/// as well as which row and columns the output the permutation is stored.
-/// A Poseidon gates performs 5 rounds, with the last 5 round outputing
-/// its result on the next row. Each round acts on a state of 3 columns.
-/// The layout is also shuffled, so that the 4th round of the gate is stored
-/// right after the first round. This is to let the permutation access it,
-/// in case the final output lands on this state, instead of the next row's.
-pub const ROUND_EQUATIONS: [RoundSpec; ROUNDS_PER_ROW] = [
-    RoundSpec {
-        input_cols: 0..=2,
-        output_row: Curr,
-        output_cols: 6..=8,
+pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
+    RoundEquation {
+        source: 0,
+        target: (Curr, 1),
     },
-    RoundSpec {
-        input_cols: 6..=8,
-        output_row: Curr,
-        output_cols: 9..=11,
+    RoundEquation {
+        source: 1,
+        target: (Curr, 2),
     },
-    RoundSpec {
-        input_cols: 9..=11,
-        output_row: Curr,
-        output_cols: 12..=14,
+    RoundEquation {
+        source: 2,
+        target: (Curr, 3),
     },
-    RoundSpec {
-        input_cols: 12..=14,
-        output_row: Curr,
-        output_cols: 3..=5,
+    RoundEquation {
+        source: 3,
+        target: (Curr, 4),
     },
-    RoundSpec {
-        input_cols: 3..=5,
-        output_row: Next,
-        output_cols: 0..=2,
+    RoundEquation {
+        source: 4,
+        target: (Next, 0),
     },
 ];
 
@@ -79,6 +62,8 @@ pub fn constraint<F: FftField + SquareRootField>(alphas: impl Iterator<Item = us
     let mut res = vec![];
     let mut cache = Cache::default();
 
+    let mut idx = 0;
+
     let mds: Vec<Vec<_>> = (0..SPONGE_WIDTH)
         .map(|row| {
             (0..SPONGE_WIDTH)
@@ -87,28 +72,25 @@ pub fn constraint<F: FftField + SquareRootField>(alphas: impl Iterator<Item = us
         })
         .collect();
 
-    for (round, eq) in ROUND_EQUATIONS.iter().enumerate() {
-        // sbox
-        let mut sboxed = vec![];
-        for input_col in eq.input_cols.clone() {
-            let res =
-                E::cell(Column::Witness(input_col), Curr).pow(PlonkSpongeConstants15W::SPONGE_BOX);
-            sboxed.push(cache.cache(res));
-        }
+    for e in ROUND_EQUATIONS.iter() {
+        let &RoundEquation {
+            source,
+            target: (target_row, target_round),
+        } = e;
+        let sboxed: Vec<_> = round_to_cols(source)
+            .map(|i| cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
+            .collect();
 
-        for (state_i, output_col) in eq.output_cols.clone().enumerate() {
-            // round constant
-            let mut output = E::cell(Column::Coefficient(round * 3 + state_i), Curr);
-            // + MDS(sboxed)
-            for (x, c) in sboxed.iter().zip(&mds[state_i]) {
-                output += E::Constant(c.clone()) * x.clone();
-            }
-            // create the constraint
-            let constraint = E::cell(Column::Witness(output_col), eq.output_row) - output;
+        res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
+            let rc = coeff(idx);
 
-            res.push(constraint);
-        }
+            idx += 1;
+            witness(col, target_row)
+                - sboxed
+                    .iter()
+                    .zip(mds[j].iter())
+                    .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
+        }));
     }
-
-    E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(alphas, res)
+    index(GateType::Poseidon) * E::combine_constraints(alphas, res)
 }

@@ -3,9 +3,10 @@
 //! Definition of random oracle input structure and
 //! methods for serializing into bytes and field elements
 
-use crate::{BaseField, FieldHelpers, ScalarField};
+use crate::{BaseField, ScalarField};
 use ark_ff::PrimeField;
 use bitvec::{prelude::*, view::AsBits};
+use o1_utils::FieldHelpers;
 
 /// Random oracle input structure
 ///

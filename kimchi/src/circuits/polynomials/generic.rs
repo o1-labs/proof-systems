@@ -236,7 +236,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
         }
 
-        for (witness_d4, selector_d8) in witness_cols_d4
+        for (w, coeff) in witness_cols_d4
             .iter()
             .skip(GENERICS)
             .zip(self.coefficients8.iter().skip(GENERICS_COEFFS))
@@ -245,7 +245,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             res2.evals
                 .par_iter_mut()
                 .enumerate()
-                .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
+                .for_each(|(i, e)| *e += w.evals[i] * coeff[2 * i])
         }
 
         // + multiplication: left * right * selector
@@ -270,7 +270,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         res1.evals
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, e)| *e += constant_d8[2 * i]);
+            .for_each(|(i, e)| *e += c[2 * i]);
 
         let constant_d8 = &self.coefficients8[GENERICS_COEFFS + 4];
         res2.evals

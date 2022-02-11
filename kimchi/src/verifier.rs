@@ -1,15 +1,16 @@
 //! This module implements zk-proof batch verifier functionality.
 
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    expr::{Column, Constants, PolishToken},
-    gate::{GateType, LookupsUsed},
-    scalars::RandomOracles,
-    wires::*,
-};
 use crate::{
     alphas::{Alphas, ConstraintType},
-    index::VerifierIndex,
+    circuits::{
+        constraints::ConstraintSystem,
+        expr::{Column, Constants, PolishToken},
+        gate::{GateType, LookupsUsed},
+        gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+        scalars::RandomOracles,
+        wires::*,
+    },
+    index::{LookupVerifierIndex, VerifierIndex},
     plonk_sponge::FrSponge,
     prover::ProverProof,
 };
@@ -123,9 +124,16 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
         let joint_combiner = {
-            let s = match index.lookup_used.as_ref() {
-                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            let s = match index.lookup_index {
+                None
+                | Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Single,
+                    ..
+                }) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupVerifierIndex {
+                    lookup_used: LookupsUsed::Joint,
+                    ..
+                }) => ScalarChallenge(fq_sponge.challenge()),
             };
             (s, s.to_field(&index.srs.endo_r))
         };
@@ -429,9 +437,11 @@ where
             let f_comm = {
                 // permutation
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
-                let mut commitments_part = vec![&index.sigma_comm[PERMUTS - 1]];
+
                 let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
-                let mut scalars_part = vec![ConstraintSystem::perm_scalars(
+
+                let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
+                let mut scalars = vec![ConstraintSystem::perm_scalars(
                     &evals,
                     oracles.beta,
                     oracles.gamma,
@@ -441,9 +451,9 @@ where
 
                 // generic
                 {
-                    let mut alpha_powers = all_alphas.get_alphas(ConstraintType::Gate, 2);
+                    let mut alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
                     let generic_scalars = &ConstraintSystem::gnrc_scalars(
-                        &mut alpha_powers,
+                        &mut alphas,
                         &evals[0].w,
                         evals[0].generic_selector,
                     );
@@ -452,8 +462,8 @@ where
 
                     assert_eq!(generic_scalars.len(), generic_com.len());
 
-                    scalars_part.extend(generic_scalars);
-                    commitments_part.extend(generic_com);
+                    scalars.extend(generic_scalars);
+                    commitments.extend(generic_com);
                 }
 
                 // other gates are implemented using the expression framework
@@ -468,8 +478,6 @@ where
                         mds: index.fr_sponge_params.mds.clone(),
                     };
 
-                    let scalars = &mut scalars_part;
-                    let commitments = &mut commitments_part;
                     for (col, tokens) in &index.linearization.index_terms {
                         let scalar = PolishToken::evaluate(
                             tokens,
@@ -502,20 +510,32 @@ where
                                 scalars.push(scalar);
                                 commitments.push(&l.unwrap().aggreg)
                             }
-                            LookupKindIndex(i) => {
-                                scalars.push(scalar);
-                                commitments.push(&index.lookup_selectors[*i]);
-                            }
-                            LookupTable => {
-                                let mut j = Fr::<G>::one();
-                                scalars.push(scalar);
-                                commitments.push(&index.lookup_tables[0][0]);
-                                for t in index.lookup_tables[0].iter().skip(1) {
-                                    j *= constants.joint_combiner;
-                                    scalars.push(scalar * j);
-                                    commitments.push(t);
+                            LookupKindIndex(i) => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    col
+                                ),
+                                Some(lindex) => {
+                                    scalars.push(scalar);
+                                    commitments.push(&lindex.lookup_selectors[*i]);
                                 }
-                            }
+                            },
+                            LookupTable => match index.lookup_index.as_ref() {
+                                None => panic!(
+                                    "Attempted to use {:?}, but no lookup index was given",
+                                    col
+                                ),
+                                Some(lindex) => {
+                                    let mut j = Fr::<G>::one();
+                                    scalars.push(scalar);
+                                    commitments.push(&lindex.lookup_tables[0][0]);
+                                    for t in lindex.lookup_tables[0].iter().skip(1) {
+                                        j *= constants.joint_combiner;
+                                        scalars.push(scalar * j);
+                                        commitments.push(t);
+                                    }
+                                }
+                            },
                             Index(t) => {
                                 use GateType::*;
                                 let c = match t {
@@ -538,7 +558,7 @@ where
                 }
 
                 // MSM
-                PolyComm::multi_scalar_mul(&commitments_part, &scalars_part)
+                PolyComm::multi_scalar_mul(&commitments, &scalars)
             };
 
             let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
