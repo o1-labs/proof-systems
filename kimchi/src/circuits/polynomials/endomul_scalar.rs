@@ -7,6 +7,9 @@ use crate::circuits::{
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 11;
+
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
         &self,

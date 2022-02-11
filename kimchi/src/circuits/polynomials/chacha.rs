@@ -148,6 +148,18 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, Field, Zero};
 
+/// Number of constraints produced by the ChaCha0 gate.
+pub const CONSTRAINTS_0: usize = 5;
+
+/// Number of constraints produced by the ChaCha1 gate.
+pub const CONSTRAINTS_1: usize = 5;
+
+/// Number of constraints produced by the ChaCha2 gate.
+pub const CONSTRAINTS_2: usize = 5;
+
+/// Number of constraints produced by the ChaChaFinal gate.
+pub const CONSTRAINTS_FINAL: usize = 5;
+
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
 ///

@@ -14,6 +14,9 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, One};
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 21;
+
 type CurveVar = (Variable, Variable);
 
 fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {

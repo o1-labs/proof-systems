@@ -16,6 +16,9 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, Field, One};
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 7;
+
 /// This enforces that
 ///
 /// r = (z == 0) ? 1 : 0

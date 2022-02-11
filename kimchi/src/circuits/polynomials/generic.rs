@@ -14,6 +14,9 @@ use ark_poly::{
 use array_init::array_init;
 use rayon::prelude::*;
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 1;
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(

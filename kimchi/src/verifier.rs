@@ -7,6 +7,7 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::{GateType, LookupsUsed},
         gates::generic::{CONSTANT_COEFF, MUL_COEFF},
+        polynomials::{generic, permutation},
         scalars::RandomOracles,
         wires::*,
     },
@@ -252,7 +253,8 @@ where
             let zkp = index.zkpm.evaluate(&zeta);
             let zeta1m1 = zeta1 - Fr::<G>::one();
 
-            let mut alpha_powers = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+            let mut alpha_powers =
+                all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
             let alpha0 = alpha_powers
                 .next()
                 .expect("missing power of alpha for permutation");
@@ -438,7 +440,8 @@ where
                 // permutation
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
 
-                let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+                let alphas =
+                    all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
 
                 let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
                 let mut scalars = vec![ConstraintSystem::perm_scalars(
@@ -458,7 +461,7 @@ where
                         .take(GENERICS)
                         .collect::<Vec<_>>(),
                 );
-                let alphas = all_alphas.get_alphas(ConstraintType::Gate, 1);
+                let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
                 let (generic_scalars, _) =
                     &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
                 scalars.extend(generic_scalars);

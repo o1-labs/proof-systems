@@ -36,6 +36,9 @@ use crate::circuits::{
 };
 use ark_ff::{Field, One};
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 11;
+
 /// The constraints for endoscaling.
 pub fn constraints<F: Field>() -> Vec<E<F>> {
     let b1 = witness_curr(11);

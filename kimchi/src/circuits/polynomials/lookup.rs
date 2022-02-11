@@ -133,6 +133,9 @@ use rand::Rng;
 use std::collections::HashMap;
 use CurrOrNext::*;
 
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: usize = 7;
+
 // TODO: Update for multiple tables
 fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
     // Combine the linear combination.

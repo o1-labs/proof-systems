@@ -5,6 +5,7 @@ This source file implements Plonk Protocol Index primitive.
 *****************************************************************************************************************/
 
 use crate::alphas::{self, ConstraintType};
+use crate::circuits::polynomials::permutation;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
@@ -167,27 +168,28 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let mut powers_of_alpha = alphas::Builder::default();
 
     // gates
-    let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
+    let largest_constraint_num = varbasemul::CONSTRAINTS;
+    let alphas = powers_of_alpha.register(ConstraintType::Gate, largest_constraint_num);
 
-    let mut expr = poseidon::constraint(alphas.clone().take(15));
-    expr += varbasemul::constraint(alphas.clone().take(21));
-    expr += complete_add::constraint(alphas.clone().take(7));
-    expr += endosclmul::constraint(alphas.clone().take(11));
-    expr += endomul_scalar::constraint(alphas.clone().take(11));
+    let mut expr = poseidon::constraint(alphas.clone().take(poseidon::CONSTRAINTS));
+    expr += varbasemul::constraint(alphas.clone().take(varbasemul::CONSTRAINTS));
+    expr += complete_add::constraint(alphas.clone().take(complete_add::CONSTRAINTS));
+    expr += endosclmul::constraint(alphas.clone().take(endosclmul::CONSTRAINTS));
+    expr += endomul_scalar::constraint(alphas.clone().take(endomul_scalar::CONSTRAINTS));
 
     if chacha {
-        expr += chacha::constraint_chacha0(alphas.clone().take(5));
-        expr += chacha::constraint_chacha1(alphas.clone().take(5));
-        expr += chacha::constraint_chacha2(alphas.clone().take(5));
-        expr += chacha::constraint_chacha_final(alphas.take(9))
+        expr += chacha::constraint_chacha0(alphas.clone().take(chacha::CONSTRAINTS_0));
+        expr += chacha::constraint_chacha1(alphas.clone().take(chacha::CONSTRAINTS_1));
+        expr += chacha::constraint_chacha2(alphas.clone().take(chacha::CONSTRAINTS_2));
+        expr += chacha::constraint_chacha_final(alphas.take(chacha::CONSTRAINTS_FINAL));
     }
 
     // permutation
-    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
+    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, permutation::CONSTRAINTS);
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
+        let alphas = powers_of_alpha.register(ConstraintType::Lookup, lookup::CONSTRAINTS);
         let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
