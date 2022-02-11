@@ -14,14 +14,14 @@ pub const CONSTANT_COEFF: usize = GENERICS + 1;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_generic(wires: GateWires, qw: [F; GENERICS], qm: F, qc: F) -> Self {
-        let mut c = qw.to_vec();
-        c.push(qm);
-        c.push(qc);
+        let mut coeffs = qw.to_vec();
+        coeffs.push(qm);
+        coeffs.push(qc);
 
         CircuitGate {
             typ: GateType::Generic,
             wires,
-            c,
+            coeffs,
         }
     }
 
@@ -66,8 +66,8 @@ impl<F: FftField> CircuitGate<F> {
         let right = this[1];
 
         // selector vectors
-        let mul_selector = self.c[MUL_COEFF];
-        let constant_selector = self.c[CONSTANT_COEFF];
+        let mul_selector = self.coeffs[MUL_COEFF];
+        let constant_selector = self.coeffs[CONSTANT_COEFF];
 
         // constants
         let zero = F::zero();
@@ -77,7 +77,7 @@ impl<F: FftField> CircuitGate<F> {
 
         // toggling each column x[i] depending on the selectors c[i]
         let sum = (0..GENERICS)
-            .map(|i| self.c[i] * this[i])
+            .map(|i| self.coeffs[i] * this[i])
             .fold(zero, |x, y| x + y);
 
         // multiplication

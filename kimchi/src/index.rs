@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk Protocol Index primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk Protocol Index primitive.
 
 use std::{
     fs::{File, OpenOptions},

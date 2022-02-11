@@ -51,12 +51,12 @@ fn varbase_mul_test() {
         gates.push(CircuitGate {
             typ: GateType::VarBaseMul,
             wires: Wire::new(row),
-            c: vec![],
+            coeffs: vec![],
         });
         gates.push(CircuitGate {
             typ: GateType::Zero,
             wires: Wire::new(row + 1),
-            c: vec![],
+            coeffs: vec![],
         });
     }
 

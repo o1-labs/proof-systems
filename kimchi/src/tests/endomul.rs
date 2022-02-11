@@ -54,7 +54,7 @@ fn endomul_test() {
             gates.push(CircuitGate {
                 typ: GateType::EndoMul,
                 wires: Wire::new(row),
-                c: vec![],
+                coeffs: vec![],
             });
         }
 
@@ -62,7 +62,7 @@ fn endomul_test() {
         gates.push(CircuitGate {
             typ: GateType::Zero,
             wires: Wire::new(row),
-            c: vec![],
+            coeffs: vec![],
         });
     }
 
