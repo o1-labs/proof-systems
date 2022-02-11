@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk circuit constraint primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk circuit constraint primitive.
 
 use crate::circuits::{
     domains::EvaluationDomains,

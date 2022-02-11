@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk circuit gate wires primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk circuit gate wires primitive.
 
 use ark_ff::bytes::{FromBytes, ToBytes};
 use array_init::array_init;

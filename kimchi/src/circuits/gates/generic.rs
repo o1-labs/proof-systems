@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk generic constraint gate primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk generic constraint gate primitive.
 
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::wires::{GateWires, COLUMNS, GENERICS};

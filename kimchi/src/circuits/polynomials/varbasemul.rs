@@ -1,4 +1,4 @@
-//! This source file implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
+//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! Acc := [2]T
 //! for i = n-1 ... 0:

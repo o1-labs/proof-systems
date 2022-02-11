@@ -1,4 +1,4 @@
-//! This source file implements the cha-cha constraints, which are rather simple aside form the lookups.
+//! This module implements the cha-cha constraints, which are rather simple aside form the lookups.
 //!
 //! There are four chacha constraint types, corresponding to the four lines in each quarter round.
 //!

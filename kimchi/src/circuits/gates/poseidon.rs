@@ -1,12 +1,5 @@
-/*****************************************************************************************************************
-
-This source file implements Posedon constraint gate Plonk primitive.
-
-Constraint vector format:
-
-    [rc; SPONGE_WIDTH]: round constants
-
-*****************************************************************************************************************/
+//! This module implements Posedon constraint gate Plonk primitive.
+//! Constraint vector format: `[rc; SPONGE_WIDTH]: round constants`
 
 use crate::circuits::{
     constraints::ConstraintSystem,

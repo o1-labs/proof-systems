@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk constraint gate primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;

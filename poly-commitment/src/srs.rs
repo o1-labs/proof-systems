@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements the Marlin structured reference string primitive
-
-*****************************************************************************************************************/
+//! This module implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
 pub use crate::{CommitmentField, QnrField};

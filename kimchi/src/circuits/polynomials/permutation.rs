@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements permutation constraint polynomials.
-
-*****************************************************************************************************************/
+//! This module implements permutation constraint polynomials.
 
 use crate::circuits::{
     constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,

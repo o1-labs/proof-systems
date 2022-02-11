@@ -1,14 +1,10 @@
-/*****************************************************************************************************************
-
-This source file implements Dlog-based polynomial commitment schema.
-The folowing functionality is implemented
-
-1. Commit to polynomial with its max degree
-2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
-    producing the batched opening proof
-3. Verify batch of batched opening proofs
-
-*****************************************************************************************************************/
+//! This module implements Dlog-based polynomial commitment schema.
+//! The folowing functionality is implemented
+//!
+//! 1. Commit to polynomial with its max degree
+//! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
+//!     producing the batched opening proof
+//! 3. Verify batch of batched opening proofs
 
 use crate::srs::SRS;
 pub use crate::CommitmentField;
