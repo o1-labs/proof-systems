@@ -21,7 +21,7 @@
 //! - [Builder], which allows us to map constraints to powers
 //! - [Alphas], which you can derive from [Builder] and an `alpha`
 //!
-//! Both construction will enforce that you use all the powers of
+//! Both constructions will enforce that you use all the powers of
 //! alphas that you register for constraint. This allows us to
 //! make sure that we compute the correct amounts, without reusing
 //! powers of alphas between constraints.
@@ -39,7 +39,7 @@ use std::{
 // ------------------------------------------
 
 /// A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)
-#[derive(PartialEq, Eq, Clone, Hash, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Serialize, Deserialize)]
 pub enum ConstraintType {
     /// gates in the PLONK constraint system.
     /// As gates are mutually exclusive (only a single selector polynomial
@@ -61,7 +61,7 @@ pub enum ConstraintType {
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Builder {
     /// The next power of alpha to use
-    /// (the end result will be [1, alpha^next_power[)
+    /// the end result will be [1, alpha^next_power)    
     next_power: usize,
     /// The mapping between constraint types and powers of alpha
     mapping: HashMap<ConstraintType, Range<usize>>,
@@ -69,14 +69,13 @@ pub struct Builder {
 
 impl Builder {
     /// Registers a new [ConstraintType],
-    /// associating it a number `powers` of powers of alpha.
-    /// The function returns an iterator of powers that must be used.
-    #[must_use]
+    /// associating it with a number `powers` of powers of alpha.
+    /// The function returns an iterator of powers that haven't been used yet.
     pub fn register(&mut self, ty: ConstraintType, powers: usize) -> Range<usize> {
         let new_power = self.next_power + powers;
         let range = self.next_power..new_power;
-        if self.mapping.insert(ty.clone(), range.clone()).is_some() {
-            panic!("you are attempting to register {:?} twice", ty);
+        if self.mapping.insert(ty, range.clone()).is_some() {
+            panic!("cannot re-register {:?}", ty);
         }
         self.next_power = new_power;
         range
@@ -99,7 +98,6 @@ pub struct Alphas<F> {
 
 impl<F: Field> Alphas<F> {
     /// Creates a new instance of [Alphas] via a [Builder] and value `alpha`.
-    #[must_use]
     pub fn new(alpha: F, powers: &Builder) -> Alphas<F> {
         let mut last_power = F::one();
         let mut alphas = Vec::with_capacity(powers.next_power);
@@ -116,7 +114,6 @@ impl<F: Field> Alphas<F> {
     }
 
     /// This returns a range of powers (the exponents), upperbounded by `num`
-    #[must_use]
     pub fn get_powers(
         &mut self,
         ty: ConstraintType,
@@ -125,8 +122,11 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("you attempted to retrieve powers of the constraint {:?} when it has either not been registered or already been retrieved once", ty));
-        MustConsumeIterator(range.clone().take(num), ty)
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
+        MustConsumeIterator {
+            inner: range.clone().take(num),
+            debug_info: ty,
+        }
     }
 
     /// This function allows us to retrieve the powers of alpha, upperbounded by `num`
@@ -138,9 +138,12 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("you attempted to retrieve powers of alphas of the constraint {:?} when it has either not been registered or already been retrieved once", ty));
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
         let alphas = self.alphas[range.clone()].iter().take(num).cloned();
-        MustConsumeIterator(alphas, ty)
+        MustConsumeIterator {
+            inner: alphas,
+            debug_info: ty,
+        }
     }
 
     /// As the new expression framework does not make use of pre-computed
@@ -155,10 +158,14 @@ impl<F: Field> Alphas<F> {
 
 /// Wrapper around an iterator that warns you if not consumed entirely.
 #[derive(Debug)]
-pub struct MustConsumeIterator<I, T>(I, ConstraintType)
+pub struct MustConsumeIterator<I, T>
 where
     I: Iterator<Item = T>,
-    T: std::fmt::Display;
+    T: std::fmt::Display,
+{
+    inner: I,
+    debug_info: ConstraintType,
+}
 
 impl<I, T> Iterator for MustConsumeIterator<I, T>
 where
@@ -167,7 +174,7 @@ where
 {
     type Item = I::Item;
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
+        self.inner.next()
     }
 }
 
@@ -177,12 +184,12 @@ where
     T: std::fmt::Display,
 {
     fn drop(&mut self) {
-        if let Some(v) = self.0.next() {
+        if let Some(v) = self.inner.next() {
             if thread::panicking() {
-                eprintln!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.1,
+                eprintln!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.debug_info,
                 v);
             } else {
-                panic!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.1,
+                panic!("the registered number of powers of alpha for {:?} is too large, you haven't used alpha^{} (absolute power of alpha)", self.debug_info,
                 v);
             }
         }

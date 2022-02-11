@@ -132,6 +132,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             *e += alpha_generic_zeta * self.coefficients8[CONSTANT_COEFF][scale * i];
         });
 
+        // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
         res
     }
 
