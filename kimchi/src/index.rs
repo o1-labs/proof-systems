@@ -31,7 +31,7 @@ use std::io::SeekFrom::Start;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-/// The index common to both the prover and verifier
+/// The index used by the prover
 // TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]

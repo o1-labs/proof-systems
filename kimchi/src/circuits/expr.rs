@@ -1533,11 +1533,11 @@ fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
 }
 
 impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
+    // TODO: This function (which takes linear time)
+    // is called repeatedly in monomials, yielding quadratic behavior for
+    // that function. It's ok for now as we only call that function once on
+    // a small input when producing the verification key.
     fn is_constant(&self, evaluated: &HashSet<Column>) -> bool {
-        // TODO: This function (which takes linear time)
-        // is called repeatedly in monomials, yielding quadratic behavior for
-        // that function. It's ok for now as we only call that function once on
-        // a small input when producing the verification key.
         use Expr::*;
         match self {
             Pow(x, _) => x.is_constant(evaluated),

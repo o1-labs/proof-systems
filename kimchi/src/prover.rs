@@ -34,28 +34,33 @@ pub struct LookupCommitments<G: AffineCurve> {
 
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
-    /// polynomial commitments
+    /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm<G>; COLUMNS],
+    /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
+    /// The commitment to the quotient polynomial
     pub t_comm: PolyComm<G>,
+    /// Commitments related to the lookup argument
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
-    /// polynomial commitments
+    /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
     pub proof: OpeningProof<G>,
 
-    /// polynomial evaluations
+    /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
 
+    /// Required evaluation for Maller's optimization
+    /// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     pub ft_eval1: Fr<G>,
 
-    /// public part of the witness
+    /// The public input
     pub public: Vec<Fr<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
@@ -839,7 +844,7 @@ pub mod caml {
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
-        /// OCaml doesn't have sized arrays, so we have to convert to a tuple..
+        // OCaml doesn't have sized arrays, so we have to convert to a tuple..
         pub evals: (CamlProofEvaluations<CamlF>, CamlProofEvaluations<CamlF>),
         pub ft_eval1: CamlF,
         pub public: Vec<CamlF>,

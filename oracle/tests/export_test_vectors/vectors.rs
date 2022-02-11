@@ -42,7 +42,8 @@ pub struct TestVector {
 // logic
 //
 
-/// calls the poseidon hash function with the `input` and returns a digest
+/// Computes the poseidon hash of several field elements.
+/// Uses the 'basic' configuration with N states and M rounds.
 fn poseidon(input: &[Fp]) -> Fp {
     let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
     s.absorb(input);
