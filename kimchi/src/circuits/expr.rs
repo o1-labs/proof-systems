@@ -9,12 +9,13 @@ use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::iter::FromIterator;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use CurrOrNext::*;
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -1050,10 +1051,10 @@ impl<F: Field> Expr<ConstantExpr<F>> {
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
-    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
+    pub fn combine_constraints(alphas: impl Iterator<Item = usize>, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
         cs.into_iter()
-            .zip(alpha0..)
+            .zip_eq(alphas)
             .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i)) * c)
             .fold(zero, |acc, x| acc + x)
     }
@@ -1667,35 +1668,33 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             let (evaluated, mut unevaluated): (Vec<_>, _) =
                 m.into_iter().partition(|v| evaluated.contains(&v.col));
             let c = evaluated.into_iter().fold(c, |acc, v| acc * Expr::Cell(v));
-
-            match unevaluated.as_slice() {
-                [] => constant_term = constant_term + c,
-                [_] => {
-                    let var = unevaluated.remove(0);
-                    match var.row {
-                        Next => {
-                            return Err(
-                                "Linearization: needed unevaluated variable at \"next\" row",
-                            )
-                        }
-                        Curr => {
-                            let e = match res.remove(&var.col) {
-                                Some(v) => v + c,
-                                None => c,
-                            };
-                            res.insert(var.col, e);
-                            // This code used to be
-                            //
-                            // let v = res.entry(var.col).or_insert(0.into());
-                            // *v = v.clone() + c
-                            //
-                            // but calling clone made it extremely slow, so I replaced it
-                            // with the above that moves v out of the map with .remove and
-                            // into v + c.
-                            //
-                            // I'm not sure if there's a way to do it with the HashMap API
-                            // without calling remove.
-                        }
+            if unevaluated.is_empty() {
+                constant_term += c;
+            } else if unevaluated.len() == 1 {
+                let var = unevaluated.remove(0);
+                match var.row {
+                    Next => {
+                        return Err(
+                            "Linearization failed (needed polynomial value at \"next\" row)",
+                        )
+                    }
+                    Curr => {
+                        let e = match res.remove(&var.col) {
+                            Some(v) => v + c,
+                            None => c,
+                        };
+                        res.insert(var.col, e);
+                        // This code used to be
+                        //
+                        // let v = res.entry(var.col).or_insert(0.into());
+                        // *v = v.clone() + c
+                        //
+                        // but calling clone made it extremely slow, so I replaced it
+                        // with the above that moves v out of the map with .remove and
+                        // into v + c.
+                        //
+                        // I'm not sure if there's a way to do it with the HashMap API
+                        // without calling remove.
                     }
                 } 
                 _ => return Err("Linearization: too many variables in monomial, and we can't multiply commitments"),
@@ -1850,6 +1849,16 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
     }
 }
 
+impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
+    fn add_assign(&mut self, other: Self) {
+        if self.is_zero() {
+            *self = other;
+        } else if !other.is_zero() {
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+        }
+    }
+}
+
 impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
     type Output = Expr<F>;
     fn mul(self, other: Self) -> Self {
@@ -1962,9 +1971,57 @@ impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
     }
 }
 
+/// A number of useful constraints
+pub mod constraints {
+    use super::*;
+
+    /// Creates a constraint to enforce that b is either 0 or 1.
+    pub fn boolean<F: Field>(b: &E<F>) -> E<F> {
+        b.clone().square() - b.clone()
+    }
+}
+
+//
+// Helpers
+//
+
 /// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
 
+/// Handy function to quickly create an expression for a witness.
+pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
+    E::<F>::cell(Column::Witness(i), row)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_curr<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Curr)
+}
+
+/// Same as [witness] but for the next row.
+pub fn witness_next<F>(i: usize) -> E<F> {
+    witness(i, CurrOrNext::Next)
+}
+
+/// Handy function to quickly create an expression for a gate.
+pub fn index<F>(g: GateType) -> E<F> {
+    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+}
+
+pub fn coeff<F>(i: usize) -> E<F> {
+    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
+}
+
+/// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
+pub mod prologue {
+    pub use super::{coeff, index, witness, witness_curr, witness_next, E};
+}
+
+//
+// OCaml-related code
+//
+
+/// bindings for OCaml
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;

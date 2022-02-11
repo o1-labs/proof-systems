@@ -1,18 +1,5 @@
-//! Signer domain and helpers
-//!
-//! Shorthands and helpers for base and scalar field elements
-
-use ark_ec::AffineCurve;
-use ark_ff::PrimeField; // for into_repr()
+use ark_ff::PrimeField;
 use ark_serialize::CanonicalSerialize;
-use mina_curves::pasta::pallas as Pallas;
-
-/// Affine curve point type
-pub use Pallas::Affine as CurvePoint;
-/// Base field element type
-pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
-/// Scalar field element type
-pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
 
 /// Field element helpers
 pub trait FieldHelpers<F: PrimeField> {
@@ -56,6 +43,16 @@ impl<F: PrimeField> FieldHelpers<F> for F {
 
 #[cfg(test)]
 mod tests {
+    use ark_ec::AffineCurve;
+    use mina_curves::pasta::pallas;
+
+    /// Affine curve point type
+    pub use pallas::Affine as CurvePoint;
+    /// Base field element type
+    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    /// Scalar field element type
+    pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
+
     use super::*;
 
     #[test]

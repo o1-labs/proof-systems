@@ -1,18 +1,22 @@
-//! This source file implements prover's zk-proof primitive.
+//! This module implements prover's zk-proof primitive.
 
-pub use super::{index::Index, range};
-use crate::circuits::{
-    constraints::ZK_ROWS,
-    expr::{l0_1, Constants, Environment, LookupEnvironment},
-    gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
-    scalars::{LookupEvaluations, ProofEvaluations},
-    wires::{COLUMNS, PERMUTS},
+use crate::{
+    alphas::{Alphas, ConstraintType},
+    circuits::{
+        constraints::{LookupConstraintSystem, ZK_ROWS},
+        expr::{l0_1, Constants, Environment, LookupEnvironment},
+        gate::{combine_table_entry, GateType, LookupsUsed},
+        polynomials::{
+            chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul,
+        },
+        scalars::{LookupEvaluations, ProofEvaluations},
+        wires::{COLUMNS, PERMUTS},
+    },
+    index::Index,
+    plonk_sponge::FrSponge,
 };
-use crate::plonk_sponge::FrSponge;
 use ark_ec::AffineCurve;
-use ark_ff::UniformRand;
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
@@ -20,6 +24,7 @@ use array_init::array_init;
 use commitment_dlog::commitment::{
     b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
 };
+use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
@@ -68,35 +73,6 @@ pub struct ProverProof<G: AffineCurve> {
     pub public: Vec<Fr<G>>,
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
-}
-
-// TODO: move elsewhere
-fn combine_evaluations<F: FftField>(
-    init: (Evaluations<F, D<F>>, Evaluations<F, D<F>>),
-    alpha: F,
-    prev_alpha_pow: F,
-    es: Vec<Evaluations<F, D<F>>>,
-) -> (Evaluations<F, D<F>>, Evaluations<F, D<F>>) {
-    let mut alpha_pow = prev_alpha_pow;
-    let pows = (0..).map(|_| {
-        alpha_pow *= alpha;
-        alpha_pow
-    });
-
-    es.into_iter()
-        .zip(pows)
-        .fold(init, |(mut a4, mut a8), (mut e, alpha_pow)| {
-            e.evals.iter_mut().for_each(|x| *x *= alpha_pow);
-            if e.domain().size == a4.domain().size {
-                a4 += &e;
-            } else if e.domain().size == a8.domain().size {
-                a8 += &e;
-            } else {
-                panic!("Bad evaluation")
-            }
-            drop(e);
-            (a4, a8)
-        })
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -202,15 +178,18 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
         //~ 7. build the lookup stuff
-
-        let lookup_info = LookupInfo::<Fr<G>>::create();
-        let lookup_used = lookup_info.lookup_used(&index.cs.gates);
-
         let joint_combiner_ = {
             // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
-            let s = match lookup_used.as_ref() {
-                None | Some(LookupsUsed::Single) => ScalarChallenge(Fr::<G>::zero()),
-                Some(LookupsUsed::Joint) => ScalarChallenge(fq_sponge.challenge()),
+            let s = match index.cs.lookup_constraint_system.as_ref() {
+                None
+                | Some(LookupConstraintSystem {
+                    lookup_used: LookupsUsed::Single,
+                    ..
+                }) => ScalarChallenge(Fr::<G>::zero()),
+                Some(LookupConstraintSystem {
+                    lookup_used: LookupsUsed::Joint,
+                    ..
+                }) => ScalarChallenge(fq_sponge.challenge()),
             };
             (s, s.to_field(&index.srs.endo_r))
         };
@@ -260,22 +239,20 @@ where
         // their average length or something like that.
 
         let dummy_lookup_value = {
-            let x = match lookup_used.as_ref() {
+            let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(_) => {
-                    combine_table_entry(joint_combiner, index.cs.dummy_lookup_values[0].iter())
-                }
+                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_values[0].iter()),
             };
             CombinedEntry(x)
         };
 
         let (lookup_sorted, lookup_sorted_coeffs, lookup_sorted_comm, lookup_sorted8) =
-            match lookup_used.as_ref() {
+            match index.cs.lookup_constraint_system.as_ref() {
                 None => (None, None, None, None),
-                Some(_) => {
+                Some(lcs) => {
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
-                            let row = index.cs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
+                            let row = lcs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
                     };
@@ -332,11 +309,11 @@ where
 
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
-            match lookup_sorted {
-                None => (None, None, None),
-                Some(lookup_sorted) => {
+            match (index.cs.lookup_constraint_system.as_ref(), lookup_sorted) {
+                (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
+                (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let row = index.cs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        let row = lcs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
 
@@ -383,13 +360,13 @@ where
         //~ 13. query $\alpha$
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
-        let alphas = range::alpha_powers(alpha);
+        let mut all_alphas = Alphas::new(alpha, &index.powers_of_alpha);
 
-        //~ 14. evaluate polynomials over domains
+        //~ 14. evaluate witness and permutation polynomials over domains
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
-        let lookup_table_combined = lookup_used.as_ref().map(|_| {
-            let joint_table = &index.cs.lookup_tables8[0];
+        let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
+            let joint_table = &lcs.lookup_tables8[0];
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
@@ -402,16 +379,18 @@ where
             .as_ref()
             .zip(lookup_sorted8.as_ref())
             .zip(lookup_aggreg8.as_ref())
+            .zip(index.cs.lookup_constraint_system.as_ref())
             .map(
-                |((lookup_table_combined, lookup_sorted), lookup_aggreg)| LookupEnvironment {
-                    aggreg: lookup_aggreg,
-                    sorted: lookup_sorted,
-                    table: lookup_table_combined,
-                    selectors: &index.cs.lookup_selectors,
+                |(((lookup_table_combined, lookup_sorted), lookup_aggreg), lcs)| {
+                    LookupEnvironment {
+                        aggreg: lookup_aggreg,
+                        sorted: lookup_sorted,
+                        table: lookup_table_combined,
+                        selectors: &lcs.lookup_selectors,
+                    }
                 },
             );
 
-        //~ 15. compute quotient polynomial
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
@@ -449,80 +428,208 @@ where
             }
         };
 
-        let t4 = {
+        //
+        // compute quotient polynomial
+        //
+
+        let quotient_poly = {
             // generic
-            let mut t4 = index.cs.gnrc_quot(&lagrange.d4.this.w);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
+            let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
+
+            if cfg!(test) {
+                let (_, res) = t4
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
             // complete addition
-            let (alphas_used, add_constraint) = complete_add::constraint(range::COMPLETE_ADD.start);
-            assert_eq!(alphas_used, range::COMPLETE_ADD.len());
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 7);
+            let add_constraint = complete_add::constraint(alphas);
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
-            drop(add4);
-            t4
-        };
 
-        // permutation
-        let (perm, bnd) =
-            index
-                .cs
-                .perm_quot(&lagrange, beta, gamma, &z_poly, &alphas[range::PERM])?;
-        let mut t8 = perm;
-        // scalar multiplication
-        let mul8 = varbasemul::constraint(range::MUL.start).evaluations(&env);
-        t8 += &mul8;
-        drop(mul8);
-        // endoscaling
-        let emul8 = endosclmul::constraint(2 + range::ENDML.start).evaluations(&env);
-        t8 += &emul8;
-        drop(emul8);
-        // endoscaling scalar computation
-        let emulscalar8 = endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
-        t8 += &emulscalar8;
-        drop(emulscalar8);
-        // poseidon
-        let pos8 = poseidon::constraint().evaluations(&env);
-        t8 += &pos8;
-        drop(pos8);
-
-        let t4 = match index.cs.chacha8.as_ref() {
-            None => t4,
-            Some(_) => {
-                let mut t4 = t4;
-                let chacha = chacha::constraint(range::CHACHA.start).evaluations(&env);
-                t4 += &chacha;
-                drop(chacha);
-                t4
+            if cfg!(test) {
+                let (_, res) = add4
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
             }
+
+            drop(add4);
+
+            // permutation
+            let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+            let (perm, bnd) = index
+                .cs
+                .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
+            let mut t8 = perm;
+
+            if cfg!(test) {
+                let (_, res) = t8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            // scalar multiplication
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 21);
+            let mul8 = varbasemul::constraint(alphas).evaluations(&env);
+            t8 += &mul8;
+
+            if cfg!(test) {
+                let (_, res) = mul8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(mul8);
+
+            // endoscaling
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 11);
+            let emul8 = endosclmul::constraint(alphas).evaluations(&env);
+            t8 += &emul8;
+
+            if cfg!(test) {
+                let (_, res) = emul8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(emul8);
+
+            // endoscaling scalar computation
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 11);
+            let emulscalar8 = endomul_scalar::constraint(alphas).evaluations(&env);
+            t8 += &emulscalar8;
+
+            if cfg!(test) {
+                let (_, res) = emulscalar8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(emulscalar8);
+
+            // poseidon
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, 15);
+            let pos8 = poseidon::constraint(alphas).evaluations(&env);
+            t8 += &pos8;
+
+            if cfg!(test) {
+                let (_, res) = pos8
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+
+            drop(pos8);
+
+            // chacha
+            if index.cs.chacha8.as_ref().is_some() {
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let chacha0 = chacha::constraint_chacha0(alphas).evaluations(&env);
+                t4 += &chacha0;
+
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let chacha1 = chacha::constraint_chacha1(alphas).evaluations(&env);
+                t4 += &chacha1;
+
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let chacha2 = chacha::constraint_chacha2(alphas).evaluations(&env);
+                t4 += &chacha2;
+
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, 9);
+                let chacha_final = chacha::constraint_chacha_final(alphas).evaluations(&env);
+                t4 += &chacha_final;
+
+                if cfg!(test) {
+                    let (_, res) = chacha0
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha1
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha2
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+
+                    let (_, res) = chacha_final
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    assert!(res.is_zero());
+                }
+            }
+
+            // lookup
+            if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                let lookup_alphas = all_alphas.get_alphas(ConstraintType::Lookup, 7);
+                let constraints =
+                    lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+                for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
+                    let mut eval = constraint.evaluations(&env);
+                    eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation")
+                    }
+                }
+            }
+
+            // public polynomial
+            let mut f = t4.interpolate() + t8.interpolate();
+            f += &public_poly;
+
+            // divide contributions with vanishing polynomial
+            let (mut quotient, res) = f
+                .divide_by_vanishing_poly(index.cs.domain.d1)
+                .ok_or(ProofError::PolyDivision)?;
+            if !res.is_zero() {
+                return Err(ProofError::PolyDivision);
+            }
+
+            quotient += &bnd; // already divided by Z_H
+            quotient
         };
-
-        // quotient polynomial for lookup
-        let (t4, t8) = match lookup_used {
-            None => (t4, t8),
-            Some(_) => combine_evaluations(
-                (t4, t8),
-                alpha,
-                alphas[alphas.len() - 1],
-                lookup::constraints(&index.cs.dummy_lookup_values[0], index.cs.domain.d1)
-                    .iter()
-                    .map(|e| e.evaluations(&env))
-                    .collect(),
-            ),
-        };
-
-        //~ 16. divide contributions with vanishing polynomial
-
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &public_poly)
-            .divide_by_vanishing_poly(index.cs.domain.d1)
-            .map_or(Err(ProofError::PolyDivision), Ok)?;
-        if !res.is_zero() {
-            return Err(ProofError::PolyDivision);
-        }
-
-        t += &bnd;
 
         // commit to t
         let t_comm = {
-            let (mut t_comm, mut omega_t) = index.srs.commit(&t, None, rng);
+            let (mut t_comm, mut omega_t) = index.srs.commit(&quotient_poly, None, rng);
 
             let expected_t_size = PERMUTS;
             let dummies = expected_t_size - t_comm.unshifted.len();
@@ -553,13 +660,14 @@ where
             lookup_aggreg_coeffs
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
-                .map(|(aggreg, sorted)| LookupEvaluations {
+                .zip(index.cs.lookup_constraint_system.as_ref())
+                .map(|((aggreg, sorted), lcs)| LookupEvaluations {
                     aggreg: aggreg.eval(e, index.max_poly_size),
                     sorted: sorted
                         .iter()
                         .map(|c| c.eval(e, index.max_poly_size))
                         .collect(),
-                    table: index.cs.lookup_tables[0]
+                    table: lcs.lookup_tables[0]
                         .iter()
                         .map(|p| p.eval(e, index.max_poly_size))
                         .rev()
@@ -632,13 +740,17 @@ where
             // TODO: compute the linearization polynomial in evaluation form so
             // that we can drop the coefficient forms of the index polynomials from
             // the constraint system struct
-            let f = &index
+
+            // generic
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
+            let mut f = index
                 .cs
-                .gnrc_lnrz(&evals[0].w, evals[0].generic_selector)
-                .interpolate()
-                + &index
-                    .cs
-                    .perm_lnrz(evals, zeta, beta, gamma, &alphas[range::PERM]);
+                .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                .interpolate();
+
+            // permutation
+            let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+            f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
             let f = {
                 let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
@@ -653,7 +765,7 @@ where
             f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
         };
 
-        let t_chunked = t.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
+        let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
 
         let ft: DensePolynomial<Fr<G>> =
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - Fr::<G>::one());

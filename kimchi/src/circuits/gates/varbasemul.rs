@@ -107,18 +107,19 @@ impl<F: FftField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::VarBaseMul,
                 wires: wires[0],
-                c: vec![],
+                coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
                 wires: wires[1],
-                c: vec![],
+                coeffs: vec![],
             },
         ]
     }
 
     pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
-        unimplemented!();
+        // TODO: implement
+        Ok(())
     }
 
     pub fn vbmul(&self) -> F {

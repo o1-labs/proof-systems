@@ -1,12 +1,9 @@
 use std::sync::Arc;
 
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::CircuitGate,
-    wires::{Wire, COLUMNS, GENERICS},
-};
+use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
+use crate::circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::COLUMNS};
 use crate::{index::Index, prover::ProverProof};
-use ark_ff::{One, UniformRand, Zero};
+use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::{
@@ -31,61 +28,13 @@ type SpongeParams = PlonkSpongeConstants15W;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
-    // circuit gates
-    let mut gates = vec![];
-    let mut abs_row = 0;
-
-    // add multiplication gate (l * r = o)
-    let wires = Wire::new(abs_row);
-
-    let (on, off) = (Fp::one(), Fp::zero());
-    let qw: [Fp; GENERICS] = [
-        /* left for addition */ off, /* right for addition */ off,
-        /* output */ on, /* the rest of the columns don't matter */
-    ];
-    let multiplication = on;
-    let constant = off;
-    gates.push(CircuitGate::<Fp>::create_generic(
-        wires,
-        qw,
-        multiplication,
-        constant,
-    ));
-    abs_row += 1;
-
-    // add a zero gate, just because
-    let wires = Wire::new(abs_row);
-    gates.push(CircuitGate::<Fp>::zero(wires));
-    //abs_row += 1;
-
-    //
-    gates
-}
-
 #[test]
 fn test_generic_gate() {
-    let gates = create_generic_circuit();
+    let gates = create_circuit(0);
 
     // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); 2]);
-    let left = 0;
-    let right = 1;
-    let output = 2;
-
-    // mul gate
-    let mut row = 0;
-    witness[left][row] = 3u32.into();
-    witness[right][row] = 5u32.into();
-    witness[output][row] = -Fp::from(3u32 * 5);
-    row += 1;
-    println!("witness: {:?}", witness);
-
-    // zero gate
-    row += 1;
-
-    // check that witness is correctly formed
-    assert_eq!(row, gates.len());
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    fill_in_witness(0, &mut witness);
 
     // create and verify proof based on the witness
     verify_proof(gates, witness, 0);
@@ -140,6 +89,39 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 }
 
 /* TODO
+
+fn create_generic_circuit() -> Vec<CircuitGate<Fp>> {
+    // circuit gates
+    let mut gates = vec![];
+    let mut abs_row = 0;
+
+    // add multiplication gate (l * r = o)
+    let wires = Wire::new(abs_row);
+
+    let (on, off) = (Fp::one(), Fp::zero());
+    let qw: [Fp; GENERICS] = [
+        /* left for addition */ off, /* right for addition */ off,
+        /* output */ on, /* the rest of the columns don't matter */
+    ];
+    let multiplication = on;
+    let constant = off;
+    gates.push(CircuitGate::<Fp>::create_generic(
+        wires,
+        qw,
+        multiplication,
+        constant,
+    ));
+    abs_row += 1;
+
+    // add a zero gate, just because
+    let wires = Wire::new(abs_row);
+    gates.push(CircuitGate::<Fp>::zero(wires));
+    //abs_row += 1;
+
+    //
+    gates
+}
+
 #[test]
 fn test_index_serialization() {
     // create gates

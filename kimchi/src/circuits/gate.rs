@@ -52,7 +52,6 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    table_id: usize,
     // Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
@@ -89,6 +88,7 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
+    pub table_id: usize,
     pub entry: Vec<SingleLookup<F>>,
 }
 
@@ -106,6 +106,11 @@ impl<F: Field> JointLookup<F> {
     }
 }
 
+/// The different types of gates the system supports.
+/// Note that all the gates are mutually exclusive:
+/// they cannot be used at the same time on single row.
+/// If we were ever to support this feature, we would have to make sure
+/// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
     Clone,
@@ -300,10 +305,10 @@ impl GateType {
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
                 let l = |loc: LocalPosition| SingleLookup {
-                    table_id: 0,
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
+                    table_id: 0,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -328,18 +333,11 @@ impl GateType {
                 // Check
                 // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
                 let x = SingleLookup {
-                    table_id: 0,
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    entry: vec![
-                        x.clone(),
-                        x,
-                        SingleLookup {
-                            table_id: 0,
-                            value: vec![],
-                        },
-                    ],
+                    table_id: 0,
+                    entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
             .collect();
@@ -373,15 +371,17 @@ impl GateType {
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+// TODO: this struct is a row in the circuit, not a gate (as theoretically a row can contain multiple gates)
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
-    /// gate wires
+
+    /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
-    /// constraints vector
-    // TODO: rename
+
+    /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub c: Vec<F>,
+    pub coeffs: Vec<F>,
 }
 
 impl<F: FftField> ToBytes for CircuitGate<F> {
@@ -393,8 +393,8 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
             self.wires[i].write(&mut w)?
         }
 
-        (self.c.len() as u8).write(&mut w)?;
-        for x in self.c.iter() {
+        (self.coeffs.len() as u8).write(&mut w)?;
+        for x in self.coeffs.iter() {
             x.write(&mut w)?;
         }
         Ok(())
@@ -406,7 +406,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
-            c: Vec::new(),
+            coeffs: Vec::new(),
             wires,
         }
     }
@@ -428,7 +428,8 @@ impl<F: FftField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            // TODO: implement the verification for chacha
+            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
         }
     }
 }
@@ -438,7 +439,6 @@ pub mod caml {
     use super::*;
     use crate::circuits::wires::caml::CamlWire;
     use itertools::Itertools;
-    use std::convert::TryInto;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
@@ -452,7 +452,7 @@ pub mod caml {
             CamlWire,
             CamlWire,
         ),
-        pub c: Vec<F>,
+        pub coeffs: Vec<F>,
     }
 
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
@@ -464,7 +464,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -478,7 +478,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.clone().into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.clone().into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -492,7 +492,7 @@ pub mod caml {
             Self {
                 typ: ccg.typ,
                 wires: tuple_to_array(ccg.wires),
-                c: ccg.c.into_iter().map(Into::into).collect(),
+                coeffs: ccg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -530,7 +530,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;
@@ -558,11 +558,11 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
                 typ,
                 wires,
-                c,
+                coeffs,
             }
         }
     }
@@ -576,7 +576,7 @@ mod tests {
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);
             }
-            prop_assert_eq!(cg.c, decoded.c);
+            prop_assert_eq!(cg.coeffs, decoded.coeffs);
         }
     }
 }
