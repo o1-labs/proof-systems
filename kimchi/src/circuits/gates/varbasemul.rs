@@ -85,13 +85,13 @@
 //! * (ys + yv)^2 = (xv – xs)^2 * (s5^2 – xq3 + xs)
 //!
 //!
-//!     Row	    0	1	2	3	4	5	6	7	8	9	10	11	12	13	14	Type
-//!
-//!        i	xT	yT	xS	yS	xP	yP	n	xr	yr	s1	s2	b1	s3	s4	b2	VBSM
-//!       i+1	s5	b3	xS	yS	xP	yP	n	xr	yr	xv	yv	s1	b1	s3	b2	ZERO
-//!
-//!     i+100	xT	yT	xS	yS	xP	yP	n	xr	yr	s1	s2	b1	s3	s4	b2	VBSM
-//!     i+101	s5	b3	xS	yS	xP	yP	n	xr	yr	xv	yv	s1	b1	s3	b2	ZERO
+//! | Row| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | Type |
+//! | -----------------------------------------------------------------------|
+//! | i | xT | yT | xS | yS | xP | yP | n | xr | yr | s1 | s2 | b1 | s3 | s4 | b2 | VBSM |
+//! |  i+1 | s5 | b3 | xS | yS | xP | yP | n | xr | yr | xv | yv | s1 | b1 | s3 | b2 | ZERO |
+//! | ... | | | | | | | | | | | | | | | | |
+//! | i+100 | xT | yT | xS | yS | xP | yP | n | xr | yr | s1 | s2 | b1 | s3 | s4 | b2 | VBSM |
+//! | i+101 | s5 | b3 | xS | yS | xP | yP | n | xr | yr | xv | yv | s1 | b1 | s3 | b2 | ZERO |
 //!
 
 use crate::circuits::gate::{CircuitGate, GateType};
