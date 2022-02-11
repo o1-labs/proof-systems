@@ -162,8 +162,10 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-    powers_of_alpha: &mut alphas::Builder,
-) -> Expr<ConstantExpr<F>> {
+) -> (Expr<ConstantExpr<F>>, alphas::Builder) {
+    // register powers of alpha so that we don't reuse them across mutually inclusive constraints
+    let mut powers_of_alpha = alphas::Builder::default();
+
     // gates
     let alphas = powers_of_alpha.register(ConstraintType::Gate, 21);
 
@@ -180,6 +182,9 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += chacha::constraint_chacha_final(alphas.take(9))
     }
 
+    // permutation
+    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
+
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
         let alphas = powers_of_alpha.register(ConstraintType::Lookup, 7);
@@ -189,7 +194,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     // return the expression
-    expr
+    (expr, powers_of_alpha)
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>(
@@ -220,14 +225,17 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-    powers_of_alpha: &mut alphas::Builder,
-) -> Linearization<Vec<PolishToken<F>>> {
+) -> (Linearization<Vec<PolishToken<F>>>, alphas::Builder) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    constraints_expr(domain, chacha, lookup_constraint_system, powers_of_alpha)
+    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
+
+    let linearization = expr
         .linearize(evaluated_cols)
         .unwrap()
-        .map(|e| e.to_polish())
+        .map(|e| e.to_polish());
+
+    (linearization, powers_of_alpha)
 }
 
 impl<'a, G: CommitmentCurve> Index<G>
@@ -327,23 +335,13 @@ where
         cs.endo = endo_q;
 
         //
-        // register powers of alphas
-        //
-
-        let mut powers_of_alpha = alphas::Builder::default();
-
-        // permutation
-        let _alphas = powers_of_alpha.register(ConstraintType::Permutation, 3);
-
-        //
         // Lookup
         //
 
-        let linearization = expr_linearization(
+        let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
             &cs.lookup_constraint_system,
-            &mut powers_of_alpha,
         );
 
         let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
