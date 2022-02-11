@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["black_box","function to avoid optimizations by the compiler taken from https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171"],["main",""]]});
