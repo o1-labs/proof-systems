@@ -4,7 +4,7 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use crate::alphas::{self, Alphas};
+use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
@@ -172,9 +172,9 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> (Expr<ConstantExpr<F>>, alphas::Alphas<F>) {
+) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
-    let mut powers_of_alpha = alphas::Alphas::<F>::default();
+    let mut powers_of_alpha = Alphas::<F>::default();
 
     // gates
     let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
