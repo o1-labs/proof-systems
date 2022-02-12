@@ -1,9 +1,7 @@
 //! This module implements the Poseidon constraint polynomials.
 
 use std::marker::PhantomData;
-
-use crate::alphas::{Alphas, ConstraintType};
-use crate::circuits::argument::Argument;
+use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
@@ -41,36 +39,42 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ];
 
 /// Implementation of the Poseidon gate
+/// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
+/// Conjunction of:
+/// curr[round_range(1)] = round(curr[round_range(0)])
+/// curr[round_range(2)] = round(curr[round_range(1)])
+/// curr[round_range(3)] = round(curr[round_range(2)])
+/// curr[round_range(4)] = round(curr[round_range(3)])
+/// next[round_range(0)] = round(curr[round_range(4)])
+///
+/// which expands e.g., to
+/// curr[round_range(1)][0] =
+///      mds[0][0] * sbox(curr[round_range(0)][0])
+///    + mds[0][1] * sbox(curr[round_range(0)][1])
+///    + mds[0][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][0]
+/// curr[round_range(1)][1] =
+///      mds[1][0] * sbox(curr[round_range(0)][0])
+///    + mds[1][1] * sbox(curr[round_range(0)][1])
+///    + mds[1][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][1]
+/// ...
+/// The rth position in this array contains the alphas used for the equations that
+/// constrain the values of the (r+1)th state.
 #[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
 
-impl<F> Poseidon<F>
+impl<F> Poseidon<F> where F: Field {}
+
+impl<F> Argument for Poseidon<F>
 where
-    F: Field,
+    F: FftField,
 {
-    /// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
-    /// Conjunction of:
-    /// curr[round_range(1)] = round(curr[round_range(0)])
-    /// curr[round_range(2)] = round(curr[round_range(1)])
-    /// curr[round_range(3)] = round(curr[round_range(2)])
-    /// curr[round_range(4)] = round(curr[round_range(3)])
-    /// next[round_range(0)] = round(curr[round_range(4)])
-    ///
-    /// which expands e.g., to
-    /// curr[round_range(1)][0] =
-    ///      mds[0][0] * sbox(curr[round_range(0)][0])
-    ///    + mds[0][1] * sbox(curr[round_range(0)][1])
-    ///    + mds[0][2] * sbox(curr[round_range(0)][2])
-    ///    + rcm[round_range(1)][0]
-    /// curr[round_range(1)][1] =
-    ///      mds[1][0] * sbox(curr[round_range(0)][0])
-    ///    + mds[1][1] * sbox(curr[round_range(0)][1])
-    ///    + mds[1][2] * sbox(curr[round_range(0)][2])
-    ///    + rcm[round_range(1)][1]
-    /// ...
-    /// The rth position in this array contains the alphas used for the equations that
-    /// constrain the values of the (r+1)th state.
-    pub fn constraints() -> Vec<E<F>> {
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
+    const CONSTRAINTS: usize = 15;
+
+    fn constraints(&self) -> Vec<E<F>> {
         let mut res = vec![];
         let mut cache = Cache::default();
 
@@ -105,20 +109,5 @@ where
             }));
         }
         res
-    }
-}
-
-impl<F> Argument for Poseidon<F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const CONSTRAINTS: usize = 15;
-
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::Poseidon) * E::combine_constraints(alphas, constraints)
     }
 }

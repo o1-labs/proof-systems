@@ -29,29 +29,28 @@
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //! </pre>
 
-use std::marker::PhantomData;
-
-use crate::{
-    alphas::{Alphas, ConstraintType},
-    circuits::{
-        argument::Argument,
-        expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
-        gate::GateType,
-        wires::COLUMNS,
-    },
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
+    gate::GateType,
+    wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One};
+use std::marker::PhantomData;
 
 /// Implementation of the EndosclMul gate.
 #[derive(Default)]
 pub struct EndosclMul<F>(PhantomData<F>);
 
-impl<F> EndosclMul<F>
+impl<F> Argument for EndosclMul<F>
 where
-    F: Field,
+    F: FftField,
 {
-    /// The constraints for endoscaling.
-    pub fn constraints() -> Vec<E<F>> {
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
+    const CONSTRAINTS: usize = 11;
+
+    fn constraints(&self) -> Vec<E<F>> {
         let b1 = witness_curr(11);
         let b2 = witness_curr(12);
         let b3 = witness_curr(13);
@@ -121,21 +120,6 @@ where
             ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
             n_constraint,
         ]
-    }
-}
-
-impl<F> Argument for EndosclMul<F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const CONSTRAINTS: usize = 11;
-
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::EndoMul) * E::combine_constraints(alphas, constraints)
     }
 }
 

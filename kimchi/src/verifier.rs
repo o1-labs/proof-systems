@@ -1,8 +1,9 @@
 //! This module implements zk-proof batch verifier functionality.
 
 use crate::{
-    alphas::{Alphas, ConstraintType},
+    alphas::Alphas,
     circuits::{
+        argument::ArgumentType,
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::{GateType, LookupsUsed},
@@ -255,7 +256,7 @@ where
             let zeta1m1 = zeta1 - Fr::<G>::one();
 
             let mut alpha_powers =
-                all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
+                all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
             let alpha0 = alpha_powers
                 .next()
                 .expect("missing power of alpha for permutation");
@@ -442,7 +443,7 @@ where
                 let zkp = index.zkpm.evaluate(&oracles.zeta);
 
                 let alphas =
-                    all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
+                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
                 let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
                 let mut scalars = vec![ConstraintSystem::perm_scalars(
@@ -462,7 +463,8 @@ where
                         .take(GENERICS)
                         .collect::<Vec<_>>(),
                 );
-                let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
+                let alphas = all_alphas
+                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
                 let (generic_scalars, _) =
                     &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
                 scalars.extend(generic_scalars);

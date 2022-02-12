@@ -11,14 +11,11 @@
 //! - `same_x` is a boolean that is true iff `x1 == x2`.
 use std::marker::PhantomData;
 
-use crate::{
-    alphas::{Alphas, ConstraintType},
-    circuits::{
-        argument::Argument,
-        expr::{prologue::*, Cache},
-        gate::{CircuitGate, GateType},
-        wires::COLUMNS,
-    },
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{prologue::*, Cache},
+    gate::{CircuitGate, GateType},
+    wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One};
 
@@ -34,29 +31,33 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 }
 
 /// Implementation of the CompleteAdd gate
+/// It uses the constraints
+///
+///   (x2 - x1) * s = y2 - y1
+///   s^2 = x1 + x2 + x3
+///   y3 = s (x1 - x3) - y1
+///
+/// for addition and
+///
+///   2 * s * y1 = 3 * x1^2
+///   s^2 = 2 x1 + x3
+///   y3 = s (x1 - x3) - y1
+///
+/// for doubling.
+///
+/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
 #[derive(Default)]
 pub struct CompleteAdd<F>(PhantomData<F>);
 
-impl<F> CompleteAdd<F>
+impl<F> Argument for CompleteAdd<F>
 where
-    F: Field,
+    F: FftField,
 {
-    /// This function uses the constraints
-    ///
-    ///   (x2 - x1) * s = y2 - y1
-    ///   s^2 = x1 + x2 + x3
-    ///   y3 = s (x1 - x3) - y1
-    ///
-    /// for addition and
-    ///
-    ///   2 * s * y1 = 3 * x1^2
-    ///   s^2 = 2 x1 + x3
-    ///   y3 = s (x1 - x3) - y1
-    ///
-    /// for doubling.
-    ///
-    /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-    pub fn constraints() -> Vec<E<F>> {
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
+    const CONSTRAINTS: usize = 7;
+
+    fn constraints(&self) -> Vec<E<F>> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = witness_curr(0);
         let y1 = witness_curr(1);
@@ -176,22 +177,6 @@ where
         res.push(y21 * inf_z - inf);
 
         res
-    }
-}
-
-impl<F> Argument for CompleteAdd<F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const CONSTRAINTS: usize = 7;
-
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
-        let num: usize = Self::CONSTRAINTS;
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::CompleteAdd) * E::combine_constraints(alphas, constraints)
     }
 }
 

@@ -144,13 +144,10 @@
 
 use std::marker::PhantomData;
 
-use crate::{
-    alphas::{Alphas, ConstraintType},
-    circuits::{
-        argument::Argument,
-        expr::{constraints::boolean, prologue::*, ConstantExpr as C},
-        gate::{CurrOrNext, GateType},
-    },
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{constraints::boolean, prologue::*, ConstantExpr as C},
+    gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field, Zero};
 
@@ -257,14 +254,12 @@ where
     F: FftField,
 {
     type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: usize = 5;
 
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
+    fn constraints(&self) -> Vec<E<F>> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
-        let constraints = line(4);
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::ChaCha0) * E::combine_constraints(alphas, constraints)
+        line(4)
     }
 }
 
@@ -278,14 +273,12 @@ where
     F: FftField,
 {
     type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: usize = 5;
 
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
+    fn constraints(&self) -> Vec<E<F>> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
-        let constraints = line(3);
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::ChaCha1) * E::combine_constraints(alphas, constraints)
+        line(3)
     }
 }
 
@@ -299,14 +292,12 @@ where
     F: FftField,
 {
     type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: usize = 5;
 
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
+    fn constraints(&self) -> Vec<E<F>> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
-        let constraints = line(2);
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::ChaCha2) * E::combine_constraints(alphas, constraints)
+        line(2)
     }
 }
 
@@ -315,11 +306,15 @@ where
 #[derive(Default)]
 pub struct ChaChaFinal<F>(PhantomData<F>);
 
-impl<F> ChaChaFinal<F>
+impl<F> Argument for ChaChaFinal<F>
 where
     F: FftField,
 {
-    fn constraints() -> Vec<E<F>> {
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
+    const CONSTRAINTS: usize = 5;
+
+    fn constraints(&self) -> Vec<E<F>> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -348,21 +343,6 @@ where
         let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
         constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
         constraints
-    }
-}
-
-impl<F> Argument for ChaChaFinal<F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const CONSTRAINTS: usize = 5;
-
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::ChaChaFinal) * E::combine_constraints(alphas, constraints)
     }
 }
 
@@ -533,11 +513,14 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::{
-        expr::{Column, Constants, PolishToken},
-        gate::LookupInfo,
-        scalars::{LookupEvaluations, ProofEvaluations},
-        wires::*,
+    use crate::{
+        alphas::Alphas,
+        circuits::{
+            expr::{Column, Constants, PolishToken},
+            gate::LookupInfo,
+            scalars::{LookupEvaluations, ProofEvaluations},
+            wires::*,
+        },
     };
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -585,11 +568,11 @@ mod tests {
             h
         };
         let mut alphas = Alphas::<F>::default();
-        alphas.register(ConstraintType::Gate, 9);
-        let mut expr = ChaCha0::default().constraint(&alphas);
-        expr += ChaCha1::default().constraint(&alphas);
-        expr += ChaCha2::default().constraint(&alphas);
-        expr += ChaChaFinal::default().constraint(&alphas);
+        alphas.register(ArgumentType::Gate(GateType::ChaChaFinal), 9);
+        let mut expr = ChaCha0::default().combined_constraints(&alphas);
+        expr += ChaCha1::default().combined_constraints(&alphas);
+        expr += ChaCha2::default().combined_constraints(&alphas);
+        expr += ChaChaFinal::default().combined_constraints(&alphas);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

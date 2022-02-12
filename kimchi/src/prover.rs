@@ -1,9 +1,8 @@
 //! This module implements prover's zk-proof primitive.
 
 use crate::{
-    alphas::ConstraintType,
     circuits::{
-        argument::Argument,
+        argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
@@ -412,7 +411,8 @@ where
 
         let quotient_poly = {
             // generic
-            let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
+            let alphas =
+                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             if cfg!(test) {
@@ -425,7 +425,7 @@ where
             }
 
             // complete addition
-            let add_constraint = CompleteAdd::default().constraint(&all_alphas);
+            let add_constraint = CompleteAdd::default().combined_constraints(&all_alphas);
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
 
@@ -441,8 +441,7 @@ where
             drop(add4);
 
             // permutation
-            let alphas =
-                all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
+            let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
             let (perm, bnd) = index
                 .cs
                 .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
@@ -459,7 +458,7 @@ where
 
             // scalar multiplication
             let mul8 = VarbaseMul::default()
-                .constraint(&all_alphas)
+                .combined_constraints(&all_alphas)
                 .evaluations(&env);
             t8 += &mul8;
 
@@ -476,7 +475,7 @@ where
 
             // endoscaling
             let emul8 = EndosclMul::default()
-                .constraint(&all_alphas)
+                .combined_constraints(&all_alphas)
                 .evaluations(&env);
             t8 += &emul8;
 
@@ -493,7 +492,7 @@ where
 
             // endoscaling scalar computation
             let emulscalar8 = EndomulScalar::default()
-                .constraint(&all_alphas)
+                .combined_constraints(&all_alphas)
                 .evaluations(&env);
             t8 += &emulscalar8;
 
@@ -510,7 +509,7 @@ where
 
             // poseidon
             let pos8 = Poseidon::default()
-                .constraint(&all_alphas)
+                .combined_constraints(&all_alphas)
                 .evaluations(&env);
             t8 += &pos8;
 
@@ -527,17 +526,23 @@ where
 
             // chacha
             if index.cs.chacha8.as_ref().is_some() {
-                let chacha0 = ChaCha0::default().constraint(&all_alphas).evaluations(&env);
+                let chacha0 = ChaCha0::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha0;
 
-                let chacha1 = ChaCha1::default().constraint(&all_alphas).evaluations(&env);
+                let chacha1 = ChaCha1::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha1;
 
-                let chacha2 = ChaCha2::default().constraint(&all_alphas).evaluations(&env);
+                let chacha2 = ChaCha2::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha2;
 
                 let chacha_final = ChaChaFinal::default()
-                    .constraint(&all_alphas)
+                    .combined_constraints(&all_alphas)
                     .evaluations(&env);
                 t4 += &chacha_final;
 
@@ -575,7 +580,7 @@ where
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
-                    all_alphas.get_alphas(ConstraintType::Lookup, Lookup::<Fr<G>>::CONSTRAINTS);
+                    all_alphas.get_alphas(ArgumentType::Lookup, Lookup::<Fr<G>>::CONSTRAINTS);
                 let lookup = Lookup::new(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
                 let constraints = lookup.constraints();
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
@@ -718,15 +723,15 @@ where
             // the constraint system struct
 
             // generic
-            let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
+            let alphas =
+                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
             let mut f = index
                 .cs
                 .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
                 .interpolate();
 
             // permutation
-            let alphas =
-                all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
+            let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
             f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
             let f = {

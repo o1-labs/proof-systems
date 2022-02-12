@@ -28,6 +28,7 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
+use crate::circuits::argument::Argument;
 use crate::circuits::expr;
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::endosclmul::EndosclMul;
@@ -75,7 +76,7 @@ impl<F: FftField> CircuitGate<F> {
             ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
-        let constraints = EndosclMul::constraints();
+        let constraints = EndosclMul::default().constraints();
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {

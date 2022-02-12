@@ -120,16 +120,14 @@
 //! snakifying on `witness_table`, because its contribution above only uses a single term rather
 //! than a pair of terms.
 
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
-
-use crate::alphas::{Alphas, ConstraintType};
-use crate::circuits::argument::Argument;
+use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr::{prologue::*, Column, ConstantExpr, Variable};
 use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
     wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One, Zero};
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use oracle::rndoracle::ProofError;
 use rand::Rng;
 use std::collections::HashMap;
@@ -603,9 +601,17 @@ where
             domain,
         }
     }
+}
 
-    /// Specifies the lookup constraints as expressions.
-    pub fn constraints(&self) -> Vec<E<F>> {
+impl<'a, F> Argument for Lookup<'a, F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Lookup;
+    const CONSTRAINTS: usize = 7;
+
+    fn constraints(&self) -> Vec<E<F>> {
         // Something important to keep in mind is that the last 2 rows of
         // all columns will have random values in them to maintain zero-knowledge.
         //
@@ -769,20 +775,5 @@ where
         ];
         res.extend(compatibility_checks);
         res
-    }
-}
-
-impl<'a, F> Argument for Lookup<'a, F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const CONSTRAINTS: usize = 7;
-
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
-        let constraints = self.constraints();
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Lookup, Self::CONSTRAINTS);
-        E::combine_constraints(alphas, constraints)
     }
 }

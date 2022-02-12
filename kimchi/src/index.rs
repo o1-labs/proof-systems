@@ -4,8 +4,8 @@ This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/
 
-use crate::alphas::{self, Alphas, ConstraintType};
-use crate::circuits::argument::Argument;
+use crate::alphas::{self, Alphas};
+use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
@@ -178,29 +178,32 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // gates
     let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
-    powers_of_alpha.register(ConstraintType::Gate, highest_constraints);
+    powers_of_alpha.register(
+        ArgumentType::Gate(GateType::VarBaseMul),
+        highest_constraints,
+    );
 
-    let mut expr = Poseidon::default().constraint(&powers_of_alpha);
-    expr += VarbaseMul::default().constraint(&powers_of_alpha);
-    expr += CompleteAdd::default().constraint(&powers_of_alpha);
-    expr += EndosclMul::default().constraint(&powers_of_alpha);
-    expr += EndomulScalar::default().constraint(&powers_of_alpha);
+    let mut expr = Poseidon::default().combined_constraints(&powers_of_alpha);
+    expr += VarbaseMul::default().combined_constraints(&powers_of_alpha);
+    expr += CompleteAdd::default().combined_constraints(&powers_of_alpha);
+    expr += EndosclMul::default().combined_constraints(&powers_of_alpha);
+    expr += EndomulScalar::default().combined_constraints(&powers_of_alpha);
 
     if chacha {
-        expr += ChaCha0::default().constraint(&powers_of_alpha);
-        expr += ChaCha1::default().constraint(&powers_of_alpha);
-        expr += ChaCha2::default().constraint(&powers_of_alpha);
-        expr += ChaChaFinal::default().constraint(&powers_of_alpha);
+        expr += ChaCha0::default().combined_constraints(&powers_of_alpha);
+        expr += ChaCha1::default().combined_constraints(&powers_of_alpha);
+        expr += ChaCha2::default().combined_constraints(&powers_of_alpha);
+        expr += ChaChaFinal::default().combined_constraints(&powers_of_alpha);
     }
 
     // permutation
-    powers_of_alpha.register(ConstraintType::Permutation, permutation::CONSTRAINTS);
+    powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
         let lookup = Lookup::new(&lcs.dummy_lookup_values[0], domain);
-        powers_of_alpha.register(ConstraintType::Lookup, Lookup::<F>::CONSTRAINTS);
-        expr += lookup.constraint(&powers_of_alpha);
+        powers_of_alpha.register(ArgumentType::Lookup, Lookup::<F>::CONSTRAINTS);
+        expr += lookup.combined_constraints(&powers_of_alpha);
     }
 
     // return the expression

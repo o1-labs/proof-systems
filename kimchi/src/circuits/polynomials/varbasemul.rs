@@ -9,14 +9,11 @@
 
 use std::marker::PhantomData;
 
-use crate::{
-    alphas::{Alphas, ConstraintType},
-    circuits::{
-        argument::Argument,
-        expr::{prologue::*, Cache, Column, Variable},
-        gate::{CurrOrNext, GateType},
-        wires::COLUMNS,
-    },
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{prologue::*, Cache, Column, Variable},
+    gate::{CurrOrNext, GateType},
+    wires::COLUMNS,
 };
 use ark_ff::{FftField, One};
 
@@ -204,11 +201,15 @@ pub fn witness<F: FftField + std::fmt::Display>(
 #[derive(Default)]
 pub struct VarbaseMul<F>(PhantomData<F>);
 
-impl<F> VarbaseMul<F>
+impl<F> Argument for VarbaseMul<F>
 where
     F: FftField,
 {
-    fn constraints() -> Vec<E<F>> {
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
+    const CONSTRAINTS: usize = 21;
+
+    fn constraints(&self) -> Vec<E<F>> {
         let Layout {
             base,
             accs,
@@ -240,20 +241,5 @@ where
         }
 
         res
-    }
-}
-
-impl<F> Argument for VarbaseMul<F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const CONSTRAINTS: usize = 21;
-
-    fn constraint(&self, alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
-        assert!(constraints.len() == Self::CONSTRAINTS);
-        let alphas = alphas.get_exponents(ConstraintType::Gate, Self::CONSTRAINTS);
-        index(GateType::VarBaseMul) * E::combine_constraints(alphas, constraints)
     }
 }
