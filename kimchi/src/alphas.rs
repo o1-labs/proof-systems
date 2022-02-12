@@ -36,23 +36,7 @@ use std::{
     thread,
 };
 
-// ------------------------------------------
-
-/// A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)
-#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Serialize, Deserialize)]
-pub enum ConstraintType {
-    /// gates in the PLONK constraint system.
-    /// As gates are mutually exclusive (only a single selector polynomial
-    /// will be non-zero for a given row),
-    /// we can reuse the same power of alphas accross gates.
-    Gate,
-    /// The permutation argument
-    Permutation,
-    /// The lookup argument
-    Lookup,
-}
-
-// ------------------------------------------
+use crate::circuits::argument::ArgumentType;
 
 /// This type can be used to create a mapping between powers of alpha and constraint types.
 /// See [Alphas::default] to create one,
@@ -64,16 +48,16 @@ pub struct Alphas<F> {
     /// the end result will be [1, alpha^next_power)    
     next_power: usize,
     /// The mapping between constraint types and powers of alpha
-    mapping: HashMap<ConstraintType, Range<usize>>,
+    mapping: HashMap<ArgumentType, Range<usize>>,
     /// The powers of alpha: 1, alpha, alpha^2, etc.
     /// If set to [Some], you can't register new constraints.
     alphas: Option<Vec<F>>,
 }
 
 impl<F: Field> Alphas<F> {
-    /// Registers a new [ConstraintType],
+    /// Registers a new [ArgumentType],
     /// associating it with a number `powers` of powers of alpha.
-    pub fn register(&mut self, ty: ConstraintType, powers: usize) {
+    pub fn register(&mut self, ty: ArgumentType, powers: usize) {
         if self.alphas.is_some() {
             panic!("you cannot register new constraints once initialized with a field element");
         }
@@ -85,11 +69,11 @@ impl<F: Field> Alphas<F> {
         self.next_power = new_power;
     }
 
-    /// Returns a range of exponents, for a given [ConstraintType], upperbounded by `num`.
+    /// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.
     /// Note that this function will panic if you did not register enough powers of alpha.
     pub fn get_exponents(
         &self,
-        ty: ConstraintType,
+        ty: ArgumentType,
         num: usize,
     ) -> MustConsumeIterator<Take<Range<usize>>, usize> {
         let range = self
@@ -118,7 +102,7 @@ impl<F: Field> Alphas<F> {
     /// This function allows us to retrieve the powers of alpha, upperbounded by `num`
     pub fn get_alphas(
         &self,
-        ty: ConstraintType,
+        ty: ArgumentType,
         num: usize,
     ) -> MustConsumeIterator<Cloned<Take<Iter<F>>>, F> {
         let range = self
@@ -149,7 +133,7 @@ where
     T: std::fmt::Display,
 {
     inner: I,
-    debug_info: ConstraintType,
+    debug_info: ArgumentType,
 }
 
 impl<I, T> Iterator for MustConsumeIterator<I, T>
@@ -194,15 +178,15 @@ mod tests {
     #[test]
     fn incorrect_alpha_powers() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ConstraintType::Gate, 3);
+        alphas.register(ArgumentType::Gate, 3);
 
-        let mut powers = alphas.get_exponents(ConstraintType::Gate, 3);
+        let mut powers = alphas.get_exponents(ArgumentType::Gate, 3);
         assert_eq!(powers.next(), Some(0));
         assert_eq!(powers.next(), Some(1));
         assert_eq!(powers.next(), Some(2));
 
-        alphas.register(ConstraintType::Permutation, 3);
-        let mut powers = alphas.get_exponents(ConstraintType::Permutation, 3);
+        alphas.register(ArgumentType::Permutation, 3);
+        let mut powers = alphas.get_exponents(ArgumentType::Permutation, 3);
 
         assert_eq!(powers.next(), Some(3));
         assert_eq!(powers.next(), Some(4));
@@ -214,15 +198,15 @@ mod tests {
     fn register_after_instantiating() {
         let mut alphas = Alphas::<Fp>::default();
         alphas.instantiate(Fp::from(1));
-        alphas.register(ConstraintType::Gate, 3);
+        alphas.register(ArgumentType::Gate, 3);
     }
 
     #[test]
     #[should_panic]
     fn didnt_use_all_alpha_powers() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ConstraintType::Permutation, 7);
-        let mut powers = alphas.get_exponents(ConstraintType::Permutation, 3);
+        alphas.register(ArgumentType::Permutation, 7);
+        let mut powers = alphas.get_exponents(ArgumentType::Permutation, 3);
         powers.next();
     }
 
@@ -230,15 +214,15 @@ mod tests {
     #[should_panic]
     fn registered_alpha_powers_for_some_constraint_twice() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ConstraintType::Gate, 2);
-        alphas.register(ConstraintType::Gate, 3);
+        alphas.register(ArgumentType::Gate, 2);
+        alphas.register(ArgumentType::Gate, 3);
     }
 
     #[test]
     fn powers_of_alpha() {
         let mut alphas = Alphas::default();
-        alphas.register(ConstraintType::Gate, 4);
-        let mut powers = alphas.get_exponents(ConstraintType::Gate, 4);
+        alphas.register(ArgumentType::Gate, 4);
+        let mut powers = alphas.get_exponents(ArgumentType::Gate, 4);
 
         assert_eq!(powers.next(), Some(0));
         assert_eq!(powers.next(), Some(1));
@@ -248,7 +232,7 @@ mod tests {
         let alpha = Fp::from(2);
         alphas.instantiate(alpha);
 
-        let mut alphas = alphas.get_alphas(ConstraintType::Gate, 4);
+        let mut alphas = alphas.get_alphas(ArgumentType::Gate, 4);
         assert_eq!(alphas.next(), Some(1.into()));
         assert_eq!(alphas.next(), Some(2.into()));
         assert_eq!(alphas.next(), Some(4.into()));
