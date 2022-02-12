@@ -1,5 +1,5 @@
 var N = null;var sourcesIndex = {};
-sourcesIndex["commitment_dlog"] = {"name":"","files":["chunked.rs","combine.rs","commitment.rs","lib.rs","qnr_field.rs","srs.rs"]};
+sourcesIndex["commitment_dlog"] = {"name":"","files":["chunked.rs","combine.rs","commitment.rs","lib.rs","srs.rs"]};
 sourcesIndex["export_test_vectors"] = {"name":"","files":["export_test_vectors.rs","vectors.rs"]};
 sourcesIndex["flamegraph"] = {"name":"","files":["flamegraph.rs"]};
 sourcesIndex["groupmap"] = {"name":"","files":["lib.rs"]};

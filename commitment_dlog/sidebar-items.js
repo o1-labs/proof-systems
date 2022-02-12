@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["chunked",""],["commitment",""],["srs",""]],"trait":[["CommitmentField",""],["QnrField",""]]});
+initSidebarItems({"mod":[["chunked",""],["commitment",""],["srs",""]]});

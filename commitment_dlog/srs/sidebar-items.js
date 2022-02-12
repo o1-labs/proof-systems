@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["endos",""]],"struct":[["SRS",""]],"trait":[["QnrField",""]]});
+initSidebarItems({"fn":[["endos",""]],"struct":[["SRS",""]]});

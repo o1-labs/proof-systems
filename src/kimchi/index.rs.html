@@ -388,11 +388,6 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk Protocol Index primitive.
@@ -420,7 +415,6 @@ This source file implements Plonk Protocol Index primitive.
 <span class="kw">use</span> <span class="ident">commitment_dlog</span>::{
     <span class="ident">commitment</span>::{<span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>},
     <span class="ident">srs::SRS</span>,
-    <span class="ident">CommitmentField</span>,
 };
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -434,10 +428,7 @@ This source file implements Plonk Protocol Index primitive.
 <span class="comment">// TODO: rename as ProverIndex</span>
 <span class="attribute">#[<span class="ident">serde_as</span>]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
-{
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> {
     <span class="doccomment">/// constraints system polynomials</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">bound</span> <span class="op">=</span> <span class="string">&quot;ConstraintSystem&lt;Fr&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">cs</span>: <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -620,7 +611,6 @@ This source file implements Plonk Protocol Index primitive.
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
-    <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
 {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verifier_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
@@ -784,5 +774,5 @@ This source file implements Plonk Protocol Index primitive.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e646f3d2a 2022-02-10)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
 </body></html>

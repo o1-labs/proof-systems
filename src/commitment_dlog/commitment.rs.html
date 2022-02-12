@@ -1418,13 +1418,6 @@
 <span id="1413">1413</span>
 <span id="1414">1414</span>
 <span id="1415">1415</span>
-<span id="1416">1416</span>
-<span id="1417">1417</span>
-<span id="1418">1418</span>
-<span id="1419">1419</span>
-<span id="1420">1420</span>
-<span id="1421">1421</span>
-<span id="1422">1422</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Dlog-based polynomial commitment schema.
@@ -1438,7 +1431,6 @@ The folowing functionality is implemented
 *****************************************************************************************************************/</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::srs::SRS</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::CommitmentField</span>;
 <span class="kw">use</span> <span class="ident">ark_ec</span>::{
     <span class="ident">models::short_weierstrass_jacobian::GroupAffine</span> <span class="kw">as</span> <span class="ident">SWJAffine</span>, <span class="ident">msm::VariableBaseMSM</span>,
     <span class="ident">AffineCurve</span>, <span class="ident">ProjectiveCurve</span>, <span class="ident">SWModelParameters</span>,
@@ -1670,10 +1662,7 @@ The folowing functionality is implemented
     <span class="kw">pub</span> <span class="ident">chal_inv</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
-{
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prechallenges</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">sponge</span>: <span class="kw-2">&amp;mut</span> <span class="ident">EFqSponge</span>,
@@ -1788,7 +1777,7 @@ The folowing functionality is implemented
 <span class="kw">fn</span> <span class="ident">squeeze_challenge</span><span class="op">&lt;</span>
     <span class="ident">Fq</span>: <span class="ident">Field</span>,
     <span class="ident">G</span>,
-    <span class="ident">Fr</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">CommitmentField</span>,
+    <span class="ident">Fr</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">SquareRootField</span>,
     <span class="ident">EFqSponge</span>: <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&gt;</span>,
 <span class="op">&gt;</span>(
     <span class="ident">endo_r</span>: <span class="kw-2">&amp;</span><span class="ident">Fr</span>,
@@ -1988,10 +1977,7 @@ The folowing functionality is implemented
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
-{
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Commits a polynomial, potentially splitting the result in multiple commitments.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -2848,5 +2834,5 @@ The folowing functionality is implemented
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e646f3d2a 2022-02-10)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
 </body></html>

@@ -666,7 +666,6 @@
 <span id="661">661</span>
 <span id="662">662</span>
 <span id="663">663</span>
-<span id="664">664</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -687,7 +686,7 @@
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Polynomial</span>};
 <span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{
-    <span class="ident">b_poly</span>, <span class="ident">b_poly_coefficients</span>, <span class="ident">combined_inner_product</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">CommitmentField</span>, <span class="ident">PolyComm</span>,
+    <span class="ident">b_poly</span>, <span class="ident">b_poly_coefficients</span>, <span class="ident">combined_inner_product</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>,
 };
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">rndoracle::ProofError</span>, <span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
 <span class="kw">use</span> <span class="ident">rand::thread_rng</span>;
@@ -726,7 +725,6 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
     <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
 {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">prev_chal_evals</span>(
@@ -1332,5 +1330,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e646f3d2a 2022-02-10)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
 </body></html>

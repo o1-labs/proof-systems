@@ -1024,9 +1024,6 @@
 <span id="1019">1019</span>
 <span id="1020">1020</span>
 <span id="1021">1021</span>
-<span id="1022">1022</span>
-<span id="1023">1023</span>
-<span id="1024">1024</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
@@ -1044,9 +1041,7 @@
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">UVPolynomial</span>,
 };
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{
-    <span class="ident">b_poly_coefficients</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">CommitmentField</span>, <span class="ident">OpeningProof</span>, <span class="ident">PolyComm</span>,
-};
+<span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{<span class="ident">b_poly_coefficients</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">OpeningProof</span>, <span class="ident">PolyComm</span>};
 <span class="kw">use</span> <span class="ident">lookup::CombinedEntry</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">rndoracle::ProofError</span>, <span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
@@ -1093,7 +1088,6 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
-    <span class="ident">G::ScalarField</span>: <span class="ident">CommitmentField</span>,
     <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
 {
     <span class="comment">// This function constructs prover&#39;s zk-proof from the witness &amp; the Index against SRS instance</span>
@@ -2052,5 +2046,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e646f3d2a 2022-02-10)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
 </body></html>
