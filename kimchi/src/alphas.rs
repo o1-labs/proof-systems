@@ -26,6 +26,7 @@
 //! make sure that we compute the correct amounts, without reusing
 //! powers of alphas between constraints.
 
+use crate::circuits::{argument::ArgumentType, gate::GateType};
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -36,7 +37,7 @@ use std::{
     thread,
 };
 
-use crate::circuits::argument::ArgumentType;
+// ------------------------------------------
 
 /// This type can be used to create a mapping between powers of alpha and constraint types.
 /// See [Alphas::default] to create one,
@@ -63,6 +64,16 @@ impl<F: Field> Alphas<F> {
         }
         let new_power = self.next_power + powers;
         let range = self.next_power..new_power;
+
+        // gates are a special case, as we reuse the same power of alpha
+        // across all of them (they're mutually exclusive)
+        let ty = if matches!(ty, ArgumentType::Gate(_)) {
+            // the zero gate is not used, so we default to it
+            ArgumentType::Gate(GateType::Zero)
+        } else {
+            ty
+        };
+
         if self.mapping.insert(ty, range.clone()).is_some() {
             panic!("cannot re-register {:?}", ty);
         }
@@ -76,12 +87,20 @@ impl<F: Field> Alphas<F> {
         ty: ArgumentType,
         num: usize,
     ) -> MustConsumeIterator<Take<Range<usize>>, usize> {
+        let ty = if matches!(ty, ArgumentType::Gate(_)) {
+            ArgumentType::Gate(GateType::Zero)
+        } else {
+            ty
+        };
+
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty))
+            .clone();
+
         MustConsumeIterator {
-            inner: range.clone().take(num),
+            inner: range.take(num),
             debug_info: ty,
         }
     }
@@ -105,11 +124,18 @@ impl<F: Field> Alphas<F> {
         ty: ArgumentType,
         num: usize,
     ) -> MustConsumeIterator<Cloned<Take<Iter<F>>>, F> {
+        let ty = if matches!(ty, ArgumentType::Gate(_)) {
+            ArgumentType::Gate(GateType::Zero)
+        } else {
+            ty
+        };
+
         let range = self
             .mapping
             .get(&ty)
             .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty))
             .clone();
+
         match &self.alphas {
             None => panic!("you must call instantiate with an actual field element first"),
             Some(alphas) => {
@@ -169,18 +195,18 @@ where
 
 #[cfg(test)]
 mod tests {
-    use mina_curves::pasta::Fp;
-
     use super::*;
+    use crate::circuits::gate::GateType;
+    use mina_curves::pasta::Fp;
 
     // testing [Builder]
 
     #[test]
     fn incorrect_alpha_powers() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ArgumentType::Gate, 3);
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), 3);
 
-        let mut powers = alphas.get_exponents(ArgumentType::Gate, 3);
+        let mut powers = alphas.get_exponents(ArgumentType::Gate(GateType::Poseidon), 3);
         assert_eq!(powers.next(), Some(0));
         assert_eq!(powers.next(), Some(1));
         assert_eq!(powers.next(), Some(2));
@@ -198,7 +224,7 @@ mod tests {
     fn register_after_instantiating() {
         let mut alphas = Alphas::<Fp>::default();
         alphas.instantiate(Fp::from(1));
-        alphas.register(ArgumentType::Gate, 3);
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), 3);
     }
 
     #[test]
@@ -214,15 +240,15 @@ mod tests {
     #[should_panic]
     fn registered_alpha_powers_for_some_constraint_twice() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ArgumentType::Gate, 2);
-        alphas.register(ArgumentType::Gate, 3);
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), 2);
+        alphas.register(ArgumentType::Gate(GateType::ChaCha0), 3);
     }
 
     #[test]
     fn powers_of_alpha() {
         let mut alphas = Alphas::default();
-        alphas.register(ArgumentType::Gate, 4);
-        let mut powers = alphas.get_exponents(ArgumentType::Gate, 4);
+        alphas.register(ArgumentType::Gate(GateType::Poseidon), 4);
+        let mut powers = alphas.get_exponents(ArgumentType::Gate(GateType::Poseidon), 4);
 
         assert_eq!(powers.next(), Some(0));
         assert_eq!(powers.next(), Some(1));
@@ -232,7 +258,7 @@ mod tests {
         let alpha = Fp::from(2);
         alphas.instantiate(alpha);
 
-        let mut alphas = alphas.get_alphas(ArgumentType::Gate, 4);
+        let mut alphas = alphas.get_alphas(ArgumentType::Gate(GateType::Poseidon), 4);
         assert_eq!(alphas.next(), Some(1.into()));
         assert_eq!(alphas.next(), Some(2.into()));
         assert_eq!(alphas.next(), Some(4.into()));
