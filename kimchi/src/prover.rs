@@ -15,9 +15,7 @@ use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{
-    b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};

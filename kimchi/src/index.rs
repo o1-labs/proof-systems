@@ -38,8 +38,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 // TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Index<G: CommitmentCurve>
-{
+pub struct Index<G: CommitmentCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,

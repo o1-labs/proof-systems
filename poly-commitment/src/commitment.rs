@@ -242,8 +242,7 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineCurve> OpeningProof<G>
-{
+impl<G: AffineCurve> OpeningProof<G> {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         sponge: &mut EFqSponge,
@@ -558,8 +557,7 @@ impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G>
-{
+impl<G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
