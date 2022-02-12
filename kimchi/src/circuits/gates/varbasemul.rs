@@ -118,7 +118,8 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
-        unimplemented!();
+        // TODO: implement
+        Ok(())
     }
 
     pub fn vbmul(&self) -> F {

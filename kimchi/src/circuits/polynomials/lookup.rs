@@ -122,7 +122,7 @@
 
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use crate::circuits::expr::{Column, ConstantExpr, Variable, E};
+use crate::circuits::expr::{prologue::*, Column, ConstantExpr, Variable};
 use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
     wires::COLUMNS,
