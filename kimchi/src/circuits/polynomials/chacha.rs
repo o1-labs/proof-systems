@@ -312,7 +312,7 @@ where
 {
     type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
-    const CONSTRAINTS: usize = 5;
+    const CONSTRAINTS: usize = 9;
 
     fn constraints(&self) -> Vec<E<F>> {
         // The last line, namely,
