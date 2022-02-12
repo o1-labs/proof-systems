@@ -18,6 +18,7 @@ use std::collections::HashMap;
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+//~ spec:startcode
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -37,6 +38,7 @@ pub struct SRS<G: CommitmentCurve> {
     #[serde(skip)]
     pub endo_q: G::BaseField,
 }
+//~ spec:endcode
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
 where

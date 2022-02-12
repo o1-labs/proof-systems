@@ -9,4 +9,4 @@ template = "specification.md"
 
 [sections]
 srs = "../../poly-commitment/src/srs.rs"
-commitment = "../../poly-commitment/src/commitment.rs"
+commit = "../../poly-commitment/src/commitment.rs"
