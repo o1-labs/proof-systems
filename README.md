@@ -1,9 +1,12 @@
 # Proof Systems
 
-This repository contains various zk-SNARK protocol implementations for recursive SNARK composition.
+This repository contains various zk-SNARK protocol implementations for recursive SNARK composition. [See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
+
+Organization:
 
 ```
 proof-systems/
+├── book # the mina book, RFCs, and specifications
 ├── cairo # a Cairo runner written in rust
 ├── curves/ # our curves (for now just the pasta curves)
 ├── groupmap/ # TODO: description

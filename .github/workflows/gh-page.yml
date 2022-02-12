@@ -1,0 +1,48 @@
+name: Deploy Specifications & Docs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release:
+    name: GitHub Pages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install ocaml
+
+      - name: Build Rust Documentation
+        run: |
+          rustup install nightly
+          RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all --no-deps
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          cargo install cargo-spec
+          cd book/specifications
+          cd kimchi && make build && cd ..
+          cd poly-commitment && make build && cd ..
+          git diff --exit-code
+
+      - name: Build the mdbook
+        run: |
+          cd book
+          cargo install mdbook
+          cargo install mdbook-katex
+          mdbook build
+
+      - name: Arrange website folder hierarchy
+        run: |
+          mv ./target/doc ./book/book/html/rustdoc
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./book/book/html
