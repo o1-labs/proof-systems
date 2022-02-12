@@ -15,7 +15,7 @@ use super::gate::GateType;
 pub enum ArgumentType {
     /// Gates in the PLONK constraint system.
     /// As gates are mutually exclusive (a single gate is set per row),
-    /// we can reuse the same powers of alpha accross gates.
+    /// we can reuse the same powers of alpha across gates.
     Gate(GateType),
     /// The permutation argument
     Permutation,
