@@ -1,0 +1,9 @@
+[metadata]
+name = "Polynomial Commitment"
+description = "This specification describes the Kimchi polynomial commitment."
+version = "0.1.0"
+authors = ["David Wong"]
+
+[sections]
+overview = ["overview.md"]
+verifier = ["../../poly-commitment/src/lib.rs"]

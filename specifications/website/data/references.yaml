@@ -1,0 +1,140 @@
+fujisakiokamoto:
+  apa: Fujisaki, E., & Okamoto, T. (1997, August). Statistical zero knowledge protocols to prove modular polynomial relations. In Annual International Cryptology Conference (pp. 16-30). Springer, Berlin, Heidelberg.
+  link: https://link.springer.com/content/pdf/10.1007/BFb0052225.pdf
+  title: Statistical zero knowledge protocols to prove modular polynomial relations
+  year: 1997
+  tag: FO97
+
+shake:
+  apa: "Kelsey, J., Chang, S. J., & Perlner, R. (2016). SHA-3 derived functions: cSHAKE, KMAC, TupleHash and ParallelHash. NIST special publication, 800, 185."
+  link: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-185.pdf
+  title: "SHA-3 derived functions: cSHAKE, KMAC, TupleHash and ParallelHash"
+  tag: SHA3
+  year: 2016
+
+giraultref:
+  apa: Pointcheval, D. (2000, January). The composite discrete logarithm and secure authentication. In International Workshop on Public Key Cryptography (pp. 113-128). Springer, Berlin, Heidelberg.
+  title: The composite discrete logarithm and secure authentication
+  link: https://www.di.ens.fr/david.pointcheval/Documents/Papers/2000_pkcA.pdf
+  tag: Poi00
+  year: 2000
+
+girault:
+  title: Self-certified public keys
+  link: https://link.springer.com/content/pdf/10.1007%2F3-540-46416-6_42.pdf
+  year: 1991
+  tag: Gir91
+  apa: Girault, M. (1991, April). Self-certified public keys. In Workshop on the Theory and Application of of Cryptographic Techniques (pp. 490-497). Springer, Berlin, Heidelberg.
+
+schnorr_rfc:
+  apa: "RFC: Schnorr Non-interactive Zero-Knowledge Proof"
+  link: https://www.rfc-editor.org/rfc/rfc8235.html
+  title: "Informational RFC: Schnorr Non-interactive Zero-Knowledge Proof"
+  year: 2017
+  tag: RFC
+
+gg21:
+  title: UC non-interactive, proactive, threshold ECDSA with identifiable aborts
+  apa: Canetti, R., Gennaro, R., Goldfeder, S., Makriyannis, N., & Peled, U. (2020, October). UC non-interactive, proactive, threshold ECDSA with identifiable aborts. In Proceedings of the 2020 ACM SIGSAC Conference on Computer and Communications Security (pp. 1769-1787).
+  year: 2020
+  link: https://eprint.iacr.org/2021/060.pdf
+  notes: See section 6.3.1 for the description of the attack for the Paillier-Blum modulus proof.
+  tag: GG21
+
+hoc:
+  title: Handbook of Applied Cryptography
+  apa: Menezes, A. J., Van Oorschot, P. C., & Vanstone, S. A. (2018). Handbook of Applied Cryptography. CRC press.
+  link: https://cacr.uwaterloo.ca/hac/
+  tag: HOC
+  year: 2018
+
+gg16:
+  apa: Gennaro, R., Goldfeder, S., & Narayanan, A. (2016, June). Threshold-optimal DSA/ECDSA signatures and an application to Bitcoin wallet security. In International Conference on Applied Cryptography and Network Security (pp. 156-174). Springer, Cham.
+  title: Threshold-optimal DSA/ECDSA signatures and an application to Bitcoin wallet security
+  year: 2016
+  link: https://eprint.iacr.org/2016/013.pdf
+  tag: GGN16
+
+BPW12:
+  apa: "Bernhard, D., Pereira, O., & Warinschi, B. (2012, December). How not to prove yourself: Pitfalls of the Fiat-Shamir heuristic and applications to Helios. In International Conference on the Theory and Application of Cryptology and Information Security (pp. 626-643). Springer, Berlin, Heidelberg"
+  link: https://eprint.iacr.org/2016/771.pdf
+  title: "How not to prove yourself: Pitfalls of the Fiat-Shamir heuristic and applications to Helios."
+  year: 2012
+  tag: BPW12
+
+Sch91:
+  apa: Schnorr, C. P. (1991). Efficient signature generation by smart cards. Journal of cryptology, 4(3), 161-174
+  title: Efficient signature generation by smart cards
+  year: 1991
+  tag: Sch91
+  link: https://link.springer.com/content/pdf/10.1007/BF00196725.pdf
+
+schnorr-lecture:
+  title: Lectures on Schnorr's protocol
+  link: https://crypto.stanford.edu/cs355/19sp/lec5.pdf
+
+safe-primes:
+  title: Safe primes
+  link: https://en.wikipedia.org/wiki/Safe_and_Sophie_Germain_primes
+
+GRSB19:
+  apa: Goldberg, S., Reyzin, L., Sagga, O., & Baldimtsi, F. (2019, December). Efficient noninteractive certification of RSA moduli and beyond. In International Conference on the Theory and Application of Cryptology and Information Security (pp. 700-727). Springer, Cham.
+  link: https://eprint.iacr.org/2018/057.pdf
+  title: Efficient noninteractive certification of RSA moduli and beyond
+  year: 2019
+  tag: GRSB19
+
+PS00:
+  tag: PS00
+  apa: Poupard, G., & Stern, J. (2000, January). Short proofs of knowledge for factoring. In International Workshop on Public Key Cryptography (pp. 147-166). Springer, Berlin, Heidelberg.
+  link: https://link.springer.com/content/pdf/10.1007%2F978-3-540-46588-1_11.pdf
+  title: Short proofs of knowledge for factoring
+  year: 2000
+
+jacobi:
+  title: Jacobi symbol
+  link: https://en.wikipedia.org/wiki/Jacobi_symbol
+
+AP18:
+  apa: "Auerbach, B., & Poettering, B. (2018, March). Hashing solutions instead of generating problems: on the interactive certification of RSA moduli. In IACR International Workshop on Public Key Cryptography (pp. 403-430). Springer, Cham."
+  link: https://eprint.iacr.org/2018/013.pdf
+  title: "Hashing solutions instead of generating problems: on the interactive certification of RSA moduli."
+  year: 2018
+  tag: AP18
+
+shamir:
+  apa: Shamir, A. (1979). How to share a secret. Communications of the ACM, 22(11), 612-613.
+  title: How to Share a Secret
+  year: 1979
+  link: https://apps.dtic.mil/sti/pdfs/ADA069397.pdf
+  tag: Sha79
+
+feldman:
+  apa: Feldman, P. (1987, October). A practical scheme for non-interactive verifiable secret sharing. In 28th Annual Symposium on Foundations of Computer Science (sfcs 1987) (pp. 427-438). IEEE.
+  title: A Practical Scheme for Non-interactive Verifiable Secret Sharing
+  year: 1987
+  link: https://www.cs.umd.edu/~gasarch/TOPICS/secretsharing/feldmanVSS.pdf
+  tag: Fel87
+
+craige:
+  title: VSS Forgery Against Bad Broadcast Channels
+  link: https://www.jcraige.com/vss-forgery
+  year: 2019
+
+FS87:
+  title: "How to Prove Yourself: Practical Solutions to Identification and Signature Problems"
+  year: 1987
+  link: https://link.springer.com/content/pdf/10.1007/3-540-47721-7_12.pdf
+  tag: FS87
+
+ZKBlog:
+  title: Serving Up Zero-Knowledge proofs
+  link: https://blog.trailofbits.com/2021/02/19/serving-up-zero-knowledge-proofs/
+
+FSWiki:
+  title: Fiat-Shamir heuristic
+  link: https://en.wikipedia.org/wiki/Fiat%E2%80%93Shamir_heuristic
+
+RAWiki:
+  title: Replay attack
+  link: https://en.wikipedia.org/wiki/Replay_attack
