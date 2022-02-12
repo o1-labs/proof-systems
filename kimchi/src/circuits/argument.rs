@@ -4,10 +4,7 @@
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
 
-use crate::{
-    alphas::Alphas,
-    circuits::expr::{prologue::*, Column},
-};
+use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::FftField;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +16,7 @@ pub enum ArgumentType {
     /// Gates in the PLONK constraint system.
     /// As gates are mutually exclusive (a single gate is set per row),
     /// we can reuse the same powers of alpha accross gates.
-    Gate,
+    Gate(GateType),
     /// The permutation argument
     Permutation,
     /// The lookup argument
@@ -39,10 +36,6 @@ pub trait Argument {
     /// The number of constraints created by the argument.
     const CONSTRAINTS: usize;
 
-    /// An optional gate type, if used to define a gate.
-    /// This is used to filter the gate, to avoid applying it on the entire domain.
-    const GATE_TYPE: Option<GateType>;
-
     /// Returns the set of constraints required to prove this argument.
     // TODO: return a [_; Self::CONSTRAINTS] once generic consts are stable
     fn constraints(&self) -> Vec<E<Self::Field>>;
@@ -53,7 +46,10 @@ pub trait Argument {
         assert!(constraints.len() == Self::CONSTRAINTS);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
         let combined_constraints = E::combine_constraints(alphas, constraints);
-        if let Some(gate_type) = Self::GATE_TYPE {
+
+        // An optional gate type, if used to define a gate.
+        // This is used to filter the gate, to avoid applying it on the entire domain.
+        if let ArgumentType::Gate(gate_type) = Self::ARGUMENT_TYPE {
             index(gate_type) * combined_constraints
         } else {
             combined_constraints
