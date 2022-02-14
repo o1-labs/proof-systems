@@ -148,6 +148,18 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, Field, Zero};
 
+/// Number of constraints produced by the ChaCha0 gate.
+pub const CONSTRAINTS_0: usize = 5;
+
+/// Number of constraints produced by the ChaCha1 gate.
+pub const CONSTRAINTS_1: usize = 5;
+
+/// Number of constraints produced by the ChaCha2 gate.
+pub const CONSTRAINTS_2: usize = 5;
+
+/// Number of constraints produced by the ChaChaFinal gate.
+pub const CONSTRAINTS_FINAL: usize = 9;
+
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
 ///
@@ -206,7 +218,7 @@ fn combine_nybbles<F: Field>(ns: Vec<E<F>>) -> E<F> {
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * nybble_rotation
-fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
+fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(3);
     let x_plus_z_nybbles = chunks_over_2_rows(7);
     let y_nybbles = chunks_over_2_rows(11);
@@ -224,21 +236,18 @@ fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
     let mut y_xor_xprime_rotated = y_xor_xprime_nybbles;
     y_xor_xprime_rotated.rotate_right(nybble_rotation);
 
-    E::combine_constraints(
-        alpha0,
-        vec![
-            // booleanity of overflow bit
-            boolean(&x_plus_z_overflow_bit),
-            // x' = x + z (mod 2^32)
-            combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
-            // Correctness of x+z nybbles
-            xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
-            // Correctness of y nybbles
-            combine_nybbles(y_nybbles) - y,
-            // y' = (y ^ x') <<< 4 * nybble_rotation
-            combine_nybbles(y_xor_xprime_rotated) - yprime,
-        ],
-    )
+    vec![
+        // booleanity of overflow bit
+        boolean(&x_plus_z_overflow_bit),
+        // x' = x + z (mod 2^32)
+        combine_nybbles(x_plus_z_nybbles) - xprime.clone(),
+        // Correctness of x+z nybbles
+        xprime + E::from(1 << 32) * x_plus_z_overflow_bit - (x + z),
+        // Correctness of y nybbles
+        combine_nybbles(y_nybbles) - y,
+        // y' = (y ^ x') <<< 4 * nybble_rotation
+        combine_nybbles(y_xor_xprime_rotated) - yprime,
+    ]
 }
 
 //
@@ -246,18 +255,18 @@ fn line<F: Field>(alpha0: usize, nybble_rotation: usize) -> E<F> {
 //
 
 /// a += b; d ^= a; d <<<= 16 (=4*4)
-pub fn constraint_chacha0<F: FftField>(alpha0: usize) -> E<F> {
-    index(GateType::ChaCha0) * line(alpha0, 4)
+pub fn constraint_chacha0<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    index(GateType::ChaCha0) * E::combine_constraints(alphas, line(4))
 }
 
 /// c += d; b ^= c; b <<<= 12 (=3*4)
-pub fn constraint_chacha1<F: FftField>(alpha0: usize) -> E<F> {
-    index(GateType::ChaCha1) * line(alpha0, 3)
+pub fn constraint_chacha1<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    index(GateType::ChaCha1) * E::combine_constraints(alphas, line(3))
 }
 
 /// a += b; d ^= a; d <<<= 8  (=2*4)
-pub fn constraint_chacha2<F: FftField>(alpha0: usize) -> E<F> {
-    index(GateType::ChaCha2) * line(alpha0, 2)
+pub fn constraint_chacha2<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    index(GateType::ChaCha2) * E::combine_constraints(alphas, line(2))
 }
 
 /// The last line, namely,
@@ -267,7 +276,7 @@ pub fn constraint_chacha2<F: FftField>(alpha0: usize) -> E<F> {
 /// will use a ChaCha0 gate to compute the nybbles of
 /// all the relevant values, and the xors, and then do
 /// the shifting using a ChaChaFinal gate.
-pub fn constraint_chacha_final<F: FftField>(alpha0: usize) -> E<F> {
+pub fn constraint_chacha_final<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(1);
     let low_bits = chunks_over_2_rows(5);
     let yprime = witness_curr(0);
@@ -288,7 +297,7 @@ pub fn constraint_chacha_final<F: FftField>(alpha0: usize) -> E<F> {
 
     let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
     constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
-    E::combine_constraints(alpha0, constraints) * index(GateType::ChaChaFinal)
+    E::combine_constraints(alphas, constraints) * index(GateType::ChaChaFinal)
 }
 
 // TODO: move this to test file
@@ -509,10 +518,10 @@ mod tests {
             h.insert(Column::Index(GateType::Generic));
             h
         };
-        let mut expr = constraint_chacha0(0);
-        expr = expr + constraint_chacha1(0);
-        expr = expr + constraint_chacha2(0);
-        expr = expr + constraint_chacha_final(0);
+        let mut expr = constraint_chacha0(0..5);
+        expr += constraint_chacha1(0..5);
+        expr += constraint_chacha2(0..5);
+        expr += constraint_chacha_final(0..9);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

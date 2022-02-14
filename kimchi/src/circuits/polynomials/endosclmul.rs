@@ -36,6 +36,9 @@ use crate::circuits::{
 };
 use ark_ff::{Field, One};
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 11;
+
 /// The constraints for endoscaling.
 pub fn constraints<F: Field>() -> Vec<E<F>> {
     let b1 = witness_curr(11);
@@ -110,8 +113,9 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
 }
 
 /// The combined constraint for endoscaling.
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    E::combine_constraints(alpha0, constraints()) * index(GateType::EndoMul)
+pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    let constraints = constraints();
+    E::combine_constraints(alphas, constraints) * index(GateType::EndoMul)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point

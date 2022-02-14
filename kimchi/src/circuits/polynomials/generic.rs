@@ -14,9 +14,16 @@ use ark_poly::{
 use array_init::array_init;
 use rayon::prelude::*;
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 1;
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
-    pub fn gnrc_quot(&self, witness_d4: &[Evaluations<F, D<F>>; COLUMNS]) -> Evaluations<F, D<F>> {
+    pub fn gnrc_quot(
+        &self,
+        mut alphas: impl Iterator<Item = F>,
+        witness_d4: &[Evaluations<F, D<F>>; COLUMNS],
+    ) -> Evaluations<F, D<F>> {
         // w[0](x) * w[1](x) * qml(x)
         let mut multiplication = &witness_d4[0] * &witness_d4[1];
         let m8 = &self.coefficients8[MUL_COEFF];
@@ -49,27 +56,56 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .enumerate()
             .for_each(|(i, e)| *e += c[2 * i]);
 
+        // generic selector
         eval_part *= &self.generic4;
+
+        // alpha
+        let alpha = alphas
+            .next()
+            .expect("not enough powers of alpha for the generic gate");
+        let mut alpha4 = self.l04.clone();
+        alpha4.evals.iter_mut().for_each(|x| *x *= alpha);
+        eval_part *= &alpha4;
 
         eval_part
     }
 
     /// produces
-    /// generic(zeta) * w[0](zeta) * w[1](zeta),
-    /// generic(zeta) * w[0](zeta),
-    /// generic(zeta) * w[1](zeta),
-    /// generic(zeta) * w[2](zeta)
-    pub fn gnrc_scalars(w_zeta: &[F; COLUMNS], generic_zeta: F) -> Vec<F> {
-        let mut res = vec![generic_zeta * w_zeta[0] * w_zeta[1]];
-        res.extend((0..GENERICS).map(|i| generic_zeta * w_zeta[i]));
-        res
+    /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
+    /// alpha * generic(zeta) * w[0](zeta),
+    /// alpha * generic(zeta) * w[1](zeta),
+    /// alpha * generic(zeta) * w[2](zeta)
+    pub fn gnrc_scalars(
+        mut alphas: impl Iterator<Item = F>,
+        w_zeta: &[F; COLUMNS],
+        generic_zeta: F,
+    ) -> (Vec<F>, F) {
+        let alpha = alphas
+            .next()
+            .expect("not enough alpha powers for generic gate");
+
+        // multiplication: l(z) * r(z) * generic(z) * alpha
+        let mut res = vec![alpha * generic_zeta * w_zeta[0] * w_zeta[1]];
+
+        // addition:
+        // - l(z) * generic(z) * alpha
+        // - r(z) * generic(z) * alpha
+        // - o(z) * generic(z) * alpha
+        res.extend((0..GENERICS).map(|i| alpha * generic_zeta * w_zeta[i]));
+
+        (res, alpha)
     }
 
     /// generic constraint linearization poly contribution computation
-    pub fn gnrc_lnrz(&self, w_zeta: &[F; COLUMNS], generic_zeta: F) -> Evaluations<F, D<F>> {
+    pub fn gnrc_lnrz(
+        &self,
+        alphas: impl Iterator<Item = F>,
+        w_zeta: &[F; COLUMNS],
+        generic_zeta: F,
+    ) -> Evaluations<F, D<F>> {
         let d1 = self.domain.d1;
 
-        let scalars = Self::gnrc_scalars(w_zeta, generic_zeta);
+        let (scalars, alpha) = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
 
         let n = d1.size as usize;
 
@@ -94,8 +130,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         });
 
         // constant selector
+        let alpha_generic_zeta = alpha * generic_zeta;
         res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-            *e += generic_zeta * self.coefficients8[CONSTANT_COEFF][scale * i];
+            *e += alpha_generic_zeta * self.coefficients8[CONSTANT_COEFF][scale * i];
         });
 
         // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
@@ -253,7 +290,8 @@ mod tests {
         let zeta = Fp::rand(rng);
 
         // compute quotient by dividing with vanishing polynomial
-        let t1 = cs.gnrc_quot(&witness_d4);
+        let alphas = vec![Fp::rand(rng)];
+        let t1 = cs.gnrc_quot(&mut alphas.clone().into_iter(), &witness_d4);
         let t_before_division = &t1.interpolate() + &public;
         let (t, rem) = t_before_division
             .divide_by_vanishing_poly(cs.domain.d1)
@@ -265,7 +303,9 @@ mod tests {
         let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
-        let f = cs.gnrc_lnrz(&w_zeta, generic_zeta).interpolate();
+        let f = cs
+            .gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta)
+            .interpolate();
         let f_zeta = f.evaluate(&zeta);
 
         // check that f(z) = t(z) * Z_H(z)

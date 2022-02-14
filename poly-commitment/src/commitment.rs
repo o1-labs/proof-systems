@@ -7,7 +7,6 @@
 //! 3. Verify batch of batched opening proofs
 
 use crate::srs::SRS;
-pub use crate::CommitmentField;
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -240,10 +239,7 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineCurve> OpeningProof<G>
-where
-    G::ScalarField: CommitmentField,
-{
+impl<G: AffineCurve> OpeningProof<G> {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         sponge: &mut EFqSponge,
@@ -358,7 +354,7 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
 fn squeeze_challenge<
     Fq: Field,
     G,
-    Fr: PrimeField + CommitmentField,
+    Fr: PrimeField + SquareRootField,
     EFqSponge: FqSponge<Fq, G, Fr>,
 >(
     endo_r: &Fr,
@@ -558,10 +554,7 @@ impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G>
-where
-    G::ScalarField: CommitmentField,
-{
+impl<G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,

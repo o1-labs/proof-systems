@@ -7,6 +7,9 @@ use crate::circuits::{
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 11;
+
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
         &self,
@@ -112,7 +115,7 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
+pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let n0 = witness_curr(0);
     let n8 = witness_curr(1);
     let a0 = witness_curr(2);
@@ -155,7 +158,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints) * index(GateType::EndoMulScalar)
+    E::combine_constraints(alphas, constraints) * index(GateType::EndoMulScalar)
 }
 
 pub fn gen_witness<F: PrimeField + std::fmt::Display>(
