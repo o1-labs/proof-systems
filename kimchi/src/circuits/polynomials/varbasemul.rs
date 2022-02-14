@@ -14,6 +14,9 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, One};
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 21;
+
 type CurveVar = (Variable, Variable);
 
 fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
@@ -194,7 +197,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
     VarbaseMulResult { acc, n: n_acc }
 }
 
-pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
+pub fn constraint<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let Layout {
         base,
         accs,
@@ -224,5 +227,5 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    index(GateType::VarBaseMul) * E::combine_constraints(alpha0, res)
+    index(GateType::VarBaseMul) * E::combine_constraints(alphas, res)
 }

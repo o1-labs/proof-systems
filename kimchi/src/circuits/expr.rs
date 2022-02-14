@@ -9,6 +9,7 @@ use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -1050,10 +1051,10 @@ impl<F: Field> Expr<ConstantExpr<F>> {
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
-    pub fn combine_constraints(alpha0: usize, cs: Vec<Self>) -> Self {
+    pub fn combine_constraints(alphas: impl Iterator<Item = usize>, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
         cs.into_iter()
-            .zip(alpha0..)
+            .zip_eq(alphas)
             .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i)) * c)
             .fold(zero, |acc, x| acc + x)
     }
