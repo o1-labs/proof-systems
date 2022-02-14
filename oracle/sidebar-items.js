@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["pasta",""],["poseidon",""],["rndoracle",""],["sponge",""]],"trait":[["FqSponge",""]]});
+initSidebarItems({"mod":[["pasta",""],["poseidon","This module implements Poseidon Hash Function primitive"],["rndoracle","This module implements the random oracle argument API."],["sponge",""]],"trait":[["FqSponge",""]]});

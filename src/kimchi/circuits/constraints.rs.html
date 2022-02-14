@@ -726,15 +726,7 @@
 <span id="721">721</span>
 <span id="722">722</span>
 <span id="723">723</span>
-<span id="724">724</span>
-<span id="725">725</span>
-<span id="726">726</span>
-<span id="727">727</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements Plonk circuit constraint primitive.
-
-*****************************************************************************************************************/</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
@@ -1209,8 +1201,8 @@ This source file implements Plonk circuit constraint primitive.
                 <span class="ident">gates</span>
                     .<span class="ident">iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">gate</span>.<span class="ident">c</span>.<span class="ident">len</span>() {
-                            <span class="ident">gate</span>.<span class="ident">c</span>[<span class="ident">i</span>]
+                        <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">gate</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
+                            <span class="ident">gate</span>.<span class="ident">coeffs</span>[<span class="ident">i</span>]
                         } <span class="kw">else</span> {
                             <span class="ident">F::zero</span>()
                         }
@@ -1381,7 +1373,7 @@ This source file implements Plonk circuit constraint primitive.
             }
 
             <span class="comment">// for public gates, only the left wire is toggled</span>
-            <span class="kw">if</span> <span class="ident">row</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">public</span> <span class="op">&amp;&amp;</span> <span class="ident">gate</span>.<span class="ident">c</span> <span class="op">!</span><span class="op">=</span> <span class="ident">left_wire</span> {
+            <span class="kw">if</span> <span class="ident">row</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">public</span> <span class="op">&amp;&amp;</span> <span class="ident">gate</span>.<span class="ident">coeffs</span> <span class="op">!</span><span class="op">=</span> <span class="ident">left_wire</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">GateError::IncorrectPublic</span>(<span class="ident">row</span>));
             }
 

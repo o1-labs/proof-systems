@@ -1040,6 +1040,11 @@
 <span id="1035">1035</span>
 <span id="1036">1036</span>
 <span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1082,31 +1087,36 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="comment">// polynomial commitments</span>
+    <span class="doccomment">/// The commitments to the witness (execution trace)</span>
     <span class="kw">pub</span> <span class="ident">w_comm</span>: [<span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+    <span class="doccomment">/// The commitment to the permutation polynomial</span>
     <span class="kw">pub</span> <span class="ident">z_comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// The commitment to the quotient polynomial</span>
     <span class="kw">pub</span> <span class="ident">t_comm</span>: <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Commitments related to the lookup argument</span>
     <span class="kw">pub</span> <span class="ident">lookup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="comment">// polynomial commitments</span>
+    <span class="doccomment">/// All the polynomial commitments required in the proof</span>
     <span class="kw">pub</span> <span class="ident">commitments</span>: <span class="ident">ProverCommitments</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
 
-    <span class="comment">// batched commitment opening proof</span>
+    <span class="doccomment">/// batched commitment opening proof</span>
     <span class="kw">pub</span> <span class="ident">proof</span>: <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
 
-    <span class="comment">// polynomial evaluations</span>
+    <span class="doccomment">/// Two evaluations over a number of committed polynomials</span>
     <span class="comment">// TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }</span>
     <span class="kw">pub</span> <span class="ident">evals</span>: [<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="number">2</span>],
 
+    <span class="doccomment">/// Required evaluation for Maller&#39;s optimization</span>
+    <span class="doccomment">/// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)</span>
     <span class="kw">pub</span> <span class="ident">ft_eval1</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
 
-    <span class="comment">// public part of the witness</span>
+    <span class="doccomment">/// The public input</span>
     <span class="kw">pub</span> <span class="ident">public</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 
-    <span class="comment">// The challenges underlying the optional polynomials folded into the proof</span>
+    <span class="doccomment">/// The challenges underlying the optional polynomials folded into the proof</span>
     <span class="kw">pub</span> <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
 }
 
@@ -1114,10 +1124,10 @@
 <span class="kw">where</span>
     <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
 {
-    <span class="comment">// This function constructs prover&#39;s zk-proof from the witness &amp; the Index against SRS instance</span>
-    <span class="comment">//     witness: computation witness</span>
-    <span class="comment">//     index: Index</span>
-    <span class="comment">//     RETURN: prover&#39;s zk-proof</span>
+    <span class="doccomment">/// This function constructs prover&#39;s zk-proof from the witness &amp; the Index against SRS instance</span>
+    <span class="doccomment">///     witness: computation witness</span>
+    <span class="doccomment">///     index: Index</span>
+    <span class="doccomment">///     RETURN: prover&#39;s zk-proof</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span><span class="op">&lt;</span><span class="ident">EFqSponge</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">FqSponge</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="ident">G</span>, <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">EFrSponge</span>: <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>(
         <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
         <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],

@@ -186,22 +186,8 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements Posedon constraint gate Plonk primitive.
-
-Constraint vector format:
-
-    [rc; SPONGE_WIDTH]: round constants
-
-*****************************************************************************************************************/</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Posedon constraint gate Plonk primitive.</span>
+<span class="doccomment">//! Constraint vector format: `[rc; SPONGE_WIDTH]: round constants`</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::ConstraintSystem</span>,
@@ -251,12 +237,12 @@ Constraint vector format:
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_poseidon</span>(
         <span class="ident">wires</span>: <span class="ident">GateWires</span>,
         <span class="comment">// Coefficients are passed in in the logical order</span>
-        <span class="ident">c</span>: [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>],
+        <span class="ident">coeffs</span>: [[<span class="ident">F</span>; <span class="ident">SPONGE_WIDTH</span>]; <span class="ident">ROUNDS_PER_ROW</span>],
     ) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Poseidon</span>,
             <span class="ident">wires</span>,
-            <span class="ident">c</span>: <span class="ident">c</span>.<span class="ident">iter</span>().<span class="ident">flatten</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
+            <span class="ident">coeffs</span>: <span class="ident">coeffs</span>.<span class="ident">iter</span>().<span class="ident">flatten</span>().<span class="ident">copied</span>().<span class="ident">collect</span>(),
         }
     }
 
@@ -375,7 +361,7 @@ Constraint vector format:
         <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">round</span><span class="op">|</span> {
             <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> {
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">typ</span> <span class="op">==</span> <span class="ident">GateType::Poseidon</span> {
-                    <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">SPONGE_WIDTH</span> <span class="op">*</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">col</span>]
+                    <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">SPONGE_WIDTH</span> <span class="op">*</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">col</span>]
                 } <span class="kw">else</span> {
                     <span class="ident">F::zero</span>()
                 }

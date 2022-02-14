@@ -106,20 +106,26 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements Plonk circuit gate wires primitive.
-
-*****************************************************************************************************************/</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::bytes</span>::{<span class="ident">FromBytes</span>, <span class="ident">ToBytes</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">IoResult</span>, <span class="ident">Write</span>};
 
+<span class="doccomment">/// Number of generic registers</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENERICS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
+
+<span class="doccomment">/// Number of registers</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">COLUMNS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">15</span>;
+
+<span class="doccomment">/// Number of registers that can be wired (participating in the permutation)</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PERMUTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">7</span>;
+
+<span class="doccomment">/// index of all registers</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">WIRES</span>: [<span class="ident">usize</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> [<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>, <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>, <span class="number">11</span>, <span class="number">12</span>, <span class="number">13</span>, <span class="number">14</span>];
 
 <span class="doccomment">/// Wire documents the other cell that is wired to this one.</span>

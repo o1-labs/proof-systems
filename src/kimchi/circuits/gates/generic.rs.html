@@ -105,15 +105,7 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements Plonk generic constraint gate primitive.
-
-*****************************************************************************************************************/</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk generic constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires</span>::{<span class="ident">GateWires</span>, <span class="ident">COLUMNS</span>, <span class="ident">GENERICS</span>};
@@ -125,14 +117,14 @@ This source file implements Plonk generic constraint gate primitive.
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_generic</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">qw</span>: [<span class="ident">F</span>; <span class="ident">GENERICS</span>], <span class="ident">qm</span>: <span class="ident">F</span>, <span class="ident">qc</span>: <span class="ident">F</span>) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">qw</span>.<span class="ident">to_vec</span>();
-        <span class="ident">c</span>.<span class="ident">push</span>(<span class="ident">qm</span>);
-        <span class="ident">c</span>.<span class="ident">push</span>(<span class="ident">qc</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="ident">qw</span>.<span class="ident">to_vec</span>();
+        <span class="ident">coeffs</span>.<span class="ident">push</span>(<span class="ident">qm</span>);
+        <span class="ident">coeffs</span>.<span class="ident">push</span>(<span class="ident">qc</span>);
 
         <span class="ident">CircuitGate</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Generic</span>,
             <span class="ident">wires</span>,
-            <span class="ident">c</span>,
+            <span class="ident">coeffs</span>,
         }
     }
 
@@ -177,8 +169,8 @@ This source file implements Plonk generic constraint gate primitive.
         <span class="kw">let</span> <span class="ident">right</span> <span class="op">=</span> <span class="ident">this</span>[<span class="number">1</span>];
 
         <span class="comment">// selector vectors</span>
-        <span class="kw">let</span> <span class="ident">mul_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">MUL_COEFF</span>];
-        <span class="kw">let</span> <span class="ident">constant_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">CONSTANT_COEFF</span>];
+        <span class="kw">let</span> <span class="ident">mul_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">MUL_COEFF</span>];
+        <span class="kw">let</span> <span class="ident">constant_selector</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">CONSTANT_COEFF</span>];
 
         <span class="comment">// constants</span>
         <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">F::zero</span>();
@@ -188,7 +180,7 @@ This source file implements Plonk generic constraint gate primitive.
 
         <span class="comment">// toggling each column x[i] depending on the selectors c[i]</span>
         <span class="kw">let</span> <span class="ident">sum</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">GENERICS</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">c</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">i</span>])
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">i</span>] <span class="op">*</span> <span class="ident">this</span>[<span class="ident">i</span>])
             .<span class="ident">fold</span>(<span class="ident">zero</span>, <span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="ident">y</span>);
 
         <span class="comment">// multiplication</span>

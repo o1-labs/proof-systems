@@ -1416,19 +1416,13 @@
 <span id="1411">1411</span>
 <span id="1412">1412</span>
 <span id="1413">1413</span>
-<span id="1414">1414</span>
-<span id="1415">1415</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements Dlog-based polynomial commitment schema.
-The folowing functionality is implemented
-
-1. Commit to polynomial with its max degree
-2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
-    producing the batched opening proof
-3. Verify batch of batched opening proofs
-
-*****************************************************************************************************************/</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.</span>
+<span class="doccomment">//! The folowing functionality is implemented</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! 1. Commit to polynomial with its max degree</span>
+<span class="doccomment">//! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar</span>
+<span class="doccomment">//!     producing the batched opening proof</span>
+<span class="doccomment">//! 3. Verify batch of batched opening proofs</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::srs::SRS</span>;
 <span class="kw">use</span> <span class="ident">ark_ec</span>::{
@@ -1650,7 +1644,8 @@ The folowing functionality is implemented
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OpeningProof</span><span class="op">&lt;</span><span class="ident">G</span>: <span class="ident">AffineCurve</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>, <span class="comment">// vector of rounds of L &amp; R commitments</span>
+    <span class="doccomment">/// vector of rounds of L &amp; R commitments</span>
+    <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">G</span>,
     <span class="kw">pub</span> <span class="ident">z1</span>: <span class="ident">G::ScalarField</span>,
     <span class="kw">pub</span> <span class="ident">z2</span>: <span class="ident">G::ScalarField</span>,
@@ -1793,12 +1788,12 @@ The folowing functionality is implemented
     <span class="kw">fn</span> <span class="ident">to_coordinates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident"><span class="self">Self</span>::BaseField</span>)<span class="op">&gt;</span>;
     <span class="kw">fn</span> <span class="ident">of_coordinates</span>(<span class="ident">x</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>, <span class="ident">y</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>) -&gt; <span class="self">Self</span>;
 
-    <span class="comment">// Combine where x1 = one</span>
+    <span class="doccomment">/// Combine where x1 = one</span>
     <span class="kw">fn</span> <span class="ident">combine_one</span>(<span class="ident">g1</span>: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], <span class="ident">g2</span>: <span class="kw-2">&amp;</span>[<span class="self">Self</span>], <span class="ident">x2</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="ident"><span class="kw">crate</span>::combine::window_combine</span>(<span class="ident">g1</span>, <span class="ident">g2</span>, <span class="ident"><span class="self">Self</span>::ScalarField::one</span>(), <span class="ident">x2</span>)
     }
 
-    <span class="comment">// Combine where x1 = one</span>
+    <span class="doccomment">/// Combine where x1 = one</span>
     <span class="kw">fn</span> <span class="ident">combine_one_endo</span>(
         <span class="ident">endo_r</span>: <span class="ident"><span class="self">Self</span>::ScalarField</span>,
         <span class="ident">_endo_q</span>: <span class="ident"><span class="self">Self</span>::BaseField</span>,
@@ -2784,7 +2779,8 @@ The folowing functionality is implemented
 
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlOpeningProof</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">F</span><span class="op">&gt;</span> {
-        <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>, <span class="comment">// vector of rounds of L &amp; R commitments</span>
+        <span class="doccomment">/// vector of rounds of L &amp; R commitments</span>
+        <span class="kw">pub</span> <span class="ident">lr</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">G</span>, <span class="ident">G</span>)<span class="op">&gt;</span>,
         <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">G</span>,
         <span class="kw">pub</span> <span class="ident">z1</span>: <span class="ident">F</span>,
         <span class="kw">pub</span> <span class="ident">z2</span>: <span class="ident">F</span>,

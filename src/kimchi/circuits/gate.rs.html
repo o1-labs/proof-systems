@@ -578,16 +578,7 @@
 <span id="573">573</span>
 <span id="574">574</span>
 <span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-</pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
-
-This source file implements Plonk constraint gate primitive.
-
-*****************************************************************************************************************/</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">domains::EvaluationDomains</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident">ark_ff::bytes::ToBytes</span>;
@@ -637,7 +628,7 @@ This source file implements Plonk constraint gate primitive.
 <span class="doccomment">/// combination of locally-accessible cells.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SingleLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="comment">// Linear combination of local-positions</span>
+    <span class="doccomment">/// Linear combination of local-positions</span>
     <span class="kw">pub</span> <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">F</span>, <span class="ident">LocalPosition</span>)<span class="op">&gt;</span>,
 }
 
@@ -960,10 +951,9 @@ This source file implements Plonk constraint gate primitive.
     <span class="kw">pub</span> <span class="ident">typ</span>: <span class="ident">GateType</span>,
     <span class="doccomment">/// gate wires</span>
     <span class="kw">pub</span> <span class="ident">wires</span>: <span class="ident">GateWires</span>,
-    <span class="doccomment">/// constraints vector</span>
-    <span class="comment">// TODO: rename</span>
+    <span class="doccomment">/// public selector polynomials that can used as handy coefficients in gates</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">c</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">coeffs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">ToBytes</span> <span class="kw">for</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -975,8 +965,8 @@ This source file implements Plonk constraint gate primitive.
             <span class="self">self</span>.<span class="ident">wires</span>[<span class="ident">i</span>].<span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>
         }
 
-        (<span class="self">self</span>.<span class="ident">c</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u8</span>).<span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">c</span>.<span class="ident">iter</span>() {
+        (<span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u8</span>).<span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
+        <span class="kw">for</span> <span class="ident">x</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">iter</span>() {
             <span class="ident">x</span>.<span class="ident">write</span>(<span class="kw-2">&amp;mut</span> <span class="ident">w</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
@@ -988,8 +978,8 @@ This source file implements Plonk constraint gate primitive.
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
             <span class="ident">typ</span>: <span class="ident">GateType::Zero</span>,
-            <span class="ident">c</span>: <span class="ident">Vec::new</span>(),
             <span class="ident">wires</span>,
+            <span class="ident">coeffs</span>: <span class="ident">Vec::new</span>(),
         }
     }
 
@@ -1035,7 +1025,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="ident">CamlWire</span>,
             <span class="ident">CamlWire</span>,
         ),
-        <span class="kw">pub</span> <span class="ident">c</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+        <span class="kw">pub</span> <span class="ident">coeffs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     }
 
     <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">CamlF</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">CamlF</span><span class="op">&gt;</span>
@@ -1047,7 +1037,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="self">Self</span> {
                 <span class="ident">typ</span>: <span class="ident">cg</span>.<span class="ident">typ</span>,
                 <span class="ident">wires</span>: <span class="ident">array_to_tuple</span>(<span class="ident">cg</span>.<span class="ident">wires</span>),
-                <span class="ident">c</span>: <span class="ident">cg</span>.<span class="ident">c</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">coeffs</span>: <span class="ident">cg</span>.<span class="ident">coeffs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             }
         }
     }
@@ -1061,7 +1051,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="self">Self</span> {
                 <span class="ident">typ</span>: <span class="ident">cg</span>.<span class="ident">typ</span>,
                 <span class="ident">wires</span>: <span class="ident">array_to_tuple</span>(<span class="ident">cg</span>.<span class="ident">wires</span>),
-                <span class="ident">c</span>: <span class="ident">cg</span>.<span class="ident">c</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">coeffs</span>: <span class="ident">cg</span>.<span class="ident">coeffs</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             }
         }
     }
@@ -1075,7 +1065,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="self">Self</span> {
                 <span class="ident">typ</span>: <span class="ident">ccg</span>.<span class="ident">typ</span>,
                 <span class="ident">wires</span>: <span class="ident">tuple_to_array</span>(<span class="ident">ccg</span>.<span class="ident">wires</span>),
-                <span class="ident">c</span>: <span class="ident">ccg</span>.<span class="ident">c</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
+                <span class="ident">coeffs</span>: <span class="ident">ccg</span>.<span class="ident">coeffs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Into::into</span>).<span class="ident">collect</span>(),
             }
         }
     }
@@ -1141,11 +1131,11 @@ This source file implements Plonk constraint gate primitive.
     }
 
     <span class="macro">prop_compose!</span> {
-        <span class="kw">fn</span> <span class="ident">arb_circuit_gate</span>()(<span class="ident">typ</span>: <span class="ident">GateType</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">c</span> <span class="kw">in</span> <span class="ident">arb_fp_vec</span>(<span class="number">25</span>)) -&gt; <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
+        <span class="kw">fn</span> <span class="ident">arb_circuit_gate</span>()(<span class="ident">typ</span>: <span class="ident">GateType</span>, <span class="ident">wires</span>: <span class="ident">GateWires</span>, <span class="ident">coeffs</span> <span class="kw">in</span> <span class="ident">arb_fp_vec</span>(<span class="number">25</span>)) -&gt; <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
             <span class="ident">CircuitGate</span> {
                 <span class="ident">typ</span>,
                 <span class="ident">wires</span>,
-                <span class="ident">c</span>,
+                <span class="ident">coeffs</span>,
             }
         }
     }
@@ -1159,7 +1149,7 @@ This source file implements Plonk constraint gate primitive.
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">PERMUTS</span> {
                 <span class="macro">prop_assert_eq!</span>(<span class="ident">cg</span>.<span class="ident">wires</span>[<span class="ident">i</span>], <span class="ident">decoded</span>.<span class="ident">wires</span>[<span class="ident">i</span>]);
             }
-            <span class="macro">prop_assert_eq!</span>(<span class="ident">cg</span>.<span class="ident">c</span>, <span class="ident">decoded</span>.<span class="ident">c</span>);
+            <span class="macro">prop_assert_eq!</span>(<span class="ident">cg</span>.<span class="ident">coeffs</span>, <span class="ident">decoded</span>.<span class="ident">coeffs</span>);
         }
     }
 }

@@ -607,7 +607,7 @@
     <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BigInteger</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
     <span class="kw">use</span> <span class="ident">mina_curves::pasta::fp::Fp</span> <span class="kw">as</span> <span class="ident">F</span>;
 
-    <span class="comment">// 2/3*x^3 - 5/2*x^2 + 11/6*x</span>
+    <span class="doccomment">/// 2/3*x^3 - 5/2*x^2 + 11/6*x</span>
     <span class="kw">fn</span> <span class="ident">c_poly</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
         <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">square</span>();
         <span class="kw">let</span> <span class="ident">x3</span> <span class="op">=</span> <span class="ident">x</span> <span class="op">*</span> <span class="ident">x2</span>;
@@ -615,7 +615,7 @@
             <span class="op">+</span> (<span class="ident">F::from</span>(<span class="number">11u64</span>) <span class="op">/</span> <span class="ident">F::from</span>(<span class="number">6u64</span>)) <span class="op">*</span> <span class="ident">x</span>
     }
 
-    <span class="comment">// -x^2 + 3x - 1</span>
+    <span class="doccomment">/// -x^2 + 3x - 1</span>
     <span class="kw">fn</span> <span class="ident">d_minus_c_poly</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
         <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">x</span>.<span class="ident">square</span>();
         <span class="op">-</span><span class="ident">F::one</span>() <span class="op">*</span> <span class="ident">x2</span> <span class="op">+</span> <span class="ident">F::from</span>(<span class="number">3u64</span>) <span class="op">*</span> <span class="ident">x</span> <span class="op">-</span> <span class="ident">F::one</span>()
