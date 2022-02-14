@@ -116,40 +116,36 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
 
     /// This function computes the first operand address
     pub fn set_op0(&mut self) {
-        if self.instr().op0_reg() == OP0_AP {
-            // reads first word from allocated memory
-            self.vars.op0_addr = self.curr.ap + self.instr().off_op0();
-        } else {
-            // reads first word from input stack
-            self.vars.op0_addr = self.curr.fp + self.instr().off_op0();
-        } // no more values than 0 and 1 because op0_reg is one bit
+        let reg = {
+            match self.instr().op0_reg() {
+                OP0_AP => self.curr.ap, // reads first word from allocated memory
+                _ => self.curr.fp,      // reads first word from input stack
+            } // no more values than 0 and 1 because op0_reg is one bit
+        };
+        self.vars.op0_addr = reg + self.instr().off_op0();
         self.vars.op0 = self.mem.read(self.vars.op0_addr);
     }
 
     /// This function computes the second operand address and content and the instruction size
+    /// Panics if the flagset OP1_SRC has more than 1 nonzero bit
     pub fn set_op1(&mut self) {
-        if self.instr().op1_src() == OP1_DBL {
-            self.vars.size = F::one(); // double indexing
-            self.vars.op1_addr = self.vars.op0.unwrap() + self.instr().off_op1(); // should be positive for address
-            self.vars.op1 = self.mem.read(self.vars.op1_addr);
-        } else if self.instr().op1_src() == OP1_VAL {
-            self.vars.size = F::from(2u32); // immediate value
-            self.vars.op1_addr = self.curr.pc + self.instr().off_op1(); // if off_op1=1 then op1 contains a plain value
-            self.vars.op1 = self.mem.read(self.vars.op1_addr);
-        } else if self.instr().op1_src() == OP1_FP {
-            self.vars.size = F::one();
-            self.vars.op1_addr = self.curr.fp + self.instr().off_op1(); // second operand offset relative to fp
-            self.vars.op1 = self.mem.read(self.vars.op1_addr);
-        } else if self.instr().op1_src() == OP1_AP {
-            self.vars.size = F::one();
-            self.vars.op1_addr = self.curr.ap + self.instr().off_op1(); // second operand offset relative to ap
-            self.vars.op1 = self.mem.read(self.vars.op1_addr);
-        } else {
-            unimplemented!(); // invalid instruction, no single one bit flagset
-        }
+        let (reg, size) = {
+            match self.instr().op1_src() {
+                OP1_DBL => (self.vars.op0.unwrap(), F::one()), // double indexing, op0 should be positive for address
+                OP1_VAL => (self.curr.pc, F::from(2u32)), // off_op1 will be 1 and then op1 contains an immediate value
+                OP1_FP => (self.curr.fp, F::one()),
+                OP1_AP => (self.curr.ap, F::one()),
+                _ => panic!("Invalid instruction"),
+            }
+        };
+        self.vars.size = size;
+        self.vars.op1_addr = reg + self.instr().off_op1(); // apply second offset to corresponding register
+        self.vars.op1 = self.mem.read(self.vars.op1_addr);
     }
 
     /// This function computes the value of the result of the arithmetic operation
+    /// Panics if a JNZ instruction is used with an invalid format
+    ///     or if the flagset RES_LOG has more than 1 nonzero bit
     pub fn set_res(&mut self) {
         if self.instr().pc_up() == PC_JNZ {
             // jnz instruction
@@ -159,7 +155,7 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
             {
                 self.vars.res = Some(F::zero()); // "unused"
             } else {
-                unimplemented!(); // invalid instruction
+                panic!("Invalid instruction");
             }
         } else if self.instr().pc_up() == PC_SIZ
             || self.instr().pc_up() == PC_ABS
@@ -176,27 +172,28 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
                 self.vars.res = Some(self.vars.op0.unwrap() * self.vars.op1.unwrap());
             // right part is multiplication
             } else {
-                unimplemented!();
-            } // invalid instruction
+                panic!("Invalid instruction");
+            }
         } else {
             // multiple bits take value 1
-            unimplemented!(); // invalid instruction
+            panic!("Invalid instruction");
         }
     }
 
     /// This function computes the destination address
     pub fn set_dst(&mut self) {
-        if self.instr().dst_reg() == DST_AP {
-            self.vars.dst_addr = self.curr.ap + self.instr().off_dst();
-            // read from stack
-        } else {
-            self.vars.dst_addr = self.curr.fp + self.instr().off_dst();
-            // read from parameters
-        }
+        let reg = {
+            match self.instr().dst_reg() {
+                DST_AP => self.curr.ap, // read from stack
+                _ => self.curr.fp,      // read from parameters
+            } // no more values than 0 and 1 because op0_reg is one bit
+        };
+        self.vars.dst_addr = reg + self.instr().off_dst();
         self.vars.dst = self.mem.read(self.vars.dst_addr);
     }
 
     /// This function computes the next program counter
+    /// Panics if the flagset PC_UP has more than 1 nonzero bit
     pub fn next_pc(&mut self) -> Option<F> {
         if self.instr().pc_up() == PC_SIZ {
             // next instruction is right after the current one
@@ -216,10 +213,14 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
                 Some(self.curr.pc + self.vars.op1.unwrap())
             }
         } else {
-            unimplemented!(); // invalid instruction
+            panic!("Invalid instruction");
         }
     }
-    // This function computes the next values of the allocation and frame pointers
+
+    /// This function computes the next values of the allocation and frame pointers
+    /// Panics if in a CALL instruction the flagset AP_UP is incorrect
+    ///     or if in any other instruction the flagset AP_UP has more than 1 nonzero bit
+    ///     or if the flagset OPCODE has more than 1 nonzero bit
     fn next_apfp(&mut self) -> (Option<F>, Option<F>) {
         let (next_ap, next_fp);
         // The following branches don't include the assertions. That is done in the verification.
@@ -234,7 +235,7 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
             if self.instr().ap_up() == AP_Z2 {
                 next_ap = Some(self.curr.ap + F::from(2u32)); // two words were written so advance 2 positions
             } else {
-                unimplemented!(); // ap increments not allowed in call instructions
+                panic!("Invalid instruction"); // ap increments not allowed in call instructions
             }
         } else if self.instr().opcode() == OPC_JMP_INC
             || self.instr().opcode() == OPC_RET
@@ -249,7 +250,7 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
             } else if self.instr().ap_up() == AP_ONE {
                 next_ap = Some(self.curr.ap + F::one()); // ap++
             } else {
-                unimplemented!(); // invalid instruction}
+                panic!("Invalid instruction");
             }
             if self.instr().opcode() == OPC_JMP_INC {
                 next_fp = Some(self.curr.fp); // no modification on fp
@@ -268,10 +269,10 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
                 }
                 next_fp = Some(self.curr.fp); // no modification on fp
             } else {
-                unimplemented!();
+                panic!("Invalid instruction");
             }
         } else {
-            unimplemented!(); // invalid instruction
+            panic!("Invalid instruction");
         }
         (next_ap, next_fp)
     }
