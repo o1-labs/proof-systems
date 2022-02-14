@@ -366,11 +366,9 @@ impl GateType {
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-// TODO: this struct is a row in the circuit, not a gate (as theoretically a row can contain multiple gates)
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
-
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
     /// public selector polynomials that can used as handy coefficients in gates

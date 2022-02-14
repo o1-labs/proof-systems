@@ -12,7 +12,7 @@
 //!
 //! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
 //! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
-//! | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
+//! | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2  |    |    |    |    |    |
 //!
 //! with m1 (resp. m2) the mul selector for the first (resp. second) gate,
 //! and c1 (resp. c2) the constant selector for the first (resp. second) gate.
@@ -38,19 +38,11 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 use array_init::array_init;
 use rayon::prelude::*;
 
-//
-// Constants
-//
-
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: usize = 2;
 
 /// Offset for the second generic gate
 pub const GENERICS_COEFFS: usize = GENERICS + 1 /* mul */ + 1 /* cst */;
-
-//
-// Gadgets
-//
 
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [create_generic_easy] function.
@@ -273,7 +265,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         res1.evals
             .par_iter_mut()
             .enumerate()
-            .for_each(|(i, e)| *e += c[2 * i]);
+            .for_each(|(i, e)| *e += constant_d8[2 * i]);
 
         let constant_d8 = &self.coefficients8[GENERICS_COEFFS + 4];
         res2.evals
