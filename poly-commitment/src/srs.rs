@@ -5,7 +5,6 @@ This source file implements the Marlin structured reference string primitive
 *****************************************************************************************************************/
 
 use crate::commitment::CommitmentCurve;
-pub use crate::{CommitmentField, QnrField};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -62,7 +61,6 @@ where
 fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
 where
     G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
 {
     // packing in bit-representation
     const N: usize = 31;
@@ -82,7 +80,6 @@ where
 impl<G: CommitmentCurve> SRS<G>
 where
     G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
 {
     pub fn max_degree(&self) -> usize {
         self.g.len()
