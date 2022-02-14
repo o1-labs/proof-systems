@@ -22,9 +22,7 @@ use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{
-    b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
 use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
@@ -72,7 +70,6 @@ pub struct ProverProof<G: AffineCurve> {
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
-    G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
     // This function constructs prover's zk-proof from the witness & the Index against SRS instance
