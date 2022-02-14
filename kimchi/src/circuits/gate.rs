@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk constraint gate primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;
@@ -52,7 +48,7 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    // Linear combination of local-positions
+    /// Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
 
@@ -375,10 +371,9 @@ pub struct CircuitGate<F: FftField> {
     pub typ: GateType,
     /// gate wires
     pub wires: GateWires,
-    /// constraints vector
-    // TODO: rename
+    /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub c: Vec<F>,
+    pub coeffs: Vec<F>,
 }
 
 impl<F: FftField> ToBytes for CircuitGate<F> {
@@ -390,8 +385,8 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
             self.wires[i].write(&mut w)?
         }
 
-        (self.c.len() as u8).write(&mut w)?;
-        for x in self.c.iter() {
+        (self.coeffs.len() as u8).write(&mut w)?;
+        for x in self.coeffs.iter() {
             x.write(&mut w)?;
         }
         Ok(())
@@ -403,8 +398,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
-            c: Vec::new(),
             wires,
+            coeffs: Vec::new(),
         }
     }
 
@@ -450,7 +445,7 @@ pub mod caml {
             CamlWire,
             CamlWire,
         ),
-        pub c: Vec<F>,
+        pub coeffs: Vec<F>,
     }
 
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
@@ -462,7 +457,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -476,7 +471,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.clone().into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.clone().into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -490,7 +485,7 @@ pub mod caml {
             Self {
                 typ: ccg.typ,
                 wires: tuple_to_array(ccg.wires),
-                c: ccg.c.into_iter().map(Into::into).collect(),
+                coeffs: ccg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -556,11 +551,11 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
                 typ,
                 wires,
-                c,
+                coeffs,
             }
         }
     }
@@ -574,7 +569,7 @@ mod tests {
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);
             }
-            prop_assert_eq!(cg.c, decoded.c);
+            prop_assert_eq!(cg.coeffs, decoded.coeffs);
         }
     }
 }

@@ -261,7 +261,7 @@ mod tests {
     use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
     use mina_curves::pasta::fp::Fp as F;
 
-    // 2/3*x^3 - 5/2*x^2 + 11/6*x
+    /// 2/3*x^3 - 5/2*x^2 + 11/6*x
     fn c_poly(x: F) -> F {
         let x2 = x.square();
         let x3 = x * x2;
@@ -269,7 +269,7 @@ mod tests {
             + (F::from(11u64) / F::from(6u64)) * x
     }
 
-    // -x^2 + 3x - 1
+    /// -x^2 + 3x - 1
     fn d_minus_c_poly(x: F) -> F {
         let x2 = x.square();
         -F::one() * x2 + F::from(3u64) * x - F::one()

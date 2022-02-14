@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This file implements Poseidon Hash Function primitive
-
-*****************************************************************************************************************/
+//! This module implements Poseidon Hash Function primitive
 
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};

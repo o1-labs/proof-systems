@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk circuit constraint primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk circuit constraint primitive.
 
 use crate::circuits::{
     domains::EvaluationDomains,
@@ -477,8 +473,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 gates
                     .iter()
                     .map(|gate| {
-                        if i < gate.c.len() {
-                            gate.c[i]
+                        if i < gate.coeffs.len() {
+                            gate.coeffs[i]
                         } else {
                             F::zero()
                         }
@@ -649,7 +645,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.c != left_wire {
+            if row < self.public && gate.coeffs != left_wire {
                 return Err(GateError::IncorrectPublic(row));
             }
 

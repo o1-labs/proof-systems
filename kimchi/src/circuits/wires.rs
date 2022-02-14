@@ -1,17 +1,20 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk circuit gate wires primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk circuit gate wires primitive.
 
 use ark_ff::bytes::{FromBytes, ToBytes};
 use array_init::array_init;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
+/// Number of generic registers
 pub const GENERICS: usize = 3;
+
+/// Number of registers
 pub const COLUMNS: usize = 15;
+
+/// Number of registers that can be wired (participating in the permutation)
 pub const PERMUTS: usize = 7;
+
+/// index of all registers
 pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 /// Wire documents the other cell that is wired to this one.

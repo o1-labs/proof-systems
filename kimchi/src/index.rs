@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk Protocol Index primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk Protocol Index primitive.
 
 use crate::alphas::{self, ConstraintType};
 use crate::circuits::polynomials::permutation;
@@ -35,7 +31,7 @@ use std::{
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-/// The index common to both the prover and verifier
+/// The index used by the prover
 // TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
@@ -309,13 +305,12 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
         }
     }
 
-    // this function compiles the index from constraints
+    /// this function compiles the index from constraints
     pub fn create(
         mut cs: ConstraintSystem<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
