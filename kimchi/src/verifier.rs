@@ -6,7 +6,6 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::{GateType, LookupsUsed},
-        gates::generic::{CONSTANT_COEFF, MUL_COEFF},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
         wires::*,

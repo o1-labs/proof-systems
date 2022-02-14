@@ -43,7 +43,7 @@ use rayon::prelude::*;
 //
 
 /// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 1;
+pub const CONSTRAINTS: usize = 2;
 
 /// Offset for the second generic gate
 pub const GENERICS_COEFFS: usize = GENERICS + 1 /* mul */ + 1 /* cst */;
