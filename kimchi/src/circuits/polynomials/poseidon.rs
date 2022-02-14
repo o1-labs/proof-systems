@@ -1,12 +1,12 @@
 //! This module implements the Poseidon constraint polynomials.
 
-use std::marker::PhantomData;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, Field};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
+use std::marker::PhantomData;
 use CurrOrNext::*;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
