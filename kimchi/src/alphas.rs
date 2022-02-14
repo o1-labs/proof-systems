@@ -59,7 +59,6 @@ pub enum ConstraintType {
 /// and [Builder::register] to register a new mapping.
 /// Once you know the alpha value, you can convert this type to a [Alphas].
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
-#[cfg_attr(feature = "ocaml_types", derive(ocaml_gen::CustomType))]
 pub struct Builder {
     /// The next power of alpha to use
     /// the end result will be [1, alpha^next_power)    
@@ -265,30 +264,5 @@ mod tests {
         assert_eq!(alphas.next(), Some(2.into()));
         assert_eq!(alphas.next(), Some(4.into()));
         assert_eq!(alphas.next(), Some(8.into()));
-    }
-}
-
-#[cfg(feature = "ocaml_types")]
-pub mod caml {
-    use super::*;
-
-    impl Builder {
-        extern "C" fn finalize(v: ocaml::Raw) {
-            unsafe {
-                let mut v: ocaml::Pointer<Self> = v.as_pointer();
-                v.as_mut_ptr().drop_in_place();
-            }
-        }
-    }
-
-    ocaml::custom!(Builder {
-        finalize: Builder::finalize,
-    });
-
-    unsafe impl<'a> ::ocaml::FromValue<'a> for Builder {
-        fn from_value(value: ::ocaml::Value) -> Self {
-            let x: ::ocaml::Pointer<Self> = ::ocaml::FromValue::from_value(value);
-            x.as_ref().clone()
-        }
     }
 }
