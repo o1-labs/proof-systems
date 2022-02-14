@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk constraint gate primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;
@@ -52,7 +48,7 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    // Linear combination of local-positions
+    /// Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
 
@@ -377,7 +373,6 @@ pub struct CircuitGate<F: FftField> {
 
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
-
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
@@ -405,8 +400,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
-            coeffs: Vec::new(),
             wires,
+            coeffs: Vec::new(),
         }
     }
 

@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements permutation constraint polynomials.
-
-*****************************************************************************************************************/
+//! This module implements permutation constraint polynomials.
 
 use crate::circuits::{
     constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
@@ -17,6 +13,9 @@ use ark_poly::{Polynomial, UVPolynomial};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use oracle::rndoracle::ProofError;
 use rand::{CryptoRng, RngCore};
+
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: usize = 3;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation

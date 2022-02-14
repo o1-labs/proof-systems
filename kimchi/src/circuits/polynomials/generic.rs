@@ -39,8 +39,11 @@ use array_init::array_init;
 use rayon::prelude::*;
 
 //
-// Handy constants
+// Constants
 //
+
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 1;
 
 /// Offset for the second generic gate
 pub const GENERICS_COEFFS: usize = GENERICS + 1 /* mul */ + 1 /* cst */;
@@ -352,6 +355,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             });
         }
 
+        // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
         res
     }
 

@@ -5,10 +5,6 @@ use array_init::array_init;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
-//
-// Handy constants
-//
-
 /// Number of generic registers
 pub const GENERICS: usize = 3;
 

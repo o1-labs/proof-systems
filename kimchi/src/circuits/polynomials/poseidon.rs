@@ -7,6 +7,9 @@ use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
 use CurrOrNext::*;
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 15;
+
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
     pub source: usize,

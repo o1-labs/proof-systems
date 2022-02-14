@@ -7,7 +7,8 @@ use crate::{
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, generic, lookup, permutation,
+            poseidon, varbasemul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
@@ -21,9 +22,7 @@ use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{
-    b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
 use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
@@ -41,43 +40,47 @@ pub struct LookupCommitments<G: AffineCurve> {
 
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
-    // polynomial commitments
+    /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm<G>; COLUMNS],
+    /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
+    /// The commitment to the quotient polynomial
     pub t_comm: PolyComm<G>,
+    /// Commitments related to the lookup argument
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
-    // polynomial commitments
+    /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
-    // batched commitment opening proof
+    /// batched commitment opening proof
     pub proof: OpeningProof<G>,
 
-    // polynomial evaluations
+    /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
 
+    /// Required evaluation for Maller's optimization
+    /// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     pub ft_eval1: Fr<G>,
 
-    // public part of the witness
+    /// The public input
     pub public: Vec<Fr<G>>,
 
-    // The challenges underlying the optional polynomials folded into the proof
+    /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
-    G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
-    // This function constructs prover's zk-proof from the witness & the Index against SRS instance
-    //     witness: computation witness
-    //     index: Index
-    //     RETURN: prover's zk-proof
+    /// This function constructs prover's zk-proof from the witness & the Index against SRS instance
+    ///     witness: computation witness
+    ///     index: Index
+    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
@@ -402,7 +405,7 @@ where
 
         let quotient_poly = {
             // generic
-            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             if cfg!(test) {
@@ -415,7 +418,7 @@ where
             }
 
             // complete addition
-            let alphas = all_alphas.get_powers(ConstraintType::Gate, 7);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, complete_add::CONSTRAINTS);
             let add_constraint = complete_add::constraint(alphas);
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
@@ -432,7 +435,8 @@ where
             drop(add4);
 
             // permutation
-            let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+            let alphas =
+                all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
             let (perm, bnd) = index
                 .cs
                 .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
@@ -448,7 +452,7 @@ where
             }
 
             // scalar multiplication
-            let alphas = all_alphas.get_powers(ConstraintType::Gate, 21);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, varbasemul::CONSTRAINTS);
             let mul8 = varbasemul::constraint(alphas).evaluations(&env);
             t8 += &mul8;
 
@@ -464,7 +468,7 @@ where
             drop(mul8);
 
             // endoscaling
-            let alphas = all_alphas.get_powers(ConstraintType::Gate, 11);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, endosclmul::CONSTRAINTS);
             let emul8 = endosclmul::constraint(alphas).evaluations(&env);
             t8 += &emul8;
 
@@ -480,7 +484,7 @@ where
             drop(emul8);
 
             // endoscaling scalar computation
-            let alphas = all_alphas.get_powers(ConstraintType::Gate, 11);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, endomul_scalar::CONSTRAINTS);
             let emulscalar8 = endomul_scalar::constraint(alphas).evaluations(&env);
             t8 += &emulscalar8;
 
@@ -496,7 +500,7 @@ where
             drop(emulscalar8);
 
             // poseidon
-            let alphas = all_alphas.get_powers(ConstraintType::Gate, 15);
+            let alphas = all_alphas.get_powers(ConstraintType::Gate, poseidon::CONSTRAINTS);
             let pos8 = poseidon::constraint(alphas).evaluations(&env);
             t8 += &pos8;
 
@@ -513,19 +517,19 @@ where
 
             // chacha
             if index.cs.chacha8.as_ref().is_some() {
-                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, chacha::CONSTRAINTS_0);
                 let chacha0 = chacha::constraint_chacha0(alphas).evaluations(&env);
                 t4 += &chacha0;
 
-                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, chacha::CONSTRAINTS_1);
                 let chacha1 = chacha::constraint_chacha1(alphas).evaluations(&env);
                 t4 += &chacha1;
 
-                let alphas = all_alphas.get_powers(ConstraintType::Gate, 5);
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, chacha::CONSTRAINTS_2);
                 let chacha2 = chacha::constraint_chacha2(alphas).evaluations(&env);
                 t4 += &chacha2;
 
-                let alphas = all_alphas.get_powers(ConstraintType::Gate, 9);
+                let alphas = all_alphas.get_powers(ConstraintType::Gate, chacha::CONSTRAINTS_FINAL);
                 let chacha_final = chacha::constraint_chacha_final(alphas).evaluations(&env);
                 t4 += &chacha_final;
 
@@ -562,7 +566,8 @@ where
 
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                let lookup_alphas = all_alphas.get_alphas(ConstraintType::Lookup, 7);
+                let lookup_alphas =
+                    all_alphas.get_alphas(ConstraintType::Lookup, lookup::CONSTRAINTS);
                 let constraints =
                     lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
@@ -705,14 +710,15 @@ where
             // the constraint system struct
 
             // generic
-            let alphas = all_alphas.get_alphas(ConstraintType::Gate, 2);
+            let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
             let mut f = index
                 .cs
                 .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
                 .interpolate();
 
             // permutation
-            let alphas = all_alphas.get_alphas(ConstraintType::Permutation, 3);
+            let alphas =
+                all_alphas.get_alphas(ConstraintType::Permutation, permutation::CONSTRAINTS);
             f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
             let f = {

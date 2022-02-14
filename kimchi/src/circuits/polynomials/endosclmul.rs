@@ -1,4 +1,4 @@
-//! This source file implements short Weierstrass curve endomorphism optimised variable base
+//! This module implements short Weierstrass curve endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
 //!
 //! EVBSM gate constraints
@@ -35,6 +35,9 @@ use crate::circuits::{
     wires::COLUMNS,
 };
 use ark_ff::{Field, One};
+
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 11;
 
 /// The constraints for endoscaling.
 pub fn constraints<F: Field>() -> Vec<E<F>> {

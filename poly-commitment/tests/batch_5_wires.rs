@@ -1,4 +1,4 @@
-//! This source file tests polynomial commitments, batched openings and
+//! This module tests polynomial commitments, batched openings and
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use ark_ff::{UniformRand, Zero};

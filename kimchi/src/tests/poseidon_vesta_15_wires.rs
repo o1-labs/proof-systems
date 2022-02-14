@@ -89,7 +89,7 @@ fn poseidon_vesta_15_wires() {
     positive(&index);
 }
 
-// creates a proof and verifies it
+/// creates a proof and verifies it
 fn positive(index: &Index<Affine>) {
     // constant
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);

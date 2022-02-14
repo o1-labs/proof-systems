@@ -1,4 +1,4 @@
-//! This source file implements the cha-cha constraints, which are rather simple aside form the lookups.
+//! This module implements the cha-cha constraints, which are rather simple aside form the lookups.
 //!
 //! There are four chacha constraint types, corresponding to the four lines in each quarter round.
 //!
@@ -147,6 +147,18 @@ use crate::circuits::{
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field, Zero};
+
+/// Number of constraints produced by the ChaCha0 gate.
+pub const CONSTRAINTS_0: usize = 5;
+
+/// Number of constraints produced by the ChaCha1 gate.
+pub const CONSTRAINTS_1: usize = 5;
+
+/// Number of constraints produced by the ChaCha2 gate.
+pub const CONSTRAINTS_2: usize = 5;
+
+/// Number of constraints produced by the ChaChaFinal gate.
+pub const CONSTRAINTS_FINAL: usize = 9;
 
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
