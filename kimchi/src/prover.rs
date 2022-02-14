@@ -29,9 +29,7 @@ use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{
-    b_poly_coefficients, CommitmentCurve, CommitmentField, OpeningProof, PolyComm,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
 use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
@@ -49,43 +47,47 @@ pub struct LookupCommitments<G: AffineCurve> {
 
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
-    // polynomial commitments
+    /// The commitments to the witness (execution trace)
     pub w_comm: [PolyComm<G>; COLUMNS],
+    /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
+    /// The commitment to the quotient polynomial
     pub t_comm: PolyComm<G>,
+    /// Commitments related to the lookup argument
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
-    // polynomial commitments
+    /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
-    // batched commitment opening proof
+    /// batched commitment opening proof
     pub proof: OpeningProof<G>,
 
-    // polynomial evaluations
+    /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
 
+    /// Required evaluation for Maller's optimization
+    /// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     pub ft_eval1: Fr<G>,
 
-    // public part of the witness
+    /// The public input
     pub public: Vec<Fr<G>>,
 
-    // The challenges underlying the optional polynomials folded into the proof
+    /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
-    G::ScalarField: CommitmentField,
     G::BaseField: PrimeField,
 {
-    // This function constructs prover's zk-proof from the witness & the Index against SRS instance
-    //     witness: computation witness
-    //     index: Index
-    //     RETURN: prover's zk-proof
+    /// This function constructs prover's zk-proof from the witness & the Index against SRS instance
+    ///     witness: computation witness
+    ///     index: Index
+    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],

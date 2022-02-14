@@ -12,5 +12,4 @@ doctest = false
 syn = { version = "1.0.76", features = ["full"] }
 quote = "1.0.9"
 proc-macro2 = "1.0.29"
-convert_case = "0.4.0"
-const-random = "0.1.13"
+convert_case = "0.5.0"

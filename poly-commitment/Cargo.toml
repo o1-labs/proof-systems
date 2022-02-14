@@ -12,7 +12,6 @@ ark-serialize = "0.3.0"
 
 array-init = "2.0.0"
 blake2 = "0.10.0"
-colored = "2.0.0"
 rand = "0.8.0"
 rand_core = { version = "0.6.0" }
 rayon = { version = "1" }
@@ -27,6 +26,9 @@ oracle = { path = "../oracle" }
 
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
+
+[dev-dependencies]
+colored = "2.0.0"
 
 [features]
 ocaml_types = [ "ocaml", "ocaml-gen" ]

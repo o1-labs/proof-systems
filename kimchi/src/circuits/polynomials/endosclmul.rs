@@ -1,4 +1,4 @@
-//! This source file implements short Weierstrass curve endomorphism optimised variable base
+//! This module implements short Weierstrass curve endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
 //!
 //! EVBSM gate constraints
