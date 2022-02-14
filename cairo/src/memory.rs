@@ -1,6 +1,7 @@
 //! This module represents the Cairo memory, containing the
 //! compiled Cairo program that occupies the first few entries
 
+use std::fmt::{Display, Formatter, Result};
 use std::ops::{Index, IndexMut};
 
 use crate::helper::*;
@@ -31,6 +32,24 @@ impl<F: PrimeField> IndexMut<F> for CairoMemory<F> {
         let addr: u64 = idx.to_u64();
         self.resize(addr); // Resize if necessary
         &mut self.data[addr as usize]
+    }
+}
+
+impl<F: PrimeField> Display for CairoMemory<F> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        for i in 1..self.size() {
+            // Visualize content of memory excluding the 0th dummy entry
+            if let Some(elem) = self[F::from(i)] {
+                if let Err(_) = writeln!(f, "{0:>6}: 0x{1:}", i, elem.get_word().to_le()) {
+                    println!("Error while writing")
+                }
+            } else {
+                if let Err(_) = writeln!(f, "{0:>6}: None", i) {
+                    println!("Error while writing")
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -77,15 +96,6 @@ impl<F: PrimeField> CairoMemory<F> {
         self.resize(addr.to_u64()); // Resize if necessary
         self[addr].map(|x| x.get_word())
     }
-
-    /// Visualize content of memory excluding the 0th dummy entry
-    pub fn view(&mut self) {
-        for i in 1..self.size() {
-            if self.read(F::from(i)).is_some() {
-                println!("{0:>6}: 0x{1:}", i, self.read(F::from(i)).unwrap().to_le());
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -112,7 +122,7 @@ mod tests {
         memory.write(F::from(memory.size()), F::from(7u64));
         memory.write(F::from(memory.size()), F::from(7u64));
         memory.write(F::from(memory.size()), F::from(10u64));
-        memory.view();
+        println!("{}", memory);
         // Check content of an address
         assert_eq!(
             memory.read(F::one()).unwrap(),

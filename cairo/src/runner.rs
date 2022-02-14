@@ -357,7 +357,7 @@ mod tests {
         assert_eq!(step.next.unwrap().ap, F::from(7u32));
         assert_eq!(step.next.unwrap().fp, F::from(6u32));
 
-        step.mem.view();
+        println!("{}", step.mem);
     }
 
     #[test]
@@ -374,7 +374,7 @@ mod tests {
         mem.write(F::from(5u32), F::from(7u32)); //end of output
         let mut prog = CairoRunner::new(&mut mem, 1, 6);
         prog.execute();
-        prog.mem.view();
+        println!("{}", prog.mem);
     }
 
     #[test]
@@ -427,7 +427,7 @@ mod tests {
         mem.write(F::from(23u32), F::from(44u32)); //end of program
         let mut prog = CairoRunner::new(&mut mem, 5, 24);
         prog.execute();
-        prog.mem.view();
+        println!("{}", prog.mem);
         assert_eq!(prog.mem.read(F::from(24u32)).unwrap(), F::from(10u32));
         assert_eq!(prog.mem.read(F::from(25u32)).unwrap(), F::from(20u32));
         assert_eq!(prog.mem.read(F::from(26u32)).unwrap(), F::from(400u32));
