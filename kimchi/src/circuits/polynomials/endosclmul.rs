@@ -29,38 +29,36 @@
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //! </pre>
 
-use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
-use crate::circuits::gate::{CurrOrNext, GateType};
-use crate::circuits::wires::COLUMNS;
+use crate::circuits::{
+    expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
+    gate::GateType,
+    wires::COLUMNS,
+};
 use ark_ff::{Field, One};
-use CurrOrNext::*;
 
 /// The constraints for endoscaling.
 pub fn constraints<F: Field>() -> Vec<E<F>> {
-    let v = |c| E::cell(c, Curr);
-    let w = |i| v(Column::Witness(i));
+    let b1 = witness_curr(11);
+    let b2 = witness_curr(12);
+    let b3 = witness_curr(13);
+    let b4 = witness_curr(14);
 
-    let b1 = w(11);
-    let b2 = w(12);
-    let b3 = w(13);
-    let b4 = w(14);
+    let xt = witness_curr(0);
+    let yt = witness_curr(1);
 
-    let xt = w(0);
-    let yt = w(1);
+    let xs = witness_next(4);
+    let ys = witness_next(5);
 
-    let xs = E::cell(Column::Witness(4), Next);
-    let ys = E::cell(Column::Witness(5), Next);
+    let xp = witness_curr(4);
+    let yp = witness_curr(5);
 
-    let xp = w(4);
-    let yp = w(5);
-
-    let xr = w(7);
-    let yr = w(8);
+    let xr = witness_curr(7);
+    let yr = witness_curr(8);
 
     let mut cache = Cache::default();
 
-    let s1 = w(9);
-    let s3 = w(10);
+    let s1 = witness_curr(9);
+    let s3 = witness_curr(10);
 
     let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
     let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
@@ -73,11 +71,11 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
     let s3_squared = cache.cache(s3.clone().square());
 
     // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-    let n = w(6);
+    let n = witness_curr(6);
     let n_constraint = (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone())
         .double()
         + b4.clone()
-        - E::cell(Column::Witness(6), Next);
+        - witness_next(6);
 
     let xp_xr = cache.cache(xp.clone() - xr.clone());
     let xr_xs = cache.cache(xr.clone() - xs.clone());
@@ -87,10 +85,10 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
 
     vec![
         // verify booleanity of the scalar bits
-        b1.clone() - b1.square(),
-        b2.clone() - b2.square(),
-        b3.clone() - b3.square(),
-        b4.clone() - b4.square(),
+        boolean(&b1),
+        boolean(&b2),
+        boolean(&b3),
+        boolean(&b4),
         // (xq1 - xp) * s1 = yq1 - yp
         ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
         // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
@@ -113,7 +111,7 @@ pub fn constraints<F: Field>() -> Vec<E<F>> {
 
 /// The combined constraint for endoscaling.
 pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    E::combine_constraints(alpha0, constraints()) * E::cell(Column::Index(GateType::EndoMul), Curr)
+    E::combine_constraints(alpha0, constraints()) * index(GateType::EndoMul)
 }
 
 /// The result of performing an endoscaling: the accumulated curve point
@@ -123,8 +121,8 @@ pub struct EndoMulResult<F> {
     pub n: F,
 }
 
-/// Generates the witness values for a series of endoscaling constraints.
-pub fn witness<F: Field + std::fmt::Display>(
+/// Generates the witness_curr values for a series of endoscaling constraints.
+pub fn gen_witness<F: Field + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     endo: F,

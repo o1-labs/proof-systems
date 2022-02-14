@@ -13,7 +13,7 @@ use std::{
 
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
-    expr::{Column, Expr, Linearization, PolishToken, E},
+    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupsUsed},
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
@@ -25,7 +25,6 @@ use array_init::array_init;
 use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
-    CommitmentField,
 };
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -39,10 +38,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 // TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Index<G: CommitmentCurve>
-where
-    G::ScalarField: CommitmentField,
-{
+pub struct Index<G: CommitmentCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
@@ -157,7 +153,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> E<F> {
+) -> Expr<ConstantExpr<F>> {
     let expr = poseidon::constraint();
     let expr = expr + varbasemul::constraint(super::range::MUL.start);
     let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
@@ -174,8 +170,12 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
             )
         }
     };
+
     if chacha {
-        expr + chacha::constraint(super::range::CHACHA.start)
+        let expr = expr + chacha::constraint_chacha0(super::range::CHACHA.start);
+        let expr = expr + chacha::constraint_chacha1(super::range::CHACHA.start);
+        let expr = expr + chacha::constraint_chacha2(super::range::CHACHA.start);
+        expr + chacha::constraint_chacha_final(super::range::CHACHA.start)
     } else {
         expr
     }
@@ -221,7 +221,6 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
 impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
-    G::ScalarField: CommitmentField,
 {
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
