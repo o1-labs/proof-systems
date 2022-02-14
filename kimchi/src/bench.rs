@@ -52,11 +52,7 @@ impl BenchmarkCtx {
             let wires = Wire::new(row);
             gates.push(CircuitGate::create_generic_easy(
                 wires,
-                GenericGate::Add {
-                    left_coeff: None,
-                    right_coeff: None,
-                    output_coeff: None,
-                },
+                GenericGate::Const(1u32.into()),
                 None,
             ));
         }
