@@ -4,9 +4,7 @@ bookFlatSection: true
 title: "Specifications"
 ---
 
-# Introduction
-
-## Specifications
+# Specifications
 
 In this section, we have specifications
 

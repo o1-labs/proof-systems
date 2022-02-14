@@ -7,7 +7,10 @@ summary: "This document specifies the Polynomial Commitment variant of PLONK."
 
 # Polynomial Commitment
 
-Kimchi's polynomial commitment is a mix of HALO2's variant of bulletproof and [other paper] optimization.
+Our polynomial commitment scheme is a bootleproof-type of commitment scheme, which is a mix of:
+
+* The polynomial commitment scheme described in appendix A.1 of the [PCD paper](https://eprint.iacr.org/2020/1618).
+* The zero-knowledge opening described in section 3.1 of the [HALO paper](https://eprint.iacr.org/2019/1021).
 
 The first use case is to commit to a polynomial (usually a hiding commitment, not revealing the polynomial itself), and later produce evaluations accompanied with proofs.
 
@@ -16,6 +19,18 @@ Several evaluation proofs of different polynomials and/or different evaluations 
 Another application, useful in recursive zksnarks, is to verify that you know a polynomial that was committed.
 
 ## URS
+
+The common parameters used by provers and verifiers are called **Uniform Reference String (URS)**. 
+
+{{< hint info >}}
+The "uniform" part means that they were generated from random numbers; specificaly, it does not need a trusted setup like in other protocols.
+{{< /hint >}}
+
+A URS contains:
+
+* a generator 
+
+In Rust, it is represented as such:
 
 ```rust
 pub struct SRS<G: CommitmentCurve> {
