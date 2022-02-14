@@ -3,8 +3,8 @@
 
 use std::ops::{Index, IndexMut};
 
-use crate::circuits::cairo::runner::helper::*;
-use crate::circuits::cairo::runner::word::CairoWord;
+use crate::helper::*;
+use crate::word::CairoWord;
 use ark_ff::PrimeField;
 use core::iter::repeat;
 use o1_utils::FieldHelpers;
@@ -82,11 +82,7 @@ impl<F: PrimeField> CairoMemory<F> {
     /// to enlarge the vector before reading (with None values).
     pub fn read(&mut self, addr: F) -> Option<F> {
         self.resize(addr.to_u64());
-        if self[addr].is_some() {
-            Some(self[addr].unwrap().get_word())
-        } else {
-            None
-        }
+        self[addr].map(|x| x.get_word())
     }
 
     /// Visualize content of memory excluding the 0th dummy entry

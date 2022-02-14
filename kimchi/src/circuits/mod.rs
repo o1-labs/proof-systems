@@ -1,7 +1,6 @@
 #[macro_use]
 pub mod macros;
 
-pub mod cairo;
 pub mod constraints;
 pub mod domains;
 pub mod expr;

@@ -4,10 +4,10 @@ This repository contains various zk-SNARK protocol implementations for recursive
 
 ```
 proof-systems/
+├── cairo # a Cairo runner written in rust
 ├── curves/ # our curves (for now just the pasta curves)
 ├── groupmap/ # TODO: description
 ├── kimchi/ # our proof system
-├── kimchi/src/circuits/cairo # our Cairo friendly proof system
 ├── ocaml/ # ocaml bindings generator tool
 ├── oracle/ # implementation of the poseidon hash function
 ├── poly-commitment/ # polynomial commitment code

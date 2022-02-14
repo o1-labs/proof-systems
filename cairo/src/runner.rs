@@ -1,9 +1,9 @@
-//! This module represents a Cairo execution step
-//! It defines the execution logic of Cairo instructions
+//! This module represents a run of a Cairo program as a consecution of execution
+//! steps, each of which define the execution logic of Cairo instructions
 
-use crate::circuits::cairo::runner::definitions::*;
-use crate::circuits::cairo::runner::memory::CairoMemory;
-use crate::circuits::cairo::runner::word::CairoWord;
+use crate::definitions::*;
+use crate::memory::CairoMemory;
+use crate::word::{CairoWord, Decomposition};
 use ark_ff::PrimeField;
 
 /// A structure to store program counter, allocation pointer and frame pointer
@@ -80,21 +80,6 @@ pub struct CairoStep<'a, F: PrimeField> {
     vars: CairoVariables<F>,
 }
 
-/*
-/// Performs the addition of a u64 register with a signed offset
-fn add_off(reg: u64, off: i128) -> u64 {
-    // TODO(@querolita) check helper to avoid casting manually
-    // 1. Since the output address is u64, the offset cannot be larger than this
-    // 2. The absolute value of the offset will fit in u64
-    // 3. If it was negative, subtract. If it was positive, sum.
-    if off.is_negative() {
-        reg - (off.abs() as u64)
-    } else {
-        reg + (off.abs() as u64)
-    }
-}
-*/
-
 impl<'a, F: PrimeField> CairoStep<'a, F> {
     /// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
     pub fn new(mem: &mut CairoMemory<F>, ptrs: CairoPointers<F>) -> CairoStep<F> {
@@ -135,7 +120,7 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
             // reads first word from allocated memory
             self.vars.op0_addr = self.curr.ap + self.instr().off_op0();
         } else {
-            // reads first word from input parameters
+            // reads first word from input stack
             self.vars.op0_addr = self.curr.fp + self.instr().off_op0();
         } // no more values than 0 and 1 because op0_reg is one bit
         self.vars.op0 = self.mem.read(self.vars.op0_addr);
@@ -293,17 +278,17 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
 }
 
 /// This struct stores the needed information to run a program
-pub struct CairoProgram<'a, F: PrimeField> {
+pub struct CairoRunner<'a, F: PrimeField> {
     /// full execution memory
     mem: &'a mut CairoMemory<F>,
     /// initial computation registers regs
     regs: CairoPointers<F>,
 }
 
-impl<'a, F: PrimeField> CairoProgram<'a, F> {
+impl<'a, F: PrimeField> CairoRunner<'a, F> {
     /// Creates a Cairo machine from the public input
-    pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoProgram<F> {
-        CairoProgram {
+    pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoRunner<F> {
+        CairoRunner {
             mem,
             regs: CairoPointers::new(F::from(pc), F::from(ap), F::from(ap)),
         }
@@ -346,7 +331,7 @@ impl<'a, F: PrimeField> CairoProgram<'a, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::cairo::runner::helper::CairoFieldHelpers;
+    use crate::helper::CairoFieldHelpers;
     use mina_curves::pasta::fp::Fp as F;
 
     #[test]
@@ -358,13 +343,13 @@ mod tests {
             F::from(10u64),
             F::from(0x208b7fff7fff7ffeu64),
         ];
-        let mut mem = super::CairoMemory::new(instrs);
+        let mut mem = CairoMemory::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
         mem.write(F::from(4u32), F::from(7u32));
         mem.write(F::from(5u32), F::from(7u32));
-        let ptrs = super::CairoPointers::new(F::from(1u32), F::from(6u32), F::from(6u32));
-        let mut step = super::CairoStep::new(&mut mem, ptrs);
+        let ptrs = CairoPointers::new(F::from(1u32), F::from(6u32), F::from(6u32));
+        let mut step = CairoStep::new(&mut mem, ptrs);
 
         step.execute();
         assert_eq!(step.next.unwrap().pc, F::from(3u32));
@@ -381,12 +366,12 @@ mod tests {
             F::from(10u64),
             F::from(0x208b7fff7fff7ffeu64),
         ];
-        let mut mem = super::CairoMemory::<F>::new(instrs);
+        let mut mem = CairoMemory::<F>::new(instrs);
         // Need to know how to find out
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
         mem.write(F::from(4u32), F::from(7u32)); //beginning of output
         mem.write(F::from(5u32), F::from(7u32)); //end of output
-        let mut prog = super::CairoProgram::new(&mut mem, 1, 6);
+        let mut prog = CairoRunner::new(&mut mem, 1, 6);
         prog.execute();
         prog.mem.view();
     }
@@ -439,7 +424,7 @@ mod tests {
         mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
         mem.write(F::from(22u32), F::from(44u32)); // end of outputs
         mem.write(F::from(23u32), F::from(44u32)); //end of program
-        let mut prog = super::CairoProgram::new(&mut mem, 5, 24);
+        let mut prog = CairoRunner::new(&mut mem, 5, 24);
         prog.execute();
         prog.mem.view();
         assert_eq!(prog.mem.read(F::from(24u32)).unwrap(), F::from(10u32));
