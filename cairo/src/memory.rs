@@ -7,7 +7,6 @@ use crate::helper::*;
 use crate::word::CairoWord;
 use ark_ff::PrimeField;
 use core::iter::repeat;
-use o1_utils::FieldHelpers;
 
 /// This data structure stores the memory of the program
 pub struct CairoMemory<F: PrimeField> {
@@ -30,6 +29,7 @@ impl<F: PrimeField> Index<F> for CairoMemory<F> {
 impl<F: PrimeField> IndexMut<F> for CairoMemory<F> {
     fn index_mut(&mut self, idx: F) -> &mut Self::Output {
         let addr: u64 = idx.to_u64();
+        self.resize(addr); // Resize if necessary
         &mut self.data[addr as usize]
     }
 }
@@ -69,19 +69,12 @@ impl<F: PrimeField> CairoMemory<F> {
 
     /// Write u64 element in memory address
     pub fn write(&mut self, addr: F, elem: F) {
-        self.resize(addr.to_u64());
         self[addr] = Some(CairoWord::new(elem));
     }
 
     /// Read element in memory address
-    /// Because of how assignments work in Cairo (called assert-equal), they
-    /// behave in two ways: either check two variables are equal or assign
-    /// the value of one variable to the address of the other one so that
-    /// their content will be the same. This means you may first read to
-    /// addresses of memory that were still not instantiated, and you need
-    /// to enlarge the vector before reading (with None values).
     pub fn read(&mut self, addr: F) -> Option<F> {
-        self.resize(addr.to_u64());
+        self.resize(addr.to_u64()); // Resize if necessary
         self[addr].map(|x| x.get_word())
     }
 
@@ -89,7 +82,7 @@ impl<F: PrimeField> CairoMemory<F> {
     pub fn view(&mut self) {
         for i in 1..self.size() {
             if self.read(F::from(i)).is_some() {
-                println!("{}: 0x{:?}", i, self.read(F::from(i)).unwrap().to_hex());
+                println!("{0:>6}: 0x{1:}", i, self.read(F::from(i)).unwrap().to_le());
             }
         }
     }
@@ -129,5 +122,6 @@ mod tests {
         assert_eq!(3, memory.get_codelen());
         // Check we have 6 words, excluding the dummy entry
         assert_eq!(6, memory.size() - 1);
+        memory.read(F::from(10u32));
     }
 }

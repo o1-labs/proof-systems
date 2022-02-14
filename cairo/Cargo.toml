@@ -26,6 +26,7 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 sprs = "0.11.0"
 bitvec = "0.22.3"
+hex = "0.4"
 
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }

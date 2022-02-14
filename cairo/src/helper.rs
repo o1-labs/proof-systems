@@ -19,6 +19,9 @@ pub trait CairoFieldHelpers<F: PrimeField> {
     /// Return first 64 bits of the field element
     fn to_u64(self) -> u64;
 
+    /// Return a field element in hexadecimal in little endian
+    fn to_le(self) -> String;
+
     /// Return a vector of field elements from a vector of i128
     fn vec_to_field(vec: Vec<i128>) -> Vec<F>;
 }
@@ -55,6 +58,12 @@ impl<F: PrimeField> CairoFieldHelpers<F> for F {
             acc += 2u64.pow(i * 8) * (bytes[i as usize] as u64);
         }
         acc
+    }
+
+    fn to_le(self) -> String {
+        let mut bytes = self.to_bytes();
+        bytes.reverse();
+        hex::encode(bytes)
     }
 
     fn vec_to_field(vec: Vec<i128>) -> Vec<F> {
