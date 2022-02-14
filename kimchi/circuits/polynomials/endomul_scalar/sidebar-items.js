@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["constraint","The constraint for the endomul scalar computation"],["gen_witness",""]]});
+initSidebarItems({"constant":[["CONSTRAINTS","Number of constraints produced by the gate."]],"fn":[["constraint","The constraint for the endomul scalar computation"],["gen_witness",""]]});

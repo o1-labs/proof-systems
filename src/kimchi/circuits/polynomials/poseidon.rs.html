@@ -99,6 +99,9 @@
 <span id="94">94</span>
 <span id="95">95</span>
 <span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">ConstantExpr</span>};
@@ -107,6 +110,9 @@
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>};
 <span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">PlonkSpongeConstants15W</span>, <span class="ident">SpongeConstants</span>};
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
+
+<span class="doccomment">/// Number of constraints produced by the gate.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">15</span>;
 
 <span class="doccomment">/// An equation of the form `(curr | next)[i] = round(curr[j])`</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RoundEquation</span> {
@@ -137,29 +143,29 @@
     },
 ];
 
-<span class="doccomment">/// poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`</span>
-<span class="comment">// Conjunction of:</span>
-<span class="comment">// curr[round_range(1)] = round(curr[round_range(0)])</span>
-<span class="comment">// curr[round_range(2)] = round(curr[round_range(1)])</span>
-<span class="comment">// curr[round_range(3)] = round(curr[round_range(2)])</span>
-<span class="comment">// curr[round_range(4)] = round(curr[round_range(3)])</span>
-<span class="comment">// next[round_range(0)] = round(curr[round_range(4)])</span>
-<span class="comment">//</span>
-<span class="comment">// which expands e.g., to</span>
-<span class="comment">// curr[round_range(1)][0] =</span>
-<span class="comment">//      mds[0][0] * sbox(curr[round_range(0)][0])</span>
-<span class="comment">//    + mds[0][1] * sbox(curr[round_range(0)][1])</span>
-<span class="comment">//    + mds[0][2] * sbox(curr[round_range(0)][2])</span>
-<span class="comment">//    + rcm[round_range(1)][0]</span>
-<span class="comment">// curr[round_range(1)][1] =</span>
-<span class="comment">//      mds[1][0] * sbox(curr[round_range(0)][0])</span>
-<span class="comment">//    + mds[1][1] * sbox(curr[round_range(0)][1])</span>
-<span class="comment">//    + mds[1][2] * sbox(curr[round_range(0)][2])</span>
-<span class="comment">//    + rcm[round_range(1)][1]</span>
-<span class="comment">// ...</span>
-<span class="comment">// The rth position in this array contains the alphas used for the equations that</span>
-<span class="comment">// constrain the values of the (r+1)th state.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>() -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="doccomment">/// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`</span>
+<span class="doccomment">/// Conjunction of:</span>
+<span class="doccomment">/// curr[round_range(1)] = round(curr[round_range(0)])</span>
+<span class="doccomment">/// curr[round_range(2)] = round(curr[round_range(1)])</span>
+<span class="doccomment">/// curr[round_range(3)] = round(curr[round_range(2)])</span>
+<span class="doccomment">/// curr[round_range(4)] = round(curr[round_range(3)])</span>
+<span class="doccomment">/// next[round_range(0)] = round(curr[round_range(4)])</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// which expands e.g., to</span>
+<span class="doccomment">/// curr[round_range(1)][0] =</span>
+<span class="doccomment">///      mds[0][0] * sbox(curr[round_range(0)][0])</span>
+<span class="doccomment">///    + mds[0][1] * sbox(curr[round_range(0)][1])</span>
+<span class="doccomment">///    + mds[0][2] * sbox(curr[round_range(0)][2])</span>
+<span class="doccomment">///    + rcm[round_range(1)][0]</span>
+<span class="doccomment">/// curr[round_range(1)][1] =</span>
+<span class="doccomment">///      mds[1][0] * sbox(curr[round_range(0)][0])</span>
+<span class="doccomment">///    + mds[1][1] * sbox(curr[round_range(0)][1])</span>
+<span class="doccomment">///    + mds[1][2] * sbox(curr[round_range(0)][2])</span>
+<span class="doccomment">///    + rcm[round_range(1)][1]</span>
+<span class="doccomment">/// ...</span>
+<span class="doccomment">/// The rth position in this array contains the alphas used for the equations that</span>
+<span class="doccomment">/// constrain the values of the (r+1)th state.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(<span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">usize</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
 
@@ -193,8 +199,8 @@
                     .<span class="ident">fold</span>(<span class="ident">rc</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">x</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>())
         }));
     }
-    <span class="ident">index</span>(<span class="ident">GateType::Poseidon</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="number">0</span>, <span class="ident">res</span>)
+    <span class="ident">index</span>(<span class="ident">GateType::Poseidon</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">res</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1e12aef3f 2022-02-13)" ></div>
 </body></html>

@@ -2016,6 +2016,7 @@
 <span id="2011">2011</span>
 <span id="2012">2012</span>
 <span id="2013">2013</span>
+<span id="2014">2014</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
     <span class="ident">domains::EvaluationDomains</span>,
@@ -2027,6 +2028,7 @@
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>,
 };
+<span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
@@ -3068,10 +3070,10 @@
 
     <span class="doccomment">/// Combines multiple constraints `[c0, ..., cn]` into a single constraint</span>
     <span class="doccomment">/// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combine_constraints</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>, <span class="ident">cs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">combine_constraints</span>(<span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">usize</span><span class="op">&gt;</span>, <span class="ident">cs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="ident">Expr</span>::<span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::zero</span>();
         <span class="ident">cs</span>.<span class="ident">into_iter</span>()
-            .<span class="ident">zip</span>(<span class="ident">alpha0</span>..)
+            .<span class="ident">zip_eq</span>(<span class="ident">alphas</span>)
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">c</span>, <span class="ident">i</span>)<span class="op">|</span> <span class="ident">Expr::Constant</span>(<span class="ident">ConstantExpr::Alpha</span>.<span class="ident">pow</span>(<span class="ident">i</span>)) <span class="op">*</span> <span class="ident">c</span>)
             .<span class="ident">fold</span>(<span class="ident">zero</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>)
     }
@@ -4030,5 +4032,5 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">coeff</span>, <span class="ident">index</span>, <span class="ident">witness</span>, <span class="ident">witness_curr</span>, <span class="ident">witness_next</span>, <span class="ident">E</span>};
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1e12aef3f 2022-02-13)" ></div>
 </body></html>

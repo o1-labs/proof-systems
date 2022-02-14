@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["CHACHA",""],["COMPLETE_ADD",""],["ENDML",""],["ENDOMUL_SCALAR",""],["MUL",""],["PERM",""],["PSDN",""]],"fn":[["alpha_powers","Computes the powers of alpha, starting with alpha^2"]]});

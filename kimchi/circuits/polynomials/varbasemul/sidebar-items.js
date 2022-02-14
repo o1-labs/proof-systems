@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["constraint",""],["witness",""]],"struct":[["VarbaseMulResult",""]]});
+initSidebarItems({"constant":[["CONSTRAINTS","Number of constraints produced by the gate."]],"fn":[["constraint",""],["witness",""]],"struct":[["VarbaseMulResult",""]]});

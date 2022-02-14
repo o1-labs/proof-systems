@@ -260,6 +260,9 @@
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>};
 
+<span class="doccomment">/// Number of constraints produced by the gate.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">7</span>;
+
 <span class="doccomment">/// This enforces that</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// r = (z == 0) ? 1 : 0</span>
@@ -286,7 +289,7 @@
 <span class="doccomment">/// for doubling.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; (<span class="ident">usize</span>, <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">usize</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="comment">// This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints</span>
     <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
     <span class="kw">let</span> <span class="ident">y1</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
@@ -404,10 +407,7 @@
     <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">y21</span>.<span class="ident">clone</span>() <span class="op">*</span> (<span class="ident">same_x</span> <span class="op">-</span> <span class="ident">inf</span>.<span class="ident">clone</span>()));
     <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">y21</span> <span class="op">*</span> <span class="ident">inf_z</span> <span class="op">-</span> <span class="ident">inf</span>);
 
-    (
-        <span class="ident">res</span>.<span class="ident">len</span>(),
-        <span class="ident">index</span>(<span class="ident">GateType::CompleteAdd</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">res</span>),
-    )
+    <span class="ident">index</span>(<span class="ident">GateType::CompleteAdd</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">res</span>)
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -482,5 +482,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1e12aef3f 2022-02-13)" ></div>
 </body></html>

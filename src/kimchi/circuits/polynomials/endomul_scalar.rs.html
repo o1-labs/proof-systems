@@ -341,6 +341,9 @@
 <span id="336">336</span>
 <span id="337">337</span>
 <span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::ConstraintSystem</span>,
     <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>},
@@ -349,6 +352,9 @@
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">BitIteratorLE</span>, <span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
+
+<span class="doccomment">/// Number of constraints produced by the gate.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">11</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_endomul_scalar</span>(
@@ -455,7 +461,7 @@
 <span class="doccomment">/// = x^4 - 6*x^3 + 11*x^2 - 6*x</span>
 <span class="doccomment">/// = x *(x^3 - 6*x^2 + 11*x - 6)</span>
 <span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">alpha0</span>: <span class="ident">usize</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">usize</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">n0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">0</span>);
     <span class="kw">let</span> <span class="ident">n8</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">1</span>);
     <span class="kw">let</span> <span class="ident">a0</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">2</span>);
@@ -498,7 +504,7 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">n8_expected</span> <span class="op">-</span> <span class="ident">n8</span>, <span class="ident">a8_expected</span> <span class="op">-</span> <span class="ident">a8</span>, <span class="ident">b8_expected</span> <span class="op">-</span> <span class="ident">b8</span>];
     <span class="ident">constraints</span>.<span class="ident">extend</span>(<span class="ident">xs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="ident">crumb</span>));
 
-    <span class="ident">E::combine_constraints</span>(<span class="ident">alpha0</span>, <span class="ident">constraints</span>) <span class="op">*</span> <span class="ident">index</span>(<span class="ident">GateType::EndoMulScalar</span>)
+    <span class="ident">E::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>) <span class="op">*</span> <span class="ident">index</span>(<span class="ident">GateType::EndoMulScalar</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span> <span class="op">+</span> <span class="ident">std::fmt::Display</span><span class="op">&gt;</span>(
@@ -680,5 +686,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1e12aef3f 2022-02-13)" ></div>
 </body></html>

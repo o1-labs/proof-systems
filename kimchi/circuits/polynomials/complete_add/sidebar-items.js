@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["constraint","This function uses the constraints"]]});
+initSidebarItems({"constant":[["CONSTRAINTS","Number of constraints produced by the gate."]],"fn":[["constraint","This function uses the constraints"]]});

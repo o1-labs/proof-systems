@@ -388,19 +388,39 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
 </pre><pre class="rust"><code><span class="comment">/*****************************************************************************************************************
 
 This source file implements Plonk Protocol Index primitive.
 
 *****************************************************************************************************************/</span>
 
-<span class="kw">use</span> <span class="ident">std</span>::{
-    <span class="ident">fs</span>::{<span class="ident">File</span>, <span class="ident">OpenOptions</span>},
-    <span class="ident">io</span>::{<span class="ident">BufReader</span>, <span class="ident">BufWriter</span>, <span class="ident">Seek</span>},
-    <span class="ident">path::Path</span>,
-    <span class="ident">sync::Arc</span>,
-};
-
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas</span>::{<span class="self">self</span>, <span class="ident">ConstraintType</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints</span>::{<span class="ident">zk_polynomial</span>, <span class="ident">zk_w3</span>, <span class="ident">ConstraintSystem</span>, <span class="ident">LookupConstraintSystem</span>},
     <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">Expr</span>, <span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
@@ -420,6 +440,12 @@ This source file implements Plonk Protocol Index primitive.
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">std::io::SeekFrom::Start</span>;
+<span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">fs</span>::{<span class="ident">File</span>, <span class="ident">OpenOptions</span>},
+    <span class="ident">io</span>::{<span class="ident">BufReader</span>, <span class="ident">BufWriter</span>, <span class="ident">Seek</span>},
+    <span class="ident">path::Path</span>,
+    <span class="ident">sync::Arc</span>,
+};
 
 <span class="kw">type</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
 <span class="kw">type</span> <span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::BaseField</span>;
@@ -436,6 +462,9 @@ This source file implements Plonk Protocol Index primitive.
     <span class="doccomment">/// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="kw">pub</span> <span class="ident">linearization</span>: <span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="doccomment">/// The mapping between powers of alpha and constraints</span>
+    <span class="kw">pub</span> <span class="ident">powers_of_alpha</span>: <span class="ident">alphas::Builder</span>,
 
     <span class="doccomment">/// polynomial commitment keys</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
@@ -474,6 +503,8 @@ This source file implements Plonk Protocol Index primitive.
     <span class="kw">pub</span> <span class="ident">max_poly_size</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// maximal size of the quotient polynomial according to the supported constraints</span>
     <span class="kw">pub</span> <span class="ident">max_quot_size</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// The mapping between powers of alpha and constraints</span>
+    <span class="kw">pub</span> <span class="ident">powers_of_alpha</span>: <span class="ident">alphas::Builder</span>,
     <span class="doccomment">/// polynomial commitment keys</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="kw">pub</span> <span class="ident">srs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">SRS</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -543,32 +574,40 @@ This source file implements Plonk Protocol Index primitive.
     <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">chacha</span>: <span class="ident">bool</span>,
     <span class="ident">lookup_constraint_system</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">poseidon::constraint</span>();
-    <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">varbasemul::constraint</span>(<span class="ident"><span class="kw">super</span>::range::MUL</span>.<span class="ident">start</span>);
-    <span class="kw">let</span> (<span class="ident">alphas_used</span>, <span class="ident">complete_add</span>) <span class="op">=</span> <span class="ident">complete_add::constraint</span>(<span class="ident"><span class="kw">super</span>::range::COMPLETE_ADD</span>.<span class="ident">start</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">alphas_used</span>, <span class="ident"><span class="kw">super</span>::range::COMPLETE_ADD</span>.<span class="ident">len</span>());
-    <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">complete_add</span>;
-    <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">endosclmul::constraint</span>(<span class="number">2</span> <span class="op">+</span> <span class="ident"><span class="kw">super</span>::range::ENDML</span>.<span class="ident">start</span>);
-    <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">endomul_scalar::constraint</span>(<span class="ident"><span class="kw">super</span>::range::ENDOMUL_SCALAR</span>.<span class="ident">start</span>);
-    <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {
-        <span class="prelude-val">None</span> =&gt; <span class="ident">expr</span>,
-        <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) =&gt; {
-            <span class="ident">expr</span> <span class="op">+</span> <span class="ident">Expr::combine_constraints</span>(
-                <span class="number">2</span> <span class="op">+</span> <span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">end</span>,
-                <span class="ident">lookup::constraints</span>(<span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">dummy_lookup_values</span>[<span class="number">0</span>], <span class="ident">domain</span>),
-            )
-        }
-    };
+) -&gt; (<span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">alphas::Builder</span>) {
+    <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints</span>
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers_of_alpha</span> <span class="op">=</span> <span class="ident">alphas::Builder::default</span>();
+
+    <span class="comment">// gates</span>
+    <span class="kw">let</span> <span class="ident">largest_constraint_num</span> <span class="op">=</span> <span class="ident">varbasemul::CONSTRAINTS</span>;
+    <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ConstraintType::Gate</span>, <span class="ident">largest_constraint_num</span>);
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">poseidon::constraint</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">poseidon::CONSTRAINTS</span>));
+    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">varbasemul::constraint</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">varbasemul::CONSTRAINTS</span>));
+    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">complete_add::constraint</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">complete_add::CONSTRAINTS</span>));
+    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">endosclmul::constraint</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">endosclmul::CONSTRAINTS</span>));
+    <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">endomul_scalar::constraint</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">endomul_scalar::CONSTRAINTS</span>));
 
     <span class="kw">if</span> <span class="ident">chacha</span> {
-        <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha0</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>);
-        <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha1</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>);
-        <span class="kw">let</span> <span class="ident">expr</span> <span class="op">=</span> <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha2</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>);
-        <span class="ident">expr</span> <span class="op">+</span> <span class="ident">chacha::constraint_chacha_final</span>(<span class="ident"><span class="kw">super</span>::range::CHACHA</span>.<span class="ident">start</span>)
-    } <span class="kw">else</span> {
-        <span class="ident">expr</span>
+        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">chacha::constraint_chacha0</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">chacha::CONSTRAINTS_0</span>));
+        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">chacha::constraint_chacha1</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">chacha::CONSTRAINTS_1</span>));
+        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">chacha::constraint_chacha2</span>(<span class="ident">alphas</span>.<span class="ident">clone</span>().<span class="ident">take</span>(<span class="ident">chacha::CONSTRAINTS_2</span>));
+        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">chacha::constraint_chacha_final</span>(<span class="ident">alphas</span>.<span class="ident">take</span>(<span class="ident">chacha::CONSTRAINTS_FINAL</span>));
     }
+
+    <span class="comment">// permutation</span>
+    <span class="kw">let</span> <span class="ident">_alphas</span> <span class="op">=</span> <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ConstraintType::Permutation</span>, <span class="ident">permutation::CONSTRAINTS</span>);
+
+    <span class="comment">// lookup</span>
+    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {
+        <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ConstraintType::Lookup</span>, <span class="ident">lookup::CONSTRAINTS</span>);
+        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">lookup::constraints</span>(<span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">dummy_lookup_values</span>[<span class="number">0</span>], <span class="ident">domain</span>);
+        <span class="kw">let</span> <span class="ident">combined</span> <span class="op">=</span> <span class="ident">Expr::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>);
+        <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">combined</span>;
+    }
+
+    <span class="comment">// return the expression</span>
+    (<span class="ident">expr</span>, <span class="ident">powers_of_alpha</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">linearization_columns</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
@@ -599,13 +638,17 @@ This source file implements Plonk Protocol Index primitive.
     <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">chacha</span>: <span class="ident">bool</span>,
     <span class="ident">lookup_constraint_system</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-) -&gt; <span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+) -&gt; (<span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">alphas::Builder</span>) {
     <span class="kw">let</span> <span class="ident">evaluated_cols</span> <span class="op">=</span> <span class="ident">linearization_columns</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">lookup_constraint_system</span>);
 
-    <span class="ident">constraints_expr</span>(<span class="ident">domain</span>, <span class="ident">chacha</span>, <span class="ident">lookup_constraint_system</span>)
+    <span class="kw">let</span> (<span class="ident">expr</span>, <span class="ident">powers_of_alpha</span>) <span class="op">=</span> <span class="ident">constraints_expr</span>(<span class="ident">domain</span>, <span class="ident">chacha</span>, <span class="ident">lookup_constraint_system</span>);
+
+    <span class="kw">let</span> <span class="ident">linearization</span> <span class="op">=</span> <span class="ident">expr</span>
         .<span class="ident">linearize</span>(<span class="ident">evaluated_cols</span>)
         .<span class="ident">unwrap</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_polish</span>())
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">to_polish</span>());
+
+    (<span class="ident">linearization</span>, <span class="ident">powers_of_alpha</span>)
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
@@ -639,13 +682,17 @@ This source file implements Plonk Protocol Index primitive.
         <span class="comment">// TODO: Switch to commit_evaluations for all index polys</span>
         <span class="ident">VerifierIndex</span> {
             <span class="ident">domain</span>,
+            <span class="ident">max_poly_size</span>: <span class="self">self</span>.<span class="ident">max_poly_size</span>,
+            <span class="ident">max_quot_size</span>: <span class="self">self</span>.<span class="ident">max_quot_size</span>,
+            <span class="ident">powers_of_alpha</span>: <span class="self">self</span>.<span class="ident">powers_of_alpha</span>.<span class="ident">clone</span>(),
+            <span class="ident">srs</span>: <span class="ident">Arc::clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">srs</span>),
 
             <span class="ident">sigma_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">sigmam</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>)),
-            <span class="ident">generic_comm</span>: <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">genericm</span>, <span class="prelude-val">None</span>),
             <span class="ident">coefficients_comm</span>: <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
                 <span class="self">self</span>.<span class="ident">srs</span>
                     .<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">coefficients8</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>)
             }),
+            <span class="ident">generic_comm</span>: <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">genericm</span>, <span class="prelude-val">None</span>),
 
             <span class="ident">psm_comm</span>: <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_non_hiding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">psm</span>, <span class="prelude-val">None</span>),
 
@@ -666,22 +713,20 @@ This source file implements Plonk Protocol Index primitive.
                 <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">endomul_scalar8</span>,
                 <span class="prelude-val">None</span>,
             ),
+
             <span class="ident">chacha_comm</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">chacha8</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
                 <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">srs</span>.<span class="ident">commit_evaluations_non_hiding</span>(<span class="ident">domain</span>, <span class="kw-2">&amp;</span><span class="ident">c</span>[<span class="ident">i</span>], <span class="prelude-val">None</span>))
             }),
 
-            <span class="ident">lookup_index</span>,
-
+            <span class="ident">shift</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">shift</span>,
+            <span class="ident">zkpm</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">zkpm</span>.<span class="ident">clone</span>(),
             <span class="ident">w</span>: <span class="ident">zk_w3</span>(<span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>),
+            <span class="ident">endo</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">endo</span>,
+            <span class="ident">lookup_index</span>,
+            <span class="ident">linearization</span>: <span class="self">self</span>.<span class="ident">linearization</span>.<span class="ident">clone</span>(),
+
             <span class="ident">fr_sponge_params</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">fr_sponge_params</span>.<span class="ident">clone</span>(),
             <span class="ident">fq_sponge_params</span>: <span class="self">self</span>.<span class="ident">fq_sponge_params</span>.<span class="ident">clone</span>(),
-            <span class="ident">endo</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">endo</span>,
-            <span class="ident">max_poly_size</span>: <span class="self">self</span>.<span class="ident">max_poly_size</span>,
-            <span class="ident">max_quot_size</span>: <span class="self">self</span>.<span class="ident">max_quot_size</span>,
-            <span class="ident">zkpm</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">zkpm</span>.<span class="ident">clone</span>(),
-            <span class="ident">shift</span>: <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">shift</span>,
-            <span class="ident">linearization</span>: <span class="self">self</span>.<span class="ident">linearization</span>.<span class="ident">clone</span>(),
-            <span class="ident">srs</span>: <span class="ident">Arc::clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">srs</span>),
         }
     }
 
@@ -701,21 +746,26 @@ This source file implements Plonk Protocol Index primitive.
         }
         <span class="ident">cs</span>.<span class="ident">endo</span> <span class="op">=</span> <span class="ident">endo_q</span>;
 
-        <span class="kw">let</span> <span class="ident">linearization</span> <span class="op">=</span> <span class="ident">expr_linearization</span>(
+        <span class="comment">//</span>
+        <span class="comment">// Lookup</span>
+        <span class="comment">//</span>
+
+        <span class="kw">let</span> (<span class="ident">linearization</span>, <span class="ident">powers_of_alpha</span>) <span class="op">=</span> <span class="ident">expr_linearization</span>(
             <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>,
             <span class="ident">cs</span>.<span class="ident">chacha8</span>.<span class="ident">is_some</span>(),
             <span class="kw-2">&amp;</span><span class="ident">cs</span>.<span class="ident">lookup_constraint_system</span>,
         );
 
+        <span class="kw">let</span> <span class="ident">max_quot_size</span> <span class="op">=</span> <span class="ident">PERMUTS</span> <span class="op">*</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
+
         <span class="ident">Index</span> {
-            <span class="comment">// TODO(mimoo): re-order field like in the type def</span>
-            <span class="comment">// max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),</span>
-            <span class="ident">max_quot_size</span>: <span class="ident">PERMUTS</span> <span class="op">*</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>,
-            <span class="ident">fq_sponge_params</span>,
-            <span class="ident">max_poly_size</span>,
-            <span class="ident">srs</span>,
             <span class="ident">cs</span>,
             <span class="ident">linearization</span>,
+            <span class="ident">powers_of_alpha</span>,
+            <span class="ident">srs</span>,
+            <span class="ident">max_poly_size</span>,
+            <span class="ident">max_quot_size</span>,
+            <span class="ident">fq_sponge_params</span>,
         }
     }
 }
@@ -774,5 +824,5 @@ This source file implements Plonk Protocol Index primitive.
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (e789f3a3a 2022-02-11)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1e12aef3f 2022-02-13)" ></div>
 </body></html>
