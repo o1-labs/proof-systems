@@ -208,7 +208,7 @@ impl<F: FftField> LookupInfo<F> {
 
             kinds_map,
             kinds_tables,
-            kinds: kinds,
+            kinds,
             max_per_row,
             empty: vec![],
         }
@@ -235,6 +235,7 @@ impl<F: FftField> LookupInfo<F> {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
+    #[allow(clippy::type_complexity)]
     pub fn selector_polynomials_and_tables(
         &self,
         domain: &EvaluationDomains<F>,
@@ -387,6 +388,7 @@ impl GateType {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn lookup_kinds_map<F: Field>(
         locations_with_tables: Vec<(HashSet<(GateType, CurrOrNext)>, Option<GateLookupTable>)>,
     ) -> (
