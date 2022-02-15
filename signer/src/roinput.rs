@@ -48,7 +48,7 @@ use o1_utils::FieldHelpers;
 #[derive(Default)]
 pub struct ROInput {
     fields: Vec<BaseField>,
-    bits: BitVec<Lsb0, u8>,
+    bits: BitVec<u8>,
 }
 
 impl ROInput {
@@ -95,7 +95,7 @@ impl ROInput {
 
     /// Serialize random oracle input to bytes
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bits: BitVec<Lsb0, u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
+        let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
             acc.extend_from_bitslice(&fe.to_bytes().as_bits::<Lsb0>()[..BaseField::size_in_bits()]);
 
             acc
@@ -128,7 +128,7 @@ impl ROInput {
                 //
                 // Instead we must do
 
-                let mut bv = BitVec::<Lsb0, u8>::new();
+                let mut bv = BitVec::<u8>::new();
                 bv.resize(chunk.len(), false);
                 bv.clone_from_bitslice(chunk);
 
