@@ -369,7 +369,7 @@ impl GateType {
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
-    /// gate wires
+    /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -431,7 +431,6 @@ pub mod caml {
     use super::*;
     use crate::circuits::wires::caml::CamlWire;
     use itertools::Itertools;
-    use std::convert::TryInto;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
@@ -523,7 +522,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;

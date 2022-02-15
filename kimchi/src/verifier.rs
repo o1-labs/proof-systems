@@ -6,7 +6,6 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::{GateType, LookupsUsed},
-        gates::generic::{CONSTANT_COEFF, MUL_COEFF},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
         wires::*,
@@ -452,21 +451,22 @@ where
                 )];
 
                 // generic
-                commitments.push(&index.coefficients_comm[MUL_COEFF]);
-                commitments.extend(
-                    index
-                        .coefficients_comm
-                        .iter()
-                        .take(GENERICS)
-                        .collect::<Vec<_>>(),
-                );
-                let alphas = all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
-                let (generic_scalars, _) =
-                    &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
-                scalars.extend(generic_scalars);
+                {
+                    let mut alphas =
+                        all_alphas.get_alphas(ConstraintType::Gate, generic::CONSTRAINTS);
+                    let generic_scalars = &ConstraintSystem::gnrc_scalars(
+                        &mut alphas,
+                        &evals[0].w,
+                        evals[0].generic_selector,
+                    );
 
-                commitments.push(&index.coefficients_comm[CONSTANT_COEFF]);
-                scalars.push(evals[0].generic_selector);
+                    let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
+
+                    assert_eq!(generic_scalars.len(), generic_com.len());
+
+                    scalars.extend(generic_scalars);
+                    commitments.extend(generic_com);
+                }
 
                 // other gates are implemented using the expression framework
                 {
