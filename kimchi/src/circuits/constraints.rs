@@ -321,7 +321,7 @@ pub enum GateError {
 
 impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
-        gates: &Vec<CircuitGate<F>>,
+        gates: &[CircuitGate<F>],
         lookup_tables: Vec<Vec<Vec<F>>>,
         domain: &EvaluationDomains<F>,
     ) -> Option<Self> {
