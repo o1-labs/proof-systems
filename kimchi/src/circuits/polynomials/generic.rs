@@ -158,36 +158,6 @@ impl<F: FftField> CircuitGate<F> {
         };
         Self::create_generic(wires, coeffs)
     }
-
-    /// verifies that the generic gate constraints are solved by the witness
-    pub fn verify_generic(&self, row: usize, witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
-        // assignments
-        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
-
-        // constants
-        let zero = F::zero();
-
-        // check if it's the correct gate
-        ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
-
-        let check_single = |coeffs_offset, witness_offset| {
-            let sum = self.coeffs[coeffs_offset + 0] * this[witness_offset + 0]
-                + self.coeffs[coeffs_offset + 1] * this[witness_offset + 1]
-                + self.coeffs[coeffs_offset + 2] * this[witness_offset + 2];
-            let mul = self.coeffs[coeffs_offset + 3]
-                * this[witness_offset + 0]
-                * this[witness_offset + 1];
-            ensure_eq!(
-                zero,
-                sum + mul + self.coeffs[coeffs_offset + 4],
-                "generic: incorrect gate"
-            );
-            Ok(())
-        };
-
-        check_single(0, 0)?;
-        check_single(GENERIC_COEFFS, GENERIC_REGISTERS)
-    }
 }
 
 // -------------------------------------------------
@@ -328,44 +298,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
         res
     }
-
-    /// Function to verify the generic polynomials with a witness.
-    pub fn verify_generic(
-        &self,
-        witness: &[DensePolynomial<F>; COLUMNS],
-        public: &DensePolynomial<F>,
-    ) -> bool {
-        let coefficientsm: [_; COLUMNS] =
-            array_init(|i| self.coefficients8[i].clone().interpolate());
-
-        let generic_gate = |coeff_offset, register_offset| {
-            // addition (of left, right, output wires)
-            let mut ff = &coefficientsm[coeff_offset + 0] * &witness[register_offset + 0];
-            ff += &(&coefficientsm[coeff_offset + 1] * &witness[register_offset + 1]);
-            ff += &(&coefficientsm[coeff_offset + 2] * &witness[register_offset + 2]);
-
-            // multiplication
-            ff += &(&(&witness[register_offset + 0] * &witness[register_offset + 1])
-                * &coefficientsm[coeff_offset + 3]);
-
-            // constant
-            &ff + &coefficientsm[coeff_offset + 4]
-
-            // note: no need to use the powers of alpha or the selector poly
-        };
-
-        let mut res = generic_gate(0, 0);
-        res += &generic_gate(GENERIC_COEFFS, GENERIC_REGISTERS);
-
-        // public inputs
-        res += public;
-
-        // verify that it is divisible by Z_H
-        match res.divide_by_vanishing_poly(self.domain.d1) {
-            Some((_quotient, rest)) => rest.is_zero(),
-            None => false,
-        }
-    }
 }
 
 // -------------------------------------------------
@@ -375,7 +307,86 @@ pub mod testing {
     use crate::circuits::wires::Wire;
     use itertools::iterate;
 
-    /// handy function to create a generic circuit
+    impl<F: FftField> CircuitGate<F> {
+        /// verifies that the generic gate constraints are solved by the witness
+        pub fn verify_generic(
+            &self,
+            row: usize,
+            witness: &[Vec<F>; COLUMNS],
+        ) -> Result<(), String> {
+            // assignments
+            let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+
+            // constants
+            let zero = F::zero();
+
+            // check if it's the correct gate
+            ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
+
+            let check_single = |coeffs_offset, witness_offset| {
+                let sum = self.coeffs[coeffs_offset + 0] * this[witness_offset + 0]
+                    + self.coeffs[coeffs_offset + 1] * this[witness_offset + 1]
+                    + self.coeffs[coeffs_offset + 2] * this[witness_offset + 2];
+                let mul = self.coeffs[coeffs_offset + 3]
+                    * this[witness_offset + 0]
+                    * this[witness_offset + 1];
+                ensure_eq!(
+                    zero,
+                    sum + mul + self.coeffs[coeffs_offset + 4],
+                    "generic: incorrect gate"
+                );
+                Ok(())
+            };
+
+            check_single(0, 0)?;
+            check_single(GENERIC_COEFFS, GENERIC_REGISTERS)
+        }
+    }
+
+    impl<F: FftField + SquareRootField> ConstraintSystem<F> {
+        /// Function to verify the generic polynomials with a witness.
+        pub fn verify_generic(
+            &self,
+            witness: &[DensePolynomial<F>; COLUMNS],
+            public: &DensePolynomial<F>,
+        ) -> bool {
+            let coefficientsm: [_; COLUMNS] =
+                array_init(|i| self.coefficients8[i].clone().interpolate());
+
+            let generic_gate = |coeff_offset, register_offset| {
+                // addition (of left, right, output wires)
+                let mut ff = &coefficientsm[coeff_offset + 0] * &witness[register_offset + 0];
+                ff += &(&coefficientsm[coeff_offset + 1] * &witness[register_offset + 1]);
+                ff += &(&coefficientsm[coeff_offset + 2] * &witness[register_offset + 2]);
+
+                // multiplication
+                ff += &(&(&witness[register_offset + 0] * &witness[register_offset + 1])
+                    * &coefficientsm[coeff_offset + 3]);
+
+                // constant
+                &ff + &coefficientsm[coeff_offset + 4]
+
+                // note: skip alpha power, as we're testing for completeness
+            };
+
+            let mut res = generic_gate(0, 0);
+            res += &generic_gate(GENERIC_COEFFS, GENERIC_REGISTERS);
+
+            // public inputs
+            res += public;
+
+            // selector poly
+            res = &res * &self.genericm;
+
+            // verify that it is divisible by Z_H
+            match res.divide_by_vanishing_poly(self.domain.d1) {
+                Some((_quotient, rest)) => rest.is_zero(),
+                None => false,
+            }
+        }
+    }
+
+    /// function to create a generic circuit
     pub fn create_circuit<F: FftField>(start_row: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
@@ -417,7 +428,7 @@ pub mod testing {
         gates
     }
 
-    // handy function to fill in a witness created via [create_circuit]
+    // function to fill in a witness created via [create_circuit]
     pub fn fill_in_witness<F: FftField>(start_row: usize, witness: &mut [Vec<F>; COLUMNS]) {
         // fill witness
         let mut witness_row = iterate(start_row, |&i| i + 1);
@@ -482,6 +493,7 @@ mod tests {
 
         // make sure we've done that correctly
         let public = DensePolynomial::zero();
+        assert!(cs.verify_generic(&witness, &public));
 
         // random zeta
         let rng = &mut rand::rngs::StdRng::from_seed([0; 32]);
