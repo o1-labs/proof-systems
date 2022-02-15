@@ -159,6 +159,9 @@ pub struct LookupInfo<F> {
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// constraint (given as an index into `kinds`) that should be applied there, if any.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
+    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
+    /// table that is used by the gate, if any.
+    pub kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
@@ -179,11 +182,17 @@ pub enum LookupsUsed {
     Joint,
 }
 
+/// Enumerates the different 'fixed' lookup tables used by individual gates
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum GateLookupTable {
+    Xor,
+}
+
 impl<F: FftField> LookupInfo<F> {
     /// Create the default lookup configuration.
     pub fn create() -> Self {
-        let (kinds, kinds_set): (Vec<_>, Vec<_>) =
-            GateType::lookup_kinds::<F>().into_iter().unzip();
+        let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
+        let (kinds_map, kinds_tables) = GateType::lookup_kinds_map::<F>(locations_with_tables);
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
@@ -191,7 +200,8 @@ impl<F: FftField> LookupInfo<F> {
                     .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len()))
             }),
 
-            kinds_map: GateType::lookup_kinds_map::<F>(kinds_set),
+            kinds_map,
+            kinds_tables,
             kinds: kinds,
             max_per_row,
             empty: vec![],
@@ -275,7 +285,10 @@ impl GateType {
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     #[allow(clippy::type_complexity)]
-    pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
+    pub fn lookup_kinds<F: Field>() -> (
+        Vec<Vec<JointLookup<F>>>,
+        Vec<(HashSet<(GateType, CurrOrNext)>, Option<GateLookupTable>)>,
+    ) {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
             column,
@@ -336,26 +349,51 @@ impl GateType {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
-        vec![
-            (chacha_pattern, chacha_where),
-            (chacha_final_pattern, chacha_final_where),
-        ]
+        let lookups = [
+            (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
+            (
+                chacha_final_pattern,
+                chacha_final_where,
+                Some(GateLookupTable::Xor),
+            ),
+        ];
+
+        // Convert from an array of tuples to a tuple of vectors
+        {
+            let mut patterns = Vec::with_capacity(lookups.len());
+            let mut locations_with_tables = Vec::with_capacity(lookups.len());
+            for (pattern, location, table) in lookups {
+                patterns.push(pattern);
+                locations_with_tables.push((location, table));
+            }
+            (patterns, locations_with_tables)
+        }
     }
 
     pub fn lookup_kinds_map<F: Field>(
-        lookup_kinds: Vec<HashSet<(GateType, CurrOrNext)>>,
-    ) -> HashMap<(GateType, CurrOrNext), usize> {
-        let mut res = HashMap::new();
-        for (i, locs) in lookup_kinds.into_iter().enumerate() {
-            for (g, r) in locs {
-                if let std::collections::hash_map::Entry::Vacant(e) = res.entry((g, r)) {
+        locations_with_tables: Vec<(HashSet<(GateType, CurrOrNext)>, Option<GateLookupTable>)>,
+    ) -> (
+        HashMap<(GateType, CurrOrNext), usize>,
+        HashMap<(GateType, CurrOrNext), GateLookupTable>,
+    ) {
+        let mut index_map = HashMap::with_capacity(locations_with_tables.len());
+        let mut table_map = HashMap::with_capacity(locations_with_tables.len());
+        for (i, (locs, table_kind)) in locations_with_tables.into_iter().enumerate() {
+            for location in locs {
+                if let std::collections::hash_map::Entry::Vacant(e) = index_map.entry(location) {
                     e.insert(i);
                 } else {
                     panic!("Multiple lookup patterns asserted on same row.")
                 }
+                if let Some(table_kind) = table_kind {
+                    if let std::collections::hash_map::Entry::Vacant(e) = table_map.entry(location)
+                    {
+                        e.insert(table_kind);
+                    }
+                }
             }
         }
-        res
+        (index_map, table_map)
     }
 }
 
