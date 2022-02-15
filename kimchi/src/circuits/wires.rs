@@ -5,9 +5,6 @@ use array_init::array_init;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
-/// Number of generic registers
-pub const GENERICS: usize = 3;
-
 /// Number of registers
 pub const COLUMNS: usize = 15;
 

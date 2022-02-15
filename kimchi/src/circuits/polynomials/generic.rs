@@ -1,12 +1,24 @@
-//! This module implements Plonk generic constraint gate primitive.
+//! This module implements the double generic gate,
+//! which contains two generic gates.
+//!
+//! A generic gate is simply the 2-fan in gate specified in the
+//! vanilla PLONK protocol that allows us to do:
+//!
+//! * addition of two registers (into an output register)
+//! * or multiplication of two registers
+//! * equality of a register with a constant
+//!
+//! In each cases, registers can also be scaled by a constant.
+//!
 //! The layout of the gate is the following:
 //!
 //! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
 //! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
 //! | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |    |
 //!
-//! where l1, r1, and o1 (resp. l2, r2, o2) are the
-//! left, right, and output wires of the first (resp. second) generic gate.
+//! where l1, r1, and o1 (resp. l2, r2, o2)
+//! are the left, right, and output registers
+//! of the first (resp. second) generic gate.
 //!
 //! For the selector:
 //!
@@ -31,7 +43,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
-    wires::{GateWires, GENERICS},
+    wires::GateWires,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
@@ -41,12 +53,17 @@ use rayon::prelude::*;
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: usize = 2;
 
-/// Offset for the second generic gate
-pub const GENERICS_COEFFS: usize = GENERICS + 1 /* mul */ + 1 /* cst */;
+/// Number of generic of registers by a single generic gate
+pub const GENERIC_REGISTERS: usize = 3;
+
+/// Number of coefficients used by a single generic gate
+/// Three are used for the registers, one for the multiplication,
+/// and one for the constant.
+pub const GENERIC_COEFFS: usize = GENERIC_REGISTERS + 1 /* mul */ + 1 /* cst */;
 
 /// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [create_generic_easy] function.
-pub enum GenericGate<F> {
+/// This type is useful to create a generic gate via the [create_generic_gadget] function.
+pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
         /// Optional coefficient that can be multiplied with the left operand.
@@ -70,8 +87,8 @@ pub enum GenericGate<F> {
 }
 
 impl<F: FftField> CircuitGate<F> {
-    /// This allows you to create two generic gates that will fit in one row, check [create_generic_easy] for a better to way to create these gates.
-    pub fn create_generic(wires: GateWires, c: [F; GENERICS * 2 + 2 + 2]) -> Self {
+    /// This allows you to create two generic gates that will fit in one row, check [create_generic_gadget] for a better to way to create these gates.
+    pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
             typ: GateType::Generic,
             wires,
@@ -80,15 +97,15 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// This allows you to create two generic gates by passing the desired
-    /// `gate1` and `gate2` as two [GenericGate].
-    pub fn create_generic_easy(
+    /// `gate1` and `gate2` as two [GenericGateSpec].
+    pub fn create_generic_gadget(
         wires: GateWires,
-        gate1: GenericGate<F>,
-        gate2: Option<GenericGate<F>>,
+        gate1: GenericGateSpec<F>,
+        gate2: Option<GenericGateSpec<F>>,
     ) -> Self {
-        let mut coeffs = [F::zero(); GENERICS * 2 + 2 + 2];
+        let mut coeffs = [F::zero(); GENERIC_COEFFS * 2];
         match gate1 {
-            GenericGate::Add {
+            GenericGateSpec::Add {
                 left_coeff,
                 right_coeff,
                 output_coeff,
@@ -97,23 +114,23 @@ impl<F: FftField> CircuitGate<F> {
                 coeffs[1] = right_coeff.unwrap_or_else(F::one);
                 coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
             }
-            GenericGate::Mul {
+            GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             } => {
                 coeffs[2] = output_coeff.unwrap_or_else(|| -F::one());
                 coeffs[3] = mul_coeff.unwrap_or_else(F::one);
             }
-            GenericGate::Const(cst) => {
+            GenericGateSpec::Const(cst) => {
                 coeffs[0] = F::one();
                 coeffs[4] = -cst;
             }
-            GenericGate::Pub => {
+            GenericGateSpec::Pub => {
                 coeffs[0] = F::one();
             }
         };
         match gate2 {
-            Some(GenericGate::Add {
+            Some(GenericGateSpec::Add {
                 left_coeff,
                 right_coeff,
                 output_coeff,
@@ -122,18 +139,18 @@ impl<F: FftField> CircuitGate<F> {
                 coeffs[6] = right_coeff.unwrap_or_else(F::one);
                 coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
             }
-            Some(GenericGate::Mul {
+            Some(GenericGateSpec::Mul {
                 output_coeff,
                 mul_coeff,
             }) => {
                 coeffs[7] = output_coeff.unwrap_or_else(|| -F::one());
                 coeffs[8] = mul_coeff.unwrap_or_else(F::one);
             }
-            Some(GenericGate::Const(cst)) => {
+            Some(GenericGateSpec::Const(cst)) => {
                 coeffs[5] = F::one();
                 coeffs[9] = -cst;
             }
-            Some(GenericGate::Pub) => {
+            Some(GenericGateSpec::Pub) => {
                 coeffs[5] = F::one();
                 unimplemented!();
             }
@@ -153,37 +170,23 @@ impl<F: FftField> CircuitGate<F> {
         // check if it's the correct gate
         ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
 
-        // toggling each column x[i] depending on the selectors c[i]
-        let sum1 = (0..GENERICS)
-            .map(|i| self.coeffs[i] * this[i])
-            .fold(zero, |x, y| x + y);
+        let check_single = |coeffs_offset, witness_offset| {
+            let sum = self.coeffs[coeffs_offset + 0] * this[witness_offset + 0]
+                + self.coeffs[coeffs_offset + 1] * this[witness_offset + 1]
+                + self.coeffs[coeffs_offset + 2] * this[witness_offset + 2];
+            let mul = self.coeffs[coeffs_offset + 3]
+                * this[witness_offset + 0]
+                * this[witness_offset + 1];
+            ensure_eq!(
+                zero,
+                sum + mul + self.coeffs[coeffs_offset + 4],
+                "generic: incorrect gate"
+            );
+            Ok(())
+        };
 
-        let sum2 = (0..GENERICS)
-            .map(|i| self.coeffs[i + GENERICS_COEFFS] * this[i + GENERICS])
-            .fold(zero, |x, y| x + y);
-
-        // multiplication
-        let mul1 = self.coeffs[3] * this[0] * this[1];
-        let mul2 = self.coeffs[GENERICS_COEFFS + 3] * this[3] * this[4];
-
-        ensure_eq!(
-            zero,
-            sum1 + mul1 + self.coeffs[4],
-            "generic: incorrect first gate"
-        );
-
-        ensure_eq!(
-            zero,
-            sum2 + mul2 + self.coeffs[GENERICS_COEFFS + 4],
-            "generic: incorrect second gate"
-        );
-
-        // TODO(mimoo): additional checks:
-        // - if both left and right wire are set, then output must be set
-        // - if constant wire is set, then left wire must be set
-
-        // all good
-        Ok(())
+        check_single(0, 0)?;
+        check_single(GENERIC_COEFFS, GENERIC_REGISTERS)
     }
 }
 
@@ -196,89 +199,64 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         mut alphas: impl Iterator<Item = F>,
         witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
-        // init
-        let mut res1 = Evaluations::from_vec_and_domain(
-            vec![F::zero(); self.domain.d4.size as usize],
-            self.domain.d4,
-        );
-        let mut res2 = Evaluations::from_vec_and_domain(
-            vec![F::zero(); self.domain.d4.size as usize],
-            self.domain.d4,
-        );
+        let generic_gate = |alpha_pow, coeff_offset, register_offset| {
+            let mut res = Evaluations::from_vec_and_domain(
+                vec![F::zero(); self.domain.d4.size as usize],
+                self.domain.d4,
+            );
 
-        let mut alpha1 = self.l04.clone();
-        let mut alpha2 = self.l04.clone();
+            // addition
+            for (witness_d4, selector_d8) in witness_cols_d4
+                .iter()
+                .skip(register_offset)
+                .zip(self.coefficients8.iter().skip(coeff_offset))
+                .take(GENERIC_REGISTERS)
+            {
+                res.evals
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
+            }
 
-        let alpha = alphas
-            .next()
-            .expect("not enough powers of alpha for the generic gate");
-        alpha1.evals.iter_mut().for_each(|x| *x *= &alpha);
-
-        let alpha = alphas
-            .next()
-            .expect("not enough powers of alpha for the generic gate");
-        alpha2.evals.iter_mut().for_each(|x| *x *= &alpha);
-
-        // addition: L * selector_L + R * selector_R + O * selector_O
-        for (witness_d4, selector_d8) in witness_cols_d4
-            .iter()
-            .zip(self.coefficients8.iter())
-            .take(GENERICS)
-        {
-            res1.evals
+            // multiplication
+            let mut mul =
+                &witness_cols_d4[register_offset + 0] * &witness_cols_d4[register_offset + 1];
+            let mul_selector_d8 = &self.coefficients8[coeff_offset + 3];
+            mul.evals
                 .par_iter_mut()
                 .enumerate()
-                .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i])
-        }
+                .for_each(|(i, eval)| *eval *= mul_selector_d8[2 * i]);
+            res += &mul;
 
-        for (w, coeff) in witness_cols_d4
-            .iter()
-            .skip(GENERICS)
-            .zip(self.coefficients8.iter().skip(GENERICS_COEFFS))
-            .take(GENERICS)
-        {
-            res2.evals
+            // constant
+            let constant_d8 = &self.coefficients8[coeff_offset + 4];
+            res.evals
                 .par_iter_mut()
                 .enumerate()
-                .for_each(|(i, e)| *e += w.evals[i] * coeff[2 * i])
-        }
+                .for_each(|(i, e)| *e += constant_d8[2 * i]);
 
-        // + multiplication: left * right * selector
-        let mut mul1 = &witness_cols_d4[0] * &witness_cols_d4[1];
-        let mul_selector_d8 = &self.coefficients8[3];
-        mul1.evals
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, eval)| *eval *= mul_selector_d8[2 * i]);
-        res1 += &mul1;
+            // alpha
+            let alpha_pow = {
+                let mut res = self.l04.clone();
+                res.evals.par_iter_mut().for_each(|x| *x *= &alpha_pow);
+                res
+            };
 
-        let mut mul2 = &witness_cols_d4[3] * &witness_cols_d4[4];
-        let mul_selector_d8 = &self.coefficients8[GENERICS_COEFFS + 3];
-        mul2.evals
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, eval)| *eval *= mul_selector_d8[2 * i]);
-        res2 += &mul2;
+            &res * &alpha_pow
+        };
 
-        // + constant
-        let constant_d8 = &self.coefficients8[4];
-        res1.evals
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, e)| *e += constant_d8[2 * i]);
+        let alpha_pow1 = alphas
+            .next()
+            .expect("not enough powers of alpha for the generic gate");
+        let mut res = generic_gate(alpha_pow1, 0, 0);
 
-        let constant_d8 = &self.coefficients8[GENERICS_COEFFS + 4];
-        res2.evals
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, e)| *e += constant_d8[2 * i]);
+        let alpha_pow2 = alphas
+            .next()
+            .expect("not enough powers of alpha for the generic gate");
+        res += &generic_gate(alpha_pow2, GENERIC_COEFFS, GENERIC_REGISTERS);
 
-        // * generic selector
-        let mut double_gate = &(&res1 * &alpha1) + &(&res2 * &alpha2);
-        double_gate *= &self.generic4;
-
-        // return the result
-        double_gate
+        // generic selector
+        &res * &self.generic4
     }
 
     /// produces
@@ -292,32 +270,32 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         generic_zeta: F,
     ) -> Vec<F> {
         // setup
-        let alpha1 = alphas
-            .next()
-            .expect("not enough alpha powers for generic gate");
-        let alpha2 = alphas
-            .next()
-            .expect("not enough alpha powers for generic gate");
         let mut res = vec![];
 
-        // pre-compute
-        let alpha1_generic = alpha1 * generic_zeta;
-        let alpha2_generic = alpha2 * generic_zeta;
+        let mut generic_gate = |alpha_pow, register_offset| {
+            let alpha_generic = alpha_pow * generic_zeta;
 
-        // addition:
-        // - l(z) * generic(z) * alpha
-        // - r(z) * generic(z) * alpha
-        // - o(z) * generic(z) * alpha
-        res.extend((0..GENERICS).map(|i| alpha1_generic * w_zeta[i]));
-        // multiplication: l(z) * r(z) * generic(z) * alpha
-        res.push(alpha1_generic * w_zeta[0] * w_zeta[1]);
-        // constant
-        res.push(alpha1_generic);
+            // addition
+            res.push(alpha_generic * w_zeta[register_offset + 0]);
+            res.push(alpha_generic * w_zeta[register_offset + 1]);
+            res.push(alpha_generic * w_zeta[register_offset + 2]);
 
-        // same for the second generic gate
-        res.extend((GENERICS..(GENERICS * 2)).map(|i| alpha2_generic * w_zeta[i]));
-        res.push(alpha2_generic * w_zeta[3] * w_zeta[4]);
-        res.push(alpha2_generic);
+            // multplication
+            res.push(alpha_generic * w_zeta[register_offset + 0] * w_zeta[register_offset + 1]);
+
+            // constant
+            res.push(alpha_generic);
+        };
+
+        let alpha_pow1 = alphas
+            .next()
+            .expect("not enough alpha powers for generic gate");
+        generic_gate(alpha_pow1, 0);
+
+        let alpha_pow2 = alphas
+            .next()
+            .expect("not enough alpha powers for generic gate");
+        generic_gate(alpha_pow2, GENERIC_REGISTERS);
 
         res
     }
@@ -357,41 +335,36 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         witness: &[DensePolynomial<F>; COLUMNS],
         public: &DensePolynomial<F>,
     ) -> bool {
-        // addition (of left, right, output wires)
         let coefficientsm: [_; COLUMNS] =
             array_init(|i| self.coefficients8[i].clone().interpolate());
-        let mut ff = DensePolynomial::zero();
-        for (w, q) in witness.iter().zip(&coefficientsm).take(GENERICS) {
-            ff += &(w * q);
-        }
-        for (w, q) in witness
-            .iter()
-            .skip(GENERICS)
-            .zip(coefficientsm.iter().skip(GENERICS_COEFFS))
-            .take(GENERICS)
-        {
-            ff += &(w * q);
-        }
 
-        // multiplication
-        ff += &(&(&witness[0] * &witness[1]) * &coefficientsm[3]);
-        ff += &(&(&witness[3] * &witness[4]) * &coefficientsm[GENERICS_COEFFS + 3]);
+        let generic_gate = |coeff_offset, register_offset| {
+            // addition (of left, right, output wires)
+            let mut ff = &coefficientsm[coeff_offset + 0] * &witness[register_offset + 0];
+            ff += &(&coefficientsm[coeff_offset + 1] * &witness[register_offset + 1]);
+            ff += &(&coefficientsm[coeff_offset + 2] * &witness[register_offset + 2]);
 
-        // constant
-        ff += &coefficientsm[4];
-        ff += &coefficientsm[GENERICS_COEFFS + 4];
+            // multiplication
+            ff += &(&(&witness[register_offset + 0] * &witness[register_offset + 1])
+                * &coefficientsm[coeff_offset + 3]);
 
-        // note: no need to use the powers of alpha or the selector poly
+            // constant
+            &ff + &coefficientsm[coeff_offset + 4]
+
+            // note: no need to use the powers of alpha or the selector poly
+        };
+
+        let mut res = generic_gate(0, 0);
+        res += &generic_gate(GENERIC_COEFFS, GENERIC_REGISTERS);
 
         // public inputs
-        ff += public;
+        res += public;
 
         // verify that it is divisible by Z_H
-        let (_t, res) = match ff.divide_by_vanishing_poly(self.domain.d1) {
-            Some(x) => x,
-            None => return false,
-        };
-        res.is_zero()
+        match res.divide_by_vanishing_poly(self.domain.d1) {
+            Some((_quotient, rest)) => rest.is_zero(),
+            None => false,
+        }
     }
 }
 
@@ -413,24 +386,32 @@ pub mod testing {
         // add and mul
         for _ in 0..10 {
             let r = gates_row.next().unwrap();
-            let g1 = GenericGate::Add {
+            let g1 = GenericGateSpec::Add {
                 left_coeff: None,
                 right_coeff: Some(3u32.into()),
                 output_coeff: None,
             };
-            let g2 = GenericGate::Mul {
+            let g2 = GenericGateSpec::Mul {
                 output_coeff: None,
                 mul_coeff: Some(2u32.into()),
             };
-            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, Some(g2)));
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                g1,
+                Some(g2),
+            ));
         }
 
         // two consts
         for _ in 0..10 {
             let r = gates_row.next().unwrap();
-            let g1 = GenericGate::Const(3u32.into());
-            let g2 = GenericGate::Const(5u32.into());
-            gates.push(CircuitGate::create_generic_easy(Wire::new(r), g1, Some(g2)));
+            let g1 = GenericGateSpec::Const(3u32.into());
+            let g2 = GenericGateSpec::Const(5u32.into());
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                g1,
+                Some(g2),
+            ));
         }
 
         gates
@@ -501,7 +482,6 @@ mod tests {
 
         // make sure we've done that correctly
         let public = DensePolynomial::zero();
-        //        assert!(cs.verify_generic(&witness, &public));
 
         // random zeta
         let rng = &mut rand::rngs::StdRng::from_seed([0; 32]);

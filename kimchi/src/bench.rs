@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::CircuitGate,
-        polynomials::generic::GenericGate,
+        polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
     index::{Index, VerifierIndex},
@@ -50,9 +50,9 @@ impl BenchmarkCtx {
         #[allow(clippy::explicit_counter_loop)]
         for row in 0..num_gates {
             let wires = Wire::new(row);
-            gates.push(CircuitGate::create_generic_easy(
+            gates.push(CircuitGate::create_generic_gadget(
                 wires,
-                GenericGate::Const(1u32.into()),
+                GenericGateSpec::Const(1u32.into()),
                 None,
             ));
         }
