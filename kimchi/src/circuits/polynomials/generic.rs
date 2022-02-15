@@ -323,13 +323,13 @@ pub mod testing {
             // check if it's the correct gate
             ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
 
-            let check_single = |coeffs_offset, witness_offset| {
-                let sum = self.coeffs[coeffs_offset + 0] * this[witness_offset + 0]
-                    + self.coeffs[coeffs_offset + 1] * this[witness_offset + 1]
-                    + self.coeffs[coeffs_offset + 2] * this[witness_offset + 2];
+            let check_single = |coeffs_offset, register_offset| {
+                let sum = self.coeffs[coeffs_offset + 0] * this[register_offset + 0]
+                    + self.coeffs[coeffs_offset + 1] * this[register_offset + 1]
+                    + self.coeffs[coeffs_offset + 2] * this[register_offset + 2];
                 let mul = self.coeffs[coeffs_offset + 3]
-                    * this[witness_offset + 0]
-                    * this[witness_offset + 1];
+                    * this[register_offset + 0]
+                    * this[register_offset + 1];
                 ensure_eq!(
                     zero,
                     sum + mul + self.coeffs[coeffs_offset + 4],
