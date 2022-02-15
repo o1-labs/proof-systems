@@ -577,7 +577,6 @@
 <span id="572">572</span>
 <span id="573">573</span>
 <span id="574">574</span>
-<span id="575">575</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">domains::EvaluationDomains</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
@@ -949,7 +948,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
     <span class="doccomment">/// type of the gate</span>
     <span class="kw">pub</span> <span class="ident">typ</span>: <span class="ident">GateType</span>,
-    <span class="doccomment">/// gate wires</span>
+    <span class="doccomment">/// gate wiring (for each cell, what cell it is wired to)</span>
     <span class="kw">pub</span> <span class="ident">wires</span>: <span class="ident">GateWires</span>,
     <span class="doccomment">/// public selector polynomials that can used as handy coefficients in gates</span>
     <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
@@ -1011,7 +1010,6 @@
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::wires::caml::CamlWire</span>;
     <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
-    <span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
 
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">ocaml::IntoValue</span>, <span class="ident">ocaml::FromValue</span>, <span class="ident">ocaml_gen::Struct</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CamlCircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -1103,7 +1101,7 @@
 <span class="comment">// Tests</span>
 <span class="comment">//</span>
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;testing&quot;</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span> <span class="kw">as</span> <span class="kw">_</span>;

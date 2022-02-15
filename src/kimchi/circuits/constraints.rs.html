@@ -726,6 +726,7 @@
 <span id="721">721</span>
 <span id="722">722</span>
 <span id="723">723</span>
+<span id="724">724</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
@@ -1160,7 +1161,16 @@
         <span class="comment">// generic constraint polynomials</span>
 
         <span class="kw">let</span> <span class="ident">genericm</span> <span class="op">=</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-            <span class="ident">gates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">gate</span>.<span class="ident">generic</span>()).<span class="ident">collect</span>(),
+            <span class="ident">gates</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
+                    <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">gate</span>.<span class="ident">typ</span>, <span class="ident">GateType::Generic</span>) {
+                        <span class="ident">F::one</span>()
+                    } <span class="kw">else</span> {
+                        <span class="ident">F::zero</span>()
+                    }
+                })
+                .<span class="ident">collect</span>(),
             <span class="ident">domain</span>.<span class="ident">d1</span>,
         )
         .<span class="ident">interpolate</span>();
@@ -1197,20 +1207,12 @@
         };
 
         <span class="kw">let</span> <span class="ident">coefficientsm</span>: [<span class="kw">_</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(
-                <span class="ident">gates</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="ident">gate</span>.<span class="ident">coeffs</span>.<span class="ident">len</span>() {
-                            <span class="ident">gate</span>.<span class="ident">coeffs</span>[<span class="ident">i</span>]
-                        } <span class="kw">else</span> {
-                            <span class="ident">F::zero</span>()
-                        }
-                    })
-                    .<span class="ident">collect</span>(),
-                <span class="ident">domain</span>.<span class="ident">d1</span>,
-            )
-            .<span class="ident">interpolate</span>()
+            <span class="kw">let</span> <span class="ident">padded</span> <span class="op">=</span> <span class="ident">gates</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">gate</span><span class="op">|</span> <span class="ident">gate</span>.<span class="ident">coeffs</span>.<span class="ident">get</span>(<span class="ident">i</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or_else</span>(<span class="ident">F::zero</span>))
+                .<span class="ident">collect</span>();
+            <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="ident">E::from_vec_and_domain</span>(<span class="ident">padded</span>, <span class="ident">domain</span>.<span class="ident">d1</span>);
+            <span class="ident">eval</span>.<span class="ident">interpolate</span>()
         });
         <span class="comment">// TODO: This doesn&#39;t need to be degree 8 but that would require some changes in expr</span>
         <span class="kw">let</span> <span class="ident">coefficients8</span> <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">coefficientsm</span>[<span class="ident">i</span>].<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">domain</span>.<span class="ident">d8</span>));

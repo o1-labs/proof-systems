@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["CONSTANT_COEFF",""],["MUL_COEFF",""]]});

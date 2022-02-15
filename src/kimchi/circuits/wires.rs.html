@@ -106,18 +106,12 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::bytes</span>::{<span class="ident">FromBytes</span>, <span class="ident">ToBytes</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="prelude-ty">Result</span> <span class="kw">as</span> <span class="ident">IoResult</span>, <span class="ident">Write</span>};
-
-<span class="doccomment">/// Number of generic registers</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">GENERICS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
 
 <span class="doccomment">/// Number of registers</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">COLUMNS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">15</span>;
