@@ -74,7 +74,7 @@ impl<F: Field> Alphas<F> {
             ty
         };
 
-        if self.mapping.insert(ty, range.clone()).is_some() {
+        if self.mapping.insert(ty, range).is_some() {
             panic!("cannot re-register {:?}", ty);
         }
         self.next_power = new_power;
