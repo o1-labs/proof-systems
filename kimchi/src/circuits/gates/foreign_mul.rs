@@ -54,15 +54,26 @@
 //    degree-4 constraints of the form x*(x - 1)*(x - 2)*(x - 3)
 
 use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::expr;
+use crate::circuits::expr::{self, Column};
 use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::polynomials::foreign_mul;
+use crate::circuits::polynomials;
 use crate::circuits::scalars::ProofEvaluations;
 use crate::circuits::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
 use array_init::array_init;
+use rand::prelude::StdRng;
+use rand::SeedableRng;
 
 pub const CIRCUIT_GATE_COUNT: usize = 3;
+
+fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] {
+    match typ {
+        GateType::ForeignMul0 => [F::one(), F::zero(), F::zero()],
+        GateType::ForeignMul1 => [F::zero(), F::one(), F::zero()],
+        GateType::ForeignMul2 => [F::zero(), F::zero(), F::one()],
+        _ => [F::zero(); CIRCUIT_GATE_COUNT],
+    }
+}
 
 impl<F: FftField> CircuitGate<F> {
     /// Create foreign multiplication gate
@@ -119,45 +130,66 @@ impl<F: FftField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        let this: [F; COLUMNS] = array_init(|i| witness[i][row]); // change to curr
+        /* Witness row shorthands */
+        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
         let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
 
-        let evals: [ProofEvaluations<F>; 2] = [
-            ProofEvaluations::dummy_with_witness_evaluations(this),
-            ProofEvaluations::dummy_with_witness_evaluations(next),
-        ];
+        let evaluated_cols = {
+            let mut h = std::collections::HashSet::new();
+            for i in 0..COLUMNS {
+                h.insert(Column::Witness(i));
+            }
+            h.insert(Column::Index(GateType::ForeignMul0));
+            h.insert(Column::Index(GateType::ForeignMul1));
+            h.insert(Column::Index(GateType::ForeignMul2));
+            h
+        };
 
-        let constraints = foreign_mul::constraints::<F>(0 /* TODO: alpha */);
+        let constraint = polynomials::foreign_mul::constraint::<F>(10 /* TODO: alpha */);
+        let linearized = constraint.linearize(evaluated_cols).unwrap();
 
-        let pt = F::from(1337u64);
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+
+        let mut eval = |witness| ProofEvaluations {
+            w: witness,
+            z: F::rand(rng),
+            s: array_init(|_| F::rand(rng)),
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+            lookup: None,
+            foreign_mul_selector: gate_type_to_selector(self.typ),
+        };
+        let evals = vec![eval(curr), eval(next)];
 
         let constants = expr::Constants {
-            alpha: F::zero(),
-            beta: F::zero(),
-            gamma: F::zero(),
-            joint_combiner: F::zero(),
-            mds: vec![],
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
+            joint_combiner: F::rand(rng),
             endo_coefficient: cs.endo,
+            mds: vec![],
             foreign_modulus: cs.foreign_modulus.clone(),
         };
 
-        for (i, c) in constraints.iter().enumerate() {
-            println!("Checking constraint {}", i);
-            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
-                Ok(x) => {
-                    if x != F::zero() {
-                        return Err(format!("Bad foreign_mul equation {}", i));
-                    }
-                }
-                Err(e) => return Err(format!("evaluation failed: {}", e)),
-            }
-        }
+        let pt = F::rand(rng);
 
-        Ok(())
+        match linearized
+            .constant_term
+            .evaluate_(cs.domain.d1, pt, &evals, &constants)
+        {
+            Ok(x) => {
+                if x == F::zero() {
+                    Ok(())
+                } else {
+                    Err(format!("Invalid {:?} constraint", self.typ))
+                }
+            }
+            Err(_) => Err(format!("Failed to evaluate {:?} constraint", self.typ)),
+        }
     }
 
-    pub fn foreign_mul(&self) -> F {
-        if self.typ == GateType::ForeignMul0 {
+    pub fn foreign_mul(&self, typ: GateType) -> F {
+        if self.typ == typ {
             F::one()
         } else {
             F::zero()
@@ -168,14 +200,23 @@ impl<F: FftField> CircuitGate<F> {
 #[cfg(test)]
 mod tests {
     use crate::circuits::{
-        constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS, wires::Wire,
+        constraints::ConstraintSystem,
+        expr::{Column, Constants, PolishToken},
+        gate::{CircuitGate, GateType, LookupInfo},
+        gates::foreign_mul::gate_type_to_selector,
+        polynomial::COLUMNS,
+        polynomials,
+        scalars::{LookupEvaluations, ProofEvaluations},
+        wires::Wire,
     };
 
     use ark_ec::AffineCurve;
-    use ark_ff::PrimeField;
+    use ark_ff::{One, PrimeField, UniformRand, Zero};
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
     use array_init::array_init;
     use mina_curves::pasta::{pallas, vesta};
     use num_bigint::BigUint;
+    use rand::{prelude::StdRng, SeedableRng};
 
     use super::CIRCUIT_GATE_COUNT;
 
@@ -184,13 +225,60 @@ mod tests {
 
     const LIMB_SIZE: usize = 88;
 
-    fn field_element_to_witness<F: PrimeField>(fe: BigUint) -> [[F; CIRCUIT_GATE_COUNT]; COLUMNS] {
-        let mut rows = [[F::zero(); CIRCUIT_GATE_COUNT]; COLUMNS];
-        for (i, limb) in fe.to_bytes_le().chunks(LIMB_SIZE / 8 + 1).enumerate() {
+    struct Polish(Vec<PolishToken<PallasField>>);
+    impl std::fmt::Display for Polish {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "[")?;
+            for x in self.0.iter() {
+                match x {
+                    PolishToken::Literal(a) => write!(f, "{}, ", a)?,
+                    PolishToken::Add => write!(f, "+, ")?,
+                    PolishToken::Mul => write!(f, "*, ")?,
+                    PolishToken::Sub => write!(f, "-, ")?,
+                    x => write!(f, "{:?}, ", x)?,
+                }
+            }
+            write!(f, "]")?;
+            Ok(())
+        }
+    }
+
+    fn limb_to_plookup_sublimb<F: PrimeField>(fe: F, col: usize) -> F {
+        // TODO:
+        let mut bytes: Vec<u8> = vec![];
+        fe.serialize(&mut bytes)
+            .expect("failed to serialize field element");
+
+        println!("bytes {} = {:?}", bytes.len(), bytes);
+        let offset = (col - 1) * 12;
+        bytes[1] &= 0xf0;
+        for i in 2..bytes.len() {
+            bytes[i] = 0;
+        }
+
+        F::deserialize(&bytes[..]).expect("failed to deserialize field element")
+    }
+
+    fn limb_to_crumb_sublimb<F: PrimeField>(fe: F, col: usize) -> F {
+        // TODO:
+        fe
+    }
+
+    fn field_element_to_witness<F: PrimeField>(fe: BigUint) -> [Vec<F>; COLUMNS] {
+        let mut rows: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+        for (row, limb) in fe.to_bytes_le().chunks(LIMB_SIZE / 8 + 1).enumerate() {
+            // Convert chunk to field element and store in column 0
             let mut bytes = limb.to_vec();
             bytes.append(&mut vec![0u8; F::size_in_bits() / 8 - limb.len() + 1]); // zero pad
-            rows[0][i] = F::deserialize(&bytes[..]).expect("failed to deserialize field element");
-            // TODO: populate sublimbs
+            rows[0][row] = F::deserialize(&bytes[..]).expect("failed to deserialize field element");
+
+            // Decompose limb into sublimbs and store in columns 1..COLUMNS
+            for col in 1..7 {
+                rows[col][row] = limb_to_plookup_sublimb(rows[0][row], col);
+            }
+            for col in 1..COLUMNS {
+                rows[col][row] = limb_to_crumb_sublimb(rows[0][row], col);
+            }
         }
         rows
     }
@@ -202,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    fn verify() {
+    fn verify_foreign_mul0_zero_witness() {
         let wires = array_init(|i| Wire::new(i));
         let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
 
@@ -215,28 +303,85 @@ mod tests {
         )
         .unwrap();
 
-        let _x = field_element_to_witness::<PallasField>(BigUint::from(31459u64));
-
         let witness: [Vec<PallasField>; COLUMNS] = [
-            vec![PallasField::from(0); 8],
-            vec![PallasField::from(1); 8],
-            vec![PallasField::from(2); 8],
-            vec![PallasField::from(3); 8],
-            vec![PallasField::from(4); 8],
-            vec![PallasField::from(5); 8],
-            vec![PallasField::from(6); 8],
-            vec![PallasField::from(7); 8],
-            vec![PallasField::from(8); 8],
-            vec![PallasField::from(9); 8],
-            vec![PallasField::from(10); 8],
-            vec![PallasField::from(11); 8],
-            vec![PallasField::from(12); 8],
-            vec![PallasField::from(13); 8],
-            vec![PallasField::from(14); 8],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
+            vec![PallasField::from(0); 2],
         ];
 
-        let res = cs.gates[0].verify_foreign_mul(0, &witness, &cs);
+        assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
+    }
 
-        println!("res = {:?}", res);
+    #[test]
+    fn verify_foreign_mul0_one_witness() {
+        let wires = array_init(|i| Wire::new(i));
+        let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
+
+        let cs = ConstraintSystem::create(
+            gates,
+            vec![],
+            oracle::pasta::fp::params(),
+            o1_utils::packed_modulus::<PallasField>(o1_utils::get_modulus::<VestaField>()),
+            0,
+        )
+        .unwrap();
+
+        let witness: [Vec<PallasField>; COLUMNS] = [
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+            vec![PallasField::from(1); 2],
+        ];
+
+        assert_eq!(
+            cs.gates[0].verify_foreign_mul(0, &witness, &cs),
+            Err("Invalid ForeignMul0 constraint".to_string())
+        );
+    }
+
+    #[test]
+    fn verify_foreign_mul0_valid_witness() {
+        let wires = array_init(|i| Wire::new(i));
+        let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
+
+        let cs = ConstraintSystem::create(
+            gates,
+            vec![],
+            oracle::pasta::fp::params(),
+            o1_utils::packed_modulus::<PallasField>(o1_utils::get_modulus::<VestaField>()),
+            0,
+        )
+        .unwrap();
+
+        let witness = field_element_to_witness(BigUint::from(31459u64));
+
+        println!();
+        println!("witness = {:?}", witness);
+        println!();
+
+        assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
     }
 }

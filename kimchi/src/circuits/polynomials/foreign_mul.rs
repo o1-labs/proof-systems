@@ -323,8 +323,8 @@ pub fn constraints<F: FftField>(alpha0: usize) -> Vec<E<F>> {
     let index = |g: GateType| E::cell(Column::Index(g), Curr);
     vec![
         index(GateType::ForeignMul0) * foreign_mul0_constraints(alpha0), // TODO: fix powers of alpha from David's PR
-        index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha0),
-        index(GateType::ForeignMul2) * foreign_mul2_constraints(alpha0),
+        index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha0 + 1),
+        index(GateType::ForeignMul2) * foreign_mul2_constraints(alpha0 + 2),
     ]
 }
 

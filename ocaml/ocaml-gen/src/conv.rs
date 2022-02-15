@@ -245,3 +245,23 @@ where
         const_random!(u128)
     }
 }
+
+impl<T1, T2, T3> OCamlDesc for (T1, T2, T3)
+where
+    T1: OCamlDesc,
+    T2: OCamlDesc,
+    T3: OCamlDesc,
+{
+    fn ocaml_desc(env: &Env, generics: &[&str]) -> String {
+        let v = vec![
+            T1::ocaml_desc(env, generics),
+            T2::ocaml_desc(env, generics),
+            T3::ocaml_desc(env, generics),
+        ];
+        format!("({})", v.join(" * "))
+    }
+
+    fn unique_id() -> u128 {
+        const_random!(u128)
+    }
+}

@@ -254,7 +254,7 @@ where
             }),
             foreign_mul_comm: array_init(|i| {
                 self.srs
-                    .commit_evaluations_non_hiding(domain, &self.cs.foreign_mul[i], None)
+                    .commit_evaluations_non_hiding(domain, &self.cs.foreign_mul8[i], None)
             }),
             lookup_selectors: self
                 .cs

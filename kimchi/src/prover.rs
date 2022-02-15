@@ -9,7 +9,9 @@ use crate::circuits::{
     constraints::ZK_ROWS,
     expr::{l0_1, Constants, Environment, LookupEnvironment},
     gate::{combine_table_entry, GateType, LookupInfo, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
+    polynomials::{
+        chacha, complete_add, endomul_scalar, endosclmul, foreign_mul, lookup, poseidon, varbasemul,
+    },
     scalars::{LookupEvaluations, ProofEvaluations},
     wires::{COLUMNS, PERMUTS},
 };
@@ -398,6 +400,9 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
+            index_evals.insert(ForeignMul0, &index.cs.foreign_mul8[0]);
+            index_evals.insert(ForeignMul1, &index.cs.foreign_mul8[1]);
+            index_evals.insert(ForeignMul2, &index.cs.foreign_mul8[2]);
 
             Environment {
                 constants: Constants {
@@ -465,6 +470,11 @@ where
                 t4
             }
         };
+
+        // foreign field multiplication
+        let foreign_mul8 = foreign_mul::constraint(range::FOREIGN_MUL.start).evaluations(&env);
+        t8 += &foreign_mul8;
+        drop(foreign_mul8);
 
         // quotient polynomial for lookup
         let (t4, t8) = match lookup_used {
@@ -547,6 +557,9 @@ where
             lookup: lookup_evals(zeta),
             generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
+            foreign_mul_selector: array_init(|i| {
+                index.cs.foreign_mulm[i].eval(zeta, index.max_poly_size)
+            }),
         };
         let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
             s: array_init(|i| {
@@ -557,6 +570,9 @@ where
             lookup: lookup_evals(zeta_omega),
             generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
             poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
+            foreign_mul_selector: array_init(|i| {
+                index.cs.foreign_mulm[i].eval(zeta_omega, index.max_poly_size)
+            }),
         };
 
         drop(lookup_aggreg_coeffs);
@@ -589,6 +605,9 @@ where
                 }),
                 generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
                 poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
+                foreign_mul_selector: array_init(|i| {
+                    DensePolynomial::eval_polynomial(&es.foreign_mul_selector[i], e1)
+                }),
             })
             .collect::<Vec<_>>();
 

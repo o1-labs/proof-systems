@@ -9,6 +9,7 @@ pub const ENDML: Range<usize> = 25..36;
 pub const MUL: Range<usize> = 36..59;
 pub const ENDOMUL_SCALAR: Range<usize> = 59..70;
 pub const CHACHA: Range<usize> = 70..(70 + 9);
+pub const FOREIGN_MUL: Range<usize> = 79..82;
 
 /// Computes the powers of alpha, starting with alpha^2
 // TODO(mimoo): because of the way we do things, we never use alpha itself. This should instead return 1, alpha, alpha^2, etc. or better, an iterator

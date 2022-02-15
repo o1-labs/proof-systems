@@ -436,6 +436,7 @@ mod tests {
     use crate::circuits::{
         expr::{Column, Constants, PolishToken},
         gate::LookupInfo,
+        gates::foreign_mul,
         polynomials::chacha::constraint,
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::*,
@@ -509,6 +510,7 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
             }),
+            foreign_mul_selector: [F::zero(); foreign_mul::CIRCUIT_GATE_COUNT],
         };
         let evals = vec![eval(), eval()];
 

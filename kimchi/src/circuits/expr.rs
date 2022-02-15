@@ -382,8 +382,21 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Coefficient(_) | LookupKindIndex(_) | Index(_) => {
-                Err("Cannot get index evaluation (should have been linearized away)")
+            Index(GateType::ForeignMul0) => Ok(evals.foreign_mul_selector[0]),
+            Index(GateType::ForeignMul1) => Ok(evals.foreign_mul_selector[1]),
+            Index(GateType::ForeignMul2) => Ok(evals.foreign_mul_selector[2]),
+            Coefficient(_) => {
+                Err("Cannot get index evaluation Coefficient (should have been linearized away)")
+            }
+            LookupKindIndex(_) => Err(
+                "Cannot get index evaluation LookupKindIndex (should have been linearized away)",
+            ),
+            Index(g) => {
+                println!(
+                    "Cannot get index evaluation Index (should have been linearized away) {:?}",
+                    g
+                );
+                Err("Cannot get index evaluation Index (should have been linearized away)")
             }
         }
     }

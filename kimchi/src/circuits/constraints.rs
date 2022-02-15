@@ -115,9 +115,13 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
-    /// Foreign field multiplication constraint selector polynomial
+
+    /// Foreign field multiplicate constraint selector polynomials
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]")]
-    pub foreign_mul: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT],
+    pub foreign_mulm: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT],
+    /// Foreign field multiplication selector evaluations over domain.d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; foreign_mul::CIRCUIT_GATE_COUNT]")]
+    pub foreign_mul8: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT],
 
     // Constant polynomials
     // --------------------
@@ -492,8 +496,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
-        // Forieign field multiplication constraint polynomials
-        let foreign_mul: [_; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
+        // Forieign field multiplication constraint selector polynomials
+        let foreign_mulm: [DP<F>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
                 0 => GateType::ForeignMul0,
                 1 => GateType::ForeignMul1,
@@ -508,7 +512,25 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 domain.d1,
             )
             .interpolate()
-            .evaluate_over_domain(domain.d8)
+        });
+
+        // Forieign field multiplication constraint polynomials
+        let foreign_mul8: [E<F, D<F>>; foreign_mul::CIRCUIT_GATE_COUNT] = array_init(|i| {
+            let g = match i {
+                0 => GateType::ForeignMul0,
+                1 => GateType::ForeignMul1,
+                2 => GateType::ForeignMul2,
+                _ => panic!("Invalid index"),
+            };
+            E::<F, D<F>>::from_vec_and_domain(
+                gates
+                    .iter()
+                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                    .collect(),
+                domain.d1,
+            )
+            .interpolate()
+            .evaluate_over_domain_by_ref(domain.d8)
         });
 
         // constant polynomials
@@ -593,7 +615,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            foreign_mul,
+            foreign_mulm,
+            foreign_mul8,
             l1,
             l04,
             l08,
