@@ -198,7 +198,10 @@ impl<F: FftField> LookupInfo<F> {
     /// Create the default lookup configuration.
     pub fn create() -> Self {
         let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
-        let (kinds_map, kinds_tables) = GateType::lookup_kinds_map::<F>(locations_with_tables);
+        let GatesLookupMaps {
+            gate_selector_map: kinds_map,
+            gate_table_map: kinds_tables,
+        } = GateType::lookup_kinds_map::<F>(locations_with_tables);
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
@@ -295,6 +298,24 @@ impl<F: FftField> LookupInfo<F> {
     }
 }
 
+/// Specifies the relative position of gates and the fixed lookup table (if applicable) that a
+/// given lookup configuration should apply to.
+pub struct GatesLookupSpec {
+    /// The set of positions relative to an active gate where a lookup configuration applies.
+    pub gate_positions: HashSet<(GateType, CurrOrNext)>,
+    /// The fixed lookup table that should be used for these lookups, if applicable.
+    pub gate_lookup_table: Option<GateLookupTable>,
+}
+
+/// Specifies mapping from positions defined relative to gates into lookup data.
+pub struct GatesLookupMaps {
+    /// Enumerates the selector that should be active for a particular gate-relative position.
+    pub gate_selector_map: HashMap<(GateType, CurrOrNext), usize>,
+    /// Enumerates the fixed tables that should be used for lookups in a particular gate-relative
+    /// position.
+    pub gate_table_map: HashMap<(GateType, CurrOrNext), GateLookupTable>,
+}
+
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
     /// Currently there is only the lookup pattern used in the ChaCha rows, and it
@@ -303,10 +324,7 @@ impl GateType {
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     #[allow(clippy::type_complexity)]
-    pub fn lookup_kinds<F: Field>() -> (
-        Vec<Vec<JointLookup<F>>>,
-        Vec<(HashSet<(GateType, CurrOrNext)>, Option<GateLookupTable>)>,
-    ) {
+    pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookup<F>>>, Vec<GatesLookupSpec>) {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
             column,
@@ -380,9 +398,12 @@ impl GateType {
         {
             let mut patterns = Vec::with_capacity(lookups.len());
             let mut locations_with_tables = Vec::with_capacity(lookups.len());
-            for (pattern, location, table) in lookups {
+            for (pattern, locations, table) in lookups {
                 patterns.push(pattern);
-                locations_with_tables.push((location, table));
+                locations_with_tables.push(GatesLookupSpec {
+                    gate_positions: locations,
+                    gate_lookup_table: table,
+                });
             }
             (patterns, locations_with_tables)
         }
@@ -390,14 +411,18 @@ impl GateType {
 
     #[allow(clippy::type_complexity)]
     pub fn lookup_kinds_map<F: Field>(
-        locations_with_tables: Vec<(HashSet<(GateType, CurrOrNext)>, Option<GateLookupTable>)>,
-    ) -> (
-        HashMap<(GateType, CurrOrNext), usize>,
-        HashMap<(GateType, CurrOrNext), GateLookupTable>,
-    ) {
+        locations_with_tables: Vec<GatesLookupSpec>,
+    ) -> GatesLookupMaps {
         let mut index_map = HashMap::with_capacity(locations_with_tables.len());
         let mut table_map = HashMap::with_capacity(locations_with_tables.len());
-        for (i, (locs, table_kind)) in locations_with_tables.into_iter().enumerate() {
+        for (
+            i,
+            GatesLookupSpec {
+                gate_positions: locs,
+                gate_lookup_table: table_kind,
+            },
+        ) in locations_with_tables.into_iter().enumerate()
+        {
             for location in locs {
                 if let std::collections::hash_map::Entry::Vacant(e) = index_map.entry(location) {
                     e.insert(i);
@@ -412,7 +437,10 @@ impl GateType {
                 }
             }
         }
-        (index_map, table_map)
+        GatesLookupMaps {
+            gate_selector_map: index_map,
+            gate_table_map: table_map,
+        }
     }
 }
 
