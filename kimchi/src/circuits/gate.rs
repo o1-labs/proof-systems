@@ -167,13 +167,6 @@ pub struct LookupInfo<F> {
     empty: Vec<JointLookup<F>>,
 }
 
-fn lookup_kinds<F: Field>() -> Vec<Vec<JointLookup<F>>> {
-    GateType::lookup_kinds()
-        .into_iter()
-        .map(|(x, _)| x)
-        .collect()
-}
-
 fn max_lookups_per_row<F>(kinds: &[Vec<JointLookup<F>>]) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
@@ -189,7 +182,8 @@ pub enum LookupsUsed {
 impl<F: FftField> LookupInfo<F> {
     /// Create the default lookup configuration.
     pub fn create() -> Self {
-        let kinds = lookup_kinds::<F>();
+        let (kinds, kinds_set): (Vec<_>, Vec<_>) =
+            GateType::lookup_kinds::<F>().into_iter().unzip();
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
@@ -197,8 +191,8 @@ impl<F: FftField> LookupInfo<F> {
                     .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len()))
             }),
 
-            kinds_map: GateType::lookup_kinds_map::<F>(),
-            kinds,
+            kinds_map: GateType::lookup_kinds_map::<F>(kinds_set),
+            kinds: kinds,
             max_per_row,
             empty: vec![],
         }
@@ -348,10 +342,11 @@ impl GateType {
         ]
     }
 
-    pub fn lookup_kinds_map<F: Field>() -> HashMap<(GateType, CurrOrNext), usize> {
+    pub fn lookup_kinds_map<F: Field>(
+        lookup_kinds: Vec<HashSet<(GateType, CurrOrNext)>>,
+    ) -> HashMap<(GateType, CurrOrNext), usize> {
         let mut res = HashMap::new();
-        let lookup_kinds = Self::lookup_kinds::<F>();
-        for (i, (_, locs)) in lookup_kinds.into_iter().enumerate() {
+        for (i, locs) in lookup_kinds.into_iter().enumerate() {
             for (g, r) in locs {
                 if let std::collections::hash_map::Entry::Vacant(e) = res.entry((g, r)) {
                     e.insert(i);
