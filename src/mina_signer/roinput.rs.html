@@ -920,7 +920,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ROInput</span> {
     <span class="ident">fields</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BaseField</span><span class="op">&gt;</span>,
-    <span class="ident">bits</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">bits</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ROInput</span> {
@@ -967,7 +967,7 @@
 
     <span class="doccomment">/// Serialize random oracle input to bytes</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_bytes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fields</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">BitVec::new</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">acc</span>, <span class="ident">fe</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bits</span>: <span class="ident">BitVec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">fields</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="ident">BitVec::new</span>(), <span class="op">|</span><span class="kw-2">mut</span> <span class="ident">acc</span>, <span class="ident">fe</span><span class="op">|</span> {
             <span class="ident">acc</span>.<span class="ident">extend_from_bitslice</span>(<span class="kw-2">&amp;</span><span class="ident">fe</span>.<span class="ident">to_bytes</span>().<span class="ident">as_bits</span>::<span class="op">&lt;</span><span class="ident">Lsb0</span><span class="op">&gt;</span>()[..<span class="ident">BaseField::size_in_bits</span>()]);
 
             <span class="ident">acc</span>
@@ -1000,7 +1000,7 @@
                 <span class="comment">//</span>
                 <span class="comment">// Instead we must do</span>
 
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bv</span> <span class="op">=</span> <span class="ident">BitVec</span>::<span class="op">&lt;</span><span class="ident">Lsb0</span>, <span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bv</span> <span class="op">=</span> <span class="ident">BitVec</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="ident">::new</span>();
                 <span class="ident">bv</span>.<span class="ident">resize</span>(<span class="ident">chunk</span>.<span class="ident">len</span>(), <span class="bool-val">false</span>);
                 <span class="ident">bv</span>.<span class="ident">clone_from_bitslice</span>(<span class="ident">chunk</span>);
 
@@ -1738,5 +1738,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (1e12aef3f 2022-02-13)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (c5c610aad 2022-02-14)" ></div>
 </body></html>
