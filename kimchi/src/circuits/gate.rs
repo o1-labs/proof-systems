@@ -183,9 +183,15 @@ pub enum LookupsUsed {
 }
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GateLookupTable {
     Xor,
+}
+
+pub fn get_table<F: FftField>(table_name: GateLookupTable) -> Vec<Vec<F>> {
+    match table_name {
+        GateLookupTable::Xor => crate::circuits::polynomials::chacha::xor_table(),
+    }
 }
 
 impl<F: FftField> LookupInfo<F> {
@@ -229,35 +235,46 @@ impl<F: FftField> LookupInfo<F> {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials(
+    pub fn selector_polynomials_and_tables(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> Vec<E<F, D<F>>> {
+    ) -> (Vec<E<F, D<F>>>, Vec<Vec<Vec<F>>>) {
         let n = domain.d1.size as usize;
-        let mut res: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
+        let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
+        let mut gate_tables = HashSet::new();
 
         // TODO: is take(n) useful here? I don't see why we need this
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                res[*v][i] = F::one();
+            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
+                selector_values[*selector_index][i] = F::one();
             }
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                res[*v][i + 1] = F::one();
+            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
+                selector_values[*selector_index][i + 1] = F::one();
+            }
+
+            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Curr)) {
+                gate_tables.insert(*table_kind);
+            }
+            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Next)) {
+                gate_tables.insert(*table_kind);
             }
         }
 
         // Actually, don't need to evaluate over domain 8 here.
         // TODO: so why do it :D?
-        res.into_iter()
+        let selector_values8: Vec<_> = selector_values
+            .into_iter()
             .map(|v| {
                 E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
                     .interpolate()
                     .evaluate_over_domain(domain.d8)
             })
-            .collect()
+            .collect();
+        let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
+        (selector_values8, res_tables)
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
