@@ -359,7 +359,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                 // generate the look up selector polynomials
                 let lookup_selectors = lookup_info.selector_polynomials(domain, gates);
-                Some(LookupConstraintSystem {
+                Some(Self {
                     lookup_selectors,
                     dummy_lookup_values,
                     lookup_tables8,
