@@ -189,8 +189,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // multiplication
-            let mut mul =
-                &witness_cols_d4[register_offset + 0] * &witness_cols_d4[register_offset + 1];
+            let mut mul = &witness_cols_d4[register_offset] * &witness_cols_d4[register_offset + 1];
             let mul_selector_d8 = &self.coefficients8[coeff_offset + 3];
             mul.evals
                 .par_iter_mut()
@@ -246,12 +245,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             let alpha_generic = alpha_pow * generic_zeta;
 
             // addition
-            res.push(alpha_generic * w_zeta[register_offset + 0]);
+            res.push(alpha_generic * w_zeta[register_offset]);
             res.push(alpha_generic * w_zeta[register_offset + 1]);
             res.push(alpha_generic * w_zeta[register_offset + 2]);
 
             // multplication
-            res.push(alpha_generic * w_zeta[register_offset + 0] * w_zeta[register_offset + 1]);
+            res.push(alpha_generic * w_zeta[register_offset] * w_zeta[register_offset + 1]);
 
             // constant
             res.push(alpha_generic);
@@ -324,11 +323,11 @@ pub mod testing {
             ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
 
             let check_single = |coeffs_offset, register_offset| {
-                let sum = self.coeffs[coeffs_offset + 0] * this[register_offset + 0]
+                let sum = self.coeffs[coeffs_offset] * this[register_offset]
                     + self.coeffs[coeffs_offset + 1] * this[register_offset + 1]
                     + self.coeffs[coeffs_offset + 2] * this[register_offset + 2];
                 let mul = self.coeffs[coeffs_offset + 3]
-                    * this[register_offset + 0]
+                    * this[register_offset]
                     * this[register_offset + 1];
                 ensure_eq!(
                     zero,
@@ -355,12 +354,12 @@ pub mod testing {
 
             let generic_gate = |coeff_offset, register_offset| {
                 // addition (of left, right, output wires)
-                let mut ff = &coefficientsm[coeff_offset + 0] * &witness[register_offset + 0];
+                let mut ff = &coefficientsm[coeff_offset] * &witness[register_offset];
                 ff += &(&coefficientsm[coeff_offset + 1] * &witness[register_offset + 1]);
                 ff += &(&coefficientsm[coeff_offset + 2] * &witness[register_offset + 2]);
 
                 // multiplication
-                ff += &(&(&witness[register_offset + 0] * &witness[register_offset + 1])
+                ff += &(&(&witness[register_offset] * &witness[register_offset + 1])
                     * &coefficientsm[coeff_offset + 3]);
 
                 // constant
