@@ -366,7 +366,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 }
 
                 // generate the look up selector polynomials
-                Some(LookupConstraintSystem {
+                Some(Self {
                     lookup_selectors,
                     dummy_lookup_values,
                     lookup_tables8,
