@@ -227,7 +227,7 @@ impl<F: FftField> LookupInfo<F> {
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
     pub fn selector_polynomials(
         &self,
-        domain: EvaluationDomains<F>,
+        domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
     ) -> Vec<E<F, D<F>>> {
         let n = domain.d1.size as usize;
