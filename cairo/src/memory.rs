@@ -40,7 +40,7 @@ impl<F: PrimeField> Display for CairoMemory<F> {
         for i in 1..self.size() {
             // Visualize content of memory excluding the 0th dummy entry
             if let Some(elem) = self[F::from(i)] {
-                if let Err(_) = writeln!(f, "{0:>6}: 0x{1:}", i, elem.get_word().to_le()) {
+                if let Err(_) = writeln!(f, "{0:>6}: 0x{1:}", i, elem.get_word().to_hex_le()) {
                     println!("Error while writing")
                 }
             } else {

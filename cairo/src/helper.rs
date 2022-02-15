@@ -20,7 +20,7 @@ pub trait CairoFieldHelpers<F: PrimeField> {
     fn to_u64(self) -> u64;
 
     /// Return a field element in hexadecimal in little endian
-    fn to_le(self) -> String;
+    fn to_hex_le(self) -> String;
 
     /// Return a vector of field elements from a vector of i128
     fn vec_to_field(vec: Vec<i128>) -> Vec<F>;
@@ -60,7 +60,7 @@ impl<F: PrimeField> CairoFieldHelpers<F> for F {
         acc
     }
 
-    fn to_le(self) -> String {
+    fn to_hex_le(self) -> String {
         let mut bytes = self.to_bytes();
         bytes.reverse();
         hex::encode(bytes)
