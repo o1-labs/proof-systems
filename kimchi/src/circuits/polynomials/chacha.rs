@@ -568,7 +568,10 @@ mod tests {
             h
         };
         let mut alphas = Alphas::<F>::default();
-        alphas.register(ArgumentType::Gate(GateType::ChaChaFinal), 9);
+        alphas.register(
+            ArgumentType::Gate(GateType::ChaChaFinal),
+            ChaChaFinal::<F>::CONSTRAINTS,
+        );
         let mut expr = ChaCha0::default().combined_constraints(&alphas);
         expr += ChaCha1::default().combined_constraints(&alphas);
         expr += ChaCha2::default().combined_constraints(&alphas);

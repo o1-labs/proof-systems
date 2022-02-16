@@ -46,7 +46,7 @@ use std::{
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Alphas<F> {
     /// The next power of alpha to use
-    /// the end result will be [1, alpha^next_power)    
+    /// the end result will be [1, alpha^{next_power - 1}]
     next_power: usize,
     /// The mapping between constraint types and powers of alpha
     mapping: HashMap<ArgumentType, Range<usize>>,
@@ -58,6 +58,7 @@ pub struct Alphas<F> {
 impl<F: Field> Alphas<F> {
     /// Registers a new [ArgumentType],
     /// associating it with a number `powers` of powers of alpha.
+    /// This function will panic if you register the same type twice.
     pub fn register(&mut self, ty: ArgumentType, powers: usize) {
         if self.alphas.is_some() {
             panic!("you cannot register new constraints once initialized with a field element");
@@ -111,7 +112,7 @@ impl<F: Field> Alphas<F> {
         let mut last_power = F::one();
         let mut alphas = Vec::with_capacity(self.next_power);
         alphas.push(F::one());
-        for _ in 0..(self.next_power - 1) {
+        for _ in 1..self.next_power {
             last_power *= alpha;
             alphas.push(last_power);
         }
