@@ -188,7 +188,9 @@ pub enum GateLookupTable {
     Xor,
 }
 
-pub fn get_table<F: FftField>(table_name: GateLookupTable) -> Vec<Vec<F>> {
+pub type LookupTable<F> = Vec<Vec<F>>;
+
+pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => crate::circuits::polynomials::chacha::xor_table(),
     }
@@ -238,12 +240,11 @@ impl<F: FftField> LookupInfo<F> {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    #[allow(clippy::type_complexity)]
     pub fn selector_polynomials_and_tables(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> (Vec<E<F, D<F>>>, Vec<Vec<Vec<F>>>) {
+    ) -> (Vec<E<F, D<F>>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size as usize;
         let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
         let mut gate_tables = HashSet::new();
