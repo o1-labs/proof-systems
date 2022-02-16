@@ -323,7 +323,6 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    #[allow(clippy::type_complexity)]
     pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookup<F>>>, Vec<GatesLookupSpec>) {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
@@ -409,7 +408,6 @@ impl GateType {
         }
     }
 
-    #[allow(clippy::type_complexity)]
     pub fn lookup_kinds_map<F: Field>(
         locations_with_tables: Vec<GatesLookupSpec>,
     ) -> GatesLookupMaps {
