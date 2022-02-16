@@ -13,12 +13,10 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
-use num_traits::cast::ToPrimitive;
+use ark_ff::{PrimeField, SquareRootField};
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
 use super::{argument::ArgumentWitness, expr, polynomials::xor};
@@ -57,19 +55,7 @@ impl CurrOrNext {
 /// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    FromPrimitive,
-    ToPrimitive,
-    Serialize,
-    Deserialize,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
+    Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize, Eq, Hash, PartialOrd, Ord,
 )]
 #[cfg_attr(
     feature = "ocaml_types",
@@ -173,23 +159,6 @@ where
 {
     pub fn new(typ: GateType, wires: GateWires, coeffs: Vec<F>) -> Self {
         Self { typ, wires, coeffs }
-    }
-}
-
-impl<F: PrimeField> ToBytes for CircuitGate<F> {
-    #[inline]
-    fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
-        typ.write(&mut w)?;
-        for i in 0..COLUMNS {
-            self.wires[i].write(&mut w)?;
-        }
-
-        (self.coeffs.len() as u8).write(&mut w)?;
-        for x in &self.coeffs {
-            x.write(&mut w)?;
-        }
-        Ok(())
     }
 }
 

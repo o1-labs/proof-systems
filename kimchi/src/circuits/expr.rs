@@ -743,10 +743,9 @@ where
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Domain {
     D1 = 1,
-    D2 = 2,
     D4 = 4,
     D8 = 8,
 }
@@ -825,7 +824,6 @@ fn unnormalized_lagrange_evals<F: FftField>(
 ) -> Evaluations<F, D<F>> {
     let k = match res_domain {
         Domain::D1 => 1,
-        Domain::D2 => 2,
         Domain::D4 => 4,
         Domain::D8 => 8,
     };
@@ -1296,7 +1294,6 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     match d {
         Domain::D1 => env.domain.d1,
-        Domain::D2 => env.domain.d2,
         Domain::D4 => env.domain.d4,
         Domain::D8 => env.domain.d8,
     }
