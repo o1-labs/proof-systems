@@ -10,6 +10,8 @@ use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
 
+type Evaluations<Field> = E<Field, D<Field>>;
+
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
 #[repr(C)]
@@ -244,7 +246,7 @@ impl<F: FftField> LookupInfo<F> {
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> (Vec<E<F, D<F>>>, Vec<LookupTable<F>>) {
+    ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size as usize;
         let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
         let mut gate_tables = HashSet::new();
