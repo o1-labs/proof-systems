@@ -331,9 +331,13 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
             Some(lookup_used) => {
                 let d1_size = domain.d1.size();
 
+                let (lookup_selectors, gate_lookup_tables) =
+                    lookup_info.selector_polynomials_and_tables(domain, gates);
+
                 // get the last entry in each column of each table
-                let dummy_lookup_values: Vec<Vec<F>> = lookup_tables
+                let dummy_lookup_values: Vec<Vec<F>> = gate_lookup_tables
                     .iter()
+                    .chain(lookup_tables.iter())
                     .map(|table| table.iter().map(|col| col[col.len() - 1]).collect())
                     .collect();
 
@@ -341,7 +345,11 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let mut lookup_tables_polys: Vec<Vec<DP<F>>> = vec![];
                 let mut lookup_tables8: Vec<Vec<E<F, D<F>>>> = vec![];
 
-                for (table, dummies) in lookup_tables.into_iter().zip(&dummy_lookup_values) {
+                for (table, dummies) in gate_lookup_tables
+                    .into_iter()
+                    .chain(lookup_tables.into_iter())
+                    .zip(&dummy_lookup_values)
+                {
                     let mut table_poly = vec![];
                     let mut table_eval = vec![];
                     for (mut col, dummy) in table.into_iter().zip(dummies) {
@@ -358,7 +366,6 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 }
 
                 // generate the look up selector polynomials
-                let lookup_selectors = lookup_info.selector_polynomials(domain, gates);
                 Some(Self {
                     lookup_selectors,
                     dummy_lookup_values,
