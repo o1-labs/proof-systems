@@ -7,6 +7,9 @@ use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
 use CurrOrNext::*;
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 15;
+
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
     pub source: usize,
@@ -36,29 +39,29 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
     },
 ];
 
-/// poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
-// Conjunction of:
-// curr[round_range(1)] = round(curr[round_range(0)])
-// curr[round_range(2)] = round(curr[round_range(1)])
-// curr[round_range(3)] = round(curr[round_range(2)])
-// curr[round_range(4)] = round(curr[round_range(3)])
-// next[round_range(0)] = round(curr[round_range(4)])
-//
-// which expands e.g., to
-// curr[round_range(1)][0] =
-//      mds[0][0] * sbox(curr[round_range(0)][0])
-//    + mds[0][1] * sbox(curr[round_range(0)][1])
-//    + mds[0][2] * sbox(curr[round_range(0)][2])
-//    + rcm[round_range(1)][0]
-// curr[round_range(1)][1] =
-//      mds[1][0] * sbox(curr[round_range(0)][0])
-//    + mds[1][1] * sbox(curr[round_range(0)][1])
-//    + mds[1][2] * sbox(curr[round_range(0)][2])
-//    + rcm[round_range(1)][1]
-// ...
-// The rth position in this array contains the alphas used for the equations that
-// constrain the values of the (r+1)th state.
-pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
+/// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
+/// Conjunction of:
+/// curr[round_range(1)] = round(curr[round_range(0)])
+/// curr[round_range(2)] = round(curr[round_range(1)])
+/// curr[round_range(3)] = round(curr[round_range(2)])
+/// curr[round_range(4)] = round(curr[round_range(3)])
+/// next[round_range(0)] = round(curr[round_range(4)])
+///
+/// which expands e.g., to
+/// curr[round_range(1)][0] =
+///      mds[0][0] * sbox(curr[round_range(0)][0])
+///    + mds[0][1] * sbox(curr[round_range(0)][1])
+///    + mds[0][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][0]
+/// curr[round_range(1)][1] =
+///      mds[1][0] * sbox(curr[round_range(0)][0])
+///    + mds[1][1] * sbox(curr[round_range(0)][1])
+///    + mds[1][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][1]
+/// ...
+/// The rth position in this array contains the alphas used for the equations that
+/// constrain the values of the (r+1)th state.
+pub fn constraint<F: FftField + SquareRootField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let mut res = vec![];
     let mut cache = Cache::default();
 
@@ -92,5 +95,5 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
                     .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
         }));
     }
-    index(GateType::Poseidon) * E::combine_constraints(0, res)
+    index(GateType::Poseidon) * E::combine_constraints(alphas, res)
 }

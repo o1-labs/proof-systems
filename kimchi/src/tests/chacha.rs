@@ -64,7 +64,7 @@ fn chacha_prover() {
         .enumerate()
         .map(|(i, typ)| CircuitGate {
             typ,
-            c: vec![],
+            coeffs: vec![],
             wires: Wire::new(i),
         })
         .collect();

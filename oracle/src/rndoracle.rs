@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements the random oracle argument API.
-
-*****************************************************************************************************************/
+//! This module implements the random oracle argument API.
 
 pub use super::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use std::fmt;

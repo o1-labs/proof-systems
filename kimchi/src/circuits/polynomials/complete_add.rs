@@ -16,6 +16,9 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, Field, One};
 
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 7;
+
 /// This enforces that
 ///
 /// r = (z == 0) ? 1 : 0
@@ -42,7 +45,7 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
+pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
     // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
     let x1 = witness_curr(0);
     let y1 = witness_curr(1);
@@ -160,10 +163,7 @@ pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
     res.push(y21.clone() * (same_x - inf.clone()));
     res.push(y21 * inf_z - inf);
 
-    (
-        res.len(),
-        index(GateType::CompleteAdd) * E::combine_constraints(alpha0, res),
-    )
+    index(GateType::CompleteAdd) * E::combine_constraints(alphas, res)
 }
 
 impl<F: FftField> CircuitGate<F> {

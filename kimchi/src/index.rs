@@ -1,16 +1,7 @@
-/*****************************************************************************************************************
+//! This module implements Plonk Protocol Index primitive.
 
-This source file implements Plonk Protocol Index primitive.
-
-*****************************************************************************************************************/
-
-use std::{
-    fs::{File, OpenOptions},
-    io::{BufReader, BufWriter, Seek},
-    path::Path,
-    sync::Arc,
-};
-
+use crate::alphas::{self, ConstraintType};
+use crate::circuits::polynomials::permutation;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
@@ -30,11 +21,17 @@ use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::SeekFrom::Start;
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufReader, BufWriter, Seek},
+    path::Path,
+    sync::Arc,
+};
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-/// The index common to both the prover and verifier
+/// The index used by the prover
 // TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
@@ -46,6 +43,9 @@ pub struct Index<G: CommitmentCurve> {
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+
+    /// The mapping between powers of alpha and constraints
+    pub powers_of_alpha: alphas::Builder,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -84,6 +84,8 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
+    /// The mapping between powers of alpha and constraints
+    pub powers_of_alpha: alphas::Builder,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: Arc<SRS<G>>,
@@ -153,32 +155,40 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> Expr<ConstantExpr<F>> {
-    let expr = poseidon::constraint();
-    let expr = expr + varbasemul::constraint(super::range::MUL.start);
-    let (alphas_used, complete_add) = complete_add::constraint(super::range::COMPLETE_ADD.start);
-    assert_eq!(alphas_used, super::range::COMPLETE_ADD.len());
-    let expr = expr + complete_add;
-    let expr = expr + endosclmul::constraint(2 + super::range::ENDML.start);
-    let expr = expr + endomul_scalar::constraint(super::range::ENDOMUL_SCALAR.start);
-    let expr = match lookup_constraint_system.as_ref() {
-        None => expr,
-        Some(lcs) => {
-            expr + Expr::combine_constraints(
-                2 + super::range::CHACHA.end,
-                lookup::constraints(&lcs.dummy_lookup_values[0], domain),
-            )
-        }
-    };
+) -> (Expr<ConstantExpr<F>>, alphas::Builder) {
+    // register powers of alpha so that we don't reuse them across mutually inclusive constraints
+    let mut powers_of_alpha = alphas::Builder::default();
+
+    // gates
+    let largest_constraint_num = varbasemul::CONSTRAINTS;
+    let alphas = powers_of_alpha.register(ConstraintType::Gate, largest_constraint_num);
+
+    let mut expr = poseidon::constraint(alphas.clone().take(poseidon::CONSTRAINTS));
+    expr += varbasemul::constraint(alphas.clone().take(varbasemul::CONSTRAINTS));
+    expr += complete_add::constraint(alphas.clone().take(complete_add::CONSTRAINTS));
+    expr += endosclmul::constraint(alphas.clone().take(endosclmul::CONSTRAINTS));
+    expr += endomul_scalar::constraint(alphas.clone().take(endomul_scalar::CONSTRAINTS));
 
     if chacha {
-        let expr = expr + chacha::constraint_chacha0(super::range::CHACHA.start);
-        let expr = expr + chacha::constraint_chacha1(super::range::CHACHA.start);
-        let expr = expr + chacha::constraint_chacha2(super::range::CHACHA.start);
-        expr + chacha::constraint_chacha_final(super::range::CHACHA.start)
-    } else {
-        expr
+        expr += chacha::constraint_chacha0(alphas.clone().take(chacha::CONSTRAINTS_0));
+        expr += chacha::constraint_chacha1(alphas.clone().take(chacha::CONSTRAINTS_1));
+        expr += chacha::constraint_chacha2(alphas.clone().take(chacha::CONSTRAINTS_2));
+        expr += chacha::constraint_chacha_final(alphas.take(chacha::CONSTRAINTS_FINAL));
     }
+
+    // permutation
+    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, permutation::CONSTRAINTS);
+
+    // lookup
+    if let Some(lcs) = lookup_constraint_system.as_ref() {
+        let alphas = powers_of_alpha.register(ConstraintType::Lookup, lookup::CONSTRAINTS);
+        let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
+        let combined = Expr::combine_constraints(alphas, constraints);
+        expr += combined;
+    }
+
+    // return the expression
+    (expr, powers_of_alpha)
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>(
@@ -209,13 +219,17 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> Linearization<Vec<PolishToken<F>>> {
+) -> (Linearization<Vec<PolishToken<F>>>, alphas::Builder) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    constraints_expr(domain, chacha, lookup_constraint_system)
+    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
+
+    let linearization = expr
         .linearize(evaluated_cols)
         .unwrap()
-        .map(|e| e.to_polish())
+        .map(|e| e.to_polish());
+
+    (linearization, powers_of_alpha)
 }
 
 impl<'a, G: CommitmentCurve> Index<G>
@@ -249,13 +263,17 @@ where
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
+            max_poly_size: self.max_poly_size,
+            max_quot_size: self.max_quot_size,
+            powers_of_alpha: self.powers_of_alpha.clone(),
+            srs: Arc::clone(&self.srs),
 
             sigma_comm: array_init(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
-            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
             coefficients_comm: array_init(|i| {
                 self.srs
                     .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
+            generic_comm: self.srs.commit_non_hiding(&self.cs.genericm, None),
 
             psm_comm: self.srs.commit_non_hiding(&self.cs.psm, None),
 
@@ -276,26 +294,23 @@ where
                 &self.cs.endomul_scalar8,
                 None,
             ),
+
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
             }),
 
-            lookup_index,
-
+            shift: self.cs.shift,
+            zkpm: self.cs.zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
+            endo: self.cs.endo,
+            lookup_index,
+            linearization: self.linearization.clone(),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
-            endo: self.cs.endo,
-            max_poly_size: self.max_poly_size,
-            max_quot_size: self.max_quot_size,
-            zkpm: self.cs.zkpm.clone(),
-            shift: self.cs.shift,
-            linearization: self.linearization.clone(),
-            srs: Arc::clone(&self.srs),
         }
     }
 
-    // this function compiles the index from constraints
+    /// this function compiles the index from constraints
     pub fn create(
         mut cs: ConstraintSystem<Fr<G>>,
         fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
@@ -311,21 +326,26 @@ where
         }
         cs.endo = endo_q;
 
-        let linearization = expr_linearization(
+        //
+        // Lookup
+        //
+
+        let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
             &cs.lookup_constraint_system,
         );
 
+        let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
+
         Index {
-            // TODO(mimoo): re-order field like in the type def
-            // max_quot_size: PlonkSpongeConstants::SPONGE_BOX * (pcs.cs.domain.d1.size as usize - 1),
-            max_quot_size: PERMUTS * cs.domain.d1.size as usize,
-            fq_sponge_params,
-            max_poly_size,
-            srs,
             cs,
             linearization,
+            powers_of_alpha,
+            srs,
+            max_poly_size,
+            max_quot_size,
+            fq_sponge_params,
         }
     }
 }
