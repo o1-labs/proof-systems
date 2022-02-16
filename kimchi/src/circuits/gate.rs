@@ -7,7 +7,7 @@ use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -423,14 +423,13 @@ impl GateType {
         ) in locations_with_tables.into_iter().enumerate()
         {
             for location in locs {
-                if let std::collections::hash_map::Entry::Vacant(e) = index_map.entry(location) {
+                if let Entry::Vacant(e) = index_map.entry(location) {
                     e.insert(i);
                 } else {
                     panic!("Multiple lookup patterns asserted on same row.")
                 }
                 if let Some(table_kind) = table_kind {
-                    if let std::collections::hash_map::Entry::Vacant(e) = table_map.entry(location)
-                    {
+                    if let Entry::Vacant(e) = table_map.entry(location) {
                         e.insert(table_kind);
                     }
                 }
