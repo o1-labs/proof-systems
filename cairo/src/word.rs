@@ -5,22 +5,22 @@
 
 use crate::definitions::*;
 use crate::helper::CairoFieldHelpers;
-use ark_ff::PrimeField;
+use ark_ff::FftField;
 use o1_utils::field_helpers::FieldHelpers;
 
 /// A Cairo instruction for simulation
 #[derive(Clone, Copy)]
-pub struct CairoWord<F: PrimeField> {
+pub struct CairoWord<F: FftField> {
     /// field element. Instructions will fit in 64 bits
     word: F,
 }
 
 /// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15) as a field element
-fn bias<F: PrimeField>(offset: F) -> F {
+fn bias<F: FftField>(offset: F) -> F {
     offset - F::from(2u16.pow(15u32)) // -2^15 + sum_(i=0..15) b_i * 2^i
 }
 
-impl<F: PrimeField> CairoWord<F> {
+impl<F: FftField> CairoWord<F> {
     /// Creates a [CairoWord] from a field element
     pub fn new(word: F) -> CairoWord<F> {
         CairoWord { word }
@@ -33,7 +33,7 @@ impl<F: PrimeField> CairoWord<F> {
 }
 
 /// This trait contains methods that decompose a field element into Cairo word components
-pub trait Decomposition<F: PrimeField> {
+pub trait Decomposition<F: FftField> {
     /// Returns the destination offset in biased representation
     fn off_dst(&self) -> F;
 
@@ -119,7 +119,7 @@ pub trait Decomposition<F: PrimeField> {
     fn opcode(&self) -> u8;
 }
 
-impl<F: PrimeField> Decomposition<F> for CairoWord<F> {
+impl<F: FftField> Decomposition<F> for CairoWord<F> {
     fn off_dst(&self) -> F {
         self.get_word().off_dst()
     }
@@ -232,7 +232,7 @@ impl<F: PrimeField> Decomposition<F> for CairoWord<F> {
     }
 }
 
-impl<F: PrimeField> Decomposition<F> for F {
+impl<F: FftField> Decomposition<F> for F {
     fn off_dst(&self) -> F {
         // The least significant 16 bits
         bias(self.chunk_u16(POS_DST))

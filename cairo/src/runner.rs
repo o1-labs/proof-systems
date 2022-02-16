@@ -4,11 +4,11 @@
 use crate::definitions::*;
 use crate::memory::CairoMemory;
 use crate::word::{CairoWord, Decomposition};
-use ark_ff::PrimeField;
+use ark_ff::FftField;
 
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]
-pub struct CairoPointers<F: PrimeField> {
+pub struct CairoPointers<F: FftField> {
     /// Program counter: points to address in memory
     pub pc: F,
     /// Allocation pointer: points to first free space in memory
@@ -17,7 +17,7 @@ pub struct CairoPointers<F: PrimeField> {
     pub fp: F,
 }
 
-impl<F: PrimeField> CairoPointers<F> {
+impl<F: FftField> CairoPointers<F> {
     /// Creates a new triple of pointers
     pub fn new(pc: F, ap: F, fp: F) -> CairoPointers<F> {
         CairoPointers { pc, ap, fp }
@@ -25,7 +25,7 @@ impl<F: PrimeField> CairoPointers<F> {
 }
 
 /// A structure to store auxiliary variables throughout computation
-pub struct CairoVariables<F: PrimeField> {
+pub struct CairoVariables<F: FftField> {
     /// Destination
     dst: Option<F>,
     /// First operand
@@ -44,7 +44,7 @@ pub struct CairoVariables<F: PrimeField> {
     size: F,
 }
 
-impl<F: PrimeField> CairoVariables<F> {
+impl<F: FftField> CairoVariables<F> {
     /// This function creates an instance of a default CairoVariables struct
     pub fn new() -> CairoVariables<F> {
         CairoVariables {
@@ -59,14 +59,14 @@ impl<F: PrimeField> CairoVariables<F> {
         }
     }
 }
-impl<F: PrimeField> Default for CairoVariables<F> {
+impl<F: FftField> Default for CairoVariables<F> {
     fn default() -> Self {
         Self::new()
     }
 }
 
 /// A data structure to store a current step of Cairo computation
-pub struct CairoStep<'a, F: PrimeField> {
+pub struct CairoStep<'a, F: FftField> {
     // current step of computation
     //step: u64,
     /// current word of the program
@@ -80,7 +80,7 @@ pub struct CairoStep<'a, F: PrimeField> {
     vars: CairoVariables<F>,
 }
 
-impl<'a, F: PrimeField> CairoStep<'a, F> {
+impl<'a, F: FftField> CairoStep<'a, F> {
     /// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
     pub fn new(mem: &mut CairoMemory<F>, ptrs: CairoPointers<F>) -> CairoStep<F> {
         CairoStep {
@@ -279,14 +279,14 @@ impl<'a, F: PrimeField> CairoStep<'a, F> {
 }
 
 /// This struct stores the needed information to run a program
-pub struct CairoRunner<'a, F: PrimeField> {
+pub struct CairoRunner<'a, F: FftField> {
     /// full execution memory
     mem: &'a mut CairoMemory<F>,
     /// initial computation registers regs
     regs: CairoPointers<F>,
 }
 
-impl<'a, F: PrimeField> CairoRunner<'a, F> {
+impl<'a, F: FftField> CairoRunner<'a, F> {
     /// Creates a Cairo machine from the public input
     pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoRunner<F> {
         CairoRunner {

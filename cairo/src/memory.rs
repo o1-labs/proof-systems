@@ -6,18 +6,18 @@ use std::ops::{Index, IndexMut};
 
 use crate::helper::*;
 use crate::word::CairoWord;
-use ark_ff::PrimeField;
+use ark_ff::FftField;
 use core::iter::repeat;
 
 /// This data structure stores the memory of the program
-pub struct CairoMemory<F: PrimeField> {
+pub struct CairoMemory<F: FftField> {
     /// length of the public memory
     codelen: usize,
     /// full memory vector, None if non initialized
     pub data: Vec<Option<CairoWord<F>>>,
 }
 
-impl<F: PrimeField> Index<F> for CairoMemory<F> {
+impl<F: FftField> Index<F> for CairoMemory<F> {
     type Output = Option<CairoWord<F>>;
     fn index(&self, idx: F) -> &Self::Output {
         // Safely convert idx from F to usize (since this is a memory address
@@ -27,7 +27,7 @@ impl<F: PrimeField> Index<F> for CairoMemory<F> {
     }
 }
 
-impl<F: PrimeField> IndexMut<F> for CairoMemory<F> {
+impl<F: FftField> IndexMut<F> for CairoMemory<F> {
     fn index_mut(&mut self, idx: F) -> &mut Self::Output {
         let addr: u64 = idx.to_u64();
         self.resize(addr); // Resize if necessary
@@ -35,7 +35,7 @@ impl<F: PrimeField> IndexMut<F> for CairoMemory<F> {
     }
 }
 
-impl<F: PrimeField> Display for CairoMemory<F> {
+impl<F: FftField> Display for CairoMemory<F> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         for i in 1..self.size() {
             // Visualize content of memory excluding the 0th dummy entry
@@ -51,7 +51,7 @@ impl<F: PrimeField> Display for CairoMemory<F> {
     }
 }
 
-impl<F: PrimeField> CairoMemory<F> {
+impl<F: FftField> CairoMemory<F> {
     /// Create a new memory structure from a vector of field elements
     pub fn new(input: Vec<F>) -> CairoMemory<F> {
         // Initialized with the public memory (compiled instructions only)
