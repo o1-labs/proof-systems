@@ -1,20 +1,17 @@
 //! This module inlcudes some field helpers that are useful for Cairo
 
-use ark_ff::PrimeField;
+use ark_ff::FftField;
 use o1_utils::FieldHelpers;
 
 //(TODO move to utils inside FieldHelpers)
 
 /// Field element helpers for Cairo
-pub trait CairoFieldHelpers<F: PrimeField> {
-    /// Serialize to bits
-    fn to_bits(self) -> Vec<u8>;
-
-    /// Return field element as byte, if it fits
-    fn to_byte(self) -> u8;
+pub trait CairoFieldHelpers<F: FftField> {
+    /// Return field element as byte, if it fits. Otherwise returns least significant byte
+    fn ls_byte(self) -> u8;
 
     /// Return pos-th 16-bit chunk as another field element
-    fn chunk(self, pos: usize) -> F;
+    fn chunk_u16(self, pos: usize) -> F;
 
     /// Return first 64 bits of the field element
     fn to_u64(self) -> u64;
@@ -26,26 +23,12 @@ pub trait CairoFieldHelpers<F: PrimeField> {
     fn vec_to_field(vec: Vec<i128>) -> Vec<F>;
 }
 
-impl<F: PrimeField> CairoFieldHelpers<F> for F {
-    fn to_bits(self) -> Vec<u8> {
-        // We are representing bits with u8 as we don't have u2
-        let bytes = self.to_bytes();
-        let mut bits = Vec::new();
-        for b in bytes {
-            let mut b1 = b;
-            for _ in 0..8 {
-                bits.push(b1 % 2);
-                b1 >>= 1;
-            }
-        }
-        bits
-    }
-
-    fn to_byte(self) -> u8 {
+impl<F: FftField> CairoFieldHelpers<F> for F {
+    fn ls_byte(self) -> u8 {
         self.to_bytes()[0]
     }
 
-    fn chunk(self, pos: usize) -> F {
+    fn chunk_u16(self, pos: usize) -> F {
         let bytes = self.to_bytes();
         let chunk = u16::from(bytes[2 * pos]) + u16::from(bytes[2 * pos + 1]) * 2u16.pow(8);
         F::from(chunk)
@@ -101,7 +84,7 @@ mod tests {
     #[test]
     fn test_field_to_chunks() {
         let fe = BaseField::from(0x480680017fff8000u64);
-        let chunk = fe.chunk(1);
+        let chunk = fe.chunk_u16(1);
         assert_eq!(chunk, BaseField::from(0x7fff));
     }
 

@@ -4,8 +4,9 @@
 //! Our Pallas curves have 256 bits, so Cairo native instructions will fit.
 
 use crate::definitions::*;
-use crate::helper::*;
+use crate::helper::CairoFieldHelpers;
 use ark_ff::PrimeField;
+use o1_utils::field_helpers::FieldHelpers;
 
 /// A Cairo instruction for simulation
 #[derive(Clone, Copy)]
@@ -234,19 +235,19 @@ impl<F: PrimeField> Decomposition<F> for CairoWord<F> {
 impl<F: PrimeField> Decomposition<F> for F {
     fn off_dst(&self) -> F {
         // The least significant 16 bits
-        bias(self.chunk(POS_DST))
+        bias(self.chunk_u16(POS_DST))
         //biased_rep((self.word % 2u64.pow(16u32)) as u16)
     }
 
     fn off_op0(&self) -> F {
         // From the 32nd bit to the 17th
-        bias(self.chunk(POS_OP0))
+        bias(self.chunk_u16(POS_OP0))
         //biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16)
     }
 
     fn off_op1(&self) -> F {
         // From the 48th bit to the 33rd
-        bias(self.chunk(POS_OP1))
+        bias(self.chunk_u16(POS_OP1))
         //biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16)
     }
 
@@ -330,38 +331,38 @@ impl<F: PrimeField> Decomposition<F> for F {
 
     fn dst_reg(&self) -> u8 {
         // dst_reg = fDST_REG
-        self.f_dst_fp().to_byte()
+        self.f_dst_fp().ls_byte()
     }
 
     fn op0_reg(&self) -> u8 {
         // op0_reg = fOP0_REG
-        self.f_op0_fp().to_byte()
+        self.f_op0_fp().ls_byte()
     }
 
     fn op1_src(&self) -> u8 {
         // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
-        2 * (2 * self.f_op1_ap().to_byte() + self.f_op1_fp().to_byte()) + self.f_op1_val().to_byte()
+        2 * (2 * self.f_op1_ap().ls_byte() + self.f_op1_fp().ls_byte()) + self.f_op1_val().ls_byte()
     }
 
     fn res_log(&self) -> u8 {
         // res_log = 2*fRES_MUL + fRES_ADD
-        2 * self.f_res_mul().to_byte() + self.f_res_add().to_byte()
+        2 * self.f_res_mul().ls_byte() + self.f_res_add().ls_byte()
     }
 
     fn pc_up(&self) -> u8 {
         // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
-        2 * (2 * self.f_pc_jnz().to_byte() + self.f_pc_rel().to_byte()) + self.f_pc_abs().to_byte()
+        2 * (2 * self.f_pc_jnz().ls_byte() + self.f_pc_rel().ls_byte()) + self.f_pc_abs().ls_byte()
     }
 
     fn ap_up(&self) -> u8 {
         // ap_up = 2*fAP_ONE + fAP_ADD
-        2 * self.f_ap_one().to_byte() + self.f_ap_add().to_byte()
+        2 * self.f_ap_one().ls_byte() + self.f_ap_add().ls_byte()
     }
 
     fn opcode(&self) -> u8 {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
-        2 * (2 * self.f_opc_aeq().to_byte() + self.f_opc_ret().to_byte())
-            + self.f_opc_call().to_byte()
+        2 * (2 * self.f_opc_aeq().ls_byte() + self.f_opc_ret().ls_byte())
+            + self.f_opc_call().ls_byte()
     }
 }
 
