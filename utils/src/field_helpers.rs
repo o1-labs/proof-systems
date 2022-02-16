@@ -106,19 +106,17 @@ mod tests {
         );
 
         assert_eq!(
-            BaseField::from_hex("2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08")
+            BaseField::from_hex("25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39")
                 .is_ok(),
             true
         );
 
+        let field_hex = "f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36";
         assert_eq!(
             BaseField::to_hex(
-                BaseField::from_hex(
-                    "2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08"
-                )
-                .expect("Failed to deserialize field hex")
+                BaseField::from_hex(field_hex).expect("Failed to deserialize field hex")
             ),
-            "2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08"
+            field_hex
         );
     }
 
@@ -161,29 +159,13 @@ mod tests {
         assert_eq!(fe, fe_check);
 
         assert_eq!(
-            BaseField::from_bits(&[
-                false, true, false, false, false, true, true, false, true, true, false, false,
-                false, false, true, true, false, false, true, false, true, true, false, false,
-                false, true, false, true, false, true, false, false, true, true, false, false,
-                true, false, true, true, true, false, true, true, false, false, true, true, true,
-                false, false, false, true, false, true, false, true, false, false, false, false,
-                true, true, false, true, false, true, false, true, true, true, false, false, false,
-                false, true, true, true, false, true, false, false, false, false, true, true, true,
-                true, false, false, false, false, true, false, true, true, false, false, false,
-                false, true, false, true, false, true, true, false, true, true, false, false, true,
-                true, true, false, false, false, false, true, true, true, false, true, true, true,
-                true, false, true, true, true, false, true, false, true, true, true, true, false,
-                false, true, true, true, true, false, true, true, true, false, false, false, true,
-                true, false, false, true, false, false, true, false, true, false, false, true,
-                true, false, false, true, true, false, true, true, false, true, false, false, true,
-                true, true, true, false, false, false, true, true, true, true, true, true, false,
-                false, true, true, false, false, false, true, false, false, true, true, true,
-                false, true, false, true, false, true, true, true, true, true, true, true, false,
-                true, true, false, false, false, false, true, false, false, false, false, false,
-                false, true, false, false, true, true, false, false, true, false, false, false,
-                true, false, false, false, false, true, true, true, false, false, false, true,
-                true, true, true, false, false
-            ])
+            BaseField::from_bits(
+                &BaseField::from_hex(
+                    "e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32"
+                )
+                .expect("Failed to deserialize field hex")
+                .to_bits()
+            )
             .is_ok(),
             true
         );
