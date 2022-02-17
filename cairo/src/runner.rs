@@ -68,7 +68,7 @@ impl<F: FftField> Default for CairoVariables<F> {
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a, F: FftField> {
     // current step of computation
-    //step: u64,
+    //step: F,
     /// current word of the program
     pub mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
@@ -84,7 +84,6 @@ impl<'a, F: FftField> CairoStep<'a, F> {
     /// Creates a new Cairo execution step from a step index, a Cairo word, and current pointers
     pub fn new(mem: &mut CairoMemory<F>, ptrs: CairoPointers<F>) -> CairoStep<F> {
         CairoStep {
-            //step: idx,
             mem,
             curr: ptrs,
             next: None,
@@ -279,53 +278,75 @@ impl<'a, F: FftField> CairoStep<'a, F> {
 }
 
 /// This struct stores the needed information to run a program
-pub struct CairoRunner<'a, F: FftField> {
+pub struct CairoProgram<'a, F: FftField> {
+    /// total number of steps
+    steps: F,
     /// full execution memory
     mem: &'a mut CairoMemory<F>,
-    /// initial computation registers regs
-    regs: CairoPointers<F>,
+    /// initial computation registers
+    ini: CairoPointers<F>,
+    /// final computation pointers
+    fin: CairoPointers<F>,
 }
 
-impl<'a, F: FftField> CairoRunner<'a, F> {
-    /// Creates a Cairo machine from the public input
-    pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoRunner<F> {
-        CairoRunner {
+impl<'a, F: FftField> CairoProgram<'a, F> {
+    /// Creates a Cairo execution from the public information (memory and initial pointers)
+    pub fn new(mem: &mut CairoMemory<F>, pc: u64, ap: u64) -> CairoProgram<F> {
+        let mut prog = CairoProgram {
+            steps: F::zero(),
             mem,
-            regs: CairoPointers::new(F::from(pc), F::from(ap), F::from(ap)),
-        }
+            ini: CairoPointers::new(F::from(pc), F::from(ap), F::from(ap)),
+            fin: CairoPointers::new(F::zero(), F::zero(), F::zero()),
+        };
+        prog.execute();
+        prog
+    }
+
+    /// Outputs the total number of steps of the execution carried out by the runner
+    pub fn get_steps(&self) -> F {
+        self.steps
+    }
+
+    /// Outputs the final value of the pointers after the execution carried out by the runner
+    pub fn get_final(&self) -> CairoPointers<F> {
+        self.fin
     }
 
     /// This function simulates an execution of the Cairo program received as input.
     /// It generates the full memory stack and the execution trace
-    pub fn execute(&mut self) {
+    fn execute(&mut self) {
         // set finishing flag to false, as it just started
         let mut end = false;
-        // saves local copy of the initial (claimed) registers of the program
-        let mut regs = self.regs;
+        // saves local copy of the initial (claimed) pointers of the program
+        let mut curr = self.ini;
+        let mut next = self.ini;
         // first timestamp
-        //let mut i = 0;
+        let mut n: u64 = 0;
         // keep executing steps until the end is reached
         while !end {
-            // save allocation pointer before the execution
-            let curr_ap = regs.ap;
             // create current step of computation
-            let mut step = CairoStep::new(self.mem, regs);
+            let mut step = CairoStep::new(self.mem, next);
+            // save current value of the pointers
+            curr = step.curr;
             // execute current step and increase time counter
             step.execute();
-            //i += 1;
+            n += 1;
             match step.next {
-                None => end = true, // if find no next registers, end
+                None => end = true, // if find no next pointers, end
                 _ => {
-                    // if there are next registers
+                    // if there are next pointers
                     end = false;
-                    regs = step.next.unwrap();
-                    if curr_ap <= regs.pc {
+                    // update next value of pointers
+                    next = step.next.unwrap();
+                    if curr.ap <= next.pc {
                         // if reading from unallocated memory, end
                         end = true;
                     }
                 }
             }
         }
+        self.steps = F::from(n);
+        self.fin = CairoPointers::new(curr.pc, curr.ap, curr.fp);
     }
 }
 
@@ -372,8 +393,7 @@ mod tests {
         // Is it final ap and/or final fp? Will write to starkware guys to learn about this
         mem.write(F::from(4u32), F::from(7u32)); //beginning of output
         mem.write(F::from(5u32), F::from(7u32)); //end of output
-        let mut prog = CairoRunner::new(&mut mem, 1, 6);
-        prog.execute();
+        let prog = CairoProgram::new(&mut mem, 1, 6);
         println!("{}", prog.mem);
     }
 
@@ -425,8 +445,10 @@ mod tests {
         mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
         mem.write(F::from(22u32), F::from(44u32)); // end of outputs
         mem.write(F::from(23u32), F::from(44u32)); //end of program
-        let mut prog = CairoRunner::new(&mut mem, 5, 24);
-        prog.execute();
+        let prog = CairoProgram::new(&mut mem, 5, 24);
+        assert_eq!(prog.get_final().pc, F::from(20u32));
+        assert_eq!(prog.get_final().ap, F::from(41u32));
+        assert_eq!(prog.get_final().fp, F::from(24u32));
         println!("{}", prog.mem);
         assert_eq!(prog.mem.read(F::from(24u32)).unwrap(), F::from(10u32));
         assert_eq!(prog.mem.read(F::from(25u32)).unwrap(), F::from(20u32));
