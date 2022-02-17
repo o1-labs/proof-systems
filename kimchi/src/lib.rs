@@ -4,6 +4,7 @@ extern crate num_derive;
 pub mod alphas;
 pub mod bench;
 pub mod circuits;
+pub mod error;
 pub mod index;
 pub mod plonk_sponge;
 pub mod prover;
