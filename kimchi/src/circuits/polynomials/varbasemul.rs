@@ -209,7 +209,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: usize = 21;
 
-    fn constraints(&self) -> Vec<E<F>> {
+    fn constraints() -> Vec<E<F>> {
         let Layout {
             base,
             accs,

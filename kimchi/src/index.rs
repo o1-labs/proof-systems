@@ -6,7 +6,7 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::lookup::Lookup;
+use crate::circuits::polynomials::lookup;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
@@ -175,17 +175,17 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         highest_constraints,
     );
 
-    let mut expr = Poseidon::default().combined_constraints(&powers_of_alpha);
-    expr += VarbaseMul::default().combined_constraints(&powers_of_alpha);
-    expr += CompleteAdd::default().combined_constraints(&powers_of_alpha);
-    expr += EndosclMul::default().combined_constraints(&powers_of_alpha);
-    expr += EndomulScalar::default().combined_constraints(&powers_of_alpha);
+    let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
+    expr += VarbaseMul::combined_constraints(&powers_of_alpha);
+    expr += CompleteAdd::combined_constraints(&powers_of_alpha);
+    expr += EndosclMul::combined_constraints(&powers_of_alpha);
+    expr += EndomulScalar::combined_constraints(&powers_of_alpha);
 
     if chacha {
-        expr += ChaCha0::default().combined_constraints(&powers_of_alpha);
-        expr += ChaCha1::default().combined_constraints(&powers_of_alpha);
-        expr += ChaCha2::default().combined_constraints(&powers_of_alpha);
-        expr += ChaChaFinal::default().combined_constraints(&powers_of_alpha);
+        expr += ChaCha0::combined_constraints(&powers_of_alpha);
+        expr += ChaCha1::combined_constraints(&powers_of_alpha);
+        expr += ChaCha2::combined_constraints(&powers_of_alpha);
+        expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
@@ -193,9 +193,12 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        let lookup = Lookup::new(&lcs.dummy_lookup_values[0], domain);
-        powers_of_alpha.register(ArgumentType::Lookup, Lookup::<F>::CONSTRAINTS);
-        expr += lookup.combined_constraints(&powers_of_alpha);
+        powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
+        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
+
+        let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
+        let combined = Expr::combine_constraints(alphas, constraints);
+        expr += combined;
     }
 
     // return the expression

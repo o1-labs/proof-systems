@@ -38,11 +38,11 @@ pub trait Argument {
 
     /// Returns the set of constraints required to prove this argument.
     // TODO: return a [_; Self::CONSTRAINTS] once generic consts are stable
-    fn constraints(&self) -> Vec<E<Self::Field>>;
+    fn constraints() -> Vec<E<Self::Field>>;
 
     /// Returns constraints safely combined via the passed combinator.
-    fn combined_constraints(&self, alphas: &Alphas<Self::Field>) -> E<Self::Field> {
-        let constraints = self.constraints();
+    fn combined_constraints(alphas: &Alphas<Self::Field>) -> E<Self::Field> {
+        let constraints = Self::constraints();
         assert!(constraints.len() == Self::CONSTRAINTS);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
         let combined_constraints = E::combine_constraints(alphas, constraints);

@@ -1,4 +1,4 @@
-//! This module implements the arithmetization of plookup constraints
+//! This source file implements the arithmetization of plookup constraints
 //!
 //! Because of our ZK-rows, we can't do the trick in the plookup paper of
 //! wrapping around to enforce consistency between the sorted lookup columns.
@@ -120,18 +120,21 @@
 //! snakifying on `witness_table`, because its contribution above only uses a single term rather
 //! than a pair of terms.
 
-use crate::circuits::argument::{Argument, ArgumentType};
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+
 use crate::circuits::expr::{prologue::*, Column, ConstantExpr, Variable};
 use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
     wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One, Zero};
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use oracle::rndoracle::ProofError;
 use rand::Rng;
 use std::collections::HashMap;
 use CurrOrNext::*;
+
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: usize = 7;
 
 // TODO: Update for multiple tables
 fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
@@ -581,199 +584,168 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     Ok(zk_patch(lookup_aggreg, d1, rng))
 }
 
-/// Implementation of the lookup argument
-pub struct Lookup<'a, F>
-where
-    F: FftField,
-{
-    dummy_lookup_values: &'a [F],
-    domain: D<F>,
-}
+/// Specifies the lookup constraints as expressions.
+pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
+    // Something important to keep in mind is that the last 2 rows of
+    // all columns will have random values in them to maintain zero-knowledge.
+    //
+    // Another important thing to note is that there are no lookups permitted
+    // in the 3rd to last row.
+    //
+    // This is because computing the lookup-product requires
+    // num_lookup_rows + 1
+    // rows, so we need to have
+    // num_lookup_rows + 1 = n - 2 (the last 2 being reserved for the zero-knowledge random
+    // values) and thus
+    //
+    // num_lookup_rows = n - 3
+    let lookup_info = LookupInfo::<F>::create();
 
-impl<'a, F> Lookup<'a, F>
-where
-    F: FftField,
-{
-    /// Creates a new [Lookup] from a list of dummy lookup values and a domain.
-    pub fn new(dummy_lookup_values: &'a [F], domain: D<F>) -> Self {
-        Self {
-            dummy_lookup_values,
-            domain,
+    let column = |col: Column| E::cell(col, Curr);
+
+    let lookup_indicator = lookup_info
+        .kinds
+        .iter()
+        .enumerate()
+        .map(|(i, _)| column(Column::LookupKindIndex(i)))
+        .fold(E::zero(), |acc: E<F>, x| acc + x);
+
+    let one: E<F> = E::one();
+    let non_lookup_indcator = one - lookup_indicator;
+
+    let dummy_lookup: ConstantExpr<F> = dummy_lookup
+        .iter()
+        .rev()
+        .fold(ConstantExpr::zero(), |acc, x| {
+            ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x)
+        });
+
+    let complements_with_beta_term: Vec<ConstantExpr<F>> = {
+        let mut v = vec![ConstantExpr::one()];
+        let x = ConstantExpr::Gamma + dummy_lookup;
+        for i in 1..(lookup_info.max_per_row + 1) {
+            v.push(v[i - 1].clone() * x.clone())
         }
-    }
-}
 
-impl<'a, F> Argument for Lookup<'a, F>
-where
-    F: FftField,
-{
-    type Field = F;
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Lookup;
-    const CONSTRAINTS: usize = 7;
+        let beta1_per_row: ConstantExpr<F> =
+            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
+        v.iter()
+            .map(|x| x.clone() * beta1_per_row.clone())
+            .collect()
+    };
 
-    fn constraints(&self) -> Vec<E<F>> {
-        // Something important to keep in mind is that the last 2 rows of
-        // all columns will have random values in them to maintain zero-knowledge.
-        //
-        // Another important thing to note is that there are no lookups permitted
-        // in the 3rd to last row.
-        //
-        // This is because computing the lookup-product requires
-        // num_lookup_rows + 1
-        // rows, so we need to have
-        // num_lookup_rows + 1 = n - 2 (the last 2 being reserved for the zero-knowledge random
-        // values) and thus
-        //
-        // num_lookup_rows = n - 3
-        let lookup_info = LookupInfo::<F>::create();
+    // This is set up so that on rows that have lookups, chunk will be equal
+    // to the product over all lookups `f` in that row of `gamma + f`
+    // and
+    // on non-lookup rows, will be equal to 1.
+    let f_term = |spec: &Vec<_>| {
+        assert!(spec.len() <= lookup_info.max_per_row);
+        let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
-        let column = |col: Column| E::cell(col, Curr);
+        spec.iter()
+            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
+            .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
+    };
+    let f_chunk = lookup_info
+        .kinds
+        .iter()
+        .enumerate()
+        .map(|(i, spec)| column(Column::LookupKindIndex(i)) * f_term(spec))
+        .fold(non_lookup_indcator * f_term(&vec![]), |acc, x| acc + x);
+    let gammabeta1 =
+        || E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
+    let ft_chunk = f_chunk
+        * (gammabeta1()
+            + E::cell(Column::LookupTable, Curr)
+            + E::beta() * E::cell(Column::LookupTable, Next));
 
-        let lookup_indicator = lookup_info
-            .kinds
-            .iter()
-            .enumerate()
-            .map(|(i, _)| column(Column::LookupKindIndex(i)))
-            .fold(E::zero(), |acc: E<F>, x| acc + x);
+    let num_rows = d1.size as usize;
 
-        let one: E<F> = E::one();
-        let non_lookup_indcator = one - lookup_indicator;
+    let num_lookup_rows = num_rows - ZK_ROWS - 1;
 
-        let dummy_lookup: ConstantExpr<F> = self
-            .dummy_lookup_values
-            .iter()
-            .rev()
-            .fold(ConstantExpr::zero(), |acc, x| {
-                ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x)
-            });
+    // Because of our ZK-rows, we can't do the trick in the plookup paper of
+    // wrapping around to enforce consistency between the sorted lookup columns.
+    //
+    // Instead, we arrange the LookupSorted table into columns in a snake-shape.
+    //
+    // Like so,
+    //    _   _
+    // | | | | |
+    // | | | | |
+    // |_| |_| |
+    //
+    // or, imagining the full sorted array is [ s0, ..., s8 ], like
+    //
+    // s0 s4 s4 s8
+    // s1 s3 s5 s7
+    // s2 s2 s6 s6
+    //
+    // So the direction ("increasing" or "decreasing" (relative to LookupTable)
+    // is
+    // if i % 2 = 0 { Increasing } else { Decreasing }
+    //
+    // Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
+    // last element of LookupSorted(i) = last element of LookupSorted(i + 1),
+    // and if i % 2 = 1, we enforce that the
+    // first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
-        let complements_with_beta_term: Vec<ConstantExpr<F>> = {
-            let mut v = vec![ConstantExpr::one()];
-            let x = ConstantExpr::Gamma + dummy_lookup;
-            for i in 1..(lookup_info.max_per_row + 1) {
-                v.push(v[i - 1].clone() * x.clone())
-            }
+    let s_chunk = (0..(lookup_info.max_per_row + 1))
+        .map(|i| {
+            let (s1, s2) = if i % 2 == 0 {
+                (Curr, Next)
+            } else {
+                (Next, Curr)
+            };
 
-            let beta1_per_row: ConstantExpr<F> =
-                (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
-            v.iter()
-                .map(|x| x.clone() * beta1_per_row.clone())
-                .collect()
-        };
+            gammabeta1()
+                + E::cell(Column::LookupSorted(i), s1)
+                + E::beta() * E::cell(Column::LookupSorted(i), s2)
+        })
+        .fold(E::one(), |acc: E<F>, x| acc * x);
 
-        // This is set up so that on rows that have lookups, chunk will be equal
-        // to the product over all lookups `f` in that row of `gamma + f`
-        // and
-        // on non-lookup rows, will be equal to 1.
-        let f_term = |spec: &Vec<_>| {
-            assert!(spec.len() <= lookup_info.max_per_row);
-            let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
+    let compatibility_checks: Vec<_> = (0..lookup_info.max_per_row)
+        .map(|i| {
+            let first_or_last = if i % 2 == 0 {
+                // Check compatibility of the last elements
+                num_lookup_rows
+            } else {
+                // Check compatibility of the first elements
+                0
+            };
+            E::UnnormalizedLagrangeBasis(first_or_last)
+                * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)))
+        })
+        .collect();
 
-            spec.iter()
-                .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
-                .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
-        };
-        let f_chunk = lookup_info
-            .kinds
-            .iter()
-            .enumerate()
-            .map(|(i, spec)| column(Column::LookupKindIndex(i)) * f_term(spec))
-            .fold(non_lookup_indcator * f_term(&vec![]), |acc, x| acc + x);
-        let gammabeta1 =
-            || E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
-        let ft_chunk = f_chunk
-            * (gammabeta1()
-                + E::cell(Column::LookupTable, Curr)
-                + E::beta() * E::cell(Column::LookupTable, Next));
+    let aggreg_equation = E::cell(Column::LookupAggreg, Next) * s_chunk
+        - E::cell(Column::LookupAggreg, Curr) * ft_chunk;
 
-        let num_rows = self.domain.size as usize;
+    /*
+        aggreg.next =
+        aggreg.curr
+        * f_chunk
+        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
+        / (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
 
-        let num_lookup_rows = num_rows - ZK_ROWS - 1;
+        rearranging,
 
-        // Because of our ZK-rows, we can't do the trick in the plookup paper of
-        // wrapping around to enforce consistency between the sorted lookup columns.
-        //
-        // Instead, we arrange the LookupSorted table into columns in a snake-shape.
-        //
-        // Like so,
-        //    _   _
-        // | | | | |
-        // | | | | |
-        // |_| |_| |
-        //
-        // or, imagining the full sorted array is [ s0, ..., s8 ], like
-        //
-        // s0 s4 s4 s8
-        // s1 s3 s5 s7
-        // s2 s2 s6 s6
-        //
-        // So the direction ("increasing" or "decreasing" (relative to LookupTable)
-        // is
-        // if i % 2 = 0 { Increasing } else { Decreasing }
-        //
-        // Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
-        // last element of LookupSorted(i) = last element of LookupSorted(i + 1),
-        // and if i % 2 = 1, we enforce that the
-        // first element of LookupSorted(i) = first element of LookupSorted(i + 1)
+        aggreg.next
+        * (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
+        =
+        aggreg.curr
+        * f_chunk
+        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
 
-        let s_chunk = (0..(lookup_info.max_per_row + 1))
-            .map(|i| {
-                let (s1, s2) = if i % 2 == 0 {
-                    (Curr, Next)
-                } else {
-                    (Next, Curr)
-                };
+    */
 
-                gammabeta1()
-                    + E::cell(Column::LookupSorted(i), s1)
-                    + E::beta() * E::cell(Column::LookupSorted(i), s2)
-            })
-            .fold(E::one(), |acc: E<F>, x| acc * x);
-
-        let compatibility_checks: Vec<_> = (0..lookup_info.max_per_row)
-            .map(|i| {
-                let first_or_last = if i % 2 == 0 {
-                    // Check compatibility of the last elements
-                    num_lookup_rows
-                } else {
-                    // Check compatibility of the first elements
-                    0
-                };
-                E::UnnormalizedLagrangeBasis(first_or_last)
-                    * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)))
-            })
-            .collect();
-
-        let aggreg_equation = E::cell(Column::LookupAggreg, Next) * s_chunk
-            - E::cell(Column::LookupAggreg, Curr) * ft_chunk;
-
-        /*
-            aggreg.next =
-            aggreg.curr
-            * f_chunk
-            * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
-            / (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
-
-            rearranging,
-
-            aggreg.next
-            * (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
-            =
-            aggreg.curr
-            * f_chunk
-            * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
-
-        */
-
-        let mut res = vec![
-            E::VanishesOnLast4Rows * aggreg_equation,
-            E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
-            // Check that the 3rd to last row (index = num_rows - 3), which
-            // contains the full product, equals 1
-            E::UnnormalizedLagrangeBasis(num_lookup_rows)
-                * (E::cell(Column::LookupAggreg, Curr) - E::one()),
-        ];
-        res.extend(compatibility_checks);
-        res
-    }
+    let mut res = vec![
+        E::VanishesOnLast4Rows * aggreg_equation,
+        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        // Check that the 3rd to last row (index = num_rows - 3), which
+        // contains the full product, equals 1
+        E::UnnormalizedLagrangeBasis(num_lookup_rows)
+            * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+    ];
+    res.extend(compatibility_checks);
+    res
 }

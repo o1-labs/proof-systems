@@ -57,7 +57,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: usize = 7;
 
-    fn constraints(&self) -> Vec<E<F>> {
+    fn constraints() -> Vec<E<F>> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = witness_curr(0);
         let y1 = witness_curr(1);

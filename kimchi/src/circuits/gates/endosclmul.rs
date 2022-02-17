@@ -73,7 +73,7 @@ impl<F: FftField> CircuitGate<F> {
             ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
-        let constraints = EndosclMul::default().constraints();
+        let constraints = EndosclMul::constraints();
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {

@@ -50,7 +50,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: usize = 11;
 
-    fn constraints(&self) -> Vec<E<F>> {
+    fn constraints() -> Vec<E<F>> {
         let b1 = witness_curr(11);
         let b2 = witness_curr(12);
         let b3 = witness_curr(13);
