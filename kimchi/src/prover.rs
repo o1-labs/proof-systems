@@ -591,9 +591,11 @@ where
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProofError::PolyDivision("f"))?;
+                .ok_or(ProofError::Prover("division by vanishing polynomial"))?;
             if !res.is_zero() {
-                return Err(ProofError::PolyDivisionRest("f"));
+                return Err(ProofError::Prover(
+                    "rest of division by vanishing polynomial",
+                ));
             }
 
             quotient += &bnd; // already divided by Z_H
