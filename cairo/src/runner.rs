@@ -67,8 +67,6 @@ impl<F: FftField> Default for CairoVariables<F> {
 
 /// A data structure to store a current step of Cairo computation
 pub struct CairoStep<'a, F: FftField> {
-    // current step of computation
-    //step: F,
     /// current word of the program
     pub mem: &'a mut CairoMemory<F>,
     // comment instr for efficiency
