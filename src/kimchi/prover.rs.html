@@ -1045,6 +1045,8 @@
 <span id="1040">1040</span>
 <span id="1041">1041</span>
 <span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1060,6 +1062,7 @@
         <span class="ident">scalars</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
         <span class="ident">wires</span>::{<span class="ident">COLUMNS</span>, <span class="ident">PERMUTS</span>},
     },
+    <span class="ident">error</span>::{<span class="ident">ProofError</span>, <span class="prelude-ty">Result</span>},
     <span class="ident">index::Index</span>,
     <span class="ident">plonk_sponge::FrSponge</span>,
 };
@@ -1073,7 +1076,7 @@
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">lookup::CombinedEntry</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
-<span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">rndoracle::ProofError</span>, <span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
+<span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">type</span> <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">G</span> <span class="kw">as</span> <span class="ident">AffineCurve</span><span class="op">&gt;</span><span class="ident">::ScalarField</span>;
@@ -1133,7 +1136,7 @@
         <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">index</span>: <span class="kw-2">&amp;</span><span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
         <span class="ident">prev_challenges</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">PolyComm</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ProofError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">d1_size</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
         <span class="comment">// TODO: rng should be passed as arg</span>
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">rand::rngs::OsRng</span>;
@@ -1352,7 +1355,6 @@
                             <span class="kw-2">&amp;</span><span class="ident">lookup_sorted</span>,
                             <span class="ident">rng</span>)<span class="question-mark">?</span>;
 
-                    <span class="ident">drop</span>(<span class="ident">lookup_sorted</span>);
                     <span class="kw">if</span> <span class="ident">aggreg</span>.<span class="ident">evals</span>[<span class="ident">d1_size</span> <span class="op">-</span> (<span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="number">1</span>)] <span class="op">!</span><span class="op">=</span> <span class="ident">Fr</span>::<span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="ident">::one</span>() {
                         <span class="macro">panic!</span>(<span class="string">&quot;aggregation incorrect: {}&quot;</span>, <span class="ident">aggreg</span>.<span class="ident">evals</span>[<span class="ident">d1_size</span><span class="op">-</span>(<span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span> <span class="op">+</span> <span class="number">1</span>)]);
                     }
@@ -1638,9 +1640,11 @@
             <span class="comment">// divide contributions with vanishing polynomial</span>
             <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">quotient</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">f</span>
                 .<span class="ident">divide_by_vanishing_poly</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>)
-                .<span class="ident">ok_or</span>(<span class="ident">ProofError::PolyDivision</span>)<span class="question-mark">?</span>;
+                .<span class="ident">ok_or</span>(<span class="ident">ProofError::Prover</span>(<span class="string">&quot;division by vanishing polynomial&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="op">!</span><span class="ident">res</span>.<span class="ident">is_zero</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::PolyDivision</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProofError::Prover</span>(
+                    <span class="string">&quot;rest of division by vanishing polynomial&quot;</span>,
+                ));
             }
 
             <span class="ident">quotient</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">bnd</span>; <span class="comment">// already divided by Z_H</span>
@@ -2088,5 +2092,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (75d9a0ae2 2022-02-16)" ></div>
 </body></html>

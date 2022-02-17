@@ -158,9 +158,6 @@
 <span id="153">153</span>
 <span id="154">154</span>
 <span id="155">155</span>
-<span id="156">156</span>
-<span id="157">157</span>
-<span id="158">158</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Mina Schnorr signature scheme</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An implementation of the singer interface for the Mina signature algorithm</span>
@@ -182,10 +179,7 @@
     <span class="ident">Blake2bVar</span>,
 };
 <span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
-<span class="kw">use</span> <span class="ident">oracle</span>::{
-    <span class="ident">poseidon::SpongeConstants</span>,
-    <span class="ident">rndoracle</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">Sponge</span>},
-};
+<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">Sponge</span>, <span class="ident">SpongeConstants</span>};
 <span class="kw">use</span> <span class="ident">std::ops::Neg</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -320,5 +314,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (09cb29c64 2022-02-15)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (75d9a0ae2 2022-02-16)" ></div>
 </body></html>

@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["kimchi"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/std/error/trait.Error.html\" title=\"trait std::error::Error\">Error</a> for <a class=\"enum\" href=\"kimchi/error/enum.ProofError.html\" title=\"enum kimchi::error::ProofError\">ProofError</a>","synthetic":false,"types":["kimchi::error::ProofError"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
