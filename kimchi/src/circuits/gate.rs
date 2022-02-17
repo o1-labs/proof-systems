@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk constraint gate primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk constraint gate primitive.
 
 use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;
@@ -11,8 +7,10 @@ use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::{HashMap, HashSet};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
+
+type Evaluations<Field> = E<Field, D<Field>>;
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -52,8 +50,7 @@ pub struct LocalPosition {
 /// combination of locally-accessible cells.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SingleLookup<F> {
-    table_id: usize,
-    // Linear combination of local-positions
+    /// Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
 }
 
@@ -89,6 +86,7 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
+    pub table_id: usize,
     pub entry: Vec<SingleLookup<F>>,
 }
 
@@ -106,6 +104,11 @@ impl<F: Field> JointLookup<F> {
     }
 }
 
+/// The different types of gates the system supports.
+/// Note that all the gates are mutually exclusive:
+/// they cannot be used at the same time on single row.
+/// If we were ever to support this feature, we would have to make sure
+/// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
     Clone,
@@ -162,19 +165,15 @@ pub struct LookupInfo<F> {
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// constraint (given as an index into `kinds`) that should be applied there, if any.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
+    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
+    /// table that is used by the gate, if any.
+    pub kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: usize,
     /// An empty vector.
     empty: Vec<JointLookup<F>>,
-}
-
-fn lookup_kinds<F: Field>() -> Vec<Vec<JointLookup<F>>> {
-    GateType::lookup_kinds()
-        .into_iter()
-        .map(|(x, _)| x)
-        .collect()
 }
 
 fn max_lookups_per_row<F>(kinds: &[Vec<JointLookup<F>>]) -> usize {
@@ -189,10 +188,28 @@ pub enum LookupsUsed {
     Joint,
 }
 
+/// Enumerates the different 'fixed' lookup tables used by individual gates
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum GateLookupTable {
+    Xor,
+}
+
+pub type LookupTable<F> = Vec<Vec<F>>;
+
+pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
+    match table_name {
+        GateLookupTable::Xor => crate::circuits::polynomials::chacha::xor_table(),
+    }
+}
+
 impl<F: FftField> LookupInfo<F> {
     /// Create the default lookup configuration.
     pub fn create() -> Self {
-        let kinds = lookup_kinds::<F>();
+        let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
+        let GatesLookupMaps {
+            gate_selector_map: kinds_map,
+            gate_table_map: kinds_tables,
+        } = GateType::lookup_kinds_map::<F>(locations_with_tables);
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
@@ -200,7 +217,8 @@ impl<F: FftField> LookupInfo<F> {
                     .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len()))
             }),
 
-            kinds_map: GateType::lookup_kinds_map::<F>(),
+            kinds_map,
+            kinds_tables,
             kinds,
             max_per_row,
             empty: vec![],
@@ -228,35 +246,46 @@ impl<F: FftField> LookupInfo<F> {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials(
+    pub fn selector_polynomials_and_tables(
         &self,
-        domain: EvaluationDomains<F>,
+        domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> Vec<E<F, D<F>>> {
+    ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size as usize;
-        let mut res: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
+        let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
+        let mut gate_tables = HashSet::new();
 
         // TODO: is take(n) useful here? I don't see why we need this
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                res[*v][i] = F::one();
+            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
+                selector_values[*selector_index][i] = F::one();
             }
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                res[*v][i + 1] = F::one();
+            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
+                selector_values[*selector_index][i + 1] = F::one();
+            }
+
+            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Curr)) {
+                gate_tables.insert(*table_kind);
+            }
+            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Next)) {
+                gate_tables.insert(*table_kind);
             }
         }
 
         // Actually, don't need to evaluate over domain 8 here.
         // TODO: so why do it :D?
-        res.into_iter()
+        let selector_values8: Vec<_> = selector_values
+            .into_iter()
             .map(|v| {
                 E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
                     .interpolate()
                     .evaluate_over_domain(domain.d8)
             })
-            .collect()
+            .collect();
+        let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
+        (selector_values8, res_tables)
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
@@ -276,6 +305,24 @@ impl<F: FftField> LookupInfo<F> {
     }
 }
 
+/// Specifies the relative position of gates and the fixed lookup table (if applicable) that a
+/// given lookup configuration should apply to.
+pub struct GatesLookupSpec {
+    /// The set of positions relative to an active gate where a lookup configuration applies.
+    pub gate_positions: HashSet<(GateType, CurrOrNext)>,
+    /// The fixed lookup table that should be used for these lookups, if applicable.
+    pub gate_lookup_table: Option<GateLookupTable>,
+}
+
+/// Specifies mapping from positions defined relative to gates into lookup data.
+pub struct GatesLookupMaps {
+    /// Enumerates the selector that should be active for a particular gate-relative position.
+    pub gate_selector_map: HashMap<(GateType, CurrOrNext), usize>,
+    /// Enumerates the fixed tables that should be used for lookups in a particular gate-relative
+    /// position.
+    pub gate_table_map: HashMap<(GateType, CurrOrNext), GateLookupTable>,
+}
+
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
     /// Currently there is only the lookup pattern used in the ChaCha rows, and it
@@ -283,8 +330,7 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    #[allow(clippy::type_complexity)]
-    pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
+    pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookup<F>>>, Vec<GatesLookupSpec>) {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
             column,
@@ -303,10 +349,10 @@ impl GateType {
                 let right = curr_row(7 + i);
                 let output = curr_row(11 + i);
                 let l = |loc: LocalPosition| SingleLookup {
-                    table_id: 0,
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
+                    table_id: 0,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -331,18 +377,11 @@ impl GateType {
                 // Check
                 // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
                 let x = SingleLookup {
-                    table_id: 0,
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    entry: vec![
-                        x.clone(),
-                        x,
-                        SingleLookup {
-                            table_id: 0,
-                            value: vec![],
-                        },
-                    ],
+                    table_id: 0,
+                    entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
             .collect();
@@ -352,25 +391,60 @@ impl GateType {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
-        vec![
-            (chacha_pattern, chacha_where),
-            (chacha_final_pattern, chacha_final_where),
-        ]
+        let lookups = [
+            (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
+            (
+                chacha_final_pattern,
+                chacha_final_where,
+                Some(GateLookupTable::Xor),
+            ),
+        ];
+
+        // Convert from an array of tuples to a tuple of vectors
+        {
+            let mut patterns = Vec::with_capacity(lookups.len());
+            let mut locations_with_tables = Vec::with_capacity(lookups.len());
+            for (pattern, locations, table) in lookups {
+                patterns.push(pattern);
+                locations_with_tables.push(GatesLookupSpec {
+                    gate_positions: locations,
+                    gate_lookup_table: table,
+                });
+            }
+            (patterns, locations_with_tables)
+        }
     }
 
-    pub fn lookup_kinds_map<F: Field>() -> HashMap<(GateType, CurrOrNext), usize> {
-        let mut res = HashMap::new();
-        let lookup_kinds = Self::lookup_kinds::<F>();
-        for (i, (_, locs)) in lookup_kinds.into_iter().enumerate() {
-            for (g, r) in locs {
-                if let std::collections::hash_map::Entry::Vacant(e) = res.entry((g, r)) {
+    pub fn lookup_kinds_map<F: Field>(
+        locations_with_tables: Vec<GatesLookupSpec>,
+    ) -> GatesLookupMaps {
+        let mut index_map = HashMap::with_capacity(locations_with_tables.len());
+        let mut table_map = HashMap::with_capacity(locations_with_tables.len());
+        for (
+            i,
+            GatesLookupSpec {
+                gate_positions: locs,
+                gate_lookup_table: table_kind,
+            },
+        ) in locations_with_tables.into_iter().enumerate()
+        {
+            for location in locs {
+                if let Entry::Vacant(e) = index_map.entry(location) {
                     e.insert(i);
                 } else {
                     panic!("Multiple lookup patterns asserted on same row.")
                 }
+                if let Some(table_kind) = table_kind {
+                    if let Entry::Vacant(e) = table_map.entry(location) {
+                        e.insert(table_kind);
+                    }
+                }
             }
         }
-        res
+        GatesLookupMaps {
+            gate_selector_map: index_map,
+            gate_table_map: table_map,
+        }
     }
 }
 
@@ -379,12 +453,11 @@ impl GateType {
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
-    /// gate wires
+    /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
-    /// constraints vector
-    // TODO: rename
+    /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub c: Vec<F>,
+    pub coeffs: Vec<F>,
 }
 
 impl<F: FftField> ToBytes for CircuitGate<F> {
@@ -396,8 +469,8 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
             self.wires[i].write(&mut w)?
         }
 
-        (self.c.len() as u8).write(&mut w)?;
-        for x in self.c.iter() {
+        (self.coeffs.len() as u8).write(&mut w)?;
+        for x in self.coeffs.iter() {
             x.write(&mut w)?;
         }
         Ok(())
@@ -409,8 +482,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
-            c: Vec::new(),
             wires,
+            coeffs: Vec::new(),
         }
     }
 
@@ -431,7 +504,7 @@ impl<F: FftField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             ForeignMul0 | ForeignMul1 | ForeignMul2 => self.verify_foreign_mul(row, witness, cs),
         }
     }
@@ -442,7 +515,6 @@ pub mod caml {
     use super::*;
     use crate::circuits::wires::caml::CamlWire;
     use itertools::Itertools;
-    use std::convert::TryInto;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
@@ -456,7 +528,7 @@ pub mod caml {
             CamlWire,
             CamlWire,
         ),
-        pub c: Vec<F>,
+        pub coeffs: Vec<F>,
     }
 
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
@@ -468,7 +540,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -482,7 +554,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.clone().into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.clone().into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -496,7 +568,7 @@ pub mod caml {
             Self {
                 typ: ccg.typ,
                 wires: tuple_to_array(ccg.wires),
-                c: ccg.c.into_iter().map(Into::into).collect(),
+                coeffs: ccg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -534,7 +606,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;
@@ -562,11 +634,11 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
                 typ,
                 wires,
-                c,
+                coeffs,
             }
         }
     }
@@ -580,7 +652,7 @@ mod tests {
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);
             }
-            prop_assert_eq!(cg.c, decoded.c);
+            prop_assert_eq!(cg.coeffs, decoded.coeffs);
         }
     }
 }

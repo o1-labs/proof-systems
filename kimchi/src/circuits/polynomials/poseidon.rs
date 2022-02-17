@@ -1,15 +1,14 @@
-/*****************************************************************************************************************
+//! This module implements the Poseidon constraint polynomials.
 
-This source file implements Posedon constraint polynomials.
-
-*****************************************************************************************************************/
-
-use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
+use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, SquareRootField};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
 use CurrOrNext::*;
+
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 15;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
@@ -40,29 +39,29 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
     },
 ];
 
-/// poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
-// Conjunction of:
-// curr[round_range(1)] = round(curr[round_range(0)])
-// curr[round_range(2)] = round(curr[round_range(1)])
-// curr[round_range(3)] = round(curr[round_range(2)])
-// curr[round_range(4)] = round(curr[round_range(3)])
-// next[round_range(0)] = round(curr[round_range(4)])
-//
-// which expands e.g., to
-// curr[round_range(1)][0] =
-//      mds[0][0] * sbox(curr[round_range(0)][0])
-//    + mds[0][1] * sbox(curr[round_range(0)][1])
-//    + mds[0][2] * sbox(curr[round_range(0)][2])
-//    + rcm[round_range(1)][0]
-// curr[round_range(1)][1] =
-//      mds[1][0] * sbox(curr[round_range(0)][0])
-//    + mds[1][1] * sbox(curr[round_range(0)][1])
-//    + mds[1][2] * sbox(curr[round_range(0)][2])
-//    + rcm[round_range(1)][1]
-// ...
-// The rth position in this array contains the alphas used for the equations that
-// constrain the values of the (r+1)th state.
-pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
+/// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
+/// Conjunction of:
+/// curr[round_range(1)] = round(curr[round_range(0)])
+/// curr[round_range(2)] = round(curr[round_range(1)])
+/// curr[round_range(3)] = round(curr[round_range(2)])
+/// curr[round_range(4)] = round(curr[round_range(3)])
+/// next[round_range(0)] = round(curr[round_range(4)])
+///
+/// which expands e.g., to
+/// curr[round_range(1)][0] =
+///      mds[0][0] * sbox(curr[round_range(0)][0])
+///    + mds[0][1] * sbox(curr[round_range(0)][1])
+///    + mds[0][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][0]
+/// curr[round_range(1)][1] =
+///      mds[1][0] * sbox(curr[round_range(0)][0])
+///    + mds[1][1] * sbox(curr[round_range(0)][1])
+///    + mds[1][2] * sbox(curr[round_range(0)][2])
+///    + rcm[round_range(1)][1]
+/// ...
+/// The rth position in this array contains the alphas used for the equations that
+/// constrain the values of the (r+1)th state.
+pub fn constraint<F: FftField + SquareRootField>(alphas: impl Iterator<Item = usize>) -> E<F> {
     let mut res = vec![];
     let mut cache = Cache::default();
 
@@ -82,24 +81,19 @@ pub fn constraint<F: FftField + SquareRootField>() -> E<F> {
             target: (target_row, target_round),
         } = e;
         let sboxed: Vec<_> = round_to_cols(source)
-            .map(|i| {
-                cache.cache(
-                    E::cell(Column::Witness(i), Curr).pow(PlonkSpongeConstants15W::SPONGE_BOX),
-                )
-            })
+            .map(|i| cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
             .collect();
 
         res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
-            let rc = E::cell(Column::Coefficient(idx), Curr);
+            let rc = coeff(idx);
 
             idx += 1;
-
-            E::cell(Column::Witness(col), target_row)
+            witness(col, target_row)
                 - sboxed
                     .iter()
                     .zip(mds[j].iter())
                     .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
         }));
     }
-    E::cell(Column::Index(GateType::Poseidon), Curr) * E::combine_constraints(0, res)
+    index(GateType::Poseidon) * E::combine_constraints(alphas, res)
 }

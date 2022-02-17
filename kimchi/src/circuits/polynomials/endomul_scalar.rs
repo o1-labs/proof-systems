@@ -1,11 +1,14 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
-    expr::{Cache, Column, E},
-    gate::{CircuitGate, CurrOrNext, GateType},
+    expr::{prologue::*, Cache},
+    gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
+
+/// Number of constraints produced by the gate.
+pub const CONSTRAINTS: usize = 11;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
@@ -112,18 +115,15 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    let curr_row = |c| E::cell(c, CurrOrNext::Curr);
-    let witness_column = |i| curr_row(Column::Witness(i));
+pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
+    let n0 = witness_curr(0);
+    let n8 = witness_curr(1);
+    let a0 = witness_curr(2);
+    let b0 = witness_curr(3);
+    let a8 = witness_curr(4);
+    let b8 = witness_curr(5);
 
-    let n0 = witness_column(0);
-    let n8 = witness_column(1);
-    let a0 = witness_column(2);
-    let b0 = witness_column(3);
-    let a8 = witness_column(4);
-    let b8 = witness_column(5);
-
-    let xs: [_; 8] = array_init(|i| witness_column(6 + i));
+    let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
 
     let mut cache = Cache::default();
 
@@ -158,10 +158,10 @@ pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
     let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
     constraints.extend(xs.iter().map(crumb));
 
-    E::combine_constraints(alpha0, constraints) * curr_row(Column::Index(GateType::EndoMulScalar))
+    E::combine_constraints(alphas, constraints) * index(GateType::EndoMulScalar)
 }
 
-pub fn witness<F: PrimeField + std::fmt::Display>(
+pub fn gen_witness<F: PrimeField + std::fmt::Display>(
     witness_cols: &mut [Vec<F>; COLUMNS],
     scalar: F,
     endo_scalar: F,
@@ -261,7 +261,7 @@ mod tests {
     use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
     use mina_curves::pasta::fp::Fp as F;
 
-    // 2/3*x^3 - 5/2*x^2 + 11/6*x
+    /// 2/3*x^3 - 5/2*x^2 + 11/6*x
     fn c_poly(x: F) -> F {
         let x2 = x.square();
         let x3 = x * x2;
@@ -269,7 +269,7 @@ mod tests {
             + (F::from(11u64) / F::from(6u64)) * x
     }
 
-    // -x^2 + 3x - 1
+    /// -x^2 + 3x - 1
     fn d_minus_c_poly(x: F) -> F {
         let x2 = x.square();
         -F::one() * x2 + F::from(3u64) * x - F::one()

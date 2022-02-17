@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements permutation constraint polynomials.
-
-*****************************************************************************************************************/
+//! This module implements permutation constraint polynomials.
 
 use crate::circuits::{
     constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
@@ -18,6 +14,9 @@ use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use oracle::rndoracle::ProofError;
 use rand::{CryptoRng, RngCore};
 
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: usize = 3;
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
@@ -27,7 +26,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
-        alpha: &[F],
+        mut alphas: impl Iterator<Item = F>,
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.l08.scale(gamma);
@@ -80,8 +79,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             sigmas = &sigmas * &term;
         }
 
-        let perm = &(&shifts - &sigmas).scale(alpha[0]) * &self.zkpl;
-        let bnd = &bnd1.scale(alpha[1]) + &bnd2.scale(alpha[2]);
+        let alpha0 = alphas.next().expect("missing power of alpha");
+        let alpha1 = alphas.next().expect("missing power of alpha");
+        let alpha2 = alphas.next().expect("missing power of alpha");
+
+        let perm = &(&shifts - &sigmas).scale(alpha0) * &self.zkpl;
+        let bnd = &bnd1.scale(alpha1) + &bnd2.scale(alpha2);
 
         //
         Ok((perm, bnd))
@@ -94,10 +97,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         zeta: F,
         beta: F,
         gamma: F,
-        alpha: &[F],
+        alphas: impl Iterator<Item = F>,
     ) -> DensePolynomial<F> {
         let zkpm_zeta = self.zkpm.evaluate(&zeta);
-        let scalar = Self::perm_scalars(e, beta, gamma, alpha, zkpm_zeta);
+        let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         self.sigmam[PERMUTS - 1].scale(scalar)
     }
 
@@ -105,16 +108,26 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         e: &[ProofEvaluations<F>],
         beta: F,
         gamma: F,
-        // TODO(mimoo): should only pass an iterator, to prevent different calls to re-use the same alphas!
-        alpha: &[F],
+        mut alphas: impl Iterator<Item = F>,
         zkp_zeta: F,
     ) -> F {
-        -e[0]
+        let alpha0 = alphas
+            .next()
+            .expect("not enough powers of alpha for permutation");
+        let _alpha1 = alphas
+            .next()
+            .expect("not enough powers of alpha for permutation");
+        let _alpha2 = alphas
+            .next()
+            .expect("not enough powers of alpha for permutation");
+        let init = e[1].z * beta * alpha0 * zkp_zeta;
+        let res = e[0]
             .w
             .iter()
             .zip(e[0].s.iter())
             .map(|(w, s)| gamma + (beta * s) + w)
-            .fold(e[1].z * beta * alpha[0] * zkp_zeta, |x, y| x * y)
+            .fold(init, |x, y| x * y);
+        -res
     }
 
     /// permutation aggregation polynomial computation

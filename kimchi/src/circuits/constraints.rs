@@ -1,12 +1,8 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk circuit constraint primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk circuit constraint primitive.
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{CircuitGate, GateType, LookupInfo},
+    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
     gates::foreign_mul,
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
     wires::*,
@@ -33,6 +29,33 @@ pub const ZK_ROWS: u64 = 3;
 //
 // ConstraintSystem
 //
+
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct LookupConstraintSystem<F: FftField> {
+    /// Lookup tables
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub dummy_lookup_values: Vec<Vec<F>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub lookup_tables: Vec<Vec<DP<F>>>,
+    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
+    pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
+
+    /// Lookup selectors:
+    /// For each kind of lookup-pattern, we have a selector that's
+    /// 1 at the rows where that pattern should be enforced, and 0 at
+    /// all other rows.
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub lookup_selectors: Vec<E<F, D<F>>>,
+
+    /// The kind of lookups used
+    pub lookup_used: LookupsUsed,
+
+    /// The maximum number of lookups per row
+    pub max_lookups_per_row: usize,
+    /// The maximum number of elements in a vector lookup
+    pub max_joint_size: usize,
+}
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -163,21 +186,9 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub foreign_modulus: Vec<F>,
 
-    /// Lookup tables
-    // TODO: this should be one big Option<Lookup>
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub dummy_lookup_values: Vec<Vec<F>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub lookup_tables: Vec<Vec<DP<F>>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
-
-    /// Lookup selectors:
-    /// For each kind of lookup-pattern, we have a selector that's
-    /// 1 at the rows where that pattern should be enforced, and 0 at
-    /// all other rows.
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub lookup_selectors: Vec<E<F, D<F>>>,
+    /// lookup constraint system
+    #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
+    pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
 }
 
 /// Shifts represent the shifts required in the permutation argument of PLONK.
@@ -320,6 +331,67 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
+impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
+    pub fn create(
+        gates: &[CircuitGate<F>],
+        lookup_tables: Vec<Vec<Vec<F>>>,
+        domain: &EvaluationDomains<F>,
+    ) -> Option<Self> {
+        let lookup_info = LookupInfo::<F>::create();
+        match lookup_info.lookup_used(gates) {
+            None => None,
+            Some(lookup_used) => {
+                let d1_size = domain.d1.size();
+
+                let (lookup_selectors, gate_lookup_tables) =
+                    lookup_info.selector_polynomials_and_tables(domain, gates);
+
+                // get the last entry in each column of each table
+                let dummy_lookup_values: Vec<Vec<F>> = gate_lookup_tables
+                    .iter()
+                    .chain(lookup_tables.iter())
+                    .map(|table| table.iter().map(|col| col[col.len() - 1]).collect())
+                    .collect();
+
+                // pre-compute polynomial and evaluation form for the look up tables
+                let mut lookup_tables_polys: Vec<Vec<DP<F>>> = vec![];
+                let mut lookup_tables8: Vec<Vec<E<F, D<F>>>> = vec![];
+
+                for (table, dummies) in gate_lookup_tables
+                    .into_iter()
+                    .chain(lookup_tables.into_iter())
+                    .zip(&dummy_lookup_values)
+                {
+                    let mut table_poly = vec![];
+                    let mut table_eval = vec![];
+                    for (mut col, dummy) in table.into_iter().zip(dummies) {
+                        // pad each column to the size of the domain
+                        let padding = (0..(d1_size - col.len())).map(|_| dummy);
+                        col.extend(padding);
+                        let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
+                        let eval = poly.evaluate_over_domain_by_ref(domain.d8);
+                        table_poly.push(poly);
+                        table_eval.push(eval);
+                    }
+                    lookup_tables_polys.push(table_poly);
+                    lookup_tables8.push(table_eval);
+                }
+
+                // generate the look up selector polynomials
+                Some(Self {
+                    lookup_selectors,
+                    dummy_lookup_values,
+                    lookup_tables8,
+                    lookup_tables: lookup_tables_polys,
+                    lookup_used,
+                    max_lookups_per_row: lookup_info.max_per_row,
+                    max_joint_size: lookup_info.max_joint_size,
+                })
+            }
+        }
+    }
+}
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// creates a constraint system from a vector of gates ([CircuitGate]), some sponge parameters ([ArithmeticSpongeParams]), and the number of public inputs.
     pub fn create(
@@ -433,7 +505,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // generic constraint polynomials
 
         let genericm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.generic()).collect(),
+            gates
+                .iter()
+                .map(|gate| {
+                    if matches!(gate.typ, GateType::Generic) {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
             domain.d1,
         )
         .interpolate();
@@ -470,20 +551,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         };
 
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
-            E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if i < gate.c.len() {
-                            gate.c[i]
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate()
+            let padded = gates
+                .iter()
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+                .collect();
+            let eval = E::from_vec_and_domain(padded, domain.d1);
+            eval.interpolate()
         });
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
@@ -556,39 +629,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Lookup
         //
 
-        // get the last entry in each column of each table
-        let dummy_lookup_values: Vec<Vec<F>> = lookup_tables
-            .iter()
-            .map(|table| table.iter().map(|col| col[col.len() - 1]).collect())
-            .collect();
-
-        // pre-compute polynomial and evaluation form for the look up tables
-        let mut lookup_tables_polys: Vec<Vec<DP<F>>> = vec![];
-        let mut lookup_tables8: Vec<Vec<E<F, D<F>>>> = vec![];
-
-        for (table, dummies) in lookup_tables.into_iter().zip(&dummy_lookup_values) {
-            let mut table_poly = vec![];
-            let mut table_eval = vec![];
-            for (mut col, dummy) in table.into_iter().zip(dummies) {
-                // pad each column to the size of the domain
-                let padding = (0..(d1_size - col.len())).map(|_| dummy);
-                col.extend(padding);
-                let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
-                let eval = poly.evaluate_over_domain_by_ref(domain.d8);
-                table_poly.push(poly);
-                table_eval.push(eval);
-            }
-            lookup_tables_polys.push(table_poly);
-            lookup_tables8.push(table_eval);
-        }
-
-        // generate the look up selector polynomials if any lookup-based gate is being used in the circuit
-        let lookup_info = LookupInfo::<F>::create();
-        let lookup_selectors = if lookup_info.lookup_used(&gates).is_some() {
-            LookupInfo::<F>::create().selector_polynomials(domain, &gates)
-        } else {
-            vec![]
-        };
+        let lookup_constraint_system =
+            LookupConstraintSystem::create(&gates, lookup_tables, &domain);
 
         //
         // return result
@@ -596,10 +638,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         Some(ConstraintSystem {
             chacha8,
-            lookup_selectors,
-            dummy_lookup_values,
-            lookup_tables8,
-            lookup_tables: lookup_tables_polys,
             endomul_scalar8,
             domain,
             public,
@@ -630,6 +668,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             foreign_modulus,
+            lookup_constraint_system,
         })
     }
 
@@ -676,7 +715,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.c != left_wire {
+            if row < self.public && gate.coeffs != left_wire {
                 return Err(GateError::IncorrectPublic(row));
             }
 

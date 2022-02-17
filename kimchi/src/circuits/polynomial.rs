@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk prover polynomials primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk prover polynomials primitive.
 
 pub use super::wires::COLUMNS;
 use ark_ff::FftField;

@@ -1,17 +1,12 @@
-/*****************************************************************************************************************
-
-This source file implements Dlog-based polynomial commitment schema.
-The folowing functionality is implemented
-
-1. Commit to polynomial with its max degree
-2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
-    producing the batched opening proof
-3. Verify batch of batched opening proofs
-
-*****************************************************************************************************************/
+//! This module implements Dlog-based polynomial commitment schema.
+//! The folowing functionality is implemented
+//!
+//! 1. Commit to polynomial with its max degree
+//! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
+//!     producing the batched opening proof
+//! 3. Verify batch of batched opening proofs
 
 use crate::srs::SRS;
-pub use crate::CommitmentField;
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -231,7 +226,8 @@ impl<C: AffineCurve> PolyComm<C> {
 
 #[derive(Clone, Debug)]
 pub struct OpeningProof<G: AffineCurve> {
-    pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
+    /// vector of rounds of L & R commitments
+    pub lr: Vec<(G, G)>,
     pub delta: G,
     pub z1: G::ScalarField,
     pub z2: G::ScalarField,
@@ -243,10 +239,7 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineCurve> OpeningProof<G>
-where
-    G::ScalarField: CommitmentField,
-{
+impl<G: AffineCurve> OpeningProof<G> {
     pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
         &self,
         sponge: &mut EFqSponge,
@@ -361,7 +354,7 @@ fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<F
 fn squeeze_challenge<
     Fq: Field,
     G,
-    Fr: PrimeField + CommitmentField,
+    Fr: PrimeField + SquareRootField,
     EFqSponge: FqSponge<Fq, G, Fr>,
 >(
     endo_r: &Fr,
@@ -377,12 +370,12 @@ pub trait CommitmentCurve: AffineCurve {
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
     fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
 
-    // Combine where x1 = one
+    /// Combine where x1 = one
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2)
     }
 
-    // Combine where x1 = one
+    /// Combine where x1 = one
     fn combine_one_endo(
         endo_r: Self::ScalarField,
         _endo_q: Self::BaseField,
@@ -561,10 +554,7 @@ impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G>
-where
-    G::ScalarField: CommitmentField,
-{
+impl<G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
@@ -1371,7 +1361,8 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlOpeningProof<G, F> {
-        pub lr: Vec<(G, G)>, // vector of rounds of L & R commitments
+        /// vector of rounds of L & R commitments
+        pub lr: Vec<(G, G)>,
         pub delta: G,
         pub z1: F,
         pub z2: F,

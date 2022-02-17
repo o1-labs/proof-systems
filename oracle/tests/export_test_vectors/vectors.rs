@@ -42,7 +42,8 @@ pub struct TestVector {
 // logic
 //
 
-// calls the poseidon hash function with the `input` and returns a digest
+/// Computes the poseidon hash of several field elements.
+/// Uses the 'basic' configuration with N states and M rounds.
 fn poseidon(input: &[Fp]) -> Fp {
     let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
     s.absorb(input);
@@ -50,7 +51,7 @@ fn poseidon(input: &[Fp]) -> Fp {
     s.squeeze()
 }
 
-// generates a vector of `length` field elements
+/// generates a vector of `length` field elements
 fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
     let mut fields = vec![];
     for _ in 0..length {
@@ -60,7 +61,7 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
     fields
 }
 
-// creates a set of test vectors
+/// creates a set of test vectors
 pub fn generate(mode: Mode) -> TestVectors {
     let mut rng = &mut rand::rngs::StdRng::from_seed([0u8; 32]);
     let mut test_vectors = vec![];

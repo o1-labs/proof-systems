@@ -52,28 +52,26 @@ fn chacha_prover() {
         0x3f5ec7b7, 0x335271c2, 0xf29489f3, 0xeabda8fc, 0x82e46ebd, 0xd19c12b4, 0xb04e16de,
         0x9e83d0cb, 0x4e3c50a2,
     ];
-    assert_eq!(expected_result, chacha::chacha20(s0.clone()));
+    assert_eq!(expected_result, chacha::testing::chacha20(s0.clone()));
 
     // circuit gates
     let mut gates = vec![];
     for _ in 0..num_chachas {
-        gates.extend(chacha::chacha20_gates())
+        gates.extend(chacha::testing::chacha20_gates())
     }
     let gates: Vec<CircuitGate<Fp>> = gates
         .into_iter()
         .enumerate()
         .map(|(i, typ)| CircuitGate {
             typ,
-            c: vec![],
+            coeffs: vec![],
             wires: Wire::new(i),
         })
         .collect();
 
     // create the index
     let fp_sponge_params = oracle::pasta::fp::params();
-    let cs =
-        ConstraintSystem::<Fp>::create(gates, vec![chacha::xor_table()], fp_sponge_params, PUBLIC)
-            .unwrap();
+    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
     let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, _endo_r) = endos::<Other>();
     let mut srs = SRS::create(max_size);
@@ -84,7 +82,7 @@ fn chacha_prover() {
 
     let mut rows = vec![];
     for _ in 0..num_chachas {
-        rows.extend(chacha::chacha20_rows::<Fp>(s0.clone()))
+        rows.extend(chacha::testing::chacha20_rows::<Fp>(s0.clone()))
     }
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
     for r in rows.into_iter() {

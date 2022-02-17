@@ -1,4 +1,4 @@
-//! This source file implements the arithmetization of plookup constraints
+//! This module implements the arithmetization of plookup constraints
 //!
 //! Because of our ZK-rows, we can't do the trick in the plookup paper of
 //! wrapping around to enforce consistency between the sorted lookup columns.
@@ -122,7 +122,7 @@
 
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 
-use crate::circuits::expr::{Column, ConstantExpr, Variable, E};
+use crate::circuits::expr::{prologue::*, Column, ConstantExpr, Variable};
 use crate::circuits::{
     gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
     wires::COLUMNS,
@@ -132,6 +132,9 @@ use oracle::rndoracle::ProofError;
 use rand::Rng;
 use std::collections::HashMap;
 use CurrOrNext::*;
+
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: usize = 7;
 
 // TODO: Update for multiple tables
 fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
