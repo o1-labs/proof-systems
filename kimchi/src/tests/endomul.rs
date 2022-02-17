@@ -66,7 +66,8 @@ fn endomul_test() {
         });
     }
 
-    let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
+    let cs =
+        ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, vec![], PUBLIC).unwrap();
 
     let mut srs = SRS::create(cs.domain.d1.size as usize);
     srs.add_lagrange_basis(cs.domain.d1);

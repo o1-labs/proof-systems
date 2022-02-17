@@ -4,11 +4,11 @@ use crate::{
     alphas::{Alphas, ConstraintType},
     circuits::{
         constraints::{LookupConstraintSystem, ZK_ROWS},
-        expr::{l0_1, Constants, Environment, LookupEnvironment},
-        gate::{combine_table_entry, GateType, LookupsUsed},
+        expr::{l0_1, Column, Constants, Environment, LookupEnvironment, E},
+        gate::{combine_table_entry, CurrOrNext::Curr, GateType, LookupsUsed},
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_mul, generic, lookup, permutation,
-            poseidon, varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_mul, generic, lookup,
+            permutation, poseidon, varbasemul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
@@ -455,10 +455,35 @@ where
                 assert!(res.is_zero());
             }
 
-            // foreign field multiplication
-            let foreign_mul8 = foreign_mul::constraint(alphas).evaluations(&env);
-            t8 += &foreign_mul8;
-            drop(foreign_mul8);
+            if !index.cs.foreign_modulus.is_empty() {
+                // foreign field multiplication
+                let selector_index = |g: GateType| E::cell(Column::Index(g), Curr);
+                for (gate_type, constraints) in foreign_mul::circuit_gates() {
+                    println!(
+                        "Creating expr for {:?} of {} constraints",
+                        gate_type,
+                        constraints.len()
+                    );
+                    let expr = selector_index(gate_type)
+                        * E::combine_constraints(
+                            all_alphas.get_powers(ConstraintType::Gate, constraints.len()),
+                            constraints,
+                        );
+
+                    let evals = expr.evaluations(&env);
+
+                    if cfg!(test) {
+                        let (_, res) = evals
+                            .clone()
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .unwrap();
+                        assert!(res.is_zero());
+                    }
+
+                    t8 += &evals;
+                }
+            }
 
             // scalar multiplication
             let alphas = all_alphas.get_powers(ConstraintType::Gate, varbasemul::CONSTRAINTS);

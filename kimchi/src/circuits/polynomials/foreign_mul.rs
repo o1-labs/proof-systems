@@ -103,6 +103,11 @@ use crate::circuits::{
 use ark_ff::{FftField, One, Zero};
 use CurrOrNext::*;
 
+/// Number of constraints produced by each CircuitGate
+pub const CONSTRAINTS_0: usize = 13;
+pub const CONSTRAINTS_1: usize = 25;
+pub const CONSTRAINTS_2: usize = 4;
+
 struct Polish<F>(Vec<PolishToken<F>>);
 impl<F: FftField> Display for Polish<F> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -156,7 +161,7 @@ fn sublimb_crumb_constraint<F: FftField>(sublimb: &E<F>) -> E<F> {
 //   * Operates on Curr row
 //   * Range constrain all sublimbs except p4 and p5
 //   * Constrain that combining all sublimbs equals the limb stored in column 0
-fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
+fn foreign_mul0_constraints<F: FftField>() -> Vec<E<F>> {
     let w = |i| E::cell(Column::Witness(i), Curr);
 
     // Row structure
@@ -211,14 +216,14 @@ fn foreign_mul0_constraints<F: FftField>(alpha: usize) -> E<F> {
     // w(0) = combined_sublimbs
     constraints.push(combined_sublimbs - w(0));
 
-    E::combine_constraints(alpha, constraints)
+    constraints
 }
 
 // Constraints for ForeignMul1
 //   * Operates on Curr and Next row
 //   * Range constrain all sublimbs
 //   * Constrain that combining all sublimbs equals the limb stored in row Curr, column 0
-fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
+fn foreign_mul1_constraints<F: FftField>() -> Vec<E<F>> {
     let w_curr = |i| E::cell(Column::Witness(i), Curr);
     let w_next = |i| E::cell(Column::Witness(i), Next);
 
@@ -294,7 +299,7 @@ fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
     // w(0) = combined_sublimbs
     constraints.push(combined_sublimbs - w_curr(0));
 
-    E::combine_constraints(alpha, constraints)
+    constraints
 }
 
 // Constraints for ForeignMul2
@@ -304,7 +309,7 @@ fn foreign_mul1_constraints<F: FftField>(alpha: usize) -> E<F> {
 //     could not be plookup'ed in rows Curr - 3 and Curr - 2
 //   * Copy constraints are present (elsewhere) to make sure
 //     these cells are equal to those
-fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
+fn foreign_mul2_constraints<F: FftField>() -> Vec<E<F>> {
     let w = |i| E::cell(Column::Witness(i), Curr);
 
     // Row structure
@@ -313,26 +318,15 @@ fn foreign_mul2_constraints<F: FftField>(alpha: usize) -> E<F> {
 
     // Apply range constraints on sublimbs (create 4 12-bit plookup range constraints)
     // crumbs were constrained by ForeignMul1 circuit gate
-    E::combine_constraints(
-        alpha,
-        (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect(),
-    )
+    (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect()
 }
 
-pub fn constraints<F: FftField>(alpha0: usize) -> Vec<E<F>> {
-    let index = |g: GateType| E::cell(Column::Index(g), Curr);
+pub fn circuit_gates<F: FftField>() -> Vec<(GateType, Vec<E<F>>)> {
     vec![
-        index(GateType::ForeignMul0) * foreign_mul0_constraints(alpha0), // TODO: fix powers of alpha from David's PR
-        index(GateType::ForeignMul1) * foreign_mul1_constraints(alpha0 + 1),
-        index(GateType::ForeignMul2) * foreign_mul2_constraints(alpha0 + 2),
+        (GateType::ForeignMul0, foreign_mul0_constraints()),
+        (GateType::ForeignMul1, foreign_mul1_constraints()),
+        (GateType::ForeignMul2, foreign_mul2_constraints()),
     ]
-}
-
-/// The constraints for foreign field multiplication
-pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
-    constraints(alpha0)
-        .into_iter()
-        .fold(E::zero(), |acc, x| acc + x)
 }
 
 #[cfg(test)]
@@ -345,7 +339,7 @@ mod tests {
 
     #[test]
     fn constraint() {
-        let constraint = foreign_mul::constraint::<PallasField>(0);
-        println!("constraint = {}", constraint);
+        let constraints = foreign_mul::circuit_gates::<PallasField>();
+        println!("constraints = {:?}", constraints);
     }
 }

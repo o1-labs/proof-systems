@@ -68,7 +68,8 @@ impl BenchmarkCtx {
         // create the index
         let index = {
             let fp_sponge_params = oracle::pasta::fp::params();
-            let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, 0).unwrap();
+            let cs =
+                ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, vec![], 0).unwrap();
             let n = cs.domain.d1.size as usize;
             let fq_sponge_params = oracle::pasta::fq::params();
             let (endo_q, _endo_r) = endos::<Other>();

@@ -1,11 +1,11 @@
 //! This module implements Plonk Protocol Index primitive.
 
 use crate::alphas::{self, ConstraintType};
-use crate::circuits::polynomials::permutation;
+use crate::circuits::polynomials::{self, permutation};
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
-    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
-    gate::{GateType, LookupsUsed},
+    expr::{Column, ConstantExpr, Expr, Linearization, PolishToken, E},
+    gate::{CurrOrNext::Curr, GateType, LookupsUsed},
     gates::foreign_mul,
     polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
@@ -163,13 +163,14 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
+    foreign_mul: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
 ) -> (Expr<ConstantExpr<F>>, alphas::Builder) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = alphas::Builder::default();
 
     // gates
-    let largest_constraint_num = varbasemul::CONSTRAINTS;
+    let largest_constraint_num = polynomials::foreign_mul::CONSTRAINTS_1;
     let alphas = powers_of_alpha.register(ConstraintType::Gate, largest_constraint_num);
 
     let mut expr = poseidon::constraint(alphas.clone().take(poseidon::CONSTRAINTS));
@@ -182,7 +183,20 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += chacha::constraint_chacha0(alphas.clone().take(chacha::CONSTRAINTS_0));
         expr += chacha::constraint_chacha1(alphas.clone().take(chacha::CONSTRAINTS_1));
         expr += chacha::constraint_chacha2(alphas.clone().take(chacha::CONSTRAINTS_2));
-        expr += chacha::constraint_chacha_final(alphas.take(chacha::CONSTRAINTS_FINAL));
+        expr += chacha::constraint_chacha_final(alphas.clone().take(chacha::CONSTRAINTS_FINAL));
+    }
+
+    if foreign_mul {
+        let selector_index = |g: GateType| E::cell(Column::Index(g), Curr);
+        for (gate_type, constraints) in polynomials::foreign_mul::circuit_gates() {
+            println!(
+                "Creating expr for {:?} of {} constraints",
+                gate_type,
+                constraints.len()
+            );
+            expr += selector_index(gate_type)
+                * E::combine_constraints(alphas.clone().take(constraints.len()), constraints);
+        }
     }
 
     // permutation
@@ -227,11 +241,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
+    foreign_mul: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
 ) -> (Linearization<Vec<PolishToken<F>>>, alphas::Builder) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
+    let (expr, powers_of_alpha) =
+        constraints_expr(domain, chacha, foreign_mul, lookup_constraint_system);
 
     let linearization = expr
         .linearize(evaluated_cols)
@@ -348,6 +364,7 @@ where
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
+            !cs.foreign_modulus.is_empty(),
             &cs.lookup_constraint_system,
         );
 
