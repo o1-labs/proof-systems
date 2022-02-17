@@ -10,6 +10,7 @@ use crate::{
         scalars::RandomOracles,
         wires::*,
     },
+    error::{ProofError, Result},
     index::{LookupVerifierIndex, VerifierIndex},
     plonk_sponge::FrSponge,
     prover::ProverProof,
@@ -20,7 +21,7 @@ use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, PolyComm,
 };
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
+use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -389,7 +390,7 @@ where
     pub fn verify<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         proofs: &[(&VerifierIndex<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],
-    ) -> Result<bool, ProofError> {
+    ) -> Result<bool> {
         // if there's no proof to verify, return early
         if proofs.is_empty() {
             return Ok(true);
