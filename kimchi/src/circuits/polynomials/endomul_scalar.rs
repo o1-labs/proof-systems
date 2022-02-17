@@ -127,7 +127,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: usize = 11;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(&self) -> Vec<E<F>> {
         let n0 = witness_curr(0);
         let n8 = witness_curr(1);
         let a0 = witness_curr(2);

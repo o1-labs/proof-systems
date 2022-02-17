@@ -257,7 +257,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: usize = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(&self) -> Vec<E<F>> {
         // a += b; d ^= a; d <<<= 16 (=4*4)
         line(4)
     }
@@ -276,7 +276,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: usize = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(&self) -> Vec<E<F>> {
         // c += d; b ^= c; b <<<= 12 (=3*4)
         line(3)
     }
@@ -295,7 +295,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: usize = 5;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(&self) -> Vec<E<F>> {
         // a += b; d ^= a; d <<<= 8  (=2*4)
         line(2)
     }
@@ -314,7 +314,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: usize = 9;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(&self) -> Vec<E<F>> {
         // The last line, namely,
         // c += d; b ^= c; b <<<= 7;
         // is special.
@@ -572,10 +572,10 @@ mod tests {
             ArgumentType::Gate(GateType::ChaChaFinal),
             ChaChaFinal::<F>::CONSTRAINTS,
         );
-        let mut expr = ChaCha0::combined_constraints(&alphas);
-        expr += ChaCha1::combined_constraints(&alphas);
-        expr += ChaCha2::combined_constraints(&alphas);
-        expr += ChaChaFinal::combined_constraints(&alphas);
+        let mut expr = ChaCha0::default().combined_constraints(&alphas);
+        expr += ChaCha1::default().combined_constraints(&alphas);
+        expr += ChaCha2::default().combined_constraints(&alphas);
+        expr += ChaChaFinal::default().combined_constraints(&alphas);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

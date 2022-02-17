@@ -74,7 +74,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: usize = 15;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(&self) -> Vec<E<F>> {
         let mut res = vec![];
         let mut cache = Cache::default();
 

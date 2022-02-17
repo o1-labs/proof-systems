@@ -11,7 +11,9 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup, permutation,
+            generic,
+            lookup::{self, Lookup},
+            permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
@@ -425,7 +427,7 @@ where
             }
 
             // complete addition
-            let add_constraint = CompleteAdd::combined_constraints(&all_alphas);
+            let add_constraint = CompleteAdd::default().combined_constraints(&all_alphas);
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
 
@@ -457,7 +459,9 @@ where
             }
 
             // scalar multiplication
-            let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
+            let mul8 = VarbaseMul::default()
+                .combined_constraints(&all_alphas)
+                .evaluations(&env);
             t8 += &mul8;
 
             if cfg!(test) {
@@ -472,7 +476,9 @@ where
             drop(mul8);
 
             // endoscaling
-            let emul8 = EndosclMul::combined_constraints(&all_alphas).evaluations(&env);
+            let emul8 = EndosclMul::default()
+                .combined_constraints(&all_alphas)
+                .evaluations(&env);
             t8 += &emul8;
 
             if cfg!(test) {
@@ -487,7 +493,9 @@ where
             drop(emul8);
 
             // endoscaling scalar computation
-            let emulscalar8 = EndomulScalar::combined_constraints(&all_alphas).evaluations(&env);
+            let emulscalar8 = EndomulScalar::default()
+                .combined_constraints(&all_alphas)
+                .evaluations(&env);
             t8 += &emulscalar8;
 
             if cfg!(test) {
@@ -502,7 +510,9 @@ where
             drop(emulscalar8);
 
             // poseidon
-            let pos8 = Poseidon::combined_constraints(&all_alphas).evaluations(&env);
+            let pos8 = Poseidon::default()
+                .combined_constraints(&all_alphas)
+                .evaluations(&env);
             t8 += &pos8;
 
             if cfg!(test) {
@@ -518,16 +528,24 @@ where
 
             // chacha
             if index.cs.chacha8.as_ref().is_some() {
-                let chacha0 = ChaCha0::combined_constraints(&all_alphas).evaluations(&env);
+                let chacha0 = ChaCha0::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha0;
 
-                let chacha1 = ChaCha1::combined_constraints(&all_alphas).evaluations(&env);
+                let chacha1 = ChaCha1::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha1;
 
-                let chacha2 = ChaCha2::combined_constraints(&all_alphas).evaluations(&env);
+                let chacha2 = ChaCha2::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha2;
 
-                let chacha_final = ChaChaFinal::combined_constraints(&all_alphas).evaluations(&env);
+                let chacha_final = ChaChaFinal::default()
+                    .combined_constraints(&all_alphas)
+                    .evaluations(&env);
                 t4 += &chacha_final;
 
                 if cfg!(test) {
@@ -564,10 +582,9 @@ where
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
-                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints =
-                    lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
-
+                    all_alphas.get_alphas(ArgumentType::Lookup, Lookup::<Fr<G>>::CONSTRAINTS);
+                let lookup = Lookup::new(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+                let constraints = lookup.constraints();
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
                     eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
