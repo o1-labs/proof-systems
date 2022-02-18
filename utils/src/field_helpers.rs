@@ -1,7 +1,7 @@
 use ark_ff::Field;
 
 /// Field element helpers
-pub trait FieldHelpers<F: Field> {
+pub trait FieldHelpers<F> {
     /// Deserialize from bytes
     fn from_bytes(bytes: &[u8]) -> Result<F, &str>;
 

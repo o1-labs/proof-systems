@@ -1,12 +1,13 @@
 [workspace]
 members = [
+    "cairo",
     "curves",
-    "poly-commitment",
-    "kimchi",
     "groupmap",
+    "kimchi",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
+    "poly-commitment",
     "signer",
     "utils",
 ]
