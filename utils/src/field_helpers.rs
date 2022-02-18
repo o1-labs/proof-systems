@@ -1,10 +1,10 @@
 use ark_ff::FftField;
-use ark_serialize::Read;
+use ark_serialize::Read as ArkRead;
 
 /// Field element helpers
 pub trait FieldHelpers<F: FftField> {
     /// Deserialize from bytes
-    fn from_bytes(bytes: impl Read) -> Result<F, &'static str>;
+    fn from_bytes(bytes: impl ArkRead) -> Result<F, &'static str>;
 
     /// Deserialize from bytes
     /// length of the input bytes can be arbitrary
@@ -28,7 +28,7 @@ pub trait FieldHelpers<F: FftField> {
 }
 
 impl<F: FftField> FieldHelpers<F> for F {
-    fn from_bytes(bytes: impl Read) -> Result<F, &'static str> {
+    fn from_bytes(bytes: impl ArkRead) -> Result<F, &'static str> {
         F::deserialize(bytes).map_err(|_| "Failed to deserialize field bytes")
     }
 
@@ -223,8 +223,6 @@ mod tests {
         test_prefix_to_field!(b"12", "12849");
         // Printf.printf "%s" ("123" |> prefix_to_field |> Field.to_string) ;
         test_prefix_to_field!(b"123", "3355185");
-        // Printf.printf "%s" ("AbC" |> prefix_to_field |> Field.to_string) ;
-        test_prefix_to_field!(b"AbC", "4416065");
         // Printf.printf "%s" ("AbC" |> prefix_to_field |> Field.to_string) ;
         test_prefix_to_field!(b"AbC", "4416065");
         // Printf.printf "%s" ("CodaMklTree003******" |> prefix_to_field |> Field.to_string) ;
