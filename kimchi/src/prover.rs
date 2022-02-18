@@ -13,6 +13,7 @@ use crate::{
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
+    error::{ProofError, Result},
     index::Index,
     plonk_sponge::FrSponge,
 };
@@ -26,7 +27,7 @@ use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningP
 use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
-use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
+use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
 type Fr<G> = <G as AffineCurve>::ScalarField;
@@ -86,7 +87,7 @@ where
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
-    ) -> Result<Self, ProofError> {
+    ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
@@ -305,7 +306,6 @@ where
                             &lookup_sorted,
                             rng)?;
 
-                    drop(lookup_sorted);
                     if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != Fr::<G>::one() {
                         panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
                     }
@@ -591,9 +591,11 @@ where
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProofError::PolyDivision)?;
+                .ok_or(ProofError::Prover("division by vanishing polynomial"))?;
             if !res.is_zero() {
-                return Err(ProofError::PolyDivision);
+                return Err(ProofError::Prover(
+                    "rest of division by vanishing polynomial",
+                ));
             }
 
             quotient += &bnd; // already divided by Z_H

@@ -1,8 +1,11 @@
 //! This module implements permutation constraint polynomials.
 
-use crate::circuits::{
-    constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-    wires::*,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
+        wires::*,
+    },
+    error::{ProofError, Result},
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
@@ -11,7 +14,6 @@ use ark_poly::{
 };
 use ark_poly::{Polynomial, UVPolynomial};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
-use oracle::rndoracle::ProofError;
 use rand::{CryptoRng, RngCore};
 
 /// Number of constraints produced by the argument.
@@ -27,7 +29,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gamma: F,
         z: &DensePolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
-    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
+    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>)> {
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.l08.scale(gamma);
         let one_poly = DensePolynomial::from_coefficients_slice(&[F::one()]);
@@ -40,9 +42,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             &z_minus_1.clone().into(),
             &x_minus_1.into(),
         )
-        .map_or(Err(ProofError::PolyDivision), Ok)?;
+        .map_or(Err(ProofError::Permutation("first division")), Ok)?;
         if !res.is_zero() {
-            return Err(ProofError::PolyDivision);
+            return Err(ProofError::Permutation("first division rest"));
         }
 
         // accumulator end := (z(x) - 1) / (x - sid[n-3])
@@ -52,9 +54,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         ]);
         let (bnd2, res) =
             DenseOrSparsePolynomial::divide_with_q_and_r(&z_minus_1.into(), &denominator.into())
-                .map_or(Err(ProofError::PolyDivision), Ok)?;
+                .map_or(Err(ProofError::Permutation("second division")), Ok)?;
         if !res.is_zero() {
-            return Err(ProofError::PolyDivision);
+            return Err(ProofError::Permutation("second division rest"));
         }
 
         // shifts = z(x) *
@@ -137,7 +139,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> Result<DensePolynomial<F>, ProofError> {
+    ) -> Result<DensePolynomial<F>> {
         let n = self.domain.d1.size as usize;
 
         // only works if first element is 1
@@ -181,7 +183,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
         // check that last accumulator entry is 1
         if z[n - 3] != F::one() {
-            return Err(ProofError::ProofCreation);
+            return Err(ProofError::Permutation("final value"));
         };
 
         // fill last k entries with randomness

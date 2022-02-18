@@ -19,10 +19,7 @@ use blake2::{
     Blake2bVar,
 };
 use o1_utils::FieldHelpers;
-use oracle::{
-    poseidon::SpongeConstants,
-    rndoracle::{ArithmeticSponge, Sponge},
-};
+use oracle::poseidon::{ArithmeticSponge, Sponge, SpongeConstants};
 use std::ops::Neg;
 
 use crate::{
