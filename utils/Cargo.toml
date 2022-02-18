@@ -16,3 +16,4 @@ hex = "0.4"
 [dev-dependencies]
 mina-curves = { path = "../curves" }
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+num-bigint = "0.4"

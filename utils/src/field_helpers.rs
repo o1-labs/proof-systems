@@ -85,8 +85,9 @@ impl<F: FftField> FieldHelpers<F> for F {
 #[cfg(test)]
 mod tests {
     use ark_ec::AffineCurve;
-    use ark_ff::{One, PrimeField};
-    use mina_curves::pasta::pallas;
+    use ark_ff::{BigInteger256, One, PrimeField};
+    use mina_curves::pasta::{pallas, vesta};
+    use num_bigint::BigUint;
 
     // Affine curve point type
     pub use pallas::Affine as CurvePoint;
@@ -94,6 +95,7 @@ mod tests {
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 
     use super::*;
+    use crate::*;
 
     #[test]
     fn field_hex() {
@@ -205,5 +207,41 @@ mod tests {
             BaseField::from_bits(&[true, false, false]).expect("Failed to deserialize field bytes"),
             BaseField::one()
         );
+    }
+
+    // Test cases are generated from ocaml code
+    // add inline ocaml code to any unittests in
+    // <https://github.com/MinaProtocol/mina/blob/compatible/src/lib/random_oracle/random_oracle.ml>
+    // run `dune test` under src/lib/random_oracle
+    #[test]
+    fn field_prefix_string_bytes() {
+        // Printf.printf "%s" ("" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(b"", "0");
+        // Printf.printf "%s" ("1" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(b"1", "49");
+        // Printf.printf "%s" ("12" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(b"12", "12849");
+        // Printf.printf "%s" ("123" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(b"123", "3355185");
+        // Printf.printf "%s" ("AbC" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(b"AbC", "4416065");
+        // Printf.printf "%s" ("AbC" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(b"AbC", "4416065");
+        // Printf.printf "%s" ("CodaMklTree003******" |> prefix_to_field |> Field.to_string) ;
+        test_prefix_to_field!(
+            b"CodaMklTree003******",
+            "240717916736854781311355544089949626038405590851"
+        );
+    }
+
+    #[macro_export]
+    macro_rules! test_prefix_to_field {
+        ($prefix:expr, $expected_field_str:expr) => {
+            let f =
+                <vesta::Affine as AffineCurve>::ScalarField::from_bytes_unstrict($prefix).unwrap();
+            let big256: BigInteger256 = f.into();
+            let big: BigUint = big256.into();
+            assert_eq!($expected_field_str, big.to_str_radix(10))
+        };
     }
 }
