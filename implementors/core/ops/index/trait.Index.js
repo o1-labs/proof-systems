@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["cairo"] = [{"text":"impl&lt;F:&nbsp;Field&gt; <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/ops/index/trait.Index.html\" title=\"trait core::ops::index::Index\">Index</a>&lt;F&gt; for <a class=\"struct\" href=\"cairo/memory/struct.CairoMemory.html\" title=\"struct cairo::memory::CairoMemory\">CairoMemory</a>&lt;F&gt;","synthetic":false,"types":["cairo::memory::CairoMemory"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
