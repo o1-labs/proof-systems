@@ -1,14 +1,14 @@
 //! This module inlcudes some field helpers that are useful for Cairo
 
-use ark_ff::FftField;
+use ark_ff::Field;
 use o1_utils::FieldHelpers;
 
 //(TODO move to utils inside FieldHelpers)
 
 /// Field element helpers for Cairo
-pub trait CairoFieldHelpers<F: FftField> {
+pub trait CairoFieldHelpers<F> {
     /// Return field element as byte, if it fits. Otherwise returns least significant byte
-    fn ls_byte(self) -> u8;
+    fn least_significant_byte(self) -> u8;
 
     /// Return pos-th 16-bit chunk as another field element
     fn chunk_u16(self, pos: usize) -> F;
@@ -20,11 +20,11 @@ pub trait CairoFieldHelpers<F: FftField> {
     fn to_hex_le(self) -> String;
 
     /// Return a vector of field elements from a vector of i128
-    fn vec_to_field(vec: Vec<i128>) -> Vec<F>;
+    fn vec_to_field(vec: &[i128]) -> Vec<F>;
 }
 
-impl<F: FftField> CairoFieldHelpers<F> for F {
-    fn ls_byte(self) -> u8 {
+impl<F: Field> CairoFieldHelpers<F> for F {
+    fn least_significant_byte(self) -> u8 {
         self.to_bytes()[0]
     }
 
@@ -49,7 +49,7 @@ impl<F: FftField> CairoFieldHelpers<F> for F {
         hex::encode(bytes)
     }
 
-    fn vec_to_field(vec: Vec<i128>) -> Vec<F> {
+    fn vec_to_field(vec: &[i128]) -> Vec<F> {
         vec.iter()
             .map(|i| {
                 if *i < 0 {

@@ -1,39 +1,37 @@
 //! The Cairo language works natively for field elements in the finite field with
 //! modulus 0x800000000000011000000000000000000000000000000000000000000000001
 //! This is the hexadecimal value for 2 ^ 251 + 17 * 2 ^ 192 + 1
-//! Our Pallas curves have 256 bits, so Cairo native instructions will fit.
+//! Our Pallas curves have 255 bits, so Cairo native instructions will fit.
+//! This means that our Cairo implementation can admit a larger domain for immediate values than theirs.
 
-use crate::definitions::*;
+use crate::flags::*;
 use crate::helper::CairoFieldHelpers;
-use ark_ff::FftField;
+use ark_ff::Field;
 use o1_utils::field_helpers::FieldHelpers;
 
-/// A Cairo instruction for simulation
+/// A Cairo word for the runner. Some words are instructions (which fit inside a `u64`). Others are immediate values (any `F` element).
 #[derive(Clone, Copy)]
-pub struct CairoWord<F: FftField> {
-    /// field element. Instructions will fit in 64 bits
-    word: F,
-}
+pub struct CairoWord<F>(F);
 
-/// Returns an offset of 16bits to its biased representation in the interval [-2^15,2^15) as a field element
-fn bias<F: FftField>(offset: F) -> F {
+/// Returns an offset of 16 bits to its biased representation in the interval `[-2^15,2^15)` as a field element
+fn bias<F: Field>(offset: F) -> F {
     offset - F::from(2u16.pow(15u32)) // -2^15 + sum_(i=0..15) b_i * 2^i
 }
 
-impl<F: FftField> CairoWord<F> {
+impl<F: Field> CairoWord<F> {
     /// Creates a [CairoWord] from a field element
     pub fn new(word: F) -> CairoWord<F> {
-        CairoWord { word }
+        CairoWord(word)
     }
 
     /// Returns the content of the word as a field element
-    pub fn get_word(&self) -> F {
-        self.word
+    pub fn word(&self) -> F {
+        self.0
     }
 }
 
-/// This trait contains methods that decompose a field element into Cairo word components
-pub trait Decomposition<F: FftField> {
+/// This trait contains methods that decompose a field element into [CairoWord] components
+pub trait Decomposition<F> {
     /// Returns the destination offset in biased representation
     fn off_dst(&self) -> F;
 
@@ -49,49 +47,49 @@ pub trait Decomposition<F: FftField> {
     /// Returns i-th bit-flag
     fn flag_at(&self, pos: usize) -> F;
 
-    /// Returns bit-flag for destination register as F
+    /// Returns bit-flag for destination register as `F`
     fn f_dst_fp(&self) -> F;
 
-    /// Returns bit-flag for first operand register as F
+    /// Returns bit-flag for first operand register as `F`
     fn f_op0_fp(&self) -> F;
 
-    /// Returns bit-flag for immediate value for second register as F
+    /// Returns bit-flag for immediate value for second register as `F`
     fn f_op1_val(&self) -> F;
 
-    /// Returns bit-flag for frame pointer for second register as F
+    /// Returns bit-flag for frame pointer for second register as `F`
     fn f_op1_fp(&self) -> F;
 
-    /// Returns bit-flag for allocation pointer for second regsiter as F
+    /// Returns bit-flag for allocation pointer for second regsiter as `F`
     fn f_op1_ap(&self) -> F;
 
-    /// Returns bit-flag for addition operation in right side as F
+    /// Returns bit-flag for addition operation in right side as `F`
     fn f_res_add(&self) -> F;
 
-    /// Returns bit-flag for multiplication operation in right side as F
+    /// Returns bit-flag for multiplication operation in right side as `F`
     fn f_res_mul(&self) -> F;
 
-    /// Returns bit-flag for program counter update being absolute jump as F
+    /// Returns bit-flag for program counter update being absolute jump as `F`
     fn f_pc_abs(&self) -> F;
 
-    /// Returns bit-flag for program counter update being relative jump as F
+    /// Returns bit-flag for program counter update being relative jump as `F`
     fn f_pc_rel(&self) -> F;
 
-    /// Returns bit-flag for program counter update being conditional jump as F
+    /// Returns bit-flag for program counter update being conditional jump as `F`
     fn f_pc_jnz(&self) -> F;
 
-    /// Returns bit-flag for allocation counter update being a manual addition as F
+    /// Returns bit-flag for allocation counter update being a manual addition as `F`
     fn f_ap_add(&self) -> F;
 
-    /// Returns bit-flag for allocation counter update being a self increment as F
+    /// Returns bit-flag for allocation counter update being a self increment as `F`
     fn f_ap_one(&self) -> F;
 
-    /// Returns bit-flag for operation being a call as F
+    /// Returns bit-flag for operation being a call as `F`
     fn f_opc_call(&self) -> F;
 
-    /// Returns bit-flag for operation being a return as F
+    /// Returns bit-flag for operation being a return as `F`
     fn f_opc_ret(&self) -> F;
 
-    /// Returns bit-flag for operation being an assert-equal as F
+    /// Returns bit-flag for operation being an assert-equal as `F`
     fn f_opc_aeq(&self) -> F;
 
     /// Returns bit-flag for 16th position
@@ -119,136 +117,20 @@ pub trait Decomposition<F: FftField> {
     fn opcode(&self) -> u8;
 }
 
-impl<F: FftField> Decomposition<F> for CairoWord<F> {
-    fn off_dst(&self) -> F {
-        self.get_word().off_dst()
-    }
-    fn off_op0(&self) -> F {
-        self.get_word().off_op0()
-    }
-
-    fn off_op1(&self) -> F {
-        self.get_word().off_op1()
-    }
-
-    fn flags(&self) -> Vec<F> {
-        self.get_word().flags()
-    }
-
-    fn flag_at(&self, pos: usize) -> F {
-        self.get_word().flag_at(pos)
-    }
-
-    fn f_dst_fp(&self) -> F {
-        self.get_word().f_dst_fp()
-    }
-
-    fn f_op0_fp(&self) -> F {
-        self.get_word().f_op0_fp()
-    }
-
-    fn f_op1_val(&self) -> F {
-        self.get_word().f_op1_val()
-    }
-
-    fn f_op1_fp(&self) -> F {
-        self.get_word().f_op1_fp()
-    }
-
-    fn f_op1_ap(&self) -> F {
-        self.get_word().f_op1_ap()
-    }
-
-    fn f_res_add(&self) -> F {
-        self.get_word().f_res_add()
-    }
-
-    fn f_res_mul(&self) -> F {
-        self.get_word().f_res_mul()
-    }
-
-    fn f_pc_abs(&self) -> F {
-        self.get_word().f_pc_abs()
-    }
-
-    fn f_pc_rel(&self) -> F {
-        self.get_word().f_pc_rel()
-    }
-
-    fn f_pc_jnz(&self) -> F {
-        self.get_word().f_pc_jnz()
-    }
-
-    fn f_ap_add(&self) -> F {
-        self.get_word().f_ap_add()
-    }
-
-    fn f_ap_one(&self) -> F {
-        self.get_word().f_ap_one()
-    }
-
-    fn f_opc_call(&self) -> F {
-        self.get_word().f_opc_call()
-    }
-
-    fn f_opc_ret(&self) -> F {
-        self.get_word().f_opc_ret()
-    }
-
-    fn f_opc_aeq(&self) -> F {
-        self.get_word().f_opc_aeq()
-    }
-
-    fn f15(&self) -> F {
-        self.get_word().f15()
-    }
-
-    fn dst_reg(&self) -> u8 {
-        self.get_word().dst_reg()
-    }
-
-    fn op0_reg(&self) -> u8 {
-        self.get_word().op0_reg()
-    }
-
-    fn op1_src(&self) -> u8 {
-        self.get_word().op1_src()
-    }
-
-    fn res_log(&self) -> u8 {
-        self.get_word().res_log()
-    }
-
-    fn pc_up(&self) -> u8 {
-        self.get_word().pc_up()
-    }
-
-    fn ap_up(&self) -> u8 {
-        self.get_word().ap_up()
-    }
-
-    fn opcode(&self) -> u8 {
-        self.get_word().opcode()
-    }
-}
-
-impl<F: FftField> Decomposition<F> for F {
+impl<F: Field> Decomposition<F> for CairoWord<F> {
     fn off_dst(&self) -> F {
         // The least significant 16 bits
-        bias(self.chunk_u16(POS_DST))
-        //biased_rep((self.word % 2u64.pow(16u32)) as u16)
+        bias(self.word().chunk_u16(POS_DST))
     }
 
     fn off_op0(&self) -> F {
         // From the 32nd bit to the 17th
-        bias(self.chunk_u16(POS_OP0))
-        //biased_rep(((self.word % (2u64.pow(32u32))) >> 16) as u16)
+        bias(self.word().chunk_u16(POS_OP0))
     }
 
     fn off_op1(&self) -> F {
         // From the 48th bit to the 33rd
-        bias(self.chunk_u16(POS_OP1))
-        //biased_rep(((self.word % (2u64.pow(48u32))) >> 32) as u16)
+        bias(self.word().chunk_u16(POS_OP1))
     }
 
     fn flags(&self) -> Vec<F> {
@@ -261,8 +143,7 @@ impl<F: FftField> Decomposition<F> for F {
     }
 
     fn flag_at(&self, pos: usize) -> F {
-        self.to_bits()[POS_FLAGS + pos].into()
-        //F::from((self.word.try_into() >> (48 + pos)) % 2)
+        self.word().to_bits()[POS_FLAGS + pos].into()
     }
 
     fn f_dst_fp(&self) -> F {
@@ -331,44 +212,49 @@ impl<F: FftField> Decomposition<F> for F {
 
     fn dst_reg(&self) -> u8 {
         // dst_reg = fDST_REG
-        self.f_dst_fp().ls_byte()
+        self.f_dst_fp().least_significant_byte()
     }
 
     fn op0_reg(&self) -> u8 {
         // op0_reg = fOP0_REG
-        self.f_op0_fp().ls_byte()
+        self.f_op0_fp().least_significant_byte()
     }
 
     fn op1_src(&self) -> u8 {
         // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
-        2 * (2 * self.f_op1_ap().ls_byte() + self.f_op1_fp().ls_byte()) + self.f_op1_val().ls_byte()
+        2 * (2 * self.f_op1_ap().least_significant_byte()
+            + self.f_op1_fp().least_significant_byte())
+            + self.f_op1_val().least_significant_byte()
     }
 
     fn res_log(&self) -> u8 {
         // res_log = 2*fRES_MUL + fRES_ADD
-        2 * self.f_res_mul().ls_byte() + self.f_res_add().ls_byte()
+        2 * self.f_res_mul().least_significant_byte() + self.f_res_add().least_significant_byte()
     }
 
     fn pc_up(&self) -> u8 {
         // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
-        2 * (2 * self.f_pc_jnz().ls_byte() + self.f_pc_rel().ls_byte()) + self.f_pc_abs().ls_byte()
+        2 * (2 * self.f_pc_jnz().least_significant_byte()
+            + self.f_pc_rel().least_significant_byte())
+            + self.f_pc_abs().least_significant_byte()
     }
 
     fn ap_up(&self) -> u8 {
         // ap_up = 2*fAP_ONE + fAP_ADD
-        2 * self.f_ap_one().ls_byte() + self.f_ap_add().ls_byte()
+        2 * self.f_ap_one().least_significant_byte() + self.f_ap_add().least_significant_byte()
     }
 
     fn opcode(&self) -> u8 {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
-        2 * (2 * self.f_opc_aeq().ls_byte() + self.f_opc_ret().ls_byte())
-            + self.f_opc_call().ls_byte()
+        2 * (2 * self.f_opc_aeq().least_significant_byte()
+            + self.f_opc_ret().least_significant_byte())
+            + self.f_opc_call().least_significant_byte()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::definitions::*;
+    use crate::flags::*;
     use crate::word::Decomposition;
     use ark_ff::{One, Zero};
     use mina_curves::pasta::fp::Fp as F;

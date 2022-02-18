@@ -1,5 +1,5 @@
-//! Defining some constants for easier readability of the steps
-//! When they refer to single bit flagsets, only one constant is needed
+//! Definition of some constants for easier readability of the steps.
+//! When they refer to single bit flagsets, only one constant is needed.
 
 /// Number of Cairo flags
 pub const NUM_FLAGS: usize = 16;

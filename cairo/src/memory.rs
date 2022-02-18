@@ -6,18 +6,18 @@ use std::ops::{Index, IndexMut};
 
 use crate::helper::*;
 use crate::word::CairoWord;
-use ark_ff::FftField;
+use ark_ff::Field;
 use core::iter::repeat;
 
 /// This data structure stores the memory of the program
-pub struct CairoMemory<F: FftField> {
+pub struct CairoMemory<F> {
     /// length of the public memory
     codelen: usize,
     /// full memory vector, None if non initialized
     pub data: Vec<Option<CairoWord<F>>>,
 }
 
-impl<F: FftField> Index<F> for CairoMemory<F> {
+impl<F: Field> Index<F> for CairoMemory<F> {
     type Output = Option<CairoWord<F>>;
     fn index(&self, idx: F) -> &Self::Output {
         // Safely convert idx from F to usize (since this is a memory address
@@ -27,7 +27,7 @@ impl<F: FftField> Index<F> for CairoMemory<F> {
     }
 }
 
-impl<F: FftField> IndexMut<F> for CairoMemory<F> {
+impl<F: Field> IndexMut<F> for CairoMemory<F> {
     fn index_mut(&mut self, idx: F) -> &mut Self::Output {
         let addr: u64 = idx.to_u64();
         self.resize(addr); // Resize if necessary
@@ -35,12 +35,12 @@ impl<F: FftField> IndexMut<F> for CairoMemory<F> {
     }
 }
 
-impl<F: FftField> Display for CairoMemory<F> {
+impl<F: Field> Display for CairoMemory<F> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         for i in 1..self.size() {
             // Visualize content of memory excluding the 0th dummy entry
             if let Some(elem) = self[F::from(i)] {
-                if writeln!(f, "{0:>6}: 0x{1:}", i, elem.get_word().to_hex_le()).is_err() {
+                if writeln!(f, "{0:>6}: 0x{1:}", i, elem.word().to_hex_le()).is_err() {
                     println!("Error while writing")
                 }
             } else if writeln!(f, "{0:>6}: None", i).is_err() {
@@ -51,7 +51,7 @@ impl<F: FftField> Display for CairoMemory<F> {
     }
 }
 
-impl<F: FftField> CairoMemory<F> {
+impl<F: Field> CairoMemory<F> {
     /// Create a new memory structure from a vector of field elements
     pub fn new(input: Vec<F>) -> CairoMemory<F> {
         // Initialized with the public memory (compiled instructions only)
@@ -92,7 +92,7 @@ impl<F: FftField> CairoMemory<F> {
     /// Read element in memory address
     pub fn read(&mut self, addr: F) -> Option<F> {
         self.resize(addr.to_u64()); // Resize if necessary
-        self[addr].map(|x| x.get_word())
+        self[addr].map(|x| x.word())
     }
 }
 

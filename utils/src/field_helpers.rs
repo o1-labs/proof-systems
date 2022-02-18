@@ -1,7 +1,7 @@
-use ark_ff::FftField;
+use ark_ff::Field;
 
 /// Field element helpers
-pub trait FieldHelpers<F: FftField> {
+pub trait FieldHelpers<F> {
     /// Deserialize from bytes
     fn from_bytes(bytes: &[u8]) -> Result<F, &str>;
 
@@ -21,7 +21,7 @@ pub trait FieldHelpers<F: FftField> {
     fn to_bits(self) -> Vec<bool>;
 }
 
-impl<F: FftField> FieldHelpers<F> for F {
+impl<F: Field> FieldHelpers<F> for F {
     fn from_bytes(bytes: &[u8]) -> Result<F, &str> {
         F::deserialize(&mut &*bytes).map_err(|_| "Failed to deserialize field bytes")
     }
