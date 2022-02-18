@@ -1,15 +1,21 @@
 use ark_ff::FftField;
+use ark_serialize::Read;
 
 /// Field element helpers
 pub trait FieldHelpers<F: FftField> {
     /// Deserialize from bytes
-    fn from_bytes(bytes: &[u8]) -> Result<F, &str>;
+    fn from_bytes(bytes: impl Read) -> Result<F, &'static str>;
+
+    /// Deserialize from bytes
+    /// length of the input bytes can be arbitrary
+    /// it will be padded or trimmed to 256 bits
+    fn from_bytes_unstrict(bytes: &[u8]) -> Result<F, &str>;
 
     /// Deserialize from hex
     fn from_hex(hex: &str) -> Result<F, &str>;
 
     /// Deserialize from bits
-    fn from_bits(bits: &[bool]) -> Result<F, &'static str>;
+    fn from_bits(bits: &[bool]) -> Result<F, &str>;
 
     /// Serialize to bytes
     fn to_bytes(self) -> Vec<u8>;
@@ -22,8 +28,17 @@ pub trait FieldHelpers<F: FftField> {
 }
 
 impl<F: FftField> FieldHelpers<F> for F {
-    fn from_bytes(bytes: &[u8]) -> Result<F, &str> {
-        F::deserialize(&mut &*bytes).map_err(|_| "Failed to deserialize field bytes")
+    fn from_bytes(bytes: impl Read) -> Result<F, &'static str> {
+        F::deserialize(bytes).map_err(|_| "Failed to deserialize field bytes")
+    }
+
+    fn from_bytes_unstrict(bytes: &[u8]) -> Result<F, &str> {
+        const LEN: usize = 32;
+        let mut padded = [0_u8; LEN];
+        for (i, &b) in bytes.iter().enumerate().take(LEN) {
+            padded[i] = b;
+        }
+        Self::from_bytes(padded.as_slice())
     }
 
     fn from_hex(hex: &str) -> Result<F, &str> {
@@ -31,7 +46,7 @@ impl<F: FftField> FieldHelpers<F> for F {
         F::deserialize(&mut &bytes[..]).map_err(|_| "Failed to deserialize field bytes")
     }
 
-    fn from_bits(bits: &[bool]) -> Result<F, &'static str> {
+    fn from_bits(bits: &[bool]) -> Result<F, &str> {
         let bytes = bits
             .iter()
             .enumerate()
@@ -123,25 +138,31 @@ mod tests {
     #[test]
     fn field_bytes() {
         assert_eq!(
-            BaseField::from_bytes(&[
-                46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182,
-                152, 235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
-            ])
+            BaseField::from_bytes(
+                [
+                    46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182,
+                    152, 235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
+                ]
+                .as_slice()
+            )
             .is_ok(),
             true
         );
 
         assert_eq!(
-            BaseField::from_bytes(&[46, 174, 218, 228, 42, 116, 97, 213]),
+            BaseField::from_bytes([46, 174, 218, 228, 42, 116, 97, 213].as_slice()),
             Err("Failed to deserialize field bytes")
         );
 
         assert_eq!(
             BaseField::to_hex(
-                BaseField::from_bytes(&[
-                    46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182,
-                    152, 235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
-                ])
+                BaseField::from_bytes(
+                    [
+                        46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104,
+                        182, 152, 235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
+                    ]
+                    .as_slice()
+                )
                 .expect("Failed to deserialize field bytes")
             ),
             "2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08"

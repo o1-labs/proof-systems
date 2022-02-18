@@ -136,7 +136,7 @@ impl ROInput {
                 bv.resize(BaseField::size_in_bits(), false);
 
                 acc.push(
-                    BaseField::from_bytes(&bv.into_vec())
+                    BaseField::from_bytes(bv.into_vec().as_slice())
                         .expect("failed to create base field element"),
                 );
 

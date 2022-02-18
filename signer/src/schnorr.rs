@@ -137,11 +137,10 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         // Set sponge initial state (explicitly init state so signer context can be reused)
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
         self.sponge.reset();
-        self.sponge
-            .absorb(&[
-                BaseField::from_bytes(&Schnorr::<SC>::domain_bytes::<S>(self.network_id))
-                    .expect("invalid domain bytes"),
-            ]);
+        self.sponge.absorb(&[BaseField::from_bytes(
+            Schnorr::<SC>::domain_bytes::<S>(self.network_id).as_slice(),
+        )
+        .expect("invalid domain bytes")]);
         self.sponge.squeeze();
 
         // Absorb random oracle input
