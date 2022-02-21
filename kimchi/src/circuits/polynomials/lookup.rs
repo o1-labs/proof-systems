@@ -120,15 +120,16 @@
 //! snakifying on `witness_table`, because its contribution above only uses a single term rather
 //! than a pair of terms.
 
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
-
-use crate::circuits::expr::{prologue::*, Column, ConstantExpr, Variable};
-use crate::circuits::{
-    gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
-    wires::COLUMNS,
+use crate::{
+    circuits::{
+        expr::{prologue::*, Column, ConstantExpr, Variable},
+        gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
+        wires::COLUMNS,
+    },
+    error::{ProofError, Result},
 };
 use ark_ff::{FftField, Field, One, Zero};
-use oracle::rndoracle::ProofError;
+use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
 use std::collections::HashMap;
 use CurrOrNext::*;
@@ -398,7 +399,7 @@ pub fn sorted<
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     params: E::Params,
-) -> Result<Vec<Vec<E>>, ProofError> {
+) -> Result<Vec<Vec<E>>> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
@@ -506,7 +507,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
-) -> Result<Evaluations<F, D<F>>, ProofError> {
+) -> Result<Evaluations<F, D<F>>> {
     let n = d1.size as usize;
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;
