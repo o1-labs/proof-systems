@@ -7,9 +7,41 @@ use bs58;
 use core::fmt;
 use sha2::{Digest, Sha256};
 use std::ops::Neg;
+use thiserror::Error;
 
 use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
+
+/// Public key errors
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum PubKeyError {
+    /// Invalid address length
+    #[error("invalid address length")]
+    AddressLength,
+    /// Invalid address base58
+    #[error("invalid address base58")]
+    AddressBase58,
+    /// Invalid raw address bytes length
+    #[error("invalid raw address bytes length")]
+    AddressRawByteLength,
+    /// Invalid address checksum
+    #[error("invalid address checksum")]
+    AddressChecksum,
+    /// Invalid address version
+    #[error("invalid address version")]
+    AddressVersion,
+    /// Invalid x-coordinate bytes
+    #[error("invalid x-coordinate bytes")]
+    XCoordinateBytes,
+    /// Invalid x-coordinate
+    #[error("invalid x-coordinate")]
+    XCoordinate,
+    /// Point not on curve
+    #[error("point not on curve")]
+    NonCurvePoint,
+}
+/// Public key Result
+pub type Result<T> = std::result::Result<T, PubKeyError>;
 
 /// Length of Mina addresses
 pub const MINA_ADDRESS_LEN: usize = 55;
@@ -27,23 +59,23 @@ impl PubKey {
     }
 
     /// Deserialize Mina address into public key
-    pub fn from_address(address: &str) -> Result<Self, &'static str> {
+    pub fn from_address(address: &str) -> Result<Self> {
         if address.len() != MINA_ADDRESS_LEN {
-            return Err("Invalid address length");
+            return Err(PubKeyError::AddressLength);
         }
 
         let bytes = bs58::decode(address)
             .into_vec()
-            .map_err(|_| "Invalid address encoding")?;
+            .map_err(|_| PubKeyError::AddressBase58)?;
 
         if bytes.len() != MINA_ADDRESS_RAW_LEN {
-            return Err("Invalid raw address bytes length");
+            return Err(PubKeyError::AddressRawByteLength);
         }
 
         let (raw, checksum) = (&bytes[..bytes.len() - 4], &bytes[bytes.len() - 4..]);
         let hash = Sha256::digest(&Sha256::digest(raw)[..]);
         if checksum != &hash[..4] {
-            return Err("Invalid address checksum");
+            return Err(PubKeyError::AddressChecksum);
         }
 
         let (version, x_bytes, y_parity) = (
@@ -52,19 +84,18 @@ impl PubKey {
             raw[bytes.len() - 5] == 0x01,
         );
         if version != [0xcb, 0x01, 0x01] {
-            return Err("Invalid address version info");
+            return Err(PubKeyError::AddressVersion);
         }
 
-        let x = BaseField::from_bytes(x_bytes).map_err(|_| "invalid x-coordinate bytes")?;
-        let mut pt =
-            CurvePoint::get_point_from_x(x, y_parity).ok_or("Invalid address x-coordinate")?;
+        let x = BaseField::from_bytes(x_bytes).map_err(|_| PubKeyError::XCoordinateBytes)?;
+        let mut pt = CurvePoint::get_point_from_x(x, y_parity).ok_or(PubKeyError::XCoordinate)?;
 
         if pt.y.into_repr().is_even() == y_parity {
             pt.y = pt.y.neg();
         }
 
         if !pt.is_on_curve() {
-            return Err("Point is not on curve");
+            return Err(PubKeyError::NonCurvePoint);
         }
 
         // Safe now because we checked point pt is on curve

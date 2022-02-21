@@ -21,3 +21,4 @@ _build
 .merlin
 *.swp
 *.swo
+.vscode

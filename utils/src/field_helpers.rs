@@ -1,15 +1,26 @@
-use ark_ff::Field;
+use ark_ff::{Field, PrimeField};
+use thiserror::Error;
+
+// Field helpers error
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum FieldHelpersError {
+    #[error("failed to deserialize field bytes")]
+    DeserializeBytes,
+    #[error("failed to decode hex")]
+    DecodeHex,
+}
+pub type Result<T> = std::result::Result<T, FieldHelpersError>;
 
 /// Field element helpers
 pub trait FieldHelpers<F> {
     /// Deserialize from bytes
-    fn from_bytes(bytes: &[u8]) -> Result<F, &str>;
+    fn from_bytes(bytes: &[u8]) -> Result<F>;
 
     /// Deserialize from hex
-    fn from_hex(hex: &str) -> Result<F, &str>;
+    fn from_hex(hex: &str) -> Result<F>;
 
     /// Deserialize from bits
-    fn from_bits(bits: &[bool]) -> Result<F, &'static str>;
+    fn from_bits(bits: &[bool]) -> Result<F>;
 
     /// Serialize to bytes
     fn to_bytes(self) -> Vec<u8>;
@@ -19,19 +30,27 @@ pub trait FieldHelpers<F> {
 
     /// Serialize to bits
     fn to_bits(self) -> Vec<bool>;
+
+    /// Field size in bytes
+    fn size_in_bytes() -> usize
+    where
+        F: PrimeField,
+    {
+        ((F::size_in_bits() as f64) / 8.0).ceil() as usize
+    }
 }
 
 impl<F: Field> FieldHelpers<F> for F {
-    fn from_bytes(bytes: &[u8]) -> Result<F, &str> {
-        F::deserialize(&mut &*bytes).map_err(|_| "Failed to deserialize field bytes")
+    fn from_bytes(bytes: &[u8]) -> Result<F> {
+        F::deserialize(&mut &*bytes).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
-    fn from_hex(hex: &str) -> Result<F, &str> {
-        let bytes: Vec<u8> = hex::decode(hex).map_err(|_| "Failed to decode field hex")?;
-        F::deserialize(&mut &bytes[..]).map_err(|_| "Failed to deserialize field bytes")
+    fn from_hex(hex: &str) -> Result<F> {
+        let bytes: Vec<u8> = hex::decode(hex).map_err(|_| FieldHelpersError::DecodeHex)?;
+        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
-    fn from_bits(bits: &[bool]) -> Result<F, &'static str> {
+    fn from_bits(bits: &[bool]) -> Result<F> {
         let bytes = bits
             .iter()
             .enumerate()
@@ -40,7 +59,7 @@ impl<F: Field> FieldHelpers<F> for F {
                 bytes
             });
 
-        F::deserialize(&mut &bytes[..]).map_err(|_| "Failed to deserialize field bytes")
+        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn to_bytes(self) -> Vec<u8> {
@@ -84,25 +103,25 @@ mod tests {
     fn field_hex() {
         assert_eq!(
             BaseField::from_hex(""),
-            Err("Failed to deserialize field bytes")
+            Err(FieldHelpersError::DeserializeBytes)
         );
         assert_eq!(
             BaseField::from_hex("1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07"),
-            Err("Failed to decode field hex")
+            Err(FieldHelpersError::DecodeHex)
         );
         assert_eq!(
             BaseField::from_hex(
                 "0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8"
             ),
-            Err("Failed to decode field hex")
+            Err(FieldHelpersError::DecodeHex)
         );
         assert_eq!(
             BaseField::from_hex("g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8"),
-            Err("Failed to decode field hex")
+            Err(FieldHelpersError::DecodeHex)
         );
         assert_eq!(
             BaseField::from_hex("0cdaf334e9632268a5aa959c2781fb32bf45565fe244ae42c849d3fdc7c644fd"),
-            Err("Failed to deserialize field bytes")
+            Err(FieldHelpersError::DeserializeBytes)
         );
 
         assert_eq!(
@@ -133,7 +152,7 @@ mod tests {
 
         assert_eq!(
             BaseField::from_bytes(&[46, 174, 218, 228, 42, 116, 97, 213]),
-            Err("Failed to deserialize field bytes")
+            Err(FieldHelpersError::DeserializeBytes)
         );
 
         assert_eq!(
@@ -146,6 +165,12 @@ mod tests {
             ),
             "2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08"
         );
+
+        fn lifetime_test() -> Result<BaseField> {
+            let bytes = [0; 32];
+            BaseField::from_bytes(&bytes)
+        }
+        assert_eq!(lifetime_test().is_ok(), true);
     }
 
     #[test]
@@ -172,7 +197,7 @@ mod tests {
 
         assert_eq!(
             BaseField::from_bits(&vec![true; BaseField::size_in_bits()]),
-            Err("Failed to deserialize field bytes")
+            Err(FieldHelpersError::DeserializeBytes)
         );
 
         assert_eq!(

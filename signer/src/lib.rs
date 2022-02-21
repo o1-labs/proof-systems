@@ -8,7 +8,9 @@ pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
+use ark_ff::PrimeField;
 pub use keypair::Keypair;
+use o1_utils::FieldHelpers;
 pub use pubkey::{CompressedPubKey, PubKey};
 pub use roinput::ROInput;
 pub use schnorr::Schnorr;
@@ -47,6 +49,18 @@ impl From<NetworkId> for u8 {
     fn from(id: NetworkId) -> u8 {
         id as u8
     }
+}
+
+/// Transform domain prefix string to bytes
+pub fn domain_prefix_to_bytes<F: PrimeField>(prefix: &str) -> Vec<u8> {
+    const MAX_DOMAIN_STRING_LEN: usize = 20;
+    assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
+    let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
+    let mut bytes = format!("{:*<MAX_DOMAIN_STRING_LEN$}", prefix)
+        .as_bytes()
+        .to_vec();
+    bytes.resize(F::size_in_bytes(), 0);
+    bytes
 }
 
 /// Interface for hashable objects
