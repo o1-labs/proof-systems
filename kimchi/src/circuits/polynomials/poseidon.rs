@@ -1,14 +1,13 @@
 //! This module implements the Poseidon constraint polynomials.
 
+use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
-use ark_ff::{FftField, SquareRootField};
+use ark_ff::{FftField, Field};
 use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
+use std::marker::PhantomData;
 use CurrOrNext::*;
-
-/// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 15;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 pub struct RoundEquation {
@@ -39,6 +38,7 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
     },
 ];
 
+/// Implementation of the Poseidon gate
 /// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
 /// Conjunction of:
 /// curr[round_range(1)] = round(curr[round_range(0)])
@@ -61,39 +61,53 @@ pub const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// ...
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
-pub fn constraint<F: FftField + SquareRootField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let mut res = vec![];
-    let mut cache = Cache::default();
+#[derive(Default)]
+pub struct Poseidon<F>(PhantomData<F>);
 
-    let mut idx = 0;
+impl<F> Poseidon<F> where F: Field {}
 
-    let mds: Vec<Vec<_>> = (0..SPONGE_WIDTH)
-        .map(|row| {
-            (0..SPONGE_WIDTH)
-                .map(|col| ConstantExpr::Mds { row, col })
-                .collect()
-        })
-        .collect();
+impl<F> Argument for Poseidon<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
+    const CONSTRAINTS: usize = 15;
 
-    for e in ROUND_EQUATIONS.iter() {
-        let &RoundEquation {
-            source,
-            target: (target_row, target_round),
-        } = e;
-        let sboxed: Vec<_> = round_to_cols(source)
-            .map(|i| cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
+    fn constraints() -> Vec<E<F>> {
+        let mut res = vec![];
+        let mut cache = Cache::default();
+
+        let mut idx = 0;
+
+        let mds: Vec<Vec<_>> = (0..SPONGE_WIDTH)
+            .map(|row| {
+                (0..SPONGE_WIDTH)
+                    .map(|col| ConstantExpr::Mds { row, col })
+                    .collect()
+            })
             .collect();
 
-        res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
-            let rc = coeff(idx);
+        for e in ROUND_EQUATIONS.iter() {
+            let &RoundEquation {
+                source,
+                target: (target_row, target_round),
+            } = e;
+            let sboxed: Vec<_> = round_to_cols(source)
+                .map(|i| cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX)))
+                .collect();
 
-            idx += 1;
-            witness(col, target_row)
-                - sboxed
-                    .iter()
-                    .zip(mds[j].iter())
-                    .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
-        }));
+            res.extend(round_to_cols(target_round).enumerate().map(|(j, col)| {
+                let rc = coeff(idx);
+
+                idx += 1;
+                witness(col, target_row)
+                    - sboxed
+                        .iter()
+                        .zip(mds[j].iter())
+                        .fold(rc, |acc, (x, c)| acc + E::Constant(c.clone()) * x.clone())
+            }));
+        }
+        res
     }
-    index(GateType::Poseidon) * E::combine_constraints(alphas, res)
 }

@@ -142,23 +142,14 @@
 //! And we'll check that y' is the sum of the shifted nybbles.
 //!
 
+use std::marker::PhantomData;
+
 use crate::circuits::{
+    argument::{Argument, ArgumentType},
     expr::{constraints::boolean, prologue::*, ConstantExpr as C},
     gate::{CurrOrNext, GateType},
 };
 use ark_ff::{FftField, Field, Zero};
-
-/// Number of constraints produced by the ChaCha0 gate.
-pub const CONSTRAINTS_0: usize = 5;
-
-/// Number of constraints produced by the ChaCha1 gate.
-pub const CONSTRAINTS_1: usize = 5;
-
-/// Number of constraints produced by the ChaCha2 gate.
-pub const CONSTRAINTS_2: usize = 5;
-
-/// Number of constraints produced by the ChaChaFinal gate.
-pub const CONSTRAINTS_FINAL: usize = 9;
 
 /// The lookup table for 4-bit xor.
 /// Note that it is constructed so that (0, 0, 0) is the last position in the table.
@@ -254,50 +245,105 @@ fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
 // Gates
 //
 
-/// a += b; d ^= a; d <<<= 16 (=4*4)
-pub fn constraint_chacha0<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    index(GateType::ChaCha0) * E::combine_constraints(alphas, line(4))
+/// Implementation of the ChaCha0 gate
+#[derive(Default)]
+pub struct ChaCha0<F>(PhantomData<F>);
+
+impl<F> Argument for ChaCha0<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
+    const CONSTRAINTS: usize = 5;
+
+    fn constraints() -> Vec<E<F>> {
+        // a += b; d ^= a; d <<<= 16 (=4*4)
+        line(4)
+    }
 }
 
-/// c += d; b ^= c; b <<<= 12 (=3*4)
-pub fn constraint_chacha1<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    index(GateType::ChaCha1) * E::combine_constraints(alphas, line(3))
+/// Implementation of the ChaCha1 gate
+
+#[derive(Default)]
+pub struct ChaCha1<F>(PhantomData<F>);
+
+impl<F> Argument for ChaCha1<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
+    const CONSTRAINTS: usize = 5;
+
+    fn constraints() -> Vec<E<F>> {
+        // c += d; b ^= c; b <<<= 12 (=3*4)
+        line(3)
+    }
 }
 
-/// a += b; d ^= a; d <<<= 8  (=2*4)
-pub fn constraint_chacha2<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    index(GateType::ChaCha2) * E::combine_constraints(alphas, line(2))
+/// Implementation of the ChaCha2 gate
+
+#[derive(Default)]
+pub struct ChaCha2<F>(PhantomData<F>);
+
+impl<F> Argument for ChaCha2<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
+    const CONSTRAINTS: usize = 5;
+
+    fn constraints() -> Vec<E<F>> {
+        // a += b; d ^= a; d <<<= 8  (=2*4)
+        line(2)
+    }
 }
 
-/// The last line, namely,
-/// c += d; b ^= c; b <<<= 7;
-/// is special.
-/// We don't use the y' value computed by this one, so we
-/// will use a ChaCha0 gate to compute the nybbles of
-/// all the relevant values, and the xors, and then do
-/// the shifting using a ChaChaFinal gate.
-pub fn constraint_chacha_final<F: FftField>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let y_xor_xprime_nybbles = chunks_over_2_rows(1);
-    let low_bits = chunks_over_2_rows(5);
-    let yprime = witness_curr(0);
+/// Implementation of the ChaChaFinal gate
 
-    let one_half = F::from(2u64).inverse().unwrap();
+#[derive(Default)]
+pub struct ChaChaFinal<F>(PhantomData<F>);
 
-    // (y xor xprime) <<< 7
-    // per the comment at the top of the file
-    let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
-        .iter()
-        .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
-        .map(|(&i, &j)| -> E<F> {
-            E::from(8) * low_bits[i].clone()
-                + E::Constant(C::Literal(one_half))
-                    * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
-        })
-        .collect();
+impl<F> Argument for ChaChaFinal<F>
+where
+    F: FftField,
+{
+    type Field = F;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
+    const CONSTRAINTS: usize = 9;
 
-    let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
-    constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
-    E::combine_constraints(alphas, constraints) * index(GateType::ChaChaFinal)
+    fn constraints() -> Vec<E<F>> {
+        // The last line, namely,
+        // c += d; b ^= c; b <<<= 7;
+        // is special.
+        // We don't use the y' value computed by this one, so we
+        // will use a ChaCha0 gate to compute the nybbles of
+        // all the relevant values, and the xors, and then do
+        // the shifting using a ChaChaFinal gate.
+        let y_xor_xprime_nybbles = chunks_over_2_rows(1);
+        let low_bits = chunks_over_2_rows(5);
+        let yprime = witness_curr(0);
+
+        let one_half = F::from(2u64).inverse().unwrap();
+
+        // (y xor xprime) <<< 7
+        // per the comment at the top of the file
+        let y_xor_xprime_rotated: Vec<_> = [7, 0, 1, 2, 3, 4, 5, 6]
+            .iter()
+            .zip([6, 7, 0, 1, 2, 3, 4, 5].iter())
+            .map(|(&i, &j)| -> E<F> {
+                E::from(8) * low_bits[i].clone()
+                    + E::Constant(C::Literal(one_half))
+                        * (y_xor_xprime_nybbles[j].clone() - low_bits[j].clone())
+            })
+            .collect();
+
+        let mut constraints: Vec<E<F>> = low_bits.iter().map(boolean).collect();
+        constraints.push(combine_nybbles(y_xor_xprime_rotated) - yprime);
+        constraints
+    }
 }
 
 // TODO: move this to test file
@@ -467,11 +513,14 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::{
-        expr::{Column, Constants, PolishToken},
-        gate::LookupInfo,
-        scalars::{LookupEvaluations, ProofEvaluations},
-        wires::*,
+    use crate::{
+        alphas::Alphas,
+        circuits::{
+            expr::{Column, Constants, PolishToken},
+            gate::LookupInfo,
+            scalars::{LookupEvaluations, ProofEvaluations},
+            wires::*,
+        },
     };
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -518,10 +567,15 @@ mod tests {
             h.insert(Column::Index(GateType::Generic));
             h
         };
-        let mut expr = constraint_chacha0(0..5);
-        expr += constraint_chacha1(0..5);
-        expr += constraint_chacha2(0..5);
-        expr += constraint_chacha_final(0..9);
+        let mut alphas = Alphas::<F>::default();
+        alphas.register(
+            ArgumentType::Gate(GateType::ChaChaFinal),
+            ChaChaFinal::<F>::CONSTRAINTS,
+        );
+        let mut expr = ChaCha0::combined_constraints(&alphas);
+        expr += ChaCha1::combined_constraints(&alphas);
+        expr += ChaCha2::combined_constraints(&alphas);
+        expr += ChaChaFinal::combined_constraints(&alphas);
         let linearized = expr.linearize(evaluated_cols).unwrap();
         let _expr_polish = expr.to_polish();
         let linearized_polish = linearized.map(|e| e.to_polish());

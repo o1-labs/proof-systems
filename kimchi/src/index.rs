@@ -1,12 +1,19 @@
 //! This module implements Plonk Protocol Index primitive.
 
-use crate::alphas::{self, ConstraintType};
+use crate::alphas::Alphas;
+use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
+use crate::circuits::polynomials::complete_add::CompleteAdd;
+use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
+use crate::circuits::polynomials::endosclmul::EndosclMul;
+use crate::circuits::polynomials::lookup;
 use crate::circuits::polynomials::permutation;
+use crate::circuits::polynomials::poseidon::Poseidon;
+use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupsUsed},
-    polynomials::{chacha, complete_add, endomul_scalar, endosclmul, lookup, poseidon, varbasemul},
     wires::*,
 };
 use ark_ec::AffineCurve;
@@ -45,7 +52,8 @@ pub struct Index<G: CommitmentCurve> {
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
 
     /// The mapping between powers of alpha and constraints
-    pub powers_of_alpha: alphas::Builder,
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas<Fr<G>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -84,8 +92,6 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
-    /// The mapping between powers of alpha and constraints
-    pub powers_of_alpha: alphas::Builder,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: Arc<SRS<G>>,
@@ -143,6 +149,9 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     #[serde(skip)]
     pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas<Fr<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
@@ -155,33 +164,38 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> (Expr<ConstantExpr<F>>, alphas::Builder) {
+) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
-    let mut powers_of_alpha = alphas::Builder::default();
+    let mut powers_of_alpha = Alphas::<F>::default();
 
     // gates
-    let largest_constraint_num = varbasemul::CONSTRAINTS;
-    let alphas = powers_of_alpha.register(ConstraintType::Gate, largest_constraint_num);
+    let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
+    powers_of_alpha.register(
+        ArgumentType::Gate(GateType::VarBaseMul),
+        highest_constraints,
+    );
 
-    let mut expr = poseidon::constraint(alphas.clone().take(poseidon::CONSTRAINTS));
-    expr += varbasemul::constraint(alphas.clone().take(varbasemul::CONSTRAINTS));
-    expr += complete_add::constraint(alphas.clone().take(complete_add::CONSTRAINTS));
-    expr += endosclmul::constraint(alphas.clone().take(endosclmul::CONSTRAINTS));
-    expr += endomul_scalar::constraint(alphas.clone().take(endomul_scalar::CONSTRAINTS));
+    let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
+    expr += VarbaseMul::combined_constraints(&powers_of_alpha);
+    expr += CompleteAdd::combined_constraints(&powers_of_alpha);
+    expr += EndosclMul::combined_constraints(&powers_of_alpha);
+    expr += EndomulScalar::combined_constraints(&powers_of_alpha);
 
     if chacha {
-        expr += chacha::constraint_chacha0(alphas.clone().take(chacha::CONSTRAINTS_0));
-        expr += chacha::constraint_chacha1(alphas.clone().take(chacha::CONSTRAINTS_1));
-        expr += chacha::constraint_chacha2(alphas.clone().take(chacha::CONSTRAINTS_2));
-        expr += chacha::constraint_chacha_final(alphas.take(chacha::CONSTRAINTS_FINAL));
+        expr += ChaCha0::combined_constraints(&powers_of_alpha);
+        expr += ChaCha1::combined_constraints(&powers_of_alpha);
+        expr += ChaCha2::combined_constraints(&powers_of_alpha);
+        expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
-    let _alphas = powers_of_alpha.register(ConstraintType::Permutation, permutation::CONSTRAINTS);
+    powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        let alphas = powers_of_alpha.register(ConstraintType::Lookup, lookup::CONSTRAINTS);
+        powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
+        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
+
         let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
@@ -219,7 +233,7 @@ pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
     lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> (Linearization<Vec<PolishToken<F>>>, alphas::Builder) {
+) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
     let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
