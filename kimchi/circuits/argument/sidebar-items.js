@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ArgumentType","A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)"]],"trait":[["Argument","The interface for a minimal argument implementation."]]});

@@ -234,6 +234,20 @@
 <span id="229">229</span>
 <span id="230">230</span>
 <span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Acc := [2]T</span>
@@ -243,15 +257,15 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.</span>
 
+<span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
+
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
+    <span class="ident">argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>},
     <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">Column</span>, <span class="ident">Variable</span>},
     <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
     <span class="ident">wires::COLUMNS</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>};
-
-<span class="doccomment">/// Number of constraints produced by the gate.</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">21</span>;
 
 <span class="kw">type</span> <span class="ident">CurveVar</span> <span class="op">=</span> (<span class="ident">Variable</span>, <span class="ident">Variable</span>);
 
@@ -433,38 +447,52 @@
     <span class="ident">VarbaseMulResult</span> { <span class="ident">acc</span>, <span class="ident">n</span>: <span class="ident">n_acc</span> }
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraint</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">alphas</span>: <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">usize</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">Layout</span> {
-        <span class="ident">base</span>,
-        <span class="ident">accs</span>,
-        <span class="ident">bits</span>,
-        <span class="ident">ss</span>,
-        <span class="ident">n_prev</span>,
-        <span class="ident">n_next</span>,
-    } <span class="op">=</span> <span class="ident">LAYOUT</span>;
+<span class="doccomment">/// Implementation of the VarbaseMul gate</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VarbaseMul</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span> <span class="kw">for</span> <span class="ident">VarbaseMul</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">F</span>: <span class="ident">FftField</span>,
+{
+    <span class="kw">type</span> <span class="ident">Field</span> <span class="op">=</span> <span class="ident">F</span>;
+    <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::VarBaseMul</span>);
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">21</span>;
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraint</span> <span class="op">=</span> <span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">single_bit</span>(<span class="kw-2">&amp;mut</span> <span class="ident">c</span>, <span class="ident">bits</span>[<span class="ident">i</span>], <span class="ident">base</span>, <span class="ident">ss</span>[<span class="ident">i</span>], <span class="ident">accs</span>[<span class="ident">i</span>], <span class="ident">accs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>]);
+    <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">Layout</span> {
+            <span class="ident">base</span>,
+            <span class="ident">accs</span>,
+            <span class="ident">bits</span>,
+            <span class="ident">ss</span>,
+            <span class="ident">n_prev</span>,
+            <span class="ident">n_next</span>,
+        } <span class="op">=</span> <span class="ident">LAYOUT</span>;
 
-    <span class="comment">// n&#39;</span>
-    <span class="comment">// = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4</span>
-    <span class="comment">// = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">Cache::default</span>();
 
-    <span class="kw">let</span> <span class="ident">n_prev</span> <span class="op">=</span> <span class="ident">E::Cell</span>(<span class="ident">n_prev</span>);
-    <span class="kw">let</span> <span class="ident">n_next</span> <span class="op">=</span> <span class="ident">E::Cell</span>(<span class="ident">n_next</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[
-        <span class="ident">n_next</span>
-            <span class="op">-</span> <span class="ident">bits</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">fold</span>(<span class="ident">n_prev</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">b</span><span class="op">|</span> <span class="ident">E::Cell</span>(<span class="kw-2">*</span><span class="ident">b</span>) <span class="op">+</span> <span class="ident">acc</span>.<span class="ident">double</span>()),
-    ];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">constraint</span> <span class="op">=</span> <span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">single_bit</span>(<span class="kw-2">&amp;mut</span> <span class="ident">c</span>, <span class="ident">bits</span>[<span class="ident">i</span>], <span class="ident">base</span>, <span class="ident">ss</span>[<span class="ident">i</span>], <span class="ident">accs</span>[<span class="ident">i</span>], <span class="ident">accs</span>[<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>]);
 
-    <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
-        <span class="ident">res</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">constraint</span>(<span class="ident">i</span>));
+        <span class="comment">// n&#39;</span>
+        <span class="comment">// = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4</span>
+        <span class="comment">// = b4 + 2 (b3 + 2 (b2 + 2 (b1 + 2(b0 + 2 n))))</span>
+
+        <span class="kw">let</span> <span class="ident">n_prev</span> <span class="op">=</span> <span class="ident">E::Cell</span>(<span class="ident">n_prev</span>);
+        <span class="kw">let</span> <span class="ident">n_next</span> <span class="op">=</span> <span class="ident">E::Cell</span>(<span class="ident">n_next</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[
+            <span class="ident">n_next</span>
+                <span class="op">-</span> <span class="ident">bits</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">fold</span>(<span class="ident">n_prev</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">b</span><span class="op">|</span> <span class="ident">E::Cell</span>(<span class="kw-2">*</span><span class="ident">b</span>) <span class="op">+</span> <span class="ident">acc</span>.<span class="ident">double</span>()),
+        ];
+
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">5</span> {
+            <span class="ident">res</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">constraint</span>(<span class="ident">i</span>));
+        }
+
+        <span class="ident">res</span>
     }
-    <span class="ident">index</span>(<span class="ident">GateType::VarBaseMul</span>) <span class="op">*</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">res</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03a8cc7df 2022-02-21)" ></div>
 </body></html>

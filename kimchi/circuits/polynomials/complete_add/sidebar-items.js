@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["CONSTRAINTS","Number of constraints produced by the gate."]],"fn":[["constraint","This function uses the constraints"]]});
+initSidebarItems({"struct":[["CompleteAdd","Implementation of the CompleteAdd gate It uses the constraints"]]});

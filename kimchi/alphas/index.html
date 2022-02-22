@@ -3,7 +3,7 @@
         </a><h2 class="location"></h2>
     </nav>
     <nav class="sidebar"><a class="sidebar-logo" href="../../kimchi/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div>
-        </a><h2 class="location"><a href="#">Module alphas</a></h2><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></div><div id="sidebar-vars" data-name="alphas" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+        </a><h2 class="location"><a href="#">Module alphas</a></h2><div class="sidebar-elems"><section><div class="block"><ul><li><a href="#structs">Structs</a></li></ul></div></section><div id="sidebar-vars" data-name="alphas" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
     <h1 class="fqn"><span class="in-band">Module <a href="../index.html">kimchi</a>::<wbr><a class="mod" href="#">alphas</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../src/kimchi/alphas.rs.html#1-268">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>This module implements an abstraction to keep track of the powers of alphas.
 As a recap, alpha is a challenge sent by the verifier in PLONK,
 and is used to aggregate multiple constraints into a single polynomial.
@@ -24,25 +24,18 @@ so we can use the mapping we created during the creation of the index.</li>
 </ul>
 <p>For this to work, we use two types:</p>
 <ul>
-<li><a href="struct.Builder.html" title="Builder">Builder</a>, which allows us to map constraints to powers</li>
-<li><a href="struct.Alphas.html" title="Alphas">Alphas</a>, which you can derive from <a href="struct.Builder.html" title="Builder">Builder</a> and an <code>alpha</code></li>
+<li>[Builder], which allows us to map constraints to powers</li>
+<li><a href="struct.Alphas.html" title="Alphas">Alphas</a>, which you can derive from [Builder] and an <code>alpha</code></li>
 </ul>
 <p>Both constructions will enforce that you use all the powers of
 alphas that you register for constraint. This allows us to
 make sure that we compute the correct amounts, without reusing
 powers of alphas between constraints.</p>
 </div></details><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
-<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Alphas.html" title="kimchi::alphas::Alphas struct">Alphas</a></div><div class="item-right docblock-short"><p>This type can be constructed from <a href="struct.Builder.html" title="Builder">Builder</a> and a value <code>alpha</code>,
-via <a href="struct.Alphas.html#method.new" title="Alphas::new">Alphas::new</a>.
-It will then pre-compute the necessary numbers of powers of alpha.
-You can retrieve powers of alpha by calling [Alphas::take_alphas],
-or the exponents without the actual powers of alphas via [Alphas::take_powers].</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Builder.html" title="kimchi::alphas::Builder struct">Builder</a></div><div class="item-right docblock-short"><p>This type can be used to create a mapping between powers of alpha and constraint types.
-See <a href="struct.Builder.html#method.default" title="Builder::default">Builder::default</a> to create one,
-and <a href="struct.Builder.html#method.register" title="Builder::register">Builder::register</a> to register a new mapping.
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.Alphas.html" title="kimchi::alphas::Alphas struct">Alphas</a></div><div class="item-right docblock-short"><p>This type can be used to create a mapping between powers of alpha and constraint types.
+See <a href="struct.Alphas.html#method.default" title="Alphas::default">Alphas::default</a> to create one,
+and [Builder::register] to register a new mapping.
 Once you know the alpha value, you can convert this type to a <a href="struct.Alphas.html" title="Alphas">Alphas</a>.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.MustConsumeIterator.html" title="kimchi::alphas::MustConsumeIterator struct">MustConsumeIterator</a></div><div class="item-right docblock-short"><p>Wrapper around an iterator that warns you if not consumed entirely.</p>
-</div></div></div><h2 id="enums" class="small-section-header"><a href="#enums">Enums</a></h2>
-<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.ConstraintType.html" title="kimchi::alphas::ConstraintType enum">ConstraintType</a></div><div class="item-right docblock-short"><p>A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)</p>
-</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.60.0-nightly (30b3f35c4 2022-02-17)" ></div>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03a8cc7df 2022-02-21)" ></div>
 </body></html>
