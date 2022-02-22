@@ -36,7 +36,7 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField,
     {
-        ((F::size_in_bits() as f64) / 8.0).ceil() as usize
+        F::size_in_bits() / 8 + (F::size_in_bits() % 8 != 0) as usize
     }
 }
 

@@ -51,8 +51,8 @@ impl From<NetworkId> for u8 {
     }
 }
 
-/// Transform domain prefix string to bytes
-pub fn domain_prefix_to_bytes<F: PrimeField>(prefix: &str) -> Vec<u8> {
+/// Transform domain prefix string to field element
+pub fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
     const MAX_DOMAIN_STRING_LEN: usize = 20;
     assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
     let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
@@ -60,7 +60,7 @@ pub fn domain_prefix_to_bytes<F: PrimeField>(prefix: &str) -> Vec<u8> {
         .as_bytes()
         .to_vec();
     bytes.resize(F::size_in_bytes(), 0);
-    bytes
+    F::from_bytes(&bytes).expect("invalid domain bytes")
 }
 
 /// Interface for hashable objects

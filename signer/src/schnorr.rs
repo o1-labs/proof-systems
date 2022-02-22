@@ -18,12 +18,11 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use o1_utils::FieldHelpers;
 use oracle::poseidon::{ArithmeticSponge, Sponge, SpongeConstants};
 use std::ops::Neg;
 
 use crate::{
-    domain_prefix_to_bytes, BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput,
+    domain_prefix_to_field, BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput,
     ScalarField, Signable, Signature, Signer,
 };
 
@@ -123,14 +122,10 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         // Set sponge initial state (explicitly init state so signer context can be reused)
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
         self.sponge.reset();
-        self.sponge.absorb(
-            &[
-                BaseField::from_bytes(&domain_prefix_to_bytes::<BaseField>(S::domain_string(
-                    self.network_id,
-                )))
-                .expect("invalid domain bytes"),
-            ],
-        );
+        self.sponge
+            .absorb(&[domain_prefix_to_field::<BaseField>(S::domain_string(
+                self.network_id,
+            ))]);
         self.sponge.squeeze();
 
         // Absorb random oracle input
