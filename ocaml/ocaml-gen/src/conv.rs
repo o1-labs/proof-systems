@@ -34,6 +34,16 @@ impl OCamlDesc for &[u8] {
     }
 }
 
+impl OCamlDesc for Vec<u8> {
+    fn ocaml_desc(_env: &Env, _generics: &[&str]) -> String {
+        "bytes".to_string()
+    }
+
+    fn unique_id() -> u128 {
+        const_random!(u128)
+    }
+}
+
 impl<T> OCamlDesc for Vec<T>
 where
     T: OCamlDesc,
