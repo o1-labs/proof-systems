@@ -143,6 +143,20 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
 
@@ -153,7 +167,9 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">seckey</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signature</span>;
 
+<span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">keypair::Keypair</span>;
+<span class="kw">use</span> <span class="ident">o1_utils::FieldHelpers</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">pubkey</span>::{<span class="ident">CompressedPubKey</span>, <span class="ident">PubKey</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">roinput::ROInput</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">schnorr::Schnorr</span>;
@@ -192,6 +208,18 @@
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">id</span>: <span class="ident">NetworkId</span>) -&gt; <span class="ident">u8</span> {
         <span class="ident">id</span> <span class="kw">as</span> <span class="ident">u8</span>
     }
+}
+
+<span class="doccomment">/// Transform domain prefix string to field element</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_prefix_to_field</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">PrimeField</span><span class="op">&gt;</span>(<span class="ident">prefix</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">F</span> {
+    <span class="kw">const</span> <span class="ident">MAX_DOMAIN_STRING_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">20</span>;
+    <span class="macro">assert!</span>(<span class="ident">prefix</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">MAX_DOMAIN_STRING_LEN</span>);
+    <span class="kw">let</span> <span class="ident">prefix</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">prefix</span>[..<span class="ident">std::cmp::min</span>(<span class="ident">prefix</span>.<span class="ident">len</span>(), <span class="ident">MAX_DOMAIN_STRING_LEN</span>)];
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{:*&lt;MAX_DOMAIN_STRING_LEN$}&quot;</span>, <span class="ident">prefix</span>)
+        .<span class="ident">as_bytes</span>()
+        .<span class="ident">to_vec</span>();
+    <span class="ident">bytes</span>.<span class="ident">resize</span>(<span class="ident">F::size_in_bytes</span>(), <span class="number">0</span>);
+    <span class="ident">F::from_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">bytes</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid domain bytes&quot;</span>)
 }
 
 <span class="doccomment">/// Interface for hashable objects</span>
@@ -284,5 +312,5 @@
     <span class="ident">Schnorr</span>::<span class="op">&lt;</span><span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="ident">SC</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">params</span>), <span class="ident">network_id</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03a8cc7df 2022-02-21)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (68369a041 2022-02-22)" ></div>
 </body></html>
