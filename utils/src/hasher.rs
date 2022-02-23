@@ -17,7 +17,7 @@
 //! }
 //!
 //! let a = A { thing: 1 };
-//! let expected_result = [190, 149, 126, 83, 64, 202, 220, 210, 10, 145, 208, 164, 52, 140, 137, 120, 25, 116, 213, 144, 224, 43, 112, 166, 160, 157, 43, 125, 7, 174, 249, 230];
+//! let expected_result = [164, 8, 215, 27, 25, 36, 6, 167, 42, 86, 200, 203, 99, 74, 178, 134, 66, 168, 85, 7, 224, 189, 73, 63, 117, 23, 18, 193, 168, 176, 123, 80];
 //! assert_eq!(a.digest(), expected_result);
 //!
 //! let b = A { thing: 1 };
@@ -33,6 +33,8 @@
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+/// This trait can be implemented on any type that implements [serde::Serialize],
+/// in order to provide a `digest()` function that returns a unique hash.
 pub trait CryptoDigest: Serialize {
     /// The domain separation string to use in the hash.
     /// This is to distinguish hashes for different use-cases.
@@ -45,12 +47,14 @@ pub trait CryptoDigest: Serialize {
     /// Returns the digest of `self`.
     /// Note: this is implemented as the SHA-256 of a prefix
     /// ("kimchi-circuit"), followed by the serialized gates.
-    /// The gates are serialized using messagepack.
+    /// The gates are serialized using [BCS](https://github.com/diem/bcs).
     fn digest(&self) -> [u8; 32] {
         // compute the prefixed state lazily
         let mut hasher = Sha256::new();
         hasher.update(Self::PREFIX);
-        hasher.update(&rmp_serde::to_vec(self).expect("couldn't serialize the gate"));
+        hasher.update(
+            &bcs::to_bytes(self).unwrap_or_else(|e| panic!("couldn't serialize the gate: {}", e)),
+        );
         hasher.finalize().into()
     }
 }
