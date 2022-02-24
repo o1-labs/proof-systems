@@ -9,4 +9,5 @@ pub mod gates;
 pub mod polynomial;
 pub mod polynomials;
 pub mod scalars;
+pub mod turshi;
 pub mod wires;

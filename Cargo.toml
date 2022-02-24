@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "cairo",
     "curves",
     "groupmap",
     "kimchi",

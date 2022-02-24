@@ -4,7 +4,6 @@ This repository contains various zk-SNARK protocol implementations for recursive
 
 ```
 proof-systems/
-├── cairo # a Cairo runner written in rust
 ├── curves/ # our curves (for now just the pasta curves)
 ├── groupmap/ # TODO: description
 ├── kimchi/ # our proof system

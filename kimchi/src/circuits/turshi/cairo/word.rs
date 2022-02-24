@@ -4,8 +4,8 @@
 //! Our Pallas curves have 255 bits, so Cairo native instructions will fit.
 //! This means that our Cairo implementation can admit a larger domain for immediate values than theirs.
 
-use crate::flags::*;
-use crate::helper::CairoFieldHelpers;
+use crate::circuits::turshi::cairo::flags::*;
+use crate::circuits::turshi::cairo::helper::CairoFieldHelpers;
 use ark_ff::Field;
 use o1_utils::field_helpers::FieldHelpers;
 
@@ -28,10 +28,26 @@ impl<F: Field> CairoWord<F> {
     pub fn word(&self) -> F {
         self.0
     }
+
+    /*
+    /// Returns vector of 16 flags
+    fn flags(&self) -> Vec<F> {
+        let mut flags = Vec::with_capacity(NUM_FLAGS);
+        // The most significant 16 bits
+        for i in 0..NUM_FLAGS {
+            flags.push(self.flag_at(i));
+        }
+        flags
+    }*/
+
+    /// Returns i-th bit-flag
+    fn flag_at(&self, pos: usize) -> F {
+        self.word().to_bits()[POS_FLAGS + pos].into()
+    }
 }
 
-/// This trait contains methods that decompose a field element into [CairoWord] components
-pub trait Decomposition<F> {
+/// This trait contains methods to obtain the offset decomposition of a [CairoWord]
+pub trait Offsets<F> {
     /// Returns the destination offset in biased representation
     fn off_dst(&self) -> F;
 
@@ -40,13 +56,10 @@ pub trait Decomposition<F> {
 
     /// Returns the second operand offset in biased representation
     fn off_op1(&self) -> F;
+}
 
-    /// Returns vector of 16 flags
-    fn flags(&self) -> Vec<F>;
-
-    /// Returns i-th bit-flag
-    fn flag_at(&self, pos: usize) -> F;
-
+/// This trait contains methods that decompose a field element into [CairoWord] flagbits
+pub trait FlagBits<F> {
     /// Returns bit-flag for destination register as `F`
     fn f_dst_fp(&self) -> F;
 
@@ -94,7 +107,10 @@ pub trait Decomposition<F> {
 
     /// Returns bit-flag for 16th position
     fn f15(&self) -> F;
+}
 
+/// This trait contains methods that decompose a field element into [CairoWord] flagsets
+pub trait FlagSets<F> {
     /// Returns flagset for destination register
     fn dst_reg(&self) -> u8;
 
@@ -117,7 +133,7 @@ pub trait Decomposition<F> {
     fn opcode(&self) -> u8;
 }
 
-impl<F: Field> Decomposition<F> for CairoWord<F> {
+impl<F: Field> Offsets<F> for CairoWord<F> {
     fn off_dst(&self) -> F {
         // The least significant 16 bits
         bias(self.word().chunk_u16(POS_DST))
@@ -132,20 +148,9 @@ impl<F: Field> Decomposition<F> for CairoWord<F> {
         // From the 48th bit to the 33rd
         bias(self.word().chunk_u16(POS_OP1))
     }
+}
 
-    fn flags(&self) -> Vec<F> {
-        let mut flags = Vec::with_capacity(NUM_FLAGS);
-        // The most significant 16 bits
-        for i in 0..NUM_FLAGS {
-            flags.push(self.flag_at(i));
-        }
-        flags
-    }
-
-    fn flag_at(&self, pos: usize) -> F {
-        self.word().to_bits()[POS_FLAGS + pos].into()
-    }
-
+impl<F: Field> FlagBits<F> for CairoWord<F> {
     fn f_dst_fp(&self) -> F {
         self.flag_at(0)
     }
@@ -209,7 +214,9 @@ impl<F: Field> Decomposition<F> for CairoWord<F> {
     fn f15(&self) -> F {
         self.flag_at(15)
     }
+}
 
+impl<F: Field> FlagSets<F> for CairoWord<F> {
     fn dst_reg(&self) -> u8 {
         // dst_reg = fDST_REG
         self.f_dst_fp().least_significant_byte()
@@ -254,8 +261,8 @@ impl<F: Field> Decomposition<F> for CairoWord<F> {
 
 #[cfg(test)]
 mod tests {
-    use crate::flags::*;
-    use crate::word::Decomposition;
+    use crate::circuits::turshi::cairo::flags::*;
+    use crate::circuits::turshi::cairo::word::{FlagBits, FlagSets, Offsets};
     use ark_ff::{One, Zero};
     use mina_curves::pasta::fp::Fp as F;
 
