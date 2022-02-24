@@ -1,4 +1,4 @@
-//! This module includes the [CryptoDigest] trait,
+//! This module provides the [CryptoDigest] trait,
 //! which provides a generic interface for hashing.
 //!
 //! To use it, simply implement [CryptoDigest] for your type:
