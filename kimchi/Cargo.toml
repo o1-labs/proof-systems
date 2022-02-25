@@ -26,6 +26,7 @@ rmp-serde = "1.0.0"
 serde = "1.0.130"
 serde_with = "1.10.0"
 thiserror = "1.0.30"
+hex = "0.4"
 
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }

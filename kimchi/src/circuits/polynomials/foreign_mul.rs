@@ -16,14 +16,15 @@
 //
 // Foreign field element structure:
 //
-//    Each foreign field element a is decomposed into 3 88-bit limbs a = a0a1a2 such that
+//    Each foreign field element a is decomposed into three 88-bit limbs a0, a1, a2 s.t. a = a0a1a2 in
+//    little-endian byte order (i.e. a = a2*2^{2b} + a1*2^b + a0)
 //      a0 = a0p0a0p1a0p2a0p3a0p4a0p5a0c0a0c1a0c2a0c3a0c4a0c5a0c6a0c7
 //      a1 = a1p0a1p1a1p2a1p3a1p4a1p5a1c0a1c1a1c2a1c3a1c4a1c5a1c6a1c7
 //      a2 = a2p0a2p1a2p2a2p3a2c0a2c1a2c2a2c3a2c4a2c5a2c6a2c7a2c8a2c9a2c10a2c11a2c12a2c13a2c14a2c15a2c16a2c17a2c18a2c19
 //
 //    where
 //      * aXpi is a 12-bit sublimb of limb aX
-//      * aXci is a 2-bit "crumb" limb of aX
+//      * aXci is a 2-bit "crumb" sublimb of aX
 //
 // Input structure:
 //
@@ -165,7 +166,7 @@ fn foreign_mul0_constraints<F: FftField>() -> Vec<E<F>> {
     let w = |i| E::cell(Column::Witness(i), Curr);
 
     // Row structure
-    //  Column w(i) 0    1       ... 4       5    6    7     ... 14    COLUMNS
+    //  Column w(i) 0    1       ... 4       5    6    7     ... 14
     //        Curr  limb plookup ... plookup copy copy crumb ... crumb
 
     // 1) Apply range constraints on sublimbs
@@ -182,30 +183,30 @@ fn foreign_mul0_constraints<F: FftField>() -> Vec<E<F>> {
 
     // 2) Constrain that the combined sublimbs equals the limb stored in w(0) where
     //    limb = lp0 lp1 lp2 lp3 lp4 lp5 lc0 lc1 lc2 lc3 lc4 lc5 lc6 lc7
-    //    in little-endian byte order.
+    //    in big-endian byte order.
     //
     //     Columns
     //    R        0      1    2    3    4    5    6    7    8    9    10   11   12   13   14
-    //    o  Curr  limb   lp0  lp1  lp2  lp3  lp4  lp5  lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7
-    //    w
+    //    o  Curr  limb   lp0  lp1  lp2  lp3  lp4  lp5  lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  <- LSB
+    //    w               76   64   52   40   28   16   14   12   10    8    6    4    2    0
     //    s
-
-    // Check limb = lp0*2^76 + lp1*2^64 + ... + lp4*2^28 + lp5*2^16 + lc0*2^14 + ... + lc7*2^0
-    //       w(0) = w(1)*2^76 + w(2)*2^64 + ... + w(5)*2^28 + w(6)*2^16 + w(7)*2^14 + ... + w(14)*2^0
-    //            = \sum i \in [1,6] 2^(12*(6 - i) + 16)*w(i) + \sum i \in [7,14] 2^(2*(14 - i))*w(i)
+    //
+    // Check limb =  lp0*2^0 + lp1*2^{12}  + ... + p5*2^{60}   + lc0*2^{72}  + lc1*2^{74}  + ... + lc7*2^{86}
+    //       w(0) = w(1)*2^0 + w(2)*2^{12} + ... + w(6)*2^{60} + w(7)*2^{72} + w(8)*2^{74} + ... + w(14)*2^{86}
+    //            = \sum i \in [1,7] 2^{12*(i - 1)}*w(i) + \sum i \in [8,14] 2^{2*(i - 7) + 6*12}*w(i)
     let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
         match i {
             0 => {
                 // ignore
                 acc
             }
-            1..=6 => {
-                // 12-bit chunk
-                acc + two().pow(12 * (6 - i) + 16) * w(i)
+            1..=7 => {
+                // 12-bit chunk offset
+                acc + two().pow(12 * (i - 1)) * w(i)
             }
-            7..=COLUMNS => {
-                // 2-bit chunk
-                acc + two().pow(2 * (14 - i)) * w(i)
+            8..=COLUMNS => {
+                // 2-bit chunk offset
+                acc + two().pow(2 * (i - 7) + 6 * 12) * w(i)
             }
             _ => {
                 panic!("Invalid column index {}", i)
@@ -262,14 +263,14 @@ fn foreign_mul1_constraints<F: FftField>() -> Vec<E<F>> {
     //    o  Curr  l2   lp0 lp1 lp2 lp3 lc0  lc1  lc2  lc3  lc4  lc5  lc6  lc7  lc8  lc9
     //    w  Next                       lc10 lc11 lc12 lc13 lc14 lc15 lc16 lc17 lc18 lc19
     //    s
+    //
+    // Check   l2 = lp0*2^0          + lp1*2^{12}       + ... + lp3*2^{36}       + lc0*2^{48}     + lc1*2^{50}     + ... + lc19*2^{66}
+    //       w(0) = w_curr(1)*2^0    + w_curr(2)*2^{12} + ... + w_curr(4)*2^{36} + w_curr(5)*2^48 + w_curr(6)*2^50 + ... + w_curr(14)*2^66
+    //            + w_next(5)*2^{68} + w_next(6)*2^{70} + ... + w_next(14)*2^{86}
+    // (1st part) = \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
+    // (2nd part) + \sum i \in [5,14] 2^{2*(i - 5} + 68)*w_next(i)
 
-    // Check   l2 = lp0*2^76 + lp1*2^64 + lp2*2^52 + lp3*2^40 + lc0*2^38 + lc1*2^36 + ... + lc19*2^0
-    //       w(0) = w_curr(1)*2^76 + w_curr(2)*2^64 + w_curr(3)*2^52 + w_curr(4)*2^40 + w_curr(5)*2^38 + ... + w_curr(14)*2^20
-    //              + w_next(5)*2^18 + w_next(6)*2^16 + ... + w_next(14)*2^0
-    // (1st part) = \sum i \in [1,4] 2^(12*(4 - i) + 40)*w_curr(i) + \sum i \in [5,14] 2^(2*(24 - i))*w_curr(i)
-    // (2nd part)   + \sum i \in [5,14] 2^(2*(14 - i))*w_next(i)
-
-    // 1st part (Curr row): \sum i \in [1,4] 2^(12*(4 - i) + 40)*w_curr(i) + \sum i \in [5,14] 2^(2*(24 - i))*w_curr(i)
+    // 1st part (Curr row): \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
     let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
         match i {
             0 => {
@@ -278,11 +279,11 @@ fn foreign_mul1_constraints<F: FftField>() -> Vec<E<F>> {
             }
             1..=4 => {
                 // 12-bit chunk
-                acc + two().pow(12 * (4 - i) + 40) * w_curr(i)
+                acc + two().pow(12 * (i - 1)) * w_curr(i)
             }
             5..=COLUMNS => {
                 // 2-bit chunk
-                acc + two().pow(2 * (24 - i)) * w_curr(i)
+                acc + two().pow(2 * (i - 5) + 4 * 12) * w_curr(i)
             }
             _ => {
                 panic!("Invalid column index {}", i)
@@ -290,10 +291,10 @@ fn foreign_mul1_constraints<F: FftField>() -> Vec<E<F>> {
         }
     });
 
-    // 2nd part (Next row): \sum i \in [5,14] 2^(2*(14 - i))*w_next(i)
+    // 2nd part (Next row): \sum i \in [5,14] 2^{2*(i - 5) + 68}*w_next(i)
     let combined_sublimbs = (5..COLUMNS).fold(combined_sublimbs, |acc, i| {
         // 2-bit chunk
-        acc + two().pow(2 * (14 - i)) * w_next(i)
+        acc + two().pow(2 * (i - 5) + 68) * w_next(i)
     });
 
     // w(0) = combined_sublimbs
@@ -321,7 +322,16 @@ fn foreign_mul2_constraints<F: FftField>() -> Vec<E<F>> {
     (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect()
 }
 
-pub fn circuit_gates<F: FftField>() -> Vec<(GateType, Vec<E<F>>)> {
+pub fn get_circuit_gate_constraints<F: FftField>(typ: GateType) -> Vec<E<F>> {
+    match typ {
+        GateType::ForeignMul0 => foreign_mul0_constraints(),
+        GateType::ForeignMul1 => foreign_mul1_constraints(),
+        GateType::ForeignMul2 => foreign_mul2_constraints(),
+        _ => panic!("invalid gate type"),
+    }
+}
+
+pub fn get_gate_constraints<F: FftField>() -> Vec<(GateType, Vec<E<F>>)> {
     vec![
         (GateType::ForeignMul0, foreign_mul0_constraints()),
         (GateType::ForeignMul1, foreign_mul1_constraints()),
@@ -339,7 +349,7 @@ mod tests {
 
     #[test]
     fn constraint() {
-        let constraints = foreign_mul::circuit_gates::<PallasField>();
+        let constraints = foreign_mul::get_gate_constraints::<PallasField>();
         println!("constraints = {:?}", constraints);
     }
 }

@@ -458,7 +458,7 @@ where
             if !index.cs.foreign_modulus.is_empty() {
                 // foreign field multiplication
                 let selector_index = |g: GateType| E::cell(Column::Index(g), Curr);
-                for (gate_type, constraints) in foreign_mul::circuit_gates() {
+                for (gate_type, constraints) in foreign_mul::get_gate_constraints() {
                     println!(
                         "Creating expr for {:?} of {} constraints",
                         gate_type,
