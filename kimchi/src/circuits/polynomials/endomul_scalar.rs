@@ -119,11 +119,10 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 #[derive(Default)]
 pub struct EndomulScalar<F>(PhantomData<F>);
 
-impl<F> Argument for EndomulScalar<F>
+impl<F> Argument<F> for EndomulScalar<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: usize = 11;
 

@@ -201,11 +201,10 @@ pub fn witness<F: FftField + std::fmt::Display>(
 #[derive(Default)]
 pub struct VarbaseMul<F>(PhantomData<F>);
 
-impl<F> Argument for VarbaseMul<F>
+impl<F> Argument<F> for VarbaseMul<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: usize = 21;
 

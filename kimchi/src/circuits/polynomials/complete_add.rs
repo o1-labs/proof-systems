@@ -49,11 +49,10 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 #[derive(Default)]
 pub struct CompleteAdd<F>(PhantomData<F>);
 
-impl<F> Argument for CompleteAdd<F>
+impl<F> Argument<F> for CompleteAdd<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: usize = 7;
 
