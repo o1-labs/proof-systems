@@ -7,16 +7,18 @@
 <meta name=color-scheme content="light dark"><meta property="og:title" content="Docs">
 <meta property="og:description" content>
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://www.github.com/docs/">
-<title>Docs | Mina Specifications</title><link rel=manifest href=/manifest.json>
-<link rel=icon href=/favicon.png type=image/x-icon>
-<link rel=stylesheet href=/book.min.d83e3ff82bb33cc5f05f4b4e878f8b0a942a09d007560e17a15903c8cfc8b6fc.css integrity="sha256-2D4/+CuzPMXwX0tOh4+LCpQqCdAHVg4XoVkDyM/Itvw=" crossorigin=anonymous>
-<script defer src=/flexsearch.min.js></script>
-<script defer src=/en.search.min.45f057c3ca4cd640315fc98b593c60cf520bb886c0b0275312d8c465311d28fc.js integrity="sha256-RfBXw8pM1kAxX8mLWTxgz1ILuIbAsCdTEtjEZTEdKPw=" crossorigin=anonymous></script>
-<script type=application/javascript>var doNotTrack=!1;doNotTrack||(window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga("create","UA-215689345-1","auto"),ga("send","pageview"))</script>
+<meta property="og:url" content="https://o1-labs.github.io/proof-systems/docs/">
+<title>Docs | Mina Specifications</title>
+<link rel=manifest href=/proof-systems/manifest.json>
+<link rel=icon href=/proof-systems/favicon.png type=image/x-icon>
+<link rel=stylesheet href=/proof-systems/book.min.d83e3ff82bb33cc5f05f4b4e878f8b0a942a09d007560e17a15903c8cfc8b6fc.css integrity="sha256-2D4/+CuzPMXwX0tOh4+LCpQqCdAHVg4XoVkDyM/Itvw=" crossorigin=anonymous>
+<script defer src=/proof-systems/flexsearch.min.js></script>
+<script defer src=/proof-systems/en.search.min.d8492f650dfda8b5096e9e6c515283052f69a09dfe6dd7df2ac0703b5f6b42fd.js integrity="sha256-2EkvZQ39qLUJbp5sUVKDBS9poJ3+bdffKsBwO19rQv0=" crossorigin=anonymous></script>
+<script type=application/javascript>var doNotTrack=!1;doNotTrack||(window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga('create','UA-215689345-1','auto'),ga('send','pageview'))</script>
 <script async src=https://www.google-analytics.com/analytics.js></script>
-<link rel=alternate type=application/rss+xml href=https://www.github.com/docs/index.xml title="Mina Specifications">
-</head><body dir=ltr>
+<link rel=alternate type=application/rss+xml href=https://o1-labs.github.io/proof-systems/docs/index.xml title="Mina Specifications">
+</head>
+<body dir=ltr>
 <input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control>
 <main class="container flex">
@@ -24,20 +26,32 @@
 <div class=book-menu-content>
 <nav>
 <h2 class=book-brand>
-<a class="flex align-center" href=/><img src=/logo.svg alt=Logo><span>Mina Specifications</span>
+<a class="flex align-center" href=/proof-systems/><img src=/proof-systems/logo.svg alt=Logo><span>Mina Specifications</span>
 </a>
-</h2><div class=book-search>
+</h2>
+<div class=book-search>
 <input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/>
-<div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul>
+<div class="book-search-spinner hidden"></div>
+<ul id=book-search-results></ul>
+</div>
+<ul>
 <li class=book-section-flat>
-<a href=https://www.github.com/docs/specifications/>Specifications</a>
+<a href=https://o1-labs.github.io/proof-systems/docs/specifications/>Specifications</a>
 <ul>
 <li>
-<a href=https://www.github.com/docs/specifications/kimchi/>Kimchi</a>
-</li><li>
-<a href=https://www.github.com/docs/specifications/poly-commitment/>Kimchi Polynomial Commitment</a>
-</li></ul></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
-</div></aside><div class=book-page>
+<a href=https://o1-labs.github.io/proof-systems/docs/specifications/kimchi/>Kimchi</a>
+</li>
+<li>
+<a href=https://o1-labs.github.io/proof-systems/docs/specifications/poly-commitment/>Kimchi Polynomial Commitment</a>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+<script>(function(){var a=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(b){localStorage.setItem("menu.scrollTop",a.scrollTop)}),a.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
+</div>
+</aside>
+<div class=book-page>
 <header class=book-header>
 <script type=text/x-mathjax-config>
   MathJax.Hub.Config({
@@ -47,8 +61,6 @@
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS_CHTML-full"></script>
-<script language=javascript type=text/javascript src=/js/interactive_variables.js></script>
-<script>MathJax.Hub.Queue(function(){setupInteractiveVariables()})</script>
 $\newcommand{\alicebob}[3]{#1 & \ra{#2} & #3\\[-5pt]}$
 $\newcommand{\bobalice}[3]{#1 & \la{#2} & #3\\[-5pt]}$
 $\newcommand{\alicework}[1]{#1 & &\\[-5pt]}$
@@ -126,28 +138,42 @@ $\newcommand{\true}{\mathsf{true}}$
 $\newcommand{\false}{\mathsf{false}}$
 <div class="flex align-center justify-between">
 <label for=menu-control>
-<img src=/svg/menu.svg class=book-icon alt=Menu>
+<img src=/proof-systems/%20svg/menu.svg class=book-icon alt=Menu>
 </label>
 <strong>Docs</strong>
 <label for=toc-control>
-<img src=/svg/toc.svg class=book-icon alt="Table of Contents">
+<img src=/proof-systems/%20svg/toc.svg class=book-icon alt="Table of Contents">
 </label>
-</div><aside class="hidden clearfix">
-</aside></header><article class=markdown>
-</article><footer class=book-footer>
+</div>
+<aside class="hidden clearfix">
+</aside>
+</header>
+<article class=markdown>
+</article>
+<footer class=book-footer>
 <div class="flex flex-wrap justify-between">
-</div><script>(function(){function e(n){const e=window.getSelection(),t=document.createRange();t.selectNodeContents(n),e.removeAllRanges(),e.addRange(t)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script>
+</div>
+<script>(function(){function a(c){const a=window.getSelection(),b=document.createRange();b.selectNodeContents(c),a.removeAllRanges(),a.addRange(b)}document.querySelectorAll("pre code").forEach(b=>{b.addEventListener("click",function(c){a(b.parentElement),navigator.clipboard&&navigator.clipboard.writeText(b.parentElement.textContent)})})})()</script>
 <article class=markdown>
 <br>
 <br>
 <hr>
 <div style=text-align:right>
 <a href=https://github.com/o1-labs/proof-systems target=_blank>View on Github</a> | Built with <a href=https://www.trailofbits.com/ target=_blank>Trail of Bits</a>'s <a href=https://zkdocs.com target=_blank>ZKDocs project</a>
-</div><div style=text-align:right>
+</div>
+<div style=text-align:right>
 <small>ZKDocs content is licensed under a <a href=https://creativecommons.org/licenses/by/4.0/ target=_blank>Creative Commons Attribution 4.0 International license.</a></small>
-</div></article></footer><label for=menu-control class="hidden book-menu-overlay"></label>
-</div><aside class=book-toc>
+</div>
+</article>
+</footer>
+<label for=menu-control class="hidden book-menu-overlay"></label>
+</div>
+<aside class=book-toc>
 <div class=book-toc-content>
 <br>
 <br>
-</div></aside></main></body></html>
+</div>
+</aside>
+</main>
+</body>
+</html>

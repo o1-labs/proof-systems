@@ -7,15 +7,17 @@
 <meta name=color-scheme content="light dark"><meta property="og:title" content="Kimchi">
 <meta property="og:description" content="This document specifies the kimchi variant of PLONK.">
 <meta property="og:type" content="article">
-<meta property="og:url" content="https://www.github.com/docs/specifications/kimchi/"><meta property="article:section" content="docs">
-<title>Kimchi | Mina Specifications</title><link rel=manifest href=/manifest.json>
-<link rel=icon href=/favicon.png type=image/x-icon>
-<link rel=stylesheet href=/book.min.d83e3ff82bb33cc5f05f4b4e878f8b0a942a09d007560e17a15903c8cfc8b6fc.css integrity="sha256-2D4/+CuzPMXwX0tOh4+LCpQqCdAHVg4XoVkDyM/Itvw=" crossorigin=anonymous>
-<script defer src=/flexsearch.min.js></script>
-<script defer src=/en.search.min.45f057c3ca4cd640315fc98b593c60cf520bb886c0b0275312d8c465311d28fc.js integrity="sha256-RfBXw8pM1kAxX8mLWTxgz1ILuIbAsCdTEtjEZTEdKPw=" crossorigin=anonymous></script>
-<script type=application/javascript>var doNotTrack=!1;doNotTrack||(window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga("create","UA-215689345-1","auto"),ga("send","pageview"))</script>
+<meta property="og:url" content="https://o1-labs.github.io/proof-systems/docs/specifications/kimchi/"><meta property="article:section" content="docs">
+<title>Kimchi | Mina Specifications</title>
+<link rel=manifest href=/proof-systems/manifest.json>
+<link rel=icon href=/proof-systems/favicon.png type=image/x-icon>
+<link rel=stylesheet href=/proof-systems/book.min.d83e3ff82bb33cc5f05f4b4e878f8b0a942a09d007560e17a15903c8cfc8b6fc.css integrity="sha256-2D4/+CuzPMXwX0tOh4+LCpQqCdAHVg4XoVkDyM/Itvw=" crossorigin=anonymous>
+<script defer src=/proof-systems/flexsearch.min.js></script>
+<script defer src=/proof-systems/en.search.min.d8492f650dfda8b5096e9e6c515283052f69a09dfe6dd7df2ac0703b5f6b42fd.js integrity="sha256-2EkvZQ39qLUJbp5sUVKDBS9poJ3+bdffKsBwO19rQv0=" crossorigin=anonymous></script>
+<script type=application/javascript>var doNotTrack=!1;doNotTrack||(window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga('create','UA-215689345-1','auto'),ga('send','pageview'))</script>
 <script async src=https://www.google-analytics.com/analytics.js></script>
-</head><body dir=ltr>
+</head>
+<body dir=ltr>
 <input type=checkbox class="hidden toggle" id=menu-control>
 <input type=checkbox class="hidden toggle" id=toc-control>
 <main class="container flex">
@@ -23,20 +25,32 @@
 <div class=book-menu-content>
 <nav>
 <h2 class=book-brand>
-<a class="flex align-center" href=/><img src=/logo.svg alt=Logo><span>Mina Specifications</span>
+<a class="flex align-center" href=/proof-systems/><img src=/proof-systems/logo.svg alt=Logo><span>Mina Specifications</span>
 </a>
-</h2><div class=book-search>
+</h2>
+<div class=book-search>
 <input type=text id=book-search-input placeholder=Search aria-label=Search maxlength=64 data-hotkeys=s/>
-<div class="book-search-spinner hidden"></div><ul id=book-search-results></ul></div><ul>
+<div class="book-search-spinner hidden"></div>
+<ul id=book-search-results></ul>
+</div>
+<ul>
 <li class=book-section-flat>
-<a href=https://www.github.com/docs/specifications/>Specifications</a>
+<a href=https://o1-labs.github.io/proof-systems/docs/specifications/>Specifications</a>
 <ul>
 <li>
-<a href=https://www.github.com/docs/specifications/kimchi/ class=active>Kimchi</a>
-</li><li>
-<a href=https://www.github.com/docs/specifications/poly-commitment/>Kimchi Polynomial Commitment</a>
-</li></ul></li></ul></nav><script>(function(){var e=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(){localStorage.setItem("menu.scrollTop",e.scrollTop)}),e.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
-</div></aside><div class=book-page>
+<a href=https://o1-labs.github.io/proof-systems/docs/specifications/kimchi/ class=active>Kimchi</a>
+</li>
+<li>
+<a href=https://o1-labs.github.io/proof-systems/docs/specifications/poly-commitment/>Kimchi Polynomial Commitment</a>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+<script>(function(){var a=document.querySelector("aside .book-menu-content");addEventListener("beforeunload",function(b){localStorage.setItem("menu.scrollTop",a.scrollTop)}),a.scrollTop=localStorage.getItem("menu.scrollTop")})()</script>
+</div>
+</aside>
+<div class=book-page>
 <header class=book-header>
 <script type=text/x-mathjax-config>
   MathJax.Hub.Config({
@@ -46,8 +60,6 @@
 });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@2/MathJax.js?config=TeX-AMS_CHTML-full"></script>
-<script language=javascript type=text/javascript src=/js/interactive_variables.js></script>
-<script>MathJax.Hub.Queue(function(){setupInteractiveVariables()})</script>
 $\newcommand{\alicebob}[3]{#1 & \ra{#2} & #3\\[-5pt]}$
 $\newcommand{\bobalice}[3]{#1 & \la{#2} & #3\\[-5pt]}$
 $\newcommand{\alicework}[1]{#1 & &\\[-5pt]}$
@@ -125,113 +137,212 @@ $\newcommand{\true}{\mathsf{true}}$
 $\newcommand{\false}{\mathsf{false}}$
 <div class="flex align-center justify-between">
 <label for=menu-control>
-<img src=/svg/menu.svg class=book-icon alt=Menu>
+<img src=/proof-systems/%20svg/menu.svg class=book-icon alt=Menu>
 </label>
 <strong>Kimchi</strong>
 <label for=toc-control>
-<img src=/svg/toc.svg class=book-icon alt="Table of Contents">
+<img src=/proof-systems/%20svg/toc.svg class=book-icon alt="Table of Contents">
 </label>
-</div><aside class="hidden clearfix">
+</div>
+<aside class="hidden clearfix">
 <nav id=TableOfContents>
 <ul>
-<li><a href=#overview>Overview</a></li><li><a href=#dependencies>Dependencies</a>
+<li><a href=#overview>Overview</a></li>
+<li><a href=#dependencies>Dependencies</a>
 <ul>
-<li><a href=#polynomial-commitments>Polynomial Commitments</a></li><li><a href=#poseidon-hash-function>Poseidon hash function</a></li><li><a href=#pasta>Pasta</a></li></ul></li><li><a href=#constraints>Constraints</a>
+<li><a href=#polynomial-commitments>Polynomial Commitments</a></li>
+<li><a href=#poseidon-hash-function>Poseidon hash function</a></li>
+<li><a href=#pasta>Pasta</a></li>
+</ul>
+</li>
+<li><a href=#constraints>Constraints</a>
 <ul>
-<li><a href=#permutation>Permutation</a></li><li><a href=#lookup>Lookup</a></li><li><a href=#gates>Gates</a></li></ul></li><li><a href=#constraint-system-creation-circuit-creation>constraint system creation (circuit creation)</a></li><li><a href=#prover-and-verifier-index-creation>prover and verifier index creation</a></li><li><a href=#proof-data-structure>proof data structure</a></li><li><a href=#proof-creation>proof creation</a></li><li><a href=#proof-verification>proof verification</a></li></ul></nav></aside></header><article class=markdown><h1 id=kimchi>
+<li><a href=#permutation>Permutation</a></li>
+<li><a href=#lookup>Lookup</a></li>
+<li><a href=#gates>Gates</a></li>
+</ul>
+</li>
+<li><a href=#constraint-system-creation-circuit-creation>constraint system creation (circuit creation)</a></li>
+<li><a href=#prover-and-verifier-index-creation>prover and verifier index creation</a></li>
+<li><a href=#proof-data-structure>proof data structure</a></li>
+<li><a href=#proof-creation>proof creation</a></li>
+<li><a href=#proof-verification>proof verification</a></li>
+</ul>
+</nav>
+</aside>
+</header>
+<article class=markdown><h1 id=kimchi>
 Kimchi
 <a class=anchor href=#kimchi>#</a>
-</h1><p>This document specifies the kimchi variant of PLONK.</p><h2 id=overview>
+</h1>
+<p>This document specifies the kimchi variant of PLONK.</p>
+<h2 id=overview>
 Overview
 <a class=anchor href=#overview>#</a>
-</h2><p>The document follows the following structure:</p><p>TODO: simply create a ToC no?</p><ol>
-<li><strong>Setup</strong>. A one-time setup for the proof system.</li><li><strong>Per-circuit setup</strong>. A one-time setup for each circuit that are used in the proof system.</li><li><strong>Proof creation</strong>. How to create a proof.</li><li><strong>Proof verification</strong>. How to verify a proof.</li></ol><h2 id=dependencies>
+</h2>
+<p>The document follows the following structure:</p>
+<p>TODO: simply create a ToC no?</p>
+<ol>
+<li><strong>Setup</strong>. A one-time setup for the proof system.</li>
+<li><strong>Per-circuit setup</strong>. A one-time setup for each circuit that are used in the proof system.</li>
+<li><strong>Proof creation</strong>. How to create a proof.</li>
+<li><strong>Proof verification</strong>. How to verify a proof.</li>
+</ol>
+<h2 id=dependencies>
 Dependencies
 <a class=anchor href=#dependencies>#</a>
-</h2><h3 id=polynomial-commitments>
+</h2>
+<h3 id=polynomial-commitments>
 Polynomial Commitments
 <a class=anchor href=#polynomial-commitments>#</a>
-</h3><p>Refer to the <a href>specification on polynomial commitments</a>. We make use of the following functions from that specification:</p><ul>
-<li><code>PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment</code></li><li><code>PolyCom.commit(poly) -> PolyCom::HidingCommitment</code></li><li><code>PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof</code></li><li><code>PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool</code></li></ul><h3 id=poseidon-hash-function>
+</h3>
+<p>Refer to the <a href>specification on polynomial commitments</a>. We make use of the following functions from that specification:</p>
+<ul>
+<li><code>PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment</code></li>
+<li><code>PolyCom.commit(poly) -> PolyCom::HidingCommitment</code></li>
+<li><code>PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof</code></li>
+<li><code>PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool</code></li>
+</ul>
+<h3 id=poseidon-hash-function>
 Poseidon hash function
 <a class=anchor href=#poseidon-hash-function>#</a>
-</h3><p>Refer to the <a href>specification on Poseidon</a>. We make use of the following functions from that specification:</p><ul>
-<li><code>Poseidon.init(params) -> FqSponge</code></li><li><code>Poseidon.update(field_elem)</code></li><li><code>Poseidon.finalize() -> FieldElem</code></li></ul><p>specify the following functions on top:</p><ul>
-<li><code>Poseidon.produce_challenge()</code> (TODO: uses the endomorphism)</li><li><code>Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge</code></li></ul><h3 id=pasta>
+</h3>
+<p>Refer to the <a href>specification on Poseidon</a>. We make use of the following functions from that specification:</p>
+<ul>
+<li><code>Poseidon.init(params) -> FqSponge</code></li>
+<li><code>Poseidon.update(field_elem)</code></li>
+<li><code>Poseidon.finalize() -> FieldElem</code></li>
+</ul>
+<p>specify the following functions on top:</p>
+<ul>
+<li><code>Poseidon.produce_challenge()</code> (TODO: uses the endomorphism)</li>
+<li><code>Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge</code></li>
+</ul>
+<h3 id=pasta>
 Pasta
 <a class=anchor href=#pasta>#</a>
-</h3><p>Kimchi is made to work on cycles of curves, so the protocol switch between two fields Fq and Fr, where Fq represents the base field and Fr represents the scalar field.</p><h2 id=constraints>
+</h3>
+<p>Kimchi is made to work on cycles of curves, so the protocol switch between two fields Fq and Fr, where Fq represents the base field and Fr represents the scalar field.</p>
+<h2 id=constraints>
 Constraints
 <a class=anchor href=#constraints>#</a>
-</h2><h3 id=permutation>
+</h2>
+<h3 id=permutation>
 Permutation
 <a class=anchor href=#permutation>#</a>
-</h3><h3 id=lookup>
+</h3>
+<h3 id=lookup>
 Lookup
 <a class=anchor href=#lookup>#</a>
-</h3><h3 id=gates>
+</h3>
+<h3 id=gates>
 Gates
 <a class=anchor href=#gates>#</a>
-</h3><h4 id=generic-gate>
+</h3>
+<h4 id=generic-gate>
 Generic Gate
 <a class=anchor href=#generic-gate>#</a>
-</h4><h4 id=poseidon>
+</h4>
+<h4 id=poseidon>
 Poseidon
 <a class=anchor href=#poseidon>#</a>
-</h4><h4 id=chacha>
+</h4>
+<h4 id=chacha>
 chacha
 <a class=anchor href=#chacha>#</a>
-</h4><h4 id=complete_add>
+</h4>
+<h4 id=complete_add>
 complete_add
 <a class=anchor href=#complete_add>#</a>
-</h4><h4 id=endomul_scalar>
+</h4>
+<h4 id=endomul_scalar>
 endomul_scalar
 <a class=anchor href=#endomul_scalar>#</a>
-</h4><h4 id=endosclmul>
+</h4>
+<h4 id=endosclmul>
 endosclmul
 <a class=anchor href=#endosclmul>#</a>
-</h4><h4 id=poseidon-1>
+</h4>
+<h4 id=poseidon-1>
 poseidon
 <a class=anchor href=#poseidon-1>#</a>
-</h4><h4 id=varbasemul>
+</h4>
+<h4 id=varbasemul>
 varbasemul
 <a class=anchor href=#varbasemul>#</a>
-</h4><h2 id=constraint-system-creation-circuit-creation>
+</h4>
+<h2 id=constraint-system-creation-circuit-creation>
 constraint system creation (circuit creation)
 <a class=anchor href=#constraint-system-creation-circuit-creation>#</a>
-</h2><h2 id=prover-and-verifier-index-creation>
+</h2>
+<h2 id=prover-and-verifier-index-creation>
 prover and verifier index creation
 <a class=anchor href=#prover-and-verifier-index-creation>#</a>
-</h2><h2 id=proof-data-structure>
+</h2>
+<h2 id=proof-data-structure>
 proof data structure
 <a class=anchor href=#proof-data-structure>#</a>
-</h2><p>TKTK</p><h2 id=proof-creation>
+</h2>
+<p>TKTK</p>
+<h2 id=proof-creation>
 proof creation
 <a class=anchor href=#proof-creation>#</a>
-</h2><h2 id=proof-verification>
+</h2>
+<h2 id=proof-verification>
 proof verification
 <a class=anchor href=#proof-verification>#</a>
-</h2></article><footer class=book-footer>
+</h2>
+</article>
+<footer class=book-footer>
 <div class="flex flex-wrap justify-between">
-</div><script>(function(){function e(n){const e=window.getSelection(),t=document.createRange();t.selectNodeContents(n),e.removeAllRanges(),e.addRange(t)}document.querySelectorAll("pre code").forEach(t=>{t.addEventListener("click",function(){e(t.parentElement),navigator.clipboard&&navigator.clipboard.writeText(t.parentElement.textContent)})})})()</script>
+</div>
+<script>(function(){function a(c){const a=window.getSelection(),b=document.createRange();b.selectNodeContents(c),a.removeAllRanges(),a.addRange(b)}document.querySelectorAll("pre code").forEach(b=>{b.addEventListener("click",function(c){a(b.parentElement),navigator.clipboard&&navigator.clipboard.writeText(b.parentElement.textContent)})})})()</script>
 <article class=markdown>
 <br>
 <br>
 <hr>
 <div style=text-align:right>
 <a href=https://github.com/o1-labs/proof-systems target=_blank>View on Github</a> | Built with <a href=https://www.trailofbits.com/ target=_blank>Trail of Bits</a>'s <a href=https://zkdocs.com target=_blank>ZKDocs project</a>
-</div><div style=text-align:right>
+</div>
+<div style=text-align:right>
 <small>ZKDocs content is licensed under a <a href=https://creativecommons.org/licenses/by/4.0/ target=_blank>Creative Commons Attribution 4.0 International license.</a></small>
-</div></article></footer><div class=book-comments>
-</div><label for=menu-control class="hidden book-menu-overlay"></label>
-</div><aside class=book-toc>
+</div>
+</article>
+</footer>
+<div class=book-comments>
+</div>
+<label for=menu-control class="hidden book-menu-overlay"></label>
+</div>
+<aside class=book-toc>
 <div class=book-toc-content>
 <nav id=TableOfContents>
 <ul>
-<li><a href=#overview>Overview</a></li><li><a href=#dependencies>Dependencies</a>
+<li><a href=#overview>Overview</a></li>
+<li><a href=#dependencies>Dependencies</a>
 <ul>
-<li><a href=#polynomial-commitments>Polynomial Commitments</a></li><li><a href=#poseidon-hash-function>Poseidon hash function</a></li><li><a href=#pasta>Pasta</a></li></ul></li><li><a href=#constraints>Constraints</a>
+<li><a href=#polynomial-commitments>Polynomial Commitments</a></li>
+<li><a href=#poseidon-hash-function>Poseidon hash function</a></li>
+<li><a href=#pasta>Pasta</a></li>
+</ul>
+</li>
+<li><a href=#constraints>Constraints</a>
 <ul>
-<li><a href=#permutation>Permutation</a></li><li><a href=#lookup>Lookup</a></li><li><a href=#gates>Gates</a></li></ul></li><li><a href=#constraint-system-creation-circuit-creation>constraint system creation (circuit creation)</a></li><li><a href=#prover-and-verifier-index-creation>prover and verifier index creation</a></li><li><a href=#proof-data-structure>proof data structure</a></li><li><a href=#proof-creation>proof creation</a></li><li><a href=#proof-verification>proof verification</a></li></ul></nav><br>
+<li><a href=#permutation>Permutation</a></li>
+<li><a href=#lookup>Lookup</a></li>
+<li><a href=#gates>Gates</a></li>
+</ul>
+</li>
+<li><a href=#constraint-system-creation-circuit-creation>constraint system creation (circuit creation)</a></li>
+<li><a href=#prover-and-verifier-index-creation>prover and verifier index creation</a></li>
+<li><a href=#proof-data-structure>proof data structure</a></li>
+<li><a href=#proof-creation>proof creation</a></li>
+<li><a href=#proof-verification>proof verification</a></li>
+</ul>
+</nav>
 <br>
-</div></aside></main></body></html>
+<br>
+</div>
+</aside>
+</main>
+</body>
+</html>
