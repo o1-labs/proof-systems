@@ -255,7 +255,6 @@
 <span id="250">250</span>
 <span id="251">251</span>
 <span id="252">252</span>
-<span id="253">253</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This implements a complete EC addition gate.</span>
 <span class="doccomment">//! The layout is</span>
 <span class="doccomment">//!</span>
@@ -307,11 +306,10 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span> <span class="kw">for</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">FftField</span>,
 {
-    <span class="kw">type</span> <span class="ident">Field</span> <span class="op">=</span> <span class="ident">F</span>;
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::CompleteAdd</span>);
     <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">7</span>;
 
@@ -510,5 +508,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (532d3cda9 2022-02-23)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (6a7055661 2022-02-27)" ></div>
 </body></html>
