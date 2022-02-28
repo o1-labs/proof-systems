@@ -249,11 +249,10 @@ fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
 #[derive(Default)]
 pub struct ChaCha0<F>(PhantomData<F>);
 
-impl<F> Argument for ChaCha0<F>
+impl<F> Argument<F> for ChaCha0<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: usize = 5;
 
@@ -268,11 +267,10 @@ where
 #[derive(Default)]
 pub struct ChaCha1<F>(PhantomData<F>);
 
-impl<F> Argument for ChaCha1<F>
+impl<F> Argument<F> for ChaCha1<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: usize = 5;
 
@@ -287,11 +285,10 @@ where
 #[derive(Default)]
 pub struct ChaCha2<F>(PhantomData<F>);
 
-impl<F> Argument for ChaCha2<F>
+impl<F> Argument<F> for ChaCha2<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: usize = 5;
 
@@ -306,11 +303,10 @@ where
 #[derive(Default)]
 pub struct ChaChaFinal<F>(PhantomData<F>);
 
-impl<F> Argument for ChaChaFinal<F>
+impl<F> Argument<F> for ChaChaFinal<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: usize = 9;
 

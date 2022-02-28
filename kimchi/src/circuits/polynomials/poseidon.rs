@@ -66,11 +66,10 @@ pub struct Poseidon<F>(PhantomData<F>);
 
 impl<F> Poseidon<F> where F: Field {}
 
-impl<F> Argument for Poseidon<F>
+impl<F> Argument<F> for Poseidon<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: usize = 15;
 
