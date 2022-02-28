@@ -42,11 +42,10 @@ use std::marker::PhantomData;
 #[derive(Default)]
 pub struct EndosclMul<F>(PhantomData<F>);
 
-impl<F> Argument for EndosclMul<F>
+impl<F> Argument<F> for EndosclMul<F>
 where
     F: FftField,
 {
-    type Field = F;
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: usize = 11;
 

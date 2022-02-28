@@ -24,10 +24,7 @@ pub enum ArgumentType {
 }
 
 /// The interface for a minimal argument implementation.
-pub trait Argument {
-    /// The field being used for this argument.
-    type Field: FftField;
-
+pub trait Argument<F: FftField> {
     /// The type of constraints that this will produce.
     /// This is important to enforce that we don't combine the constraints
     /// with powers of alpha that collide with other mutually inclusive arguments.
@@ -38,10 +35,10 @@ pub trait Argument {
 
     /// Returns the set of constraints required to prove this argument.
     // TODO: return a [_; Self::CONSTRAINTS] once generic consts are stable
-    fn constraints() -> Vec<E<Self::Field>>;
+    fn constraints() -> Vec<E<F>>;
 
     /// Returns constraints safely combined via the passed combinator.
-    fn combined_constraints(alphas: &Alphas<Self::Field>) -> E<Self::Field> {
+    fn combined_constraints(alphas: &Alphas<F>) -> E<F> {
         let constraints = Self::constraints();
         assert!(constraints.len() == Self::CONSTRAINTS);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
