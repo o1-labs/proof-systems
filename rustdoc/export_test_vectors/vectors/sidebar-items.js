@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["generate","creates a set of test vectors"],["poseidon","Computes the poseidon hash of several field elements. Uses the ‘basic’ configuration with N states and M rounds."],["rand_fields","generates a vector of `length` field elements"]],"struct":[["TestVector",""],["TestVectors",""]]});

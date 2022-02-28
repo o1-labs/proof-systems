@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["witness",""]],"struct":[["VarbaseMul","Implementation of the VarbaseMul gate"],["VarbaseMulResult",""]]});

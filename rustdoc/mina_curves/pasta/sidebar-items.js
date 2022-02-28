@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["fp",""],["fq",""],["pallas",""],["vesta",""]],"struct":[["FpParameters",""],["FqParameters",""]],"type":[["Fp",""],["Fq",""]]});

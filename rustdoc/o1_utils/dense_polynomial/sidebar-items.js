@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["ExtendedDensePolynomial","An extension for the [DensePolynomial] type."]]});

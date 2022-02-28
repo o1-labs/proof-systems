@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["CairoContext","A structure to store auxiliary variables throughout computation"],["CairoProgram","This struct stores the needed information to run a program"],["CairoState","A structure to store program counter, allocation pointer and frame pointer"],["CairoStep","A data structure to store a current step of Cairo computation"]]});

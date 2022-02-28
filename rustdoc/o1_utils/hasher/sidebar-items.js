@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["CryptoDigest","This trait can be implemented on any type that implements [serde::Serialize], in order to provide a `digest()` function that returns a unique hash."]]});
