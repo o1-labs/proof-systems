@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["mina_curves"] = [{"text":"impl SWModelParameters for <a class=\"struct\" href=\"mina_curves/pasta/pallas/struct.PallasParameters.html\" title=\"struct mina_curves::pasta::pallas::PallasParameters\">PallasParameters</a>","synthetic":false,"types":["mina_curves::pasta::curves::pallas::PallasParameters"]},{"text":"impl SWModelParameters for <a class=\"struct\" href=\"mina_curves/pasta/vesta/struct.VestaParameters.html\" title=\"struct mina_curves::pasta::vesta::VestaParameters\">VestaParameters</a>","synthetic":false,"types":["mina_curves::pasta::curves::vesta::VestaParameters"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

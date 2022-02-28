@@ -1,1 +1,0 @@
-initSidebarItems({"constant":[["CIRCUIT_SIZE","the circuit size. This influences the size of the SRS"]],"struct":[["BenchmarkCtx",""]]});

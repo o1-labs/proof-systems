@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["OraclesResult","The result of running the oracle protocol"]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"trait":[["ExtendedEvaluations","An extension for the [Evaluations] type."]]});
