@@ -8,9 +8,9 @@ on:
 
 env:
   # https://doc.rust-lang.org/cargo/reference/profiles.html#release
-  RUSTFLAGS: -Coverflow-checks=y
+  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
   # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
-  CARGO_INCREMENTAL: true
+  CARGO_INCREMENTAL: 1
 
 jobs:
   run_checks:
