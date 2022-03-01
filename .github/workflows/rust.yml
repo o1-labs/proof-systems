@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
 
+env:
+  RUSTFLAGS: -Coverflow-checks=y
+
 jobs:
   run_checks:
     runs-on: ubuntu-latest
@@ -45,4 +48,4 @@ jobs:
 
       - name: Run cargo clippy
         # Need clippy for `--features ocaml_types`?
-        run: cargo clippy --release -- -D warnings
+        run: cargo clippy -- -D warnings
