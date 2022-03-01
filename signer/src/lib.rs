@@ -141,8 +141,8 @@ pub fn create(network_id: NetworkId) -> impl Signer {
 /// use mina_signer::NetworkId;
 /// use oracle::{pasta, poseidon};
 ///
-/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants5W>(
-///     pasta::fp5::params(),
+/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+///     pasta::fp::params(),
 ///     NetworkId::TESTNET,
 /// );
 /// ```

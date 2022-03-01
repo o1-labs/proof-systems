@@ -37,10 +37,9 @@ hex = "0.4"
 ocaml_types = [ "ocaml", "ocaml-gen", "syn" ]
 
 # for test vectors
-default = ["3w"]
-3w = [ ]
-5w = [ ]
-3 = [ ]
+default = ["basic"]
+basic = []
+15w = []
 
 [[bin]]
 name = "export_test_vectors"
