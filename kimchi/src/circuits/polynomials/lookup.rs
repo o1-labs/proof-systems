@@ -1,4 +1,4 @@
-//! This module implements the arithmetization of plookup constraints
+//! This source file implements the arithmetization of plookup constraints
 //!
 //! Because of our ZK-rows, we can't do the trick in the plookup paper of
 //! wrapping around to enforce consistency between the sorted lookup columns.

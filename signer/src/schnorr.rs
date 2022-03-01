@@ -18,13 +18,12 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use o1_utils::FieldHelpers;
 use oracle::poseidon::{ArithmeticSponge, Sponge, SpongeConstants};
 use std::ops::Neg;
 
 use crate::{
-    BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput, ScalarField, Signable,
-    Signature, Signer,
+    domain_prefix_to_field, BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput,
+    ScalarField, Signable, Signature, Signer,
 };
 
 /// Schnorr signer context for the Mina signature algorithm
@@ -40,7 +39,7 @@ impl<SC: SpongeConstants> Signer for Schnorr<SC> {
     where
         S: Signable,
     {
-        let k: ScalarField = self.derive_nonce(&kp, input);
+        let k: ScalarField = self.derive_nonce(&kp, input.clone());
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
 
@@ -74,20 +73,6 @@ impl<SC: SpongeConstants> Schnorr<SC> {
     /// Create a new Schnorr signer context for network instance `network_id` using arithmetic sponge defined by `sponge`.
     pub fn new(sponge: ArithmeticSponge<BaseField, SC>, network_id: NetworkId) -> Schnorr<SC> {
         Schnorr::<SC> { sponge, network_id }
-    }
-
-    fn domain_bytes<S>(network_id: NetworkId) -> Vec<u8>
-    where
-        S: Signable,
-    {
-        let mut domain_string = S::domain_string(network_id);
-        // Domain prefixes have a max length of 20 and are padded with '*'
-        assert!(domain_string.len() <= 20);
-        domain_string = &domain_string[..std::cmp::min(domain_string.len(), 20)];
-        let mut bytes = format!("{:*<20}", domain_string).as_bytes().to_vec();
-        bytes.resize(32, 0);
-
-        bytes
     }
 
     /// This function uses a cryptographic hash function to create a uniformly and
@@ -138,10 +123,9 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
         self.sponge.reset();
         self.sponge
-            .absorb(&[
-                BaseField::from_bytes(&Schnorr::<SC>::domain_bytes::<S>(self.network_id))
-                    .expect("invalid domain bytes"),
-            ]);
+            .absorb(&[domain_prefix_to_field::<BaseField>(S::domain_string(
+                self.network_id,
+            ))]);
         self.sponge.squeeze();
 
         // Absorb random oracle input

@@ -25,9 +25,10 @@
 //! * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //!
 
+use crate::circuits::argument::Argument;
 use crate::circuits::expr;
 use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::polynomials::endosclmul;
+use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::{
     constraints::ConstraintSystem,
     scalars::ProofEvaluations,
@@ -73,7 +74,7 @@ impl<F: FftField> CircuitGate<F> {
             ProofEvaluations::dummy_with_witness_evaluations(next),
         ];
 
-        let constraints = endosclmul::constraints::<F>();
+        let constraints = EndosclMul::constraints();
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {

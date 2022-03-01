@@ -30,92 +30,96 @@
 //! </pre>
 
 use crate::circuits::{
+    argument::{Argument, ArgumentType},
     expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
     gate::GateType,
     wires::COLUMNS,
 };
-use ark_ff::{Field, One};
+use ark_ff::{FftField, Field, One};
+use std::marker::PhantomData;
 
-/// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 11;
+/// Implementation of the EndosclMul gate.
+#[derive(Default)]
+pub struct EndosclMul<F>(PhantomData<F>);
 
-/// The constraints for endoscaling.
-pub fn constraints<F: Field>() -> Vec<E<F>> {
-    let b1 = witness_curr(11);
-    let b2 = witness_curr(12);
-    let b3 = witness_curr(13);
-    let b4 = witness_curr(14);
+impl<F> Argument<F> for EndosclMul<F>
+where
+    F: FftField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
+    const CONSTRAINTS: usize = 11;
 
-    let xt = witness_curr(0);
-    let yt = witness_curr(1);
+    fn constraints() -> Vec<E<F>> {
+        let b1 = witness_curr(11);
+        let b2 = witness_curr(12);
+        let b3 = witness_curr(13);
+        let b4 = witness_curr(14);
 
-    let xs = witness_next(4);
-    let ys = witness_next(5);
+        let xt = witness_curr(0);
+        let yt = witness_curr(1);
 
-    let xp = witness_curr(4);
-    let yp = witness_curr(5);
+        let xs = witness_next(4);
+        let ys = witness_next(5);
 
-    let xr = witness_curr(7);
-    let yr = witness_curr(8);
+        let xp = witness_curr(4);
+        let yp = witness_curr(5);
 
-    let mut cache = Cache::default();
+        let xr = witness_curr(7);
+        let yr = witness_curr(8);
 
-    let s1 = witness_curr(9);
-    let s3 = witness_curr(10);
+        let mut cache = Cache::default();
 
-    let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
-    let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-    let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
+        let s1 = witness_curr(9);
+        let s3 = witness_curr(10);
 
-    let yq1 = (b2.clone().double() - E::one()) * yt.clone();
-    let yq2 = (b4.clone().double() - E::one()) * yt;
+        let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
+        let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+        let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
 
-    let s1_squared = cache.cache(s1.clone().square());
-    let s3_squared = cache.cache(s3.clone().square());
+        let yq1 = (b2.clone().double() - E::one()) * yt.clone();
+        let yq2 = (b4.clone().double() - E::one()) * yt;
 
-    // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-    let n = witness_curr(6);
-    let n_constraint = (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone())
-        .double()
-        + b4.clone()
-        - witness_next(6);
+        let s1_squared = cache.cache(s1.clone().square());
+        let s3_squared = cache.cache(s3.clone().square());
 
-    let xp_xr = cache.cache(xp.clone() - xr.clone());
-    let xr_xs = cache.cache(xr.clone() - xs.clone());
+        // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+        let n = witness_curr(6);
+        let n_constraint =
+            (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double()
+                + b4.clone()
+                - witness_next(6);
 
-    let ys_yr = cache.cache(ys + yr.clone());
-    let yr_yp = cache.cache(yr.clone() + yp.clone());
+        let xp_xr = cache.cache(xp.clone() - xr.clone());
+        let xr_xs = cache.cache(xr.clone() - xs.clone());
 
-    vec![
-        // verify booleanity of the scalar bits
-        boolean(&b1),
-        boolean(&b2),
-        boolean(&b3),
-        boolean(&b4),
-        // (xq1 - xp) * s1 = yq1 - yp
-        ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
-        // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
-        (((xp.double() - s1_squared.clone()) + xq1.clone())
-            * ((xp_xr.clone() * s1) + yr_yp.clone()))
-            - (yp.double() * xp_xr.clone()),
-        // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-        yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
-        // (xq2 - xr) * s3 = yq2 - yr
-        ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
-        // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
-        (((xr.double() - s3_squared.clone()) + xq2.clone())
-            * ((xr_xs.clone() * s3) + ys_yr.clone()))
-            - (yr.double() * xr_xs.clone()),
-        // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-        ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
-        n_constraint,
-    ]
-}
+        let ys_yr = cache.cache(ys + yr.clone());
+        let yr_yp = cache.cache(yr.clone() + yp.clone());
 
-/// The combined constraint for endoscaling.
-pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let constraints = constraints();
-    E::combine_constraints(alphas, constraints) * index(GateType::EndoMul)
+        vec![
+            // verify booleanity of the scalar bits
+            boolean(&b1),
+            boolean(&b2),
+            boolean(&b3),
+            boolean(&b4),
+            // (xq1 - xp) * s1 = yq1 - yp
+            ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
+            // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
+            (((xp.double() - s1_squared.clone()) + xq1.clone())
+                * ((xp_xr.clone() * s1) + yr_yp.clone()))
+                - (yp.double() * xp_xr.clone()),
+            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+            yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
+            // (xq2 - xr) * s3 = yq2 - yr
+            ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
+            // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
+            (((xr.double() - s3_squared.clone()) + xq2.clone())
+                * ((xr_xs.clone() * s3) + ys_yr.clone()))
+                - (yr.double() * xr_xs.clone()),
+            // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
+            ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
+            n_constraint,
+        ]
+    }
 }
 
 /// The result of performing an endoscaling: the accumulated curve point
