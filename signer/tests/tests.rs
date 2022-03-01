@@ -263,7 +263,7 @@ fn custom_signer_test() {
 
     let kp = Keypair::rand(&mut rand::rngs::OsRng);
     let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
-        pasta::fp_3::params(),
+        pasta::fp::params(),
         NetworkId::MAINNET,
     );
     let tx = Transaction::new_payment(kp.public, kp.public, 2049, 1, 0);
