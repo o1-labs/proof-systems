@@ -1,26 +1,16 @@
-use super::Mode;
+use super::{Mode, ParamType};
 use ark_ff::{fields::PrimeField as _, UniformRand as _};
 use ark_serialize::CanonicalSerialize as _;
 use mina_curves::pasta::Fp;
 use num_bigint::BigUint;
-use oracle::poseidon::ArithmeticSponge as Poseidon;
-use oracle::poseidon::Sponge as _;
-use rand::prelude::*;
-use rand::Rng;
+use oracle::{
+    pasta,
+    poseidon::{
+        self, ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _, SpongeConstants,
+    },
+};
+use rand::{prelude::*, Rng};
 use serde::Serialize;
-
-//
-// generate different test vectors depending on features
-//
-
-#[cfg(feature = "3w")]
-use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstantsBasic};
-
-#[cfg(feature = "5w")]
-use oracle::{pasta::fp5 as Parameters, poseidon::PlonkSpongeConstants5W as PlonkSpongeConstants};
-
-#[cfg(feature = "3")]
-use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3W as PlonkSpongeConstants};
 
 //
 // structs
@@ -44,10 +34,9 @@ pub struct TestVector {
 
 /// Computes the poseidon hash of several field elements.
 /// Uses the 'basic' configuration with N states and M rounds.
-fn poseidon(input: &[Fp]) -> Fp {
-    let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
+fn poseidon<SC: SpongeConstants>(input: &[Fp], params: ArithmeticSpongeParams<Fp>) -> Fp {
+    let mut s = Poseidon::<Fp, SC>::new(params);
     s.absorb(input);
-
     s.squeeze()
 }
 
@@ -62,7 +51,7 @@ fn rand_fields(rng: &mut impl Rng, length: u8) -> Vec<Fp> {
 }
 
 /// creates a set of test vectors
-pub fn generate(mode: Mode) -> TestVectors {
+pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
     let mut rng = &mut rand::rngs::StdRng::from_seed([0u8; 32]);
     let mut test_vectors = vec![];
 
@@ -70,7 +59,17 @@ pub fn generate(mode: Mode) -> TestVectors {
     for length in 0..6 {
         // generate input & hash
         let input = rand_fields(&mut rng, length);
-        let output = poseidon(&input);
+        let output = match param_type {
+            ParamType::P3 => {
+                poseidon::<poseidon::PlonkSpongeConstantsBasic>(&input, pasta::fp::params())
+            }
+            ParamType::P3w => {
+                poseidon::<poseidon::PlonkSpongeConstants3W>(&input, pasta::fp_3::params())
+            }
+            ParamType::P5w => {
+                poseidon::<poseidon::PlonkSpongeConstants5W>(&input, pasta::fp5::params())
+            }
+        };
 
         // serialize input & output
         let input = input
@@ -99,15 +98,12 @@ pub fn generate(mode: Mode) -> TestVectors {
         })
     }
 
-    let name = if cfg!(feature = "3w") {
-        "3w".to_string()
-    } else if cfg!(feature = "3") {
-        "3".to_string()
-    } else if cfg!(feature = "5w") {
-        "5w".to_string()
-    } else {
-        panic!("test vector feature not recognized");
-    };
+    let name = match param_type {
+        ParamType::P3 => "3",
+        ParamType::P3w => "3w",
+        ParamType::P5w => "5w",
+    }
+    .into();
 
     //
     TestVectors { name, test_vectors }

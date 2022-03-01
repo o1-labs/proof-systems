@@ -23,11 +23,11 @@ jobs:
 
       - name: build
         run: |
-          cargo build
+          cargo check
 
-      - name: build ocaml types
+      - name: build all features (including ocaml_types)
         run: |
-          cargo build --features ocaml_types
+          cargo check --all-features
 
       - name: Run cargo fmt
         run: |
