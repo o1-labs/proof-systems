@@ -36,10 +36,16 @@ jobs:
       - name: build & test
         run: |
           cargo check --release
-          cargo test --release
+          # This is covered by the next step,
+          # commented out to make the job faster
+          #
+          # cargo test --release
 
       - name: build & test ocaml types
         run: |
+          # Cannot use `--all-features` here
+          # Becauses `3`, `3w` and `5w` features under `oracle` crate are orthogonal,
+          # Should this be changed?
           cargo check --release --features ocaml_types
           cargo test --release --features ocaml_types
 
