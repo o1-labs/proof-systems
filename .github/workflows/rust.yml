@@ -15,25 +15,34 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up cargo/rust
-        run: |
-          rustup component add rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
 
       - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
-
-      - name: build
         run: |
-          cargo build
+          sudo apt update
+          sudo apt install -y ocaml
 
-      - name: build ocaml types
+      # `cargo check` compiles the packages without performing the final step of code generation,
+      # which is faster than running `cargo build`.
+      # Use release build to speed up tests
+      - name: build & test
         run: |
-          cargo build --features ocaml_types
+          cargo check --release
+          cargo test --release
+
+      - name: build & test ocaml types
+        run: |
+          cargo check --release --features ocaml_types
+          cargo test --release --features ocaml_types
 
       - name: Run cargo fmt
-        run: |
-          cargo fmt -- --check
+        run: cargo fmt -- --check
 
       - name: Run cargo clippy
-        run: |
-          rustup component add clippy
-          cargo clippy -- -D warnings
+        # Need clippy for `--features ocaml_types`?
+        run: cargo clippy --release -- -D warnings
