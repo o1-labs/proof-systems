@@ -6,34 +6,42 @@ on:
       - main
   pull_request:
 
+env:
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#release
+  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
+  CARGO_INCREMENTAL: 1
+
 jobs:
   run_checks:
     runs-on: ubuntu-latest
-    name: Run some basic checks
+    name: Run some basic checks and tests
     steps:
       - name: Checkout PR
         uses: actions/checkout@v2
 
       - name: Set up cargo/rust
-        run: |
-          rustup component add rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
 
       - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
-
-      - name: build
         run: |
-          cargo check
+          sudo apt update
+          sudo apt install -y ocaml
 
-      - name: build all features (including ocaml_types)
-        run: |
-          cargo check --all-features
+      # `cargo check` compiles the packages without performing the final step of code generation,
+      # which is faster than running `cargo build`.
+      # Use release build to speed up tests
+      - run: cargo check --release
 
-      - name: Run cargo fmt
-        run: |
-          cargo fmt -- --check
+      # all feautres including `ocaml_types`
+      - run: cargo check --release --all-features
+      - run: cargo test --release --all-features
 
-      - name: Run cargo clippy
-        run: |
-          rustup component add clippy
-          cargo clippy -- -D warnings
+      - run: cargo fmt -- --check
+      # Need clippy for `--features ocaml_types`?
+      - run: cargo clippy -- -D warnings

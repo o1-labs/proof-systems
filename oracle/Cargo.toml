@@ -38,8 +38,9 @@ serde_json = "1.0"
 ark-serialize = "0.3.0"
 
 [features]
-default=[]
+default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "syn" ]
+# for test vectors
 test_vectors = ["num-bigint", "serde_json", "hex", "ark-serialize"]
 
 [[bin]]

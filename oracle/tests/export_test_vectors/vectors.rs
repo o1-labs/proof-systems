@@ -13,6 +13,10 @@ use rand::{prelude::*, Rng};
 use serde::Serialize;
 
 //
+// generate different test vectors depending on [ParamType]
+//
+
+//
 // structs
 //
 
@@ -60,14 +64,11 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
         // generate input & hash
         let input = rand_fields(&mut rng, length);
         let output = match param_type {
-            ParamType::P3 => {
+            ParamType::Basic => {
                 poseidon::<poseidon::PlonkSpongeConstantsBasic>(&input, pasta::fp::params())
             }
-            ParamType::P3w => {
-                poseidon::<poseidon::PlonkSpongeConstants3W>(&input, pasta::fp_3::params())
-            }
-            ParamType::P5w => {
-                poseidon::<poseidon::PlonkSpongeConstants5W>(&input, pasta::fp5::params())
+            ParamType::P15w => {
+                poseidon::<poseidon::PlonkSpongeConstants15W>(&input, pasta::fp::params())
             }
         };
 
@@ -99,12 +100,10 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
     }
 
     let name = match param_type {
-        ParamType::P3 => "3",
-        ParamType::P3w => "3w",
-        ParamType::P5w => "5w",
+        ParamType::Basic => "basic",
+        ParamType::P15w => "15w",
     }
     .into();
 
-    //
     TestVectors { name, test_vectors }
 }
