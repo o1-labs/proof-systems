@@ -36,25 +36,15 @@ jobs:
       # `cargo check` compiles the packages without performing the final step of code generation,
       # which is faster than running `cargo build`.
       # Use release build to speed up tests
-      - name: cargo check & test
-        run: |
-          cargo check --release
-          # This is covered by the next step,
-          # commented out to make the job faster
-          #
-          # cargo test --release
+      - run: cargo check --release
+      - run: cargo test --release
 
-      - name: cargo check & test for ocaml_types
-        run: |
-          # Cannot use `--all-features` here
-          # Becauses `3`, `3w` and `5w` features under `oracle` crate are orthogonal,
-          # Should this be changed?
-          cargo check --release --features ocaml_types
-          cargo test --release --features ocaml_types
+      # Cannot use `--all-features` here
+      # Becauses `3`, `3w` and `5w` features under `oracle` crate are orthogonal,
+      # Should this be changed?
+      - run: cargo check --release --features ocaml_types
+      - run: cargo test --release --features ocaml_types
 
-      - name: Run cargo fmt
-        run: cargo fmt -- --check
-
-      - name: Run cargo clippy
-        # Need clippy for `--features ocaml_types`?
-        run: cargo clippy -- -D warnings
+      - run: cargo fmt -- --check
+      # Need clippy for `--features ocaml_types`?
+      - run: cargo clippy -- -D warnings
