@@ -4,9 +4,10 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
-        expr::{l0_1, Column, Constants, Environment, LookupEnvironment, E},
-        gate::{combine_table_entry, CurrOrNext::Curr, GateType, LookupsUsed},
+        expr::{l0_1, Constants, Environment, LookupEnvironment},
+        gate::{combine_table_entry, GateType, LookupsUsed},
         polynomials::{
+            self,
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
@@ -462,18 +463,12 @@ where
 
             if !index.cs.foreign_modulus.is_empty() {
                 // foreign field multiplication
-                let selector_index = |g: GateType| E::cell(Column::Index(g), Curr);
-                for (gate_type, constraints) in foreign_mul::get_gate_constraints() {
-                    println!(
-                        "Creating expr for {:?} of {} constraints",
+                for gate_type in polynomials::foreign_mul::get_circuit_gates() {
+                    let expr = polynomials::foreign_mul::circuit_gate_combined_constraints(
                         gate_type,
-                        constraints.len()
+                        &all_alphas,
                     );
-                    let expr = selector_index(gate_type)
-                        * E::combine_constraints(
-                            all_alphas.get_powers(ConstraintType::Gate, constraints.len()),
-                            constraints,
-                        );
+                    println!("Created expr for {:?}", gate_type);
 
                     let evals = expr.evaluations(&env);
 

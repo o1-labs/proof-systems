@@ -63,9 +63,10 @@ use rand::SeedableRng;
 
 use ark_ff::{FftField, PrimeField};
 
-use crate::alphas::{self, ConstraintType};
+use crate::alphas::Alphas;
+use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::expr::{self, Column, E};
+use crate::circuits::expr::{self, Column};
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials;
 use crate::circuits::scalars::ProofEvaluations;
@@ -158,17 +159,15 @@ impl<F: FftField> CircuitGate<F> {
         };
 
         // Setup temporary powers of alpha
-        let mut powers_of_alpha = alphas::Builder::default();
-        let alphas = powers_of_alpha.register(
-            ConstraintType::Gate,
-            polynomials::foreign_mul::CONSTRAINTS_1,
+        let mut alphas = Alphas::<F>::default();
+        alphas.register(
+            ArgumentType::Gate(self.typ),
+            polynomials::foreign_mul::ForeignMul1::<F>::CONSTRAINTS,
         );
 
         // Get constraints for this circuit gate
-        let constraints = polynomials::foreign_mul::get_circuit_gate_constraints::<F>(self.typ);
-
-        // Combine constraints using power of alpha
-        let constraints = E::combine_constraints(alphas.take(constraints.len()), constraints);
+        let constraints =
+            polynomials::foreign_mul::circuit_gate_combined_constraints(self.typ, &alphas);
 
         // Linearize
         let linearized = constraints.linearize(evaluated_cols).unwrap();

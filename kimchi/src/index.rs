@@ -6,14 +6,14 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::lookup;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
+use crate::circuits::polynomials::{self, lookup};
 use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
-    gate::{CurrOrNext::Curr, GateType, LookupsUsed},
+    gate::{GateType, LookupsUsed},
     gates::foreign_mul,
     wires::*,
 };
@@ -199,16 +199,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     }
 
     if foreign_mul {
-        let selector_index = |g: GateType| E::cell(Column::Index(g), Curr);
-        for (gate_type, constraints) in polynomials::foreign_mul::get_gate_constraints() {
-            println!(
-                "Creating expr for {:?} of {} constraints",
-                gate_type,
-                constraints.len()
-            );
-            expr += selector_index(gate_type)
-                * E::combine_constraints(alphas.clone().take(constraints.len()), constraints);
-        }
+        polynomials::foreign_mul::gate_combined_constraints(&powers_of_alpha);
     }
 
     // permutation
