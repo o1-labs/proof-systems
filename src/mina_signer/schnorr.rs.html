@@ -183,7 +183,7 @@
     <span class="kw">where</span>
         <span class="ident">S</span>: <span class="ident">Signable</span>,
     {
-        <span class="kw">let</span> <span class="ident">k</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_nonce</span>(<span class="kw-2">&amp;</span><span class="ident">kp</span>, <span class="ident">input</span>);
+        <span class="kw">let</span> <span class="ident">k</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_nonce</span>(<span class="kw-2">&amp;</span><span class="ident">kp</span>, <span class="ident">input</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">r</span>: <span class="ident">CurvePoint</span> <span class="op">=</span> <span class="ident">CurvePoint::prime_subgroup_generator</span>().<span class="ident">mul</span>(<span class="ident">k</span>).<span class="ident">into_affine</span>();
         <span class="kw">let</span> <span class="ident">k</span>: <span class="ident">ScalarField</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">y</span>.<span class="ident">into_repr</span>().<span class="ident">is_even</span>() { <span class="ident">k</span> } <span class="kw">else</span> { <span class="op">-</span><span class="ident">k</span> };
 

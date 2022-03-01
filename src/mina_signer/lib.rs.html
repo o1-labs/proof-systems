@@ -225,7 +225,7 @@
 <span class="doccomment">/// Interface for hashable objects</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// See example in [ROInput] documentation</span>
-<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Hashable</span>: <span class="ident">Copy</span> {
+<span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Hashable</span>: <span class="ident">Clone</span> {
     <span class="doccomment">/// Serialization to random oracle input</span>
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="self">self</span>) -&gt; <span class="ident">ROInput</span>;
 }
@@ -237,7 +237,7 @@
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// use mina_signer::{Hashable, NetworkId, ROInput, Signable};</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// #[derive(Clone, Copy)]</span>
+<span class="doccomment">/// #[derive(Clone)]</span>
 <span class="doccomment">/// struct Example;</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// impl Hashable for Example {</span>
