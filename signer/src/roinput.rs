@@ -20,7 +20,7 @@ use o1_utils::FieldHelpers;
 /// ```rust
 /// use mina_signer::{CompressedPubKey, Hashable, NetworkId, ROInput, Signable};
 ///
-/// #[derive(Clone, Copy)]
+/// #[derive(Clone)]
 /// pub struct MyExample {
 ///     pub account: CompressedPubKey,
 ///     pub amount: u64,
