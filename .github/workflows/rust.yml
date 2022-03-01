@@ -6,12 +6,6 @@ on:
       - main
   pull_request:
 
-env:
-  # https://doc.rust-lang.org/cargo/reference/profiles.html#release
-  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
-  # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
-  CARGO_INCREMENTAL: 1
-
 jobs:
   run_checks:
     runs-on: ubuntu-latest
@@ -21,40 +15,25 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up cargo/rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: rustfmt, clippy
-          override: true
+        run: |
+          rustup component add rustfmt
 
       - name: Setup OCaml (because of ocaml-gen)
-        run: |
-          sudo apt update
-          sudo apt install -y ocaml
+        run: sudo apt update && sudo apt install ocaml
 
-      # `cargo check` compiles the packages without performing the final step of code generation,
-      # which is faster than running `cargo build`.
-      # Use release build to speed up tests
-      - name: build & test
+      - name: build
         run: |
-          cargo check --release
-          # This is covered by the next step,
-          # commented out to make the job faster
-          #
-          # cargo test --release
+          cargo build
 
-      - name: build & test ocaml types
+      - name: build ocaml types
         run: |
-          # Cannot use `--all-features` here
-          # Becauses `3`, `3w` and `5w` features under `oracle` crate are orthogonal,
-          # Should this be changed?
-          cargo check --release --features ocaml_types
-          cargo test --release --features ocaml_types
+          cargo build --features ocaml_types
 
       - name: Run cargo fmt
-        run: cargo fmt -- --check
+        run: |
+          cargo fmt -- --check
 
       - name: Run cargo clippy
-        # Need clippy for `--features ocaml_types`?
-        run: cargo clippy -- -D warnings
+        run: |
+          rustup component add clippy
+          cargo clippy -- -D warnings
