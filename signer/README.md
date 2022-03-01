@@ -53,8 +53,8 @@ let tx = Transaction::new_payment(
                 271828,
             );
 
-let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants5W>(
-    pasta::fp5::params(),
+let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+    pasta::fp::params(),
     NetworkId::TESTNET,
 );
 

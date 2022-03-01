@@ -13,14 +13,12 @@ use serde::Serialize;
 // generate different test vectors depending on features
 //
 
-#[cfg(feature = "3w")]
-use oracle::{pasta::fp as Parameters, poseidon::PlonkSpongeConstantsBasic};
+use oracle::pasta::fp as SpongeParameters;
+#[cfg(all(feature = "basic", not(feature = "15w")))]
+use oracle::poseidon::PlonkSpongeConstantsBasic as PlonkSpongeConstants;
 
-#[cfg(feature = "5w")]
-use oracle::{pasta::fp5 as Parameters, poseidon::PlonkSpongeConstants5W as PlonkSpongeConstants};
-
-#[cfg(feature = "3")]
-use oracle::{pasta::fp_3 as Parameters, poseidon::PlonkSpongeConstants3W as PlonkSpongeConstants};
+#[cfg(feature = "15w")]
+use oracle::poseidon::PlonkSpongeConstants15W as PlonkSpongeConstants;
 
 //
 // structs
@@ -45,7 +43,7 @@ pub struct TestVector {
 /// Computes the poseidon hash of several field elements.
 /// Uses the 'basic' configuration with N states and M rounds.
 fn poseidon(input: &[Fp]) -> Fp {
-    let mut s = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters::params());
+    let mut s = Poseidon::<Fp, PlonkSpongeConstants>::new(SpongeParameters::params());
     s.absorb(input);
 
     s.squeeze()
@@ -99,12 +97,10 @@ pub fn generate(mode: Mode) -> TestVectors {
         })
     }
 
-    let name = if cfg!(feature = "3w") {
-        "3w".to_string()
-    } else if cfg!(feature = "3") {
-        "3".to_string()
-    } else if cfg!(feature = "5w") {
-        "5w".to_string()
+    let name = if cfg!(feature = "basic") {
+        "basic".to_string()
+    } else if cfg!(feature = "15w") {
+        "15w".to_string()
     } else {
         panic!("test vector feature not recognized");
     };

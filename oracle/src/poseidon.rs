@@ -32,36 +32,6 @@ impl SpongeConstants for PlonkSpongeConstantsBasic {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstants5W {}
-
-impl SpongeConstants for PlonkSpongeConstants5W {
-    const ROUNDS_FULL: usize = 53;
-    const ROUNDS_PARTIAL: usize = 0;
-    const HALF_ROUNDS_FULL: usize = 0;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 5;
-    const SPONGE_RATE: usize = 4;
-    const SPONGE_BOX: usize = 7;
-    const FULL_MDS: bool = true;
-    const INITIAL_ARK: bool = false;
-}
-
-#[derive(Clone)]
-pub struct PlonkSpongeConstants3W {}
-
-impl SpongeConstants for PlonkSpongeConstants3W {
-    const ROUNDS_FULL: usize = 54;
-    const ROUNDS_PARTIAL: usize = 0;
-    const HALF_ROUNDS_FULL: usize = 0;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 7;
-    const FULL_MDS: bool = true;
-    const INITIAL_ARK: bool = false;
-}
-
-#[derive(Clone)]
 pub struct PlonkSpongeConstants15W {}
 
 impl SpongeConstants for PlonkSpongeConstants15W {
