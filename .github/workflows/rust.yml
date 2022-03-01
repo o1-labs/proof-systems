@@ -37,8 +37,7 @@ jobs:
       # which is faster than running `cargo build`.
       # Use release build to speed up tests
       - run: cargo check --release
-
-      # all feautres including `ocaml_types`
+      # Run cargo check and test with all features including ocaml_types
       - run: cargo check --release --all-features
       - run: cargo test --release --all-features
 
