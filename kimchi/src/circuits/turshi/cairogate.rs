@@ -1,14 +1,11 @@
 //! This source file implements the Cairo gate primitive
 
 use ark_ff::FftField;
-//PrimeField, Zero
-//use ark_serialize::CanonicalSerialize;
 use array_init::array_init;
 
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::wires::{GateWires, COLUMNS};
-//use cairo::definitions::NUM_FLAGS;
+use crate::circuits::wires::{GateWires, Wire, COLUMNS};
 
 const NUM_FLAGS: usize = 16;
 
@@ -22,27 +19,20 @@ impl<F: FftField> CircuitGate<F> {
                 coeffs: vec![],
             },
             CircuitGate {
-                typ: GateType::CairoInstruction,
+                typ: GateType::Zero, // So that it ignores even rows
                 wires: wires[1],
                 coeffs: vec![],
             },
         ]
     }
 
-    /// This function creates a 2-row CairoTransition gate
-    pub fn create_cairo_transition(wires: &[GateWires; 2]) -> Vec<Self> {
-        vec![
-            CircuitGate {
-                typ: GateType::CairoTransition,
-                wires: wires[0],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::CairoTransition,
-                wires: wires[1],
-                coeffs: vec![],
-            },
-        ]
+    /// This function creates a CairoTransition gate
+    pub fn create_cairo_transition(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoTransition,
+            wires,
+            coeffs: vec![],
+        }
     }
 
     /// This function creates a single row CairoClaim gate
@@ -54,14 +44,42 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    // TODO(querolita): gadget generator of the whole table of rows from the runner results
+    /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
+    pub fn create_cairo_gadget(
+        // the absolute row in the circuit
+        row: usize,
+        // number of instructions
+        num: usize,
+    ) -> Vec<Self> {
+        // 2 row per instruction for CairoInstruction gate
+        // 1 row per instruction for CairoTransition gate
+        // final row for CairoClaim gate
+        let mut gates: Vec<CircuitGate<F>> = Vec::new();
+        for i in 0..num {
+            let wire0 = Wire::new(row + 2 * i);
+            let wire1 = Wire::new(row + 2 * i + 1);
+            gates.extend(
+                CircuitGate::create_cairo_instruction(&[wire0, wire1])
+                    .iter()
+                    .cloned(),
+            );
+        }
+        for i in 0..num {
+            gates.push(CircuitGate::create_cairo_transition(Wire::new(
+                row + 2 * num + i,
+            )));
+        }
+        gates.push(CircuitGate::create_cairo_claim(Wire::new(row + 3 * num)));
+
+        gates
+    }
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
     pub fn verify_cairo_gate(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        _cs: &ConstraintSystem<F>,
+        //_cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
@@ -327,5 +345,39 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(zero, pc_t - pc_fin, "wrong final pc"); // pcT = fin_pc
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::circuits::turshi::cairo::memory::CairoMemory;
+    use crate::circuits::turshi::cairo::runner::CairoProgram;
+    use crate::circuits::turshi::witness::*;
+    //use ark_ff::{One, Zero};
+    use mina_curves::pasta::fp::Fp as F;
+
+    #[test]
+    fn test_cairo_gate() {
+        // Compute the Cairo witness
+        let instrs = vec![
+            F::from(0x480680017fff8000u64),
+            F::from(10u64),
+            F::from(0x208b7fff7fff7ffeu64),
+        ];
+        let mut mem = CairoMemory::<F>::new(instrs);
+        mem.write(F::from(4u32), F::from(7u32)); //beginning of output
+        mem.write(F::from(5u32), F::from(7u32)); //end of output
+        let prog = CairoProgram::new(&mut mem, 1, 6);
+        let witness = cairo_witness(&prog);
+
+        // Create the Cairo circuit
+        let num = prog.trace().len();
+        let circuit = CircuitGate::<F>::create_cairo_gadget(0, num);
+
+        // Verify each gate
+        /*for gate in circuit {
+            gate.verify_cairo_gate(row, &witness);
+        }*/
     }
 }

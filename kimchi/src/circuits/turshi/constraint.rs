@@ -84,14 +84,14 @@
 //!     0    ·    pc        fPC_ABS    (next) pc        pc\[i\]           (c)  pc\[i+2\]              pc\[0\] (c)
 //!     1    ·    ap        fPC_REL    (next) ap  ...   ap\[i\]           (c)  ap\[i+2\]              ap\[0\] (c)
 //!  c  2    ·    fp        fPC_JNZ    (next) fp        fp\[i\]           (c)  fp\[i+2\]              fp\[0\] (c)
-//!  o  3    ·    size      fAP_INC        .            size\[i\]         (c)    .                    pc\[2n-2\] (c)
+//!  o  3    ·    size      fAP_ADD        .            size\[i\]         (c)    .                    pc\[2n-2\] (c)
 //!  l  4    ·    res       fAP_ONE        .            res\[i\]          (c)    .                    ap\[2n-2\] (c)
 //!  |  5    ·    dst       fOPC_CALL      .            dst\[i\]          (c)    .                    pc_ini
 //!  v  6    ·    op1       fOPC_RET                    op1\[i\]          (c)    .                    ap_ini
 //!     7         op0       fOPC_AEQ                    fPC_ABS\[i+1\]    (c)                         pc_fin
 //!     8         off_dst   fDST_FP                     fPC_REL\[i+1\]    (c)                         ap_fin
 //!     9         off_op1   fOP0_FP                     fPC_JNZ\[i+1\]    (c)                         
-//!     10        off_op0   fOP1_VAL                    fAP_INC\[i+1\]    (c)                         
+//!     10        off_op0   fOP1_VAL                    fAP_ADD\[i+1\]    (c)                         
 //!     11        adr_dst   fOP1_FP                     fAP_ONE\[i+1\]    (c)                         
 //!     12        adr_op1   fOP1_AP                     fOPC_CALL\[i+1\]  (c)
 //!     13        adr_op0   fRES_ADD                    fOPC_RET\[i+1\]   (c)
@@ -112,6 +112,7 @@ fn two<F: Field>() -> E<F> {
 }
 
 /// Generates the constraints for the Cairo instruction
+///     Accesses Curr and Next rows
 fn instruction<F: Field>() -> Vec<E<F>> {
     // load all variables of the witness corresponding to Cairoinstruction gates
     let pc = witness_curr(0);
@@ -258,6 +259,7 @@ fn instruction<F: Field>() -> Vec<E<F>> {
 }
 
 /// Generates the constraints for the Cairo transition
+///     Accesses Curr and Next rows
 fn transition<F: Field>() -> Vec<E<F>> {
     let pc = witness_curr(0);
     let ap = witness_curr(1);
@@ -317,6 +319,7 @@ fn transition<F: Field>() -> Vec<E<F>> {
 }
 
 /// Generates the constraints for the Cairo claim
+///     Accesses Curr row only
 fn claim<F: Field>() -> Vec<E<F>> {
     let pc0 = witness_curr(0);
     let ap0 = witness_curr(1);

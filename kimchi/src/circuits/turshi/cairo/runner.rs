@@ -17,10 +17,36 @@ pub struct CairoState<F> {
     fp: F,
 }
 
+/// This trait contains functions to obtain the Cairo pointers (program counter, allocation pointer and frame pointer)
+pub trait Pointers<F> {
+    /// Returns the program counter
+    fn pc(&self) -> F;
+
+    /// Returns the allocation pointer
+    fn ap(&self) -> F;
+
+    /// Returns the frame pointer
+    fn fp(&self) -> F;
+}
+
 impl<F: Field> CairoState<F> {
     /// Creates a new triple of pointers
     pub fn new(pc: F, ap: F, fp: F) -> Self {
         CairoState { pc, ap, fp }
+    }
+}
+
+impl<F: Field> Pointers<F> for CairoState<F> {
+    fn pc(&self) -> F {
+        self.pc
+    }
+
+    fn ap(&self) -> F {
+        self.ap
+    }
+
+    fn fp(&self) -> F {
+        self.fp
     }
 }
 
@@ -86,21 +112,6 @@ impl<F: Field> CairoInstruction<F> {
         self.word.word()
     }
 
-    /// Returns the current program counter
-    pub fn pc(&self) -> F {
-        self.ptrs.pc
-    }
-
-    /// Returns the current allocation pointer
-    pub fn ap(&self) -> F {
-        self.ptrs.ap
-    }
-
-    /// Returns the current frame pointer
-    pub fn fp(&self) -> F {
-        self.ptrs.fp
-    }
-
     /// Returns the size of the instruction
     pub fn size(&self) -> F {
         self.vars.size
@@ -139,6 +150,20 @@ impl<F: Field> CairoInstruction<F> {
     /// Returns the second operand address of the instruction
     pub fn adr_op1(&self) -> F {
         self.vars.adr_op1
+    }
+}
+
+impl<F: Field> Pointers<F> for CairoInstruction<F> {
+    fn pc(&self) -> F {
+        self.ptrs.pc // Returns the current program counter
+    }
+
+    fn ap(&self) -> F {
+        self.ptrs.ap //Returns the current allocation pointer
+    }
+
+    fn fp(&self) -> F {
+        self.ptrs.fp // Returns the current program counter
     }
 }
 
@@ -430,15 +455,21 @@ impl<'a, F: Field> CairoStep<'a, F> {
                     // the res in mem(adr_dst) and sometimes write dst in mem(res_dir). The only
                     // case where res can be None is when res = op1 and thus res_dir = adr_op1
                     if self.vars.res.is_none() {
+                        // res = dst
                         self.mem.write(
                             self.vars.adr_op1,
                             self.vars.dst.expect("None dst after OPC_AEQ"),
-                        ); // res = dst
+                        );
+                        // update the value of the variable as well
+                        self.vars.res = self.mem.read(self.vars.adr_op1);
                     } else {
+                        // dst = res
                         self.mem.write(
                             self.vars.adr_dst,
                             self.vars.res.expect("None res after OPC_AEQ"),
-                        ); // dst = res
+                        );
+                        // update the value of the variable as well
+                        self.vars.dst = self.mem.read(self.vars.adr_dst);
                     }
                     next_fp = Some(self.curr.fp); // no modification on fp
                 }
@@ -487,8 +518,18 @@ impl<'a, F: Field> CairoProgram<'a, F> {
     }
 
     /// Outputs the final value of the pointers after the execution carried out by the runner
+    pub fn ini(&self) -> CairoState<F> {
+        self.ini
+    }
+
+    /// Outputs the final value of the pointers after the execution carried out by the runner
     pub fn fin(&self) -> CairoState<F> {
         self.fin
+    }
+
+    /// Returns a pointer to the set of instructions
+    pub fn trace(&self) -> &Vec<CairoInstruction<F>> {
+        &self.trace
     }
 
     /// This function simulates an execution of the Cairo program received as input.

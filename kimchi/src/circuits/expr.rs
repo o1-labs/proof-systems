@@ -1989,7 +1989,7 @@ pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
 
-/// Same as [witness] but for the next row.
+/// Same as [witness] but for the current row.
 pub fn witness_curr<F>(i: usize) -> E<F> {
     witness(i, CurrOrNext::Curr)
 }

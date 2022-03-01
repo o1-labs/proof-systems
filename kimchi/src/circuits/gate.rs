@@ -507,7 +507,7 @@ impl<F: FftField> CircuitGate<F> {
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             CairoInstruction | CairoTransition | CairoClaim => {
-                self.verify_cairo_gate(row, witness, cs)
+                self.verify_cairo_gate(row, witness) //, cs)
             }
         }
     }
