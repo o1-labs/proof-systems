@@ -1,0 +1,21 @@
+version: 2.1
+jobs:
+    run-tests:
+        docker:
+            - image: cimg/rust:1.55.0
+        steps:
+            - checkout
+            - run:
+                name: Set up OCaml for ocaml-gen
+                command: sudo apt update && sudo apt install ocaml
+            - run:
+                name: Build
+                command: cargo build
+            - run:
+                name: Tests
+                command: cargo test --release
+workflows:
+    version: 2
+    proof_systems:
+        jobs:
+        - run-tests
