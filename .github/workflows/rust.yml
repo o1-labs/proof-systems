@@ -37,13 +37,9 @@ jobs:
       # which is faster than running `cargo build`.
       # Use release build to speed up tests
       - run: cargo check --release
-      - run: cargo test --release
-
-      # Cannot use `--all-features` here
-      # Becauses `3`, `3w` and `5w` features under `oracle` crate are orthogonal,
-      # Should this be changed?
-      - run: cargo check --release --features ocaml_types
-      - run: cargo test --release --features ocaml_types
+      # Run cargo check and test with all features including ocaml_types
+      - run: cargo check --release --all-features
+      - run: cargo test --release --all-features
 
       - run: cargo fmt -- --check
       # Need clippy for `--features ocaml_types`?

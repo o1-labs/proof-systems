@@ -7,14 +7,13 @@ Tests are ran against our own test vectors in `tests/test_vectors`.
 You can re-generate the test vectors by using:
 
 ```
-usage: cargo run --features [basic|15w] -- [Hex|B10] <OUTPUT_FILE>
+usage: cargo run --all-features -- [Hex|B10] [basic|15w] <OUTPUT_FILE>
 ```
 
 Examples
 
 ```
-cargo run --features basic -- B10 -
-cargo run --features basic -- Hex basic.json
-cargo run --features 15w -- Hex 15w.json
-
+cargo run --all-features -- B10 basic -
+cargo run --all-features -- b10 basic basic.json
+cargo run --all-features -- hex 15w 15w.json
 ```
