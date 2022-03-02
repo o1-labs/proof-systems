@@ -20,13 +20,13 @@ $ cargo install cargo-spec
 To produce a specification, simply run the following command:
 
 ```console
-$ cd <spec_folder> && make build
+$ make -C <spec_folder> build
 ```
 
 If you want to watch for any changes, you can also run the following command:
 
 ```console
-$ cd <spec_folder> && make watch
+$ make -C <spec_folder> watch
 ```
 
 ## How to edit the specifications

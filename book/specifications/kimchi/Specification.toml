@@ -2,7 +2,7 @@
 name = "Kimchi"
 description = "This specification describes the Kimchi proof system."
 version = "0.1.0"
-authors = ["TODO: ENTER ALL THE NAMES"]
+authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
 
 [config]
 template = "template.md"

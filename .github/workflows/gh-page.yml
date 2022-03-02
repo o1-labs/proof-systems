@@ -22,14 +22,6 @@ jobs:
           rustup install nightly
           RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all --no-deps
 
-      - name: Check that up-to-date specification is checked in
-        run: |
-          cargo install cargo-spec
-          cd book/specifications
-          cd kimchi && make build && cd ..
-          cd poly-commitment && make build && cd ..
-          git diff --exit-code
-
       - name: Build the mdbook
         run: |
           cd book

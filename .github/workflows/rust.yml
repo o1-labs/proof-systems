@@ -37,3 +37,11 @@ jobs:
         run: |
           rustup component add clippy
           cargo clippy -- -D warnings
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          cargo install cargo-spec --version 0.1.3
+          cd book/specifications
+          cd kimchi && make build && cd ..
+          cd poly-commitment && make build && cd ..
+          git diff --exit-code
