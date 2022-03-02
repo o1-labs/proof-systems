@@ -8,14 +8,9 @@ use std::path::PathBuf; // needed for ::new() sponge
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
-use oracle::pasta::fp as Parameters3W;
+use oracle::pasta::fp as SpongeParameters;
+use oracle::poseidon::PlonkSpongeConstants15W;
 use oracle::poseidon::PlonkSpongeConstantsBasic;
-
-use oracle::pasta::fp5 as Parameters5W;
-use oracle::poseidon::PlonkSpongeConstants5W;
-
-use oracle::pasta::fp_3 as Parameters3;
-use oracle::poseidon::PlonkSpongeConstants3W;
 
 //
 // Helpers for test vectors
@@ -72,31 +67,21 @@ where
 //
 
 #[test]
-fn poseidon_test_vectors_3w() {
+fn poseidon_test_vectors_basic() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(Parameters3W::params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(SpongeParameters::params());
         hash.absorb(input);
         hash.squeeze()
     }
-    test_vectors("3w.json", hash);
+    test_vectors("basic.json", hash);
 }
 
 #[test]
-fn poseidon_test_vectors_5w() {
+fn poseidon_test_vectors_15w() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstants5W>::new(Parameters5W::params());
+        let mut hash = Poseidon::<Fp, PlonkSpongeConstants15W>::new(SpongeParameters::params());
         hash.absorb(input);
         hash.squeeze()
     }
-    test_vectors("5w.json", hash);
-}
-
-#[test]
-fn poseidon_test_vectors_3() {
-    fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstants3W>::new(Parameters3::params());
-        hash.absorb(input);
-        hash.squeeze()
-    }
-    test_vectors("3.json", hash);
+    test_vectors("15w.json", hash);
 }

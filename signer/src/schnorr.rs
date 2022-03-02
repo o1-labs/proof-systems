@@ -39,7 +39,7 @@ impl<SC: SpongeConstants> Signer for Schnorr<SC> {
     where
         S: Signable,
     {
-        let k: ScalarField = self.derive_nonce(&kp, input);
+        let k: ScalarField = self.derive_nonce(&kp, input.clone());
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
 

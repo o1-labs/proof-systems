@@ -66,7 +66,7 @@ pub fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
 /// Interface for hashable objects
 ///
 /// See example in [ROInput] documentation
-pub trait Hashable: Copy {
+pub trait Hashable: Clone {
     /// Serialization to random oracle input
     fn to_roinput(self) -> ROInput;
 }
@@ -78,7 +78,7 @@ pub trait Hashable: Copy {
 /// ```
 /// use mina_signer::{Hashable, NetworkId, ROInput, Signable};
 ///
-/// #[derive(Clone, Copy)]
+/// #[derive(Clone)]
 /// struct Example;
 ///
 /// impl Hashable for Example {
@@ -141,8 +141,8 @@ pub fn create(network_id: NetworkId) -> impl Signer {
 /// use mina_signer::NetworkId;
 /// use oracle::{pasta, poseidon};
 ///
-/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants5W>(
-///     pasta::fp5::params(),
+/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+///     pasta::fp::params(),
 ///     NetworkId::TESTNET,
 /// );
 /// ```
