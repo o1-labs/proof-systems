@@ -1,5 +1,4 @@
-//! This module implements Posedon constraint gate Plonk primitive.
-//! Constraint vector format: `[rc; SPONGE_WIDTH]: round constants`
+//! This module implements the Poseidon gate.
 
 use crate::circuits::{
     constraints::ConstraintSystem,
