@@ -64,11 +64,12 @@ impl<F: FftField> CircuitGate<F> {
                     .cloned(),
             );
         }
-        for i in 0..num {
+        for i in 0..num - 1 {
             gates.push(CircuitGate::create_cairo_transition(Wire::new(
                 row + 2 * num + i,
             )));
         }
+        gates.push(CircuitGate::zero(Wire::new(row + 3 * num - 1)));
         gates.push(CircuitGate::create_cairo_claim(Wire::new(row + 3 * num)));
 
         gates
@@ -376,8 +377,10 @@ mod tests {
         let circuit = CircuitGate::<F>::create_cairo_gadget(0, num);
 
         // Verify each gate
-        /*for gate in circuit {
+        let mut row = 0;
+        for gate in circuit {
             gate.verify_cairo_gate(row, &witness);
-        }*/
+            row = row + 1;
+        }
     }
 }

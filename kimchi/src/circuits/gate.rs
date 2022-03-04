@@ -488,7 +488,7 @@ impl<F: FftField> CircuitGate<F> {
     }
 
     /// This function verifies the consistency of the wire
-    /// assignements (witness) against the constraints
+    /// assignments (witness) against the constraints
     pub fn verify(
         &self,
         row: usize,

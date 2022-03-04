@@ -79,17 +79,17 @@
 //!- res: result of the operation in the right part
 //!
 //! The Kimchi 15 columns could be:
-//! GateType         CairoInstruction             CairoInstruction            CairoTransition         CairoMem?   CairoClaim
-//!    row   ->   1         2          3          4     2n                   2n+1        ......     3n
-//!     0    ·    pc        fPC_ABS    (next) pc        pc\[i\]           (c)  pc\[i+2\]              pc\[0\] (c)
-//!     1    ·    ap        fPC_REL    (next) ap  ...   ap\[i\]           (c)  ap\[i+2\]              ap\[0\] (c)
-//!  c  2    ·    fp        fPC_JNZ    (next) fp        fp\[i\]           (c)  fp\[i+2\]              fp\[0\] (c)
-//!  o  3    ·    size      fAP_ADD        .            size\[i\]         (c)    .                    pc\[2n-2\] (c)
-//!  l  4    ·    res       fAP_ONE        .            res\[i\]          (c)    .                    ap\[2n-2\] (c)
-//!  |  5    ·    dst       fOPC_CALL      .            dst\[i\]          (c)    .                    pc_ini
-//!  v  6    ·    op1       fOPC_RET                    op1\[i\]          (c)    .                    ap_ini
-//!     7         op0       fOPC_AEQ                    fPC_ABS\[i+1\]    (c)                         pc_fin
-//!     8         off_dst   fDST_FP                     fPC_REL\[i+1\]    (c)                         ap_fin
+//! GateType  CairoInstruction Zero  (...)              CairoTransition   (...)              Zero   CairoClaim     CairoMem?
+//!    row   ->   0         1          2          ...   2n                     2n+1  ......  3n -1       3n
+//!     0    ·    pc        fPC_ABS    (next) pc        pc\[i\]           (c)  pc\[i+2\] ... pc\[2n-2\]  pc\[0\] (c)
+//!     1    ·    ap        fPC_REL    (next) ap  ...   ap\[i\]           (c)  ap\[i+2\] ... ap\[2n-2\]  ap\[0\] (c)
+//!  c  2    ·    fp        fPC_JNZ    (next) fp        fp\[i\]           (c)  fp\[i+2\] ... fp\[2n-2\]  fp\[0\] (c)
+//!  o  3    ·    size      fAP_ADD        .            size\[i\]         (c)    .              .        pc\[2n-2\] (c)
+//!  l  4    ·    res       fAP_ONE        .            res\[i\]          (c)    .              .        ap\[2n-2\] (c)
+//!  |  5    ·    dst       fOPC_CALL      .            dst\[i\]          (c)    .              .        pc_ini
+//!  v  6    ·    op1       fOPC_RET                    op1\[i\]          (c)    .              .        ap_ini
+//!     7         op0       fOPC_AEQ                    fPC_ABS\[i+1\]    (c)                            pc_fin
+//!     8         off_dst   fDST_FP                     fPC_REL\[i+1\]    (c)                            ap_fin
 //!     9         off_op1   fOP0_FP                     fPC_JNZ\[i+1\]    (c)                         
 //!     10        off_op0   fOP1_VAL                    fAP_ADD\[i+1\]    (c)                         
 //!     11        adr_dst   fOP1_FP                     fAP_ONE\[i+1\]    (c)                         
