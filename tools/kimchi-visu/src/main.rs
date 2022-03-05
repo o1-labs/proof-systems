@@ -58,11 +58,8 @@ fn main() {
     };
 
     // create the constraint system
-    let cs = {
-        let fp_sponge_params = oracle::pasta::fp::params();
-        let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
-        cs
-    };
+    let cs =
+        ConstraintSystem::<Fp>::create(gates, vec![], oracle::pasta::fp::params(), public).unwrap();
 
     // create the SRS
     let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
