@@ -61,13 +61,15 @@ TODO: use expr to define the index columns?
 The double generic gate contains two generic gates.
 
 A generic gate is simply the 2-fan in gate specified in the
-vanilla PLONK protocol that allows us to do:
+vanilla PLONK protocol that allows us to do operations like:
 
 * addition of two registers (into an output register)
 * or multiplication of two registers
 * equality of a register with a constant
 
-In each cases, registers can also be scaled by a constant.
+More generally, the generic gate controls the coefficients $c_i$ in the equation:
+
+$$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
 
 The layout of the gate is the following:
 
