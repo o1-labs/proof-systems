@@ -93,6 +93,7 @@ where
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
+        println!("{:?}", index);
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
@@ -415,13 +416,15 @@ where
                 all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = t4
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed generic check");
+                }
             }
 
             // complete addition
@@ -429,13 +432,15 @@ where
             let add4 = add_constraint.evaluations(&env);
             t4 += &add4;
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = add4
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed addition check");
+                }
             }
 
             drop(add4);
@@ -447,26 +452,30 @@ where
                 .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
             let mut t8 = perm;
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = t8
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed permutation check");
+                }
             }
 
             // scalar multiplication
             let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
             t8 += &mul8;
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = mul8
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed scalar mul check");
+                }
             }
 
             drop(mul8);
@@ -475,13 +484,15 @@ where
             let emul8 = EndosclMul::combined_constraints(&all_alphas).evaluations(&env);
             t8 += &emul8;
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = emul8
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed endoscaling check");
+                }
             }
 
             drop(emul8);
@@ -490,13 +501,15 @@ where
             let emulscalar8 = EndomulScalar::combined_constraints(&all_alphas).evaluations(&env);
             t8 += &emulscalar8;
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = emulscalar8
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed endoscaling scalar check");
+                }
             }
 
             drop(emulscalar8);
@@ -505,13 +518,15 @@ where
             let pos8 = Poseidon::combined_constraints(&all_alphas).evaluations(&env);
             t8 += &pos8;
 
-            if cfg!(test) {
+            if true {
                 let (_, res) = pos8
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
-                assert!(res.is_zero());
+                if !res.is_zero() {
+                    panic!("Failed poseidon check");
+                }
             }
 
             drop(pos8);
@@ -530,34 +545,42 @@ where
                 let chacha_final = ChaChaFinal::combined_constraints(&all_alphas).evaluations(&env);
                 t4 += &chacha_final;
 
-                if cfg!(test) {
+                if true {
                     let (_, res) = chacha0
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
                         .unwrap();
-                    assert!(res.is_zero());
+                    if !res.is_zero() {
+                        panic!("Failed chacha0 check");
+                    }
 
                     let (_, res) = chacha1
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
                         .unwrap();
-                    assert!(res.is_zero());
+                    if !res.is_zero() {
+                        panic!("Failed chacha1 check");
+                    }
 
                     let (_, res) = chacha2
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
                         .unwrap();
-                    assert!(res.is_zero());
+                    if !res.is_zero() {
+                        panic!("Failed chacha2 check");
+                    }
 
                     let (_, res) = chacha_final
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
                         .unwrap();
-                    assert!(res.is_zero());
+                    if !res.is_zero() {
+                        panic!("Failed chacha3 check");
+                    }
                 }
             }
 
@@ -571,6 +594,15 @@ where
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
                     eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
+
+                    let (_, res) = eval
+                        .clone()
+                        .interpolate()
+                        .divide_by_vanishing_poly(index.cs.domain.d1)
+                        .unwrap();
+                    if !res.is_zero() {
+                        panic!("Failed lookup check");
+                    }
 
                     if eval.domain().size == t4.domain().size {
                         t4 += &eval;
