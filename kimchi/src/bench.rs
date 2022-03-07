@@ -1,6 +1,5 @@
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
         gate::CircuitGate,
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
@@ -11,19 +10,15 @@ use crate::{
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
-    srs::{endos, SRS},
-};
+use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
-use mina_curves::pasta::{fp::Fp, pallas::Affine as Other, vesta::Affine};
+use mina_curves::pasta::{fp::Fp, vesta::Affine};
 use oracle::{
     poseidon::PlonkSpongeConstants15W,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::sync::Arc;
 
 type SpongeParams = PlonkSpongeConstants15W;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
