@@ -8,32 +8,9 @@ use std::{
 
 use ark_ec::AffineCurve;
 use commitment_dlog::commitment::CommitmentCurve;
-use kimchi::{circuits::polynomial::COLUMNS, index::Index};
+use kimchi::{circuits::witness::Witness, index::Index};
 use serde::Serialize;
-use serde_with::serde_as;
 use tinytemplate::TinyTemplate;
-
-type Fr<G> = <G as AffineCurve>::ScalarField;
-
-/// Hack: as Fr<G> does not implement Serialize, we need to use [serde_as]
-#[serde_as]
-#[derive(Debug, Serialize)]
-pub struct Witness<G>
-where
-    G: AffineCurve,
-{
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    inner: [Vec<Fr<G>>; COLUMNS],
-}
-
-impl<G> From<[Vec<Fr<G>>; COLUMNS]> for Witness<G>
-where
-    G: AffineCurve,
-{
-    fn from(inner: [Vec<Fr<G>>; COLUMNS]) -> Self {
-        Witness { inner }
-    }
-}
 
 /// Contains variable used in the template
 #[derive(Serialize)]
@@ -42,8 +19,10 @@ struct Context {
     data: String,
 }
 
+type Fr<G> = <G as AffineCurve>::ScalarField;
+
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &Index<G>, witness: Option<Witness<G>>)
+pub fn visu<G>(index: &Index<G>, witness: Option<Witness<Fr<G>>>)
 where
     G: CommitmentCurve,
 {
