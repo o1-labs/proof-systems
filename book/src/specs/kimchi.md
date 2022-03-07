@@ -10,7 +10,7 @@ TKTK
 
 ### Polynomial Commitments
 
-Refer to the [specification on polynomial commitments](). We make use of the following functions from that specification:
+Refer to the [specification on polynomial commitments](./poly-commitment.md). We make use of the following functions from that specification:
 
 - `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
 - `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
@@ -19,7 +19,7 @@ Refer to the [specification on polynomial commitments](). We make use of the fol
 
 ### Poseidon hash function
 
-Refer to the [specification on Poseidon](). We make use of the following functions from that specification:
+Refer to the [specification on Poseidon](./poseidon.md). We make use of the following functions from that specification:
 
 - `Poseidon.init(params) -> FqSponge`
 - `Poseidon.update(field_elem)`
@@ -39,6 +39,8 @@ With the current parameters:
 ### Pasta
 
 Kimchi is made to work on cycles of curves, so the protocol switch between two fields Fq and Fr, where Fq represents the base field and Fr represents the scalar field.
+
+See the [Pasta curves specification](./pasta.md).
 
 ## Constraints
 
