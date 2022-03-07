@@ -9,6 +9,7 @@ members = [
     "oracle",
     "poly-commitment",
     "signer",
+    "tools/kimchi-visu",
     "utils",
 ]
 
