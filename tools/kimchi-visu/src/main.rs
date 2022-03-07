@@ -1,14 +1,9 @@
-use commitment_dlog::srs::{endos, SRS};
 use kimchi::{
-    circuits::{
-        constraints::ConstraintSystem, gate::CircuitGate, polynomials::generic::GenericGateSpec,
-        wires::Wire,
-    },
-    index::Index,
+    circuits::{gate::CircuitGate, polynomials::generic::GenericGateSpec, wires::Wire},
+    index::testing::new_index_for_test,
 };
 use kimchi_visu::visu;
-use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
-use std::sync::Arc;
+use mina_curves::pasta::Fp;
 
 fn main() {
     let public = 3;
@@ -57,21 +52,8 @@ fn main() {
         gates
     };
 
-    // create the constraint system
-    let cs =
-        ConstraintSystem::<Fp>::create(gates, vec![], oracle::pasta::fp::params(), public).unwrap();
-
-    // create the SRS
-    let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
-    srs.add_lagrange_basis(cs.domain.d1);
-    let srs = Arc::new(srs);
-
     // create the index
-    let index = {
-        let fq_sponge_params = oracle::pasta::fq::params();
-        let (endo_q, _endo_r) = endos::<Other>();
-        Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
-    };
+    let index = new_index_for_test(gates, public);
 
     // create the HTML
     visu(&index, None);

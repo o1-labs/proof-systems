@@ -5,7 +5,7 @@ use crate::{
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    index::{Index, VerifierIndex},
+    index::{testing::new_index_for_test, Index, VerifierIndex},
     prover::ProverProof,
 };
 use ark_ff::UniformRand;
@@ -66,18 +66,7 @@ impl BenchmarkCtx {
         let group_map = <Affine as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = {
-            let fp_sponge_params = oracle::pasta::fp::params();
-            let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, 0).unwrap();
-            let n = cs.domain.d1.size as usize;
-            let fq_sponge_params = oracle::pasta::fq::params();
-            let (endo_q, _endo_r) = endos::<Other>();
-
-            let mut srs = SRS::create(n);
-            srs.add_lagrange_basis(cs.domain.d1);
-            let srs = Arc::new(srs);
-            Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
-        };
+        let index = new_index_for_test(gates, 0);
 
         // create the verifier index
         let verifier_index = index.verifier_index();
