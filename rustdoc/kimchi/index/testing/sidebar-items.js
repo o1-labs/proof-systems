@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["new_index_for_test",""]]});
