@@ -1,19 +1,14 @@
-use std::sync::Arc;
-
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::{constraints::ConstraintSystem, gate::CircuitGate, wires::COLUMNS};
-use crate::{index::Index, prover::ProverProof};
+use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
+use crate::index::testing::new_index_for_test;
+use crate::prover::ProverProof;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
-    srs::{endos, SRS},
-};
+use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
@@ -46,15 +41,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     // create the index
-    let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
-    let n = cs.domain.d1.size as usize;
-    let fq_sponge_params = oracle::pasta::fq::params();
-    let (endo_q, _endo_r) = endos::<Other>();
-    let mut srs = SRS::create(n);
-    srs.add_lagrange_basis(cs.domain.d1);
-    let srs = Arc::new(srs);
-    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let index = new_index_for_test(gates, public);
 
     // verify the circuit satisfiability by the computed witness
     index.cs.verify(&witness).unwrap();

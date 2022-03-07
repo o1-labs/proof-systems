@@ -1,24 +1,19 @@
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
         polynomials::endomul_scalar,
         wires::*,
     },
-    index::Index,
+    index::testing::new_index_for_test,
     prover::ProverProof,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::{
-    commitment::CommitmentCurve,
-    srs::{endos, SRS},
-};
+use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp as F,
-    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
@@ -26,7 +21,7 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 const PUBLIC: usize = 0;
 
@@ -36,8 +31,6 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn endomul_scalar_test() {
-    let fp_sponge_params = oracle::pasta::fp::params();
-
     let bits_per_row = 2 * 8;
     let num_bits = 128;
     let rows_per_scalar = num_bits / bits_per_row;
@@ -59,19 +52,8 @@ fn endomul_scalar_test() {
         }
     }
 
-    let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
-    let _n = cs.domain.d1.size as usize;
-
-    let mut srs = SRS::create(cs.domain.d1.size as usize);
-    srs.add_lagrange_basis(cs.domain.d1);
-
-    let fq_sponge_params = oracle::pasta::fq::params();
-    let (endo_q, _endo_r) = endos::<Other>();
+    let index = new_index_for_test(gates, PUBLIC);
     let (_, endo_scalar_coeff) = endos::<Affine>();
-
-    let srs = Arc::new(srs);
-
-    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
 
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 
