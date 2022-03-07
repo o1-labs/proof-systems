@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["visu","Produces a `circuit.html` in the current folder."]],"struct":[["Witness","Hack: as Fr does not implement Serialize, we need to use [serde_as]"]]});
