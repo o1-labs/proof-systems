@@ -115,7 +115,100 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.</span>
+
+<span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.</span>
+<span class="comment">//~ A state is represents by 3 field elements. For example,</span>
+<span class="comment">//~ the first state is represented by `(s0, s0, s0)`,</span>
+<span class="comment">//~ and the next state, after permutation, is represented by `(s1, s1, s1)`.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Below is how we store each state in the register table:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
+<span class="comment">//~ | s0 | s0 | s0 | s4 | s4 | s4 | s1 | s1 | s1 | s2 | s2 | s2 | s3 | s3 | s3 |</span>
+<span class="comment">//~ | s5 | s5 | s5 |    |    |    |    |    |    |    |    |    |    |    |    |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The last state is stored on the next row. This last state is either used:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * with another Poseidon gate on that next row, representing the next 5 rounds.</span>
+<span class="comment">//~ * or with a Zero gate, and a permutation to use the output elsewhere in the circuit.</span>
+<span class="comment">//~ * or with another gate expecting an input of 3 field elements in its first registers.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```admonish</span>
+<span class="comment">//~ As some of the poseidon hash variants might not use $5k$ rounds (for some $k$),</span>
+<span class="comment">//~ the result of the 4-th round is stored directly after the initial state.</span>
+<span class="comment">//~ This makes that state accessible to the permutation.</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Cache</span>, <span class="ident">ConstantExpr</span>};
@@ -127,12 +220,13 @@
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// An equation of the form `(curr | next)[i] = round(curr[j])`</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RoundEquation</span> {
+<span class="kw">struct</span> <span class="ident">RoundEquation</span> {
     <span class="kw">pub</span> <span class="ident">source</span>: <span class="ident">usize</span>,
     <span class="kw">pub</span> <span class="ident">target</span>: (<span class="ident">CurrOrNext</span>, <span class="ident">usize</span>),
 }
 
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUND_EQUATIONS</span>: [<span class="ident">RoundEquation</span>; <span class="ident">ROUNDS_PER_ROW</span>] <span class="op">=</span> [
+<span class="doccomment">/// For each round, the tuple (row, round) its state permutes to</span>
+<span class="kw">const</span> <span class="ident">ROUND_EQUATIONS</span>: [<span class="ident">RoundEquation</span>; <span class="ident">ROUNDS_PER_ROW</span>] <span class="op">=</span> [
     <span class="ident">RoundEquation</span> {
         <span class="ident">source</span>: <span class="number">0</span>,
         <span class="ident">target</span>: (<span class="ident">Curr</span>, <span class="number">1</span>),
@@ -196,6 +290,7 @@
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idx</span> <span class="op">=</span> <span class="number">0</span>;
 
+        <span class="comment">//~ We define $M_{r, c}$ as the MDS matrix at row $r$ and column $c$.</span>
         <span class="kw">let</span> <span class="ident">mds</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">row</span><span class="op">|</span> {
                 (<span class="number">0</span>..<span class="ident">SPONGE_WIDTH</span>)
@@ -209,20 +304,61 @@
                 <span class="ident">source</span>,
                 <span class="ident">target</span>: (<span class="ident">target_row</span>, <span class="ident">target_round</span>),
             } <span class="op">=</span> <span class="ident">e</span>;
+            <span class="comment">//~</span>
+            <span class="comment">//~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.</span>
             <span class="kw">let</span> <span class="ident">sboxed</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="ident">source</span>)
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">witness_curr</span>(<span class="ident">i</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstants15W::SPONGE_BOX</span>)))
                 .<span class="ident">collect</span>();
 
-            <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">round_to_cols</span>(<span class="ident">target_round</span>).<span class="ident">enumerate</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">j</span>, <span class="ident">col</span>)<span class="op">|</span> {
+            <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">col</span>) <span class="kw">in</span> <span class="ident">round_to_cols</span>(<span class="ident">target_round</span>).<span class="ident">enumerate</span>() {
+                <span class="comment">//~</span>
+                <span class="comment">//~ We store the 15 round constants $r_i$ required for the 5 rounds (3 per round) in the coefficient table:</span>
+                <span class="comment">//~</span>
+                <span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |</span>
+                <span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
+                <span class="comment">//~ | r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |</span>
                 <span class="kw">let</span> <span class="ident">rc</span> <span class="op">=</span> <span class="ident">coeff</span>(<span class="ident">idx</span>);
 
                 <span class="ident">idx</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-                <span class="ident">witness</span>(<span class="ident">col</span>, <span class="ident">target_row</span>)
+
+                <span class="comment">//~</span>
+                <span class="comment">//~ The initial state, stored in the first three registers, are not constrained.</span>
+                <span class="comment">//~ The following 4 states (of 3 field elements), including 1 in the next row,</span>
+                <span class="comment">//~ are constrained to represent the 5 rounds of permutation.</span>
+                <span class="comment">//~ Each of the associated 15 registers is associated to a constraint, calculated as:</span>
+                <span class="comment">//~</span>
+                <span class="comment">//~ first round:</span>
+                <span class="comment">//~ * $w_6 - r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)$</span>
+                <span class="comment">//~ * $w_7 - r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)$</span>
+                <span class="comment">//~ * $w_8 - r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)$</span>
+                <span class="comment">//~</span>
+                <span class="comment">//~ second round:</span>
+                <span class="comment">//~ * $w_9 - r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)$</span>
+                <span class="comment">//~ * $w_{10} - r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)$</span>
+                <span class="comment">//~ * $w_{11} - r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)$</span>
+                <span class="comment">//~</span>
+                <span class="comment">//~ third round:</span>
+                <span class="comment">//~ * $w_{12} - r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)$</span>
+                <span class="comment">//~ * $w_{13} - r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)$</span>
+                <span class="comment">//~ * $w_{14} - r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)$</span>
+                <span class="comment">//~</span>
+                <span class="comment">//~ fourth round:</span>
+                <span class="comment">//~ * $w_3 - r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)$</span>
+                <span class="comment">//~ * $w_4 - r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)$</span>
+                <span class="comment">//~ * $w_5 - r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)$</span>
+                <span class="comment">//~</span>
+                <span class="comment">//~ fifth round:</span>
+                <span class="comment">//~ * $w_{0, next} - r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)$</span>
+                <span class="comment">//~ * $w_{1, next} - r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)$</span>
+                <span class="comment">//~ * $w_{2, next} - r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)$</span>
+                <span class="comment">//~</span>
+                <span class="kw">let</span> <span class="ident">constraint</span> <span class="op">=</span> <span class="ident">witness</span>(<span class="ident">col</span>, <span class="ident">target_row</span>)
                     <span class="op">-</span> <span class="ident">sboxed</span>
                         .<span class="ident">iter</span>()
                         .<span class="ident">zip</span>(<span class="ident">mds</span>[<span class="ident">j</span>].<span class="ident">iter</span>())
-                        .<span class="ident">fold</span>(<span class="ident">rc</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">x</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>())
-            }));
+                        .<span class="ident">fold</span>(<span class="ident">rc</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">x</span>, <span class="ident">c</span>)<span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">E::Constant</span>(<span class="ident">c</span>.<span class="ident">clone</span>()) <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>());
+                <span class="ident">res</span>.<span class="ident">push</span>(<span class="ident">constraint</span>);
+            }
         }
         <span class="ident">res</span>
     }

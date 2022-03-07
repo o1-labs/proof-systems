@@ -527,46 +527,41 @@
 <span id="522">522</span>
 <span id="523">523</span>
 <span id="524">524</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate,</span>
-<span class="doccomment">//! which contains two generic gates.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! A generic gate is simply the 2-fan in gate specified in the</span>
-<span class="doccomment">//! vanilla PLONK protocol that allows us to do:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * addition of two registers (into an output register)</span>
-<span class="doccomment">//! * or multiplication of two registers</span>
-<span class="doccomment">//! * equality of a register with a constant</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! In each cases, registers can also be scaled by a constant.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The layout of the gate is the following:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |</span>
-<span class="doccomment">//! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
-<span class="doccomment">//! | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |    |</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! where l1, r1, and o1 (resp. l2, r2, o2)</span>
-<span class="doccomment">//! are the left, right, and output registers</span>
-<span class="doccomment">//! of the first (resp. second) generic gate.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! For the selector:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |</span>
-<span class="doccomment">//! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
-<span class="doccomment">//! | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2  |    |    |    |    |    |</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! with m1 (resp. m2) the mul selector for the first (resp. second) gate,</span>
-<span class="doccomment">//! and c1 (resp. c2) the constant selector for the first (resp. second) gate.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The polynomial looks like this:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! [</span>
-<span class="doccomment">//!   alpha1 * (w0 * coeff0 + w1 * coeff1 + w2 * coeff2 + w0 * w1 * coeff3 + coeff4) +</span>
-<span class="doccomment">//!   alpha2 * (w3 * coeff5 + w4 * coeff6 + w5 * coeff7 + w3 w4 coeff8 + coeff9)</span>
-<span class="doccomment">//! ] * generic_selector</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
+<span id="525">525</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.</span>
+
+<span class="comment">//~ The double generic gate contains two generic gates.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ A generic gate is simply the 2-fan in gate specified in the</span>
+<span class="comment">//~ vanilla PLONK protocol that allows us to do operations like:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * addition of two registers (into an output register)</span>
+<span class="comment">//~ * or multiplication of two registers</span>
+<span class="comment">//~ * equality of a register with a constant</span>
+<span class="comment">//~</span>
+<span class="comment">//~ More generally, the generic gate controls the coefficients $c_i$ in the equation:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The layout of the gate is the following:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|</span>
+<span class="comment">//~ | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ where l1, r1, and o1 (resp. l2, r2, o2)</span>
+<span class="comment">//~ are the left, right, and output registers</span>
+<span class="comment">//~ of the first (resp. second) generic gate.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The selectors are stored in the coefficient table as:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|</span>
+<span class="comment">//~ | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ with m1 (resp. m2) the mul selector for the first (resp. second) gate,</span>
+<span class="comment">//~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.</span>
+<span class="comment">//~</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::ConstraintSystem</span>,
@@ -690,6 +685,13 @@
 }
 
 <span class="comment">// -------------------------------------------------</span>
+
+<span class="comment">//~ The constraints:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$</span>
+<span class="comment">//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ where the $c_i$ are the [coefficients]().</span>
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// generic constraint quotient poly contribution computation</span>
