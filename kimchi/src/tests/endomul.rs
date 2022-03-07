@@ -1,9 +1,10 @@
+use crate::circuits::wires::Wire;
 use crate::prover::ProverProof;
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
         polynomials::endosclmul,
-        wires::*,
+        witness::COLUMNS,
     },
     index::testing::new_index_for_test,
 };

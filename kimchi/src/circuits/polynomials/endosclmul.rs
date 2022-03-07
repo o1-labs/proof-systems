@@ -33,7 +33,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
     gate::GateType,
-    wires::COLUMNS,
+    witness::COLUMNS,
 };
 use ark_ff::{FftField, Field, One};
 use std::marker::PhantomData;

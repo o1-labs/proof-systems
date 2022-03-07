@@ -1,8 +1,6 @@
 use crate::{
     circuits::{
-        gate::CircuitGate,
-        polynomials::generic::GenericGateSpec,
-        wires::{Wire, COLUMNS},
+        gate::CircuitGate, polynomials::generic::GenericGateSpec, wires::Wire, witness::COLUMNS,
     },
     index::{testing::new_index_for_test, Index, VerifierIndex},
     prover::ProverProof,

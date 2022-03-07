@@ -16,7 +16,7 @@ use crate::{
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
-        wires::{COLUMNS, PERMUTS},
+        witness::{COLUMNS, PERMUTS},
     },
     error::{ProofError, Result},
     index::Index,

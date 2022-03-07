@@ -2,8 +2,10 @@
 
 use crate::{
     circuits::{
-        constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*,
+        constraints::ConstraintSystem,
+        polynomial::WitnessOverDomains,
+        scalars::ProofEvaluations,
+        witness::{COLUMNS, PERMUTS},
     },
     error::{ProofError, Result},
 };

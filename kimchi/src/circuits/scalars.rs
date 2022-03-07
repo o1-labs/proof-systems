@@ -1,6 +1,6 @@
 //! This module implements Plonk prover polynomial evaluations primitive.
 
-use crate::circuits::wires::*;
+use crate::circuits::witness::{COLUMNS, PERMUTS};
 use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;

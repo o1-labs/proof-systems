@@ -14,7 +14,7 @@ use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupsUsed},
-    wires::*,
+    witness::{COLUMNS, PERMUTS},
 };
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, PrimeField, SquareRootField};

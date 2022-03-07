@@ -30,9 +30,7 @@ use crate::circuits::expr;
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::{
-    constraints::ConstraintSystem,
-    scalars::ProofEvaluations,
-    wires::{GateWires, COLUMNS},
+    constraints::ConstraintSystem, scalars::ProofEvaluations, wires::GateWires, witness::COLUMNS,
 };
 use ark_ff::FftField;
 use array_init::array_init;

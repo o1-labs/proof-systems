@@ -4,7 +4,8 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    wires::*,
+    wires::Wire,
+    witness::{COLUMNS, PERMUTS},
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::UVPolynomial;
@@ -399,12 +400,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // pad the rows: add zero gates to reach the domain size
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
-            .map(|i| {
-                CircuitGate::<F>::zero(array_init(|j| Wire {
-                    col: WIRES[j],
-                    row: i,
-                }))
-            })
+            .map(|row| CircuitGate::<F>::zero(array_init(|col| Wire { col, row })))
             .collect();
         gates.append(&mut padding);
 

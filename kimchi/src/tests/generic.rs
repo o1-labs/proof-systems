@@ -1,5 +1,5 @@
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
+use crate::circuits::{gate::CircuitGate, witness::COLUMNS};
 use crate::index::testing::new_index_for_test;
 use crate::prover::ProverProof;
 use ark_ff::{UniformRand, Zero};

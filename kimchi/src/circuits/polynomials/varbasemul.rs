@@ -13,7 +13,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache, Column, Variable},
     gate::{CurrOrNext, GateType},
-    wires::COLUMNS,
+    witness::COLUMNS,
 };
 use ark_ff::{FftField, One};
 

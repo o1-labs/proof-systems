@@ -1,9 +1,5 @@
 use crate::{
-    circuits::{
-        gate::CircuitGate,
-        polynomials::chacha,
-        wires::{Wire, COLUMNS},
-    },
+    circuits::{gate::CircuitGate, polynomials::chacha, wires::Wire, witness::COLUMNS},
     index::testing::new_index_for_test,
     prover::ProverProof,
 };

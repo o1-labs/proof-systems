@@ -515,7 +515,7 @@ mod tests {
             expr::{Column, Constants, PolishToken},
             gate::LookupInfo,
             scalars::{LookupEvaluations, ProofEvaluations},
-            wires::*,
+            witness::COLUMNS,
         },
     };
     use ark_ff::UniformRand;

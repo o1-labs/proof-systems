@@ -95,7 +95,7 @@
 //!
 
 use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::wires::{GateWires, COLUMNS};
+use crate::circuits::{wires::GateWires, witness::COLUMNS};
 use ark_ff::FftField;
 
 impl<F: FftField> CircuitGate<F> {

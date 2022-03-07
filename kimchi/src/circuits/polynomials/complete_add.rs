@@ -15,7 +15,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
-    wires::COLUMNS,
+    witness::COLUMNS,
 };
 use ark_ff::{FftField, Field, One};
 

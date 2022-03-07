@@ -5,7 +5,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
-    wires::COLUMNS,
+    witness::COLUMNS,
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;

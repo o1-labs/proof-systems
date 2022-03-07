@@ -1,6 +1,8 @@
 //! This module implements Plonk constraint gate primitive.
 
-use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
+use crate::circuits::{
+    constraints::ConstraintSystem, domains::EvaluationDomains, wires::GateWires, witness::COLUMNS,
+};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
@@ -616,6 +618,8 @@ pub mod caml {
 
 #[cfg(test)]
 mod tests {
+    use crate::circuits::witness::PERMUTS;
+
     use super::*;
     use ark_ff::UniformRand as _;
     use mina_curves::pasta::Fp;

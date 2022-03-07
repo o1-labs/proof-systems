@@ -1,6 +1,6 @@
 //! This module implements Plonk prover polynomials primitive.
 
-pub use super::wires::COLUMNS;
+pub use super::witness::COLUMNS;
 use ark_ff::FftField;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 

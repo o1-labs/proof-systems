@@ -9,7 +9,7 @@ use crate::{
         gate::{GateType, LookupsUsed},
         polynomials::{generic, permutation},
         scalars::RandomOracles,
-        wires::*,
+        witness::{COLUMNS, PERMUTS},
     },
     error::{ProofError, Result},
     index::{LookupVerifierIndex, VerifierIndex},

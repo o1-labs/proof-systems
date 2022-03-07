@@ -1,7 +1,8 @@
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
-        wires::*,
+        wires::Wire,
+        witness::COLUMNS,
     },
     index::testing::new_index_for_test,
     prover::ProverProof,

@@ -3,7 +3,8 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
-    wires::{GateWires, Wire, COLUMNS},
+    wires::{GateWires, Wire},
+    witness::{Witness, COLUMNS},
 };
 use ark_ff::{FftField, Field};
 use array_init::array_init;
@@ -190,13 +191,13 @@ impl<F: FftField> CircuitGate<F> {
 pub fn generate_witness<F: Field>(
     row: usize,
     params: ArithmeticSpongeParams<F>,
-    witness_cols: &mut [Vec<F>; COLUMNS],
+    witness: &mut Witness<F>,
     input: [F; SPONGE_WIDTH],
 ) {
     // add the input into the witness
-    witness_cols[0][row] = input[0];
-    witness_cols[1][row] = input[1];
-    witness_cols[2][row] = input[2];
+    witness.set(row, 0, input[0]);
+    witness.set(row, 1, input[1]);
+    witness.set(row, 2, input[2]);
 
     // set the sponge state
     let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstants15W>::new(params);
@@ -224,7 +225,8 @@ pub fn generate_witness<F: Field>(
 
             // apply the sponge and record the result in the witness
             let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
-            witness_cols[cols_to_update]
+            witness
+                .get_cols_mut(cols_to_update)
                 .iter_mut()
                 .zip(sponge.state.iter())
                 // update the state (last update is on the next row)

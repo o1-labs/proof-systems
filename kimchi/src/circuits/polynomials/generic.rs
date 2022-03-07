@@ -460,7 +460,7 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::wires::COLUMNS;
+    use crate::circuits::witness::COLUMNS;
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;

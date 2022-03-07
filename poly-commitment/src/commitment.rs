@@ -367,6 +367,9 @@ pub trait CommitmentCurve: AffineCurve {
     type Params: SWModelParameters;
     type Map: GroupMap<Self::BaseField>;
 
+    // TODO: once https://github.com/rust-lang/rust/issues/29661 is in we can use the following:
+    // type Fr = CommitmentCurve::ScalarField;
+
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
     fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
 

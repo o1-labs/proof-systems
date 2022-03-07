@@ -2,7 +2,8 @@ use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
         polynomials::endomul_scalar,
-        wires::*,
+        wires::Wire,
+        witness::COLUMNS,
     },
     index::testing::new_index_for_test,
     prover::ProverProof,

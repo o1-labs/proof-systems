@@ -3,7 +3,7 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CurrOrNext, GateType},
     scalars::ProofEvaluations,
-    wires::COLUMNS,
+    witness::COLUMNS,
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{

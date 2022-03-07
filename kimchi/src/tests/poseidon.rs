@@ -2,14 +2,14 @@ use crate::{
     circuits::{
         gate::CircuitGate,
         gates::poseidon::{self, ROUNDS_PER_ROW},
-        wires::{Wire, COLUMNS},
+        wires::Wire,
+        witness::Witness,
     },
     index::testing::new_index_for_test,
 };
 use crate::{index::Index, prover::ProverProof};
-use ark_ff::{UniformRand, Zero};
+use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-use array_init::array_init;
 use colored::Colorize;
 use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
 use groupmap::GroupMap;
@@ -108,8 +108,7 @@ fn positive(index: &Index<Affine>) {
     let mut start = Instant::now();
     for test in 0..1 {
         // witness for Poseidon permutation custom constraints
-        let mut witness_cols: [Vec<Fp>; COLUMNS] =
-            array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
+        let mut witness = Witness::new(POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */);
 
         // creates a random input
         let input = [Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
@@ -119,16 +118,12 @@ fn positive(index: &Index<Affine>) {
             // index
             let first_row = h * (POS_ROWS_PER_HASH + 1);
 
-            poseidon::generate_witness(
-                first_row,
-                oracle::pasta::fp::params(),
-                &mut witness_cols,
-                input,
-            );
+            poseidon::generate_witness(first_row, oracle::pasta::fp::params(), &mut witness, input);
         }
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness_cols).unwrap();
+        let witness = witness.inner();
+        index.cs.verify(&witness).unwrap();
 
         //
         let prev = {
@@ -148,13 +143,8 @@ fn positive(index: &Index<Affine>) {
         // add the proof to the batch
         // TODO: create and verify should not take group_map, that should be during an init phase
         batch.push(
-            ProverProof::create::<BaseSponge, ScalarSponge>(
-                &group_map,
-                witness_cols,
-                index,
-                vec![prev],
-            )
-            .unwrap(),
+            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, index, vec![prev])
+                .unwrap(),
         );
 
         print!("{:?}\r", test);
