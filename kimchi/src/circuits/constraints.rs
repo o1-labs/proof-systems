@@ -372,7 +372,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_tables8,
                     lookup_tables: lookup_tables_polys,
                     lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row,
+                    max_lookups_per_row: lookup_info.max_per_row as usize,
                     max_joint_size: lookup_info.max_joint_size,
                 })
             }

@@ -54,7 +54,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
-    const CONSTRAINTS: usize = 7;
+    const CONSTRAINTS: u32 = 7;
 
     fn constraints() -> Vec<E<F>> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints

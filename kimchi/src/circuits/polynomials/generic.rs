@@ -45,7 +45,7 @@ use array_init::array_init;
 use rayon::prelude::*;
 
 /// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 2;
+pub const CONSTRAINTS: u32 = 2;
 
 /// Number of generic of registers by a single generic gate
 pub const GENERIC_REGISTERS: usize = 3;
