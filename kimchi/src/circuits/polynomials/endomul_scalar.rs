@@ -124,7 +124,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
-    const CONSTRAINTS: usize = 11;
+    const CONSTRAINTS: u32 = 11;
 
     fn constraints() -> Vec<E<F>> {
         let n0 = witness_curr(0);

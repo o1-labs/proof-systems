@@ -17,7 +17,7 @@ use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
 
 /// Number of constraints produced by the argument.
-pub const CONSTRAINTS: usize = 3;
+pub const CONSTRAINTS: u32 = 3;
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
