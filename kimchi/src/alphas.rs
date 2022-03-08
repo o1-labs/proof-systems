@@ -99,8 +99,7 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty))
-            .clone();
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
 
         if num > range.1 {
             panic!(
@@ -146,8 +145,7 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty))
-            .clone();
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
 
         if num > range.1 {
             panic!(
