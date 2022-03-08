@@ -7,6 +7,30 @@ use ark_ff::Field;
 
 use super::cairo::word::{FlagBits, Offsets};
 
+/*
+pub fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
+    let rows = witness[0].len();
+    for i in 0..rows {
+        print!("row {}: [", i);
+        for j in 0..witness.len() {
+            print!("{} , ", witness[j][i].to_u64());
+        }
+        println!("]");
+    }
+}
+
+fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
+    let rows = table.len();
+    for i in 0..rows {
+        print!("row {}: [", i);
+        for j in 0..COLUMNS {
+            print!("{} , ", table[i][j].to_u64());
+        }
+        println!("]");
+    }
+}
+*/
+
 /// Returns
 pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     // 2 row per instruction for CairoInstruction gate
@@ -24,14 +48,14 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
         table[2 * i + 1] = flags;
         table[2 * n + i] = transition_gate(inst);
     }
-    table[rows - 1] = claim_gate(&prog);
+    table[rows - 1] = claim_gate(prog);
 
     let mut witness: [Vec<F>; COLUMNS] = Default::default();
     for col in 0..COLUMNS {
         // initialize column with zeroes
         witness[col].resize(table.len(), F::zero());
         for (row, wit) in table.iter().enumerate() {
-            witness[col][row] = wit[row];
+            witness[col][row] = wit[col];
         }
     }
     witness

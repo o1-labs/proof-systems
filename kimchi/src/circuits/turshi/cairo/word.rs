@@ -219,43 +219,37 @@ impl<F: Field> FlagBits<F> for CairoWord<F> {
 impl<F: Field> FlagSets<F> for CairoWord<F> {
     fn dst_reg(&self) -> u8 {
         // dst_reg = fDST_REG
-        self.f_dst_fp().least_significant_byte()
+        self.f_dst_fp().lsb()
     }
 
     fn op0_reg(&self) -> u8 {
         // op0_reg = fOP0_REG
-        self.f_op0_fp().least_significant_byte()
+        self.f_op0_fp().lsb()
     }
 
     fn op1_src(&self) -> u8 {
         // op1_src = 4*fOP1_AP + 2*fOP1_FP + fOP1_VAL
-        2 * (2 * self.f_op1_ap().least_significant_byte()
-            + self.f_op1_fp().least_significant_byte())
-            + self.f_op1_val().least_significant_byte()
+        2 * (2 * self.f_op1_ap().lsb() + self.f_op1_fp().lsb()) + self.f_op1_val().lsb()
     }
 
     fn res_log(&self) -> u8 {
         // res_log = 2*fRES_MUL + fRES_ADD
-        2 * self.f_res_mul().least_significant_byte() + self.f_res_add().least_significant_byte()
+        2 * self.f_res_mul().lsb() + self.f_res_add().lsb()
     }
 
     fn pc_up(&self) -> u8 {
         // pc_up = 4*fPC_JNZ + 2*fPC_REL + fPC_ABS
-        2 * (2 * self.f_pc_jnz().least_significant_byte()
-            + self.f_pc_rel().least_significant_byte())
-            + self.f_pc_abs().least_significant_byte()
+        2 * (2 * self.f_pc_jnz().lsb() + self.f_pc_rel().lsb()) + self.f_pc_abs().lsb()
     }
 
     fn ap_up(&self) -> u8 {
         // ap_up = 2*fAP_ONE + fAP_ADD
-        2 * self.f_ap_one().least_significant_byte() + self.f_ap_add().least_significant_byte()
+        2 * self.f_ap_one().lsb() + self.f_ap_add().lsb()
     }
 
     fn opcode(&self) -> u8 {
         // opcode = 4*fOPC_AEQ + 2*fOPC_RET + fOPC_CALL
-        2 * (2 * self.f_opc_aeq().least_significant_byte()
-            + self.f_opc_ret().least_significant_byte())
-            + self.f_opc_call().least_significant_byte()
+        2 * (2 * self.f_opc_aeq().lsb() + self.f_opc_ret().lsb()) + self.f_opc_call().lsb()
     }
 }
 

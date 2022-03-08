@@ -8,7 +8,7 @@ use o1_utils::FieldHelpers;
 /// Field element helpers for Cairo
 pub trait CairoFieldHelpers<F> {
     /// Return field element as byte, if it fits. Otherwise returns least significant byte
-    fn least_significant_byte(self) -> u8;
+    fn lsb(self) -> u8;
 
     /// Return pos-th 16-bit chunk as another field element
     fn chunk_u16(self, pos: usize) -> F;
@@ -16,15 +16,15 @@ pub trait CairoFieldHelpers<F> {
     /// Return first 64 bits of the field element
     fn to_u64(self) -> u64;
 
-    /// Return a field element in hexadecimal in little endian
-    fn to_hex_le(self) -> String;
+    /// Return a field element in hexadecimal in big endian
+    fn to_hex_be(self) -> String;
 
     /// Return a vector of field elements from a vector of i128
     fn vec_to_field(vec: &[i128]) -> Vec<F>;
 }
 
 impl<F: Field> CairoFieldHelpers<F> for F {
-    fn least_significant_byte(self) -> u8 {
+    fn lsb(self) -> u8 {
         self.to_bytes()[0]
     }
 
@@ -43,7 +43,7 @@ impl<F: Field> CairoFieldHelpers<F> for F {
         acc
     }
 
-    fn to_hex_le(self) -> String {
+    fn to_hex_be(self) -> String {
         let mut bytes = self.to_bytes();
         bytes.reverse();
         hex::encode(bytes)

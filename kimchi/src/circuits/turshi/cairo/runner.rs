@@ -414,9 +414,12 @@ impl<'a, F: Field> CairoStep<'a, F> {
             /*1*/
             // "call" instruction
             self.mem.write(self.curr.ap, self.curr.fp); // Save current fp
+            self.vars.dst = self.mem.read(self.curr.ap); // update dst content
             self.mem
                 .write(self.curr.ap + F::one(), self.curr.pc + self.vars.size); // Save next instruction
-                                                                                // Update fp
+            self.vars.op0 = self.mem.read(self.curr.ap + F::one()); //update op0 content
+
+            // Update fp
             next_fp = Some(self.curr.ap + F::from(2u32)); // pointer for next frame is after current fp and instruction after call
                                                           // Update ap
             match self.instr().ap_up() {
@@ -461,6 +464,7 @@ impl<'a, F: Field> CairoStep<'a, F> {
                             self.vars.dst.expect("None dst after OPC_AEQ"),
                         );
                         // update the value of the variable as well
+                        self.vars.op1 = self.mem.read(self.vars.adr_op1);
                         self.vars.res = self.mem.read(self.vars.adr_op1);
                     } else {
                         // dst = res

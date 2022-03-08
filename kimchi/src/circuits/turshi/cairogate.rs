@@ -3,7 +3,7 @@
 use ark_ff::FftField;
 use array_init::array_init;
 
-use crate::circuits::constraints::ConstraintSystem;
+//use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::wires::{GateWires, Wire, COLUMNS};
 
@@ -71,7 +71,6 @@ impl<F: FftField> CircuitGate<F> {
         }
         gates.push(CircuitGate::zero(Wire::new(row + 3 * num - 1)));
         gates.push(CircuitGate::create_cairo_claim(Wire::new(row + 3 * num)));
-
         gates
     }
 
@@ -84,16 +83,18 @@ impl<F: FftField> CircuitGate<F> {
     ) -> Result<(), String> {
         // assignments
         let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
 
         match self.typ {
+            GateType::Zero => Ok(()),
             GateType::CairoInstruction => {
-                CircuitGate::verify_instruction(&this.to_vec(), &next.to_vec())
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                CircuitGate::verify_instruction(&this, &next)
             }
             GateType::CairoTransition => {
-                CircuitGate::verify_transition(&this.to_vec(), &next.to_vec())
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                CircuitGate::verify_transition(&this, &next)
             }
-            GateType::CairoClaim => CircuitGate::verify_claim(&this.to_vec()),
+            GateType::CairoClaim => CircuitGate::verify_claim(&this),
             // TODO(querolita): memory related checks
             _ => Err(
                 "Incorrect GateType: expected CairoInstruction, CairoTransition, or CairoClaim"
@@ -102,7 +103,7 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    fn verify_instruction(vars: &Vec<F>, flags: &Vec<F>) -> Result<(), String> {
+    fn verify_instruction(vars: &[F], flags: &[F]) -> Result<(), String> {
         let pc = vars[0];
         let ap = vars[1];
         let fp = vars[2];
@@ -145,14 +146,13 @@ impl<F: FftField> CircuitGate<F> {
 
         // check booleanity of flags
         // fi * (1-fi) == 0 for i=[0..15)
-        for i in 0..15 {
-            ensure_eq!(zero, flags[i] * (one - flags[i]), "non-boolean flags");
+        for &flag in flags.iter().take(NUM_FLAGS - 1) {
+            ensure_eq!(zero, flag * (one - flag), "non-boolean flags");
         }
 
         // well formness of instruction
         // rotate flags to its natural ordering
-        let idxs: Vec<usize> = (0..NUM_FLAGS - 1).collect();
-        let mut flags: Vec<F> = idxs.into_iter().map(|i| flags[i]).collect();
+        let mut flags: Vec<F> = (0..NUM_FLAGS - 1).map(|i| flags[i]).collect();
         flags.rotate_right(7);
 
         let shape = {
@@ -167,12 +167,12 @@ impl<F: FftField> CircuitGate<F> {
                 aux = aux * F::from(2u32) + flags[i];
             }
             // complete with "flags" * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
-            ((aux + op1_sft) * pow16 + op0_sft) * pow16 + dst_sft
+            ((aux * pow16 + op1_sft) * pow16 + op0_sft) * pow16 + dst_sft
         };
         ensure_eq!(
             zero,
             instr - shape,
-            "wrong decomposition of the instructoin"
+            "wrong decomposition of the instruction"
         );
 
         // check no two flags of same set are nonzero
@@ -186,6 +186,7 @@ impl<F: FftField> CircuitGate<F> {
             op1_set * (one - op1_set),
             "invalid format of `op1_src`"
         );
+
         ensure_eq!(
             zero,
             res_set * (one - res_set),
@@ -261,7 +262,7 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    fn verify_transition(curr: &Vec<F>, next: &Vec<F>) -> Result<(), String> {
+    fn verify_transition(curr: &[F], next: &[F]) -> Result<(), String> {
         let pc = curr[0];
         let ap = curr[1];
         let fp = curr[2];
@@ -326,7 +327,7 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    fn verify_claim(claim: &Vec<F>) -> Result<(), String> {
+    fn verify_claim(claim: &[F]) -> Result<(), String> {
         let pc0 = claim[0];
         let ap0 = claim[1];
         let fp0 = claim[2];
@@ -352,11 +353,66 @@ impl<F: FftField> CircuitGate<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::circuits::turshi::cairo::helper::*;
     use crate::circuits::turshi::cairo::memory::CairoMemory;
     use crate::circuits::turshi::cairo::runner::CairoProgram;
     use crate::circuits::turshi::witness::*;
     //use ark_ff::{One, Zero};
     use mina_curves::pasta::fp::Fp as F;
+
+    #[test]
+    fn test_long_cairo_gate() {
+        let instrs: Vec<i128> = vec![
+            0x400380007ffc7ffd,
+            0x482680017ffc8000,
+            1,
+            0x208b7fff7fff7ffe,
+            0x480680017fff8000,
+            10,
+            0x48307fff7fff8000,
+            0x48507fff7fff8000,
+            0x48307ffd7fff8000,
+            0x480a7ffd7fff8000,
+            0x48127ffb7fff8000,
+            0x1104800180018000,
+            -11,
+            0x48127ff87fff8000,
+            0x1104800180018000,
+            -14,
+            0x48127ff67fff8000,
+            0x1104800180018000,
+            -17,
+            0x208b7fff7fff7ffe,
+            /*41, // beginning of outputs
+            44,   // end of outputs
+            44,   // input
+            */
+        ];
+
+        let mut mem = CairoMemory::<F>::new(F::vec_to_field(&instrs));
+        // Need to know how to find out
+        mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
+        mem.write(F::from(22u32), F::from(44u32)); // end of outputs
+        mem.write(F::from(23u32), F::from(44u32)); //end of program
+        let prog = CairoProgram::new(&mut mem, 5, 24);
+
+        let witness = cairo_witness(&prog);
+        //view_witness(&witness);
+
+        // Create the Cairo circuit
+        let num = prog.trace().len();
+        let circuit = CircuitGate::<F>::create_cairo_gadget(0, num);
+
+        // Verify each gate
+        let mut row = 0;
+        for gate in circuit {
+            let res = gate.verify_cairo_gate(row, &witness);
+            if res.is_err() {
+                println!("{:?}", res);
+            }
+            row = row + 1;
+        }
+    }
 
     #[test]
     fn test_cairo_gate() {
@@ -371,6 +427,7 @@ mod tests {
         mem.write(F::from(5u32), F::from(7u32)); //end of output
         let prog = CairoProgram::new(&mut mem, 1, 6);
         let witness = cairo_witness(&prog);
+        //view_witness(&witness);
 
         // Create the Cairo circuit
         let num = prog.trace().len();
@@ -379,7 +436,10 @@ mod tests {
         // Verify each gate
         let mut row = 0;
         for gate in circuit {
-            gate.verify_cairo_gate(row, &witness);
+            let res = gate.verify_cairo_gate(row, &witness);
+            if res.is_err() {
+                println!("{:?}", res);
+            }
             row = row + 1;
         }
     }
