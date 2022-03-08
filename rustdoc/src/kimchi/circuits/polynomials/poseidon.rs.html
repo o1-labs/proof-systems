@@ -183,6 +183,8 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.</span>
 
 <span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.</span>
@@ -282,7 +284,7 @@
     <span class="ident">F</span>: <span class="ident">FftField</span>,
 {
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Poseidon</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">15</span>;
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">15</span>;
 
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -307,7 +309,9 @@
             <span class="comment">//~</span>
             <span class="comment">//~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.</span>
             <span class="kw">let</span> <span class="ident">sboxed</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="ident">source</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">witness_curr</span>(<span class="ident">i</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstants15W::SPONGE_BOX</span>)))
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                    <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">witness_curr</span>(<span class="ident">i</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstants15W::SPONGE_BOX</span> <span class="kw">as</span> <span class="ident">u64</span>))
+                })
                 .<span class="ident">collect</span>();
 
             <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">col</span>) <span class="kw">in</span> <span class="ident">round_to_cols</span>(<span class="ident">target_round</span>).<span class="ident">enumerate</span>() {

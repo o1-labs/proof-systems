@@ -271,6 +271,27 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements an abstraction to keep track of the powers of alphas.</span>
 <span class="doccomment">//! As a recap, alpha is a challenge sent by the verifier in PLONK,</span>
 <span class="doccomment">//! and is used to aggregate multiple constraints into a single polynomial.</span>
@@ -304,7 +325,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">collections::HashMap</span>,
-    <span class="ident">iter</span>::{<span class="ident">Cloned</span>, <span class="ident">Take</span>},
+    <span class="ident">iter</span>::{<span class="ident">Cloned</span>, <span class="ident">Skip</span>, <span class="ident">Take</span>},
     <span class="ident">ops::Range</span>,
     <span class="ident">slice::Iter</span>,
     <span class="ident">thread</span>,
@@ -320,9 +341,9 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="doccomment">/// The next power of alpha to use</span>
     <span class="doccomment">/// the end result will be [1, alpha^{next_power - 1}]</span>
-    <span class="ident">next_power</span>: <span class="ident">usize</span>,
+    <span class="ident">next_power</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// The mapping between constraint types and powers of alpha</span>
-    <span class="ident">mapping</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ArgumentType</span>, <span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">mapping</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ArgumentType</span>, (<span class="ident">u32</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// The powers of alpha: 1, alpha, alpha^2, etc.</span>
     <span class="doccomment">/// If set to [Some], you can&#39;t register new constraints.</span>
     <span class="ident">alphas</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -332,12 +353,10 @@
     <span class="doccomment">/// Registers a new [ArgumentType],</span>
     <span class="doccomment">/// associating it with a number `powers` of powers of alpha.</span>
     <span class="doccomment">/// This function will panic if you register the same type twice.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">ArgumentType</span>, <span class="ident">powers</span>: <span class="ident">usize</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ty</span>: <span class="ident">ArgumentType</span>, <span class="ident">powers</span>: <span class="ident">u32</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">alphas</span>.<span class="ident">is_some</span>() {
             <span class="macro">panic!</span>(<span class="string">&quot;you cannot register new constraints once initialized with a field element&quot;</span>);
         }
-        <span class="kw">let</span> <span class="ident">new_power</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_power</span> <span class="op">+</span> <span class="ident">powers</span>;
-        <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">next_power</span>..<span class="ident">new_power</span>;
 
         <span class="comment">// gates are a special case, as we reuse the same power of alpha</span>
         <span class="comment">// across all of them (they&#39;re mutually exclusive)</span>
@@ -348,10 +367,14 @@
             <span class="ident">ty</span>
         };
 
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">mapping</span>.<span class="ident">insert</span>(<span class="ident">ty</span>, <span class="ident">range</span>).<span class="ident">is_some</span>() {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">mapping</span>.<span class="ident">insert</span>(<span class="ident">ty</span>, (<span class="self">self</span>.<span class="ident">next_power</span>, <span class="ident">powers</span>)).<span class="ident">is_some</span>() {
             <span class="macro">panic!</span>(<span class="string">&quot;cannot re-register {:?}&quot;</span>, <span class="ident">ty</span>);
         }
-        <span class="self">self</span>.<span class="ident">next_power</span> <span class="op">=</span> <span class="ident">new_power</span>;
+
+        <span class="self">self</span>.<span class="ident">next_power</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">next_power</span>
+            .<span class="ident">checked_add</span>(<span class="ident">powers</span>)
+            .<span class="ident">expect</span>(<span class="string">&quot;too many powers of alphas were registered&quot;</span>);
     }
 
     <span class="doccomment">/// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.</span>
@@ -359,8 +382,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_exponents</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ty</span>: <span class="ident">ArgumentType</span>,
-        <span class="ident">num</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">Take</span><span class="op">&lt;</span><span class="ident">Range</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">usize</span><span class="op">&gt;</span> {
+        <span class="ident">num</span>: <span class="ident">u32</span>,
+    ) -&gt; <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">Range</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">u32</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ty</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ty</span>, <span class="ident">ArgumentType::Gate</span>(<span class="kw">_</span>)) {
             <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>)
         } <span class="kw">else</span> {
@@ -370,11 +393,20 @@
         <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">mapping</span>
             .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">ty</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, <span class="ident">ty</span>))
-            .<span class="ident">clone</span>();
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, <span class="ident">ty</span>));
+
+        <span class="kw">if</span> <span class="ident">num</span> <span class="op">&gt;</span> <span class="ident">range</span>.<span class="number">1</span> {
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;you asked for {num} exponents, but only registered {} for {:?}&quot;</span>,
+                <span class="ident">range</span>.<span class="number">1</span>, <span class="ident">ty</span>
+            );
+        }
+
+        <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">range</span>.<span class="number">0</span>;
+        <span class="kw">let</span> <span class="ident">end</span> <span class="op">=</span> <span class="ident">start</span> <span class="op">+</span> <span class="ident">num</span>;
 
         <span class="ident">MustConsumeIterator</span> {
-            <span class="ident">inner</span>: <span class="ident">range</span>.<span class="ident">take</span>(<span class="ident">num</span>),
+            <span class="ident">inner</span>: <span class="ident">start</span>..<span class="ident">end</span>,
             <span class="ident">debug_info</span>: <span class="ident">ty</span>,
         }
     }
@@ -383,7 +415,7 @@
     <span class="doccomment">/// Once you call this function, you cannot register new constraints via [register].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">instantiate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">alpha</span>: <span class="ident">F</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_power</span> <span class="op">=</span> <span class="ident">F::one</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="self">self</span>.<span class="ident">next_power</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="self">self</span>.<span class="ident">next_power</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="ident">alphas</span>.<span class="ident">push</span>(<span class="ident">F::one</span>());
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">1</span>..<span class="self">self</span>.<span class="ident">next_power</span> {
             <span class="ident">last_power</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">alpha</span>;
@@ -396,8 +428,8 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_alphas</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ty</span>: <span class="ident">ArgumentType</span>,
-        <span class="ident">num</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">Cloned</span><span class="op">&lt;</span><span class="ident">Take</span><span class="op">&lt;</span><span class="ident">Iter</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">F</span><span class="op">&gt;</span> {
+        <span class="ident">num</span>: <span class="ident">u32</span>,
+    ) -&gt; <span class="ident">MustConsumeIterator</span><span class="op">&lt;</span><span class="ident">Cloned</span><span class="op">&lt;</span><span class="ident">Take</span><span class="op">&lt;</span><span class="ident">Skip</span><span class="op">&lt;</span><span class="ident">Iter</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ty</span> <span class="op">=</span> <span class="kw">if</span> <span class="macro">matches!</span>(<span class="ident">ty</span>, <span class="ident">ArgumentType::Gate</span>(<span class="kw">_</span>)) {
             <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::Zero</span>)
         } <span class="kw">else</span> {
@@ -407,13 +439,23 @@
         <span class="kw">let</span> <span class="ident">range</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">mapping</span>
             .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">ty</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, <span class="ident">ty</span>))
-            .<span class="ident">clone</span>();
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">panic!</span>(<span class="string">&quot;constraint {:?} was not registered&quot;</span>, <span class="ident">ty</span>));
+
+        <span class="kw">if</span> <span class="ident">num</span> <span class="op">&gt;</span> <span class="ident">range</span>.<span class="number">1</span> {
+            <span class="macro">panic!</span>(
+                <span class="string">&quot;you asked for {num} alphas, but only {} are available for {:?}&quot;</span>,
+                <span class="ident">range</span>.<span class="number">1</span>, <span class="ident">ty</span>
+            );
+        }
 
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">alphas</span> {
             <span class="prelude-val">None</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;you must call instantiate with an actual field element first&quot;</span>),
             <span class="prelude-val">Some</span>(<span class="ident">alphas</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">alphas_range</span> <span class="op">=</span> <span class="ident">alphas</span>[<span class="ident">range</span>].<span class="ident">iter</span>().<span class="ident">take</span>(<span class="ident">num</span>).<span class="ident">cloned</span>();
+                <span class="kw">let</span> <span class="ident">alphas_range</span> <span class="op">=</span> <span class="ident">alphas</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">skip</span>(<span class="ident">range</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>)
+                    .<span class="ident">take</span>(<span class="ident">num</span> <span class="kw">as</span> <span class="ident">usize</span>)
+                    .<span class="ident">cloned</span>();
                 <span class="ident">MustConsumeIterator</span> {
                     <span class="ident">inner</span>: <span class="ident">alphas_range</span>,
                     <span class="ident">debug_info</span>: <span class="ident">ty</span>,

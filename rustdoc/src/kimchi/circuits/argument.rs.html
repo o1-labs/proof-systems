@@ -91,7 +91,7 @@
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span>;
 
     <span class="doccomment">/// The number of constraints created by the argument.</span>
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span>;
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span>;
 
     <span class="doccomment">/// Returns the set of constraints required to prove this argument.</span>
     <span class="comment">// TODO: return a [_; Self::CONSTRAINTS] once generic consts are stable</span>
@@ -100,7 +100,7 @@
     <span class="doccomment">/// Returns constraints safely combined via the passed combinator.</span>
     <span class="kw">fn</span> <span class="ident">combined_constraints</span>(<span class="ident">alphas</span>: <span class="kw-2">&amp;</span><span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::constraints</span>();
-        <span class="macro">assert!</span>(<span class="ident">constraints</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident"><span class="self">Self</span>::CONSTRAINTS</span>);
+        <span class="macro">assert_eq!</span>(<span class="ident">constraints</span>.<span class="ident">len</span>(), <span class="ident"><span class="self">Self</span>::CONSTRAINTS</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">alphas</span>.<span class="ident">get_exponents</span>(<span class="ident"><span class="self">Self</span>::ARGUMENT_TYPE</span>, <span class="ident"><span class="self">Self</span>::CONSTRAINTS</span>);
         <span class="kw">let</span> <span class="ident">combined_constraints</span> <span class="op">=</span> <span class="ident">E::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>);
 

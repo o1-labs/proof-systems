@@ -901,7 +901,7 @@
     <span class="ident">F</span>: <span class="ident">FftField</span>,
 {
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha0</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
 
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 16 (=4*4)</span>
@@ -919,7 +919,7 @@
     <span class="ident">F</span>: <span class="ident">FftField</span>,
 {
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha1</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
 
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// c += d; b ^= c; b &lt;&lt;&lt;= 12 (=3*4)</span>
@@ -937,7 +937,7 @@
     <span class="ident">F</span>: <span class="ident">FftField</span>,
 {
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaCha2</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
 
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// a += b; d ^= a; d &lt;&lt;&lt;= 8  (=2*4)</span>
@@ -955,7 +955,7 @@
     <span class="ident">F</span>: <span class="ident">FftField</span>,
 {
     <span class="kw">const</span> <span class="ident">ARGUMENT_TYPE</span>: <span class="ident">ArgumentType</span> <span class="op">=</span> <span class="ident">ArgumentType::Gate</span>(<span class="ident">GateType::ChaChaFinal</span>);
-    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">9</span>;
+    <span class="kw">const</span> <span class="ident">CONSTRAINTS</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">9</span>;
 
     <span class="kw">fn</span> <span class="ident">constraints</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// The last line, namely,</span>
@@ -1201,7 +1201,7 @@
                 <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Witness</span>(<span class="ident">i</span>));
             }
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>) {
-                <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span>));
+                <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>));
             }
             <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::Z</span>);
             <span class="ident">h</span>.<span class="ident">insert</span>(<span class="ident">Column::LookupAggreg</span>);
