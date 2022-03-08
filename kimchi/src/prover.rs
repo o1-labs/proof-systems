@@ -93,10 +93,9 @@ where
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
-        println!("{:?}", index);
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
-        let rng = &mut rand::rngs::OsRng;
+        let rng = &mut <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(0);
 
         // double-check the witness
         if cfg!(test) {
@@ -417,13 +416,15 @@ where
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             if true {
-                let (_, res) = t4
+                let (_, res) =
+                    (t4
                     .clone()
                     .interpolate()
+                    + public_poly.clone())
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed generic check"))?;
                 if !res.is_zero() {
-                    panic!("Failed generic check");
+                    return Err(ProofError::Prover("Failed generic check"));
                 }
             }
 
@@ -437,9 +438,9 @@ where
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed complete_add check"))?;
                 if !res.is_zero() {
-                    panic!("Failed addition check");
+                    return Err(ProofError::Prover("Failed complete_add check"));
                 }
             }
 
@@ -457,9 +458,9 @@ where
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed permutation check"))?;
                 if !res.is_zero() {
-                    panic!("Failed permutation check");
+                    return Err(ProofError::Prover("Failed permutation check"));
                 }
             }
 
@@ -472,9 +473,9 @@ where
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed var_base_mul check"))?;
                 if !res.is_zero() {
-                    panic!("Failed scalar mul check");
+                    return Err(ProofError::Prover("Failed var_base_mul check"));
                 }
             }
 
@@ -489,9 +490,9 @@ where
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed endoscl_mul check"))?;
                 if !res.is_zero() {
-                    panic!("Failed endoscaling check");
+                    return Err(ProofError::Prover("Failed endoscl_mul check"));
                 }
             }
 
@@ -506,26 +507,105 @@ where
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed endomul_scalar check"))?;
                 if !res.is_zero() {
-                    panic!("Failed endoscaling scalar check");
+                    return Err(ProofError::Prover("Failed endomul_scalar check"));
                 }
             }
 
             drop(emulscalar8);
 
             // poseidon
+            let mut failures = vec![];
+            /*let constraint = &Poseidon::<Fr<G>>::constraints()[0];*/
+            let constraints = {
+                use crate::circuits::expr;
+                let mds = |i| expr::E::Constant(expr::ConstantExpr::Mds { row: 0, col: i });
+                let mut cache = expr::Cache::default();
+                let x_0 = cache.cache(expr::witness_curr(0).pow(7));
+                let x_1 = cache.cache(expr::witness_curr(1).pow(7));
+                let x_2 = cache.cache(expr::witness_curr(2).pow(7));
+                vec![
+                    expr::witness_curr(6),
+                    expr::witness_curr(6) - expr::witness_curr(0),
+                    expr::witness_curr(6) - (expr::witness_curr(0) + mds(0)),
+                    expr::witness_curr(6) - (expr::witness_curr(0) + expr::witness_curr(0).pow(7)),
+                    expr::witness_curr(6) - (expr::witness_curr(0) + x_0.clone()),
+                    expr::witness_curr(6) - (expr::witness_curr(0) + (mds(0) * x_0.clone())),
+                    expr::witness_curr(6) - (expr::witness_curr(0) + (mds(0) * expr::witness_curr(0).pow(7))),
+                    {
+                        expr::witness_curr(6) - (((expr::witness_curr(0) + (mds(0) * expr::witness_curr(0).pow(7))) + (mds(1) * expr::witness_curr(1).pow(7))) + (mds(2) * expr::witness_curr(2).pow(7)))
+                    },
+                    {
+                        expr::witness_curr(6) - (((expr::witness_curr(0) + (mds(0) * x_0.clone())) + (mds(1) * x_1)) + (mds(2) * x_2))
+                    }
+            ]};
+            for constraint in constraints.iter()
+            /*for /*(_i, */constraint/*)*/ in Poseidon::<Fr<G>>::constraints().iter()/*.enumerate()*/ {*/
+            {
+                /*let expr = {
+                    use crate::circuits::expr;
+                    /*let mut cache = expr::Cache::default();
+                    let x_0 = cache.cache(expr::witness_curr(0).pow(7));
+                    let x_1 = cache.cache(expr::witness_curr(1).pow(7));
+                    let x_2 = cache.cache(expr::witness_curr(2).pow(7));
+                    let mds = |i| expr::E::Constant(expr::ConstantExpr::Mds { row: 0, col: i });*/
+                    expr::witness_curr(6) /*- (((expr::witness_curr(0) + (mds(0) * x_0)) + (mds(1) * x_1)) + (mds(2) * x_2))*/
+                };*/
+                let expr = constraint;
+                let evaluations = expr.evaluations(&env);
+                let interpolated = evaluations.clone().interpolate();
+                /*let (_, eval) = expr.evaluations(&env).interpolate().divide_by_vanishing_poly(index.cs.domain.d1).unwrap();
+                let eval = eval.evaluate_over_domain_by_ref(index.cs.domain.d1);
+                let mut curr_failures = vec![];
+                for (j, eval) in eval.evals.iter().enumerate() {
+                    if *eval != Fr::<G>::zero() {
+                        curr_failures.push(j);
+                    }
+                }
+                failures.push((i, curr_failures));*/
+                failures.push((expr, evaluations, interpolated));
+            }
+            if failures.len() > 0 {
+                let str = format!("failed at:\n{:#?}\n{:#?}", failures, env);
+                println!("{}", str);
+                return Err(ProofError::Prover(Box::leak(str.into_boxed_str())));
+            }
+
             let pos8 = Poseidon::combined_constraints(&all_alphas).evaluations(&env);
             t8 += &pos8;
+
+            println!("pos8: {:?}", pos8.evals);
+            let str = format!("pos8: {:?}", pos8.evals);
+            return Err(ProofError::Prover(Box::leak(str.into_boxed_str())));
 
             if true {
                 let (_, res) = pos8
                     .clone()
                     .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1).unwrap();
+                let mut failures = vec![];
+                for (i, x) in 
+                    res
+                    .evaluate_over_domain_by_ref(index.cs.domain.d1).evals
+                    .iter().enumerate() {
+                    if *x != Fr::<G>::zero() {
+                        failures.push(i);
+                    }
+
+                }
+                if failures.len() > 0 {
+                    let str = format!("failed at: {:?}", failures);
+                    return Err(ProofError::Prover(Box::leak(str.into_boxed_str())));
+                }
+
+                let (_, res) = pos8
+                    .clone()
+                    .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
+                    .ok_or(ProofError::Prover("Failed poseidon check (0)"))?;
                 if !res.is_zero() {
-                    panic!("Failed poseidon check");
+                    return Err(ProofError::Prover("Failed poseidon check (1)"));
                 }
             }
 
@@ -550,36 +630,36 @@ where
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
+                        .ok_or(ProofError::Prover("Failed chacha0 check"))?;
                     if !res.is_zero() {
-                        panic!("Failed chacha0 check");
+                        return Err(ProofError::Prover("Failed chacha0 check"));
                     }
 
                     let (_, res) = chacha1
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
+                        .ok_or(ProofError::Prover("Failed chacha1 check"))?;
                     if !res.is_zero() {
-                        panic!("Failed chacha1 check");
+                        return Err(ProofError::Prover("Failed chacha1 check"));
                     }
 
                     let (_, res) = chacha2
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
+                        .ok_or(ProofError::Prover("Failed chacha2 check"))?;
                     if !res.is_zero() {
-                        panic!("Failed chacha2 check");
+                        return Err(ProofError::Prover("Failed chacha2 check"));
                     }
 
                     let (_, res) = chacha_final
                         .clone()
                         .interpolate()
                         .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
+                        .ok_or(ProofError::Prover("Failed chacha3 check"))?;
                     if !res.is_zero() {
-                        panic!("Failed chacha3 check");
+                        return Err(ProofError::Prover("Failed chacha3 check"));
                     }
                 }
             }
@@ -595,13 +675,15 @@ where
                     let mut eval = constraint.evaluations(&env);
                     eval.evals.iter_mut().for_each(|x| *x *= alpha_pow);
 
-                    let (_, res) = eval
-                        .clone()
-                        .interpolate()
-                        .divide_by_vanishing_poly(index.cs.domain.d1)
-                        .unwrap();
-                    if !res.is_zero() {
-                        panic!("Failed lookup check");
+                    if true {
+                        let (_, res) = eval
+                            .clone()
+                            .interpolate()
+                            .divide_by_vanishing_poly(index.cs.domain.d1)
+                            .ok_or(ProofError::Prover("Failed lookup check"))?;
+                        if !res.is_zero() {
+                            return Err(ProofError::Prover("Failed lookup check"));
+                        }
                     }
 
                     if eval.domain().size == t4.domain().size {
@@ -609,7 +691,7 @@ where
                     } else if eval.domain().size == t8.domain().size {
                         t8 += &eval;
                     } else {
-                        panic!("Bad evaluation")
+                        return Err(ProofError::Prover("Bad lookup evaluation"));
                     }
                 }
             }

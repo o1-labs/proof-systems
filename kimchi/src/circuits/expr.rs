@@ -19,6 +19,7 @@ use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use CurrOrNext::*;
 
 /// The collection of constants required to evaluate an `Expr`.
+#[derive(Debug,Clone)]
 pub struct Constants<F> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
@@ -38,6 +39,7 @@ pub struct Constants<F> {
 /// The polynomials specific to the lookup argument.
 ///
 /// All are evaluations over the D8 domain
+#[derive(Debug,Clone)]
 pub struct LookupEnvironment<'a, F: FftField> {
     /// The sorted lookup table polynomials.
     pub sorted: &'a Vec<Evaluations<F, D<F>>>,
@@ -53,6 +55,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
+#[derive(Debug,Clone)]
 pub struct Environment<'a, F: FftField> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
@@ -497,7 +500,7 @@ enum Domain {
     D8 = 8,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum EvalResult<'a, F: FftField> {
     Constant(F),
     Evals {
