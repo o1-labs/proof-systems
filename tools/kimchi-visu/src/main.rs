@@ -27,7 +27,7 @@ fn main() {
 
         // poseidon
         let row = {
-            let round_constants = oracle::pasta::fp::params().round_constants;
+            let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
             let (g, row) = CircuitGate::<Fp>::create_poseidon_gadget(
                 row,
                 [Wire::new(row), Wire::new(row + 11)],

@@ -17,9 +17,9 @@ pub trait SpongeConstants {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstantsBasic {}
+pub struct PlonkSpongeConstantsLegacy {}
 
-impl SpongeConstants for PlonkSpongeConstantsBasic {
+impl SpongeConstants for PlonkSpongeConstantsLegacy {
     const ROUNDS_FULL: usize = 63;
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;
@@ -32,9 +32,9 @@ impl SpongeConstants for PlonkSpongeConstantsBasic {
 }
 
 #[derive(Clone)]
-pub struct PlonkSpongeConstants15W {}
+pub struct PlonkSpongeConstantsKimchi {}
 
-impl SpongeConstants for PlonkSpongeConstants15W {
+impl SpongeConstants for PlonkSpongeConstantsKimchi {
     const ROUNDS_FULL: usize = 55;
     const ROUNDS_PARTIAL: usize = 0;
     const HALF_ROUNDS_FULL: usize = 0;

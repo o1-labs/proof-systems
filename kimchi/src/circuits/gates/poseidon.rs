@@ -8,7 +8,7 @@ use crate::circuits::{
 use ark_ff::{FftField, Field};
 use array_init::array_init;
 use oracle::poseidon::{
-    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W, Sponge,
+    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, Sponge,
     SpongeConstants,
 };
 use std::ops::Range;
@@ -18,13 +18,13 @@ use std::ops::Range;
 //
 
 /// Width of the sponge
-pub const SPONGE_WIDTH: usize = PlonkSpongeConstants15W::SPONGE_WIDTH;
+pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
 /// Number of rows
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
 /// Number of rounds
-pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstants15W::ROUNDS_FULL;
+pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::ROUNDS_FULL;
 
 /// Number of PLONK rows required to implement Poseidon
 pub const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
@@ -142,7 +142,7 @@ impl<F: FftField> CircuitGate<F> {
                 let state = &states[round];
                 let mut new_state = rc[round][i];
                 for (&s, mds) in state.iter().zip(mds_row.iter()) {
-                    let sboxed = sbox::<F, PlonkSpongeConstants15W>(s);
+                    let sboxed = sbox::<F, PlonkSpongeConstantsKimchi>(s);
                     new_state += sboxed * mds;
                 }
 
@@ -199,7 +199,7 @@ pub fn generate_witness<F: Field>(
     witness_cols[2][row] = input[2];
 
     // set the sponge state
-    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstants15W>::new(params);
+    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstantsKimchi>::new(params);
     sponge.state = input.into();
 
     // for the poseidon rows
@@ -217,7 +217,7 @@ pub fn generate_witness<F: Field>(
             let abs_round = round + row_idx * ROUNDS_PER_ROW;
 
             // apply the sponge and record the result in the witness
-            if PlonkSpongeConstants15W::INITIAL_ARK {
+            if PlonkSpongeConstantsKimchi::INITIAL_ARK {
                 panic!("this won't work if the circuit has an INITIAL_ARK")
             }
             sponge.full_round(abs_round);

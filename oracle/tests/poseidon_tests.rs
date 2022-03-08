@@ -8,9 +8,10 @@ use std::path::PathBuf; // needed for ::new() sponge
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
-use oracle::pasta::fp as SpongeParameters;
-use oracle::poseidon::PlonkSpongeConstants15W;
-use oracle::poseidon::PlonkSpongeConstantsBasic;
+use oracle::pasta::fp_kimchi as SpongeParametersKimchi;
+use oracle::pasta::fp_legacy as SpongeParametersLegacy;
+use oracle::poseidon::PlonkSpongeConstantsKimchi;
+use oracle::poseidon::PlonkSpongeConstantsLegacy;
 
 //
 // Helpers for test vectors
@@ -67,21 +68,23 @@ where
 //
 
 #[test]
-fn poseidon_test_vectors_basic() {
+fn poseidon_test_vectors_legacy() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstantsBasic>::new(SpongeParameters::params());
+        let mut hash =
+            Poseidon::<Fp, PlonkSpongeConstantsLegacy>::new(SpongeParametersLegacy::params());
         hash.absorb(input);
         hash.squeeze()
     }
-    test_vectors("basic.json", hash);
+    test_vectors("legacy.json", hash);
 }
 
 #[test]
-fn poseidon_test_vectors_15w() {
+fn poseidon_test_vectors_kimchi() {
     fn hash(input: &[Fp]) -> Fp {
-        let mut hash = Poseidon::<Fp, PlonkSpongeConstants15W>::new(SpongeParameters::params());
+        let mut hash =
+            Poseidon::<Fp, PlonkSpongeConstantsKimchi>::new(SpongeParametersKimchi::params());
         hash.absorb(input);
         hash.squeeze()
     }
-    test_vectors("15w.json", hash);
+    test_vectors("kimchi.json", hash);
 }
