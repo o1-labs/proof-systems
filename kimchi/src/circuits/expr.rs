@@ -891,7 +891,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
 
     fn pow<'b>(self, d: usize, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
         let mut acc = EvalResult::Constant(F::one());
-        for i in (0..64).rev() {
+        for i in (0..std::mem::size_of::<usize>() * 8).rev() {
             acc = acc.square(res_domain);
 
             if (d >> i) & 1 == 1 {
@@ -1573,7 +1573,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let mut acc_is_one = true;
                 let x = x.monomials(ev);
 
-                for i in (0..64).rev() {
+                for i in (0..std::mem::size_of::<usize>() * 8).rev() {
                     if !acc_is_one {
                         let acc2 = mul_monomials(&acc, &acc);
                         acc = acc2;
