@@ -1,15 +1,19 @@
 use kimchi::{
-    circuits::{gate::CircuitGate, polynomials::generic::GenericGateSpec, wires::Wire},
+    circuits::{
+        gate::CircuitGate, gates::poseidon::generate_witness,
+        polynomials::generic::GenericGateSpec, wires::Wire,
+    },
     index::testing::new_index_for_test,
 };
-use kimchi_visu::visu;
+use kimchi_visu::{visu, Witness};
 use mina_curves::pasta::Fp;
 
 fn main() {
     let public = 3;
+    let poseidon_params = oracle::pasta::fp::params();
 
     // create circuit
-    let gates = {
+    let (gates, row) = {
         let mut gates = vec![];
 
         // public input
@@ -27,11 +31,11 @@ fn main() {
 
         // poseidon
         let row = {
-            let round_constants = oracle::pasta::fp::params().round_constants;
+            let round_constants = &poseidon_params.round_constants;
             let (g, row) = CircuitGate::<Fp>::create_poseidon_gadget(
                 row,
                 [Wire::new(row), Wire::new(row + 11)],
-                &round_constants,
+                round_constants,
             );
             gates.extend(g);
             row
@@ -49,12 +53,17 @@ fn main() {
             poseidon_output[2] = Wire { row: 0, col: 2 };
         }
 
-        gates
+        (gates, row)
     };
 
     // create the index
     let index = new_index_for_test(gates, public);
 
+    // create the witness
+    let mut witness = Witness::new(row + 1).inner();
+    let input = [1u32.into(), 2u32.into(), 3u32.into()];
+    generate_witness(3, poseidon_params, &mut witness, input);
+
     // create the HTML
-    visu(&index, None);
+    visu(&index, Some(witness.into()));
 }

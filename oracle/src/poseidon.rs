@@ -11,7 +11,7 @@ pub trait SpongeConstants {
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize;
+    const SPONGE_BOX: u32;
     const FULL_MDS: bool;
     const INITIAL_ARK: bool;
 }
@@ -26,7 +26,7 @@ impl SpongeConstants for PlonkSpongeConstantsBasic {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 5;
+    const SPONGE_BOX: u32 = 5;
     const FULL_MDS: bool = true;
     const INITIAL_ARK: bool = true;
 }
@@ -41,7 +41,7 @@ impl SpongeConstants for PlonkSpongeConstants15W {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: usize = 7;
+    const SPONGE_BOX: u32 = 7;
     const FULL_MDS: bool = true;
     const INITIAL_ARK: bool = false;
 }

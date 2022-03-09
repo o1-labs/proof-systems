@@ -169,7 +169,7 @@ pub enum ConstantExpr<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     Literal(F),
-    Pow(Box<ConstantExpr<F>>, usize),
+    Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
     // having a BinOp constructor :(
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
@@ -215,13 +215,13 @@ impl<F: Copy> ConstantExpr<F> {
 
 impl<F: Field> ConstantExpr<F> {
     /// Exponentiate a constant expression.
-    pub fn pow(self, p: usize) -> Self {
+    pub fn pow(self, p: u64) -> Self {
         if p == 0 {
             return Literal(F::one());
         }
         use ConstantExpr::*;
         match self {
-            Literal(x) => Literal(x.pow(&[p as u64])),
+            Literal(x) => Literal(x.pow(&[p])),
             x => Pow(Box::new(x), p),
         }
     }
@@ -337,7 +337,7 @@ pub enum Expr<C> {
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
-    Pow(Box<Expr<C>>, usize),
+    Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
 }
 
@@ -355,7 +355,7 @@ pub enum PolishToken<F> {
     Literal(F),
     Cell(Variable),
     Dup,
-    Pow(usize),
+    Pow(u64),
     Add,
     Mul,
     Sub,
@@ -470,7 +470,7 @@ impl<C> Expr<C> {
         Expr::Constant(c)
     }
 
-    fn degree(&self, d1_size: usize) -> usize {
+    fn degree(&self, d1_size: u64) -> u64 {
         use Expr::*;
         match self {
             Double(x) => x.degree(d1_size),
@@ -889,9 +889,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn pow<'b>(self, d: usize, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
+    fn pow<'b>(self, d: u64, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
         let mut acc = EvalResult::Constant(F::one());
-        for i in (0..std::mem::size_of::<usize>() * 8).rev() {
+        for i in (0..u64::BITS).rev() {
             acc = acc.square(res_domain);
 
             if (d >> i) & 1 == 1 {
@@ -1051,11 +1051,11 @@ impl<F: Field> Expr<ConstantExpr<F>> {
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
-    pub fn combine_constraints(alphas: impl Iterator<Item = usize>, cs: Vec<Self>) -> Self {
+    pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
         cs.into_iter()
             .zip_eq(alphas)
-            .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i)) * c)
+            .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i as u64)) * c)
             .fold(zero, |acc, x| acc + x)
     }
 }
@@ -1241,7 +1241,7 @@ impl<F: FftField> Expr<F> {
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
-        let d1_size = env.domain.d1.size as usize;
+        let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
             Domain::D1
@@ -1504,7 +1504,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
-    pub fn pow(self, p: usize) -> Self {
+    pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
             return Constant(F::one());
@@ -1573,7 +1573,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let mut acc_is_one = true;
                 let x = x.monomials(ev);
 
-                for i in (0..std::mem::size_of::<usize>() * 8).rev() {
+                for i in (0..u64::BITS).rev() {
                     if !acc_is_one {
                         let acc2 = mul_monomials(&acc, &acc);
                         acc = acc2;
