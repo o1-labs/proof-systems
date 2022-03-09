@@ -1272,7 +1272,7 @@
                 <span class="kw">let</span> <span class="ident">x1</span> <span class="op">=</span> <span class="ident">e1</span>.<span class="ident">evaluate_</span>(<span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="ident">x2</span> <span class="op">=</span> <span class="ident">PolishToken::evaluate</span>(<span class="ident">e2</span>, <span class="ident">d</span>, <span class="ident">pt</span>, <span class="kw-2">&amp;</span><span class="ident">evals</span>, <span class="kw-2">&amp;</span><span class="ident">constants</span>).<span class="ident">unwrap</span>();
                 <span class="kw">if</span> <span class="ident">x1</span> <span class="op">!</span><span class="op">=</span> <span class="ident">x2</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;e1: {}&quot;</span>, <span class="ident">e1</span>);
+                    <span class="macro">println!</span>(<span class="string">&quot;e1: {}&quot;</span>, <span class="ident">e1</span>.<span class="ident">ocaml_str</span>());
                     <span class="macro">println!</span>(<span class="string">&quot;e2: {}&quot;</span>, <span class="ident">Polish</span>(<span class="ident">e2</span>.<span class="ident">clone</span>()));
                     <span class="macro">println!</span>(<span class="string">&quot;Polish evaluation differed for {:?}: {} != {}&quot;</span>, <span class="ident">c1</span>, <span class="ident">x1</span>, <span class="ident">x2</span>);
                 } <span class="kw">else</span> {
@@ -1288,5 +1288,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (03918badd 2022-03-07)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
 </body></html>

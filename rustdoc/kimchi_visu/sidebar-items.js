@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["visu","Produces a `circuit.html` in the current folder."]],"mod":[["witness",""]]});
+initSidebarItems({"fn":[["latex_constraints",""],["visu","Produces a `circuit.html` in the current folder."]],"mod":[["witness",""]]});
