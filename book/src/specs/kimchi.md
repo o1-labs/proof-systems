@@ -1,53 +1,87 @@
 # Kimchi
 
-This document specifies the kimchi variant of PLONK.
-
-TODO: What is Kimchi?
+* This document specifies *kimchi*, a zero-knowledge proof system that's a variant of PLONK.
+* This document does not specify how circuits are created, or executed. Only how to convert a circuit and its execution into a proof.
 
 ## Overview
 
-We're building a few tables, then interpolating these into polynomials (and committing to them) to create a proof. We often refered to columns in these tables as the `Columns`.
+There's three main algorithms to kimchi:
 
-**gates**: a circuit is described by a series of gates, that we list in a table. The columns of the tables list the gates, while the rows are the length of the circuit. For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
+* [Setup](#constraint-system-creation): takes a circuit and produces a prover index, and a verifier index.
+* [Proof creation](#proof-creation): takes the prover index, and the execution trace of the circuit to produce a proof.
+* [Proof verification](#proof-verification): takes the verifier index and a proof to verify.
 
-| Generic |  Add  | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
-| :-----: | :---: | :-----: | :-----: | :-----: | :---------: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|   l1    |  r1   |   o1    |   m1    |   c1    |     l2      |  r2   |  o2   |  m2   |  c2   |       |       |       |       |       |
+As part of these algorithms, a number of tables are created (and then converted into polynomials) to create a proof.
 
-**registers**: registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well). I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`). The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate. Think of them as intermediary or temporary value needed in the computation.
+**Gates**. A circuit is described by a series of gates, that we list in a table. 
+The columns of the tables list the gates, while the rows are the length of the circuit. 
+For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
-|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|  l1   |  r1   |  o1   |  m1   |  c1   |  l2   |  r2   |  o2   |  m2   |  c2   |       |       |       |       |       |
+|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
+| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: | :-----: | :-----: | :-----: | :---------: |
+|   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
+|   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
+
+**Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates. 
+Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how). 
+All other gates set their values to $0$.
+
+|  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+|   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
+
+**Registers (or Witness)**. Registers are also defined at every row, and are split into two types: the *IO registers* from $0$ to $6$ usually contain input or output of the gates (note that a gate can output a value on the next row as well). 
+I/O registers can be wired to each other (they'll be forced to have the same value), no matter what row they're on (for example, the register at `row:0, col:4` can be wired to the register at `row:80, col:6`). 
+The rest of the registers, $7$ through $14$, are called *advice registers* as they can store values that useful only for the row's active gate. 
+Think of them as intermediary or temporary values needed in the computation when the prover executes a circuit.
+
+|  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+|   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
 
-**permutation**: the permutation is how we wire registers together. It is defined at every row, but only for the first $7$ registers. Each cell specifies a `(row, column)` tuple that it should be wired to. Note that if three or more registered are wired together, they must form a cycle. For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
+**Wiring (or Permutation)**. For gates to take output of other gates, we use a wiring table to wire registers together. 
+It is defined at every row, but only for the first $7$ registers. 
+Each cell specifies a `(row, column)` tuple that it should be wired to. 
+Note that if three or more registered are wired together, they must form a cycle. 
+For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
-|  row  |   0   |   1   |   2   |   3   |   4   |   5   |   6   |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|   0   | 80,6  |  0,1  |  0,2  |  0,3  |  0,4  |  0,5  |  0,6  |
-|  ...  |       |       |       |       |       |       |       |
-|  80   | 80,0  | 80,1  | 80,2  | 80,3  | 80,4  | 80,5  | 90,0  |
-|  ...  |       |       |       |       |       |       |       |
-|  90   |  0,4  | 90,1  | 90,2  | 90,3  | 90,4  | 90,5  | 90,6  |
+|  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
+| :---: | :-----: | :---: | :---: | :---: | :------: | :---: | :------: |
+|   0   |   0,0   |  0,1  |  0,2  |  0,3  | **80,6** |  0,5  |   0,6    |
+|  ...  |         |       |       |       |          |       |          |
+|  80   |  80,0   | 80,1  | 80,2  | 80,3  |   80,4   | 80,5  | **90,0** |
+|  ...  |         |       |       |       |          |       |          |
+|  90   | **0,4** | 90,1  | 90,2  | 90,3  |   90,4   | 90,5  |   90,6   |
 
-**lookup**: TODO
+**Wiring (Permutation) trace**. You can think of the permutation trace as an extra register that is used to enforce the wiring specified in the wiring table. 
+It is a single column that applies on all the rows as well, which the prover computes as part of a proof.
 
-Later, the section on generation of parameters will eplicitely create and fix the following tables to describe the circuit:
+|  row  |  pt   |
+| :---: | :---: |
+|   0   |   /   |
+
+**Lookup**: TODO
+
+This specification does not document how to create a circuit, we assume that the following gates are created prior to calling the [setup]() function:
 
 * gates
-* permutation
+* coefficients
+* wiring (permutation)
+* TODO: lookup
 
 To create a proof, the prover will execute the circuit and record an execution trace using the following tables:
 
 * registers
-
+* wiring (permutation) trace
+* TODO: lookup
 
 ## Dependencies
 
 ### Polynomial Commitments
 
-Refer to the [specification on polynomial commitments](./poly-commitment.md). We make use of the following functions from that specification:
+Refer to the [specification on polynomial commitments](./poly-commitment.md). 
+We make use of the following functions from that specification:
 
 - `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
 - `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
@@ -56,7 +90,8 @@ Refer to the [specification on polynomial commitments](./poly-commitment.md). We
 
 ### Poseidon hash function
 
-Refer to the [specification on Poseidon](./poseidon.md). We make use of the following functions from that specification:
+Refer to the [specification on Poseidon](./poseidon.md). 
+We make use of the following functions from that specification:
 
 - `Poseidon.init(params) -> FqSponge`
 - `Poseidon.update(field_elem)`
