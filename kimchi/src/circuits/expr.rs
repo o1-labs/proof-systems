@@ -1998,7 +1998,7 @@ where
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
-            Constant(x) => format!("{}", x.ocaml()),
+            Constant(x) => x.ocaml(),
             Cell(v) => format!("cell({})", v.ocaml()),
             UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
             VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
@@ -2039,8 +2039,8 @@ where
         use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
-            Constant(x) => format!("{}", x.latex()),
-            Cell(v) => format!("{}", v.latex()),
+            Constant(x) => x.latex(),
+            Cell(v) => v.latex(),
             UnnormalizedLagrangeBasis(i) => format!("unnormalized\\_lagrange\\_basis({})", *i),
             VanishesOnLast4Rows => "vanishes\\_on\\_last\\_4\\_rows".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
