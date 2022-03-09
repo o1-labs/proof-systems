@@ -625,7 +625,7 @@ mod tests {
                 let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
                 let x2 = PolishToken::evaluate(e2, d, pt, &evals, &constants).unwrap();
                 if x1 != x2 {
-                    println!("e1: {}", e1);
+                    println!("e1: {}", e1.ocaml_str());
                     println!("e2: {}", Polish(e2.clone()));
                     println!("Polish evaluation differed for {:?}: {} != {}", c1, x1, x2);
                 } else {

@@ -1,8 +1,11 @@
 const cs = index.cs;
 let public = cs.public;
-console.log(public);
 
-// display witness?
+//
+// Main logic
+//
+
+// display witness table headers if present
 if (witness) {
     document.querySelector("#gates thead tr").innerHTML += '<th colspan="15" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Registers</th > ';
 
@@ -64,6 +67,23 @@ cs.gates.forEach((g, row) => {
             </tr>`;
     document.querySelector("#gates tbody").innerHTML += gate;
 });
+
+// display constraints
+for (const [gate, cs] of Object.entries(constraints)) {
+    const div = document.querySelector("#constraints");
+    div.innerHTML += `<h2 class="text-3xl font-normal leading-normal mt-0 mb-2 text-grey-800">${gate}</h2>`;
+    cs.forEach((constraint, i) => {
+        div.innerHTML += `<h3>constraint ${i}:</h3><ul>`;
+        for (const eq of constraint) {
+            div.innerHTML += `<li>\\(${eq}\\)</li>`;
+        }
+        div.innerHTML += `</ul>`;
+    });
+}
+
+//
+// Helpers
+//
 
 // detect wiring
 function parseWiring(row, wires) {
