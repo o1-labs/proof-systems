@@ -2050,7 +2050,7 @@ where
             Square(x) => format!("({})^2", x.latex(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
-                id.var_name()
+                id.latex_name()
             }
         }
     }
