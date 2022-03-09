@@ -1,43 +1,37 @@
-//! This module implements the double generic gate,
-//! which contains two generic gates.
-//!
-//! A generic gate is simply the 2-fan in gate specified in the
-//! vanilla PLONK protocol that allows us to do:
-//!
-//! * addition of two registers (into an output register)
-//! * or multiplication of two registers
-//! * equality of a register with a constant
-//!
-//! In each cases, registers can also be scaled by a constant.
-//!
-//! The layout of the gate is the following:
-//!
-//! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
-//! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
-//! | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |    |
-//!
-//! where l1, r1, and o1 (resp. l2, r2, o2)
-//! are the left, right, and output registers
-//! of the first (resp. second) generic gate.
-//!
-//! For the selector:
-//!
-//! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
-//! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
-//! | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2  |    |    |    |    |    |
-//!
-//! with m1 (resp. m2) the mul selector for the first (resp. second) gate,
-//! and c1 (resp. c2) the constant selector for the first (resp. second) gate.
-//!
-//! The polynomial looks like this:
-//!
-//! <pre>
-//! [
-//!   alpha1 * (w0 * coeff0 + w1 * coeff1 + w2 * coeff2 + w0 * w1 * coeff3 + coeff4) +
-//!   alpha2 * (w3 * coeff5 + w4 * coeff6 + w5 * coeff7 + w3 w4 coeff8 + coeff9)
-//! ] * generic_selector
-//! </pre>
-//!
+//! This module implements the double generic gate.
+
+//~ The double generic gate contains two generic gates.
+//~
+//~ A generic gate is simply the 2-fan in gate specified in the
+//~ vanilla PLONK protocol that allows us to do operations like:
+//~
+//~ * addition of two registers (into an output register)
+//~ * or multiplication of two registers
+//~ * equality of a register with a constant
+//~
+//~ More generally, the generic gate controls the coefficients $c_i$ in the equation:
+//~
+//~ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
+//~
+//~ The layout of the gate is the following:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|
+//~ | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |
+//~
+//~ where l1, r1, and o1 (resp. l2, r2, o2)
+//~ are the left, right, and output registers
+//~ of the first (resp. second) generic gate.
+//~
+//~ The selectors are stored in the coefficient table as:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+//~ | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
+//~
+//~ with m1 (resp. m2) the mul selector for the first (resp. second) gate,
+//~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.
+//~
 
 use crate::circuits::{
     constraints::ConstraintSystem,
@@ -51,7 +45,7 @@ use array_init::array_init;
 use rayon::prelude::*;
 
 /// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 2;
+pub const CONSTRAINTS: u32 = 2;
 
 /// Number of generic of registers by a single generic gate
 pub const GENERIC_REGISTERS: usize = 3;
@@ -161,6 +155,13 @@ impl<F: FftField> CircuitGate<F> {
 }
 
 // -------------------------------------------------
+
+//~ The constraints:
+//~
+//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
+//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
+//~
+//~ where the $c_i$ are the [coefficients]().
 
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation

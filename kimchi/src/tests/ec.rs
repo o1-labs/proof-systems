@@ -1,20 +1,16 @@
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
         wires::*,
     },
-    index::Index,
+    index::testing::new_index_for_test,
     prover::ProverProof,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::{
-    commitment::CommitmentCurve,
-    srs::{endos, SRS},
-};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp as F,
@@ -26,7 +22,7 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 const PUBLIC: usize = 0;
 
@@ -37,8 +33,6 @@ type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 // Tests add and double gates
 #[test]
 fn ec_test() {
-    let fp_sponge_params = oracle::pasta::fp::params();
-
     let num_doubles = 100;
     let num_additions = 100;
     let num_infs = 100;
@@ -53,17 +47,7 @@ fn ec_test() {
         });
     }
 
-    let cs = ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
-    let _n = cs.domain.d1.size as usize;
-
-    let mut srs = SRS::create(cs.domain.d1.size as usize);
-    srs.add_lagrange_basis(cs.domain.d1);
-
-    let fq_sponge_params = oracle::pasta::fq::params();
-    let (endo_q, _endo_r) = endos::<Other>();
-    let srs = Arc::new(srs);
-
-    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let index = new_index_for_test(gates, PUBLIC);
 
     let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 

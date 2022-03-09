@@ -1,0 +1,28 @@
+[metadata]
+name = "Kimchi"
+description = "This specification describes the Kimchi proof system."
+version = "0.1.0"
+authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
+
+[config]
+template = "template.md"
+
+[sections]
+# arguments
+permutation = "../../../kimchi/src/circuits/polynomials/permutation.rs"
+lookup = "../../../kimchi/src/circuits/polynomials/lookup.rs"
+
+# gates
+chacha = "../../../kimchi/src/circuits/polynomials/chacha.rs"
+complete_add = "../../../kimchi/src/circuits/polynomials/complete_add.rs"
+endomul_scalar = "../../../kimchi/src/circuits/polynomials/endomul_scalar.rs"
+endosclmul = "../../../kimchi/src/circuits/polynomials/endosclmul.rs"
+generic = "../../../kimchi/src/circuits/polynomials/generic.rs"
+poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
+varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
+
+# protocol
+constraint_system = "../../../kimchi/src/circuits/constraints.rs"
+indexes = "../../../kimchi/src/index.rs"
+prover = "../../../kimchi/src/prover.rs"
+verifier = "../../../kimchi/src/verifier.rs"

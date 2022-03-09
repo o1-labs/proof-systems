@@ -1,4 +1,7 @@
+use std::marker::PhantomData;
+
 use crate::circuits::{
+    argument::{Argument, ArgumentType},
     constraints::ConstraintSystem,
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
@@ -6,9 +9,6 @@ use crate::circuits::{
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
-
-/// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 11;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
@@ -47,6 +47,7 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
         .fold(E::zero(), |acc, c| acc * x.clone() + E::literal(*c))
 }
 
+/// Implementation of the EndomulScalar gate.
 /// The constraint for the endomul scalar computation
 ///
 /// Each row corresponds to 8 iterations of the inner loop in "algorithm 2" on page 29 of
@@ -115,50 +116,61 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-pub fn constraint<F: Field>(alphas: impl Iterator<Item = usize>) -> E<F> {
-    let n0 = witness_curr(0);
-    let n8 = witness_curr(1);
-    let a0 = witness_curr(2);
-    let b0 = witness_curr(3);
-    let a8 = witness_curr(4);
-    let b8 = witness_curr(5);
+#[derive(Default)]
+pub struct EndomulScalar<F>(PhantomData<F>);
 
-    let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
+impl<F> Argument<F> for EndomulScalar<F>
+where
+    F: FftField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
+    const CONSTRAINTS: u32 = 11;
 
-    let mut cache = Cache::default();
+    fn constraints() -> Vec<E<F>> {
+        let n0 = witness_curr(0);
+        let n8 = witness_curr(1);
+        let a0 = witness_curr(2);
+        let b0 = witness_curr(3);
+        let a8 = witness_curr(4);
+        let b8 = witness_curr(5);
 
-    let c_coeffs = [
-        F::zero(),
-        F::from(11u64) / F::from(6u64),
-        -F::from(5u64) / F::from(2u64),
-        F::from(2u64) / F::from(3u64),
-    ];
+        let xs: [_; 8] = array_init(|i| witness_curr(6 + i));
 
-    let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
-    let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
-    let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
+        let mut cache = Cache::default();
 
-    let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
-    let d_funcs: [_; 8] =
-        array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
+        let c_coeffs = [
+            F::zero(),
+            F::from(11u64) / F::from(6u64),
+            -F::from(5u64) / F::from(2u64),
+            F::from(2u64) / F::from(3u64),
+        ];
 
-    let n8_expected = xs
-        .iter()
-        .fold(n0, |acc, x| acc.double().double() + x.clone());
+        let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
+        let crumb = |x: &E<F>| polynomial(&crumb_over_x_coeffs[..], x) * x.clone();
+        let d_minus_c_coeffs = [-F::one(), F::from(3u64), -F::one()];
 
-    // This is iterating
-    //
-    // a = 2 a + c
-    // b = 2 b + d
-    //
-    // as in the paper.
-    let a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
-    let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
+        let c_funcs: [_; 8] = array_init(|i| cache.cache(polynomial(&c_coeffs[..], &xs[i])));
+        let d_funcs: [_; 8] =
+            array_init(|i| c_funcs[i].clone() + polynomial(&d_minus_c_coeffs[..], &xs[i]));
 
-    let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
-    constraints.extend(xs.iter().map(crumb));
+        let n8_expected = xs
+            .iter()
+            .fold(n0, |acc, x| acc.double().double() + x.clone());
 
-    E::combine_constraints(alphas, constraints) * index(GateType::EndoMulScalar)
+        // This is iterating
+        //
+        // a = 2 a + c
+        // b = 2 b + d
+        //
+        // as in the paper.
+        let a8_expected = c_funcs.iter().fold(a0, |acc, c| acc.double() + c.clone());
+        let b8_expected = d_funcs.iter().fold(b0, |acc, d| acc.double() + d.clone());
+
+        let mut constraints = vec![n8_expected - n8, a8_expected - a8, b8_expected - b8];
+        constraints.extend(xs.iter().map(crumb));
+
+        constraints
+    }
 }
 
 pub fn gen_witness<F: PrimeField + std::fmt::Display>(

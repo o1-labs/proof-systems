@@ -8,7 +8,9 @@ pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
+use ark_ff::PrimeField;
 pub use keypair::Keypair;
+use o1_utils::FieldHelpers;
 pub use pubkey::{CompressedPubKey, PubKey};
 pub use roinput::ROInput;
 pub use schnorr::Schnorr;
@@ -49,10 +51,22 @@ impl From<NetworkId> for u8 {
     }
 }
 
+/// Transform domain prefix string to field element
+pub fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
+    const MAX_DOMAIN_STRING_LEN: usize = 20;
+    assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
+    let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
+    let mut bytes = format!("{:*<MAX_DOMAIN_STRING_LEN$}", prefix)
+        .as_bytes()
+        .to_vec();
+    bytes.resize(F::size_in_bytes(), 0);
+    F::from_bytes(&bytes).expect("invalid domain bytes")
+}
+
 /// Interface for hashable objects
 ///
 /// See example in [ROInput] documentation
-pub trait Hashable: Copy {
+pub trait Hashable: Clone {
     /// Serialization to random oracle input
     fn to_roinput(self) -> ROInput;
 }
@@ -64,7 +78,7 @@ pub trait Hashable: Copy {
 /// ```
 /// use mina_signer::{Hashable, NetworkId, ROInput, Signable};
 ///
-/// #[derive(Clone, Copy)]
+/// #[derive(Clone)]
 /// struct Example;
 ///
 /// impl Hashable for Example {
@@ -127,8 +141,8 @@ pub fn create(network_id: NetworkId) -> impl Signer {
 /// use mina_signer::NetworkId;
 /// use oracle::{pasta, poseidon};
 ///
-/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants5W>(
-///     pasta::fp5::params(),
+/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+///     pasta::fp::params(),
 ///     NetworkId::TESTNET,
 /// );
 /// ```

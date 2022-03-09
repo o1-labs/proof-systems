@@ -1,4 +1,4 @@
-//! This module implements the arithmetization of plookup constraints
+//! This source file implements the arithmetization of plookup constraints
 //!
 //! Because of our ZK-rows, we can't do the trick in the plookup paper of
 //! wrapping around to enforce consistency between the sorted lookup columns.
@@ -135,7 +135,7 @@ use std::collections::HashMap;
 use CurrOrNext::*;
 
 /// Number of constraints produced by the argument.
-pub const CONSTRAINTS: usize = 7;
+pub const CONSTRAINTS: u32 = 7;
 
 // TODO: Update for multiple tables
 fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
@@ -156,7 +156,7 @@ fn joint_lookup<F: FftField>(j: &JointLookup<F>) -> E<F> {
     j.entry
         .iter()
         .enumerate()
-        .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i)) * single_lookup(s))
+        .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i as u64)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
 }
 
@@ -629,7 +629,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
         }
 
         let beta1_per_row: ConstantExpr<F> =
-            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row);
+            (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64);
         v.iter()
             .map(|x| x.clone() * beta1_per_row.clone())
             .collect()

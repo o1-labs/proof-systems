@@ -5,6 +5,7 @@ use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
+use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
@@ -450,6 +451,7 @@ impl GateType {
 
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// A single gate in a circuit.
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
@@ -507,10 +509,20 @@ impl<F: FftField> CircuitGate<F> {
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             CairoInstruction | CairoTransition | CairoClaim => {
-                self.verify_cairo_gate(row, witness) //, cs)
+                self.verify_cairo_gate(row, witness, cs)
             }
         }
     }
+}
+
+/// A circuit is specified as a series of [CircuitGate].
+#[derive(Serialize)]
+pub struct Circuit<'a, F: FftField>(
+    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
+);
+
+impl<'a, F: FftField> CryptoDigest for Circuit<'a, F> {
+    const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 
 #[cfg(feature = "ocaml_types")]

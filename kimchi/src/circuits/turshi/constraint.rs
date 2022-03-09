@@ -105,6 +105,7 @@ use crate::circuits::gate::GateType;
 use ark_ff::{FftField, Field, One}; //, PrimeField};
 
 const NUM_FLAGS: usize = 16;
+pub const CONSTRAINTS: usize = 28;
 
 /// Returns the expression corresponding to the literal "2"
 fn two<F: Field>() -> E<F> {

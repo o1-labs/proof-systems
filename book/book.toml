@@ -1,0 +1,18 @@
+[book]
+authors = ["Izaak Meckler", "Vanishree Rao", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Mina book"
+
+[output.html]
+site-url = "/proof-systems/"
+curly-quotes = true
+git-repository-url = "https://www.github.com/o1-labs/proof-systems"
+additional-css = ["./assets/css/mdbook-admonish.css"]
+
+# for LaTeX
+[preprocessor.katex]
+
+[preprocessor.admonish]
+command = "mdbook-admonish"
