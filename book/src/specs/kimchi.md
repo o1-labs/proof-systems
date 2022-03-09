@@ -274,10 +274,150 @@ A proof consists of:
 
 ## Proof Creation
 
+Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
+For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
+
+
+```mermaid
+sequenceDiagram
+    participant Prover
+    participant Verifier
+    Prover->>Verifier: public & witness commitment
+    Verifier->>Prover: beta & gamma
+    Prover->>Verifier: permutation commitment
+    Verifier->>Prover: alpha
+    Prover->>Verifier: quotient commitment
+    Verifier->>Prover: zeta
+    Prover->>Verifier: negated public poly p(zeta) & p(zeta * omega)
+    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
+    Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
+    Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
+    Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
+    Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
+    Prover->>Verifier: ft(zeta * omega)
+    Verifier->>Prover: u, v
+    Prover->>Verifier: evaluation proof (involves more interaction)
+```
+
+The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript before outputing verifier messages.
+You can find these operations under the following protocol as absorption and sampling of values with the sponge.
+
+To create a proof, the prover expects:
+
+* A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
+* The (filed) registers table, representing parts of the execution trace of the circuit.
+
+The prover then follows the following steps to create the proof:
+
 1. Ensure we have room in the witness for the zero-knowledge rows.
-   We expect the witness to contain columns that have at least `ZK_ROWS` rows
+   We currently expect the witness not to be of the same length as the domain,
+   but instead be of the length of the (smaller) circuit.
+   If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+   the size of the domain, abort.
+2. Pad the witness columns with Zero gates to make them the same length as the domain.
+   Then, randomize the last `ZK_ROWS` of each columns.
+3. Setup the Fq-Sponge.
+4. Compute the negated public input polynomial as
+   the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
+   and $0$ for the rest.
+5. Commit (non-hidding) to the negated public input polynomial. **TODO: seems unecessary**
+6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
+7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+   Note: since the witness is in evaluation form,
+   we can use the `commit_evaluation` optimization.
+8. Absorb the witness commitments with the Fq-Sponge.
+9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
+   TODO: why not do this first, and the commit? Why commit from evaluation directly?
+10. TODO: lookup
+11. Sample $\beta$ with the Fq-Sponge.
+12. Sample $\gamma$ with the Fq-Sponge.
+13. TODO: lookup
+14. Compute the permutation aggregation polynomial $z$.
+15. Commit (hidding) to the permutation aggregation polynomial $z$.
+16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
+17. Sample $\alpha'$ with the Fq-Sponge.
+18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
+19. TODO: instantiate alpha?
+20. TODO: this is just an optimization, ignore?
+21. TODO: lookup
+22. TODO: setup the env
+23. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+    The quotient polynomial is computed by adding all these polynomials together:
+    - the combined constraints for all the gates
+    - the combined constraints for the permutation
+    - TODO: lookup
+    - the negated public polynomial
+    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
+    TODO: specify the split of the permutation polynomial into perm and bnd?
+24. commit (hiding) to the quotient polynomial $t$
+    TODO: specify the dummies
+25. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
+26. Sample $\zeta'$ with the Fq-Sponge.
+27. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
+28. TODO: lookup
+29. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+    * $s_i$
+    * $w_i$
+    * $z$
+    * lookup (TODO)
+    * generic selector
+    * poseidon selector
+
+    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
+    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
+    If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
+    $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
+
+    And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
+
+    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
+
+     TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+30. Evaluate the same polynomials without chunking them
+    (so that each polynomial should correspond to a single value this time).
+31. Compute the ft polynomial.
+    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+    (See in particular the [section on evaluating L](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l).)
+32. construct the blinding part of the ft polynomial commitment
+    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
+33. Evaluate the ft polynomial at $\zeta\omega$ only.
+34. Setup the Fr-Sponge
+35. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+36. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+37. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+    - the public polynomial
+    - z
+    - generic selector
+    - poseidon selector
+    - the 15 register/witness
+    - the 6 sigmas evaluations
+38. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+39. Sample $v'$ with the Fr-Sponge
+40. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
+41. Sample $u'$ with the Fr-Sponge
+42. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
+43. Create a list of all polynomials that will require evaluations
+    (and evaluation proofs) in the protocol.
+    First, include the previous challenges, in case we are in a recursive prover.
+44. Then, include:
+    - the negated public polynomial
+    - the ft polynomial
+    - the permutation aggregation polynomial z polynomial
+    - the generic selector
+    - the poseidon selector
+    - the 15 registers/witness columns
+    - the 6 s
+44. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
 ## Proof Verification
 
 
+
+## Optimizations
+
+* `commit_evaluation`: TODO
+
+## Security Considerations
+
+TODO

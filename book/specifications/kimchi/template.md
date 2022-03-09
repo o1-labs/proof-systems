@@ -172,8 +172,51 @@ A proof consists of:
 
 ## Proof Creation
 
+Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
+For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
+
+
+```mermaid
+sequenceDiagram
+    participant Prover
+    participant Verifier
+    Prover->>Verifier: public & witness commitment
+    Verifier->>Prover: beta & gamma
+    Prover->>Verifier: permutation commitment
+    Verifier->>Prover: alpha
+    Prover->>Verifier: quotient commitment
+    Verifier->>Prover: zeta
+    Prover->>Verifier: negated public poly p(zeta) & p(zeta * omega)
+    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
+    Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
+    Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
+    Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
+    Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
+    Prover->>Verifier: ft(zeta * omega)
+    Verifier->>Prover: u, v
+    Prover->>Verifier: evaluation proof (involves more interaction)
+```
+
+The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript before outputing verifier messages.
+You can find these operations under the following protocol as absorption and sampling of values with the sponge.
+
+To create a proof, the prover expects:
+
+* A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
+* The (filed) registers table, representing parts of the execution trace of the circuit.
+
+The prover then follows the following steps to create the proof:
+
 {sections.prover}
 
 ## Proof Verification
 
 {sections.verifier}
+
+## Optimizations
+
+* `commit_evaluation`: TODO
+
+## Security Considerations
+
+TODO
