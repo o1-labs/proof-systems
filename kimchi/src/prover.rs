@@ -102,7 +102,8 @@ where
             index.cs.verify(&witness).expect("incorrect witness");
         }
 
-        // ensure we have room for the zero-knowledge rows
+        //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
+        //~    We expect the witness to contain columns that have at least `ZK_ROWS` rows
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
