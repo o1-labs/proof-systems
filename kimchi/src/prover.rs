@@ -889,7 +889,7 @@ where
             .collect::<Vec<_>>();
 
         //~ 44. Then, include:
-        //~     - the negated public polynomial
+        //~     - the negated public polynomial (TODO: why?)
         //~     - the ft polynomial
         //~     - the permutation aggregation polynomial z polynomial
         //~     - the generic selector

@@ -269,12 +269,6 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 ## Proof Data Structure
 
-A proof consists of:
-
-* TKTK
-
-## Proof Creation
-
 Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
 
@@ -289,6 +283,7 @@ sequenceDiagram
     Verifier->>Prover: alpha
     Prover->>Verifier: quotient commitment
     Verifier->>Prover: zeta
+    Note over Verifier: change of verifier (change of sponge)
     Prover->>Verifier: negated public poly p(zeta) & p(zeta * omega)
     Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
     Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
@@ -297,11 +292,34 @@ sequenceDiagram
     Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
     Prover->>Verifier: ft(zeta * omega)
     Verifier->>Prover: u, v
+    Note over Verifier: change of verifier (change of sponge)
     Prover->>Verifier: evaluation proof (involves more interaction)
 ```
 
 The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript before outputing verifier messages.
-You can find these operations under the following protocol as absorption and sampling of values with the sponge.
+You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and sampling of values with the sponge.
+
+A proof consists of:
+
+* a number of (hidden) polynomial commitments:
+  * the 15 registers/witness columns
+  * the permutation
+  * the quotient
+  * TODO: lookup
+  * TODO: public commitment is not here, but is in the sequence diagram
+* evaluations of these polynomials at two random points $\zeta$ and $\zeta \omega$
+* evaluations at the two random points of these addotional polynomials:
+  * the 6 s (sigma)
+  * TODO: lookup
+  * generic selector
+  * poseidon selector
+* evaluation at $\zeta \omega$ of ft
+* optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
+* optionally, the previous challenges (in case we are in a recursive prover)
+
+The following sections specify how a prover creates a proof, and a how a verifier validates a number of proofs.
+
+### Proof Creation
 
 To create a proof, the prover expects:
 
@@ -401,7 +419,7 @@ The prover then follows the following steps to create the proof:
     (and evaluation proofs) in the protocol.
     First, include the previous challenges, in case we are in a recursive prover.
 44. Then, include:
-    - the negated public polynomial
+    - the negated public polynomial (TODO: why?)
     - the ft polynomial
     - the permutation aggregation polynomial z polynomial
     - the generic selector
@@ -411,7 +429,7 @@ The prover then follows the following steps to create the proof:
 44. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
-## Proof Verification
+### Proof Verification
 
 
 
