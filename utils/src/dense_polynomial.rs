@@ -22,7 +22,10 @@ pub trait ExtendedDensePolynomial<F: Field> {
     /// This function evaluates polynomial in chunks.
     fn eval(&self, elm: F, size: usize) -> Vec<F>;
 
-    /// Multiplies the chunks of a polynomial with powers of zeta^n
+    /// Multiplies the chunks of a polynomial with powers of zeta^n to make it of degree n.
+    /// For example, if a polynomial can be written `f = f0 + x^n f1 + x^2n f2`
+    /// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated
+    /// `f'(x) = f0(x) + z^n f1(x) + z^2n f2(x)`.
     fn chunk_polynomial(&self, zeta_n: F, n: usize) -> Self;
 }
 
@@ -66,9 +69,10 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         let mut coeffs = vec![F::zero(); n];
 
         for chunk in self.coeffs.chunks(n) {
-            for (j, c) in chunk.iter().enumerate() {
-                coeffs[j] += scale * c;
+            for (coeff, chunk_coeff) in coeffs.iter_mut().zip(chunk) {
+                *coeff += scale * chunk_coeff;
             }
+
             scale *= zeta_n;
         }
 
