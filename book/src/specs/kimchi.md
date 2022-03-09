@@ -236,6 +236,7 @@ fifth round:
 * $w_{1, next} - r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)$
 * $w_{2, next} - r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)$
 
+where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
 
 
 #### Chacha 
