@@ -63,14 +63,14 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     let mut table: Vec<[F; COLUMNS]> = Vec::new();
     table.resize(rows, [F::zero(); COLUMNS]);
     for (i, inst) in prog.trace().iter().enumerate() {
-        let gate = instruction_gate(inst);
+        let gate = instruction_witness(inst);
         let state = gate[0];
         let flags = gate[1];
         table[2 * i] = state;
         table[2 * i + 1] = flags;
-        table[2 * n + i] = transition_gate(inst);
+        table[2 * n + i] = transition_witness(inst);
     }
-    table[rows - 1] = claim_gate(prog);
+    table[rows - 1] = claim_witness(prog);
 
     let mut witness: [Vec<F>; COLUMNS] = Default::default();
     for col in 0..COLUMNS {
@@ -83,7 +83,7 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     witness
 }
 
-fn claim_gate<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
+fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
     let first = 0;
     let last = prog.trace().len() - 1;
     [
@@ -105,7 +105,7 @@ fn claim_gate<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
     ]
 }
 
-fn transition_gate<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
+fn transition_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
     [
         inst.pc(),
         inst.ap(),
@@ -125,7 +125,7 @@ fn transition_gate<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
     ]
 }
 
-fn instruction_gate<F: Field>(inst: &CairoInstruction<F>) -> [[F; COLUMNS]; 2] {
+fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [[F; COLUMNS]; 2] {
     [
         [
             inst.pc(),
@@ -227,6 +227,91 @@ impl<F: FftField> CircuitGate<F> {
         gates.push(CircuitGate::zero(Wire::new(row + 3 * num - 1)));
         gates.push(CircuitGate::create_cairo_claim(Wire::new(row + 3 * num)));
         gates
+    }
+
+    /// verifies that the Cairo gate constraints are solved by the witness depending on its type
+    pub fn verify_cairo_gate(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
+        // assignments
+        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let mut next: [F; COLUMNS] = array_init(|_| F::zero());
+        if self.typ != GateType::CairoClaim {
+            next = array_init(|i| witness[i][row + 1]);
+        }
+
+        // column polynomials
+        let polys = {
+            let mut h = std::collections::HashSet::new();
+            for i in 0..COLUMNS {
+                h.insert(Column::Witness(i)); // column witness polynomials
+            }
+            // gate selector polynomials
+            h.insert(Column::Index(GateType::CairoInstruction));
+            h.insert(Column::Index(GateType::CairoTransition));
+            h.insert(Column::Index(GateType::CairoClaim));
+            h.insert(Column::Index(GateType::Zero));
+            h
+        };
+
+        // assign powers of alpha to these gates
+        let mut alphas = Alphas::<F>::default();
+        alphas.register(
+            ArgumentType::Gate(self.typ),
+            polynomials::cairo::Instruction::<F>::CONSTRAINTS,
+        );
+
+        // Get constraints for this circuit gate
+        let constraints = polynomials::cairo::circuit_gate_combined_constraints(self.typ, &alphas);
+
+        // Linearize
+        let linearized = constraints.linearize(polys).unwrap();
+
+        // Setup proof evaluations
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let mut eval = |witness| ProofEvaluations {
+            w: witness,
+            z: F::rand(rng),
+            s: array_init(|_| F::rand(rng)),
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+            cairo_selector: gate_type_to_selector(self.typ),
+            lookup: None,
+        };
+        let evals = vec![eval(curr), eval(next)];
+
+        // Setup circuit constants
+        let constants = expr::Constants {
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
+            joint_combiner: F::rand(rng),
+            endo_coefficient: cs.endo,
+            mds: vec![],
+        };
+
+        let pt = F::rand(rng);
+
+        // Evaluate constraints
+        match linearized
+            .constant_term
+            .evaluate_(cs.domain.d1, pt, &evals, &constants)
+        {
+            Ok(x) => {
+                if x == F::zero() {
+                    Ok(())
+                } else {
+                    Err(format!("Invalid {:?} constraint", self.typ))
+                }
+            }
+            Err(x) => {
+                println!("{:?}", x);
+                Err(format!("Failed to evaluate {:?} constraint", self.typ))
+            }
+        }
     }
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
@@ -502,88 +587,6 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(zero, pc_t - pc_fin, "wrong final pc"); // pcT = fin_pc
 
         Ok(())
-    }
-
-    /// verifies that the Cairo gate constraints are solved by the witness depending on its type
-    pub fn verify_cairo_gate(
-        &self,
-        row: usize,
-        witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
-    ) -> Result<(), String> {
-        // assignments
-        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-
-        // column polynomials
-        let polys = {
-            let mut h = std::collections::HashSet::new();
-            for i in 0..COLUMNS {
-                h.insert(Column::Witness(i)); // column witness polynomials
-            }
-            // gate selector polynomials
-            h.insert(Column::Index(GateType::CairoInstruction));
-            h.insert(Column::Index(GateType::CairoTransition));
-            h.insert(Column::Index(GateType::CairoClaim));
-            h.insert(Column::Index(GateType::Zero));
-            h
-        };
-
-        // assign powers of alpha to these gates
-        let mut alphas = Alphas::<F>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            polynomials::cairo::Instruction::<F>::CONSTRAINTS,
-        );
-
-        // Get constraints for this circuit gate
-        let constraints = polynomials::cairo::circuit_gate_combined_constraints(self.typ, &alphas);
-
-        // Linearize
-        let linearized = constraints.linearize(polys).unwrap();
-
-        // Setup proof evaluations
-        let rng = &mut StdRng::from_seed([0u8; 32]);
-        let mut eval = |witness| ProofEvaluations {
-            w: witness,
-            z: F::rand(rng),
-            s: array_init(|_| F::rand(rng)),
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
-            cairo_selector: gate_type_to_selector(self.typ),
-            lookup: None,
-        };
-        let evals = vec![eval(curr), eval(next)];
-
-        // Setup circuit constants
-        let constants = expr::Constants {
-            alpha: F::rand(rng),
-            beta: F::rand(rng),
-            gamma: F::rand(rng),
-            joint_combiner: F::rand(rng),
-            endo_coefficient: cs.endo,
-            mds: vec![],
-        };
-
-        let pt = F::rand(rng);
-
-        // Evaluate constraints
-        match linearized
-            .constant_term
-            .evaluate_(cs.domain.d1, pt, &evals, &constants)
-        {
-            Ok(x) => {
-                if x == F::zero() {
-                    Ok(())
-                } else {
-                    Err(format!("Invalid {:?} constraint", self.typ))
-                }
-            }
-            Err(x) => {
-                println!("{:?}", x);
-                Err(format!("Failed to evaluate {:?} constraint", self.typ))
-            }
-        }
     }
 }
 
