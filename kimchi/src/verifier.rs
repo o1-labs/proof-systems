@@ -20,7 +20,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, PolyComm,
+    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, Evaluation, PolyComm,
 };
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -43,7 +43,7 @@ where
     /// the computed powers of alpha
     pub all_alphas: Alphas<Fr<G>>,
     /// public polynomial evaluations
-    pub p_eval: [Vec<Fr<G>>; 2],
+    pub p_eval: Vec<Vec<Fr<G>>>,
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: [Fr<G>; 2],
     /// ?
@@ -55,6 +55,18 @@ where
     pub ft_eval0: Fr<G>,
     /// ?
     pub combined_inner_product: Fr<G>,
+}
+
+pub struct BatchedEvaluationProof<G, EFqSponge>
+where
+    G: AffineCurve,
+    EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+{
+    pub fq_sponge: EFqSponge,
+    pub evaluations: Vec<(Evaluation<G>, ProverProof<G>)>,
+    pub evaluation_points: Vec<Fr<G>>,
+    pub u: Fr<G>,
+    pub v: Fr<G>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -192,7 +204,7 @@ where
         // evaluate public input polynomials
         // NOTE: this works only in the case when the poly segment size is not smaller than that of the domain
         let p_eval = if !self.public.is_empty() {
-            [
+            vec![
                 vec![
                     (self
                         .public
@@ -217,7 +229,7 @@ where
                 ],
             ]
         } else {
-            [Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]
+            vec![Vec::<Fr<G>>::new(), Vec::<Fr<G>>::new()]
         };
         for (p, e) in p_eval.iter().zip(&self.evals) {
             fr_sponge.absorb_evaluations(p, e);
@@ -321,37 +333,46 @@ where
             let ft_eval1 = vec![self.ft_eval1];
 
             #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<&Vec<Fr<G>>>, Option<usize>)> = polys
-                .iter()
-                .map(|(_, e)| (e.iter().collect(), None))
-                .collect();
-            es.push((p_eval.iter().collect::<Vec<_>>(), None));
-            es.push((vec![&ft_eval0, &ft_eval1], None));
-            es.push((self.evals.iter().map(|e| &e.z).collect::<Vec<_>>(), None));
+            let mut es: Vec<(Vec<Vec<Fr<G>>>, Option<usize>)> =
+                polys.iter().map(|(_, e)| (e.clone(), None)).collect();
+            es.push((p_eval.clone(), None));
+            es.push((vec![ft_eval0, ft_eval1], None));
+            es.push((
+                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
+                None,
+            ));
             es.push((
                 self.evals
                     .iter()
-                    .map(|e| &e.generic_selector)
+                    .map(|e| e.generic_selector.clone())
                     .collect::<Vec<_>>(),
                 None,
             ));
             es.push((
                 self.evals
                     .iter()
-                    .map(|e| &e.poseidon_selector)
+                    .map(|e| e.poseidon_selector.clone())
                     .collect::<Vec<_>>(),
                 None,
             ));
-            es.extend(
-                (0..COLUMNS)
-                    .map(|c| (self.evals.iter().map(|e| &e.w[c]).collect::<Vec<_>>(), None))
-                    .collect::<Vec<_>>(),
-            );
-            es.extend(
-                (0..PERMUTS - 1)
-                    .map(|c| (self.evals.iter().map(|e| &e.s[c]).collect::<Vec<_>>(), None))
-                    .collect::<Vec<_>>(),
-            );
+            es.extend((0..COLUMNS).map(|c| {
+                (
+                    self.evals
+                        .iter()
+                        .map(|e| e.w[c].clone())
+                        .collect::<Vec<_>>(),
+                    None,
+                )
+            }));
+            es.extend((0..PERMUTS - 1).map(|c| {
+                (
+                    self.evals
+                        .iter()
+                        .map(|e| e.s[c].clone())
+                        .collect::<Vec<_>>(),
+                    None,
+                )
+            }));
 
             combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.g.len())
         };
@@ -601,78 +622,105 @@ where
 
     // batch verify all the evaluation proofs
     let mut batch = vec![];
-    for (proof, params) in proofs.iter().zip(params.iter()) {
+    for (proof, params) in proofs.into_iter().zip(params.into_iter()) {
         let (index, proof) = proof;
         let (p_eval, p_comm, ft_comm, fq_sponge, oracles, ft_eval0, ft_eval1, polys) = params;
 
-        // recursion stuff
-        let mut polynomials = polys
-            .iter()
-            .map(|(comm, evals)| (comm, evals.iter().collect(), None))
-            .collect::<Vec<(&PolyComm<G>, Vec<&Vec<Fr<G>>>, Option<usize>)>>();
+        let mut evaluations = vec![];
+
+        // recursion
+        evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
+            commitment: c,
+            evaluations: e,
+            degree_bound: None,
+        }));
 
         // public input commitment
-        polynomials.push((p_comm, p_eval.iter().collect::<Vec<_>>(), None));
+        evaluations.push(Evaluation {
+            commitment: p_comm,
+            evaluations: p_eval,
+            degree_bound: None,
+        });
 
         // ft commitment (chunks of it)
-        polynomials.push((ft_comm, vec![ft_eval0, ft_eval1], None));
+        evaluations.push(Evaluation {
+            commitment: ft_comm,
+            evaluations: vec![ft_eval0, ft_eval1],
+            degree_bound: None,
+        });
 
         // permutation commitment
-        polynomials.push((
-            &proof.commitments.z_comm,
-            proof.evals.iter().map(|e| &e.z).collect::<Vec<_>>(),
-            None,
-        ));
+        evaluations.push(Evaluation {
+            commitment: proof.commitments.z_comm.clone(),
+            evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+            degree_bound: None,
+        });
 
         // index commitments that use the coefficients
-        polynomials.push((
-            &index.generic_comm,
-            proof
+        evaluations.push(Evaluation {
+            commitment: index.generic_comm.clone(),
+            evaluations: proof
                 .evals
                 .iter()
-                .map(|e| &e.generic_selector)
-                .collect::<Vec<_>>(),
-            None,
-        ));
-        polynomials.push((
-            &index.psm_comm,
-            proof
+                .map(|e| e.generic_selector.clone())
+                .collect(),
+            degree_bound: None,
+        });
+        evaluations.push(Evaluation {
+            commitment: index.psm_comm.clone(),
+            evaluations: proof
                 .evals
                 .iter()
-                .map(|e| &e.poseidon_selector)
-                .collect::<Vec<_>>(),
-            None,
-        ));
+                .map(|e| e.poseidon_selector.clone())
+                .collect(),
+            degree_bound: None,
+        });
 
         // witness commitments
-        polynomials.extend(
+        evaluations.extend(
             proof
                 .commitments
                 .w_comm
                 .iter()
                 .zip(
                     (0..COLUMNS)
-                        .map(|i| proof.evals.iter().map(|e| &e.w[i]).collect::<Vec<_>>())
-                        .collect::<Vec<_>>()
-                        .iter(),
+                        .map(|i| {
+                            proof
+                                .evals
+                                .iter()
+                                .map(|e| e.w[i].clone())
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>(),
                 )
-                .map(|(c, e)| (c, e.clone(), None))
-                .collect::<Vec<_>>(),
+                .map(|(c, e)| Evaluation {
+                    commitment: c.clone(),
+                    evaluations: e.clone(),
+                    degree_bound: None,
+                }),
         );
 
         // sigma commitments
-        polynomials.extend(
+        evaluations.extend(
             index
                 .sigma_comm
                 .iter()
                 .zip(
                     (0..PERMUTS - 1)
-                        .map(|i| proof.evals.iter().map(|e| &e.s[i]).collect::<Vec<_>>())
-                        .collect::<Vec<_>>()
-                        .iter(),
+                        .map(|i| {
+                            proof
+                                .evals
+                                .iter()
+                                .map(|e| e.s[i].clone())
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>(),
                 )
-                .map(|(c, e)| (c, e.clone(), None))
-                .collect::<Vec<_>>(),
+                .map(|(c, e)| Evaluation {
+                    commitment: c.clone(),
+                    evaluations: e.clone(),
+                    degree_bound: None,
+                }),
         );
 
         // prepare for the opening proof verification
@@ -682,7 +730,7 @@ where
             vec![oracles.zeta, oracles.zeta * omega],
             oracles.v,
             oracles.u,
-            polynomials,
+            evaluations,
             &proof.proof,
         ));
     }

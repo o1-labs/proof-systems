@@ -455,7 +455,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     xi: &Fr<G>,
     r: &Fr<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<&Vec<Fr<G>>>, Option<usize>)],
+    polys: &[(Vec<Vec<Fr<G>>>, Option<usize>)],
     srs_length: usize,
 ) -> Fr<G> {
     let mut res = Fr::<G>::zero();
@@ -552,6 +552,21 @@ impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
 
         res
     }
+}
+
+/// Contains the evaluation of a polynomial commitment at a set of points.
+pub struct Evaluation<G>
+where
+    G: AffineCurve,
+{
+    /// The commitment of the polynomial being evaluated
+    pub commitment: PolyComm<G>,
+
+    /// Contains an evaluation table
+    pub evaluations: Vec<Vec<Fr<G>>>,
+
+    /// optional degree bound
+    pub degree_bound: Option<usize>,
 }
 
 impl<G: CommitmentCurve> SRS<G> {
@@ -951,11 +966,7 @@ impl<G: CommitmentCurve> SRS<G> {
             Vec<Fr<G>>, // vector of evaluation points
             Fr<G>,      // scaling factor for polynomials
             Fr<G>,      // scaling factor for evaluation point powers
-            Vec<(
-                &PolyComm<G>,     // polycommitment
-                Vec<&Vec<Fr<G>>>, // vector of evaluations
-                Option<usize>,    // optional degree bound
-            )>,
+            Vec<Evaluation<G>>,
             &OpeningProof<G>, // batched opening proof
         )>,
         rng: &mut RNG,
@@ -1012,18 +1023,24 @@ impl<G: CommitmentCurve> SRS<G> {
             let combined_inner_product0 = {
                 let es: Vec<_> = polys
                     .iter()
-                    .map(|(comm, evals, bound)| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*bound)?;
-                            let x = comm.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evals.clone(), bound)
-                    })
+                    .map(
+                        |Evaluation {
+                             commitment,
+                             evaluations,
+                             degree_bound,
+                         }| {
+                            let bound: Option<usize> = (|| {
+                                let b = (*degree_bound)?;
+                                let x = commitment.shifted?;
+                                if x.is_zero() {
+                                    None
+                                } else {
+                                    Some(b)
+                                }
+                            })();
+                            (evaluations.clone(), bound)
+                        },
+                    )
                     .collect();
                 combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
             };
@@ -1108,18 +1125,22 @@ impl<G: CommitmentCurve> SRS<G> {
             {
                 let mut xi_i = Fr::<G>::one();
 
-                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| !x.0.unshifted.is_empty())
+                for Evaluation {
+                    commitment,
+                    degree_bound,
+                    ..
+                } in polys.iter().filter(|x| !x.commitment.unshifted.is_empty())
                 {
                     // iterating over the polynomial segments
-                    for comm_ch in comm.unshifted.iter() {
+                    for comm_ch in commitment.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
 
                         xi_i *= *xi;
                     }
 
-                    if let Some(_m) = shifted {
-                        if let Some(comm_ch) = comm.shifted {
+                    if let Some(_m) = degree_bound {
+                        if let Some(comm_ch) = commitment.shifted {
                             if !comm_ch.is_zero() {
                                 // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
                                 scalars.push(rand_base_i_c_i * xi_i);
@@ -1275,12 +1296,16 @@ mod tests {
             v,
             u,
             vec![
-                (&commitment.0, poly1_chunked_evals.iter().collect(), None),
-                (
-                    &bounded_commitment.0,
-                    poly2_chunked_evals.iter().collect(),
-                    Some(upperbound),
-                ),
+                Evaluation {
+                    commitment: commitment.0,
+                    evaluations: poly1_chunked_evals,
+                    degree_bound: None,
+                },
+                Evaluation {
+                    commitment: bounded_commitment.0,
+                    evaluations: poly2_chunked_evals,
+                    degree_bound: Some(upperbound),
+                },
             ],
             &opening_proof,
         )];

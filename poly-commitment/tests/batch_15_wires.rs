@@ -2,7 +2,10 @@
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use ark_ff::{UniformRand, Zero};
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use commitment_dlog::{
+    commitment::{CommitmentCurve, Evaluation},
+    srs::SRS,
+};
 use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
     Fp,
@@ -115,7 +118,11 @@ where
                 proof
                     .4
                     .iter()
-                    .map(|poly| (&(poly.0).0, poly.1.iter().collect::<Vec<_>>(), poly.2))
+                    .map(|poly| Evaluation {
+                        commitment: (poly.0).0.clone(),
+                        evaluations: poly.1.clone(),
+                        degree_bound: poly.2,
+                    })
                     .collect::<Vec<_>>(),
                 &proof.5,
             )

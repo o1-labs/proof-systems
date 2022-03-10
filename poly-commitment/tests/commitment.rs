@@ -2,7 +2,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use commitment_dlog::{
-    commitment::{CommitmentCurve, OpeningProof, PolyComm},
+    commitment::{CommitmentCurve, Evaluation, OpeningProof, PolyComm},
     srs::SRS,
 };
 use groupmap::GroupMap;
@@ -49,11 +49,7 @@ mod verifier {
         Vec<Fp>, // vector of evaluation points
         Fp,      // scaling factor for polynoms
         Fp,      // scaling factor for evaluation point powers
-        Vec<(
-            &'a PolyComm<Affine>, // polycommitment
-            Vec<&'a Vec<Fp>>,     // vector of evaluations
-            Option<usize>,        // optional degree bound
-        )>,
+        Vec<Evaluation<Affine>>,
         &'a OpeningProof<Affine>, // batched opening proof
     );
 }
@@ -94,12 +90,11 @@ impl AggregatedEvaluationProof {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
-            let evaluations = eval_com.chunked_evals.iter().collect();
-            coms.push((
-                &eval_com.commit.chunked_commitment,
-                evaluations,
-                eval_com.commit.bound,
-            ));
+            coms.push(Evaluation {
+                commitment: eval_com.commit.chunked_commitment.clone(),
+                evaluations: eval_com.chunked_evals.clone(),
+                degree_bound: eval_com.commit.bound,
+            });
         }
 
         (
