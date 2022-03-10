@@ -290,9 +290,9 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsBasic</span> {}
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsLegacy</span> {}
 
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsBasic</span> {
+<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsLegacy</span> {
     <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">63</span>;
     <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
@@ -305,9 +305,9 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstants15W</span> {}
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsKimchi</span> {}
 
-<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstants15W</span> {
+<span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsKimchi</span> {
     <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">55</span>;
     <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;

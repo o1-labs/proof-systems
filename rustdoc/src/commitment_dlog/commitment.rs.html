@@ -2586,8 +2586,8 @@
     <span class="kw">use</span> <span class="ident">ark_poly::Polynomial</span>;
     <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta::Affine</span> <span class="kw">as</span> <span class="ident">VestaG</span>};
-    <span class="kw">use</span> <span class="ident">oracle::poseidon::PlonkSpongeConstantsBasic</span> <span class="kw">as</span> <span class="ident">SC</span>;
-    <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">pasta::fq::params</span> <span class="kw">as</span> <span class="ident">spongeFqParams</span>, <span class="ident">sponge::DefaultFqSponge</span>};
+    <span class="kw">use</span> <span class="ident">oracle::poseidon::PlonkSpongeConstantsKimchi</span> <span class="kw">as</span> <span class="ident">SC</span>;
+    <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">pasta::fq_kimchi::params</span> <span class="kw">as</span> <span class="ident">spongeFqParams</span>, <span class="ident">sponge::DefaultFqSponge</span>};
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
 
     <span class="attribute">#[<span class="ident">test</span>]</span>

@@ -179,7 +179,7 @@
 <span class="kw">use</span> <span class="ident">oracle</span>::{
     <span class="ident">pasta</span>,
     <span class="ident">poseidon</span>::{
-        <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsBasic</span>, <span class="ident">Sponge</span>,
+        <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">Sponge</span>,
         <span class="ident">SpongeConstants</span>,
     },
 };
@@ -286,8 +286,8 @@
 <span class="doccomment">/// let mut ctx = mina_signer::create(NetworkId::MAINNET);</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">network_id</span>: <span class="ident">NetworkId</span>) -&gt; <span class="kw">impl</span> <span class="ident">Signer</span> {
-    <span class="ident">Schnorr</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsBasic</span><span class="op">&gt;</span><span class="ident">::new</span>(
-        <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="ident">PlonkSpongeConstantsBasic</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">pasta::fp::params</span>()),
+    <span class="ident">Schnorr</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span><span class="op">&gt;</span><span class="ident">::new</span>(
+        <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">BaseField</span>, <span class="ident">PlonkSpongeConstantsLegacy</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">pasta::fp_legacy::params</span>()),
         <span class="ident">network_id</span>,
     )
 }
@@ -300,8 +300,8 @@
 <span class="doccomment">/// use mina_signer::NetworkId;</span>
 <span class="doccomment">/// use oracle::{pasta, poseidon};</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// let mut ctx = mina_signer::custom::&lt;poseidon::PlonkSpongeConstants15W&gt;(</span>
-<span class="doccomment">///     pasta::fp::params(),</span>
+<span class="doccomment">/// let mut ctx = mina_signer::custom::&lt;poseidon::PlonkSpongeConstantsKimchi&gt;(</span>
+<span class="doccomment">///     pasta::fp_legacy::params(),</span>
 <span class="doccomment">///     NetworkId::TESTNET,</span>
 <span class="doccomment">/// );</span>
 <span class="doccomment">/// ```</span>

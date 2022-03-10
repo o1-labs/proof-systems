@@ -1,0 +1,1664 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `oracle/src/pasta/fp_kimchi.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>fp_kimchi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../oracle/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../../../oracle/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../oracle/index.html"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<span id="2">2</span>
+<span id="3">3</span>
+<span id="4">4</span>
+<span id="5">5</span>
+<span id="6">6</span>
+<span id="7">7</span>
+<span id="8">8</span>
+<span id="9">9</span>
+<span id="10">10</span>
+<span id="11">11</span>
+<span id="12">12</span>
+<span id="13">13</span>
+<span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
+<span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
+<span id="20">20</span>
+<span id="21">21</span>
+<span id="22">22</span>
+<span id="23">23</span>
+<span id="24">24</span>
+<span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::poseidon::ArithmeticSpongeParams</span>;
+<span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
+
+<span class="comment">/* Generated by ./params.sage --rounds 55 rust 3 kimchi */</span>
+
+<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">params</span>() -&gt; <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
+    <span class="ident">ArithmeticSpongeParams</span> {
+        <span class="ident">mds</span>: <span class="macro">vec!</span>[
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;12035446894107573964500871153637039653510326950134440362813193268448863222019&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25461374787957152039031444204194007219326765802730624564074257060397341542093&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27667907157110496066452777015908813333407980290333709698851344970789663080149&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4491931056866994439025447213644536587424785196363427220456343191847333476930&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;14743631939509747387607291926699970421064627808101543132147270746750887019919&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;9448400033389617131295304336481030167723486090288313334230651810071857784477&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10525578725509990281643336361904863911009900817790387635342941550657754064843&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27437632000253211280915908546961303399777448677029255413769125486614773776695&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27566319851776897085443681456689352477426926500749993803132851225169606086988&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+        ],
+
+        <span class="ident">round_constants</span>: <span class="macro">vec!</span>[
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;21155079691556475130150866428468322463125560312786319980770950159250751855431&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;16883442198399350202652499677723930673110172289234921799701652810789093522349&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17030687036425314703519085065002231920937594822150793091243263847382891822670&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25216718237129482752721276445368692059997901880654047883630276346421457427360&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;9054264347380455706540423067244764093107767235485930776517975315876127782582&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;26439087121446593160953570192891907825526260324480347638727375735543609856888&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;15251000790817261169639394496851831733819930596125214313084182526610855787494&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10861916012597714684433535077722887124099023163589869801449218212493070551767&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;18597653523270601187312528478986388028263730767495975370566527202946430104139&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;15831416454198644276563319006805490049460322229057756462580029181847589006611&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;15171856919255965617705854914448645702014039524159471542852132430360867202292&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;15488495958879593647482715143904752785889816789652405888927117106448507625751&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;19039802679983063488134304670998725949842655199289961967801223969839823940152&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4720101937153217036737330058775388037616286510783561045464678919473230044408&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10226318327254973427513859412126640040910264416718766418164893837597674300190&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;20878756131129218406920515859235137275859844638301967889441262030146031838819&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7178475685651744631172532830973371642652029385893667810726019303466125436953&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1996970955918516145107673266490486752153434673064635795711751450164177339618&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;15205545916434157464929420145756897321482314798910153575340430817222504672630&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25660296961552699573824264215804279051322332899472350724416657386062327210698&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13842611741937412200312851417353455040950878279339067816479233688850376089318&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1383799642177300432144836486981606294838630135265094078921115713566691160459&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1135532281155277588005319334542025976079676424839948500020664227027300010929&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4384117336930380014868572224801371377488688194169758696438185377724744869360&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;21725577575710270071808882335900370909424604447083353471892004026180492193649&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;676128913284806802699862508051022306366147359505124346651466289788974059668&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25186611339598418732666781049829183886812651492845008333418424746493100589207&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10402240124664763733060094237696964473609580414190944671778761753887884341073&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;11918307118590866200687906627767559273324023585642003803337447146531313172441&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;16895677254395661024186292503536662354181715337630376909778003268311296637301&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23818602699032741669874498456696325705498383130221297580399035778119213224810&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4285193711150023248690088154344086684336247475445482883105661485741762600154&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;19133204443389422404056150665863951250222934590192266371578950735825153238612&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;5515589673266504033533906836494002702866463791762187140099560583198974233395&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;11830435563729472715615302060564876527985621376031612798386367965451821182352&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7510711479224915247011074129666445216001563200717943545636462819681638560128&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24694843201907722940091503626731830056550128225297370217610328578733387733444&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27361655066973784653563425664091383058914302579694897188019422193564924110528&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;21606788186194534241166833954371013788633495786419718955480491478044413102713&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;19934060063390905409309407607814787335159021816537006003398035237707924006757&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;8495813630060004961768092461554180468161254914257386012937942498774724649553&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27524960680529762202005330464726908693944660961000958842417927307941561848461&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;15178481650950399259757805400615635703086255035073919114667254549690862896985&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;16164780354695672259791105197274509251141405713012804937107314962551600380870&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10529167793600778056702353412758954281652843049850979705476598375597148191979&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;721141070179074082553302896292167103755384741083338957818644728290501449040&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;22044408985956234023934090378372374883099115753118261312473550998188148912041&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27068254103241989852888872162525066148367014691482601147536314217249046186315&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;3880429241956357176819112098792744584376727450211873998699580893624868748961&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17387097125522937623262508065966749501583017524609697127088211568136333655623&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;6256814421247770895467770393029354017922744712896100913895513234184920631289&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;2942627347777337187690939671601251987500285937340386328746818861972711408579&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24031654937764287280548628128490074801809101323243546313826173430897408945397&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;14401457902976567713827506689641442844921449636054278900045849050301331732143&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;20170632877385406450742199836933900257692624353889848352407590794211839130727&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24056496193857444725324410428861722338174099794084586764867109123681727290181&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;11257913009612703357266904349759250619633397075667824800196659858304604714965&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;22228158921984425749199071461510152694025757871561406897041788037116931009246&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;9152163378317846541430311327336774331416267016980485920222768197583559318682&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13906695403538884432896105059360907560653506400343268230130536740148070289175&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7220714562509721437034241786731185291972496952091254931195414855962344025067&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27608867305903811397208862801981345878179337369367554478205559689592889691927&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13288465747219756218882697408422850918209170830515545272152965967042670763153&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;8251343892709140154567051772980662609566359215743613773155065627504813327653&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;22035238365102171608166944627493632660244312563934708756134297161332908879090&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13560937766273321037807329177749403409731524715067067740487246745322577571823&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;21652518608959234550262559135285358020552897349934571164032339186996805408040&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;22479086963324173427634460342145551255011746993910136574926173581069603086891&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13676501958531751140966255121288182631772843001727158043704693838707387130095&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;5680310394102577950568930199056707827608275306479994663197187031893244826674&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25125360450906166639190392763071557410047335755341060350879819485506243289998&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;22659254028501616785029594492374243581602744364859762239504348429834224676676&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23101411405087512171421838856759448177512679869882987631073569441496722536782&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24149774013240355952057123660656464942409328637280437515964899830988178868108&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;5782097512368226173095183217893826020351125522160843964147125728530147423065&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13540762114500083869920564649399977644344247485313990448129838910231204868111&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;20421637734328811337527547703833013277831804985438407401987624070721139913982&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7742664118615900772129122541139124149525273579639574972380600206383923500701&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1109643801053963021778418773196543643970146666329661268825691230294798976318&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;16580663920817053843121063692728699890952505074386761779275436996241901223840&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;14638514680222429058240285918830106208025229459346033470787111294847121792366&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17080385857812672649489217965285727739557573467014392822992021264701563205891&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;26176268111736737558502775993925696791974738793095023824029827577569530708665&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4382756253392449071896813428140986330161215829425086284611219278674857536001&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13934033814940585315406666445960471293638427404971553891617533231178815348902&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27054912732979753314774418228399230433963143177662848084045249524271046173121&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;28916070403698593376490976676534962592542013020010643734621202484860041243391&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24820015636966360150164458094894587765384135259446295278101998130934963922381&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7969535238488580655870884015145760954416088335296905520306227531221721881868&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7690547696740080985104189563436871930607055124031711216224219523236060212249&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;9712576468091272384496248353414290908377825697488757134833205246106605867289&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;12148698031438398980683630141370402088785182722473169207262735228500190477924&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;14359657643133476969781351728574842164124292705609900285041476162075031948227&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23563839965372067275137992801035780013422228997724286060975035719045352435470&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4184634822776323233231956802962638484057536837393405750680645555481330909086&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;16249511905185772125762038789038193114431085603985079639889795722501216492487&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;11001863048692031559800673473526311616702863826063550559568315794438941516621&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4702354107983530219070178410740869035350641284373933887080161024348425080464&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23751680507533064238793742311430343910720206725883441625894258483004979501613&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;28670526516158451470169873496541739545860177757793329093045522432279094518766&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;3568312993091537758218792253361873752799472566055209125947589819564395417072&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1819755756343439646550062754332039103654718693246396323207323333948654200950&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;5372129954699791301953948907349887257752247843844511069896766784624930478273&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17512156688034945920605615850550150476471921176481039715733979181538491476080&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25777105342317622165159064911913148785971147228777677435200128966844208883059&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25350392006158741749134238306326265756085455157012701586003300872637887157982&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;20096724945283767296886159120145376967480397366990493578897615204296873954844&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;8063283381910110762785892100479219642751540456251198202214433355775540036851&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4393613870462297385565277757207010824900723217720226130342463666351557475823&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;9874972555132910032057499689351411450892722671352476280351715757363137891038&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23590926474329902351439438151596866311245682682435235170001347511997242904868&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17723373371137275859467518615551278584842947963894791032296774955869958211070&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;2350345015303336966039836492267992193191479606566494799781846958620636621159&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27755207882790211140683010581856487965587066971982625511152297537534623405016&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;6584607987789185408123601849106260907671314994378225066806060862710814193906&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;609759108847171587253578490536519506369136135254150754300671591987320319770&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;28435187585965602110074342250910608316032945187476441868666714022529803033083&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;16016664911651770663938916450245705908287192964254704641717751103464322455303&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17551273293154696089066968171579395800922204266630874071186322718903959339163&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;20414195497994754529479032467015716938594722029047207834858832838081413050198&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;19773307918850685463180290966774465805537520595602496529624568184993487593855&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24598603838812162820757838364185126333280131847747737533989799467867231166980&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;11040972566103463398651864390163813377135738019556270484707889323659789290225&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;5189242080957784038860188184443287562488963023922086723850863987437818393811&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1435203288979376557721239239445613396009633263160237764653161500252258220144&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13066591163578079667911016543985168493088721636164837520689376346534152547210&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17345901407013599418148210465150865782628422047458024807490502489711252831342&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;22139633362249671900128029132387275539363684188353969065288495002671733200348&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1061056418502836172283188490483332922126033656372467737207927075184389487061&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10241738906190857416046229928455551829189196941239601756375665129874835232299&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27808033332417845112292408673209999320983657696373938259351951416571545364415&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;18820154989873674261497645724903918046694142479240549687085662625471577737140&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7983688435214640842673294735439196010654951226956101271763849527529940619307&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17067928657801807648925755556866676899145460770352731818062909643149568271566&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;24472070825156236829515738091791182856425635433388202153358580534810244942762&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25752201169361795911258625731016717414310986450004737514595241038036936283227&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;26041505376284666160132119888949817249574689146924196064963008712979256107535&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23977050489096115210391718599021827780049209314283111721864956071820102846008&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;26678257097278788410676026718736087312816016749016738933942134600725962413805&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10480026985951498884090911619636977502506079971893083605102044931823547311729&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;21126631300593007055117122830961273871167754554670317425822083333557535463396&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1564862894215434177641156287699106659379648851457681469848362532131406827573&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13247162472821152334486419054854847522301612781818744556576865965657773174584&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;8673615954922496961704442777870253767001276027366984739283715623634850885984&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;2794525076937490807476666942602262298677291735723129868457629508555429470085&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4656175953888995612264371467596648522808911819700660048695373348629527757049&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23221574237857660318443567292601561932489621919104226163978909845174616477329&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1878392460078272317716114458784636517603142716091316893054365153068227117145&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;2370412714505757731457251173604396662292063533194555369091306667486647634097&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17409784861870189930766639925394191888667317762328427589153989811980152373276&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;25869136641898166514111941708608048269584233242773814014385564101168774293194&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;11361209360311194794795494027949518465383235799633128250259863567683341091323&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;14913258820718821235077379851098720071902170702113538811112331615559409988569&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;12957012022018304419868287033513141736995211906682903915897515954290678373899&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;17128889547450684566010972445328859295804027707361763477802050112063630550300&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;23329219085372232771288306767242735245018143857623151155581182779769305489903&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;1607741027962933685476527275858938699728586794398382348454736018784568853937&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;2611953825405141009309433982109911976923326848135736099261873796908057448476&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;7372230383134982628913227482618052530364724821976589156840317933676130378411&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;20203606758501212620842735123770014952499754751430660463060696990317556818571&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;4678361398979174017885631008335559529633853759463947250620930343087749944307&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;27176462634198471376002287271754121925750749676999036165457559387195124025594&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+            <span class="macro">vec!</span>[
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;6361981813552614697928697527332318530502852015189048838072565811230204474643&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;13815234633287489023151647353581705241145927054858922281829444557905946323248&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+                <span class="ident">Fp::from_str</span>(
+                    <span class="string">&quot;10888828634279127981352133512429657747610298502219125571406085952954136470354&quot;</span>,
+                )
+                .<span class="ident">unwrap</span>(),
+            ],
+        ],
+    }
+}
+</code></pre></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
+</body></html>

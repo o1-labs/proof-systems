@@ -102,7 +102,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test_vectors&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">inner</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// &quot;Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10] [basic|15w] &lt;OUTPUT_FILE&gt;&quot;,</span>
+<span class="doccomment">/// &quot;Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10] [legacy|kimchi] &lt;OUTPUT_FILE&gt;&quot;,</span>
 <span class="kw">fn</span> <span class="ident">main</span>() {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test_vectors&quot;</span>)]</span>
     <span class="ident">inner::main</span>();
@@ -138,8 +138,8 @@
 
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParamType</span> {
-        <span class="ident">Basic</span>,
-        <span class="ident">P15w</span>,
+        <span class="ident">Legacy</span>,
+        <span class="ident">Kimchi</span>,
     }
 
     <span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">ParamType</span> {
@@ -147,8 +147,8 @@
 
         <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
             <span class="kw">match</span> <span class="ident">input</span>.<span class="ident">to_lowercase</span>().<span class="ident">as_str</span>() {
-                <span class="string">&quot;basic&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ParamType::Basic</span>),
-                <span class="string">&quot;15w&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ParamType::P15w</span>),
+                <span class="string">&quot;legacy&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ParamType::Legacy</span>),
+                <span class="string">&quot;kimchi&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ParamType::Kimchi</span>),
                 <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(()),
             }
         }
@@ -183,7 +183,7 @@
             }
             <span class="kw">_</span> =&gt; {
                 <span class="macro">println!</span>(
-                <span class="string">&quot;usage: cargo run --all-features --bin export_test_vectors -- [{:?}|{:?}] [basic|15w] &lt;OUTPUT_FILE&gt;&quot;</span>,
+                <span class="string">&quot;usage: cargo run --all-features --bin export_test_vectors -- [{:?}|{:?}] [legacy|kimchi] &lt;OUTPUT_FILE&gt;&quot;</span>,
                 <span class="ident">Mode::Hex</span>,
                 <span class="ident">Mode::B10</span>,
             );

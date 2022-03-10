@@ -869,14 +869,14 @@
     <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>, <span class="ident">vesta::Affine</span>, <span class="ident">Fp</span>};
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_index_for_test</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp::params</span>();
+        <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>, <span class="macro">vec!</span>[], <span class="ident">fp_sponge_params</span>, <span class="ident">public</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">SRS</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>);
         <span class="ident">srs</span>.<span class="ident">add_lagrange_basis</span>(<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>);
         <span class="kw">let</span> <span class="ident">srs</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">srs</span>);
 
-        <span class="kw">let</span> <span class="ident">fq_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fq::params</span>();
+        <span class="kw">let</span> <span class="ident">fq_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fq_kimchi::params</span>();
         <span class="kw">let</span> (<span class="ident">endo_q</span>, <span class="ident">_endo_r</span>) <span class="op">=</span> <span class="ident">endos</span>::<span class="op">&lt;</span><span class="ident">Other</span><span class="op">&gt;</span>();
         <span class="ident">Index</span>::<span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">cs</span>, <span class="ident">fq_sponge_params</span>, <span class="ident">endo_q</span>, <span class="ident">srs</span>)
     }

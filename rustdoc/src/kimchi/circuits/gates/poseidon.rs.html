@@ -247,7 +247,7 @@
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>};
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
 <span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{
-    <span class="ident">sbox</span>, <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstants15W</span>, <span class="ident">Sponge</span>,
+    <span class="ident">sbox</span>, <span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">Sponge</span>,
     <span class="ident">SpongeConstants</span>,
 };
 <span class="kw">use</span> <span class="ident">std::ops::Range</span>;
@@ -257,13 +257,13 @@
 <span class="comment">//</span>
 
 <span class="doccomment">/// Width of the sponge</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstants15W::SPONGE_WIDTH</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::SPONGE_WIDTH</span>;
 
 <span class="doccomment">/// Number of rows</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_ROW</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">COLUMNS</span> <span class="op">/</span> <span class="ident">SPONGE_WIDTH</span>;
 
 <span class="doccomment">/// Number of rounds</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstants15W::ROUNDS_FULL</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::ROUNDS_FULL</span>;
 
 <span class="doccomment">/// Number of PLONK rows required to implement Poseidon</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_ROWS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">ROUNDS_PER_HASH</span> <span class="op">/</span> <span class="ident">ROUNDS_PER_ROW</span>;
@@ -381,7 +381,7 @@
                 <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">states</span>[<span class="ident">round</span>];
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_state</span> <span class="op">=</span> <span class="ident">rc</span>[<span class="ident">round</span>][<span class="ident">i</span>];
                 <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">s</span>, <span class="ident">mds</span>) <span class="kw">in</span> <span class="ident">state</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">mds_row</span>.<span class="ident">iter</span>()) {
-                    <span class="kw">let</span> <span class="ident">sboxed</span> <span class="op">=</span> <span class="ident">sbox</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstants15W</span><span class="op">&gt;</span>(<span class="ident">s</span>);
+                    <span class="kw">let</span> <span class="ident">sboxed</span> <span class="op">=</span> <span class="ident">sbox</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(<span class="ident">s</span>);
                     <span class="ident">new_state</span> <span class="op">+</span><span class="op">=</span> <span class="ident">sboxed</span> <span class="op">*</span> <span class="ident">mds</span>;
                 }
 
@@ -438,7 +438,7 @@
     <span class="ident">witness_cols</span>[<span class="number">2</span>][<span class="ident">row</span>] <span class="op">=</span> <span class="ident">input</span>[<span class="number">2</span>];
 
     <span class="comment">// set the sponge state</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sponge</span> <span class="op">=</span> <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstants15W</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">params</span>);
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sponge</span> <span class="op">=</span> <span class="ident">ArithmeticSponge</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">params</span>);
     <span class="ident">sponge</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">input</span>.<span class="ident">into</span>();
 
     <span class="comment">// for the poseidon rows</span>
@@ -456,7 +456,7 @@
             <span class="kw">let</span> <span class="ident">abs_round</span> <span class="op">=</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">row_idx</span> <span class="op">*</span> <span class="ident">ROUNDS_PER_ROW</span>;
 
             <span class="comment">// apply the sponge and record the result in the witness</span>
-            <span class="kw">if</span> <span class="ident">PlonkSpongeConstants15W::INITIAL_ARK</span> {
+            <span class="kw">if</span> <span class="ident">PlonkSpongeConstantsKimchi::INITIAL_ARK</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;this won&#39;t work if the circuit has an INITIAL_ARK&quot;</span>)
             }
             <span class="ident">sponge</span>.<span class="ident">full_round</span>(<span class="ident">abs_round</span>);

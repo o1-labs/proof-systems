@@ -1476,7 +1476,7 @@
 
     <span class="kw">impl</span> <span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span> {
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fp_for_testing</span>(<span class="ident">gates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-            <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp::params</span>();
+            <span class="kw">let</span> <span class="ident">fp_sponge_params</span> <span class="op">=</span> <span class="ident">oracle::pasta::fp_kimchi::params</span>();
             <span class="ident"><span class="self">Self</span>::for_testing</span>(<span class="ident">fp_sponge_params</span>, <span class="ident">gates</span>)
         }
     }
