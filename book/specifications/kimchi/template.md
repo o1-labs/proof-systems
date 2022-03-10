@@ -104,4 +104,16 @@ A proof consists of:
 
 ## Proof Verification
 
+In this section we specify a verifier that batch verify a number of proofs for unrelated circuits.
+
+The verifier expects a list of proofs, where each proof comes with:
+
+* a verifier index
+* the actual proof (as specified in the [proof creation section](#proof-creation))
+* a vector of commitments ???
+
+The verifier then follows the following steps to verify the proofs. 
+Note that a single invalid proofs will invalidate the whole list of proofs. 
+If the verifier then wants to isolate the invalid proofs, they will have to either verify proofs one by one, or perform a binary search.
+
 {sections.verifier}

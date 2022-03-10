@@ -405,6 +405,9 @@ where
         return Ok(true);
     }
 
+    //~ 1. Ensure that all proofs use an SRS of the same length.
+    //~    (This does not work with SRSs of different lengths at the moment.)
+    //~    (TODO: does the SRSs have to be the same though?)
     // TODO: Account for the different SRS lengths
     let srs = &proofs[0].0.srs;
     for (index, _) in proofs.iter() {
