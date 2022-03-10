@@ -528,6 +528,32 @@
 <span id="523">523</span>
 <span id="524">524</span>
 <span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.</span>
 
 <span class="comment">//~ The double generic gate contains two generic gates.</span>
@@ -843,6 +869,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>,
             <span class="ident">row</span>: <span class="ident">usize</span>,
             <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+            <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
         ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
             <span class="comment">// assignments</span>
             <span class="kw">let</span> <span class="ident">this</span>: [<span class="ident">F</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">witness</span>[<span class="ident">i</span>][<span class="ident">row</span>]);
@@ -860,9 +887,14 @@
                 <span class="kw">let</span> <span class="ident">mul</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">3</span>]
                     <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span>]
                     <span class="op">*</span> <span class="ident">this</span>[<span class="ident">register_offset</span> <span class="op">+</span> <span class="number">1</span>];
+                <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">coeffs_offset</span> <span class="op">==</span> <span class="number">0</span> {
+                    <span class="ident">public</span>.<span class="ident">get</span>(<span class="ident">row</span>).<span class="ident">cloned</span>().<span class="ident">unwrap_or_else</span>(<span class="ident">F::zero</span>)
+                } <span class="kw">else</span> {
+                    <span class="ident">F::zero</span>()
+                };
                 <span class="macro">ensure_eq!</span>(
                     <span class="ident">zero</span>,
-                    <span class="ident">sum</span> <span class="op">+</span> <span class="ident">mul</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">4</span>],
+                    <span class="ident">sum</span> <span class="op">+</span> <span class="ident">mul</span> <span class="op">+</span> <span class="self">self</span>.<span class="ident">coeffs</span>[<span class="ident">coeffs_offset</span> <span class="op">+</span> <span class="number">4</span>] <span class="op">-</span> <span class="ident">public</span>,
                     <span class="string">&quot;generic: incorrect gate&quot;</span>
                 );
                 <span class="prelude-val">Ok</span>(())
@@ -917,12 +949,22 @@
     }
 
     <span class="doccomment">/// function to create a generic circuit</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_circuit</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_circuit</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>, <span class="ident">public</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// create constraint system with a single generic gate</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
         <span class="comment">// create generic gates</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gates_row</span> <span class="op">=</span> <span class="ident">iterate</span>(<span class="ident">start_row</span>, <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
+
+        <span class="comment">// public input</span>
+        <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">public</span> {
+            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">gates_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
+            <span class="ident">gates</span>.<span class="ident">push</span>(<span class="ident">CircuitGate::create_generic_gadget</span>(
+                <span class="ident">Wire::new</span>(<span class="ident">r</span>),
+                <span class="ident">GenericGateSpec::Pub</span>,
+                <span class="prelude-val">None</span>,
+            ));
+        }
 
         <span class="comment">// add and mul</span>
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
@@ -959,9 +1001,19 @@
     }
 
     <span class="comment">// function to fill in a witness created via [create_circuit]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fill_in_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">start_row</span>: <span class="ident">usize</span>, <span class="ident">witness</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>]) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fill_in_witness</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(
+        <span class="ident">start_row</span>: <span class="ident">usize</span>,
+        <span class="ident">witness</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
+        <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
+    ) {
         <span class="comment">// fill witness</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness_row</span> <span class="op">=</span> <span class="ident">iterate</span>(<span class="ident">start_row</span>, <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>);
+
+        <span class="comment">// public</span>
+        <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">public</span> {
+            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">witness_row</span>.<span class="ident">next</span>().<span class="ident">unwrap</span>();
+            <span class="ident">witness</span>[<span class="number">0</span>][<span class="ident">r</span>] <span class="op">=</span> <span class="kw-2">*</span><span class="ident">p</span>;
+        }
 
         <span class="comment">// add and mul</span>
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">10</span> {
@@ -1000,7 +1052,7 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_generic_polynomial</span>() {
         <span class="comment">// create circuit</span>
-        <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="ident">testing::create_circuit</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">gates</span> <span class="op">=</span> <span class="ident">testing::create_circuit</span>::<span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>(<span class="number">0</span>, <span class="number">0</span>);
 
         <span class="comment">// create constraint system</span>
         <span class="kw">let</span> <span class="ident">cs</span> <span class="op">=</span> <span class="ident">ConstraintSystem::fp_for_testing</span>(<span class="ident">gates</span>);
@@ -1008,10 +1060,10 @@
         <span class="comment">// create witness</span>
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">witness</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span> <span class="ident">array_init</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec!</span>[<span class="ident">Fp::zero</span>(); <span class="ident">n</span>]);
-        <span class="ident">testing::fill_in_witness</span>(<span class="number">0</span>, <span class="kw-2">&amp;mut</span> <span class="ident">witness</span>);
+        <span class="ident">testing::fill_in_witness</span>(<span class="number">0</span>, <span class="kw-2">&amp;mut</span> <span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]);
 
         <span class="comment">// make sure we&#39;re done filling the witness correctly</span>
-        <span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>).<span class="ident">unwrap</span>();
+        <span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span>[]).<span class="ident">unwrap</span>();
 
         <span class="comment">// generate witness polynomials</span>
         <span class="kw">let</span> <span class="ident">witness_evals</span>: [<span class="ident">Evaluations</span><span class="op">&lt;</span><span class="ident">Fp</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">Fp</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>] <span class="op">=</span>
@@ -1054,5 +1106,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
 </body></html>

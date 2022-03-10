@@ -1045,6 +1045,12 @@
 <span id="1040">1040</span>
 <span id="1041">1041</span>
 <span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1146,7 +1152,11 @@
 
         <span class="comment">// double-check the witness</span>
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
-            <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>).<span class="ident">expect</span>(<span class="string">&quot;incorrect witness&quot;</span>);
+            <span class="kw">let</span> <span class="ident">public</span> <span class="op">=</span> <span class="ident">witness</span>[<span class="number">0</span>][<span class="number">0</span>..<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">public</span>].<span class="ident">to_vec</span>();
+            <span class="ident">index</span>
+                .<span class="ident">cs</span>
+                .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">witness</span>, <span class="kw-2">&amp;</span><span class="ident">public</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;incorrect witness&quot;</span>);
         }
 
         <span class="comment">// ensure we have room for the zero-knowledge rows</span>
@@ -1463,8 +1473,10 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">t4</span> <span class="op">=</span> <span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">gnrc_quot</span>(<span class="ident">alphas</span>, <span class="kw-2">&amp;</span><span class="ident">lagrange</span>.<span class="ident">d4</span>.<span class="ident">this</span>.<span class="ident">w</span>);
 
             <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
-                <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">t4</span>
-                    .<span class="ident">clone</span>()
+                <span class="kw">let</span> <span class="ident">p4</span> <span class="op">=</span> <span class="ident">public_poly</span>.<span class="ident">evaluate_over_domain_by_ref</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d4</span>);
+                <span class="kw">let</span> <span class="ident">gen_minus_pub</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">t4</span> <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">p4</span>;
+
+                <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">res</span>) <span class="op">=</span> <span class="ident">gen_minus_pub</span>
                     .<span class="ident">interpolate</span>()
                     .<span class="ident">divide_by_vanishing_poly</span>(<span class="ident">index</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>)
                     .<span class="ident">unwrap</span>();
@@ -2088,5 +2100,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
 </body></html>

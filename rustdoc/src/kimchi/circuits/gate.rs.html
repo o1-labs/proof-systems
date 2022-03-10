@@ -669,6 +669,7 @@
 <span id="664">664</span>
 <span id="665">665</span>
 <span id="666">666</span>
+<span id="667">667</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">domains::EvaluationDomains</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>};
@@ -1163,11 +1164,12 @@
         <span class="ident">row</span>: <span class="ident">usize</span>,
         <span class="ident">witness</span>: <span class="kw-2">&amp;</span>[<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">COLUMNS</span>],
         <span class="ident">cs</span>: <span class="kw-2">&amp;</span><span class="ident">ConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+        <span class="ident">public</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">use</span> <span class="ident">GateType</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">typ</span> {
             <span class="ident">Zero</span> =&gt; <span class="prelude-val">Ok</span>(()),
-            <span class="ident">Generic</span> =&gt; <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
+            <span class="ident">Generic</span> =&gt; <span class="self">self</span>.<span class="ident">verify_generic</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">public</span>),
             <span class="ident">Poseidon</span> =&gt; <span class="self">self</span>.<span class="ident">verify_poseidon</span>(<span class="ident">row</span>, <span class="ident">witness</span>, <span class="ident">cs</span>),
             <span class="ident">CompleteAdd</span> =&gt; <span class="self">self</span>.<span class="ident">verify_complete_add</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
             <span class="ident">VarBaseMul</span> =&gt; <span class="self">self</span>.<span class="ident">verify_vbmul</span>(<span class="ident">row</span>, <span class="ident">witness</span>),
@@ -1336,5 +1338,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1eb72580d 2022-03-08)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
 </body></html>
