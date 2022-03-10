@@ -1984,11 +1984,11 @@ where
         let mut res = String::new();
         for (k, v) in env.into_iter() {
             let rhs = v.ocaml_str();
-            let cached = format!("let {} = {rhs} in", k.var_name());
+            let cached = format!("let {} = {rhs} in ", k.var_name());
             res.push_str(&cached);
         }
 
-        res.push_str(&format!("$$ {} $$", e));
+        res.push_str(&e);
         res
     }
 
