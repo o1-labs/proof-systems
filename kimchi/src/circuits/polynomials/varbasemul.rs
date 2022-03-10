@@ -206,7 +206,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
-    const CONSTRAINTS: usize = 21;
+    const CONSTRAINTS: u32 = 21;
 
     fn constraints() -> Vec<E<F>> {
         let Layout {

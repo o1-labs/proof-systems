@@ -1,39 +1,35 @@
 //! Implements a tool to visualize a circuit as an HTML page.
 
+use ark_ec::AffineCurve;
+use ark_ff::PrimeField;
+use commitment_dlog::commitment::CommitmentCurve;
+use kimchi::{
+    circuits::{
+        argument::Argument,
+        polynomials::{
+            chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            poseidon::Poseidon,
+            varbasemul::VarbaseMul,
+        },
+    },
+    index::Index,
+};
+use serde::Serialize;
 use std::{
+    collections::HashMap,
+    fmt::Display,
     fs::{self, File},
     io::Write,
     path::Path,
 };
-
-use ark_ec::AffineCurve;
-use commitment_dlog::commitment::CommitmentCurve;
-use kimchi::{circuits::polynomial::COLUMNS, index::Index};
-use serde::Serialize;
-use serde_with::serde_as;
 use tinytemplate::TinyTemplate;
 
-type Fr<G> = <G as AffineCurve>::ScalarField;
+pub mod witness;
 
-/// Hack: as Fr<G> does not implement Serialize, we need to use [serde_as]
-#[serde_as]
-#[derive(Debug, Serialize)]
-pub struct Witness<G>
-where
-    G: AffineCurve,
-{
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    inner: [Vec<Fr<G>>; COLUMNS],
-}
-
-impl<G> From<[Vec<Fr<G>>; COLUMNS]> for Witness<G>
-where
-    G: AffineCurve,
-{
-    fn from(inner: [Vec<Fr<G>>; COLUMNS]) -> Self {
-        Witness { inner }
-    }
-}
+pub use witness::Witness;
 
 /// Contains variable used in the template
 #[derive(Serialize)]
@@ -42,8 +38,46 @@ struct Context {
     data: String,
 }
 
+type Fr<G> = <G as AffineCurve>::ScalarField;
+
+/// Allows us to quickly implement a LaTeX encoder for each gate
+trait LaTeX<F>: Argument<F>
+where
+    F: PrimeField,
+{
+    fn latex() -> Vec<Vec<String>> {
+        Self::constraints().iter().map(|c| c.latex_str()).collect()
+    }
+}
+
+/// Implement [LaTeX] for all gates
+impl<T, F> LaTeX<F> for T
+where
+    T: Argument<F>,
+    F: PrimeField + Display,
+{
+}
+
+///
+pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
+where
+    G: CommitmentCurve,
+{
+    let mut map = HashMap::new();
+    map.insert("Poseidon", Poseidon::<Fr<G>>::latex());
+    map.insert("CompleteAdd", CompleteAdd::<Fr<G>>::latex());
+    map.insert("VarBaseMul", VarbaseMul::<Fr<G>>::latex());
+    map.insert("EndoMul", EndosclMul::<Fr<G>>::latex());
+    map.insert("EndoMulScalar", EndomulScalar::<Fr<G>>::latex());
+    map.insert("ChaCha0", ChaCha0::<Fr<G>>::latex());
+    map.insert("ChaCha1", ChaCha1::<Fr<G>>::latex());
+    map.insert("ChaCha2", ChaCha2::<Fr<G>>::latex());
+    map.insert("ChaChaFinal", ChaChaFinal::<Fr<G>>::latex());
+    map
+}
+
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &Index<G>, witness: Option<Witness<G>>)
+pub fn visu<G>(index: &Index<G>, witness: Option<Witness<Fr<G>>>)
 where
     G: CommitmentCurve,
 {
@@ -58,6 +92,11 @@ where
     } else {
         data.push_str("const witness = null;");
     }
+
+    // serialize constraints
+    let constraints = latex_constraints::<G>();
+    let constraints = serde_json::to_string(&constraints).expect("couldn't serialize constraints");
+    data.push_str(&format!("const constraints = {constraints};"));
 
     // create template
     let template_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/assets/template.html");

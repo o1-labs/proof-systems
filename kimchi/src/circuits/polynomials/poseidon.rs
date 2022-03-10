@@ -97,7 +97,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
-    const CONSTRAINTS: usize = 15;
+    const CONSTRAINTS: u32 = 15;
 
     fn constraints() -> Vec<E<F>> {
         let mut res = vec![];
@@ -122,7 +122,9 @@ where
             //~
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             let sboxed: Vec<_> = round_to_cols(source)
-                .map(|i| cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::SPONGE_BOX)))
+                .map(|i| {
+                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::SPONGE_BOX as u64))
+                })
                 .collect();
 
             for (j, col) in round_to_cols(target_round).enumerate() {

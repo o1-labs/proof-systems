@@ -13,7 +13,6 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::fmt;
 use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use CurrOrNext::*;
@@ -135,6 +134,21 @@ impl Column {
             _ => Domain::D8,
         }
     }
+
+    fn latex(&self) -> String {
+        match self {
+            Column::Witness(i) => format!("w_{{{i}}}"),
+            Column::Z => "Z".to_string(),
+            Column::LookupSorted(i) => format!("s_{{{}}}", i),
+            Column::LookupAggreg => "a".to_string(),
+            Column::LookupTable => "t".to_string(),
+            Column::LookupKindIndex(i) => format!("k_{{{}}}", i),
+            Column::Index(gate) => {
+                format!("{:?}", gate)
+            }
+            Column::Coefficient(i) => format!("c_{{{}}}", i),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -147,11 +161,20 @@ pub struct Variable {
     pub row: CurrOrNext,
 }
 
-impl fmt::Display for Variable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "var({:?}, {:?})", self.col, self.row)
+impl Variable {
+    fn ocaml(&self) -> String {
+        format!("var({:?}, {:?})", self.col, self.row)
+    }
+
+    fn latex(&self) -> String {
+        let col = self.col.latex();
+        match self.row {
+            Curr => col,
+            Next => format!("\\tilde{{{col}}}"),
+        }
     }
 }
+
 #[derive(Clone, Debug, PartialEq)]
 /// An arithmetic expression over
 ///
@@ -169,7 +192,7 @@ pub enum ConstantExpr<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     Literal(F),
-    Pow(Box<ConstantExpr<F>>, usize),
+    Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
     // having a BinOp constructor :(
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
@@ -215,13 +238,13 @@ impl<F: Copy> ConstantExpr<F> {
 
 impl<F: Field> ConstantExpr<F> {
     /// Exponentiate a constant expression.
-    pub fn pow(self, p: usize) -> Self {
+    pub fn pow(self, p: u64) -> Self {
         if p == 0 {
             return Literal(F::one());
         }
         use ConstantExpr::*;
         match self {
-            Literal(x) => Literal(x.pow(&[p as u64])),
+            Literal(x) => Literal(x.pow(&[p])),
             x => Pow(Box::new(x), p),
         }
     }
@@ -282,6 +305,10 @@ impl CacheId {
     fn var_name(&self) -> String {
         format!("x_{}", self.0)
     }
+
+    fn latex_name(&self) -> String {
+        format!("x_{{{}}}", self.0)
+    }
 }
 
 impl Cache {
@@ -337,7 +364,7 @@ pub enum Expr<C> {
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(usize),
-    Pow(Box<Expr<C>>, usize),
+    Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
 }
 
@@ -355,7 +382,7 @@ pub enum PolishToken<F> {
     Literal(F),
     Cell(Variable),
     Dup,
-    Pow(usize),
+    Pow(u64),
     Add,
     Mul,
     Sub,
@@ -470,7 +497,7 @@ impl<C> Expr<C> {
         Expr::Constant(c)
     }
 
-    fn degree(&self, d1_size: usize) -> usize {
+    fn degree(&self, d1_size: u64) -> u64 {
         use Expr::*;
         match self {
             Double(x) => x.degree(d1_size),
@@ -889,9 +916,9 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn pow<'b>(self, d: usize, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
+    fn pow<'b>(self, d: u64, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
         let mut acc = EvalResult::Constant(F::one());
-        for i in (0..64).rev() {
+        for i in (0..u64::BITS).rev() {
             acc = acc.square(res_domain);
 
             if (d >> i) & 1 == 1 {
@@ -1051,11 +1078,11 @@ impl<F: Field> Expr<ConstantExpr<F>> {
 
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
-    pub fn combine_constraints(alphas: impl Iterator<Item = usize>, cs: Vec<Self>) -> Self {
+    pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
         let zero = Expr::<ConstantExpr<F>>::zero();
         cs.into_iter()
             .zip_eq(alphas)
-            .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i)) * c)
+            .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i as u64)) * c)
             .fold(zero, |acc, x| acc + x)
     }
 }
@@ -1241,7 +1268,7 @@ impl<F: FftField> Expr<F> {
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
-        let d1_size = env.domain.d1.size as usize;
+        let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
             Domain::D1
@@ -1504,7 +1531,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
-    pub fn pow(self, p: usize) -> Self {
+    pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
             return Constant(F::one());
@@ -1573,7 +1600,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let mut acc_is_one = true;
                 let x = x.monomials(ev);
 
-                for i in (0..64).rev() {
+                for i in (0..u64::BITS).rev() {
                     if !acc_is_one {
                         let acc2 = mul_monomials(&acc, &acc);
                         acc = acc2;
@@ -1894,78 +1921,144 @@ impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
     }
 }
 
-impl<F: PrimeField> fmt::Display for ConstantExpr<F> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//
+// Display
+//
+
+impl<F: PrimeField> ConstantExpr<F> {
+    fn ocaml(&self) -> String {
         use ConstantExpr::*;
         match self {
-            Alpha => write!(f, "alpha")?,
-            Beta => write!(f, "beta")?,
-            Gamma => write!(f, "gamma")?,
-            JointCombiner => write!(f, "joint_combiner")?,
-            EndoCoefficient => write!(f, "endo_coefficient")?,
-            Mds { row, col } => write!(f, "mds({}, {})", row, col)?,
-            Literal(x) => write!(f, "field(\"0x{}\")", x.into_repr())?,
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+            EndoCoefficient => "endo_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => write!(f, "alpha_pow({})", n)?,
-                x => write!(f, "pow({}, {})", x, n)?,
+                Alpha => format!("alpha_pow({n})"),
+                x => format!("pow({}, {n})", x.ocaml()),
             },
-            Add(x, y) => write!(f, "({} + {})", x.as_ref(), y.as_ref())?,
-            Mul(x, y) => write!(f, "({} * {})", x.as_ref(), y.as_ref())?,
-            Sub(x, y) => write!(f, "({} - {})", x.as_ref(), y.as_ref())?,
-        };
-        Ok(())
+            Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
+            Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
+            Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
+        }
     }
-}
 
-fn to_string<F: Clone + fmt::Display>(
-    cache: &mut HashMap<CacheId, Expr<F>>,
-    e: &Expr<F>,
-) -> String {
-    use Expr::*;
-    match e {
-        Double(x) => format!("double({})", to_string(cache, x)),
-        Constant(x) => format!("{}", x),
-        Cell(v) => format!("cell({})", *v),
-        UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-        VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
-        BinOp(Op2::Add, x, y) => format!(
-            "({} + {})",
-            to_string(cache, x.as_ref()),
-            to_string(cache, y.as_ref())
-        ),
-        BinOp(Op2::Mul, x, y) => format!(
-            "({} * {})",
-            to_string(cache, x.as_ref()),
-            to_string(cache, y.as_ref())
-        ),
-        BinOp(Op2::Sub, x, y) => format!(
-            "({} - {})",
-            to_string(cache, x.as_ref()),
-            to_string(cache, y.as_ref())
-        ),
-        Pow(x, d) => format!("pow({}, {})", to_string(cache, x.as_ref()), d),
-        Square(x) => format!("square({})", to_string(cache, x.as_ref())),
-        Cache(id, e) => {
-            cache.insert(*id, e.as_ref().clone());
-            id.var_name()
+    fn latex(&self) -> String {
+        use ConstantExpr::*;
+        match self {
+            Alpha => "\\alpha".to_string(),
+            Beta => "\\beta".to_string(),
+            Gamma => "\\gamma".to_string(),
+            JointCombiner => "joint\\_combiner".to_string(),
+            EndoCoefficient => "endo\\_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            Literal(x) => format!("\\mathbb{{F}}(\"0x{}\")", x.into_repr()),
+            Pow(x, n) => match x.as_ref() {
+                Alpha => format!("\\alpha^{{{n}}}"),
+                x => format!("{}^{n}", x.ocaml()),
+            },
+            Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
+            Mul(x, y) => format!("({} \\cdot {})", x.ocaml(), y.ocaml()),
+            Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
         }
     }
 }
 
-impl<F: fmt::Display + Clone> fmt::Display for Expr<F> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<F> Expr<ConstantExpr<F>>
+where
+    F: PrimeField,
+{
+    /// Converts the expression in OCaml code
+    pub fn ocaml_str(&self) -> String {
         let mut env = HashMap::new();
-        let e = to_string(&mut env, self);
+        let e = self.ocaml(&mut env);
+
         let mut env: Vec<_> = env.into_iter().collect();
         // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
         // consistent when printing.
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
+
+        let mut res = String::new();
         for (k, v) in env.into_iter() {
-            writeln!(f, "let {} = {} in", k.var_name(), v)?;
+            let rhs = v.ocaml_str();
+            let cached = format!("let {} = {rhs} in", k.var_name());
+            res.push_str(&cached);
         }
-        write!(f, "{}", e)
+
+        res.push_str(&format!("$$ {} $$", e));
+        res
+    }
+
+    /// Recursively print the expression,
+    /// except for the cached expression that are stored in the `cache`.
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+        use Expr::*;
+        match self {
+            Double(x) => format!("double({})", x.ocaml(cache)),
+            Constant(x) => x.ocaml(),
+            Cell(v) => format!("cell({})", v.ocaml()),
+            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
+            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
+            BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
+            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
+            Pow(x, d) => format!("pow({}, {d})", x.ocaml(cache)),
+            Square(x) => format!("square({})", x.ocaml(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
+        }
+    }
+
+    /// Converts the expression in LaTeX
+    pub fn latex_str(&self) -> Vec<String> {
+        let mut env = HashMap::new();
+        let e = self.latex(&mut env);
+
+        let mut env: Vec<_> = env.into_iter().collect();
+        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
+        // consistent when printing.
+        env.sort_by(|(x, _), (y, _)| x.cmp(y));
+
+        let mut res = vec![];
+        for (k, v) in env.into_iter() {
+            let mut rhs = v.latex_str();
+            let last = rhs.pop().expect("returned an empty expression");
+            res.push(format!("{} = {last}", k.latex_name()));
+            res.extend(rhs);
+        }
+        res.push(e);
+        res
+    }
+
+    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+        use Expr::*;
+        match self {
+            Double(x) => format!("2 ({})", x.latex(cache)),
+            Constant(x) => x.latex(),
+            Cell(v) => v.latex(),
+            UnnormalizedLagrangeBasis(i) => format!("unnormalized\\_lagrange\\_basis({})", *i),
+            VanishesOnLast4Rows => "vanishes\\_on\\_last\\_4\\_rows".to_string(),
+            BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
+            BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
+            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
+            Pow(x, d) => format!("{}^{{{d}}}", x.latex(cache)),
+            Square(x) => format!("({})^2", x.latex(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
+        }
     }
 }
+
+//
+// Constraints
+//
 
 /// A number of useful constraints
 pub mod constraints {

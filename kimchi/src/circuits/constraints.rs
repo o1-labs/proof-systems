@@ -372,7 +372,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_tables8,
                     lookup_tables: lookup_tables_polys,
                     lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row,
+                    max_lookups_per_row: lookup_info.max_per_row as usize,
                     max_joint_size: lookup_info.max_joint_size,
                 })
             }
@@ -624,9 +624,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; COLUMNS]) -> Result<(), GateError> {
-        let left_wire = vec![F::one(), F::zero(), F::zero(), F::zero(), F::zero()];
-
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
         let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array_init(|i| {
@@ -663,12 +661,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs != left_wire {
+            if row < self.public && gate.coeffs[0] != F::one() {
                 return Err(GateError::IncorrectPublic(row));
             }
 
             // check the gate's satisfiability
-            gate.verify(row, &witness, self)
+            gate.verify(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
