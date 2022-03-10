@@ -11,7 +11,7 @@ use mina_curves::pasta::{
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
+use oracle::poseidon::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
 use rand::Rng;
@@ -123,7 +123,7 @@ where
     // setup
     let mut rng = rand::thread_rng();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq::params());
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Affine>::create(1 << 7);

@@ -20,7 +20,7 @@ pub use signature::Signature;
 use oracle::{
     pasta,
     poseidon::{
-        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsBasic, Sponge,
+        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsLegacy, Sponge,
         SpongeConstants,
     },
 };
@@ -127,8 +127,8 @@ pub trait Signer {
 /// let mut ctx = mina_signer::create(NetworkId::MAINNET);
 /// ```
 pub fn create(network_id: NetworkId) -> impl Signer {
-    Schnorr::<PlonkSpongeConstantsBasic>::new(
-        ArithmeticSponge::<BaseField, PlonkSpongeConstantsBasic>::new(pasta::fp::params()),
+    Schnorr::<PlonkSpongeConstantsLegacy>::new(
+        ArithmeticSponge::<BaseField, PlonkSpongeConstantsLegacy>::new(pasta::fp_legacy::params()),
         network_id,
     )
 }
@@ -141,8 +141,8 @@ pub fn create(network_id: NetworkId) -> impl Signer {
 /// use mina_signer::NetworkId;
 /// use oracle::{pasta, poseidon};
 ///
-/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
-///     pasta::fp::params(),
+/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstantsKimchi>(
+///     pasta::fp_legacy::params(),
 ///     NetworkId::TESTNET,
 /// );
 /// ```

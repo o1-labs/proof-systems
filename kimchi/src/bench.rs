@@ -15,12 +15,12 @@ use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
 use mina_curves::pasta::{fp::Fp, vesta::Affine};
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 

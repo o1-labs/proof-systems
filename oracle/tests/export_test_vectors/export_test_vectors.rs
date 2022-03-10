@@ -3,7 +3,7 @@ mod vectors;
 #[cfg(feature = "test_vectors")]
 use inner::*;
 
-/// "Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10] [basic|15w] <OUTPUT_FILE>",
+/// "Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10] [legacy|kimchi] <OUTPUT_FILE>",
 fn main() {
     #[cfg(feature = "test_vectors")]
     inner::main();
@@ -39,8 +39,8 @@ mod inner {
 
     #[derive(Debug)]
     pub enum ParamType {
-        Basic,
-        P15w,
+        Legacy,
+        Kimchi,
     }
 
     impl FromStr for ParamType {
@@ -48,8 +48,8 @@ mod inner {
 
         fn from_str(input: &str) -> Result<Self, Self::Err> {
             match input.to_lowercase().as_str() {
-                "basic" => Ok(ParamType::Basic),
-                "15w" => Ok(ParamType::P15w),
+                "legacy" => Ok(ParamType::Legacy),
+                "kimchi" => Ok(ParamType::Kimchi),
                 _ => Err(()),
             }
         }
@@ -84,7 +84,7 @@ mod inner {
             }
             _ => {
                 println!(
-                "usage: cargo run --all-features --bin export_test_vectors -- [{:?}|{:?}] [basic|15w] <OUTPUT_FILE>",
+                "usage: cargo run --all-features --bin export_test_vectors -- [{:?}|{:?}] [legacy|kimchi] <OUTPUT_FILE>",
                 Mode::Hex,
                 Mode::B10,
             );

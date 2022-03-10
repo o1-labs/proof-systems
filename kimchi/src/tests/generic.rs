@@ -14,14 +14,14 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 

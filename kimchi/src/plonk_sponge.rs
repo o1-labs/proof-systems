@@ -1,7 +1,7 @@
 use crate::circuits::scalars::ProofEvaluations;
 use ark_ff::{Field, PrimeField};
 use oracle::poseidon::{
-    ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W as SC, Sponge,
+    ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi as SC, Sponge,
 };
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 

@@ -10,7 +10,7 @@ use mina_curves::pasta::Fp;
 
 fn main() {
     let public = 3;
-    let poseidon_params = oracle::pasta::fp::params();
+    let poseidon_params = oracle::pasta::fp_kimchi::params();
 
     // create circuit
     let (gates, row) = {

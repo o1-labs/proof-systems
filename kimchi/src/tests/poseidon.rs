@@ -18,7 +18,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::{PlonkSpongeConstants15W, SpongeConstants},
+    poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -27,7 +27,7 @@ use std::{io, io::Write};
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
@@ -49,7 +49,7 @@ fn test_poseidon() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    let round_constants = oracle::pasta::fp::params().round_constants;
+    let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
     let mut abs_row = 0;
@@ -121,7 +121,7 @@ fn positive(index: &Index<Affine>) {
 
             poseidon::generate_witness(
                 first_row,
-                oracle::pasta::fp::params(),
+                oracle::pasta::fp_kimchi::params(),
                 &mut witness_cols,
                 input,
             );

@@ -9,7 +9,7 @@ use mina_curves::pasta::{
 };
 use o1_utils::ExtendedDensePolynomial;
 
-use oracle::poseidon::PlonkSpongeConstants15W as SC;
+use oracle::poseidon::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
 
@@ -31,7 +31,7 @@ where
     let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq::params());
+    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);

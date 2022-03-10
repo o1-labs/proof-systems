@@ -16,14 +16,14 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 

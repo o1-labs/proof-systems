@@ -425,14 +425,14 @@ pub mod testing {
     use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
 
     pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> Index<Affine> {
-        let fp_sponge_params = oracle::pasta::fp::params();
+        let fp_sponge_params = oracle::pasta::fp_kimchi::params();
         let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
 
         let mut srs = SRS::<Affine>::create(cs.domain.d1.size as usize);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let fq_sponge_params = oracle::pasta::fq::params();
+        let fq_sponge_params = oracle::pasta::fq_kimchi::params();
         let (endo_q, _endo_r) = endos::<Other>();
         Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
     }

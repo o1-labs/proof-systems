@@ -30,7 +30,7 @@ use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, Field};
-use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
+use oracle::poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use std::marker::PhantomData;
 use CurrOrNext::*;
 
@@ -123,7 +123,7 @@ where
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             let sboxed: Vec<_> = round_to_cols(source)
                 .map(|i| {
-                    cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX as u64))
+                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::SPONGE_BOX as u64))
                 })
                 .collect();
 
