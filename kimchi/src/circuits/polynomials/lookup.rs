@@ -152,12 +152,32 @@ fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
         .fold(E::zero(), |acc, e| acc + e)
 }
 
-fn joint_lookup<F: FftField>(j: &JointLookup<F>) -> E<F> {
+fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: u32) -> E<F> {
+    // The domain-separation term, used to ensure that a lookup against a given table cannot
+    // retrieve a value for some other table.
+    let table_id_contribution = {
+        let table_id: F = {
+            if j.table_id >= 0 {
+                F::from(j.table_id as u32)
+            } else {
+                -F::from(-j.table_id as u32)
+            }
+        };
+        // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
+        // `joint_combiner` in the table value calculation below. This ensures that we can avoid
+        // using higher powers of the `joint_combiner` when we have only one table with a
+        // `table_id` of 0.
+        E::constant(
+            ConstantExpr::JointCombiner.pow(max_joint_size as u64)
+                * ConstantExpr::Literal(table_id),
+        )
+    };
     j.entry
         .iter()
         .enumerate()
         .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i as u64)) * single_lookup(s))
         .fold(E::zero(), |acc, x| acc + x)
+        + table_id_contribution
 }
 
 struct AdjacentPairs<A, I: Iterator<Item = A>> {
@@ -227,6 +247,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
+    max_joint_size: u32,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
@@ -298,7 +319,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
+            let joint_lookup_evaluation =
+                joint_lookup.evaluate(joint_combiner, &eval, max_joint_size);
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
@@ -333,6 +355,7 @@ pub trait Entry {
         j: &JointLookup<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
+        max_joint_size: u32,
     ) -> Self;
 }
 
@@ -347,6 +370,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
+        max_joint_size: u32,
     ) -> CombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
             let row = match pos.row {
@@ -356,7 +380,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, &eval))
+        CombinedEntry(j.evaluate(*joint_combiner, &eval, max_joint_size))
     }
 }
 
@@ -372,6 +396,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
+        _max_joint_size: u32,
     ) -> UncombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
             let row = match pos.row {
@@ -399,6 +424,7 @@ pub fn sorted<
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     params: E::Params,
+    max_joint_size: u32,
 ) -> Result<Vec<Vec<E>>> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
@@ -423,7 +449,8 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
+            let joint_lookup_evaluation =
+                E::evaluate(&params, joint_lookup, witness, i, max_joint_size);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -503,6 +530,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
+    max_joint_size: u32,
     beta: F,
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
@@ -568,7 +596,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, &eval))
+                    acc * (gamma + j.evaluate(joint_combiner, &eval, max_joint_size))
                 })
             };
 
@@ -586,7 +614,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>, max_joint_size: u32) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -644,7 +672,7 @@ pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
         spec.iter()
-            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
+            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j, max_joint_size))
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
     let f_chunk = lookup_info

@@ -55,6 +55,24 @@ pub struct SingleLookup<F> {
     pub value: Vec<(F, LocalPosition)>,
 }
 
+pub fn i32_to_field<F: Field>(i: i32) -> F {
+    if i >= 0 {
+        F::from(i as u32)
+    } else {
+        -F::from(-i as u32)
+    }
+}
+
+// The domain-separation term calculated from the given `table_id`, used to ensure that a lookup
+// against a given table cannot retrieve a value for some other table.
+pub fn table_id_contribution<F: Field>(joint_combiner: F, table_id: F, max_joint_size: u32) -> F {
+    // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
+    // `joint_combiner` in the table value calculation below. This ensures that we can avoid
+    // using higher powers of the `joint_combiner` when we have only one table with a
+    // `table_id` of 0.
+    joint_combiner.pow([max_joint_size as u64]) * &table_id
+}
+
 /// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
 /// am using `[F; n]` to model a vector of length `n`).
 ///
@@ -70,9 +88,12 @@ pub struct SingleLookup<F> {
 /// This function computes that combined value.
 pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item = &'a F>>(
     joint_combiner: F,
+    table_id: F,
+    max_joint_size: u32,
     v: I,
 ) -> F {
     v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
+        + &table_id_contribution(joint_combiner, table_id, max_joint_size)
 }
 
 impl<F: Field> SingleLookup<F> {
@@ -87,21 +108,26 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
-    pub table_id: usize,
+    pub table_id: i32,
     pub entry: Vec<SingleLookup<F>>,
 }
 
 impl<F: Field> JointLookup<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, joint_combiner: F, eval: &G) -> F {
+    pub fn evaluate<G: Fn(LocalPosition) -> F>(
+        &self,
+        joint_combiner: F,
+        eval: &G,
+        max_joint_size: u32,
+    ) -> F {
         let mut res = F::zero();
         let mut c = F::one();
         for s in self.entry.iter() {
             res += c * s.evaluate(eval);
             c *= joint_combiner;
         }
-        res
+        res + table_id_contribution(joint_combiner, i32_to_field(self.table_id), max_joint_size)
     }
 }
 
@@ -168,7 +194,7 @@ pub struct LookupInfo<F> {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: usize,
+    pub max_joint_size: u32,
     /// An empty vector.
     empty: Vec<JointLookup<F>>,
 }
@@ -210,8 +236,9 @@ impl<F: FftField> LookupInfo<F> {
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
-                v.iter()
-                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len()))
+                v.iter().fold(acc0, |acc, j| {
+                    std::cmp::max(acc, j.entry.len().try_into().unwrap())
+                })
             }),
 
             kinds_map,

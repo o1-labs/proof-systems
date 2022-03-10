@@ -230,7 +230,15 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_value.iter()),
+                Some(lcs) => {
+                    let table_id = Fr::<G>::zero();
+                    combine_table_entry(
+                        joint_combiner,
+                        table_id,
+                        lcs.max_joint_size,
+                        lcs.dummy_lookup_value.iter(),
+                    )
+                }
             };
             CombinedEntry(x)
         };
@@ -242,7 +250,21 @@ where
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
                             let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
-                            CombinedEntry(combine_table_entry(joint_combiner, row))
+                            let table_id = match lcs.table_ids8.as_ref() {
+                                Some(table_ids8) => table_ids8.evals[8 * i],
+                                None =>
+                                // If there is no `table_ids8` in the constraint system,
+                                // every table ID is identically 0.
+                                {
+                                    Fr::<G>::zero()
+                                }
+                            };
+                            CombinedEntry(combine_table_entry(
+                                joint_combiner,
+                                table_id,
+                                lcs.max_joint_size,
+                                row,
+                            ))
                         })
                     };
 
@@ -256,6 +278,7 @@ where
                         &index.cs.gates,
                         &witness,
                         joint_combiner,
+                        lcs.max_joint_size,
                     )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
@@ -300,7 +323,15 @@ where
                 (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
                         let row = lcs.lookup_table8.iter().map(|e| & e.evals[8 * i]);
-                        combine_table_entry(joint_combiner, row)
+                        let table_id =
+                            match lcs.table_ids8.as_ref() {
+                                Some(table_ids8) => table_ids8.evals[8 * i],
+                                None =>
+                                    // If there is no `table_ids8` in the constraint system, every
+                                    // table ID is identically 0.
+                                    Fr::<G>::zero(),
+                            };
+                        combine_table_entry(joint_combiner, table_id, lcs.max_joint_size, row)
                     });
 
                     let aggreg =
@@ -311,6 +342,7 @@ where
                             &index.cs.gates,
                             &witness,
                             joint_combiner,
+                            lcs.max_joint_size,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -571,7 +603,11 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints = lookup::constraints(&lcs.dummy_lookup_value, index.cs.domain.d1);
+                let constraints = lookup::constraints(
+                    &lcs.dummy_lookup_value,
+                    index.cs.domain.d1,
+                    lcs.max_joint_size,
+                );
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -642,17 +678,31 @@ where
                         .iter()
                         .map(|c| c.eval(e, index.max_poly_size))
                         .collect(),
-                    table: lcs
-                        .lookup_table
-                        .iter()
-                        .map(|p| p.eval(e, index.max_poly_size))
-                        .rev()
-                        .fold(vec![Fr::<G>::zero()], |acc, x| {
-                            acc.into_iter()
-                                .zip(x.iter())
-                                .map(|(acc, x)| acc * joint_combiner + x)
-                                .collect()
-                        }),
+                    table: {
+                        let base_table = lcs
+                            .lookup_table
+                            .iter()
+                            .map(|p| p.eval(e, index.max_poly_size))
+                            .rev()
+                            .fold(vec![Fr::<G>::zero()], |acc, x| {
+                                acc.into_iter()
+                                    .zip(x.iter())
+                                    .map(|(acc, x)| acc * joint_combiner + x)
+                                    .collect()
+                            });
+                        match lcs.table_ids.as_ref() {
+                            None => base_table,
+                            Some(table_ids) => {
+                                let table_combiner =
+                                    joint_combiner.pow([lcs.max_joint_size as u64]);
+                                base_table
+                                    .into_iter()
+                                    .zip(table_ids.eval(e, index.max_poly_size))
+                                    .map(|(x, table_id)| x + &(table_combiner * table_id))
+                                    .collect()
+                            }
+                        }
+                    },
                 })
         };
 

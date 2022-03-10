@@ -40,6 +40,13 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table8: Vec<E<F, D<F>>>,
 
+    /// Table IDs for the lookup values.
+    /// This may be `None` if all lookups originate from table 0.
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub table_ids: Option<DP<F>>,
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub table_ids8: Option<E<F, D<F>>>,
+
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
     /// 1 at the rows where that pattern should be enforced, and 0 at
@@ -53,7 +60,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     /// The maximum number of lookups per row
     pub max_lookups_per_row: usize,
     /// The maximum number of elements in a vector lookup
-    pub max_joint_size: usize,
+    pub max_joint_size: u32,
 }
 
 #[serde_as]
@@ -369,6 +376,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     dummy_lookup_value,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
+                    table_ids: None,
+                    table_ids8: None,
                     lookup_used,
                     max_lookups_per_row: lookup_info.max_per_row as usize,
                     max_joint_size: lookup_info.max_joint_size,

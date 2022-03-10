@@ -80,6 +80,14 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_selectors: Vec<PolyComm<G>>,
+
+    /// Table IDs for the lookup values.
+    /// This may be `None` if all lookups originate from table 0.
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub table_ids: Option<PolyComm<G>>,
+
+    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
+    pub max_joint_size: u32,
 }
 
 #[serde_as]
@@ -196,7 +204,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
         let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
 
-        let constraints = lookup::constraints(&lcs.dummy_lookup_value, domain);
+        let constraints = lookup::constraints(&lcs.dummy_lookup_value, domain, lcs.max_joint_size);
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
     }
@@ -268,6 +276,11 @@ where
                         .iter()
                         .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                         .collect(),
+                    table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
+                        self.srs
+                            .commit_evaluations_non_hiding(domain, table_ids8, None)
+                    }),
+                    max_joint_size: cs.max_joint_size,
                 })
         };
         // TODO: Switch to commit_evaluations for all index polys
