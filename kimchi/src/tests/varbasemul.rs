@@ -1,4 +1,5 @@
 use crate::prover::ProverProof;
+use crate::verifier::batch_verify;
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
@@ -65,7 +66,6 @@ fn varbase_mul_test() {
     let verifier_index = index.verifier_index();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let lgr_comms = vec![];
     let rng = &mut StdRng::from_seed([0; 32]);
 
     let start = Instant::now();
@@ -112,9 +112,9 @@ fn varbase_mul_test() {
             .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
+    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
