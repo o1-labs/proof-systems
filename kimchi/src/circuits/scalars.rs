@@ -7,6 +7,8 @@ use array_init::array_init;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::sponge::ScalarChallenge;
 
+use super::gates::cairo;
+
 #[derive(Clone)]
 pub struct LookupEvaluations<Field> {
     /// sorted lookup table polynomial
@@ -34,6 +36,8 @@ pub struct ProofEvaluations<Field> {
     pub generic_selector: Field,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
+    /// evaluation of the cairo selector polynomial
+    pub cairo_selector: [Field; cairo::CIRCUIT_GATE_COUNT],
 }
 
 impl<F: Zero> ProofEvaluations<F> {
@@ -45,6 +49,7 @@ impl<F: Zero> ProofEvaluations<F> {
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
+            cairo_selector: array_init(|_| F::zero()),
         }
     }
 }
@@ -66,6 +71,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
             }),
             generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
             poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
+            cairo_selector: array_init(|i| {
+                DensePolynomial::eval_polynomial(&self.cairo_selector[i], pt)
+            }),
         }
     }
 }

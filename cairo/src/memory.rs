@@ -4,8 +4,8 @@
 use std::fmt::{Display, Formatter, Result};
 use std::ops::{Index, IndexMut};
 
-use crate::circuits::turshi::cairo::helper::*;
-use crate::circuits::turshi::cairo::word::CairoWord;
+use crate::helper::*;
+use crate::word::CairoWord;
 use ark_ff::Field;
 use core::iter::repeat;
 

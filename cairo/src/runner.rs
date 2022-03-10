@@ -1,9 +1,9 @@
 //! This module represents a run of a Cairo program as a series of consecutive
 //! execution steps, each of which define the execution logic of Cairo instructions
 
-use crate::circuits::turshi::cairo::flags::*;
-use crate::circuits::turshi::cairo::memory::CairoMemory;
-use crate::circuits::turshi::cairo::word::{CairoWord, FlagBits, FlagSets, Offsets};
+use crate::flags::*;
+use crate::memory::CairoMemory;
+use crate::word::{CairoWord, FlagBits, FlagSets, Offsets};
 use ark_ff::Field;
 
 /// A structure to store program counter, allocation pointer and frame pointer
@@ -578,7 +578,7 @@ impl<'a, F: Field> CairoProgram<'a, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::turshi::cairo::helper::CairoFieldHelpers;
+    use crate::helper::CairoFieldHelpers;
     use mina_curves::pasta::fp::Fp as F;
 
     #[test]

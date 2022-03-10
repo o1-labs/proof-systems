@@ -594,6 +594,7 @@ mod tests {
                 aggreg: F::rand(rng),
                 table: F::rand(rng),
             }),
+            cairo_selector: [F::zero(); crate::circuits::gates::cairo::CIRCUIT_GATE_COUNT],
         };
         let evals = vec![eval(), eval()];
 

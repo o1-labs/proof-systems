@@ -1,3 +1,4 @@
+pub mod cairo;
 pub mod chacha;
 pub mod complete_add;
 pub mod endomul_scalar;

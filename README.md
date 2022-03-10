@@ -7,6 +7,7 @@ Organization:
 ```
 proof-systems/
 ├── book # the mina book, RFCs, and specifications
+├── cairo # a Cairo runner written in rust
 ├── curves/ # our curves (for now just the pasta curves)
 ├── groupmap/ # TODO: description
 ├── kimchi/ # our proof system

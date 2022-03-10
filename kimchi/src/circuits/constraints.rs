@@ -3,6 +3,7 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
+    gates::cairo,
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
     wires::*,
 };
@@ -137,6 +138,13 @@ pub struct ConstraintSystem<F: FftField> {
     /// EC point addition selector evaluations w over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
+
+    /// Cairo constraint selector polynomials
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; cairo::CIRCUIT_GATE_COUNT]")]
+    pub cairo: [DP<F>; cairo::CIRCUIT_GATE_COUNT],
+    /// Cairo selector evaluations over domain.d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; cairo::CIRCUIT_GATE_COUNT]")]
+    pub cairo8: [E<F, D<F>>; cairo::CIRCUIT_GATE_COUNT],
 
     // Constant polynomials
     // --------------------
@@ -557,6 +565,43 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
         let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
 
+        // Cairo constraint selector polynomials
+        let cairo: [DP<F>; cairo::CIRCUIT_GATE_COUNT] = array_init(|i| {
+            let g = match i {
+                0 => GateType::CairoInstruction,
+                1 => GateType::CairoTransition,
+                2 => GateType::CairoClaim,
+                _ => panic!("Invalid index"),
+            };
+            E::<F, D<F>>::from_vec_and_domain(
+                gates
+                    .iter()
+                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                    .collect(),
+                domain.d1,
+            )
+            .interpolate()
+        });
+
+        // Forieign field multiplication constraint polynomials
+        let cairo8: [E<F, D<F>>; cairo::CIRCUIT_GATE_COUNT] = array_init(|i| {
+            let g = match i {
+                0 => GateType::CairoInstruction,
+                1 => GateType::CairoTransition,
+                2 => GateType::CairoClaim,
+                _ => panic!("Invalid index"),
+            };
+            E::<F, D<F>>::from_vec_and_domain(
+                gates
+                    .iter()
+                    .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
+                    .collect(),
+                domain.d1,
+            )
+            .interpolate()
+            .evaluate_over_domain_by_ref(domain.d8)
+        });
+
         // constant polynomials
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
@@ -617,6 +662,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
+            cairo,
+            cairo8,
         })
     }
 
