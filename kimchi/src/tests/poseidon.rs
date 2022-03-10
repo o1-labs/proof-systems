@@ -5,6 +5,7 @@ use crate::{
         wires::{Wire, COLUMNS},
     },
     index::testing::new_index_for_test,
+    verifier::batch_verify,
 };
 use crate::{index::Index, prover::ProverProof};
 use ark_ff::{UniformRand, Zero};
@@ -167,16 +168,12 @@ fn positive(index: &Index<Affine>) {
     // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
     let verifier_index = index.verifier_index();
 
-    let lgr_comms = vec![];
-    let batch: Vec<_> = batch
-        .iter()
-        .map(|proof| (&verifier_index, &lgr_comms, proof))
-        .collect();
+    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());

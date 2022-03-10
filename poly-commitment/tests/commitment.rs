@@ -50,9 +50,9 @@ mod verifier {
         Fp,      // scaling factor for polynoms
         Fp,      // scaling factor for evaluation point powers
         Vec<(
-            &'a PolyComm<Affine>, // polycommitment
-            Vec<&'a Vec<Fp>>,     // vector of evaluations
-            Option<usize>,        // optional degree bound
+            PolyComm<Affine>, // polycommitment
+            Vec<Vec<Fp>>,     // vector of evaluations
+            Option<usize>,    // optional degree bound
         )>,
         &'a OpeningProof<Affine>, // batched opening proof
     );
@@ -94,10 +94,9 @@ impl AggregatedEvaluationProof {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
-            let evaluations = eval_com.chunked_evals.iter().collect();
             coms.push((
-                &eval_com.commit.chunked_commitment,
-                evaluations,
+                eval_com.commit.chunked_commitment.clone(),
+                eval_com.chunked_evals.clone(),
                 eval_com.commit.bound,
             ));
         }

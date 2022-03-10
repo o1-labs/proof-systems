@@ -6,6 +6,7 @@ use crate::{
     },
     index::{testing::new_index_for_test, Index, VerifierIndex},
     prover::ProverProof,
+    verifier::batch_verify,
 };
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -106,12 +107,11 @@ impl BenchmarkCtx {
 
     pub fn batch_verification(&self, batch: Vec<ProverProof<Affine>>) {
         // verify the proof
-        let lgr_comms = vec![];
         let batch: Vec<_> = batch
             .iter()
-            .map(|proof| (&self.verifier_index, &lgr_comms, proof))
+            .map(|proof| (&self.verifier_index, proof))
             .collect();
-        ProverProof::verify::<BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<Affine, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
     }
 }
 

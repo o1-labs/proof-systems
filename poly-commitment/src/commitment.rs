@@ -455,7 +455,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     xi: &Fr<G>,
     r: &Fr<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<&Vec<Fr<G>>>, Option<usize>)],
+    polys: &[(Vec<Vec<Fr<G>>>, Option<usize>)],
     srs_length: usize,
 ) -> Fr<G> {
     let mut res = Fr::<G>::zero();
@@ -952,9 +952,9 @@ impl<G: CommitmentCurve> SRS<G> {
             Fr<G>,      // scaling factor for polynomials
             Fr<G>,      // scaling factor for evaluation point powers
             Vec<(
-                &PolyComm<G>,     // polycommitment
-                Vec<&Vec<Fr<G>>>, // vector of evaluations
-                Option<usize>,    // optional degree bound
+                PolyComm<G>,     // polycommitment
+                Vec<Vec<Fr<G>>>, // vector of evaluations
+                Option<usize>,   // optional degree bound
             )>,
             &OpeningProof<G>, // batched opening proof
         )>,
@@ -1275,12 +1275,8 @@ mod tests {
             v,
             u,
             vec![
-                (&commitment.0, poly1_chunked_evals.iter().collect(), None),
-                (
-                    &bounded_commitment.0,
-                    poly2_chunked_evals.iter().collect(),
-                    Some(upperbound),
-                ),
+                (commitment.0, poly1_chunked_evals, None),
+                (bounded_commitment.0, poly2_chunked_evals, Some(upperbound)),
             ],
             &opening_proof,
         )];

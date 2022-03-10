@@ -2,6 +2,7 @@ use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_wit
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::index::testing::new_index_for_test;
 use crate::prover::ProverProof;
+use crate::verifier::batch_verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -67,10 +68,6 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // verify the proof
     let verifier_index = index.verifier_index();
-    let lgr_comms = vec![]; // why empty?
-    let batch: Vec<_> = batch
-        .iter()
-        .map(|proof| (&verifier_index, &lgr_comms, proof))
-        .collect();
-    ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
+    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
+    batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
 }
