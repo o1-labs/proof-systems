@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["OraclesResult","The result of running the oracle protocol"]]});
+initSidebarItems({"fn":[["batch_verify","This function verifies the batch of zk-proofs proofs: vector of Plonk proofs index: VerifierIndex RETURN: verification status"]],"struct":[["OraclesResult","The result of running the oracle protocol"]]});

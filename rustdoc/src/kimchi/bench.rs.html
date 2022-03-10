@@ -152,6 +152,7 @@
     },
     <span class="ident">index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">Index</span>, <span class="ident">VerifierIndex</span>},
     <span class="ident">prover::ProverProof</span>,
+    <span class="ident">verifier::batch_verify</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">UVPolynomial</span>};
@@ -252,12 +253,11 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">batch_verification</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="comment">// verify the proof</span>
-        <span class="kw">let</span> <span class="ident">lgr_comms</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="ident">batch</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">batch</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">proof</span><span class="op">|</span> (<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">verifier_index</span>, <span class="kw-2">&amp;</span><span class="ident">lgr_comms</span>, <span class="ident">proof</span>))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">proof</span><span class="op">|</span> (<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">verifier_index</span>, <span class="ident">proof</span>))
             .<span class="ident">collect</span>();
-        <span class="ident">ProverProof::verify</span>::<span class="op">&lt;</span><span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="ident">batch</span>).<span class="ident">unwrap</span>();
+        <span class="ident">batch_verify</span>::<span class="op">&lt;</span><span class="ident">Affine</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_map</span>, <span class="kw-2">&amp;</span><span class="ident">batch</span>).<span class="ident">unwrap</span>();
     }
 }
 
