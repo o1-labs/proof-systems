@@ -75,6 +75,16 @@ pub struct ProverProof<G: AffineCurve> {
     /// The public input
     pub public: Vec<Fr<G>>,
 
+    /// Recursion-related data
+    pub recursion: Option<Recursion<G>>,
+}
+
+/// Recursion-related data
+#[derive(Clone)]
+pub struct Recursion<G>
+where
+    G: AffineCurve,
+{
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
 }
@@ -91,7 +101,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &Index<G>,
-        prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        recursion: Option<Recursion<G>>,
     ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
@@ -773,19 +783,24 @@ where
 
         // construct the proof
         // --------------------------------------------------------------------
-        let polys = prev_challenges
-            .iter()
-            .map(|(chals, comm)| {
-                (
-                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let mut polynomials = vec![];
+
         let non_hiding = |d1_size: usize| PolyComm {
             unshifted: vec![Fr::<G>::zero(); d1_size],
             shifted: None,
         };
+
+        if let Some(recursion) = recursion {
+            let prev = recursion.prev_challenges.iter().map(|(chals, comm)| {
+                (
+                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
+                    comm.unshifted.len(),
+                )
+            });
+            let prev = prev.map(|(p, d1_size)| (&p, None, non_hiding(d1_size)));
+
+            polynomials.extend(prev);
+        }
 
         // construct the blinding part of the ft polynomial for Maller's optimization
         // (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
@@ -801,10 +816,6 @@ where
         };
 
         // construct evaluation proof
-        let mut polynomials = polys
-            .iter()
-            .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
-            .collect::<Vec<_>>();
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.1)]);
@@ -848,7 +859,7 @@ where
             evals: chunked_evals,
             ft_eval1,
             public,
-            prev_challenges,
+            recursion,
         })
     }
 }
