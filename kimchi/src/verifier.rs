@@ -422,7 +422,7 @@ where
             .get(&index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
         let com: Vec<_> = lgr_comm
-            .into_iter()
+            .iter()
             .map(|c| PolyComm {
                 unshifted: vec![*c],
                 shifted: None,
