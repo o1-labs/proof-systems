@@ -390,9 +390,9 @@ where
 ///     index: VerifierIndex
 ///     RETURN: verification status
 #[allow(clippy::type_complexity)]
-pub fn verify<G, EFqSponge, EFrSponge>(
+pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    proofs: &[(&VerifierIndex<G>, &Vec<PolyComm<G>>, &ProverProof<G>)],
+    proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<bool>
 where
     G: CommitmentCurve,
@@ -407,18 +407,31 @@ where
 
     // TODO: Account for the different SRS lengths
     let srs = &proofs[0].0.srs;
-    for (index, _, _) in proofs.iter() {
+    for (index, _) in proofs.iter() {
         assert_eq!(index.srs.g.len(), srs.g.len());
     }
 
     // Validate each proof separately (f(zeta) = t(zeta) * Z_H(zeta))
     // + build objects required to batch verify all the evaluation proofs
     let mut params = vec![];
-    for (index, lgr_comm, proof) in proofs {
+    for (index, proof) in proofs {
         // commit to public input polynomial
-        let com: Vec<_> = lgr_comm.iter().take(proof.public.len()).collect();
+        let lgr_comm = index
+            .srs
+            .lagrange_bases
+            .get(&index.domain.size())
+            .expect("pre-computed committed lagrange bases not found");
+        let com: Vec<_> = lgr_comm
+            .into_iter()
+            .map(|c| PolyComm {
+                unshifted: vec![*c],
+                shifted: None,
+            })
+            .take(proof.public.len())
+            .collect();
+        let com_ref: Vec<_> = com.iter().collect();
         let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-        let p_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
+        let p_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 
         // run the oracles argument
         let OraclesResult {
@@ -589,7 +602,7 @@ where
     // batch verify all the evaluation proofs
     let mut batch = vec![];
     for (proof, params) in proofs.iter().zip(params.iter()) {
-        let (index, _lgr_comm, proof) = proof;
+        let (index, proof) = proof;
         let (p_eval, p_comm, ft_comm, fq_sponge, oracles, ft_eval0, ft_eval1, polys) = params;
 
         // recursion stuff
