@@ -77,7 +77,7 @@ pub struct Index<G: CommitmentCurve> {
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
+    pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_selectors: Vec<PolyComm<G>>,
 }
@@ -196,7 +196,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
         let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
 
-        let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
+        let constraints = lookup::constraints(&lcs.dummy_lookup_value, domain);
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
     }
@@ -263,14 +263,10 @@ where
                         .iter()
                         .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                         .collect(),
-                    lookup_tables: cs
-                        .lookup_tables8
+                    lookup_table: cs
+                        .lookup_table8
                         .iter()
-                        .map(|v| {
-                            v.iter()
-                                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                                .collect()
-                        })
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                         .collect(),
                 })
         };
