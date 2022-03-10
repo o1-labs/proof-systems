@@ -3,9 +3,11 @@ use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::index::testing::new_index_for_test;
 use crate::prover::ProverProof;
 use ark_ff::{UniformRand, Zero};
+use ark_poly::EvaluationDomain;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
+use commitment_dlog::PolyComm;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -80,7 +82,18 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // verify the proof
     let verifier_index = index.verifier_index();
-    let lgr_comms = vec![]; // why empty?
+    let lagrange_bases = verifier_index
+        .srs
+        .lagrange_bases
+        .get(&verifier_index.domain.size())
+        .unwrap();
+    let lgr_comms: Vec<PolyComm<Affine>> = lagrange_bases
+        .iter()
+        .map(|c| PolyComm {
+            unshifted: vec![c.clone()],
+            shifted: None,
+        })
+        .collect();
     let batch: Vec<_> = batch
         .iter()
         .map(|proof| (&verifier_index, &lgr_comms, proof))
