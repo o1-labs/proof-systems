@@ -4,11 +4,9 @@ use crate::index::testing::new_index_for_test;
 use crate::prover::ProverProof;
 use crate::verifier::batch_verify;
 use ark_ff::{UniformRand, Zero};
-use ark_poly::EvaluationDomain;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
-use commitment_dlog::PolyComm;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
