@@ -424,7 +424,6 @@ where
                 let gen_minus_pub = &t4 + &p4;
 
                 let (_, res) = gen_minus_pub
-                    .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();

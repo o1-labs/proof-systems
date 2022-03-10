@@ -332,7 +332,7 @@ pub mod testing {
                     * this[register_offset]
                     * this[register_offset + 1];
                 let public = if coeffs_offset == 0 {
-                    public.get(row).cloned().unwrap_or(F::zero())
+                    public.get(row).cloned().unwrap_or_else(F::zero)
                 } else {
                     F::zero()
                 };
