@@ -99,7 +99,11 @@ where
 
         // double-check the witness
         if cfg!(test) {
-            index.cs.verify(&witness).expect("incorrect witness");
+            let public = witness[0][0..index.cs.public].to_vec();
+            index
+                .cs
+                .verify(&witness, &public)
+                .expect("incorrect witness");
         }
 
         // ensure we have room for the zero-knowledge rows
@@ -416,7 +420,10 @@ where
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             if cfg!(test) {
-                let (_, res) = t4
+                let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
+                let gen_minus_pub = &t4 + &p4;
+
+                let (_, res) = gen_minus_pub
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)

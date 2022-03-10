@@ -25,26 +25,39 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_generic_gate() {
-    let gates = create_circuit(0);
+    let gates = create_circuit(0, 0);
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
-    fill_in_witness(0, &mut witness);
+    fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
-    verify_proof(gates, witness, 0);
+    verify_proof(gates, witness, &[]);
 }
 
-fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public: usize) {
+#[test]
+fn test_generic_gate_pub() {
+    let public = vec![Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+
+    // create witness
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    fill_in_witness(0, &mut witness, &public);
+
+    // create and verify proof based on the witness
+    verify_proof(gates, witness, &public);
+}
+
+fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public: &[Fp]) {
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     // create the index
-    let index = new_index_for_test(gates, public);
+    let index = new_index_for_test(gates, public.len());
 
     // verify the circuit satisfiability by the computed witness
-    index.cs.verify(&witness).unwrap();
+    index.cs.verify(&witness, public).unwrap();
 
     // previous opening for recursion
     let prev = {

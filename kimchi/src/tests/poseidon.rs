@@ -128,7 +128,7 @@ fn positive(index: &Index<Affine>) {
         }
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness_cols).unwrap();
+        index.cs.verify(&witness_cols, &[]).unwrap();
 
         //
         let prev = {

@@ -166,7 +166,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    index.cs.verify(&witness).unwrap();
+    index.cs.verify(&witness, &[]).unwrap();
 
     let start = Instant::now();
     let proof =
