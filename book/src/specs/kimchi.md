@@ -40,10 +40,10 @@ Think of them as intermediary or temporary values needed in the computation when
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
 
-**Wiring (or Permutation)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
 It is defined at every row, but only for the first $7$ registers. 
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registered are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle. 
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
 |  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
@@ -285,7 +285,7 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 The verifier index is essentially a number of pre-computations containing:
 
-* the (non-hidding) commitments of all the required polynomials
+* the (non-hiding) commitments of all the required polynomials that describe the circuit (gate selectors, sigmas (permutations), etc.)
 
 
 
@@ -299,14 +299,14 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 sequenceDiagram
     participant Prover
     participant Verifier
-    Prover->>Verifier: public & witness commitment
+    Prover->>Verifier: public input & witness commitment
     Verifier->>Prover: beta & gamma
     Prover->>Verifier: permutation commitment
     Verifier->>Prover: alpha
     Prover->>Verifier: quotient commitment
     Verifier->>Prover: zeta
     Note over Verifier: change of verifier (change of sponge)
-    Prover->>Verifier: negated public poly p(zeta) & p(zeta * omega)
+    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
     Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
     Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
     Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
@@ -330,7 +330,7 @@ A proof consists of:
   * TODO: lookup
   * TODO: public commitment is not here, but is in the sequence diagram
 * evaluations of these polynomials at two random points $\zeta$ and $\zeta \omega$
-* evaluations at the two random points of these addotional polynomials:
+* evaluations at the two random points of these additional polynomials:
   * the 6 s (sigma)
   * TODO: lookup
   * generic selector
@@ -361,14 +361,14 @@ The prover then follows the following steps to create the proof:
 4. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
-5. Commit (non-hidding) to the negated public input polynomial. **TODO: seems unecessary**
+5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
    Note: since the witness is in evaluation form,
    we can use the `commit_evaluation` optimization.
 8. Absorb the witness commitments with the Fq-Sponge.
 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-   TODO: why not do this first, and the commit? Why commit from evaluation directly?
+   TODO: why not do this first, and then commit? Why commit from evaluation directly?
 10. TODO: lookup
 11. Sample $\beta$ with the Fq-Sponge.
 12. Sample $\gamma$ with the Fq-Sponge.
@@ -431,7 +431,7 @@ The prover then follows the following steps to create the proof:
     - generic selector
     - poseidon selector
     - the 15 register/witness
-    - the 6 sigmas evaluations
+    - 6 sigmas evaluations (the last one is not evaluated)
 38. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 39. Sample $v'$ with the Fr-Sponge
 40. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
@@ -447,7 +447,7 @@ The prover then follows the following steps to create the proof:
     - the generic selector
     - the poseidon selector
     - the 15 registers/witness columns
-    - the 6 s
+    - the 6 sigmas
 44. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
