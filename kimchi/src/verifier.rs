@@ -592,7 +592,7 @@ where
             )
             .map(|(c, e)| Evaluation {
                 commitment: c.clone(),
-                evaluations: e.clone(),
+                evaluations: e,
                 degree_bound: None,
             }),
     );
@@ -615,7 +615,7 @@ where
             )
             .map(|(c, e)| Evaluation {
                 commitment: c.clone(),
-                evaluations: e.clone(),
+                evaluations: e,
                 degree_bound: None,
             }),
     );
@@ -624,7 +624,7 @@ where
     let omega = index.domain.group_gen;
 
     BatchEvaluationProof {
-        sponge: fq_sponge.clone(),
+        sponge: fq_sponge,
         evaluations,
         evaluation_points: vec![oracles.zeta, oracles.zeta * omega],
         xi: oracles.v,
