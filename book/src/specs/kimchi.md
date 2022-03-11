@@ -1,11 +1,11 @@
 # Kimchi
 
 * This document specifies *kimchi*, a zero-knowledge proof system that's a variant of PLONK.
-* This document does not specify how circuits are created, or executed. Only how to convert a circuit and its execution into a proof.
+* This document does not specify how circuits are created or executed, but only how to convert a circuit and its execution into a proof.
 
 ## Overview
 
-There's three main algorithms to kimchi:
+There are three main algorithms to kimchi:
 
 * [Setup](#constraint-system-creation): takes a circuit and produces a prover index, and a verifier index.
 * [Proof creation](#proof-creation): takes the prover index, and the execution trace of the circuit to produce a proof.
@@ -40,9 +40,9 @@ Think of them as intermediary or temporary values needed in the computation when
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
 
-**Wiring (or Permutation)**. For gates to take output of other gates, we use a wiring table to wire registers together. 
+**Wiring (or Permutation)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
 It is defined at every row, but only for the first $7$ registers. 
-Each cell specifies a `(row, column)` tuple that it should be wired to. 
+Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
 Note that if three or more registered are wired together, they must form a cycle. 
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
@@ -104,9 +104,12 @@ specify the following functions on top:
 
 With the current parameters:
 
-* `SPONGE_BOX = 7`
-* TODO: round constants?
-* TODO: MDS?
+* S-Box alpha: `7`
+* Width: `3`
+* Rate: `2`
+* Full rounds: `55`
+* Round constants: [`fp_kimchi`](https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L55), [`fq_kimchi`](https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L54)
+* MDS matrix: [`fp_kimchi`](https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L10), [`fq_kimchi`](https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L10)
 
 ### Pasta
 
@@ -315,8 +318,8 @@ sequenceDiagram
     Prover->>Verifier: evaluation proof (involves more interaction)
 ```
 
-The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript before outputing verifier messages.
-You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and sampling of values with the sponge.
+The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
+You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and squeezing of values with the sponge.
 
 A proof consists of:
 
@@ -336,14 +339,14 @@ A proof consists of:
 * optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
 * optionally, the previous challenges (in case we are in a recursive prover)
 
-The following sections specify how a prover creates a proof, and a how a verifier validates a number of proofs.
+The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
 
 ### Proof Creation
 
 To create a proof, the prover expects:
 
 * A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
-* The (filed) registers table, representing parts of the execution trace of the circuit.
+* The (filled) registers table, representing parts of the execution trace of the circuit.
 
 The prover then follows the following steps to create the proof:
 
