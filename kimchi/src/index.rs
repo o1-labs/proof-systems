@@ -38,6 +38,10 @@ use std::{
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+//~
+//~ ### The prover Index
+//~
+
 /// The index used by the prover
 // TODO: rename as ProverIndex
 #[serde_as]
@@ -70,7 +74,151 @@ pub struct Index<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-/// The verifier index
+//~
+//~ #### Linearization
+//~
+
+pub fn constraints_expr<F: FftField + SquareRootField>(
+    domain: D<F>,
+    chacha: bool,
+    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+    // register powers of alpha so that we don't reuse them across mutually inclusive constraints
+    let mut powers_of_alpha = Alphas::<F>::default();
+
+    // gates
+    let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
+    powers_of_alpha.register(
+        ArgumentType::Gate(GateType::VarBaseMul),
+        highest_constraints,
+    );
+
+    let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
+    expr += VarbaseMul::combined_constraints(&powers_of_alpha);
+    expr += CompleteAdd::combined_constraints(&powers_of_alpha);
+    expr += EndosclMul::combined_constraints(&powers_of_alpha);
+    expr += EndomulScalar::combined_constraints(&powers_of_alpha);
+
+    if chacha {
+        expr += ChaCha0::combined_constraints(&powers_of_alpha);
+        expr += ChaCha1::combined_constraints(&powers_of_alpha);
+        expr += ChaCha2::combined_constraints(&powers_of_alpha);
+        expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
+    }
+
+    // permutation
+    powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
+
+    // lookup
+    if let Some(lcs) = lookup_constraint_system.as_ref() {
+        powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
+        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
+
+        let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
+        let combined = Expr::combine_constraints(alphas, constraints);
+        expr += combined;
+    }
+
+    // return the expression
+    (expr, powers_of_alpha)
+}
+
+pub fn linearization_columns<F: FftField + SquareRootField>(
+    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+) -> std::collections::HashSet<Column> {
+    let mut h = std::collections::HashSet::new();
+    use Column::*;
+    for i in 0..COLUMNS {
+        h.insert(Witness(i));
+    }
+    match lookup_constraint_system.as_ref() {
+        None => (),
+        Some(lcs) => {
+            for i in 0..(lcs.max_lookups_per_row + 1) {
+                h.insert(LookupSorted(i));
+            }
+        }
+    }
+    h.insert(Z);
+    h.insert(LookupAggreg);
+    h.insert(LookupTable);
+    h.insert(Index(GateType::Poseidon));
+    h.insert(Index(GateType::Generic));
+    h
+}
+
+pub fn expr_linearization<F: FftField + SquareRootField>(
+    domain: D<F>,
+    chacha: bool,
+    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
+    let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
+
+    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
+
+    let linearization = expr
+        .linearize(evaluated_cols)
+        .unwrap()
+        .map(|e| e.to_polish());
+
+    (linearization, powers_of_alpha)
+}
+
+//~
+//~ #### Prover Index Creation
+//~
+
+impl<'a, G: CommitmentCurve> Index<G>
+where
+    G::BaseField: PrimeField,
+{
+    /// this function compiles the index from constraints
+    pub fn create(
+        mut cs: ConstraintSystem<Fr<G>>,
+        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+        endo_q: Fr<G>,
+        srs: Arc<SRS<G>>,
+    ) -> Self {
+        let max_poly_size = srs.g.len();
+        if cs.public > 0 {
+            assert!(
+                max_poly_size >= cs.domain.d1.size as usize,
+                "polynomial segment size has to be not smaller that that of the circuit!"
+            );
+        }
+        cs.endo = endo_q;
+
+        //~ 1. compute the linearization
+        let (linearization, powers_of_alpha) = expr_linearization(
+            cs.domain.d1,
+            cs.chacha8.is_some(),
+            &cs.lookup_constraint_system,
+        );
+
+        //~ 2. set `max_quot_size` to the degree of the quotient polynomial,
+        //~    which is obtained by looking at the highest monomial in the sum
+        //~     $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
+        //~    where the $w_i(x)$ are of degree the size of the domain.
+        let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
+
+        Index {
+            cs,
+            linearization,
+            powers_of_alpha,
+            srs,
+            max_poly_size,
+            max_quot_size,
+            fq_sponge_params,
+        }
+    }
+}
+
+//~
+//~ ### The verifier Index
+//~
+//~ The verifier index is essentially a number of pre-computations containing:
+//~
+//~ * the (non-hidding) commitments of all the required polynomials
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
@@ -160,96 +308,11 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
 
-pub fn constraints_expr<F: FftField + SquareRootField>(
-    domain: D<F>,
-    chacha: bool,
-    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
-    // register powers of alpha so that we don't reuse them across mutually inclusive constraints
-    let mut powers_of_alpha = Alphas::<F>::default();
-
-    // gates
-    let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
-    powers_of_alpha.register(
-        ArgumentType::Gate(GateType::VarBaseMul),
-        highest_constraints,
-    );
-
-    let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
-    expr += VarbaseMul::combined_constraints(&powers_of_alpha);
-    expr += CompleteAdd::combined_constraints(&powers_of_alpha);
-    expr += EndosclMul::combined_constraints(&powers_of_alpha);
-    expr += EndomulScalar::combined_constraints(&powers_of_alpha);
-
-    if chacha {
-        expr += ChaCha0::combined_constraints(&powers_of_alpha);
-        expr += ChaCha1::combined_constraints(&powers_of_alpha);
-        expr += ChaCha2::combined_constraints(&powers_of_alpha);
-        expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
-    }
-
-    // permutation
-    powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
-
-    // lookup
-    if let Some(lcs) = lookup_constraint_system.as_ref() {
-        powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
-        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
-
-        let constraints = lookup::constraints(&lcs.dummy_lookup_values[0], domain);
-        let combined = Expr::combine_constraints(alphas, constraints);
-        expr += combined;
-    }
-
-    // return the expression
-    (expr, powers_of_alpha)
-}
-
-pub fn linearization_columns<F: FftField + SquareRootField>(
-    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> std::collections::HashSet<Column> {
-    let mut h = std::collections::HashSet::new();
-    use Column::*;
-    for i in 0..COLUMNS {
-        h.insert(Witness(i));
-    }
-    match lookup_constraint_system.as_ref() {
-        None => (),
-        Some(lcs) => {
-            for i in 0..(lcs.max_lookups_per_row + 1) {
-                h.insert(LookupSorted(i));
-            }
-        }
-    }
-    h.insert(Z);
-    h.insert(LookupAggreg);
-    h.insert(LookupTable);
-    h.insert(Index(GateType::Poseidon));
-    h.insert(Index(GateType::Generic));
-    h
-}
-
-pub fn expr_linearization<F: FftField + SquareRootField>(
-    domain: D<F>,
-    chacha: bool,
-    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
-) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
-    let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
-
-    let (expr, powers_of_alpha) = constraints_expr(domain, chacha, lookup_constraint_system);
-
-    let linearization = expr
-        .linearize(evaluated_cols)
-        .unwrap()
-        .map(|e| e.to_polish());
-
-    (linearization, powers_of_alpha)
-}
-
 impl<'a, G: CommitmentCurve> Index<G>
 where
     G::BaseField: PrimeField,
 {
+    /// Produces the [VerifierIndex] from the prover's [Index].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
         let lookup_index = {
@@ -274,6 +337,7 @@ where
                         .collect(),
                 })
         };
+
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
@@ -321,45 +385,6 @@ where
             linearization: self.linearization.clone(),
             fr_sponge_params: self.cs.fr_sponge_params.clone(),
             fq_sponge_params: self.fq_sponge_params.clone(),
-        }
-    }
-
-    /// this function compiles the index from constraints
-    pub fn create(
-        mut cs: ConstraintSystem<Fr<G>>,
-        fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
-        endo_q: Fr<G>,
-        srs: Arc<SRS<G>>,
-    ) -> Self {
-        let max_poly_size = srs.g.len();
-        if cs.public > 0 {
-            assert!(
-                max_poly_size >= cs.domain.d1.size as usize,
-                "polynomial segment size has to be not smaller that that of the circuit!"
-            );
-        }
-        cs.endo = endo_q;
-
-        //
-        // Lookup
-        //
-
-        let (linearization, powers_of_alpha) = expr_linearization(
-            cs.domain.d1,
-            cs.chacha8.is_some(),
-            &cs.lookup_constraint_system,
-        );
-
-        let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
-
-        Index {
-            cs,
-            linearization,
-            powers_of_alpha,
-            srs,
-            max_poly_size,
-            max_quot_size,
-            fq_sponge_params,
         }
     }
 }
