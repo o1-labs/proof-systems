@@ -1093,7 +1093,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">batch_verify</span><span class="op">&lt;</span><span class="ident">G</span>, <span class="ident">EFqSponge</span>, <span class="ident">EFrSponge</span><span class="op">&gt;</span>(
     <span class="ident">group_map</span>: <span class="kw-2">&amp;</span><span class="ident">G::Map</span>,
     <span class="ident">proofs</span>: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span><span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">ProverProof</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>)],
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">G</span>: <span class="ident">CommitmentCurve</span>,
     <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
@@ -1102,7 +1102,7 @@
 {
     <span class="comment">// if there&#39;s no proof to verify, return early</span>
     <span class="kw">if</span> <span class="ident">proofs</span>.<span class="ident">is_empty</span>() {
-        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>);
+        <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
     }
 
     <span class="comment">// TODO: Account for the different SRS lengths</span>
@@ -1390,7 +1390,7 @@
     <span class="comment">// final check to verify the evaluation proofs</span>
     <span class="kw">match</span> <span class="ident">srs</span>.<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">EFqSponge</span>, <span class="kw">_</span><span class="op">&gt;</span>(<span class="ident">group_map</span>, <span class="kw-2">&amp;mut</span> <span class="ident">batch</span>, <span class="kw-2">&amp;mut</span> <span class="ident">thread_rng</span>()) {
         <span class="bool-val">false</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ProofError::OpenProof</span>),
-        <span class="bool-val">true</span> =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
+        <span class="bool-val">true</span> =&gt; <span class="prelude-val">Ok</span>(()),
     }
 }
 </code></pre></div>
