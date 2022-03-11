@@ -193,10 +193,10 @@ But in our code, because of the cycles:</p>
 <h1 id="kimchi"><a class="header" href="#kimchi">Kimchi</a></h1>
 <ul>
 <li>This document specifies <em>kimchi</em>, a zero-knowledge proof system that’s a variant of PLONK.</li>
-<li>This document does not specify how circuits are created, or executed. Only how to convert a circuit and its execution into a proof.</li>
+<li>This document does not specify how circuits are created or executed, but only how to convert a circuit and its execution into a proof.</li>
 </ul>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p>There’s three main algorithms to kimchi:</p>
+<p>There are three main algorithms to kimchi:</p>
 <ul>
 <li><a href="specs/kimchi.html#constraint-system-creation">Setup</a>: takes a circuit and produces a prover index, and a verifier index.</li>
 <li><a href="specs/kimchi.html#proof-creation">Proof creation</a>: takes the prover index, and the execution trace of the circuit to produce a proof.</li>
@@ -223,9 +223,9 @@ Think of them as intermediary or temporary values needed in the computation when
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th><th style="text-align: center">8</th><th style="text-align: center">9</th><th style="text-align: center">10</th><th style="text-align: center">11</th><th style="text-align: center">12</th><th style="text-align: center">13</th><th style="text-align: center">14</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td></tr>
 </tbody></table>
-<p><strong>Wiring (or Permutation)</strong>. For gates to take output of other gates, we use a wiring table to wire registers together. 
+<p><strong>Wiring (or Permutation)</strong>. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
 It is defined at every row, but only for the first <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">7</span></span></span></span> registers. 
-Each cell specifies a <code>(row, column)</code> tuple that it should be wired to. 
+Each cell specifies a <code>(row, column)</code> tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
 Note that if three or more registered are wired together, they must form a cycle. 
 For example, if register <code>(0, 4)</code> is wired to both registers <code>(80, 6)</code> and <code>(90, 0)</code> then you would have the following table:</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th></tr></thead><tbody>
@@ -279,9 +279,12 @@ We make use of the following functions from that specification:</p>
 </ul>
 <p>With the current parameters:</p>
 <ul>
-<li><code>SPONGE_BOX = 7</code></li>
-<li>TODO: round constants?</li>
-<li>TODO: MDS?</li>
+<li>S-Box alpha: <code>7</code></li>
+<li>Width: <code>3</code></li>
+<li>Rate: <code>2</code></li>
+<li>Full rounds: <code>55</code></li>
+<li>Round constants: <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L55"><code>fp_kimchi</code></a>, <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L54"><code>fq_kimchi</code></a></li>
+<li>MDS matrix: <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fp_kimchi.rs#L10"><code>fp_kimchi</code></a>, <a href="https://github.com/o1-labs/proof-systems/blob/0b01f7575cdfa45541fcfcd88d59f73b015af56b/oracle/src/pasta/fq_kimchi.rs#L10"><code>fq_kimchi</code></a></li>
 </ul>
 <h3 id="pasta"><a class="header" href="#pasta">Pasta</a></h3>
 <p>Kimchi is made to work on cycles of curves, so the protocol switch between two fields Fq and Fr, where Fq represents the base field and Fr represents the scalar field.</p>
@@ -437,8 +440,8 @@ For this reason, it can be useful to visualize the high-level interactive protoc
     Note over Verifier: change of verifier (change of sponge)
     Prover-&gt;&gt;Verifier: evaluation proof (involves more interaction)
 </pre>
-<p>The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript before outputing verifier messages.
-You can find these operations under the <a href="specs/kimchi.html#proof-creation">proof creation</a> and <a href="specs/kimchi.html#proof-verification">proof verification</a> algorithms as absorption and sampling of values with the sponge.</p>
+<p>The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
+You can find these operations under the <a href="specs/kimchi.html#proof-creation">proof creation</a> and <a href="specs/kimchi.html#proof-verification">proof verification</a> algorithms as absorption and squeezing of values with the sponge.</p>
 <p>A proof consists of:</p>
 <ul>
 <li>a number of (hidden) polynomial commitments:
@@ -463,12 +466,12 @@ You can find these operations under the <a href="specs/kimchi.html#proof-creatio
 <li>optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)</li>
 <li>optionally, the previous challenges (in case we are in a recursive prover)</li>
 </ul>
-<p>The following sections specify how a prover creates a proof, and a how a verifier validates a number of proofs.</p>
+<p>The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.</p>
 <h3 id="proof-creation"><a class="header" href="#proof-creation">Proof Creation</a></h3>
 <p>To create a proof, the prover expects:</p>
 <ul>
 <li>A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).</li>
-<li>The (filed) registers table, representing parts of the execution trace of the circuit.</li>
+<li>The (filled) registers table, representing parts of the execution trace of the circuit.</li>
 </ul>
 <p>The prover then follows the following steps to create the proof:</p>
 <ol>
