@@ -5,6 +5,7 @@ pub mod alphas;
 pub mod bench;
 pub mod circuits;
 pub mod error;
+pub mod linearization;
 pub mod plonk_sponge;
 pub mod prover;
 pub mod prover_index;
