@@ -88,9 +88,17 @@ TODO: use expr to define the index columns?
 
 {sections.constraint_system}
 
-## Prover and Verifier Index Creation
+## Prover Index
 
-{sections.indexes}
+{sections.prover_index}
+
+## Verifier Index
+
+The verifier index is essentially a number of pre-computations containing:
+
+* the (non-hidding) commitments of all the required polynomials
+
+{sections.verifier_index}
 
 ## Proof Data Structure
 

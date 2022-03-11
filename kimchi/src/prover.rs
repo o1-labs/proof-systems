@@ -19,8 +19,8 @@ use crate::{
         wires::{COLUMNS, PERMUTS},
     },
     error::{ProofError, Result},
-    index::Index,
     plonk_sponge::FrSponge,
+    prover_index::Index,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};

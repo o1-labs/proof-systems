@@ -193,16 +193,10 @@ fifth round:
 2. pad the rows: add zero gates to reach the domain size
 
 
-## Prover and Verifier Index Creation
+## Prover Index
 
 
 ### The prover Index
-
-
-#### Linearization
-
-
-#### Prover Index Creation
 
 1. compute the linearization
 2. set `max_quot_size` to the degree of the quotient polynomial,
@@ -210,11 +204,13 @@ fifth round:
     $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
    where the $w_i(x)$ are of degree the size of the domain.
 
-### The verifier Index
+
+## Verifier Index
 
 The verifier index is essentially a number of pre-computations containing:
 
 * the (non-hidding) commitments of all the required polynomials
+
 
 
 ## Proof Data Structure
