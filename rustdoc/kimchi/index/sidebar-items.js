@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["constraints_expr",""],["expr_linearization",""],["linearization_columns",""]],"mod":[["testing",""]],"struct":[["Index","The index used by the prover"],["LookupVerifierIndex","The verifier index"],["VerifierIndex",""]]});

@@ -144,15 +144,17 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
+<span id="142">142</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
         <span class="ident">gate::CircuitGate</span>,
         <span class="ident">polynomials::generic::GenericGateSpec</span>,
         <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
     },
-    <span class="ident">index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">Index</span>, <span class="ident">VerifierIndex</span>},
     <span class="ident">prover::ProverProof</span>,
+    <span class="ident">prover_index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">Index</span>},
     <span class="ident">verifier::batch_verify</span>,
+    <span class="ident">verifier_index::VerifierIndex</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff::UniformRand</span>;
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">UVPolynomial</span>};
@@ -286,5 +288,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (5f4e06771 2022-03-10)" ></div>
 </body></html>

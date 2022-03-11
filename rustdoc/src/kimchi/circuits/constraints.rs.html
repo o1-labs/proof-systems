@@ -1135,12 +1135,12 @@
         <span class="comment">// for some reason we need more than 1 gate for the circuit to work, see TODO below</span>
         <span class="macro">assert!</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span>);
 
-        <span class="comment">// +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial</span>
-        <span class="comment">// see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk</span>
+        <span class="comment">//~ 1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial</span>
+        <span class="comment">//~    see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk</span>
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="ident">EvaluationDomains</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::create</span>(<span class="ident">gates</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">ZK_ROWS</span> <span class="kw">as</span> <span class="ident">usize</span>)<span class="question-mark">?</span>;
         <span class="macro">assert!</span>(<span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span> <span class="op">&gt;</span> <span class="ident">ZK_ROWS</span>);
 
-        <span class="comment">// pad the rows: add zero gates to reach the domain size</span>
+        <span class="comment">//~ 2. pad the rows: add zero gates to reach the domain size</span>
         <span class="kw">let</span> <span class="ident">d1_size</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">d1</span>.<span class="ident">size</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">padding</span> <span class="op">=</span> (<span class="ident">gates</span>.<span class="ident">len</span>()..<span class="ident">d1_size</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
@@ -1482,5 +1482,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (5f4e06771 2022-03-10)" ></div>
 </body></html>
