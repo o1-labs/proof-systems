@@ -4162,7 +4162,7 @@
             <span class="ident">Square</span>(<span class="ident">x</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({})^2&quot;</span>, <span class="ident">x</span>.<span class="ident">latex</span>(<span class="ident">cache</span>)),
             <span class="ident">Cache</span>(<span class="ident">id</span>, <span class="ident">e</span>) =&gt; {
                 <span class="ident">cache</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">e</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>());
-                <span class="ident">id</span>.<span class="ident">var_name</span>()
+                <span class="ident">id</span>.<span class="ident">latex_name</span>()
             }
         }
     }
