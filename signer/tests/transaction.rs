@@ -1,4 +1,4 @@
-use mina_signer::{CompressedPubKey, Hashable, NetworkId, PubKey, ROInput, Signable};
+use mina_signer::{CompressedPubKey, Hashable, NetworkId, PubKey, ROInput};
 
 const MEMO_BYTES: usize = 34;
 const TAG_BITS: usize = 3;
@@ -23,7 +23,7 @@ pub struct Transaction {
     pub token_locked: bool,
 }
 
-impl Hashable for Transaction {
+impl Hashable<NetworkId> for Transaction {
     fn to_roinput(self) -> ROInput {
         let mut roi = ROInput::new();
 
@@ -50,15 +50,14 @@ impl Hashable for Transaction {
 
         roi
     }
-}
 
-impl Signable for Transaction {
-    fn domain_string(network_id: NetworkId) -> &'static str {
+    fn domain_string(self, network_id: &NetworkId) -> String {
         // Domain strings must have length <= 20
         match network_id {
             NetworkId::MAINNET => "MinaSignatureMainnet",
             NetworkId::TESTNET => "CodaSignature",
         }
+        .to_string()
     }
 }
 
@@ -127,12 +126,15 @@ use mina_signer::Keypair;
 
 #[test]
 fn transaction_domain() {
+    let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
+        .expect("failed to create keypair");
+
     assert_eq!(
-        Transaction::domain_string(NetworkId::MAINNET),
+        Transaction::new_payment(kp.public, kp.public, 0, 0, 0).domain_string(&NetworkId::MAINNET),
         "MinaSignatureMainnet"
     );
     assert_eq!(
-        Transaction::domain_string(NetworkId::TESTNET),
+        Transaction::new_payment(kp.public, kp.public, 0, 0, 0).domain_string(&NetworkId::TESTNET),
         "CodaSignature"
     );
 }

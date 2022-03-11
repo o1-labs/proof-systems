@@ -22,23 +22,20 @@ use oracle::poseidon::{ArithmeticSponge, Sponge, SpongeConstants};
 use std::ops::Neg;
 
 use crate::{
-    domain_prefix_to_field, BaseField, CurvePoint, Hashable, Keypair, NetworkId, PubKey, ROInput,
-    ScalarField, Signable, Signature, Signer,
+    domain_prefix_to_field, BaseField, CurvePoint, DomainParameter, Hashable, Keypair, PubKey,
+    ROInput, ScalarField, Signature, Signer,
 };
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
 /// For details about the signature algorithm please see [crate::schnorr]
-pub struct Schnorr<SC: SpongeConstants> {
+pub struct Schnorr<SC: SpongeConstants, D: DomainParameter> {
     sponge: ArithmeticSponge<BaseField, SC>,
-    network_id: NetworkId,
+    domain_param: D,
 }
 
-impl<SC: SpongeConstants> Signer for Schnorr<SC> {
-    fn sign<S>(&mut self, kp: Keypair, input: S) -> Signature
-    where
-        S: Signable,
-    {
+impl<SC: SpongeConstants, D: DomainParameter> Signer<D> for Schnorr<SC, D> {
+    fn sign<H: Hashable<D>>(&mut self, kp: Keypair, input: H) -> Signature {
         let k: ScalarField = self.derive_nonce(&kp, input.clone());
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
@@ -49,10 +46,7 @@ impl<SC: SpongeConstants> Signer for Schnorr<SC> {
         Signature::new(r.x, s)
     }
 
-    fn verify<S>(&mut self, sig: Signature, public: PubKey, input: S) -> bool
-    where
-        S: Signable,
-    {
+    fn verify<H: Hashable<D>>(&mut self, sig: Signature, public: PubKey, input: H) -> bool {
         let ev: ScalarField = self.message_hash(&public, sig.rx, input);
 
         let sv: CurvePoint = CurvePoint::prime_subgroup_generator()
@@ -69,10 +63,13 @@ impl<SC: SpongeConstants> Signer for Schnorr<SC> {
     }
 }
 
-impl<SC: SpongeConstants> Schnorr<SC> {
+impl<SC: SpongeConstants, D: DomainParameter> Schnorr<SC, D> {
     /// Create a new Schnorr signer context for network instance `network_id` using arithmetic sponge defined by `sponge`.
-    pub fn new(sponge: ArithmeticSponge<BaseField, SC>, network_id: NetworkId) -> Schnorr<SC> {
-        Schnorr::<SC> { sponge, network_id }
+    pub fn new(sponge: ArithmeticSponge<BaseField, SC>, domain_param: D) -> Schnorr<SC, D> {
+        Schnorr::<SC, D> {
+            sponge,
+            domain_param,
+        }
     }
 
     /// This function uses a cryptographic hash function to create a uniformly and
@@ -80,7 +77,7 @@ impl<SC: SpongeConstants> Schnorr<SC> {
     /// messages share the same nonce.
     fn derive_nonce<H>(&self, kp: &Keypair, input: H) -> ScalarField
     where
-        H: Hashable,
+        H: Hashable<D>,
     {
         let mut hasher = Blake2bVar::new(32).unwrap();
 
@@ -88,7 +85,7 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         roi.append_field(kp.public.into_point().x);
         roi.append_field(kp.public.into_point().y);
         roi.append_scalar(kp.secret.into_scalar());
-        roi.append_bytes(&[self.network_id.into()]);
+        roi.append_bytes(&self.domain_param.clone().into_bytes());
 
         hasher.update(&roi.to_bytes());
 
@@ -110,11 +107,13 @@ impl<SC: SpongeConstants> Schnorr<SC> {
     /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
     /// SNARK-friendly cryptographic hash function.
     /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
-    fn message_hash<S>(&mut self, pub_key: &PubKey, rx: BaseField, input: S) -> ScalarField
-    where
-        S: Signable,
-    {
-        let mut roi: ROInput = input.to_roinput();
+    fn message_hash<H: Hashable<D>>(
+        &mut self,
+        pub_key: &PubKey,
+        rx: BaseField,
+        input: H,
+    ) -> ScalarField {
+        let mut roi: ROInput = input.clone().to_roinput();
         roi.append_field(pub_key.into_point().x);
         roi.append_field(pub_key.into_point().y);
         roi.append_field(rx);
@@ -122,10 +121,9 @@ impl<SC: SpongeConstants> Schnorr<SC> {
         // Set sponge initial state (explicitly init state so signer context can be reused)
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
         self.sponge.reset();
-        self.sponge
-            .absorb(&[domain_prefix_to_field::<BaseField>(S::domain_string(
-                self.network_id,
-            ))]);
+        self.sponge.absorb(&[domain_prefix_to_field::<BaseField>(
+            input.domain_string(&self.domain_param),
+        )]);
         self.sponge.squeeze();
 
         // Absorb random oracle input

@@ -2,9 +2,9 @@
 
 This crate provides an API and framework for Mina signing.  It follows the algorithm outlined in the [Mina Signature Specification](https://github.com/MinaProtocol/mina/blob/master/docs/specs/signatures/description.md).
 
-## Simple interface
+## Legacy interface
 
-The [create] function uses the default signer configuration compatible with mainnet and testnet transaction signatures.
+The [create_legacy] function uses the default signer configuration compatible with mainnet and testnet transaction signatures.
 
 ```rust
 #[path = "../tests/transaction.rs"]
@@ -24,15 +24,14 @@ let tx = Transaction::new_payment(
                 271828,
             );
 
-let mut ctx = mina_signer::create(NetworkId::TESTNET);
+let mut ctx = mina_signer::create_legacy::<NetworkId>(NetworkId::TESTNET);
 let sig = ctx.sign(keypair, tx);
-
-assert!(ctx.verify(sig, keypair.public, tx));
+assert!(ctx.verify(sig, keypair.public,tx));
 ```
 
-## Advanced interface
+## Custom interface
 
-The [custom] function allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
+The [create_custom] function allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
 
 ```rust
 #[path = "../tests/transaction.rs"]
@@ -53,7 +52,7 @@ let tx = Transaction::new_payment(
                 271828,
             );
 
-let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+let mut ctx = mina_signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
     pasta::fp::params(),
     NetworkId::TESTNET,
 );
@@ -66,12 +65,12 @@ Note that these examples use the test [`Transaction`](https://github.com/o1-labs
 
 ## Framework
 
-The framework allows you to easily define a new signature type simply by implementing the `Hashable` and `Signable` traits.
+In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the `Hashable` trait.
 
 For example, if you wanted to create Mina signatures for a `Foo` structure you would do the following.
 
 ```rust
-use mina_signer::{Hashable, NetworkId, ROInput, Signable};
+use mina_signer::{Hashable, NetworkId, ROInput};
 
 #[derive(Clone, Copy)]
 struct Foo {
@@ -79,7 +78,7 @@ struct Foo {
     bar: u64,
 }
 
-impl Hashable for Foo {
+impl Hashable<NetworkId> for Foo {
     fn to_roinput(self) -> ROInput {
         let mut roi = ROInput::new();
 
@@ -88,15 +87,45 @@ impl Hashable for Foo {
 
         roi
     }
-}
 
-impl Signable for Foo {
-    fn domain_string(network_id: NetworkId) -> &'static str {
+    fn domain_string(self, network_id: &NetworkId) -> String {
        match network_id {
            NetworkId::MAINNET => "FooSigMainnet",
            NetworkId::TESTNET => "FooSigTestnet",
-       }
-   }
+       }.to_string()
+    }
+}
+```
+
+Anything signable must implement the `Hashable` trait with the `Generic` associated type set to `NetworkId`.
+
+Sometimes may wish to hash something so that the domain string is not dependent on the network id.  This structure will not be signable, but it will still be hashable.
+
+For example, suppose you wanted to hash a non-leaf Merkle tree node, where the domain string depends on the height of the node.
+
+```rust
+use mina_signer::{Hashable, NetworkId, ROInput, ScalarField};
+
+#[derive(Clone, Copy)]
+struct MerkleIndexNode {
+    height: u64,
+    left: ScalarField,
+    right: ScalarField,
+}
+
+impl Hashable<u64> for MerkleIndexNode {
+    fn to_roinput(self) -> ROInput {
+        let mut roi = ROInput::new();
+
+        roi.append_scalar(self.left);
+        roi.append_scalar(self.right);
+
+        roi
+    }
+
+    fn domain_string(self, height: &u64) -> String {
+        format!("MerkleTree{:03}", height)
+    }
 }
 ```
 

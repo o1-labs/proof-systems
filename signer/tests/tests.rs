@@ -36,10 +36,10 @@ macro_rules! assert_sign_verify_tx {
 
         tx = tx.set_valid_until($valid_until).set_memo_str($memo);
 
-        let mut testnet_ctx = mina_signer::create(NetworkId::TESTNET);
+        // TODO only one context
+        let mut testnet_ctx = mina_signer::create_legacy(NetworkId::TESTNET);
+        let mut mainnet_ctx = mina_signer::create_legacy(NetworkId::MAINNET);
         let testnet_sig = testnet_ctx.sign(kp, tx);
-
-        let mut mainnet_ctx = mina_signer::create(NetworkId::MAINNET);
         let mainnet_sig = mainnet_ctx.sign(kp, tx);
 
         // Signing checks
@@ -55,8 +55,9 @@ macro_rules! assert_sign_verify_tx {
         assert_eq!(testnet_ctx.verify(mainnet_sig, kp.public, tx), false);
 
         tx.valid_until = !tx.valid_until;
-        assert_eq!(testnet_ctx.verify(testnet_sig, kp.public, tx), false);
-        assert_eq!(mainnet_ctx.verify(mainnet_sig, kp.public, tx), false);
+        assert_eq!(mainnet_ctx.verify(testnet_sig, kp.public, tx), false);
+
+        assert_eq!(testnet_ctx.verify(mainnet_sig, kp.public, tx), false);
     };
 }
 
@@ -85,7 +86,7 @@ fn signer_test_raw() {
         ]
     );
 
-    let mut ctx = mina_signer::create(NetworkId::TESTNET);
+    let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
     let sig = ctx.sign(kp, tx);
 
     assert_eq!(sig.to_string(),
@@ -105,7 +106,7 @@ fn signer_zero_test() {
         16,
     );
 
-    let mut ctx = mina_signer::create(NetworkId::TESTNET);
+    let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
     let sig = ctx.sign(kp, tx);
 
     assert_eq!(ctx.verify(sig, kp.public, tx), true);
@@ -262,7 +263,7 @@ fn custom_signer_test() {
     use oracle::{pasta, poseidon};
 
     let kp = Keypair::rand(&mut rand::rngs::OsRng);
-    let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+    let mut ctx = mina_signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
         pasta::fp::params(),
         NetworkId::MAINNET,
     );

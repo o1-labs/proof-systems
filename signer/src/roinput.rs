@@ -12,22 +12,23 @@ use o1_utils::FieldHelpers;
 ///
 /// The random oracle input encapsulates the serialization format and methods using during hashing.
 ///
-/// When implementing the [crate::Hashable] trait in order to enable hashing for a type, you must implement
+/// When implementing the [crate::Hashable] trait to enable hashing for a type, you must implement
 /// its `to_roinput()` serialization method using the [ROInput] functions below.
 ///
 /// For example,
 ///
 /// ```rust
-/// use mina_signer::{CompressedPubKey, Hashable, NetworkId, ROInput, Signable};
+/// use mina_signer::{CompressedPubKey, Hashable, NetworkId, ROInput};
 ///
 /// #[derive(Clone)]
 /// pub struct MyExample {
+///     pub network_id: NetworkId,
 ///     pub account: CompressedPubKey,
 ///     pub amount: u64,
 ///     pub nonce: u32,
 /// }
 ///
-/// impl Hashable for MyExample {
+/// impl Hashable<NetworkId> for MyExample {
 ///     fn to_roinput(self) -> ROInput {
 ///         let mut roi = ROInput::new();
 ///
@@ -37,6 +38,13 @@ use o1_utils::FieldHelpers;
 ///         roi.append_u32(self.nonce);
 ///
 ///         roi
+///     }
+///
+///     fn domain_string(self, network_id: &NetworkId) -> String {
+///         match network_id {
+///           NetworkId::MAINNET => "MyExampleMainnet",
+///           NetworkId::TESTNET => "MyExampleTestnet",
+///         }.to_string()
 ///     }
 /// }
 /// ```
@@ -149,7 +157,7 @@ impl ROInput {
     }
 }
 
-#[cfg(test)]
+#[cfg(tests)]
 mod tests {
     use super::*;
 

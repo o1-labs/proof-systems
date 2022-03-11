@@ -20,8 +20,8 @@ pub use signature::Signature;
 use oracle::{
     pasta,
     poseidon::{
-        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsBasic, Sponge,
-        SpongeConstants,
+        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W,
+        PlonkSpongeConstantsBasic, Sponge, SpongeConstants,
     },
 };
 
@@ -52,7 +52,7 @@ impl From<NetworkId> for u8 {
 }
 
 /// Transform domain prefix string to field element
-pub fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
+pub fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
     const MAX_DOMAIN_STRING_LEN: usize = 20;
     assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
     let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
@@ -63,73 +63,114 @@ pub fn domain_prefix_to_field<F: PrimeField>(prefix: &str) -> F {
     F::from_bytes(&bytes).expect("invalid domain bytes")
 }
 
-/// Interface for hashable objects
-///
-/// See example in [ROInput] documentation
-pub trait Hashable: Clone {
-    /// Serialization to random oracle input
-    fn to_roinput(self) -> ROInput;
+/// Domain parameter
+pub trait DomainParameter: Clone {
+    /// Conversion into bytes
+    fn into_bytes(self) -> Vec<u8>;
 }
 
-/// Interface for signed objects
+impl DomainParameter for () {
+    fn into_bytes(self) -> Vec<u8> {
+        vec![]
+    }
+}
+
+impl DomainParameter for NetworkId {
+    fn into_bytes(self) -> Vec<u8> {
+        vec![self as u8]
+    }
+}
+
+impl DomainParameter for u32 {
+    fn into_bytes(self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
+impl DomainParameter for u64 {
+    fn into_bytes(self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
+/// Interface for hashable objects
 ///
 /// **Example**
 ///
 /// ```
-/// use mina_signer::{Hashable, NetworkId, ROInput, Signable};
+/// use mina_signer::{Hashable, NetworkId, ROInput};
 ///
 /// #[derive(Clone)]
 /// struct Example;
 ///
-/// impl Hashable for Example {
+/// impl Hashable<NetworkId> for Example {
 ///     fn to_roinput(self) -> ROInput {
 ///         let roi = ROInput::new();
 ///         // Serialize example members
 ///         roi
 ///     }
-/// }
 ///
-/// impl Signable for Example {
-///     fn domain_string(network_id: NetworkId) -> &'static str {
+///     fn domain_string(self, network_id: &NetworkId) -> String {
 ///        match network_id {
 ///            NetworkId::MAINNET => "ExampleSigMainnet",
 ///            NetworkId::TESTNET => "ExampleSigTestnet",
-///        }
+///        }.to_string()
 ///    }
 /// }
 /// ```
 ///
-/// Please see [here](crate) for a more complete example.
-pub trait Signable: Hashable {
-    /// Returns the unique domain string for this input type on network specified by `network_id`.
-    ///
+/// See example in [ROInput] documentation
+pub trait Hashable<D: DomainParameter>: Clone {
+    /// Serialization to random oracle input
+    fn to_roinput(self) -> ROInput;
+
+    /// Returns the unique domain string
     /// The domain string length must be `<= 20`.
-    fn domain_string(network_id: NetworkId) -> &'static str;
+    fn domain_string(self, arg: &D) -> String;
 }
 
-/// Signer interface for signing [Signable] inputs and verifying [Signatures](Signature) using [Keypairs](Keypair) and [PubKeys](PubKey)
-pub trait Signer {
-    /// Sign `input` (see [Signable]) using keypair `kp` and return the corresponding signature.
-    fn sign<S: Signable>(&mut self, kp: Keypair, input: S) -> Signature;
+/// Interface for signed objects
+///
+/// Signer interface for signing [Hashable] inputs and verifying [Signatures](Signature) using [Keypairs](Keypair) and [PubKeys](PubKey)
+pub trait Signer<D: DomainParameter> {
+    // IDEA 2 <- Signer can only work when associated type is NetworkId :-(
+    /// Sign `input` (see [Hashable]) using keypair `kp` and return the corresponding signature.
+    fn sign<H: Hashable<D>>(&mut self, kp: Keypair, input: H) -> Signature;
 
-    /// Verify that the signature `sig` on `input` (see [Signable]) is signed with the secret key corresponding to `pub_key`.
+    /// Verify that the signature `sig` on `input` (see [Hashable]) is signed with the secret key corresponding to `pub_key`.
     /// Return `true` if the signature is valid and `false` otherwise.
-    fn verify<S: Signable>(&mut self, sig: Signature, pub_key: PubKey, input: S) -> bool;
+    fn verify<H: Hashable<D>>(&mut self, sig: Signature, pub_key: PubKey, input: H) -> bool;
 }
 
-/// Create a default signer context for network instance identified by `network_id`
+/// Create a legacy signer context for network instance identified by `network_id`
 ///
 /// **Example**
 ///
 /// ```
 /// use mina_signer::NetworkId;
 ///
-/// let mut ctx = mina_signer::create(NetworkId::MAINNET);
+/// let mut ctx = mina_signer::create_legacy::<NetworkId>(NetworkId::TESTNET);
 /// ```
-pub fn create(network_id: NetworkId) -> impl Signer {
-    Schnorr::<PlonkSpongeConstantsBasic>::new(
+pub fn create_legacy<D: DomainParameter>(domain_param: D) -> impl Signer<D> {
+    Schnorr::<PlonkSpongeConstantsBasic, D>::new(
         ArithmeticSponge::<BaseField, PlonkSpongeConstantsBasic>::new(pasta::fp::params()),
-        network_id,
+        domain_param,
+    )
+}
+
+/// Create an (experimental) kimchi signer context for network instance identified by `network_id`
+///
+/// **Example**
+///
+/// ```
+/// use mina_signer::NetworkId;
+///
+/// let mut ctx = mina_signer::create_kimchi::<NetworkId>(NetworkId::TESTNET);
+/// ```
+pub fn create_kimchi<D: DomainParameter>(domain_param: D) -> impl Signer<D> {
+    Schnorr::<PlonkSpongeConstants15W, D>::new(
+        ArithmeticSponge::<BaseField, PlonkSpongeConstants15W>::new(pasta::fp::params()),
+        domain_param,
     )
 }
 
@@ -141,14 +182,68 @@ pub fn create(network_id: NetworkId) -> impl Signer {
 /// use mina_signer::NetworkId;
 /// use oracle::{pasta, poseidon};
 ///
-/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
+/// let mut ctx = mina_signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
 ///     pasta::fp::params(),
 ///     NetworkId::TESTNET,
 /// );
 /// ```
-pub fn custom<SC: SpongeConstants>(
+pub fn create_custom<SC: SpongeConstants, D: DomainParameter>(
     params: ArithmeticSpongeParams<BaseField>,
-    network_id: NetworkId,
-) -> impl Signer {
-    Schnorr::<SC>::new(ArithmeticSponge::<BaseField, SC>::new(params), network_id)
+    domain_param: D,
+) -> impl Signer<D> {
+    Schnorr::<SC, D>::new(ArithmeticSponge::<BaseField, SC>::new(params), domain_param)
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{Hashable, ROInput, ScalarField};
+
+    #[test]
+    fn test_example1() {
+        #[derive(Clone, Copy)]
+        struct MerkleIndexNode {
+            left: ScalarField,
+            right: ScalarField,
+        }
+
+        impl Hashable<u64> for MerkleIndexNode {
+            fn to_roinput(self) -> ROInput {
+                let mut roi = ROInput::new();
+
+                roi.append_scalar(self.left);
+                roi.append_scalar(self.right);
+
+                roi
+            }
+
+            fn domain_string(self, height: &u64) -> String {
+                format!("MerkleTree{:03}", height)
+            }
+        }
+    }
+
+    #[test]
+    fn test_example2() {
+        #[derive(Clone, Copy)]
+        struct MerkleIndexNode {
+            height: u64,
+            left: ScalarField,
+            right: ScalarField,
+        }
+
+        impl Hashable<()> for MerkleIndexNode {
+            fn to_roinput(self) -> ROInput {
+                let mut roi = ROInput::new();
+
+                roi.append_scalar(self.left);
+                roi.append_scalar(self.right);
+
+                roi
+            }
+
+            fn domain_string(self, _: &()) -> String {
+                format!("MerkleTree{:03}", self.height)
+            }
+        }
+    }
 }
