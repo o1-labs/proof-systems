@@ -20,8 +20,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, Evaluation, OpeningProof,
-    PolyComm,
+    b_poly, b_poly_coefficients, CommitmentCurve, Evaluation, OpeningProof, PolyComm,
 };
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -54,8 +53,6 @@ where
     pub zeta1: Fr<G>,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
     pub ft_eval0: Fr<G>,
-    /// ?
-    pub combined_inner_product: Fr<G>,
 }
 
 pub struct BatchedEvaluationProof<G, EFqSponge>
@@ -329,55 +326,6 @@ where
             ft_eval0
         };
 
-        let combined_inner_product = {
-            let ft_eval0 = vec![ft_eval0];
-            let ft_eval1 = vec![self.ft_eval1];
-
-            #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<Vec<Fr<G>>>, Option<usize>)> =
-                polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((p_eval.clone(), None));
-            es.push((vec![ft_eval0, ft_eval1], None));
-            es.push((
-                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
-                None,
-            ));
-            es.push((
-                self.evals
-                    .iter()
-                    .map(|e| e.generic_selector.clone())
-                    .collect::<Vec<_>>(),
-                None,
-            ));
-            es.push((
-                self.evals
-                    .iter()
-                    .map(|e| e.poseidon_selector.clone())
-                    .collect::<Vec<_>>(),
-                None,
-            ));
-            es.extend((0..COLUMNS).map(|c| {
-                (
-                    self.evals
-                        .iter()
-                        .map(|e| e.w[c].clone())
-                        .collect::<Vec<_>>(),
-                    None,
-                )
-            }));
-            es.extend((0..PERMUTS - 1).map(|c| {
-                (
-                    self.evals
-                        .iter()
-                        .map(|e| e.s[c].clone())
-                        .collect::<Vec<_>>(),
-                    None,
-                )
-            }));
-
-            combined_inner_product::<G>(&ep, &v, &u, &es, index.srs.g.len())
-        };
-
         let oracles = RandomOracles {
             beta,
             gamma,
@@ -402,7 +350,6 @@ where
             polys,
             zeta1,
             ft_eval0,
-            combined_inner_product,
         }
     }
 }
@@ -734,7 +681,6 @@ where
 
     // Validate each proof separately (f(zeta) = t(zeta) * Z_H(zeta))
     // + build objects required to batch verify all the evaluation proofs
-
     let mut batch = vec![];
     for (index, proof) in proofs {
         batch.push(to_batch::<G, EFqSponge, EFrSponge>(index, proof));
