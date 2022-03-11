@@ -319,7 +319,8 @@ mod tests {
 
     use crate::{
         circuits::{gate::CircuitGate, wires::Wire},
-        index::{expr_linearization, testing::new_index_for_test},
+        linearization::expr_linearization,
+        prover_index::testing::new_index_for_test,
     };
 
     #[test]
