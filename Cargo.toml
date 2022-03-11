@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "book/specifications/code-extractor",
     "cairo",
     "curves",
     "groupmap",
