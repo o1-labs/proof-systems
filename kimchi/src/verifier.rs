@@ -20,7 +20,8 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, Evaluation, PolyComm,
+    b_poly, b_poly_coefficients, combined_inner_product, CommitmentCurve, Evaluation, OpeningProof,
+    PolyComm,
 };
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -406,6 +407,305 @@ where
     }
 }
 
+type ExpectedType<'a, EFqSponge, G> = (
+    EFqSponge,
+    Vec<Fr<G>>, // vector of evaluation points
+    Fr<G>,      // scaling factor for polynomials
+    Fr<G>,      // scaling factor for evaluation point powers
+    Vec<Evaluation<G>>,
+    &'a OpeningProof<G>, // batched opening proof
+);
+
+pub fn to_batch<'a, G, EFqSponge, EFrSponge>(
+    index: &VerifierIndex<G>,
+    proof: &'a ProverProof<G>,
+) -> ExpectedType<'a, EFqSponge, G>
+where
+    G: CommitmentCurve,
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+    EFrSponge: FrSponge<Fr<G>>,
+{
+    // commit to public input polynomial
+    let lgr_comm = index
+        .srs
+        .lagrange_bases
+        .get(&index.domain.size())
+        .expect("pre-computed committed lagrange bases not found");
+    let com: Vec<_> = lgr_comm
+        .iter()
+        .map(|c| PolyComm {
+            unshifted: vec![*c],
+            shifted: None,
+        })
+        .take(proof.public.len())
+        .collect();
+    let com_ref: Vec<_> = com.iter().collect();
+    let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+    let p_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+
+    // run the oracles argument
+    let OraclesResult {
+        fq_sponge,
+        oracles,
+        all_alphas,
+        p_eval,
+        powers_of_eval_points_for_chunks,
+        polys,
+        zeta1: zeta_to_domain_size,
+        ft_eval0,
+        ..
+    } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
+
+    // combine the committed chunked polynomials
+    // with the right powers of zeta^n or (zeta * omega)^n
+    let evals = vec![
+        proof.evals[0].combine(powers_of_eval_points_for_chunks[0]),
+        proof.evals[1].combine(powers_of_eval_points_for_chunks[1]),
+    ];
+
+    //
+    // compute the commitment to the linearized polynomial f
+    //
+
+    let f_comm = {
+        // permutation
+        let zkp = index.zkpm.evaluate(&oracles.zeta);
+
+        let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+
+        let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
+        let mut scalars = vec![ConstraintSystem::perm_scalars(
+            &evals,
+            oracles.beta,
+            oracles.gamma,
+            alphas,
+            zkp,
+        )];
+
+        // generic
+        {
+            let alphas =
+                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
+
+            let generic_scalars =
+                &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
+
+            let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
+
+            assert_eq!(generic_scalars.len(), generic_com.len());
+
+            scalars.extend(generic_scalars);
+            commitments.extend(generic_com);
+        }
+
+        // other gates are implemented using the expression framework
+        {
+            // TODO: Reuse constants from oracles function
+            let constants = Constants {
+                alpha: oracles.alpha,
+                beta: oracles.beta,
+                gamma: oracles.gamma,
+                joint_combiner: oracles.joint_combiner.1,
+                endo_coefficient: index.endo,
+                mds: index.fr_sponge_params.mds.clone(),
+            };
+
+            for (col, tokens) in &index.linearization.index_terms {
+                let scalar =
+                    PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
+                        .expect("should evaluate");
+                let l = proof.commitments.lookup.as_ref();
+                use Column::*;
+                match col {
+                    Witness(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&proof.commitments.w_comm[*i])
+                    }
+                    Coefficient(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&index.coefficients_comm[*i])
+                    }
+                    Z => {
+                        scalars.push(scalar);
+                        commitments.push(&proof.commitments.z_comm);
+                    }
+                    LookupSorted(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&l.unwrap().sorted[*i])
+                    }
+                    LookupAggreg => {
+                        scalars.push(scalar);
+                        commitments.push(&l.unwrap().aggreg)
+                    }
+                    LookupKindIndex(i) => match index.lookup_index.as_ref() {
+                        None => {
+                            panic!("Attempted to use {:?}, but no lookup index was given", col)
+                        }
+                        Some(lindex) => {
+                            scalars.push(scalar);
+                            commitments.push(&lindex.lookup_selectors[*i]);
+                        }
+                    },
+                    LookupTable => match index.lookup_index.as_ref() {
+                        None => {
+                            panic!("Attempted to use {:?}, but no lookup index was given", col)
+                        }
+                        Some(lindex) => {
+                            let mut j = Fr::<G>::one();
+                            scalars.push(scalar);
+                            commitments.push(&lindex.lookup_tables[0][0]);
+                            for t in lindex.lookup_tables[0].iter().skip(1) {
+                                j *= constants.joint_combiner;
+                                scalars.push(scalar * j);
+                                commitments.push(t);
+                            }
+                        }
+                    },
+                    Index(t) => {
+                        use GateType::*;
+                        let c = match t {
+                            Zero | Generic => panic!("Selector for {:?} not defined", t),
+                            CompleteAdd => &index.complete_add_comm,
+                            VarBaseMul => &index.mul_comm,
+                            EndoMul => &index.emul_comm,
+                            EndoMulScalar => &index.endomul_scalar_comm,
+                            Poseidon => &index.psm_comm,
+                            ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
+                            ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
+                            ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
+                            ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
+                        };
+                        scalars.push(scalar);
+                        commitments.push(c);
+                    }
+                }
+            }
+        }
+
+        // MSM
+        PolyComm::multi_scalar_mul(&commitments, &scalars)
+    };
+
+    let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
+    // Maller's optimization (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
+    let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
+    let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
+    let ft_comm = &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - Fr::<G>::one());
+
+    //
+    //
+    //
+
+    let mut evaluations = vec![];
+
+    // recursion
+    evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
+        commitment: c,
+        evaluations: e,
+        degree_bound: None,
+    }));
+
+    // public input commitment
+    evaluations.push(Evaluation {
+        commitment: p_comm,
+        evaluations: p_eval,
+        degree_bound: None,
+    });
+
+    // ft commitment (chunks of it)
+    evaluations.push(Evaluation {
+        commitment: ft_comm,
+        evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
+        degree_bound: None,
+    });
+
+    // permutation commitment
+    evaluations.push(Evaluation {
+        commitment: proof.commitments.z_comm.clone(),
+        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+        degree_bound: None,
+    });
+
+    // index commitments that use the coefficients
+    evaluations.push(Evaluation {
+        commitment: index.generic_comm.clone(),
+        evaluations: proof
+            .evals
+            .iter()
+            .map(|e| e.generic_selector.clone())
+            .collect(),
+        degree_bound: None,
+    });
+    evaluations.push(Evaluation {
+        commitment: index.psm_comm.clone(),
+        evaluations: proof
+            .evals
+            .iter()
+            .map(|e| e.poseidon_selector.clone())
+            .collect(),
+        degree_bound: None,
+    });
+
+    // witness commitments
+    evaluations.extend(
+        proof
+            .commitments
+            .w_comm
+            .iter()
+            .zip(
+                (0..COLUMNS)
+                    .map(|i| {
+                        proof
+                            .evals
+                            .iter()
+                            .map(|e| e.w[i].clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .map(|(c, e)| Evaluation {
+                commitment: c.clone(),
+                evaluations: e.clone(),
+                degree_bound: None,
+            }),
+    );
+
+    // sigma commitments
+    evaluations.extend(
+        index
+            .sigma_comm
+            .iter()
+            .zip(
+                (0..PERMUTS - 1)
+                    .map(|i| {
+                        proof
+                            .evals
+                            .iter()
+                            .map(|e| e.s[i].clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .map(|(c, e)| Evaluation {
+                commitment: c.clone(),
+                evaluations: e.clone(),
+                degree_bound: None,
+            }),
+    );
+
+    // prepare for the opening proof verification
+    let omega = index.domain.group_gen;
+    (
+        fq_sponge.clone(),
+        vec![oracles.zeta, oracles.zeta * omega],
+        oracles.v,
+        oracles.u,
+        evaluations,
+        &proof.proof,
+    )
+}
+
 /// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
 ///     index: VerifierIndex
@@ -434,305 +734,10 @@ where
 
     // Validate each proof separately (f(zeta) = t(zeta) * Z_H(zeta))
     // + build objects required to batch verify all the evaluation proofs
-    let mut params = vec![];
-    for (index, proof) in proofs {
-        // commit to public input polynomial
-        let lgr_comm = index
-            .srs
-            .lagrange_bases
-            .get(&index.domain.size())
-            .expect("pre-computed committed lagrange bases not found");
-        let com: Vec<_> = lgr_comm
-            .iter()
-            .map(|c| PolyComm {
-                unshifted: vec![*c],
-                shifted: None,
-            })
-            .take(proof.public.len())
-            .collect();
-        let com_ref: Vec<_> = com.iter().collect();
-        let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-        let p_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
 
-        // run the oracles argument
-        let OraclesResult {
-            fq_sponge,
-            oracles,
-            all_alphas,
-            p_eval,
-            powers_of_eval_points_for_chunks,
-            polys,
-            zeta1: zeta_to_domain_size,
-            ft_eval0,
-            ..
-        } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm);
-
-        // combine the committed chunked polynomials
-        // with the right powers of zeta^n or (zeta * omega)^n
-        let evals = vec![
-            proof.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-            proof.evals[1].combine(powers_of_eval_points_for_chunks[1]),
-        ];
-
-        //
-        // compute the commitment to the linearized polynomial f
-        //
-
-        let f_comm = {
-            // permutation
-            let zkp = index.zkpm.evaluate(&oracles.zeta);
-
-            let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-
-            let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-            let mut scalars = vec![ConstraintSystem::perm_scalars(
-                &evals,
-                oracles.beta,
-                oracles.gamma,
-                alphas,
-                zkp,
-            )];
-
-            // generic
-            {
-                let alphas = all_alphas
-                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-
-                let generic_scalars =
-                    &ConstraintSystem::gnrc_scalars(alphas, &evals[0].w, evals[0].generic_selector);
-
-                let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
-
-                assert_eq!(generic_scalars.len(), generic_com.len());
-
-                scalars.extend(generic_scalars);
-                commitments.extend(generic_com);
-            }
-
-            // other gates are implemented using the expression framework
-            {
-                // TODO: Reuse constants from oracles function
-                let constants = Constants {
-                    alpha: oracles.alpha,
-                    beta: oracles.beta,
-                    gamma: oracles.gamma,
-                    joint_combiner: oracles.joint_combiner.1,
-                    endo_coefficient: index.endo,
-                    mds: index.fr_sponge_params.mds.clone(),
-                };
-
-                for (col, tokens) in &index.linearization.index_terms {
-                    let scalar = PolishToken::evaluate(
-                        tokens,
-                        index.domain,
-                        oracles.zeta,
-                        &evals,
-                        &constants,
-                    )
-                    .expect("should evaluate");
-                    let l = proof.commitments.lookup.as_ref();
-                    use Column::*;
-                    match col {
-                        Witness(i) => {
-                            scalars.push(scalar);
-                            commitments.push(&proof.commitments.w_comm[*i])
-                        }
-                        Coefficient(i) => {
-                            scalars.push(scalar);
-                            commitments.push(&index.coefficients_comm[*i])
-                        }
-                        Z => {
-                            scalars.push(scalar);
-                            commitments.push(&proof.commitments.z_comm);
-                        }
-                        LookupSorted(i) => {
-                            scalars.push(scalar);
-                            commitments.push(&l.unwrap().sorted[*i])
-                        }
-                        LookupAggreg => {
-                            scalars.push(scalar);
-                            commitments.push(&l.unwrap().aggreg)
-                        }
-                        LookupKindIndex(i) => match index.lookup_index.as_ref() {
-                            None => {
-                                panic!("Attempted to use {:?}, but no lookup index was given", col)
-                            }
-                            Some(lindex) => {
-                                scalars.push(scalar);
-                                commitments.push(&lindex.lookup_selectors[*i]);
-                            }
-                        },
-                        LookupTable => match index.lookup_index.as_ref() {
-                            None => {
-                                panic!("Attempted to use {:?}, but no lookup index was given", col)
-                            }
-                            Some(lindex) => {
-                                let mut j = Fr::<G>::one();
-                                scalars.push(scalar);
-                                commitments.push(&lindex.lookup_tables[0][0]);
-                                for t in lindex.lookup_tables[0].iter().skip(1) {
-                                    j *= constants.joint_combiner;
-                                    scalars.push(scalar * j);
-                                    commitments.push(t);
-                                }
-                            }
-                        },
-                        Index(t) => {
-                            use GateType::*;
-                            let c = match t {
-                                Zero | Generic => panic!("Selector for {:?} not defined", t),
-                                CompleteAdd => &index.complete_add_comm,
-                                VarBaseMul => &index.mul_comm,
-                                EndoMul => &index.emul_comm,
-                                EndoMulScalar => &index.endomul_scalar_comm,
-                                Poseidon => &index.psm_comm,
-                                ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
-                                ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
-                                ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
-                                ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                            };
-                            scalars.push(scalar);
-                            commitments.push(c);
-                        }
-                    }
-                }
-            }
-
-            // MSM
-            PolyComm::multi_scalar_mul(&commitments, &scalars)
-        };
-
-        let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
-        // Maller's optimization (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
-        let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
-        let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
-        let ft_comm = &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - Fr::<G>::one());
-
-        params.push((
-            p_eval,
-            p_comm,
-            ft_comm,
-            fq_sponge,
-            oracles,
-            vec![ft_eval0],
-            vec![proof.ft_eval1],
-            polys,
-        ));
-    }
-
-    // batch verify all the evaluation proofs
     let mut batch = vec![];
-    for (proof, params) in proofs.into_iter().zip(params.into_iter()) {
-        let (index, proof) = proof;
-        let (p_eval, p_comm, ft_comm, fq_sponge, oracles, ft_eval0, ft_eval1, polys) = params;
-
-        let mut evaluations = vec![];
-
-        // recursion
-        evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
-            commitment: c,
-            evaluations: e,
-            degree_bound: None,
-        }));
-
-        // public input commitment
-        evaluations.push(Evaluation {
-            commitment: p_comm,
-            evaluations: p_eval,
-            degree_bound: None,
-        });
-
-        // ft commitment (chunks of it)
-        evaluations.push(Evaluation {
-            commitment: ft_comm,
-            evaluations: vec![ft_eval0, ft_eval1],
-            degree_bound: None,
-        });
-
-        // permutation commitment
-        evaluations.push(Evaluation {
-            commitment: proof.commitments.z_comm.clone(),
-            evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
-            degree_bound: None,
-        });
-
-        // index commitments that use the coefficients
-        evaluations.push(Evaluation {
-            commitment: index.generic_comm.clone(),
-            evaluations: proof
-                .evals
-                .iter()
-                .map(|e| e.generic_selector.clone())
-                .collect(),
-            degree_bound: None,
-        });
-        evaluations.push(Evaluation {
-            commitment: index.psm_comm.clone(),
-            evaluations: proof
-                .evals
-                .iter()
-                .map(|e| e.poseidon_selector.clone())
-                .collect(),
-            degree_bound: None,
-        });
-
-        // witness commitments
-        evaluations.extend(
-            proof
-                .commitments
-                .w_comm
-                .iter()
-                .zip(
-                    (0..COLUMNS)
-                        .map(|i| {
-                            proof
-                                .evals
-                                .iter()
-                                .map(|e| e.w[i].clone())
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<_>>(),
-                )
-                .map(|(c, e)| Evaluation {
-                    commitment: c.clone(),
-                    evaluations: e.clone(),
-                    degree_bound: None,
-                }),
-        );
-
-        // sigma commitments
-        evaluations.extend(
-            index
-                .sigma_comm
-                .iter()
-                .zip(
-                    (0..PERMUTS - 1)
-                        .map(|i| {
-                            proof
-                                .evals
-                                .iter()
-                                .map(|e| e.s[i].clone())
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<_>>(),
-                )
-                .map(|(c, e)| Evaluation {
-                    commitment: c.clone(),
-                    evaluations: e.clone(),
-                    degree_bound: None,
-                }),
-        );
-
-        // prepare for the opening proof verification
-        let omega = index.domain.group_gen;
-        batch.push((
-            fq_sponge.clone(),
-            vec![oracles.zeta, oracles.zeta * omega],
-            oracles.v,
-            oracles.u,
-            evaluations,
-            &proof.proof,
-        ));
+    for (index, proof) in proofs {
+        batch.push(to_batch::<G, EFqSponge, EFrSponge>(index, proof));
     }
 
     // final check to verify the evaluation proofs
