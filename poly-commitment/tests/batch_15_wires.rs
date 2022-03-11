@@ -3,7 +3,7 @@
 
 use ark_ff::{UniformRand, Zero};
 use commitment_dlog::{
-    commitment::{CommitmentCurve, Evaluation},
+    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
     srs::SRS,
 };
 use mina_curves::pasta::{
@@ -109,23 +109,21 @@ where
 
     let mut proofs = prfs
         .iter()
-        .map(|proof| {
-            (
-                proof.0.clone(),
-                proof.1.clone(),
-                proof.2,
-                proof.3,
-                proof
-                    .4
-                    .iter()
-                    .map(|poly| Evaluation {
-                        commitment: (poly.0).0.clone(),
-                        evaluations: poly.1.clone(),
-                        degree_bound: poly.2,
-                    })
-                    .collect::<Vec<_>>(),
-                &proof.5,
-            )
+        .map(|proof| BatchEvaluationProof {
+            sponge: proof.0.clone(),
+            evaluation_points: proof.1.clone(),
+            xi: proof.2,
+            r: proof.3,
+            evaluations: proof
+                .4
+                .iter()
+                .map(|poly| Evaluation {
+                    commitment: (poly.0).0.clone(),
+                    evaluations: poly.1.clone(),
+                    degree_bound: poly.2,
+                })
+                .collect::<Vec<_>>(),
+            opening: &proof.5,
         })
         .collect::<Vec<_>>();
 

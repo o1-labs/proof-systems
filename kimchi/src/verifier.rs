@@ -20,7 +20,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, CommitmentCurve, Evaluation, OpeningProof, PolyComm,
+    b_poly, b_poly_coefficients, BatchEvaluationProof, CommitmentCurve, Evaluation, PolyComm,
 };
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -53,18 +53,6 @@ where
     pub zeta1: Fr<G>,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
     pub ft_eval0: Fr<G>,
-}
-
-pub struct BatchedEvaluationProof<G, EFqSponge>
-where
-    G: AffineCurve,
-    EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
-{
-    pub fq_sponge: EFqSponge,
-    pub evaluations: Vec<(Evaluation<G>, ProverProof<G>)>,
-    pub evaluation_points: Vec<Fr<G>>,
-    pub u: Fr<G>,
-    pub v: Fr<G>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -354,19 +342,10 @@ where
     }
 }
 
-type ExpectedType<'a, EFqSponge, G> = (
-    EFqSponge,
-    Vec<Fr<G>>, // vector of evaluation points
-    Fr<G>,      // scaling factor for polynomials
-    Fr<G>,      // scaling factor for evaluation point powers
-    Vec<Evaluation<G>>,
-    &'a OpeningProof<G>, // batched opening proof
-);
-
-pub fn to_batch<'a, G, EFqSponge, EFrSponge>(
+fn to_batch<'a, G, EFqSponge, EFrSponge>(
     index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,
-) -> ExpectedType<'a, EFqSponge, G>
+) -> BatchEvaluationProof<'a, G, EFqSponge>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
@@ -643,14 +622,15 @@ where
 
     // prepare for the opening proof verification
     let omega = index.domain.group_gen;
-    (
-        fq_sponge.clone(),
-        vec![oracles.zeta, oracles.zeta * omega],
-        oracles.v,
-        oracles.u,
+
+    BatchEvaluationProof {
+        sponge: fq_sponge.clone(),
         evaluations,
-        &proof.proof,
-    )
+        evaluation_points: vec![oracles.zeta, oracles.zeta * omega],
+        xi: oracles.v,
+        r: oracles.u,
+        opening: &proof.proof,
+    }
 }
 
 /// This function verifies the batch of zk-proofs
