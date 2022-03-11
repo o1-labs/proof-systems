@@ -15,7 +15,7 @@ use kimchi::{
             varbasemul::VarbaseMul,
         },
     },
-    index::Index,
+    prover_index::Index,
 };
 use serde::Serialize;
 use std::{

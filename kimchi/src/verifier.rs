@@ -12,9 +12,9 @@ use crate::{
         wires::*,
     },
     error::{ProofError, Result},
-    index::{LookupVerifierIndex, VerifierIndex},
     plonk_sponge::FrSponge,
     prover::ProverProof,
+    verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};

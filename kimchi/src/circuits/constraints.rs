@@ -391,12 +391,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        // +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
-        // see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        //~ 1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
+        //~    see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
         assert!(domain.d1.size > ZK_ROWS);
 
-        // pad the rows: add zero gates to reach the domain size
+        //~ 2. pad the rows: add zero gates to reach the domain size
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {

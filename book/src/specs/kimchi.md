@@ -188,9 +188,28 @@ fifth round:
 
 ## Constraint System Creation
 
+1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
+   see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+2. pad the rows: add zero gates to reach the domain size
 
 
-## Prover and Verifier Index Creation
+## Prover Index
+
+
+### The prover Index
+
+1. compute the linearization
+2. set `max_quot_size` to the degree of the quotient polynomial,
+   which is obtained by looking at the highest monomial in the sum
+    $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
+   where the $w_i(x)$ are of degree the size of the domain.
+
+
+## Verifier Index
+
+The verifier index is essentially a number of pre-computations containing:
+
+* the (non-hidding) commitments of all the required polynomials
 
 
 

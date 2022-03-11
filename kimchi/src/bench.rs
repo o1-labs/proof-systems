@@ -4,9 +4,10 @@ use crate::{
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    index::{testing::new_index_for_test, Index, VerifierIndex},
     prover::ProverProof,
+    prover_index::{testing::new_index_for_test, Index},
     verifier::batch_verify,
+    verifier_index::VerifierIndex,
 };
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
