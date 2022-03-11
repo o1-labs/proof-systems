@@ -56,6 +56,10 @@ TODO: use expr to define the index columns?
 
 ### Gates
 
+<!-- generated using `cargo run --bin code-extractor` -->
+* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
+
 #### Double Generic Gate
 
 The double generic gate contains two generic gates.

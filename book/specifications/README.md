@@ -7,6 +7,8 @@ The `specifications/` directory hosts specifications-related code:
 
 The specifications are written using [cargo-spec](https://crates.io/crates/cargo-spec), which combines markdown files as well as text extracted directly from the code.
 
+Code is contained in the [code-extractor/](code-extractor/) directory to generate parts of the specification.
+
 ## Set up
 
 Install cargo-spec:

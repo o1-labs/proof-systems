@@ -31,6 +31,7 @@ use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    fmt::Display,
     iter::{Cloned, Skip, Take},
     ops::Range,
     slice::Iter,
@@ -168,6 +169,33 @@ impl<F: Field> Alphas<F> {
                 }
             }
         }
+    }
+}
+
+impl<T> Display for Alphas<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for arg in [
+            ArgumentType::Gate(GateType::Zero),
+            ArgumentType::Permutation,
+            //            ArgumentType::Lookup,
+        ] {
+            let name = if matches!(arg, ArgumentType::Gate(_)) {
+                "gates".to_string()
+            } else {
+                format!("{:?}", arg)
+            };
+            let range = self
+                .mapping
+                .get(&arg)
+                .expect("you need to register all arguments before calling display");
+            writeln!(
+                f,
+                "* **{}**. Offset starts at {} and {} powers of $\\alpha$ are used",
+                name, range.0, range.1
+            )?;
+        }
+
+        Ok(())
     }
 }
 
