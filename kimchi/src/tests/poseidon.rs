@@ -4,10 +4,10 @@ use crate::{
         gates::poseidon::{self, ROUNDS_PER_ROW},
         wires::{Wire, COLUMNS},
     },
-    index::testing::new_index_for_test,
+    prover_index::testing::new_index_for_test,
     verifier::batch_verify,
 };
-use crate::{index::Index, prover::ProverProof};
+use crate::{prover::ProverProof, prover_index::Index};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;

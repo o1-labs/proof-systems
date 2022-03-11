@@ -4,8 +4,8 @@ use crate::{
         polynomials::endomul_scalar,
         wires::*,
     },
-    index::testing::new_index_for_test,
     prover::ProverProof,
+    prover_index::testing::new_index_for_test,
     verifier::batch_verify,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
