@@ -56,7 +56,7 @@ TODO: use expr to define the index columns?
 
 ### Gates
 
-<!-- generated using `cargo run --bin code-extractor` -->
+<!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
 * **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
 * **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
 
