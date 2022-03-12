@@ -3,6 +3,10 @@
 * This document specifies *kimchi*, a zero-knowledge proof system that's a variant of PLONK.
 * This document does not specify how circuits are created or executed, but only how to convert a circuit and its execution into a proof.
 
+Table of content:
+
+<!-- toc -->
+
 ## Overview
 
 There are three main algorithms to kimchi:
@@ -297,11 +301,13 @@ As such, the transformation of a circuit into these two indexes can be seen as a
 In this section we describe data that both the prover and the verifier index share.
 
 **`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
-It is used for polynomial commitments, so refer to the specification for more details.
+It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
 
 ```admonish
-Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details]()).
+Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
 ```
+
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`. subgroup TODO: what if the domain is larger than the URS?
 
 **`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
 To do that, the following logic is followed (in pseudo code):
@@ -328,11 +334,7 @@ def sample(domain, i):
 
 **`Public`**. This variable simply contains the number of public inputs.
 
-### Prover Index & Constraint System Creation
-
-TODO: is there a significant difference between prover index and constraint system in our code? Merge the two structs?
-
-The prover follows the following steps to create the constraint system, which is part of the prover index:
+The compilation steps to create the common index are as follow:
 
 1. If the circuit is less than 2 gates, abort.
 2. Create a domain for the circuit. That is,
@@ -341,6 +343,8 @@ The prover follows the following steps to create the constraint system, which is
 3. Pad the circuit: add zero gates to reach the domain size.
 4. sample the `PERMUTS` shifts.
 
+
+### Prover Index
 
 The prover follows the following steps to create the prover index:
 
@@ -351,7 +355,7 @@ The prover follows the following steps to create the prover index:
    where the $w_i(x)$ are of degree the size of the domain.
 
 
-## Verifier Index
+### Verifier Index
 
 The verifier index is essentially a number of pre-computations containing:
 
@@ -359,7 +363,7 @@ The verifier index is essentially a number of pre-computations containing:
 
 
 
-## Proof Data Structure
+## Proof
 
 Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
