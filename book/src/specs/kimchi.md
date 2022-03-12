@@ -394,19 +394,13 @@ The compilation steps to create the common index are as follow:
 4. sample the `PERMUTS` shifts.
 
 
-### Prover Index
+### Prover & Index
 
-The prover follows the following steps to create the prover index:
+Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
 
+We shy away from specifying exactly what these pre-computations can be in this specification.
 
-
-### Verifier Index
-
-The verifier index is essentially a number of pre-computations containing:
-
-* the (non-hidding) commitments of all the required polynomials
-
-
+TODO: should we though?
 
 ## Proof
 
@@ -540,7 +534,6 @@ The prover then follows the following steps to create the proof:
     (so that each polynomial should correspond to a single value this time).
 31. Compute the ft polynomial.
     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-    (See in particular the [section on evaluating L](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l).)
 32. construct the blinding part of the ft polynomial commitment
     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
 33. Evaluate the ft polynomial at $\zeta\omega$ only.

@@ -772,7 +772,6 @@ where
 
         //~ 31. Compute the ft polynomial.
         //~     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-        //~     (See in particular the [section on evaluating L](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l).)
         let ft: DensePolynomial<Fr<G>> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
