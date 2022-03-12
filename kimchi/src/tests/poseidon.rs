@@ -7,7 +7,7 @@ use crate::{
     prover_index::testing::new_index_for_test,
     verifier::batch_verify,
 };
-use crate::{prover::ProverProof, prover_index::Index};
+use crate::{prover::ProverProof, prover_index::ProverIndex};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -80,7 +80,7 @@ fn test_poseidon() {
 }
 
 /// creates a proof and verifies it
-fn positive(index: &Index<Affine>) {
+fn positive(index: &ProverIndex<Affine>) {
     // constant
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);
 

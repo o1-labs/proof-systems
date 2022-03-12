@@ -5,7 +5,7 @@ use crate::{
         wires::{Wire, COLUMNS},
     },
     prover::ProverProof,
-    prover_index::{testing::new_index_for_test, Index},
+    prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::batch_verify,
     verifier_index::VerifierIndex,
 };
@@ -32,7 +32,7 @@ pub const CIRCUIT_SIZE: usize = 27164;
 
 pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
-    index: Index<Affine>,
+    index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
 }
 
