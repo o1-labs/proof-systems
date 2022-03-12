@@ -26,8 +26,9 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// the circuit size. This influences the size of the SRS
-pub const CIRCUIT_SIZE: usize = (1 << 14) + 1; // SRS will be 2^15
+/// The circuit size. This influences the size of the SRS.
+/// At the time of this writing our verifier circuits have 27164 & 18054 gates.
+pub const CIRCUIT_SIZE: usize = 27164;
 
 pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
@@ -127,7 +128,7 @@ mod tests {
         // context created in 21.2235 ms
         let start = Instant::now();
         let ctx = BenchmarkCtx::new(1 << 4);
-        println!("context created in {}", start.elapsed().as_millis());
+        println!("context created in {}", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms
         let start = Instant::now();
