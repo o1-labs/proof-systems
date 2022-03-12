@@ -698,7 +698,7 @@ where
                                 base_table
                                     .into_iter()
                                     .zip(table_ids.eval(e, index.max_poly_size))
-                                    .map(|(x, table_id)| x + &(table_combiner * table_id))
+                                    .map(|(x, table_id)| x + (table_combiner * table_id))
                                     .collect()
                             }
                         }

@@ -70,7 +70,7 @@ pub fn table_id_contribution<F: Field>(joint_combiner: F, table_id: F, max_joint
     // `joint_combiner` in the table value calculation below. This ensures that we can avoid
     // using higher powers of the `joint_combiner` when we have only one table with a
     // `table_id` of 0.
-    joint_combiner.pow([max_joint_size as u64]) * &table_id
+    joint_combiner.pow([max_joint_size as u64]) * table_id
 }
 
 /// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
@@ -93,7 +93,7 @@ pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item = &'a F>>(
     v: I,
 ) -> F {
     v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
-        + &table_id_contribution(joint_combiner, table_id, max_joint_size)
+        + table_id_contribution(joint_combiner, table_id, max_joint_size)
 }
 
 impl<F: Field> SingleLookup<F> {
