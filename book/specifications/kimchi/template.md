@@ -204,7 +204,8 @@ It is used for polynomial commitments, so refer to the [poly-commitment specific
 Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
 ```
 
-**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`. subgroup TODO: what if the domain is larger than the URS?
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
+TODO: what if the domain is larger than the URS?
 
 **`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
 To do that, the following logic is followed (in pseudo code):
@@ -235,19 +236,13 @@ The compilation steps to create the common index are as follow:
 
 {sections.constraint_system}
 
-### Prover Index
+### Prover & Index
 
-The prover follows the following steps to create the prover index:
+Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
 
-{sections.prover_index}
+We shy away from specifying exactly what these pre-computations can be in this specification.
 
-### Verifier Index
-
-The verifier index is essentially a number of pre-computations containing:
-
-* the (non-hidding) commitments of all the required polynomials
-
-{sections.verifier_index}
+TODO: should we though?
 
 ## Proof
 

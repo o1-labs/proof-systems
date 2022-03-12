@@ -269,6 +269,55 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 #### Elliptic Curve Addition
 
+The layout is
+
+|  0 |  1 |  2 |  3 |  4 |  5 |  6  |    7   | 8 |   9   |    10   |
+|:--:|:--:|:--:|:--:|:--:|:--:|:---:|:------:|:-:|:-----:|:-------:|
+| x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
+
+where
+- `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
+- `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+
+The rest of the values are inaccessible from the permutation argument, but
+- `same_x` is a boolean that is true iff `x1 == x2`.
+
+The following constraints are generated:
+
+constraint 1:
+* $x_{0} = w_{2} - w_{0}$
+* $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
+
+constraint 2:
+
+* $x_{0} = w_{2} - w_{0}$
+* $w_{7} \cdot x_{0}$
+
+constraint 3:
+
+* $x_{0} = w_{2} - w_{0}$
+* $x_{1} = w_{3} - w_{1}$
+* $x_{2} = w_{0} \cdot w_{0}$
+* $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) + (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$
+
+constraint 4:
+
+* $w_{0} + w_{2} + w_{4} - w_{8} \cdot w_{8}$
+
+constraint 5:
+
+* $w_{8} \cdot (w_{0} - w_{4}) - w_{1} - w_{5}$
+
+constraint 6:
+
+* $x_{1} = w_{3} - w_{1}$
+* $x_{1} \cdot (w_{7} - w_{6})$
+
+constraint 7:
+
+* $x_{1} = w_{3} - w_{1}$
+* $x_{1} \cdot w_{9} - w_{6}$
+
 
 
 #### Endo Scalar
@@ -307,7 +356,8 @@ It is used for polynomial commitments, so refer to the [poly-commitment specific
 Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
 ```
 
-**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`. subgroup TODO: what if the domain is larger than the URS?
+**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit. 
+TODO: what if the domain is larger than the URS?
 
 **`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
 To do that, the following logic is followed (in pseudo code):
@@ -348,11 +398,6 @@ The compilation steps to create the common index are as follow:
 
 The prover follows the following steps to create the prover index:
 
-1. compute the linearization
-2. set `max_quot_size` to the degree of the quotient polynomial,
-   which is obtained by looking at the highest monomial in the sum
-    $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
-   where the $w_i(x)$ are of degree the size of the domain.
 
 
 ### Verifier Index
