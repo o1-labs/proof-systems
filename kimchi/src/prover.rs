@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
-        gate::{combine_table_entry, GateType, LookupsUsed},
+        gate::{combine_table_entry, i32_to_field, GateType, LookupsUsed},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -231,10 +231,9 @@ where
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
                 Some(lcs) => {
-                    let table_id = Fr::<G>::zero();
                     combine_table_entry(
                         joint_combiner,
-                        table_id,
+                        i32_to_field(lcs.dummy_lookup_table_id),
                         lcs.max_joint_size,
                         lcs.dummy_lookup_value.iter(),
                     )

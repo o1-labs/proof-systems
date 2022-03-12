@@ -35,6 +35,7 @@ pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub dummy_lookup_value: Vec<F>,
+    pub dummy_lookup_table_id: i32,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -358,6 +359,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .iter()
                     .map(|col| col[col.len() - 1])
                     .collect();
+                let dummy_lookup_table_id = lookup_table.id;
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
@@ -386,6 +388,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 Some(Self {
                     lookup_selectors,
                     dummy_lookup_value,
+                    dummy_lookup_table_id,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
                     table_ids,
