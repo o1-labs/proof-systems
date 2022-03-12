@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Witness","The type that represents the execution trace. It represents a table of [REGISTERS] columns, with `n` rows. `n` being the maximum size of the circuit, and the size of the domain."]]});
+initSidebarItems({"struct":[["Witness","The type that represents the execution trace. It represents a table of [COLUMNS] columns, with `n` rows. `n` being the maximum size of the circuit, and the size of the domain."]]});

@@ -1150,7 +1150,6 @@
 <span id="1145">1145</span>
 <span id="1146">1146</span>
 <span id="1147">1147</span>
-<span id="1148">1148</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1221,8 +1220,7 @@
     <span class="comment">// TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }</span>
     <span class="kw">pub</span> <span class="ident">evals</span>: [<span class="ident">ProofEvaluations</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>; <span class="number">2</span>],
 
-    <span class="doccomment">/// Required evaluation for Maller&#39;s optimization</span>
-    <span class="doccomment">/// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)</span>
+    <span class="doccomment">/// Required evaluation for [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)</span>
     <span class="kw">pub</span> <span class="ident">ft_eval1</span>: <span class="ident">Fr</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>,
 
     <span class="doccomment">/// The public input</span>

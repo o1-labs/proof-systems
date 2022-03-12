@@ -103,7 +103,7 @@
     <span class="kw">use</span> <span class="ident">serde_with</span>::{<span class="ident">DeserializeAs</span>, <span class="ident">SerializeAs</span>};
 
     <span class="doccomment">/// You can use this to serialize an arkworks type with serde and the &quot;serialize_with&quot; attribute.</span>
-    <span class="doccomment">/// See https://serde.rs/field-attrs.html</span>
+    <span class="doccomment">/// See &lt;https://serde.rs/field-attrs.html&gt;</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="ident">val</span>: <span class="kw">impl</span> <span class="ident">CanonicalSerialize</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">S</span>: <span class="ident">serde::Serializer</span>,
@@ -116,7 +116,7 @@
     }
 
     <span class="doccomment">/// You can use this to deserialize an arkworks type with serde and the &quot;deserialize_with&quot; attribute.</span>
-    <span class="doccomment">/// See https://serde.rs/field-attrs.html</span>
+    <span class="doccomment">/// See &lt;https://serde.rs/field-attrs.html&gt;</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span>, <span class="ident">T</span>, <span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">CanonicalDeserialize</span>,
@@ -134,7 +134,7 @@
 <span class="doccomment">/// You can use [SerdeAs] with [serde_with] in order to serialize and deserialize types that implement [CanonicalSerialize] and [CanonicalDeserialize],</span>
 <span class="doccomment">/// or containers of types that implement these traits (Vec, arrays, etc.)</span>
 <span class="doccomment">/// Simply add annotations like `#[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]`</span>
-<span class="doccomment">/// See https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as</span>
+<span class="doccomment">/// See &lt;https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as&gt;</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerdeAs</span>;
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">serde_with::SerializeAs</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SerdeAs</span>

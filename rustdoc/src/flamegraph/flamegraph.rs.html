@@ -42,7 +42,7 @@
 <span class="kw">use</span> <span class="ident">kimchi::bench::BenchmarkCtx</span>;
 
 <span class="doccomment">/// function to avoid optimizations by the compiler</span>
-<span class="doccomment">/// taken from https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171</span>
+<span class="doccomment">/// taken from &lt;https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171&gt;</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">black_box</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">dummy</span>: <span class="ident">T</span>) -&gt; <span class="ident">T</span> {
     <span class="kw">unsafe</span> {
         <span class="kw">let</span> <span class="ident">ret</span> <span class="op">=</span> <span class="ident">std::ptr::read_volatile</span>(<span class="kw-2">&amp;</span><span class="ident">dummy</span>);

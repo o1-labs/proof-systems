@@ -734,6 +734,9 @@
 <span id="729">729</span>
 <span id="730">730</span>
 <span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
 
 <span class="doccomment">//! ocaml-derive adds a number of derives to make ocaml-gen easier to use.</span>
@@ -749,7 +752,7 @@
     <span class="ident">TraitBoundModifier</span>, <span class="ident">Type</span>, <span class="ident">TypeParamBound</span>, <span class="ident">TypePath</span>, <span class="ident">WherePredicate</span>,
 };
 
-<span class="doccomment">/// A macro to create OCaml bindings for a function that uses #[ocaml::func]</span>
+<span class="doccomment">/// A macro to create OCaml bindings for a function that uses [`#[ocaml::func]`](https://docs.rs/ocaml/latest/ocaml/attr.func.html)</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Note that this macro must be placed first (before `#[ocaml::func]`).</span>
 <span class="doccomment">/// For example:</span>
@@ -835,7 +838,8 @@
 
 <span class="doccomment">/// The Enum derive macro.</span>
 <span class="doccomment">/// It generates implementations of ToOCaml and OCamlBinding on an enum type.</span>
-<span class="doccomment">/// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]</span>
+<span class="doccomment">/// The type must implement [ocaml::IntoValue](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)</span>
+<span class="doccomment">/// and [ocaml::FromValue](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)</span>
 <span class="doccomment">/// For example:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
@@ -1086,7 +1090,9 @@
 
 <span class="doccomment">/// The Struct derive macro.</span>
 <span class="doccomment">/// It generates implementations of ToOCaml and OCamlBinding on a struct.</span>
-<span class="doccomment">/// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]</span>
+<span class="doccomment">/// The type must implement [ocaml::IntoValue](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)</span>
+<span class="doccomment">/// and [ocaml::FromValue](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)</span>
+<span class="doccomment">///</span>
 <span class="doccomment">/// For example:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>

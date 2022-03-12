@@ -95,17 +95,18 @@ For functions, refer to the <a href="attr.func.html" title="func">func</a> macro
 It is usually derived automatically via the <a href="derive.Struct.html" title="Struct">Struct</a> macro,
 or the <a href="derive.CustomType.html" title="CustomType">CustomType</a> macro for custom types.</p>
 </div></div></div><h2 id="attributes" class="small-section-header"><a href="#attributes">Attribute Macros</a></h2>
-<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="attr" href="attr.func.html" title="ocaml_gen::func attr">func</a></div><div class="item-right docblock-short"><p>A macro to create OCaml bindings for a function that uses #<a href="../ocaml_derive/attr.ocaml_func.html" title="ocaml::func">ocaml::func</a></p>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="attr" href="attr.func.html" title="ocaml_gen::func attr">func</a></div><div class="item-right docblock-short"><p>A macro to create OCaml bindings for a function that uses <a href="https://docs.rs/ocaml/latest/ocaml/attr.func.html"><code>#[ocaml::func]</code></a></p>
 </div></div></div><h2 id="derives" class="small-section-header"><a href="#derives">Derive Macros</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="derive" href="derive.CustomType.html" title="ocaml_gen::CustomType derive">CustomType</a></div><div class="item-right docblock-short"><p>Derives implementations for OCamlDesc and OCamlBinding on a custom type
 For example:</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="derive" href="derive.Enum.html" title="ocaml_gen::Enum derive">Enum</a></div><div class="item-right docblock-short"><p>The Enum derive macro.
 It generates implementations of ToOCaml and OCamlBinding on an enum type.
-The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
+The type must implement <a href="https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html">ocaml::IntoValue</a>
+and <a href="https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html">ocaml::FromValue</a>
 For example:</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="derive" href="derive.Struct.html" title="ocaml_gen::Struct derive">Struct</a></div><div class="item-right docblock-short"><p>The Struct derive macro.
 It generates implementations of ToOCaml and OCamlBinding on a struct.
-The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
-For example:</p>
+The type must implement <a href="https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html">ocaml::IntoValue</a>
+and <a href="https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html">ocaml::FromValue</a></p>
 </div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="ocaml_gen" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (335ffbfa5 2022-03-11)" ></div>
 </body></html>

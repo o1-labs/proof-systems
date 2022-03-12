@@ -645,6 +645,8 @@
 <span id="640">640</span>
 <span id="641">641</span>
 <span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the cha-cha constraints, which are rather simple aside form the lookups.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
@@ -774,10 +776,12 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! On each of them we&#39;ll do the plookups</span>
 <span class="doccomment">//!</span>
+<span class="doccomment">//! ```ignore</span>
 <span class="doccomment">//! ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR</span>
 <span class="doccomment">//! ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR</span>
 <span class="doccomment">//! ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR</span>
 <span class="doccomment">//! ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR</span>
+<span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! which checks that ((y^x&#39;)_i - lo((y^x&#39;)_i)) is a nybble,</span>
 <span class="doccomment">//! which guarantees that the low bit is computed correctly.</span>

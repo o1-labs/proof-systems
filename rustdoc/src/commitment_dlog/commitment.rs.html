@@ -1709,7 +1709,7 @@
 
 <span class="doccomment">/// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...</span>
 <span class="doccomment">/// It&#39;s &quot;step 8: Define the univariate polynomial&quot; of</span>
-<span class="doccomment">/// appendix A.2 of https://eprint.iacr.org/2020/499</span>
+<span class="doccomment">/// appendix A.2 of &lt;https://eprint.iacr.org/2020/499&gt;</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">b_poly</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(<span class="ident">chals</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
     <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">chals</span>.<span class="ident">len</span>();
 

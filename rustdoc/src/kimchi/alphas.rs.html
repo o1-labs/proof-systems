@@ -286,12 +286,6 @@
 <span id="281">281</span>
 <span id="282">282</span>
 <span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements an abstraction to keep track of the powers of alphas.</span>
 <span class="doccomment">//! As a recap, alpha is a challenge sent by the verifier in PLONK,</span>
 <span class="doccomment">//! and is used to aggregate multiple constraints into a single polynomial.</span>
@@ -310,15 +304,9 @@
 <span class="doccomment">//! - when creating a proof or verifying a proof, at this point we know alpha</span>
 <span class="doccomment">//!   so we can use the mapping we created during the creation of the index.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! For this to work, we use two types:</span>
+<span class="doccomment">//! For this to work, we use the type [Alphas] to register ranges of powers of alpha,</span>
+<span class="doccomment">//! for the various [ArgumentType]s.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! - [Builder], which allows us to map constraints to powers</span>
-<span class="doccomment">//! - [Alphas], which you can derive from [Builder] and an `alpha`</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Both constructions will enforce that you use all the powers of</span>
-<span class="doccomment">//! alphas that you register for constraint. This allows us to</span>
-<span class="doccomment">//! make sure that we compute the correct amounts, without reusing</span>
-<span class="doccomment">//! powers of alphas between constraints.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{<span class="ident">argument::ArgumentType</span>, <span class="ident">gate::GateType</span>};
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
@@ -334,8 +322,8 @@
 <span class="comment">// ------------------------------------------</span>
 
 <span class="doccomment">/// This type can be used to create a mapping between powers of alpha and constraint types.</span>
-<span class="doccomment">/// See [Alphas::default] to create one,</span>
-<span class="doccomment">/// and [Builder::register] to register a new mapping.</span>
+<span class="doccomment">/// See [Self::default] to create one,</span>
+<span class="doccomment">/// and [Self::register] to register a new mapping.</span>
 <span class="doccomment">/// Once you know the alpha value, you can convert this type to a [Alphas].</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
@@ -412,7 +400,7 @@
     }
 
     <span class="doccomment">/// Instantiates the ranges with an actual field element `alpha`.</span>
-    <span class="doccomment">/// Once you call this function, you cannot register new constraints via [register].</span>
+    <span class="doccomment">/// Once you call this function, you cannot register new constraints via [Self::register].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">instantiate</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">alpha</span>: <span class="ident">F</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_power</span> <span class="op">=</span> <span class="ident">F::one</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="self">self</span>.<span class="ident">next_power</span> <span class="kw">as</span> <span class="ident">usize</span>);

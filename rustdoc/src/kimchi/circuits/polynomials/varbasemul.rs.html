@@ -247,14 +247,20 @@
 <span id="242">242</span>
 <span id="243">243</span>
 <span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.</span>
 <span class="doccomment">//!</span>
+<span class="doccomment">//! ```ignore</span>
 <span class="doccomment">//! Acc := [2]T</span>
 <span class="doccomment">//! for i = n-1 ... 0:</span>
 <span class="doccomment">//!   Q := (r_i == 1) ? T : -T</span>
 <span class="doccomment">//!   Acc := Acc + (Q + Acc)</span>
+<span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.</span>
+<span class="doccomment">//! See &lt;https://github.com/zcash/zcash/issues/3924&gt;</span>
+<span class="doccomment">//! and 3.1 of &lt;https://arxiv.org/pdf/math/0208038.pdf&gt; for details.</span>
 
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
 

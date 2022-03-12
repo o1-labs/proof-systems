@@ -926,11 +926,11 @@
 <span class="doccomment">/// Shifts represent the shifts required in the permutation argument of PLONK.</span>
 <span class="doccomment">/// It also caches the shifted powers of omega for optimization purposes.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Shifts</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// The coefficients k that create a coset when multiplied with the generator of our domain.</span>
+    <span class="doccomment">/// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.</span>
     <span class="ident">shifts</span>: [<span class="ident">F</span>; <span class="ident">PERMUTS</span>],
-    <span class="doccomment">/// A matrix that maps all cells coordinates {col, row} to their shifted field element.</span>
-    <span class="doccomment">/// For example the cell {col:2, row:1} will map to omega * k2,</span>
-    <span class="doccomment">/// which lives in map[2][1]</span>
+    <span class="doccomment">/// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.</span>
+    <span class="doccomment">/// For example the cell `{col:2, row:1}` will map to `omega * k2`,</span>
+    <span class="doccomment">/// which lives in `map[2][1]`</span>
     <span class="ident">map</span>: [<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>; <span class="ident">PERMUTS</span>],
 }
 
