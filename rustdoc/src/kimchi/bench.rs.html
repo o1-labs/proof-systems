@@ -153,7 +153,7 @@
         <span class="ident">wires</span>::{<span class="ident">Wire</span>, <span class="ident">COLUMNS</span>},
     },
     <span class="ident">prover::ProverProof</span>,
-    <span class="ident">prover_index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">Index</span>},
+    <span class="ident">prover_index</span>::{<span class="ident">testing::new_index_for_test</span>, <span class="ident">ProverIndex</span>},
     <span class="ident">verifier::batch_verify</span>,
     <span class="ident">verifier_index::VerifierIndex</span>,
 };
@@ -180,7 +180,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BenchmarkCtx</span> {
     <span class="ident">group_map</span>: <span class="ident">BWParameters</span><span class="op">&lt;</span><span class="ident">VestaParameters</span><span class="op">&gt;</span>,
-    <span class="ident">index</span>: <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span>,
+    <span class="ident">index</span>: <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span>,
     <span class="ident">verifier_index</span>: <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">Affine</span><span class="op">&gt;</span>,
 }
 

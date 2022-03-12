@@ -259,7 +259,7 @@
 <span id="254">254</span>
 <span id="255">255</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [VerifierIndex].</span>
-<span class="doccomment">//! You can derive this struct from the [Index] struct.</span>
+<span class="doccomment">//! You can derive this struct from the [ProverIndex] struct.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
@@ -268,7 +268,7 @@
     <span class="ident">gate::LookupsUsed</span>,
     <span class="ident">wires</span>::<span class="kw-2">*</span>,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prover_index::Index</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prover_index::ProverIndex</span>;
 <span class="kw">use</span> <span class="ident">ark_ec::AffineCurve</span>;
 <span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">univariate::DensePolynomial</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
@@ -379,11 +379,11 @@
     <span class="kw">pub</span> <span class="ident">fq_sponge_params</span>: <span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">Fq</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">Index</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">G</span>: <span class="ident">CommitmentCurve</span><span class="op">&gt;</span> <span class="ident">ProverIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">G::BaseField</span>: <span class="ident">PrimeField</span>,
 {
-    <span class="doccomment">/// Produces the [VerifierIndex] from the prover&#39;s [Index].</span>
+    <span class="doccomment">/// Produces the [VerifierIndex] from the prover&#39;s [ProverIndex].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verifier_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">VerifierIndex</span><span class="op">&lt;</span><span class="ident">G</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">domain</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cs</span>.<span class="ident">domain</span>.<span class="ident">d1</span>;
         <span class="kw">let</span> <span class="ident">lookup_index</span> <span class="op">=</span> {
