@@ -1,6 +1,9 @@
 //! This module implements Plonk constraint gate primitive.
 
-use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
+use crate::circuits::{
+    constraints::ConstraintSystem, domains::EvaluationDomains, polynomials::chacha::XOR_TABLE_ID,
+    wires::*,
+};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
@@ -380,7 +383,7 @@ impl GateType {
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: XOR_TABLE_ID,
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -408,7 +411,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: 0,
+                    table_id: XOR_TABLE_ID,
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
