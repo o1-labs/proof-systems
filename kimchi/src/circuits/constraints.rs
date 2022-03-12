@@ -347,35 +347,74 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     .chain(lookup_tables.into_iter())
                     .collect();
 
-                if lookup_tables.len() > 1 {
-                    panic!("Multiple lookup tables are currently not supported");
+                // Get the max width of all lookup tables
+                let max_table_width = lookup_tables
+                    .iter()
+                    .fold(0, |max_width, LookupTable { data, .. }| {
+                        std::cmp::max(max_width, data.len())
+                    });
+
+                let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
+
+                let mut lookup_table = vec![Vec::with_capacity(d1_size); max_table_width];
+                let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
+                let mut non_zero_table_id = false;
+                for table in lookup_tables.iter() {
+                    let table_len = table.data[0].len();
+
+                    // Update table IDs
+                    if table.id != 0 {
+                        non_zero_table_id = true;
+                    }
+                    let table_id: F = gate::i32_to_field(table.id);
+                    table_ids.extend((0..table_len).map(|_| table_id));
+
+                    // Update lookup_table values
+                    for (i, col) in table.data.iter().enumerate() {
+                        if col.len() != table_len {
+                            // TODO: Expose a descriptive failure here
+                            None?
+                        }
+                        lookup_table[i].extend(col);
+                    }
+
+                    // Fill in any unused columns with 0
+                    for i in table.data.len()..lookup_table.len() {
+                        lookup_table[i].extend((0..table_len).map(|_| F::zero()))
+                    }
                 }
 
-                let lookup_table = lookup_tables.into_iter().next().unwrap();
+                // Note: we use `>=` here to leave space for the dummy value.
+                if lookup_table[0].len() >= max_num_entries {
+                    // The combined table has too many values
+                    // TODO: Expose a descriptive failure here
+                    None?
+                }
 
-                // get the last entry in each column of each table
-                let dummy_lookup_value: Vec<F> = lookup_table
-                    .data
-                    .iter()
-                    .map(|col| col[col.len() - 1])
-                    .collect();
-                let dummy_lookup_table_id = lookup_table.id;
+                // For computational efficiency, we choose the dummy lookup value to be all 0s in
+                // table 0.
+                let dummy_lookup_value: Vec<F> = vec![];
+                let dummy_lookup_table_id = 0;
+
+                // Pad up to the end of the table with the dummy value.
+                lookup_table
+                    .iter_mut()
+                    .for_each(|col| col.extend((col.len()..max_num_entries).map(|_| F::zero())));
+                table_ids.extend((table_ids.len()..max_num_entries).map(|_| F::zero()));
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
-                for (mut col, dummy) in lookup_table.data.into_iter().zip(&dummy_lookup_value) {
+                for col in lookup_table.into_iter() {
                     // pad each column to the size of the domain
-                    let padding = (0..(d1_size - col.len())).map(|_| dummy);
-                    col.extend(padding);
                     let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
                     let eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);
                     lookup_table8.push(eval);
                 }
 
-                let (table_ids, table_ids8) = if lookup_table.id != 0 {
-                    let table_ids = vec![gate::i32_to_field(lookup_table.id); d1_size];
+                // pre-compute polynomial and evaluation form for the table IDs, if needed
+                let (table_ids, table_ids8) = if non_zero_table_id {
                     let table_ids: DP<F> =
                         E::<F, D<F>>::from_vec_and_domain(table_ids, domain.d1).interpolate();
                     let table_ids8: E<F, D<F>> = table_ids.evaluate_over_domain_by_ref(domain.d8);
