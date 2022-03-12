@@ -230,14 +230,12 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(lcs) => {
-                    combine_table_entry(
-                        joint_combiner,
-                        i32_to_field(lcs.dummy_lookup_table_id),
-                        lcs.max_joint_size,
-                        lcs.dummy_lookup_value.iter(),
-                    )
-                }
+                Some(lcs) => combine_table_entry(
+                    joint_combiner,
+                    i32_to_field(lcs.dummy_lookup_table_id),
+                    lcs.max_joint_size,
+                    lcs.dummy_lookup_value.iter(),
+                ),
             };
             CombinedEntry(x)
         };
