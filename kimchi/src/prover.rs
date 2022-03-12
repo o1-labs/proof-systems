@@ -385,6 +385,12 @@ where
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
             }
+            let table_id_combiner = joint_combiner.pow([lcs.max_joint_size as u64]);
+            if let Some(table_ids8) = &lcs.table_ids8 {
+                for (x, table_id) in res.evals.iter_mut().zip(table_ids8.evals.iter()) {
+                    *x += table_id_combiner * table_id;
+                }
+            }
             res
         });
 
