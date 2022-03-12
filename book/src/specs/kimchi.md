@@ -133,12 +133,152 @@ See the [Pasta curves specification](./pasta.md).
 Kimchi enforces the correct execution of a circuit by creating a number of constraints and combining them together.
 In this section, we describe all the constraints that make up the main polynomial $f$ once combined.
 
-TODO: how to combine
+We define the following functions:
+
+* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints. 
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+In other words it returns:
+$$ \sum_i \alpha^i \cdot \text{constraint}_i $$
 
 TODO: linearization
 
 ### Permutation
 
+
+The permutation constraints are the following 4 constraints:
+
+The two sides of the coin (with $\text{shift}_0 = 1$):
+
+$$\begin{align}
+    & z(x) \cdot zkpm(x) \cdot \alpha^{PERM0} \cdot \\
+    & (w_0(x) + \beta \cdot \text{shift}_0 x + \gamma) \cdot \\
+    & (w_1(x) + \beta \cdot \text{shift}_1 x + \gamma) \cdot \\
+    & (w_2(x) + \beta \cdot \text{shift}_2 x + \gamma) \cdot \\
+    & (w_3(x) + \beta \cdot \text{shift}_3 x + \gamma) \cdot \\
+    & (w_4(x) + \beta \cdot \text{shift}_4 x + \gamma) \cdot \\
+    & (w_5(x) + \beta \cdot \text{shift}_5 x + \gamma) \cdot \\
+    & (w_6(x) + \beta \cdot \text{shift}_6 x + \gamma)
+\end{align}$$
+
+and
+
+$$\begin{align}
+& -1 \cdot z(x \omega) \cdot zkpm(x) \cdot \alpha^{PERM0} \cdot \\
+& (w_0(x) + \beta \cdot \sigma_0(x) + \gamma) \cdot \\
+& (w_1(x) + \beta \cdot \sigma_1(x) + \gamma) \cdot \\
+& (w_2(x) + \beta \cdot \sigma_2(x) + \gamma) \cdot \\
+& (w_3(x) + \beta \cdot \sigma_3(x) + \gamma) \cdot \\
+& (w_4(x) + \beta \cdot \sigma_4(x) + \gamma) \cdot \\
+& (w_5(x) + \beta \cdot \sigma_5(x) + \gamma) \cdot \\
+& (w_6(x) + \beta \cdot \sigma_6(x) + \gamma) \cdot
+\end{align}$$
+
+the initialization of the accumulator:
+
+$$(z(x) - 1) L_1(x) \alpha^{PERM1}$$
+
+and the accumulator's final value:
+
+$$(z(x) - 1) L_{n-k}(x) \alpha^{PERM2}$$
+
+You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
+
+The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
+They will be used by the prover.
+
+$$
+\begin{align}
+perm(x) =
+    & \; a^{PERM0} \cdot zkpl(x) \cdot [ \\
+    & \;\;   z(x) \cdot \\
+    & \;\;   (w_0(x) + \gamma + x \cdot \beta \cdot \text{shift}_0) \cdot \\
+    & \;\;   (w_1(x) + \gamma + x \cdot \beta \cdot \text{shift}_1) \cdot \\
+    & \;\;   (w_2(x) + \gamma + x \cdot \beta \cdot \text{shift}_2) \cdot \\
+    & \;\;   (w_3(x) + \gamma + x \cdot \beta \cdot \text{shift}_3) \cdot \\
+    & \;\;   (w_4(x) + \gamma + x \cdot \beta \cdot \text{shift}_4) \cdot \\
+    & \;\;   (w_5(x) + \gamma + x \cdot \beta \cdot \text{shift}_5) \cdot \\
+    & \;\;   (w_6(x) + \gamma + x \cdot \beta \cdot \text{shift}_6) \cdot \\
+    & \;   - \\
+    & \;\;   z(x \cdot w) \cdot \\
+    & \;\;   (w_0(x) + \gamma + \sigma_0 \cdot \beta) \cdot \\
+    & \;\;   (w_1(x) + \gamma + \sigma_1 \cdot \beta) \cdot \\
+    & \;\;   (w_2(x) + \gamma + \sigma_2 \cdot \beta) \cdot \\
+    & \;\;   (w_3(x) + \gamma + \sigma_3 \cdot \beta) \cdot \\
+    & \;\;   (w_4(x) + \gamma + \sigma_4 \cdot \beta) \cdot \\
+    & \;\;   (w_5(x) + \gamma + \sigma_5 \cdot \beta) \cdot \\
+    & \;\;   (w_6(x) + \gamma + \sigma_6 \cdot \beta) \cdot \\
+    &]
+\end{align}
+$$
+
+and `bnd`:
+
+$$bnd(x) =
+    a^{PERM1} \cdot \frac{z(x) - 1}{x - 1}
+    +
+    a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
+$$
+
+The linearization:
+
+$\text{scalar} \cdot \sigma_6(x)$
+
+where $\text{scalar}$ is computed as:
+
+$$
+\begin{align}
+z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
+(\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\
+(\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\
+(\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
+(\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
+(\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
+(\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
+\end{align}
+$$
+
+To compute the permutation aggregation polynomial,
+the prover interpolates the polynomial that has the following evaluations.
+The first evaluation represents the initial value of the accumulator:
+$$z(g^0) = 1$$
+For $i = 0, \cdot, n - 4$, where $n$ is the size of the domain,
+evaluations are computed as:
+
+$$z(g^{i+1}) = z_1 / z_2$$
+
+with
+
+$$
+\begin{align}
+z_1 = &\ (w_0(g^i + sid(g^i) \cdot beta \cdot shift_0 + \gamma) \cdot \\
+&\ (w_1(g^i) + sid(g^i) \cdot beta \cdot shift_1 + \gamma) \cdot \\
+&\ (w_2(g^i) + sid(g^i) \cdot beta \cdot shift_2 + \gamma) \cdot \\
+&\ (w_3(g^i) + sid(g^i) \cdot beta \cdot shift_3 + \gamma) \cdot \\
+&\ (w_4(g^i) + sid(g^i) \cdot beta \cdot shift_4 + \gamma) \cdot \\
+&\ (w_5(g^i) + sid(g^i) \cdot beta \cdot shift_5 + \gamma) \cdot \\
+&\ (w_6(g^i) + sid(g^i) \cdot beta \cdot shift_6 + \gamma)
+\end{align}
+$$
+
+and
+
+$$
+\begin{align}
+z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
+&\ (w_1(g^i) + \sigma_1 \cdot beta + \gamma) \cdot \\
+&\ (w_2(g^i) + \sigma_2 \cdot beta + \gamma) \cdot \\
+&\ (w_3(g^i) + \sigma_3 \cdot beta + \gamma) \cdot \\
+&\ (w_4(g^i) + \sigma_4 \cdot beta + \gamma) \cdot \\
+&\ (w_5(g^i) + \sigma_5 \cdot beta + \gamma) \cdot \\
+&\ (w_6(g^i) + \sigma_6 \cdot beta + \gamma)
+\end{align}
+$$
+
+
+If computed correctly, we should have $z(g^{n-3}) = 1$.
+
+Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
+in order to add zero-knowledge to the protocol.
 
 
 ### Lookup
@@ -463,6 +603,15 @@ To create a proof, the prover expects:
 ```admonish
 The public input is expected to be passed in the first `Public` rows of the registers table.
 ```
+
+The following constants are set:
+
+* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at. 
+($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)
+* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness. 
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+(TODO: treat the final constraint separately so that ZK_ROWS = 2)
 
 The prover then follows the following steps to create the proof:
 

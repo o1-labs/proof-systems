@@ -133,7 +133,12 @@ See the [Pasta curves specification](./pasta.md).
 Kimchi enforces the correct execution of a circuit by creating a number of constraints and combining them together.
 In this section, we describe all the constraints that make up the main polynomial $f$ once combined.
 
-TODO: how to combine
+We define the following functions:
+
+* `combine_constraints(range_alpha, constraints)`, which takes a range of contiguous powers of alpha and a number of constraints. 
+It returns the sum of all the constraints, where each constraint has been multiplied by a power of alpha. 
+In other words it returns:
+$$ \sum_i \alpha^i \cdot \text\{constraint}_i $$
 
 TODO: linearization
 
@@ -305,6 +310,15 @@ To create a proof, the prover expects:
 ```admonish
 The public input is expected to be passed in the first `Public` rows of the registers table.
 ```
+
+The following constants are set:
+
+* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at. 
+($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)
+* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness. 
+Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol. 
+Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator). 
+(TODO: treat the final constraint separately so that ZK_ROWS = 2)
 
 The prover then follows the following steps to create the proof:
 
