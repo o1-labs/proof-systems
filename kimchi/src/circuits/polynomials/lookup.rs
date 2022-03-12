@@ -123,7 +123,10 @@
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
-        gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
+        gate::{
+            i32_to_field, CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo,
+            SingleLookup,
+        },
         wires::COLUMNS,
     },
     error::{ProofError, Result},
@@ -621,7 +624,12 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>, max_joint_size: u32) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(
+    dummy_lookup: &[F],
+    dummy_table_id: i32,
+    d1: D<F>,
+    max_joint_size: u32,
+) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -649,12 +657,16 @@ pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>, max_joint_size: u3
     let one: E<F> = E::one();
     let non_lookup_indcator = one - lookup_indicator;
 
+    let dummy_table_id_contribution = ConstantExpr::JointCombiner.pow(max_joint_size as u64)
+        * ConstantExpr::Literal(i32_to_field(dummy_table_id));
+
     let dummy_lookup: ConstantExpr<F> = dummy_lookup
         .iter()
         .rev()
         .fold(ConstantExpr::zero(), |acc, x| {
             ConstantExpr::JointCombiner * acc + ConstantExpr::Literal(*x)
-        });
+        })
+        + dummy_table_id_contribution;
 
     let complements_with_beta_term: Vec<ConstantExpr<F>> = {
         let mut v = vec![ConstantExpr::one()];

@@ -608,6 +608,7 @@ where
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
                 let constraints = lookup::constraints(
                     &lcs.dummy_lookup_value,
+                    lcs.dummy_lookup_table_id,
                     index.cs.domain.d1,
                     lcs.max_joint_size,
                 );

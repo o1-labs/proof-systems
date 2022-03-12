@@ -204,7 +204,12 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
         let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
 
-        let constraints = lookup::constraints(&lcs.dummy_lookup_value, domain, lcs.max_joint_size);
+        let constraints = lookup::constraints(
+            &lcs.dummy_lookup_value,
+            lcs.dummy_lookup_table_id,
+            domain,
+            lcs.max_joint_size,
+        );
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
     }
