@@ -147,7 +147,7 @@ use std::marker::PhantomData;
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{constraints::boolean, prologue::*, ConstantExpr as C},
-    gate::{CurrOrNext, GateType},
+    gate::{CurrOrNext, GateType, LookupTable},
 };
 use ark_ff::{FftField, Field, Zero};
 
@@ -162,26 +162,26 @@ use ark_ff::{FftField, Field, Zero};
 /// 0 = 0 + joint_combiner * 0 + joint_combiner^2 * 0
 ///
 /// will translate into a scalar multiplication by 0, which is free.
-pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
-    let mut res = vec![vec![]; 3];
+pub fn xor_table<F: Field>() -> LookupTable<F> {
+    let mut data = vec![vec![]; 3];
 
     // XOR for all possible four-bit arguments.
     // I suppose this could be computed a bit faster using symmetry but it's quite
     // small (16*16 = 256 entries) so let's just keep it simple.
     for i in 0u32..=0b1111 {
         for j in 0u32..=0b1111 {
-            res[0].push(F::from(i));
-            res[1].push(F::from(j));
-            res[2].push(F::from(i ^ j));
+            data[0].push(F::from(i));
+            data[1].push(F::from(j));
+            data[2].push(F::from(i ^ j));
         }
     }
 
-    for r in &mut res {
+    for r in &mut data {
         r.reverse();
         // Just to be safe.
         assert!(r[r.len() - 1].is_zero());
     }
-    res
+    LookupTable { id: 0, data }
 }
 
 //
