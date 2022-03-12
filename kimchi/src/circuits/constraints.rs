@@ -332,10 +332,10 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
         domain: &EvaluationDomains<F>,
-    ) -> Option<Self> {
+    ) -> Result<Option<Self>, ()> {
         let lookup_info = LookupInfo::<F>::create();
         match lookup_info.lookup_used(gates) {
-            None => None,
+            None => Ok(None),
             Some(lookup_used) => {
                 let d1_size = domain.d1.size();
 
@@ -373,7 +373,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             // TODO: Expose a descriptive failure here
-                            None?
+                            Err(())?
                         }
                         lookup_table[i].extend(col);
                     }
@@ -388,7 +388,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 if lookup_table[0].len() >= max_num_entries {
                     // The combined table has too many values
                     // TODO: Expose a descriptive failure here
-                    None?
+                    Err(())?
                 }
 
                 // For computational efficiency, we choose the dummy lookup value to be all 0s in
@@ -424,7 +424,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 };
 
                 // generate the look up selector polynomials
-                Some(Self {
+                Ok(Some(Self {
                     lookup_selectors,
                     dummy_lookup_value,
                     dummy_lookup_table_id,
@@ -435,7 +435,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_used,
                     max_lookups_per_row: lookup_info.max_per_row as usize,
                     max_joint_size: lookup_info.max_joint_size,
-                })
+                }))
             }
         }
     }
@@ -642,7 +642,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
 
         let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain);
+            match LookupConstraintSystem::create(&gates, lookup_tables, &domain) {
+                Ok(res) => res,
+                Err(()) => None?,
+            };
 
         //
         // return result
