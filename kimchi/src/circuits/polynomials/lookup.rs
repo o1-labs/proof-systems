@@ -487,6 +487,13 @@ pub fn sorted<
             sorted[i].push(end_val);
         }
 
+        // Duplicate the final sorted value, to fix the off-by-one in the last lookup row.
+        // This is caused by the snakification: all other sorted columns have the value from the
+        // next column added to their end, but the final sorted column has no subsequent column to
+        // pull this value from.
+        let final_sorted_col = &mut sorted[max_lookups_per_row];
+        final_sorted_col.push(final_sorted_col[final_sorted_col.len() - 1].clone());
+
         // snake-ify (see top comment)
         for s in sorted.iter_mut().skip(1).step_by(2) {
             s.reverse();
