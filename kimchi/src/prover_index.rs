@@ -19,7 +19,7 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 //~
-//~ ### The prover ProverIndex
+//~ ### The prover Index
 //~
 
 /// The index used by the prover
