@@ -1,4 +1,4 @@
-//! This module implements the prover index as [Prover].
+//! This module implements the prover index as [Index].
 
 use crate::alphas::Alphas;
 use crate::circuits::{

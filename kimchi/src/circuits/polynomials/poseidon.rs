@@ -67,6 +67,8 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// Implementation of the Poseidon gate
 /// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
 /// Conjunction of:
+/// 
+/// ```ignore
 /// curr[round_range(1)] = round(curr[round_range(0)])
 /// curr[round_range(2)] = round(curr[round_range(1)])
 /// curr[round_range(3)] = round(curr[round_range(2)])
@@ -85,6 +87,8 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///    + mds[1][2] * sbox(curr[round_range(0)][2])
 ///    + rcm[round_range(1)][1]
 /// ...
+/// ```
+/// 
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
 #[derive(Default)]

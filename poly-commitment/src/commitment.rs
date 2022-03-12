@@ -291,7 +291,7 @@ pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
 
 /// Returns (1 + chal[-1] x)(1 + chal[-2] x^2)(1 + chal[-3] x^4) ...
 /// It's "step 8: Define the univariate polynomial" of
-/// appendix A.2 of https://eprint.iacr.org/2020/499
+/// appendix A.2 of <https://eprint.iacr.org/2020/499>
 pub fn b_poly<F: Field>(chals: &[F], x: F) -> F {
     let k = chals.len();
 

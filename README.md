@@ -10,7 +10,7 @@ You can read more about this project on the [Kimchi book](https://o1-labs.github
 
 We assume that you already have:
 
-* `gates`: a circuit, which can be expressed as a vector of [kimchi::circuits::CircuitGate]
+* `gates`: a circuit, which can be expressed as a vector of [CircuitGate](https://o1-labs.github.io/proof-systems/rustdoc/kimchi/circuits/gate/struct.CircuitGate.html)
 * a way to produce a `witness`, which can be expressed as a `[Vec<F>; COLUMNS]` (for `F` some field of your chosing)
 * `public_size`: the size of the public input
 
@@ -72,14 +72,14 @@ Note that kimchi is specifically designed for use in a recursion proof system, l
 
 The project is organized in the following way:
 
-* [book/](book). The mina book, RFCs, and specifications.
-* [cairo/](cairo). A Cairo runner written in rust.
-* [curves/](curves). The elliptic curves we use (for now just the pasta curves).
-* [groupmap/](groupmap). TODO: description
-* [kimchi/](kimchi). Our proof system.
-* [ocaml/](ocaml). Ocaml bindings generator tool.
-* [oracle/](oracle). Implementation of the poseidon hash function.
-* [poly-commitment/](poly-commitment). Polynomial commitment code.
-* [signer/](signer). Implementation of schnorr signature scheme.
-* [tools/](tools). Various tooling to help us work on kimchi.
-* [utils/](utils). Collection of useful functions and traits.
+* [book/](https://github.com/o1-labs/proof-systems/tree/master/book). The mina book, RFCs, and specifications.
+* [cairo/](https://github.com/o1-labs/proof-systems/tree/master/cairo). A Cairo runner written in rust.
+* [curves/](https://github.com/o1-labs/proof-systems/tree/master/curves). The elliptic curves we use (for now just the pasta curves).
+* [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). TODO: description
+* [kimchi/](https://github.com/o1-labs/proof-systems/tree/master/kimchi). Our proof system.
+* [ocaml/](https://github.com/o1-labs/proof-systems/tree/master/ocaml). Ocaml bindings generator tool.
+* [oracle/](https://github.com/o1-labs/proof-systems/tree/master/oracle). Implementation of the poseidon hash function.
+* [poly-commitment/](https://github.com/o1-labs/proof-systems/tree/master/poly-commitment). Polynomial commitment code.
+* [signer/](https://github.com/o1-labs/proof-systems/tree/master/signer). Implementation of schnorr signature scheme.
+* [tools/](https://github.com/o1-labs/proof-systems/tree/master/tools). Various tooling to help us work on kimchi.
+* [utils/](https://github.com/o1-labs/proof-systems/tree/master/utils). Collection of useful functions and traits.
