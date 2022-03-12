@@ -16,7 +16,7 @@ We assume that you already have:
 
 Then, you can create an URS for your circuit in the following way:
 
-```rust
+```ignore
 use kimchi::circuits::constraints;
 use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
 use oracle::{
