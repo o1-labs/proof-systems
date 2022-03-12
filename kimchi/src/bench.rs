@@ -40,7 +40,7 @@ impl BenchmarkCtx {
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
     /// Note that the size of the circuit is still of [CIRCUIT_SIZE].
     /// So the prover's work is based on num_gates,
-    /// but the verifier work is based on [CICUIT_SIZE].
+    /// but the verifier work is based on [CIRCUIT_SIZE].
     pub fn new(num_gates: usize) -> Self {
         // create the circuit
         let mut gates = vec![];

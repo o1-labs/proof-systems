@@ -182,11 +182,11 @@ pub struct ConstraintSystem<F: FftField> {
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {
-    /// The coefficients k that create a coset when multiplied with the generator of our domain.
+    /// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
     shifts: [F; PERMUTS],
-    /// A matrix that maps all cells coordinates {col, row} to their shifted field element.
-    /// For example the cell {col:2, row:1} will map to omega * k2,
-    /// which lives in map[2][1]
+    /// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
+    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
+    /// which lives in `map[2][1]`
     map: [Vec<F>; PERMUTS],
 }
 

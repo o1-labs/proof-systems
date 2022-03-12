@@ -68,8 +68,7 @@ pub struct ProverProof<G: AffineCurve> {
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
     pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
 
-    /// Required evaluation for Maller's optimization
-    /// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     pub ft_eval1: Fr<G>,
 
     /// The public input

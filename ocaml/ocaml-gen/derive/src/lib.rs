@@ -13,7 +13,7 @@ use syn::{
     TraitBoundModifier, Type, TypeParamBound, TypePath, WherePredicate,
 };
 
-/// A macro to create OCaml bindings for a function that uses #[ocaml::func]
+/// A macro to create OCaml bindings for a function that uses [`#[ocaml::func]`](https://docs.rs/ocaml/latest/ocaml/attr.func.html)
 ///
 /// Note that this macro must be placed first (before `#[ocaml::func]`).
 /// For example:
@@ -99,7 +99,8 @@ pub fn func(_attribute: TokenStream, item: TokenStream) -> TokenStream {
 
 /// The Enum derive macro.
 /// It generates implementations of ToOCaml and OCamlBinding on an enum type.
-/// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
+/// The type must implement [ocaml::IntoValue](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)
+/// and [ocaml::FromValue](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)
 /// For example:
 ///
 /// ```
@@ -350,7 +351,9 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
 
 /// The Struct derive macro.
 /// It generates implementations of ToOCaml and OCamlBinding on a struct.
-/// The type must implement [ocaml::IntoValue] and [ocaml::FromValue]
+/// The type must implement [ocaml::IntoValue](https://docs.rs/ocaml/latest/ocaml/trait.IntoValue.html)
+/// and [ocaml::FromValue](https://docs.rs/ocaml/latest/ocaml/trait.FromValue.html)
+///
 /// For example:
 ///
 /// ```
