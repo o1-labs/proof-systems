@@ -2,6 +2,7 @@
 members = [
     "cairo",
     "curves",
+    "export_test_vectors",
     "groupmap",
     "kimchi",
     "ocaml/ocaml-gen",
