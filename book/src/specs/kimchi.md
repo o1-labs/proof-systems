@@ -63,20 +63,27 @@ It is a single column that applies on all the rows as well, which the prover com
 
 **Lookup**: TODO
 
-This specification does not document how to create a circuit, we assume that the following gates are created prior to calling the [setup]() function:
+To summarize, the following tables are created and used to describe a circuit:
 
 * gates
 * coefficients
 * wiring (permutation)
 * TODO: lookup
 
-To create a proof, the prover will execute the circuit and record an execution trace using the following tables:
+```admonish
+This specification does not document how to create a circuit.
+```
+
+And to create a proof, the prover will execute the circuit and record an execution trace with the following tables:
 
 * registers
 * wiring (permutation) trace
 * TODO: lookup
 
 ## Dependencies
+
+To specify kimchi, we rely on a number of primitives that are specified outside of this specification.
+In this section we list these specifications, as well as the interfaces we make use of in this specification.
 
 ### Polynomial Commitments
 
@@ -119,7 +126,12 @@ See the [Pasta curves specification](./pasta.md).
 
 ## Constraints
 
-TODO: use expr to define the index columns?
+Kimchi enforces the correct execution of a circuit by creating a number of constraints and combining them together.
+In this section, we describe all the constraints that make up the main polynomial $f$ once combined.
+
+TODO: how to combine
+
+TODO: linearization
 
 ### Permutation
 
@@ -130,6 +142,11 @@ TODO: use expr to define the index columns?
 
 
 ### Gates
+
+A circuit is described as a series of gates.
+In this section we describe the different gates currently supported by kimchi, the constraints associated to them, and the way the register table, coefficient table, and permutation can be used in conjunction.
+
+TODO: for each gate describe how to create it?
 
 #### Double Generic Gate
 
@@ -262,17 +279,70 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 
 
-## Constraint System Creation
+## Setup
 
-1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
-   see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
-2. pad the rows: add zero gates to reach the domain size
+In this section we specify the setup that goes into creating two indexes from a circuit:
+
+* A [*prover index*](#prover-index), necessary for the prover to to create proofs.
+* A [*verifier index*](#verifier-index), necessary for the verifier to verify proofs.
+
+```admonish
+The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.
+```
+
+As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).
+
+### Common Index
+
+In this section we describe data that both the prover and the verifier index share.
+
+**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
+It is used for polynomial commitments, so refer to the specification for more details.
+
+```admonish
+Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details]()).
+```
+
+**`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
+To do that, the following logic is followed (in pseudo code):
+(TODO: move shift creation within the permutation section?)
+
+```python
+shifts[0] = 1 # first shift is identity
+
+for i in 0..7: # generate 7 shifts
+    i = 7
+    shift, i = sample(domain, i)
+    while shifts.contains(shift) do:
+        shift, i = sample(domain, i)
+    shift[i] = shift
+
+def sample(domain, i):
+    i += 1
+    shift = Field(Blake2b512(to_be_bytes(i)))
+    while is_not_quadratic_non_residue(shift) || domain.contains(shift):
+        i += 1
+        shift = Field(Blake2b512(to_be_bytes(i)))
+    return shift, i
+```
+
+**`Public`**. This variable simply contains the number of public inputs.
+
+### Prover Index & Constraint System Creation
+
+TODO: is there a significant difference between prover index and constraint system in our code? Merge the two structs?
+
+The prover follows the following steps to create the constraint system, which is part of the prover index:
+
+1. If the circuit is less than 2 gates, abort.
+2. Create a domain for the circuit. That is,
+   compute the smallest subgroup of the field that
+   has order greater or equal to `n + ZK_ROWS` elements.
+3. Pad the circuit: add zero gates to reach the domain size.
+4. sample the `PERMUTS` shifts.
 
 
-## Prover Index
-
-
-### The prover Index
+The prover follows the following steps to create the prover index:
 
 1. compute the linearization
 2. set `max_quot_size` to the degree of the quotient polynomial,
@@ -293,7 +363,6 @@ The verifier index is essentially a number of pre-computations containing:
 
 Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
-
 
 ```mermaid
 sequenceDiagram
@@ -347,6 +416,10 @@ To create a proof, the prover expects:
 
 * A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
 * The (filled) registers table, representing parts of the execution trace of the circuit.
+
+```admonish
+The public input is expected to be passed in the first `Public` rows of the registers table.
+```
 
 The prover then follows the following steps to create the proof:
 

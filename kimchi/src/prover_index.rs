@@ -18,10 +18,6 @@ use std::sync::Arc;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-//~
-//~ ### The prover Index
-//~
-
 /// The index used by the prover
 // TODO: rename as ProverIndex
 #[serde_as]
