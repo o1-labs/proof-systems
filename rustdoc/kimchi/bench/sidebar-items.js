@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["CIRCUIT_SIZE","the circuit size. This influences the size of the SRS"]],"struct":[["BenchmarkCtx",""]]});
+initSidebarItems({"constant":[["CIRCUIT_SIZE","The circuit size. This influences the size of the SRS. At the time of this writing our verifier circuits have 27164 & 18054 gates."]],"struct":[["BenchmarkCtx",""]]});
