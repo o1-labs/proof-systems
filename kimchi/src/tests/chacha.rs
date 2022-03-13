@@ -202,14 +202,16 @@ fn chacha_setup_bad_lookup(table_id: i32) {
     // .. and one fake witness.
     push_rows(true);
 
-    let lookup_tables = vec![LookupTable {
-        id: 0,
-        data: vec![vec![Fp::from(0); 10]]
-    },
-    LookupTable {
-        id: table_id,
-        data: fakes,
-    }];
+    let lookup_tables = vec![
+        LookupTable {
+            id: 0,
+            data: vec![vec![Fp::from(0); 10]],
+        },
+        LookupTable {
+            id: table_id,
+            data: fakes,
+        },
+    ];
 
     // create the index
     let index = {
