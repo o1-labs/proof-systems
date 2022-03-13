@@ -390,8 +390,8 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     }
 
                     // Fill in any unused columns with 0
-                    for i in table.data.len()..lookup_table.len() {
-                        lookup_table[i].extend((0..table_len).map(|_| F::zero()))
+                    for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
+                        lookup_table.extend((0..table_len).map(|_| F::zero()))
                     }
                 }
 
