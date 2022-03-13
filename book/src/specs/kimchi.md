@@ -274,6 +274,35 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 ### The prover Index
 
+```rust
+pub struct ProverIndex<G: CommitmentCurve> {
+    /// constraints system polynomials
+    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<Fr<G>>,
+
+    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
+    #[serde(skip)]
+    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas<Fr<G>>,
+
+    /// polynomial commitment keys
+    #[serde(skip)]
+    pub srs: Arc<SRS<G>>,
+
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+
+    /// random oracle argument parameters
+    #[serde(skip)]
+    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+}
+```
 1. compute the linearization
 2. set `max_quot_size` to the degree of the quotient polynomial,
    which is obtained by looking at the highest monomial in the sum
@@ -287,6 +316,83 @@ The verifier index is essentially a number of pre-computations containing:
 
 * the (non-hidding) commitments of all the required polynomials
 
+```rust
+pub struct VerifierIndex<G: CommitmentCurve> {
+    /// evaluation domain
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub domain: D<Fr<G>>,
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+    /// polynomial commitment keys
+    #[serde(skip)]
+    pub srs: Arc<SRS<G>>,
+
+    // index polynomial commitments
+    /// permutation commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub sigma_comm: [PolyComm<G>; PERMUTS],
+    /// coefficient commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    /// coefficient commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub generic_comm: PolyComm<G>,
+
+    // poseidon polynomial commitments
+    /// poseidon constraint selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub psm_comm: PolyComm<G>,
+
+    // ECC arithmetic polynomial commitments
+    /// EC addition selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub complete_add_comm: PolyComm<G>,
+    /// EC variable base scalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub mul_comm: PolyComm<G>,
+    /// endoscalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub emul_comm: PolyComm<G>,
+    /// endoscalar multiplication scalar computation selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub endomul_scalar_comm: PolyComm<G>,
+
+    /// Chacha polynomial commitments
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub chacha_comm: Option<[PolyComm<G>; 4]>,
+
+    /// wire coordinate shifts
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub shift: [Fr<G>; PERMUTS],
+    /// zero-knowledge polynomial
+    #[serde(skip)]
+    pub zkpm: DensePolynomial<Fr<G>>,
+    // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
+    /// domain offset for zero-knowledge
+    #[serde(skip)]
+    pub w: Fr<G>,
+    /// endoscalar coefficient
+    #[serde(skip)]
+    pub endo: Fr<G>,
+
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_index: Option<LookupVerifierIndex<G>>,
+
+    #[serde(skip)]
+    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas<Fr<G>>,
+
+    // random oracle argument parameters
+    #[serde(skip)]
+    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    #[serde(skip)]
+    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+}
+```
 
 
 ## Proof Data Structure

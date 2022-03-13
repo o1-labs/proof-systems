@@ -43,6 +43,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
+//~spec:startcode
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -118,6 +119,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
+//~spec:endcode
 
 impl<'a, G: CommitmentCurve> ProverIndex<G>
 where

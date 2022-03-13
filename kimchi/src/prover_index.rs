@@ -25,6 +25,7 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 /// The index used by the prover
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
+//~spec:startcode
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
@@ -52,6 +53,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
+//~spec:endcode
 
 impl<'a, G: CommitmentCurve> ProverIndex<G>
 where
