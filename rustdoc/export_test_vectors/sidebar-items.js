@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["main","“Usage: cargo run –all-features –bin export_test_vectors – [hex|b10] [legacy|kimchi] <OUTPUT_FILE>”,"]]});
+initSidebarItems({"fn":[["main","“Usage: cargo run –all-features –bin export_test_vectors – [hex|b10] [legacy|kimchi] <OUTPUT_FILE>”,"]],"mod":[["inner",""],["vectors",""]]});
