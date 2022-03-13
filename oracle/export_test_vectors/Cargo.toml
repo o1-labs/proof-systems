@@ -14,8 +14,5 @@ rand = "0.8.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "1.10.0"
 
-mina-curves = { path = "../curves" }
-oracle = { path = "../oracle" }
-
-[features]
-test_vectors = ["num-bigint", "serde_json", "hex", "ark-serialize"]
+mina-curves = { path = "../../curves" }
+oracle = { path = "../../oracle" }

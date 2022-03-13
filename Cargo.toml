@@ -2,12 +2,12 @@
 members = [
     "cairo",
     "curves",
-    "export_test_vectors",
     "groupmap",
     "kimchi",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
+    "oracle/export_test_vectors",
     "poly-commitment",
     "signer",
     "tools/kimchi-visu",
