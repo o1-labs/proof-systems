@@ -1,4 +1,4 @@
-use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeConstants};
+use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeParams, PermutationParams};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
@@ -58,12 +58,12 @@ impl<F: PrimeField> ScalarChallenge<F> {
 }
 
 #[derive(Clone)]
-pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
+pub struct DefaultFqSponge<P: SWModelParameters, SC: PermutationParams + SpongeParams> {
     pub sponge: ArithmeticSponge<P::BaseField, SC>,
     pub last_squeezed: Vec<u64>,
 }
 
-pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
+pub struct DefaultFrSponge<Fr: Field, SC: PermutationParams + SpongeParams> {
     pub sponge: ArithmeticSponge<Fr, SC>,
     pub last_squeezed: Vec<u64>,
 }
@@ -77,7 +77,7 @@ fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
     res
 }
 
-impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
+impl<Fr: PrimeField, SC: PermutationParams + SpongeParams> DefaultFrSponge<Fr, SC> {
     pub fn squeeze(&mut self, num_limbs: usize) -> Fr {
         if self.last_squeezed.len() >= num_limbs {
             let last_squeezed = self.last_squeezed.clone();
@@ -94,7 +94,7 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
     }
 }
 
-impl<P: SWModelParameters, SC: SpongeConstants> DefaultFqSponge<P, SC>
+impl<P: SWModelParameters, SC: PermutationParams + SpongeParams> DefaultFqSponge<P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
@@ -124,7 +124,7 @@ where
     }
 }
 
-impl<P: SWModelParameters, SC: SpongeConstants>
+impl<P: SWModelParameters, SC: PermutationParams + SpongeParams>
     FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField> for DefaultFqSponge<P, SC>
 where
     P::BaseField: PrimeField,

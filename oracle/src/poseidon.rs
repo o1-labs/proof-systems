@@ -4,13 +4,16 @@ use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-pub trait SpongeConstants {
+pub trait SpongeParams {
+    const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
+    const SPONGE_RATE: usize = 2;
+}
+
+pub trait PermutationParams {
     const ROUNDS_FULL: usize;
     const ROUNDS_PARTIAL: usize;
     const HALF_ROUNDS_FULL: usize;
-    const SPONGE_WIDTH: usize = 3;
-    const SPONGE_CAPACITY: usize = 1;
-    const SPONGE_RATE: usize = 2;
     const SPONGE_BOX: u32;
     const FULL_MDS: bool;
     const INITIAL_ARK: bool;
@@ -19,13 +22,16 @@ pub trait SpongeConstants {
 #[derive(Clone)]
 pub struct PlonkSpongeConstantsLegacy {}
 
-impl SpongeConstants for PlonkSpongeConstantsLegacy {
-    const ROUNDS_FULL: usize = 63;
-    const ROUNDS_PARTIAL: usize = 0;
-    const HALF_ROUNDS_FULL: usize = 0;
+impl SpongeParams for PlonkSpongeConstantsLegacy {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
+}
+
+impl PermutationParams for PlonkSpongeConstantsLegacy {
+    const ROUNDS_FULL: usize = 63;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_BOX: u32 = 5;
     const FULL_MDS: bool = true;
     const INITIAL_ARK: bool = true;
@@ -34,13 +40,17 @@ impl SpongeConstants for PlonkSpongeConstantsLegacy {
 #[derive(Clone)]
 pub struct PlonkSpongeConstantsKimchi {}
 
-impl SpongeConstants for PlonkSpongeConstantsKimchi {
-    const ROUNDS_FULL: usize = 55;
-    const ROUNDS_PARTIAL: usize = 0;
-    const HALF_ROUNDS_FULL: usize = 0;
+impl SpongeParams for PlonkSpongeConstantsKimchi {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
+
+}
+
+impl PermutationParams for PlonkSpongeConstantsKimchi {
+    const ROUNDS_FULL: usize = 55;
+    const ROUNDS_PARTIAL: usize = 0;
+    const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_BOX: u32 = 7;
     const FULL_MDS: bool = true;
     const INITIAL_ARK: bool = false;
@@ -62,7 +72,7 @@ pub trait Sponge<Input: Field, Digest> {
     fn reset(&mut self);
 }
 
-pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
+pub fn sbox<F: Field, SC: PermutationParams + SpongeParams>(x: F) -> F {
     x.pow([SC::SPONGE_BOX as u64])
 }
 
@@ -82,7 +92,7 @@ pub struct ArithmeticSpongeParams<F: Field> {
 }
 
 #[derive(Clone)]
-pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
+pub struct ArithmeticSponge<F: Field, SC: PermutationParams + SpongeParams> {
     pub sponge_state: SpongeState,
     rate: usize,
     // TODO(mimoo: an array enforcing the width is better no? or at least an assert somewhere)
@@ -91,7 +101,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub constants: std::marker::PhantomData<SC>,
 }
 
-fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
+fn apply_mds_matrix<F: Field, SC: PermutationParams + SpongeParams>(
     params: &ArithmeticSpongeParams<F>,
     state: &[F],
 ) -> Vec<F> {
@@ -115,7 +125,7 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     }
 }
 
-pub fn full_round<F: Field, SC: SpongeConstants>(
+pub fn full_round<F: Field, SC: PermutationParams + SpongeParams>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
     r: usize,
@@ -129,7 +139,7 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     }
 }
 
-fn half_rounds<F: Field, SC: SpongeConstants>(
+fn half_rounds<F: Field, SC: PermutationParams + SpongeParams>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {
@@ -168,7 +178,7 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
     }
 }
 
-pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
+pub fn poseidon_block_cipher<F: Field, SC: PermutationParams + SpongeParams>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {
@@ -190,7 +200,7 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
     }
 }
 
-impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
+impl<F: Field, SC: PermutationParams + SpongeParams> ArithmeticSponge<F, SC> {
     pub fn full_round(&mut self, r: usize) {
         full_round::<F, SC>(&self.params, &mut self.state, r);
     }
@@ -200,7 +210,7 @@ impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
     }
 }
 
-impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
+impl<F: Field, SC: PermutationParams + SpongeParams> Sponge<F, F> for ArithmeticSponge<F, SC> {
     fn new(params: ArithmeticSpongeParams<F>) -> ArithmeticSponge<F, SC> {
         let capacity = SC::SPONGE_CAPACITY;
         let rate = SC::SPONGE_RATE;
