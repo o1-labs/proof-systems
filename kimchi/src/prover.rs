@@ -28,7 +28,10 @@ use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
+use commitment_dlog::{
+    commitment::{b_poly_coefficients, CommitmentCurve, PolyComm},
+    evaluation_proof::OpeningProof,
+};
 use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
