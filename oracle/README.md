@@ -7,7 +7,7 @@ Tests are ran against our own test vectors in `tests/test_vectors`.
 You can re-generate the test vectors by using:
 
 ```text
-usage: cargo run -p export_test_vectors -- [Hex|B10] [legacy|kimchi] <OUTPUT_FILE>
+cargo run -p export_test_vectors -- [Hex|B10] [legacy|kimchi] <OUTPUT_FILE>
 ```
 
 Examples
