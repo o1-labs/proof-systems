@@ -241,7 +241,7 @@ The compilation steps to create the common index are as follow:
 
 {sections.constraint_system}
 
-### Prover & Index
+### Prover & Verifier Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
 
