@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "cairo",
+    "crypto",
     "curves",
     "groupmap",
     "kimchi",
@@ -8,7 +9,6 @@ members = [
     "ocaml/ocaml-gen/derive",
     "oracle",
     "poly-commitment",
-    "signer",
     "utils",
 ]
 

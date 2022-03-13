@@ -1,4 +1,4 @@
-# Mina signer
+# Mina crypto
 
 This crate provides an API and framework for Mina signing.  It follows the algorithm outlined in the [Mina Signature Specification](https://github.com/MinaProtocol/mina/blob/master/docs/specs/signatures/description.md).
 
@@ -7,11 +7,11 @@ This crate provides an API and framework for Mina signing.  It follows the algor
 The [create_legacy] function uses the default signer configuration compatible with mainnet and testnet transaction signatures.
 
 ```rust
-#[path = "../tests/transaction.rs"]
+#[path = "../../tests/transaction.rs"]
 mod transaction;
 
 use rand;
-use mina_signer::{NetworkId, Keypair, PubKey, Signer};
+use mina_crypto::signer::{NetworkId, Keypair, PubKey, Signer};
 use transaction::Transaction;
 
 let keypair = Keypair::rand(&mut rand::rngs::OsRng);
@@ -24,7 +24,7 @@ let tx = Transaction::new_payment(
                 271828,
             );
 
-let mut ctx = mina_signer::create_legacy::<NetworkId>(NetworkId::TESTNET);
+let mut ctx = mina_crypto::signer::create_legacy::<NetworkId>(NetworkId::TESTNET);
 let sig = ctx.sign(keypair, tx);
 assert!(ctx.verify(sig, keypair.public,tx));
 ```
@@ -34,12 +34,12 @@ assert!(ctx.verify(sig, keypair.public,tx));
 The [create_custom] function allows specification of an alternative cryptographic sponge and parameters, for example, in order to create signatures that can be verified more efficiently using the Kimchi proof system.
 
 ```rust
-#[path = "../tests/transaction.rs"]
+#[path = "../../tests/transaction.rs"]
 mod transaction;
 
 use rand;
 use oracle::{pasta, poseidon};
-use mina_signer::{NetworkId, Keypair, PubKey, Signer};
+use mina_crypto::signer::{NetworkId, Keypair, PubKey, Signer};
 use transaction::Transaction;
 
 let keypair = Keypair::rand(&mut rand::rngs::OsRng);
@@ -52,7 +52,7 @@ let tx = Transaction::new_payment(
                 271828,
             );
 
-let mut ctx = mina_signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
+let mut ctx = mina_crypto::signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
     pasta::fp::params(),
     NetworkId::TESTNET,
 );
@@ -70,7 +70,10 @@ In order to sign something it must be hashed.  This framework allows you to defi
 For example, if you wanted to create Mina signatures for a `Foo` structure you would do the following.
 
 ```rust
-use mina_signer::{Hashable, NetworkId, ROInput};
+use mina_crypto::{
+    hasher::ROInput,
+    signer::{Hashable, NetworkId}
+    };
 
 #[derive(Clone, Copy)]
 struct Foo {
@@ -104,7 +107,7 @@ Sometimes may wish to hash something so that the domain string is not dependent 
 For example, suppose you wanted to hash a non-leaf Merkle tree node, where the domain string depends on the height of the node.
 
 ```rust
-use mina_signer::{Hashable, NetworkId, ROInput, ScalarField};
+use mina_crypto::{hasher::ROInput, signer::{Hashable, NetworkId, ScalarField}};
 
 #[derive(Clone, Copy)]
 struct MerkleIndexNode {

@@ -1,7 +1,7 @@
 pub mod transaction;
 
 use ark_ff::Zero;
-use mina_signer::{BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
+use mina_crypto::signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
 use rand;
 pub use transaction::Transaction;
 
@@ -37,8 +37,8 @@ macro_rules! assert_sign_verify_tx {
         tx = tx.set_valid_until($valid_until).set_memo_str($memo);
 
         // TODO only one context
-        let mut testnet_ctx = mina_signer::create_legacy(NetworkId::TESTNET);
-        let mut mainnet_ctx = mina_signer::create_legacy(NetworkId::MAINNET);
+        let mut testnet_ctx = signer::create_legacy(NetworkId::TESTNET);
+        let mut mainnet_ctx = signer::create_legacy(NetworkId::MAINNET);
         let testnet_sig = testnet_ctx.sign(kp, tx);
         let mainnet_sig = mainnet_ctx.sign(kp, tx);
 
@@ -86,7 +86,7 @@ fn signer_test_raw() {
         ]
     );
 
-    let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
+    let mut ctx = signer::create_legacy(NetworkId::TESTNET);
     let sig = ctx.sign(kp, tx);
 
     assert_eq!(sig.to_string(),
@@ -106,7 +106,7 @@ fn signer_zero_test() {
         16,
     );
 
-    let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
+    let mut ctx = signer::create_legacy(NetworkId::TESTNET);
     let sig = ctx.sign(kp, tx);
 
     assert_eq!(ctx.verify(sig, kp.public, tx), true);
@@ -263,7 +263,7 @@ fn custom_signer_test() {
     use oracle::{pasta, poseidon};
 
     let kp = Keypair::rand(&mut rand::rngs::OsRng);
-    let mut ctx = mina_signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
+    let mut ctx = signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
         pasta::fp::params(),
         NetworkId::MAINNET,
     );

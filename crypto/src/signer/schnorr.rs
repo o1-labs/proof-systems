@@ -4,6 +4,7 @@
 //!
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
+use crate::hasher::ROInput;
 use ark_ec::{
     AffineCurve,     // for prime_subgroup_generator()
     ProjectiveCurve, // for into_affine()
@@ -21,9 +22,9 @@ use blake2::{
 use oracle::poseidon::{ArithmeticSponge, Sponge, SpongeConstants};
 use std::ops::Neg;
 
-use crate::{
+use crate::signer::{
     domain_prefix_to_field, BaseField, CurvePoint, DomainParameter, Hashable, Keypair, PubKey,
-    ROInput, ScalarField, Signature, Signer,
+    ScalarField, Signature, Signer,
 };
 
 /// Schnorr signer context for the Mina signature algorithm

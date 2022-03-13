@@ -2,7 +2,7 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
-use crate::{CurvePoint, PubKey, ScalarField, SecKey};
+use crate::signer::{CurvePoint, PubKey, ScalarField, SecKey};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use core::fmt;
 use o1_utils::FieldHelpers;

@@ -1,18 +1,18 @@
 #![deny(missing_docs)]
-#![doc = include_str!("../README.md")]
+#![doc = include_str!("../../README.md")]
 
 pub mod keypair;
 pub mod pubkey;
-pub mod roinput;
 pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
+use crate::hasher::ROInput;
 use ark_ff::PrimeField;
-pub use keypair::Keypair;
 use o1_utils::FieldHelpers;
+
+pub use keypair::Keypair;
 pub use pubkey::{CompressedPubKey, PubKey};
-pub use roinput::ROInput;
 pub use schnorr::Schnorr;
 pub use seckey::SecKey;
 pub use signature::Signature;
@@ -98,7 +98,7 @@ impl DomainParameter for u64 {
 /// **Example**
 ///
 /// ```
-/// use mina_signer::{Hashable, NetworkId, ROInput};
+/// use mina_crypto::{hasher::ROInput, signer::{Hashable, NetworkId}};
 ///
 /// #[derive(Clone)]
 /// struct Example;
@@ -147,9 +147,9 @@ pub trait Signer<D: DomainParameter> {
 /// **Example**
 ///
 /// ```
-/// use mina_signer::NetworkId;
+/// use mina_crypto::signer::NetworkId;
 ///
-/// let mut ctx = mina_signer::create_legacy::<NetworkId>(NetworkId::TESTNET);
+/// let mut ctx = mina_crypto::signer::create_legacy::<NetworkId>(NetworkId::TESTNET);
 /// ```
 pub fn create_legacy<D: DomainParameter>(domain_param: D) -> impl Signer<D> {
     Schnorr::<PlonkSpongeConstantsBasic, D>::new(
@@ -163,9 +163,9 @@ pub fn create_legacy<D: DomainParameter>(domain_param: D) -> impl Signer<D> {
 /// **Example**
 ///
 /// ```
-/// use mina_signer::NetworkId;
+/// use mina_crypto::signer::NetworkId;
 ///
-/// let mut ctx = mina_signer::create_kimchi::<NetworkId>(NetworkId::TESTNET);
+/// let mut ctx = mina_crypto::signer::create_kimchi::<NetworkId>(NetworkId::TESTNET);
 /// ```
 pub fn create_kimchi<D: DomainParameter>(domain_param: D) -> impl Signer<D> {
     Schnorr::<PlonkSpongeConstants15W, D>::new(
@@ -179,10 +179,10 @@ pub fn create_kimchi<D: DomainParameter>(domain_param: D) -> impl Signer<D> {
 /// **Example**
 ///
 /// ```
-/// use mina_signer::NetworkId;
+/// use mina_crypto::signer::NetworkId;
 /// use oracle::{pasta, poseidon};
 ///
-/// let mut ctx = mina_signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
+/// let mut ctx = mina_crypto::signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
 ///     pasta::fp::params(),
 ///     NetworkId::TESTNET,
 /// );
@@ -196,7 +196,8 @@ pub fn create_custom<SC: SpongeConstants, D: DomainParameter>(
 
 #[cfg(test)]
 mod test {
-    use crate::{Hashable, ROInput, ScalarField};
+    use crate::hasher::ROInput;
+    use crate::signer::{Hashable, ScalarField};
 
     #[test]
     fn test_example1() {
@@ -246,4 +247,10 @@ mod test {
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {}
 }

@@ -1,6 +1,6 @@
 //! Mina signature structure and associated helpers
 
-use crate::{BaseField, ScalarField};
+use crate::signer::{BaseField, ScalarField};
 use o1_utils::FieldHelpers;
 use std::fmt;
 
