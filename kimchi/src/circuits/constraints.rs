@@ -327,12 +327,24 @@ pub enum GateError {
     Custom { row: usize, err: String },
 }
 
+/// Represents an error found when computing the lookup constraint system
+#[derive(Debug)]
+pub enum LookupError {
+    /// One of the lookup tables has columns of different lengths
+    InconsistentTableLength,
+    /// The combined lookup table is larger than allowed by the domain size
+    LookupTableTooLong {
+        length: usize,
+        maximum_allowed: usize,
+    },
+}
+
 impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
     pub fn create(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
         domain: &EvaluationDomains<F>,
-    ) -> Result<Option<Self>, ()> {
+    ) -> Result<Option<Self>, LookupError> {
         let lookup_info = LookupInfo::<F>::create();
         match lookup_info.lookup_used(gates) {
             None => Ok(None),
@@ -372,8 +384,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                     // Update lookup_table values
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
-                            // TODO: Expose a descriptive failure here
-                            Err(())?
+                            return Err(LookupError::InconsistentTableLength);
                         }
                         lookup_table[i].extend(col);
                     }
@@ -386,9 +397,10 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
 
                 // Note: we use `>=` here to leave space for the dummy value.
                 if lookup_table[0].len() >= max_num_entries {
-                    // The combined table has too many values
-                    // TODO: Expose a descriptive failure here
-                    Err(())?
+                    return Err(LookupError::LookupTableTooLong {
+                        length: lookup_table[0].len(),
+                        maximum_allowed: max_num_entries,
+                    });
                 }
 
                 // For computational efficiency, we choose the dummy lookup value to be all 0s in
@@ -644,7 +656,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let lookup_constraint_system =
             match LookupConstraintSystem::create(&gates, lookup_tables, &domain) {
                 Ok(res) => res,
-                Err(()) => None?,
+                Err(_) => None?,
             };
 
         //
