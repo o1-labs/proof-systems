@@ -4,6 +4,8 @@ members = [
     "curves",
     "groupmap",
     "kimchi",
+    "ocaml/ocaml-gen",
+    "ocaml/ocaml-gen/derive",
     "oracle",
     "poly-commitment",
     "signer",
