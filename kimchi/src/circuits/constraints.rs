@@ -399,7 +399,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 if lookup_table[0].len() >= max_num_entries {
                     return Err(LookupError::LookupTableTooLong {
                         length: lookup_table[0].len(),
-                        maximum_allowed: max_num_entries,
+                        maximum_allowed: max_num_entries - 1,
                     });
                 }
 
