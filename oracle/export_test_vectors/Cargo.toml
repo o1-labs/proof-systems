@@ -6,10 +6,10 @@ license = "Apache-2.0"
 
 [dependencies]
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
-num-bigint = { version = "0.4.0", optional = true }
-serde_json = { version = "1.0", optional = true }
-hex = { version = "0.4", optional = true }
-ark-serialize = { version = "0.3.0", optional = true }
+num-bigint = { version = "0.4.0" }
+serde_json = { version = "1.0" }
+hex = { version = "0.4" }
+ark-serialize = { version = "0.3.0" }
 rand = "0.8.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "1.10.0"
@@ -17,5 +17,3 @@ serde_with = "1.10.0"
 mina-curves = { path = "../../curves" }
 oracle = { path = "../../oracle" }
 
-[features]
-default = ["num-bigint", "serde_json", "hex", "ark-serialize"]
