@@ -127,7 +127,7 @@ where
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             let sboxed: Vec<_> = round_to_cols(source)
                 .map(|i| {
-                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::SPONGE_BOX as u64))
+                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::PERM_SBOX as u64))
                 })
                 .collect();
 
