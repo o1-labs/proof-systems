@@ -4,7 +4,7 @@ use crate::{
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
-    index::testing::new_index_for_test,
+    index::testing::{new_index_for_test, new_index_for_test_with_lookups},
     prover::ProverProof,
     verifier::batch_verify,
 };
@@ -15,7 +15,6 @@ use commitment_dlog::commitment::{ceil_log2, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    pallas::Affine as OtherAffine,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
@@ -214,24 +213,7 @@ fn chacha_setup_bad_lookup(table_id: i32) {
     ];
 
     // create the index
-    let index = {
-        let fp_sponge_params = oracle::pasta::fp_kimchi::params();
-        let cs = crate::circuits::constraints::ConstraintSystem::<Fp>::create(
-            gates,
-            lookup_tables,
-            fp_sponge_params,
-            PUBLIC,
-        )
-        .unwrap();
-
-        let mut srs = commitment_dlog::srs::SRS::<Affine>::create(cs.domain.d1.size as usize);
-        srs.add_lagrange_basis(cs.domain.d1);
-        let srs = std::sync::Arc::new(srs);
-
-        let fq_sponge_params = oracle::pasta::fq_kimchi::params();
-        let (endo_q, _endo_r) = commitment_dlog::srs::endos::<OtherAffine>();
-        crate::index::Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
-    };
+    let index = new_index_for_test_with_lookups(gates, PUBLIC, lookup_tables);
 
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
     for r in rows.into_iter() {
