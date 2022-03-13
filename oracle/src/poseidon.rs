@@ -44,7 +44,6 @@ impl SpongeParams for PlonkSpongeConstantsKimchi {
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-
 }
 
 impl PermutationParams for PlonkSpongeConstantsKimchi {
