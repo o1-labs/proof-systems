@@ -16,3 +16,6 @@ serde_with = "1.10.0"
 
 mina-curves = { path = "../../curves" }
 oracle = { path = "../../oracle" }
+
+[features]
+default = ["num-bigint", "serde_json", "hex", "ark-serialize"]
