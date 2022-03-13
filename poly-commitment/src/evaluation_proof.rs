@@ -11,6 +11,7 @@ use std::iter::Iterator;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
+impl<G: CommitmentCurve> SRS<G> {
 /// This function opens polynomial commitments in batch
 ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
 ///     elm: evaluation point vector to open the commitments at
@@ -21,7 +22,6 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::type_complexity)]
 #[allow(clippy::many_single_char_names)]
-impl<G: CommitmentCurve> SRS<G> {
     pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
