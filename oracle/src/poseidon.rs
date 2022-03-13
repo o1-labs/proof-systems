@@ -155,7 +155,8 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
     }
 
     for r in 0..SC::PERM_HALF_ROUNDS_FULL {
-        for (i, x) in params.round_constants[SC::PERM_HALF_ROUNDS_FULL + SC::PERM_ROUNDS_PARTIAL + r]
+        for (i, x) in params.round_constants
+            [SC::PERM_HALF_ROUNDS_FULL + SC::PERM_ROUNDS_PARTIAL + r]
             .iter()
             .enumerate()
         {
