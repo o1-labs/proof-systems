@@ -180,6 +180,7 @@ pub enum GateType {
     ChaCha1 = 8,
     ChaCha2 = 9,
     ChaChaFinal = 10,
+    Lookup = 11,
 }
 
 /// Describes the desired lookup configuration.
@@ -422,6 +423,28 @@ impl GateType {
             chacha_final_where.insert((ChaChaFinal, *r));
         }
 
+        let lookup_gate_pattern = (0..3)
+            .map(|i| {
+                // each row represents an XOR operation
+                // where l XOR r = o
+                //
+                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                // - i v - - - - - - - -  -  -  -  -
+                // - - - i v - - - - - -  -  -  -  -
+                // - - - - - i v - - - -  -  -  -  -
+                let index = curr_row(2 * i + 1);
+                let value = curr_row(2 * i + 2);
+                let l = |loc: LocalPosition| SingleLookup {
+                    value: vec![(F::one(), loc)],
+                };
+                JointLookup {
+                    table_id: 1,
+                    entry: vec![l(index), l(value)],
+                }
+            })
+            .collect();
+        let lookup_gate_where = HashSet::from([(Lookup, Curr)]);
+
         let lookups = [
             (chacha_pattern, chacha_where, Some(GateLookupTable::Xor)),
             (
@@ -429,6 +452,7 @@ impl GateType {
                 chacha_final_where,
                 Some(GateLookupTable::Xor),
             ),
+            (lookup_gate_pattern, lookup_gate_where, None),
         ];
 
         // Convert from an array of tuples to a tuple of vectors
@@ -539,6 +563,8 @@ impl<F: FftField> CircuitGate<F> {
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
+            // TODO: implement the verification for the lookup gate
+            Lookup => Ok(()),
         }
     }
 }
