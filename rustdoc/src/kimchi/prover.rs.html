@@ -1150,6 +1150,9 @@
 <span id="1145">1145</span>
 <span id="1146">1146</span>
 <span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -1180,7 +1183,10 @@
     <span class="ident">univariate::DensePolynomial</span>, <span class="ident">Evaluations</span>, <span class="ident">Polynomial</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>, <span class="ident">UVPolynomial</span>,
 };
 <span class="kw">use</span> <span class="ident">array_init::array_init</span>;
-<span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{<span class="ident">b_poly_coefficients</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">OpeningProof</span>, <span class="ident">PolyComm</span>};
+<span class="kw">use</span> <span class="ident">commitment_dlog</span>::{
+    <span class="ident">commitment</span>::{<span class="ident">b_poly_coefficients</span>, <span class="ident">CommitmentCurve</span>, <span class="ident">PolyComm</span>},
+    <span class="ident">evaluation_proof::OpeningProof</span>,
+};
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
 <span class="kw">use</span> <span class="ident">lookup::CombinedEntry</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span>;
