@@ -226,7 +226,6 @@ impl<C: AffineCurve> PolyComm<C> {
     }
 }
 
-
 /// Returns the product of all the field elements belonging to an iterator.
 pub fn product<F: Field>(xs: impl Iterator<Item = F>) -> F {
     let mut res = F::one();
@@ -643,7 +642,6 @@ impl<G: CommitmentCurve> SRS<G> {
         self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
     }
 
-    
     /// This function verifies batch of batched polynomial commitment opening proofs
     ///     batch: batch of batched polynomial commitment opening proofs
     ///          vector of evaluation points

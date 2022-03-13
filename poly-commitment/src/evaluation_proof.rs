@@ -12,16 +12,16 @@ type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
 impl<G: CommitmentCurve> SRS<G> {
-/// This function opens polynomial commitments in batch
-///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
-///     elm: evaluation point vector to open the commitments at
-///     polyscale: polynomial scaling factor for opening commitments in batch
-///     evalscale: eval scaling factor for opening commitments in batch
-///     oracle_params: parameters for the random oracle argument
-///     RETURN: commitment opening proof
-#[allow(clippy::too_many_arguments)]
-#[allow(clippy::type_complexity)]
-#[allow(clippy::many_single_char_names)]
+    /// This function opens polynomial commitments in batch
+    ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
+    ///     elm: evaluation point vector to open the commitments at
+    ///     polyscale: polynomial scaling factor for opening commitments in batch
+    ///     evalscale: eval scaling factor for opening commitments in batch
+    ///     oracle_params: parameters for the random oracle argument
+    ///     RETURN: commitment opening proof
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
     pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
