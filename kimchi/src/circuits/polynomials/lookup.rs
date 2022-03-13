@@ -125,7 +125,7 @@ use crate::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
         gate::{
             i32_to_field, CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo,
-            SingleLookup,
+            LookupTableID, SingleLookup,
         },
         wires::COLUMNS,
     },
@@ -159,21 +159,26 @@ fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: u32) -> E<F> {
     // The domain-separation term, used to ensure that a lookup against a given table cannot
     // retrieve a value for some other table.
     let table_id_contribution = {
-        let table_id: F = {
-            if j.table_id >= 0 {
-                F::from(j.table_id as u32)
-            } else {
-                -F::from(-j.table_id as u32)
+        let table_id = {
+            match j.table_id {
+                LookupTableID::Constant(table_id) => {
+                    let table_id = if table_id >= 0 {
+                        F::from(table_id as u32)
+                    } else {
+                        -F::from(-table_id as u32)
+                    };
+                    E::constant(ConstantExpr::Literal(table_id))
+                }
+                LookupTableID::WitnessColumn(col) => {
+                    E::cell(Column::Witness(col), CurrOrNext::Curr)
+                }
             }
         };
         // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
         // `joint_combiner` in the table value calculation below. This ensures that we can avoid
         // using higher powers of the `joint_combiner` when we have only one table with a
         // `table_id` of 0.
-        E::constant(
-            ConstantExpr::JointCombiner.pow(max_joint_size as u64)
-                * ConstantExpr::Literal(table_id),
-        )
+        E::constant(ConstantExpr::JointCombiner.pow(max_joint_size as u64)) * table_id
     };
     j.entry
         .iter()

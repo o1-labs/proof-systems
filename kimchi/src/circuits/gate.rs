@@ -108,10 +108,19 @@ impl<F: Field> SingleLookup<F> {
     }
 }
 
+/// The table ID associated with a particular lookup
+#[derive(Clone, Serialize, Deserialize)]
+pub enum LookupTableID {
+    /// Look up the value from the given fixed table ID
+    Constant(i32),
+    /// Look up the value in the table with ID given by the value in the witness column
+    WitnessColumn(usize),
+}
+
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
-    pub table_id: i32,
+    pub table_id: LookupTableID,
     pub entry: Vec<SingleLookup<F>>,
 }
 
@@ -130,7 +139,14 @@ impl<F: Field> JointLookup<F> {
             res += c * s.evaluate(eval);
             c *= joint_combiner;
         }
-        res + table_id_contribution(joint_combiner, i32_to_field(self.table_id), max_joint_size)
+        let table_id = match self.table_id {
+            LookupTableID::Constant(table_id) => i32_to_field(table_id),
+            LookupTableID::WitnessColumn(column) => eval(LocalPosition {
+                row: CurrOrNext::Curr,
+                column,
+            }),
+        };
+        res + table_id_contribution(joint_combiner, table_id, max_joint_size)
     }
 }
 
@@ -384,7 +400,7 @@ impl GateType {
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    table_id: XOR_TABLE_ID,
+                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
                     entry: vec![l(left), l(right), l(output)],
                 }
             })
@@ -412,7 +428,7 @@ impl GateType {
                     value: vec![(one_half, nybble), (neg_one_half, low_bit)],
                 };
                 JointLookup {
-                    table_id: XOR_TABLE_ID,
+                    table_id: LookupTableID::Constant(XOR_TABLE_ID),
                     entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                 }
             })
@@ -425,20 +441,18 @@ impl GateType {
 
         let lookup_gate_pattern = (0..3)
             .map(|i| {
-                // each row represents an XOR operation
-                // where l XOR r = o
-                //
-                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                // - i v - - - - - - - -  -  -  -  -
-                // - - - i v - - - - - -  -  -  -  -
-                // - - - - - i v - - - -  -  -  -  -
+                // 0   1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                // TID - - - - - - - - -  -  -  -  -
+                // -   i v - - - - - - - -  -  -  -  -
+                // -   - - i v - - - - - -  -  -  -  -
+                // -   - - - - i v - - - -  -  -  -  -
                 let index = curr_row(2 * i + 1);
                 let value = curr_row(2 * i + 2);
                 let l = |loc: LocalPosition| SingleLookup {
                     value: vec![(F::one(), loc)],
                 };
                 JointLookup {
-                    table_id: 1,
+                    table_id: LookupTableID::WitnessColumn(0),
                     entry: vec![l(index), l(value)],
                 }
             })
