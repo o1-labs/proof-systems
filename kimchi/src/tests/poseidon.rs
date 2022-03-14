@@ -7,7 +7,7 @@ use crate::{
     prover_index::testing::new_index_for_test,
     verifier::batch_verify,
 };
-use crate::{prover::ProverProof, prover_index::Index};
+use crate::{prover::ProverProof, prover_index::ProverIndex};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -37,7 +37,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 // const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC: usize = 0;
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
-const ROUNDS_PER_HASH: usize = SpongeParams::ROUNDS_FULL;
+const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
 const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
 const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain size
 
@@ -80,7 +80,7 @@ fn test_poseidon() {
 }
 
 /// creates a proof and verifies it
-fn positive(index: &Index<Affine>) {
+fn positive(index: &ProverIndex<Affine>) {
     // constant
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);
 
@@ -100,9 +100,9 @@ fn positive(index: &Index<Affine>) {
     println!(
         "{}{:?}",
         "Full rounds: ".yellow(),
-        SpongeParams::ROUNDS_FULL
+        SpongeParams::PERM_ROUNDS_FULL
     );
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::SPONGE_BOX);
+    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::PERM_SBOX);
     println!("{}", "Base curve: vesta\n".green());
     println!("{}", "Prover zk-proof computation".green());
 

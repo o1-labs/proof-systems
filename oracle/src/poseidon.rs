@@ -5,45 +5,45 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 pub trait SpongeConstants {
-    const ROUNDS_FULL: usize;
-    const ROUNDS_PARTIAL: usize;
-    const HALF_ROUNDS_FULL: usize;
-    const SPONGE_WIDTH: usize = 3;
     const SPONGE_CAPACITY: usize = 1;
+    const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: u32;
-    const FULL_MDS: bool;
-    const INITIAL_ARK: bool;
+    const PERM_ROUNDS_FULL: usize;
+    const PERM_ROUNDS_PARTIAL: usize;
+    const PERM_HALF_ROUNDS_FULL: usize;
+    const PERM_SBOX: u32;
+    const PERM_FULL_MDS: bool;
+    const PERM_INITIAL_ARK: bool;
 }
 
 #[derive(Clone)]
 pub struct PlonkSpongeConstantsLegacy {}
 
 impl SpongeConstants for PlonkSpongeConstantsLegacy {
-    const ROUNDS_FULL: usize = 63;
-    const ROUNDS_PARTIAL: usize = 0;
-    const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: u32 = 5;
-    const FULL_MDS: bool = true;
-    const INITIAL_ARK: bool = true;
+    const PERM_ROUNDS_FULL: usize = 63;
+    const PERM_ROUNDS_PARTIAL: usize = 0;
+    const PERM_HALF_ROUNDS_FULL: usize = 0;
+    const PERM_SBOX: u32 = 5;
+    const PERM_FULL_MDS: bool = true;
+    const PERM_INITIAL_ARK: bool = true;
 }
 
 #[derive(Clone)]
 pub struct PlonkSpongeConstantsKimchi {}
 
 impl SpongeConstants for PlonkSpongeConstantsKimchi {
-    const ROUNDS_FULL: usize = 55;
-    const ROUNDS_PARTIAL: usize = 0;
-    const HALF_ROUNDS_FULL: usize = 0;
     const SPONGE_CAPACITY: usize = 1;
     const SPONGE_WIDTH: usize = 3;
     const SPONGE_RATE: usize = 2;
-    const SPONGE_BOX: u32 = 7;
-    const FULL_MDS: bool = true;
-    const INITIAL_ARK: bool = false;
+    const PERM_ROUNDS_FULL: usize = 55;
+    const PERM_ROUNDS_PARTIAL: usize = 0;
+    const PERM_HALF_ROUNDS_FULL: usize = 0;
+    const PERM_SBOX: u32 = 7;
+    const PERM_FULL_MDS: bool = true;
+    const PERM_INITIAL_ARK: bool = false;
 }
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
@@ -63,7 +63,7 @@ pub trait Sponge<Input: Field, Digest> {
 }
 
 pub fn sbox<F: Field, SC: SpongeConstants>(x: F) -> F {
-    x.pow([SC::SPONGE_BOX as u64])
+    x.pow([SC::PERM_SBOX as u64])
 }
 
 #[derive(Clone, Debug)]
@@ -95,7 +95,7 @@ fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &[F],
 ) -> Vec<F> {
-    if SC::FULL_MDS {
+    if SC::PERM_FULL_MDS {
         params
             .mds
             .iter()
@@ -133,7 +133,7 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {
-    for r in 0..SC::HALF_ROUNDS_FULL {
+    for r in 0..SC::PERM_HALF_ROUNDS_FULL {
         for (i, x) in params.round_constants[r].iter().enumerate() {
             state[i].add_assign(x);
         }
@@ -143,8 +143,8 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
         apply_mds_matrix::<F, SC>(params, state);
     }
 
-    for r in 0..SC::ROUNDS_PARTIAL {
-        for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + r]
+    for r in 0..SC::PERM_ROUNDS_PARTIAL {
+        for (i, x) in params.round_constants[SC::PERM_HALF_ROUNDS_FULL + r]
             .iter()
             .enumerate()
         {
@@ -154,8 +154,9 @@ fn half_rounds<F: Field, SC: SpongeConstants>(
         apply_mds_matrix::<F, SC>(params, state);
     }
 
-    for r in 0..SC::HALF_ROUNDS_FULL {
-        for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
+    for r in 0..SC::PERM_HALF_ROUNDS_FULL {
+        for (i, x) in params.round_constants
+            [SC::PERM_HALF_ROUNDS_FULL + SC::PERM_ROUNDS_PARTIAL + r]
             .iter()
             .enumerate()
         {
@@ -172,16 +173,16 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {
-    if SC::HALF_ROUNDS_FULL == 0 {
-        if SC::INITIAL_ARK {
+    if SC::PERM_HALF_ROUNDS_FULL == 0 {
+        if SC::PERM_INITIAL_ARK {
             for (i, x) in params.round_constants[0].iter().enumerate() {
                 state[i].add_assign(x);
             }
-            for r in 0..SC::ROUNDS_FULL {
+            for r in 0..SC::PERM_ROUNDS_FULL {
                 full_round::<F, SC>(params, state, r + 1);
             }
         } else {
-            for r in 0..SC::ROUNDS_FULL {
+            for r in 0..SC::PERM_ROUNDS_FULL {
                 full_round::<F, SC>(params, state, r);
             }
         }
