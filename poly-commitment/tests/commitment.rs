@@ -2,7 +2,8 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use commitment_dlog::{
-    commitment::{CommitmentCurve, OpeningProof, PolyComm},
+    commitment::{CommitmentCurve, PolyComm},
+    evaluation_proof::OpeningProof,
     srs::SRS,
 };
 use groupmap::GroupMap;

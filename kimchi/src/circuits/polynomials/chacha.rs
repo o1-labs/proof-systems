@@ -127,10 +127,12 @@
 //!
 //! On each of them we'll do the plookups
 //!
+//! ```ignore
 //! ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
 //! ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
 //! ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
 //! ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
+//! ```
 //!
 //! which checks that ((y^x')_i - lo((y^x')_i)) is a nybble,
 //! which guarantees that the low bit is computed correctly.
