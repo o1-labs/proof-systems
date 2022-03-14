@@ -109,6 +109,10 @@
 <span id="104">104</span>
 <span id="105">105</span>
 <span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [DensePolynomial] arkworks type.</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
@@ -133,7 +137,10 @@
     <span class="doccomment">/// This function evaluates polynomial in chunks.</span>
     <span class="kw">fn</span> <span class="ident">eval</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">elm</span>: <span class="ident">F</span>, <span class="ident">size</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>;
 
-    <span class="doccomment">/// Multiplies the chunks of a polynomial with powers of zeta^n</span>
+    <span class="doccomment">/// Multiplies the chunks of a polynomial with powers of zeta^n to make it of degree n-1.</span>
+    <span class="doccomment">/// For example, if a polynomial can be written `f = f0 + x^n f1 + x^2n f2`</span>
+    <span class="doccomment">/// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated</span>
+    <span class="doccomment">/// `f&#39;(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.</span>
     <span class="kw">fn</span> <span class="ident">chunk_polynomial</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">zeta_n</span>: <span class="ident">F</span>, <span class="ident">n</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span>;
 }
 
@@ -177,9 +184,10 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">coeffs</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">F::zero</span>(); <span class="ident">n</span>];
 
         <span class="kw">for</span> <span class="ident">chunk</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">coeffs</span>.<span class="ident">chunks</span>(<span class="ident">n</span>) {
-            <span class="kw">for</span> (<span class="ident">j</span>, <span class="ident">c</span>) <span class="kw">in</span> <span class="ident">chunk</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                <span class="ident">coeffs</span>[<span class="ident">j</span>] <span class="op">+</span><span class="op">=</span> <span class="ident">scale</span> <span class="op">*</span> <span class="ident">c</span>;
+            <span class="kw">for</span> (<span class="ident">coeff</span>, <span class="ident">chunk_coeff</span>) <span class="kw">in</span> <span class="ident">coeffs</span>.<span class="ident">iter_mut</span>().<span class="ident">zip</span>(<span class="ident">chunk</span>) {
+                <span class="kw-2">*</span><span class="ident">coeff</span> <span class="op">+</span><span class="op">=</span> <span class="ident">scale</span> <span class="op">*</span> <span class="ident">chunk_coeff</span>;
             }
+
             <span class="ident">scale</span> <span class="kw-2">*</span><span class="op">=</span> <span class="ident">zeta_n</span>;
         }
 
