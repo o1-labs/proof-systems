@@ -79,7 +79,9 @@ where
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
-            &cs.lookup_constraint_system,
+            cs.lookup_constraint_system
+                .as_ref()
+                .map(|lcs| &lcs.configuration),
         );
 
         //~ 2. set `max_quot_size` to the degree of the quotient polynomial,

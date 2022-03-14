@@ -11,7 +11,9 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup, permutation,
+            generic, lookup,
+            lookup::LookupConfiguration,
+            permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
@@ -190,11 +192,19 @@ where
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
                 | Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Single,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Single,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(Fr::<G>::zero()),
                 Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Joint,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Joint,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
@@ -250,9 +260,9 @@ where
                 None => Fr::<G>::zero(),
                 Some(lcs) => combine_table_entry(
                     joint_combiner,
-                    i32_to_field(lcs.dummy_lookup_table_id),
-                    lcs.max_joint_size,
-                    lcs.dummy_lookup_value.iter(),
+                    i32_to_field(lcs.configuration.dummy_lookup_table_id),
+                    lcs.configuration.max_joint_size,
+                    lcs.configuration.dummy_lookup_value.iter(),
                 ),
             };
             CombinedEntry(x)
@@ -277,7 +287,7 @@ where
                             CombinedEntry(combine_table_entry(
                                 joint_combiner,
                                 table_id,
-                                lcs.max_joint_size,
+                                lcs.configuration.max_joint_size,
                                 row,
                             ))
                         })
@@ -287,13 +297,13 @@ where
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
                     let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
+                        &lcs.configuration,
                         dummy_lookup_value,
                         iter_lookup_table,
                         index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
                         joint_combiner,
-                        lcs.max_joint_size,
                     )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
@@ -349,18 +359,18 @@ where
                                     // table ID is identically 0.
                                     Fr::<G>::zero(),
                             };
-                        combine_table_entry(joint_combiner, table_id, lcs.max_joint_size, row)
+                        combine_table_entry(joint_combiner, table_id, lcs.configuration.max_joint_size, row)
                     });
 
                     let aggreg =
                         lookup::aggregation::<_, Fr<G>, _>(
+                            &lcs.configuration,
                             dummy_lookup_value.0,
                             iter_lookup_table(),
                             index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
                             joint_combiner,
-                            lcs.max_joint_size,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -411,7 +421,7 @@ where
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
             }
-            let table_id_combiner = joint_combiner.pow([lcs.max_joint_size as u64]);
+            let table_id_combiner = joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
             if let Some(table_ids8) = &lcs.table_ids8 {
                 for (x, table_id) in res.evals.iter_mut().zip(table_ids8.evals.iter()) {
                     *x += table_id_combiner * table_id;
@@ -640,12 +650,7 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints = lookup::constraints(
-                    &lcs.dummy_lookup_value,
-                    lcs.dummy_lookup_table_id,
-                    index.cs.domain.d1,
-                    lcs.max_joint_size,
-                );
+                let constraints = lookup::constraints(&lcs.configuration, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -738,7 +743,7 @@ where
                             None => base_table,
                             Some(table_ids) => {
                                 let table_combiner =
-                                    joint_combiner.pow([lcs.max_joint_size as u64]);
+                                    joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
                                 base_table
                                     .into_iter()
                                     .zip(table_ids.eval(e, index.max_poly_size))

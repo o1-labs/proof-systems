@@ -2,8 +2,9 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{self, CircuitGate, GateType, LookupInfo, LookupTable, LookupsUsed},
+    gate::{self, CircuitGate, GateType, LookupInfo, LookupTable},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    polynomials::lookup::LookupConfiguration,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -34,9 +35,6 @@ pub const ZK_ROWS: u64 = 3;
 pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup_value: Vec<F>,
-    pub dummy_lookup_table_id: i32,
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table8: Vec<E<F, D<F>>>,
@@ -55,13 +53,9 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
+    /// Configuration for the lookup constraint.
+    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
+    pub configuration: LookupConfiguration<F>,
 }
 
 #[serde_as]
@@ -438,15 +432,17 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // generate the look up selector polynomials
                 Ok(Some(Self {
                     lookup_selectors,
-                    dummy_lookup_value,
-                    dummy_lookup_table_id,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
                     table_ids,
                     table_ids8,
-                    lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row as usize,
-                    max_joint_size: lookup_info.max_joint_size,
+                    configuration: LookupConfiguration {
+                        lookup_used,
+                        max_lookups_per_row: lookup_info.max_per_row as usize,
+                        max_joint_size: lookup_info.max_joint_size,
+                        dummy_lookup_value,
+                        dummy_lookup_table_id,
+                    },
                 }))
             }
         }

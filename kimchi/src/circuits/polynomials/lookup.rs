@@ -125,7 +125,7 @@ use crate::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
         gate::{
             i32_to_field, CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo,
-            LookupTableID, SingleLookup,
+            LookupTableID, LookupsUsed, SingleLookup,
         },
         wires::COLUMNS,
     },
@@ -134,6 +134,8 @@ use crate::{
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
 use CurrOrNext::*;
 
@@ -245,9 +247,28 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
+/// Configuration for the lookup constraint.
+/// These values are independent of the choice of lookup values.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct LookupConfiguration<F: FftField> {
+    /// The kind of lookups used
+    pub lookup_used: LookupsUsed,
+
+    /// The maximum number of lookups per row
+    pub max_lookups_per_row: usize,
+    /// The maximum number of elements in a vector lookup
+    pub max_joint_size: u32,
+
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub dummy_lookup_value: Vec<F>,
+    pub dummy_lookup_table_id: i32,
+}
+
 /// Checks that all the lookup constraints are satisfied.
 #[allow(clippy::too_many_arguments)]
 pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
+    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: G,
     lookup_table_entries: usize,
@@ -255,7 +276,6 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
-    max_joint_size: u32,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
@@ -328,7 +348,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
         };
         for joint_lookup in spec.iter() {
             let joint_lookup_evaluation =
-                joint_lookup.evaluate(joint_combiner, &eval, max_joint_size);
+                joint_lookup.evaluate(joint_combiner, &eval, configuration.max_joint_size);
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
@@ -425,14 +445,13 @@ pub fn sorted<
     I: Iterator<Item = E>,
     G: Fn() -> I,
 >(
-    // TODO: Multiple tables
+    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: E,
     lookup_table: G,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     params: E::Params,
-    max_joint_size: u32,
 ) -> Result<Vec<Vec<E>>> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
@@ -457,8 +476,13 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation =
-                E::evaluate(&params, joint_lookup, witness, i, max_joint_size);
+            let joint_lookup_evaluation = E::evaluate(
+                &params,
+                joint_lookup,
+                witness,
+                i,
+                configuration.max_joint_size,
+            );
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -539,13 +563,13 @@ pub fn sorted<
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
+    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
-    max_joint_size: u32,
     beta: F,
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
@@ -611,7 +635,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, &eval, max_joint_size))
+                    acc * (gamma + j.evaluate(joint_combiner, &eval, configuration.max_joint_size))
                 })
             };
 
@@ -629,12 +653,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(
-    dummy_lookup: &[F],
-    dummy_table_id: i32,
-    d1: D<F>,
-    max_joint_size: u32,
-) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -662,10 +681,12 @@ pub fn constraints<F: FftField>(
     let one: E<F> = E::one();
     let non_lookup_indcator = one - lookup_indicator;
 
-    let dummy_table_id_contribution = ConstantExpr::JointCombiner.pow(max_joint_size as u64)
-        * ConstantExpr::Literal(i32_to_field(dummy_table_id));
+    let dummy_table_id_contribution = ConstantExpr::JointCombiner
+        .pow(configuration.max_joint_size as u64)
+        * ConstantExpr::Literal(i32_to_field(configuration.dummy_lookup_table_id));
 
-    let dummy_lookup: ConstantExpr<F> = dummy_lookup
+    let dummy_lookup: ConstantExpr<F> = configuration
+        .dummy_lookup_value
         .iter()
         .rev()
         .fold(ConstantExpr::zero(), |acc, x| {
@@ -696,7 +717,9 @@ pub fn constraints<F: FftField>(
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
         spec.iter()
-            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j, max_joint_size))
+            .map(|j| {
+                E::Constant(ConstantExpr::Gamma) + joint_lookup(j, configuration.max_joint_size)
+            })
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
     let f_chunk = lookup_info
