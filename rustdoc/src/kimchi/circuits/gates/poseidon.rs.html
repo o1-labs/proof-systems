@@ -263,7 +263,7 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_ROW</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">COLUMNS</span> <span class="op">/</span> <span class="ident">SPONGE_WIDTH</span>;
 
 <span class="doccomment">/// Number of rounds</span>
-<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::ROUNDS_FULL</span>;
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">ROUNDS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL</span>;
 
 <span class="doccomment">/// Number of PLONK rows required to implement Poseidon</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">POS_ROWS_PER_HASH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="ident">ROUNDS_PER_HASH</span> <span class="op">/</span> <span class="ident">ROUNDS_PER_ROW</span>;
@@ -456,7 +456,7 @@
             <span class="kw">let</span> <span class="ident">abs_round</span> <span class="op">=</span> <span class="ident">round</span> <span class="op">+</span> <span class="ident">row_idx</span> <span class="op">*</span> <span class="ident">ROUNDS_PER_ROW</span>;
 
             <span class="comment">// apply the sponge and record the result in the witness</span>
-            <span class="kw">if</span> <span class="ident">PlonkSpongeConstantsKimchi::INITIAL_ARK</span> {
+            <span class="kw">if</span> <span class="ident">PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;this won&#39;t work if the circuit has an INITIAL_ARK&quot;</span>)
             }
             <span class="ident">sponge</span>.<span class="ident">full_round</span>(<span class="ident">abs_round</span>);
@@ -472,5 +472,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (f103b2969 2022-03-12)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
 </body></html>

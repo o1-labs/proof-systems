@@ -271,6 +271,7 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Poseidon Hash Function primitive</span>
 
 <span class="kw">use</span> <span class="ident">ark_ff::Field</span>;
@@ -278,45 +279,45 @@
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">SpongeConstants</span> {
-    <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span>;
-    <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span>;
-    <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
+    <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_BOX</span>: <span class="ident">u32</span>;
-    <span class="kw">const</span> <span class="ident">FULL_MDS</span>: <span class="ident">bool</span>;
-    <span class="kw">const</span> <span class="ident">INITIAL_ARK</span>: <span class="ident">bool</span>;
+    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_FULL</span>: <span class="ident">usize</span>;
+    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_PARTIAL</span>: <span class="ident">usize</span>;
+    <span class="kw">const</span> <span class="ident">PERM_HALF_ROUNDS_FULL</span>: <span class="ident">usize</span>;
+    <span class="kw">const</span> <span class="ident">PERM_SBOX</span>: <span class="ident">u32</span>;
+    <span class="kw">const</span> <span class="ident">PERM_FULL_MDS</span>: <span class="ident">bool</span>;
+    <span class="kw">const</span> <span class="ident">PERM_INITIAL_ARK</span>: <span class="ident">bool</span>;
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsLegacy</span> {}
 
 <span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsLegacy</span> {
-    <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">63</span>;
-    <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_BOX</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
-    <span class="kw">const</span> <span class="ident">FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-    <span class="kw">const</span> <span class="ident">INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">63</span>;
+    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">const</span> <span class="ident">PERM_HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">const</span> <span class="ident">PERM_SBOX</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;
+    <span class="kw">const</span> <span class="ident">PERM_FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="kw">const</span> <span class="ident">PERM_INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PlonkSpongeConstantsKimchi</span> {}
 
 <span class="kw">impl</span> <span class="ident">SpongeConstants</span> <span class="kw">for</span> <span class="ident">PlonkSpongeConstantsKimchi</span> {
-    <span class="kw">const</span> <span class="ident">ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">55</span>;
-    <span class="kw">const</span> <span class="ident">ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">const</span> <span class="ident">HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_CAPACITY</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_WIDTH</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
     <span class="kw">const</span> <span class="ident">SPONGE_RATE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
-    <span class="kw">const</span> <span class="ident">SPONGE_BOX</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
-    <span class="kw">const</span> <span class="ident">FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
-    <span class="kw">const</span> <span class="ident">INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
+    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">55</span>;
+    <span class="kw">const</span> <span class="ident">PERM_ROUNDS_PARTIAL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">const</span> <span class="ident">PERM_HALF_ROUNDS_FULL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">const</span> <span class="ident">PERM_SBOX</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">7</span>;
+    <span class="kw">const</span> <span class="ident">PERM_FULL_MDS</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">true</span>;
+    <span class="kw">const</span> <span class="ident">PERM_INITIAL_ARK</span>: <span class="ident">bool</span> <span class="op">=</span> <span class="bool-val">false</span>;
 }
 
 <span class="doccomment">/// Cryptographic sponge interface - for hashing an arbitrary amount of</span>
@@ -336,7 +337,7 @@
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sbox</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span>, <span class="ident">SC</span>: <span class="ident">SpongeConstants</span><span class="op">&gt;</span>(<span class="ident">x</span>: <span class="ident">F</span>) -&gt; <span class="ident">F</span> {
-    <span class="ident">x</span>.<span class="ident">pow</span>([<span class="ident">SC::SPONGE_BOX</span> <span class="kw">as</span> <span class="ident">u64</span>])
+    <span class="ident">x</span>.<span class="ident">pow</span>([<span class="ident">SC::PERM_SBOX</span> <span class="kw">as</span> <span class="ident">u64</span>])
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
@@ -368,7 +369,7 @@
     <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">state</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>],
 ) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="ident">SC::FULL_MDS</span> {
+    <span class="kw">if</span> <span class="ident">SC::PERM_FULL_MDS</span> {
         <span class="ident">params</span>
             .<span class="ident">mds</span>
             .<span class="ident">iter</span>()
@@ -406,7 +407,7 @@
     <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 ) {
-    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::HALF_ROUNDS_FULL</span> {
+    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::PERM_HALF_ROUNDS_FULL</span> {
         <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="ident">r</span>].<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="ident">state</span>[<span class="ident">i</span>].<span class="ident">add_assign</span>(<span class="ident">x</span>);
         }
@@ -416,8 +417,8 @@
         <span class="ident">apply_mds_matrix</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">state</span>);
     }
 
-    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::ROUNDS_PARTIAL</span> {
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="ident">SC::HALF_ROUNDS_FULL</span> <span class="op">+</span> <span class="ident">r</span>]
+    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::PERM_ROUNDS_PARTIAL</span> {
+        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="ident">SC::PERM_HALF_ROUNDS_FULL</span> <span class="op">+</span> <span class="ident">r</span>]
             .<span class="ident">iter</span>()
             .<span class="ident">enumerate</span>()
         {
@@ -427,8 +428,9 @@
         <span class="ident">apply_mds_matrix</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">state</span>);
     }
 
-    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::HALF_ROUNDS_FULL</span> {
-        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="ident">SC::HALF_ROUNDS_FULL</span> <span class="op">+</span> <span class="ident">SC::ROUNDS_PARTIAL</span> <span class="op">+</span> <span class="ident">r</span>]
+    <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::PERM_HALF_ROUNDS_FULL</span> {
+        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="ident">params</span>.<span class="ident">round_constants</span>
+            [<span class="ident">SC::PERM_HALF_ROUNDS_FULL</span> <span class="op">+</span> <span class="ident">SC::PERM_ROUNDS_PARTIAL</span> <span class="op">+</span> <span class="ident">r</span>]
             .<span class="ident">iter</span>()
             .<span class="ident">enumerate</span>()
         {
@@ -445,16 +447,16 @@
     <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="ident">ArithmeticSpongeParams</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">state</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 ) {
-    <span class="kw">if</span> <span class="ident">SC::HALF_ROUNDS_FULL</span> <span class="op">==</span> <span class="number">0</span> {
-        <span class="kw">if</span> <span class="ident">SC::INITIAL_ARK</span> {
+    <span class="kw">if</span> <span class="ident">SC::PERM_HALF_ROUNDS_FULL</span> <span class="op">==</span> <span class="number">0</span> {
+        <span class="kw">if</span> <span class="ident">SC::PERM_INITIAL_ARK</span> {
             <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">x</span>) <span class="kw">in</span> <span class="ident">params</span>.<span class="ident">round_constants</span>[<span class="number">0</span>].<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                 <span class="ident">state</span>[<span class="ident">i</span>].<span class="ident">add_assign</span>(<span class="ident">x</span>);
             }
-            <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::ROUNDS_FULL</span> {
+            <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::PERM_ROUNDS_FULL</span> {
                 <span class="ident">full_round</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">state</span>, <span class="ident">r</span> <span class="op">+</span> <span class="number">1</span>);
             }
         } <span class="kw">else</span> {
-            <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::ROUNDS_FULL</span> {
+            <span class="kw">for</span> <span class="ident">r</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">SC::PERM_ROUNDS_FULL</span> {
                 <span class="ident">full_round</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">SC</span><span class="op">&gt;</span>(<span class="ident">params</span>, <span class="ident">state</span>, <span class="ident">r</span>);
             }
         }
@@ -540,5 +542,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (f103b2969 2022-03-12)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
 </body></html>

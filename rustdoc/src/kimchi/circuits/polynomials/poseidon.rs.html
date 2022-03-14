@@ -319,7 +319,7 @@
             <span class="comment">//~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.</span>
             <span class="kw">let</span> <span class="ident">sboxed</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">round_to_cols</span>(<span class="ident">source</span>)
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                    <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">witness_curr</span>(<span class="ident">i</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstantsKimchi::SPONGE_BOX</span> <span class="kw">as</span> <span class="ident">u64</span>))
+                    <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">witness_curr</span>(<span class="ident">i</span>).<span class="ident">pow</span>(<span class="ident">PlonkSpongeConstantsKimchi::PERM_SBOX</span> <span class="kw">as</span> <span class="ident">u64</span>))
                 })
                 .<span class="ident">collect</span>();
 
@@ -378,5 +378,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (f103b2969 2022-03-12)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
 </body></html>
