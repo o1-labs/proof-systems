@@ -80,7 +80,7 @@ fn endomul_scalar_test() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
+        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
             .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
