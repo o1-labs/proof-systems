@@ -404,38 +404,6 @@ see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-fo
 </ol>
 <h2 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h2>
 <h3 id="the-prover-index"><a class="header" href="#the-prover-index">The prover Index</a></h3>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct ProverIndex&lt;G: CommitmentCurve&gt; {
-    /// constraints system polynomials
-    #[serde(bound = &quot;ConstraintSystem&lt;Fr&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
-    pub cs: ConstraintSystem&lt;Fr&lt;G&gt;&gt;,
-
-    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
-    #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;Fr&lt;G&gt;&gt;&gt;&gt;,
-
-    /// The mapping between powers of alpha and constraints
-    #[serde(skip)]
-    pub powers_of_alpha: Alphas&lt;Fr&lt;G&gt;&gt;,
-
-    /// polynomial commitment keys
-    #[serde(skip)]
-    pub srs: Arc&lt;SRS&lt;G&gt;&gt;,
-
-    /// maximal size of polynomial section
-    pub max_poly_size: usize,
-
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-
-    /// random oracle argument parameters
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
-}
-<span class="boring">}
-</span></code></pre></pre>
 <ol>
 <li>compute the linearization</li>
 <li>set <code>max_quot_size</code> to the degree of the quotient polynomial,
@@ -448,86 +416,6 @@ where the <span class="katex"><span class="katex-html" aria-hidden="true"><span 
 <ul>
 <li>the (non-hidding) commitments of all the required polynomials</li>
 </ul>
-<pre><pre class="playground"><code class="language-rust">
-<span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
-    /// evaluation domain
-    #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
-    pub domain: D&lt;Fr&lt;G&gt;&gt;,
-    /// maximal size of polynomial section
-    pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-    /// polynomial commitment keys
-    #[serde(skip)]
-    pub srs: Arc&lt;SRS&lt;G&gt;&gt;,
-
-    // index polynomial commitments
-    /// permutation commitment array
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub sigma_comm: [PolyComm&lt;G&gt;; PERMUTS],
-    /// coefficient commitment array
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub coefficients_comm: [PolyComm&lt;G&gt;; COLUMNS],
-    /// coefficient commitment array
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub generic_comm: PolyComm&lt;G&gt;,
-
-    // poseidon polynomial commitments
-    /// poseidon constraint selector polynomial commitment
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub psm_comm: PolyComm&lt;G&gt;,
-
-    // ECC arithmetic polynomial commitments
-    /// EC addition selector polynomial commitment
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub complete_add_comm: PolyComm&lt;G&gt;,
-    /// EC variable base scalar multiplication selector polynomial commitment
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub mul_comm: PolyComm&lt;G&gt;,
-    /// endoscalar multiplication selector polynomial commitment
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub emul_comm: PolyComm&lt;G&gt;,
-    /// endoscalar multiplication scalar computation selector polynomial commitment
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub endomul_scalar_comm: PolyComm&lt;G&gt;,
-
-    /// Chacha polynomial commitments
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub chacha_comm: Option&lt;[PolyComm&lt;G&gt;; 4]&gt;,
-
-    /// wire coordinate shifts
-    #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
-    pub shift: [Fr&lt;G&gt;; PERMUTS],
-    /// zero-knowledge polynomial
-    #[serde(skip)]
-    pub zkpm: DensePolynomial&lt;Fr&lt;G&gt;&gt;,
-    // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
-    /// domain offset for zero-knowledge
-    #[serde(skip)]
-    pub w: Fr&lt;G&gt;,
-    /// endoscalar coefficient
-    #[serde(skip)]
-    pub endo: Fr&lt;G&gt;,
-
-    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
-    pub lookup_index: Option&lt;LookupVerifierIndex&lt;G&gt;&gt;,
-
-    #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;Fr&lt;G&gt;&gt;&gt;&gt;,
-    /// The mapping between powers of alpha and constraints
-    #[serde(skip)]
-    pub powers_of_alpha: Alphas&lt;Fr&lt;G&gt;&gt;,
-
-    // random oracle argument parameters
-    #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams&lt;Fr&lt;G&gt;&gt;,
-    #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
-}
-<span class="boring">}
-</span></code></pre></pre>
 <h2 id="proof-data-structure"><a class="header" href="#proof-data-structure">Proof Data Structure</a></h2>
 <p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:</p>
