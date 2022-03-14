@@ -89,7 +89,7 @@ where
     ///     witness: computation witness
     ///     index: ProverIndex
     ///     RETURN: prover's zk-proof
-    pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
+    pub fn create_recursive<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
