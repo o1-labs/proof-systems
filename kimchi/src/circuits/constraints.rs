@@ -189,11 +189,11 @@ pub struct ConstraintSystem<F: FftField> {
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {
-    /// The coefficients k that create a coset when multiplied with the generator of our domain.
+    /// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
     shifts: [F; PERMUTS],
-    /// A matrix that maps all cells coordinates {col, row} to their shifted field element.
-    /// For example the cell {col:2, row:1} will map to omega * k2,
-    /// which lives in map[2][1]
+    /// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
+    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
+    /// which lives in `map[2][1]`
     map: [Vec<F>; PERMUTS],
 }
 
@@ -398,12 +398,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        // +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
-        // see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        //~ 1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
+        //~    see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
         assert!(domain.d1.size > ZK_ROWS);
 
-        // pad the rows: add zero gates to reach the domain size
+        //~ 2. pad the rows: add zero gates to reach the domain size
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {

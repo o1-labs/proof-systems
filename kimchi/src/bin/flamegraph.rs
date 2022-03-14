@@ -3,7 +3,7 @@ use std::env;
 use kimchi::bench::BenchmarkCtx;
 
 /// function to avoid optimizations by the compiler
-/// taken from https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171
+/// taken from <https://docs.rs/criterion/latest/src/criterion/lib.rs.html#171>
 pub fn black_box<T>(dummy: T) -> T {
     unsafe {
         let ret = std::ptr::read_volatile(&dummy);

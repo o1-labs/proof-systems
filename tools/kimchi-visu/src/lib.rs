@@ -15,7 +15,7 @@ use kimchi::{
             varbasemul::VarbaseMul,
         },
     },
-    index::Index,
+    prover_index::ProverIndex,
 };
 use serde::Serialize;
 use std::{
@@ -77,7 +77,7 @@ where
 }
 
 /// Produces a `circuit.html` in the current folder.
-pub fn visu<G>(index: &Index<G>, witness: Option<Witness<Fr<G>>>)
+pub fn visu<G>(index: &ProverIndex<G>, witness: Option<Witness<Fr<G>>>)
 where
     G: CommitmentCurve,
 {
