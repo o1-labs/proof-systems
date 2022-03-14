@@ -21,8 +21,11 @@ generic = "../../../kimchi/src/circuits/polynomials/generic.rs"
 poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 
-# protocol
+# setup
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"
-indexes = "../../../kimchi/src/index.rs"
+prover_index = "../../../kimchi/src/prover_index.rs"
+verifier_index = "../../../kimchi/src/verifier_index.rs"
+
+# proof
 prover = "../../../kimchi/src/prover.rs"
 verifier = "../../../kimchi/src/verifier.rs"

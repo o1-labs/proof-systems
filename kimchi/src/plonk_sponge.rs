@@ -6,9 +6,17 @@ use oracle::poseidon::{
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 
 pub trait FrSponge<Fr: Field> {
+    /// Creates a new Fr-Sponge.
     fn new(p: ArithmeticSpongeParams<Fr>) -> Self;
+
+    /// Absorbs the field element into the sponge.
     fn absorb(&mut self, x: &Fr);
+
+    /// Creates a [ScalarChallenge] by squeezing the sponge.
     fn challenge(&mut self) -> ScalarChallenge<Fr>;
+
+    /// Absorbs the given evaluations into the sponge.
+    // TODO: IMO this function should be inlined in prover/verifier
     fn absorb_evaluations(&mut self, p: &[Fr], e: &ProofEvaluations<Vec<Fr>>);
 }
 

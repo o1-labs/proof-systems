@@ -24,7 +24,7 @@ pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
 /// Number of rounds
-pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::ROUNDS_FULL;
+pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL;
 
 /// Number of PLONK rows required to implement Poseidon
 pub const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
@@ -217,7 +217,7 @@ pub fn generate_witness<F: Field>(
             let abs_round = round + row_idx * ROUNDS_PER_ROW;
 
             // apply the sponge and record the result in the witness
-            if PlonkSpongeConstantsKimchi::INITIAL_ARK {
+            if PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK {
                 panic!("this won't work if the circuit has an INITIAL_ARK")
             }
             sponge.full_round(abs_round);

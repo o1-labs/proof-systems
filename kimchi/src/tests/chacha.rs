@@ -4,8 +4,8 @@ use crate::{
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
-    index::testing::{new_index_for_test, new_index_for_test_with_lookups},
     prover::ProverProof,
+    prover_index::testing::{new_index_for_test, new_index_for_test_with_lookups},
     verifier::batch_verify,
 };
 use ark_ff::Zero;

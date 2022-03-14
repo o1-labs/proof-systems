@@ -6,7 +6,7 @@ use crate::{
         polynomials::varbasemul,
         wires::*,
     },
-    index::testing::new_index_for_test,
+    prover_index::testing::new_index_for_test,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
