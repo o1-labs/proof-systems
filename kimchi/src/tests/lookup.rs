@@ -3,7 +3,7 @@ use crate::{
         gate::{CircuitGate, GateType, LookupTable},
         wires::Wire,
     },
-    index::testing::new_index_for_test_with_lookups,
+    prover_index::testing::new_index_for_test_with_lookups,
     prover::ProverProof,
     verifier::batch_verify,
 };
