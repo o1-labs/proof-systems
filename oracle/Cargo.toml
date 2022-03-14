@@ -24,27 +24,10 @@ ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
 syn = { version = "1.0.76", optional = true }
 
-# for export_test_vectors
-# maybe better to move the tool into a separate crate
-# to avoid polluting the dependency tree of this lib
-num-bigint = { version = "0.4.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 hex = { version = "0.4", optional = true }
 ark-serialize = { version = "0.3.0", optional = true }
 
-[dev-dependencies]
-hex = "0.4"
-serde_json = "1.0"
-ark-serialize = "0.3.0"
-
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "syn" ]
-# for test vectors
-test_vectors = ["num-bigint", "serde_json", "hex", "ark-serialize"]
-
-[[bin]]
-name = "export_test_vectors"
-test = false
-bench = false
-path = "tests/export_test_vectors/export_test_vectors.rs"

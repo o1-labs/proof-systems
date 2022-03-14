@@ -3,7 +3,7 @@ use kimchi::{
         gate::CircuitGate, gates::poseidon::generate_witness,
         polynomials::generic::GenericGateSpec, wires::Wire,
     },
-    index::testing::new_index_for_test,
+    prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
 use mina_curves::pasta::Fp;

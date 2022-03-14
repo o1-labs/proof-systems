@@ -28,6 +28,7 @@ jobs:
           cargo install mdbook
           cargo install mdbook-katex
           cargo install mdbook-admonish
+          cargo install mdbook-mermaid
           mdbook build
 
       - name: Arrange website folder hierarchy
