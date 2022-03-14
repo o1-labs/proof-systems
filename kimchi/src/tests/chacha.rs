@@ -82,9 +82,13 @@ fn chacha_prover() {
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     let start = Instant::now();
-    let proof =
-        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+    let proof = ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
+        &group_map,
+        witness,
+        &index,
+        vec![],
+    )
+    .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();

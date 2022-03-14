@@ -85,7 +85,6 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-
     /// This function constructs prover's non-recursive zk-proof from the witness & the ProverIndex against SRS instance
     ///     witness: computation witness
     ///     index: ProverIndex
