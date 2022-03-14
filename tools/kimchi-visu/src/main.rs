@@ -1,8 +1,6 @@
+use kimchi::circuits::polynomials::poseidon::generate_witness;
 use kimchi::{
-    circuits::{
-        gate::CircuitGate, gates::poseidon::generate_witness,
-        polynomials::generic::GenericGateSpec, wires::Wire,
-    },
+    circuits::{gate::CircuitGate, polynomials::generic::GenericGateSpec, wires::Wire},
     prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
