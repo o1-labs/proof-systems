@@ -133,7 +133,7 @@ where
                 .lookup_constraint_system
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
-                    lookup_used: cs.lookup_used,
+                    lookup_used: cs.configuration.lookup_used,
                     lookup_selectors: cs
                         .lookup_selectors
                         .iter()

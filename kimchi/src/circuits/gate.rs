@@ -168,7 +168,7 @@ pub struct LookupInfo<F> {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: usize,
+    pub max_joint_size: u32,
     /// An empty vector.
     empty: Vec<JointLookup<F>>,
 }
@@ -211,7 +211,7 @@ impl<F: FftField> LookupInfo<F> {
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
                 v.iter()
-                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len()))
+                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len() as u32))
             }),
 
             kinds_map,
