@@ -245,6 +245,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::{fs, path::Path};
+
     use super::*;
     use crate::circuits::gate::GateType;
     use mina_curves::pasta::Fp;
@@ -332,6 +334,21 @@ mod tests {
             index.cs.chacha8.is_some(),
             &index.cs.lookup_constraint_system,
         );
-        println!("{}", powers_of_alpha);
+
+        // make sure this is present in the specification
+        let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+        let spec_path = Path::new(&manifest_dir)
+            .join("..")
+            .join("book")
+            .join("specifications")
+            .join("kimchi")
+            .join("template.md");
+
+        let spec = fs::read_to_string(spec_path).unwrap();
+        if !spec.contains(&powers_of_alpha.to_string()) {
+            panic!(
+                "the specification of kimchi must contain the following paragraph:\n\n{powers_of_alpha}\n\n"
+            );
+        }
     }
 }

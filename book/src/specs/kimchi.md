@@ -152,9 +152,9 @@ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
 
 The layout of the gate is the following:
 
-|  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|
-| l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |
+|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+|  l1   |  r1   |  o1   |  l2   |  r2   |  o2   |       |       |       |       |       |       |       |       |       |
 
 where l1, r1, and o1 (resp. l2, r2, o2)
 are the left, right, and output registers
@@ -162,9 +162,9 @@ of the first (resp. second) generic gate.
 
 The selectors are stored in the coefficient table as:
 
-|  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
-|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
+|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+|  l1   |  r1   |  o1   |  m1   |  c1   |  l2   |  r2   |  o2   |  m2   |  c2   |       |       |       |       |       |
 
 with m1 (resp. m2) the mul selector for the first (resp. second) gate,
 and c1 (resp. c2) the constant selector for the first (resp. second) gate.
@@ -186,10 +186,10 @@ and the next state, after permutation, is represented by `(s1, s1, s1)`.
 
 Below is how we store each state in the register table:
 
-|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
-|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| s0 | s0 | s0 | s4 | s4 | s4 | s1 | s1 | s1 | s2 | s2 | s2 | s3 | s3 | s3 |
-| s5 | s5 | s5 |    |    |    |    |    |    |    |    |    |    |    |    |
+|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+|  s0   |  s0   |  s0   |  s4   |  s4   |  s4   |  s1   |  s1   |  s1   |  s2   |  s2   |  s2   |  s3   |  s3   |  s3   |
+|  s5   |  s5   |  s5   |       |       |       |       |       |       |       |       |       |       |       |       |
 
 The last state is stored on the next row. This last state is either used:
 
@@ -209,9 +209,9 @@ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
 
 We store the 15 round constants $r_i$ required for the 5 rounds (3 per round) in the coefficient table:
 
-|  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
-|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |
+|   0   |   1   |   2   |   3   |   4   |   5   |   6   |   7   |   8   |   9   |  10   |  11   |  12   |  13   |  14   |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+|  r0   |  r1   |  r2   |  r3   |  r4   |  r5   |  r6   |  r7   |  r8   |  r9   |  r10  |  r11  |  r12  |  r13  |  r14  |
 
 The initial state, stored in the first three registers, are not constrained.
 The following 4 states (of 3 field elements), including 1 in the next row,
