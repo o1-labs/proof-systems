@@ -150,7 +150,7 @@ where
         )
         .interpolate();
 
-        //~ 5. Commit (non-hidding) to the negated public input polynomial. **TODO: seems unecessary**
+        //~ 5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
 
         //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
@@ -175,7 +175,7 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
         //~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    TODO: why not do this first, and the commit? Why commit from evaluation directly?
+        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
         let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
@@ -853,7 +853,7 @@ where
         //~     - generic selector
         //~     - poseidon selector
         //~     - the 15 register/witness
-        //~     - the 6 sigmas evaluations
+        //~     - 6 sigmas evaluations (the last one is not evaluated)
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
         }
@@ -903,7 +903,7 @@ where
         //~     - the generic selector
         //~     - the poseidon selector
         //~     - the 15 registers/witness columns
-        //~     - the 6 s
+        //~     - the 6 sigmas
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.1)]);

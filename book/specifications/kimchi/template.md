@@ -40,10 +40,10 @@ Think of them as intermediary or temporary values needed in the computation when
 |   0   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |   /   |
 
 
-**Wiring (or Permutation)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+**Wiring (or Permutation, or sigmas)**. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
 It is defined at every row, but only for the first $7$ registers. 
 Each cell specifies a `(row, column)` tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registered are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle. 
 For example, if register `(0, 4)` is wired to both registers `(80, 6)` and `(90, 0)` then you would have the following table:
 
 |  row  |    0    |   1   |   2   |   3   |    4     |   5   |    6     |
@@ -171,7 +171,7 @@ TODO: use expr to define the index columns?
 
 The verifier index is essentially a number of pre-computations containing:
 
-* the (non-hidding) commitments of all the required polynomials
+* the (non-hiding) commitments of all the required polynomials that describe the circuit (gate selectors, sigmas (permutations), etc.)
 
 {sections.verifier_index}
 
@@ -185,14 +185,14 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 sequenceDiagram
     participant Prover
     participant Verifier
-    Prover->>Verifier: public & witness commitment
+    Prover->>Verifier: public input & witness commitment
     Verifier->>Prover: beta & gamma
     Prover->>Verifier: permutation commitment
     Verifier->>Prover: alpha
     Prover->>Verifier: quotient commitment
     Verifier->>Prover: zeta
     Note over Verifier: change of verifier (change of sponge)
-    Prover->>Verifier: negated public poly p(zeta) & p(zeta * omega)
+    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
     Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
     Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
     Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
@@ -216,7 +216,7 @@ A proof consists of:
   * TODO: lookup
   * TODO: public commitment is not here, but is in the sequence diagram
 * evaluations of these polynomials at two random points $\zeta$ and $\zeta \omega$
-* evaluations at the two random points of these addotional polynomials:
+* evaluations at the two random points of these additional polynomials:
   * the 6 s (sigma)
   * TODO: lookup
   * generic selector
