@@ -3,8 +3,8 @@ use crate::{
         gate::{CircuitGate, GateType, LookupTable},
         wires::Wire,
     },
-    prover_index::testing::new_index_for_test_with_lookups,
     prover::ProverProof,
+    prover_index::testing::new_index_for_test_with_lookups,
     verifier::batch_verify,
 };
 use ark_ff::Zero;
