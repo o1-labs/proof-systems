@@ -180,10 +180,10 @@ Think of them as intermediary or temporary values needed in the computation when
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th><th style="text-align: center">7</th><th style="text-align: center">8</th><th style="text-align: center">9</th><th style="text-align: center">10</th><th style="text-align: center">11</th><th style="text-align: center">12</th><th style="text-align: center">13</th><th style="text-align: center">14</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td><td style="text-align: center">/</td></tr>
 </tbody></table>
-<p><strong>Wiring (or Permutation)</strong>. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
+<p><strong>Wiring (or Permutation, or sigmas)</strong>. For gates to take the outputs of other gates as inputs, we use a wiring table to wire registers together. 
 It is defined at every row, but only for the first <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">7</span></span></span></span> registers. 
 Each cell specifies a <code>(row, column)</code> tuple that it should be wired to.  Cells that are not connected to another cell are wired to themselves.
-Note that if three or more registered are wired together, they must form a cycle. 
+Note that if three or more registers are wired together, they must form a cycle. 
 For example, if register <code>(0, 4)</code> is wired to both registers <code>(80, 6)</code> and <code>(90, 0)</code> then you would have the following table:</p>
 <table><thead><tr><th style="text-align: center">row</th><th style="text-align: center">0</th><th style="text-align: center">1</th><th style="text-align: center">2</th><th style="text-align: center">3</th><th style="text-align: center">4</th><th style="text-align: center">5</th><th style="text-align: center">6</th></tr></thead><tbody>
 <tr><td style="text-align: center">0</td><td style="text-align: center">0,0</td><td style="text-align: center">0,1</td><td style="text-align: center">0,2</td><td style="text-align: center">0,3</td><td style="text-align: center"><strong>80,6</strong></td><td style="text-align: center">0,5</td><td style="text-align: center">0,6</td></tr>
@@ -403,7 +403,7 @@ where the <span class="katex"><span class="katex-html" aria-hidden="true"><span 
 <h2 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h2>
 <p>The verifier index is essentially a number of pre-computations containing:</p>
 <ul>
-<li>the (non-hidding) commitments of all the required polynomials</li>
+<li>the (non-hiding) commitments of all the required polynomials that describe the circuit (gate selectors, sigmas (permutations), etc.)</li>
 </ul>
 <pre><pre class="playground"><code class="language-rust">
 <span class="boring">#![allow(unused)]
@@ -491,14 +491,14 @@ For this reason, it can be useful to visualize the high-level interactive protoc
 <pre class="mermaid">sequenceDiagram
     participant Prover
     participant Verifier
-    Prover-&gt;&gt;Verifier: public &amp; witness commitment
+    Prover-&gt;&gt;Verifier: public input &amp; witness commitment
     Verifier-&gt;&gt;Prover: beta &amp; gamma
     Prover-&gt;&gt;Verifier: permutation commitment
     Verifier-&gt;&gt;Prover: alpha
     Prover-&gt;&gt;Verifier: quotient commitment
     Verifier-&gt;&gt;Prover: zeta
     Note over Verifier: change of verifier (change of sponge)
-    Prover-&gt;&gt;Verifier: negated public poly p(zeta) &amp; p(zeta * omega)
+    Prover-&gt;&gt;Verifier: negated public input p(zeta) &amp; p(zeta * omega)
     Prover-&gt;&gt;Verifier: permutation poly z(zeta) &amp; z(zeta * omega)
     Prover-&gt;&gt;Verifier: the generic selector gen(zeta) &amp; gen(zeta * omega)
     Prover-&gt;&gt;Verifier: the poseidon selector pos(zeta) &amp; pos(zeta * omega)
@@ -523,7 +523,7 @@ You can find these operations under the <a href="#proof-creation">proof creation
 </ul>
 </li>
 <li>evaluations of these polynomials at two random points <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span></li>
-<li>evaluations at the two random points of these addotional polynomials:
+<li>evaluations at the two random points of these additional polynomials:
 <ul>
 <li>the 6 s (sigma)</li>
 <li>TODO: lookup</li>
@@ -564,7 +564,7 @@ the polynomial that evaluates to <span class="katex"><span class="katex-html" ar
 and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span> for the rest.</p>
 </li>
 <li>
-<p>Commit (non-hidding) to the negated public input polynomial. <strong>TODO: seems unecessary</strong></p>
+<p>Commit (non-hiding) to the negated public input polynomial. <strong>TODO: seems unecessary</strong></p>
 </li>
 <li>
 <p>Absorb the public polynomial with the Fq-Sponge. <strong>TODO: seems unecessary</strong></p>
@@ -579,7 +579,7 @@ we can use the <code>commit_evaluation</code> optimization.</p>
 </li>
 <li>
 <p>Compute the witness polynomials by interpolating each <code>COLUMNS</code> of the witness.
-TODO: why not do this first, and the commit? Why commit from evaluation directly?</p>
+TODO: why not do this first, and then commit? Why commit from evaluation directly?</p>
 </li>
 <li>
 <p>TODO: lookup</p>
@@ -699,7 +699,7 @@ see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-p
 <li>generic selector</li>
 <li>poseidon selector</li>
 <li>the 15 register/witness</li>
-<li>the 6 sigmas evaluations</li>
+<li>6 sigmas evaluations (the last one is not evaluated)</li>
 </ul>
 </li>
 <li>
@@ -731,7 +731,7 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <li>the generic selector</li>
 <li>the poseidon selector</li>
 <li>the 15 registers/witness columns</li>
-<li>the 6 s</li>
+<li>the 6 sigmas</li>
 </ul>
 </li>
 <li>
