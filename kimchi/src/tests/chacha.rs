@@ -17,7 +17,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::{PlonkSpongeConstantsKimchi},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;

@@ -259,10 +259,10 @@ fn sign_delegation_test_4() {
 
 #[test]
 fn custom_signer_test() {
-    use oracle::{pasta, poseidon};
+    use oracle::{pasta, constants};
 
     let kp = Keypair::rand(&mut rand::rngs::OsRng);
-    let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstantsKimchi>(
+    let mut ctx = mina_signer::custom::<constants::PlonkSpongeConstantsKimchi>(
         pasta::fp_kimchi::params(),
         NetworkId::MAINNET,
     );

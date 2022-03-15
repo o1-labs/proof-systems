@@ -30,7 +30,7 @@ use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, Field};
-use oracle::poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants};
+use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use std::marker::PhantomData;
 use CurrOrNext::*;
 

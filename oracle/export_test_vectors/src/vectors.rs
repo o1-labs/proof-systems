@@ -6,8 +6,9 @@ use num_bigint::BigUint;
 use oracle::{
     pasta,
     poseidon::{
-        self, ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _, SpongeConstants,
+        self, ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _
     },
+    constants::{SpongeConstants, self}
 };
 use rand::{prelude::*, Rng};
 use serde::Serialize;
@@ -65,10 +66,10 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
         let input = rand_fields(&mut rng, length);
         let output = match param_type {
             ParamType::Legacy => {
-                poseidon::<poseidon::PlonkSpongeConstantsLegacy>(&input, pasta::fp_legacy::params())
+                poseidon::<constants::PlonkSpongeConstantsLegacy>(&input, pasta::fp_legacy::params())
             }
             ParamType::Kimchi => {
-                poseidon::<poseidon::PlonkSpongeConstantsKimchi>(&input, pasta::fp_kimchi::params())
+                poseidon::<constants::PlonkSpongeConstantsKimchi>(&input, pasta::fp_kimchi::params())
             }
         };
 

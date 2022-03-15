@@ -7,9 +7,11 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, Field};
 use array_init::array_init;
-use oracle::poseidon::{
-    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, Sponge,
-    SpongeConstants,
+use oracle::{
+    poseidon::{
+    sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge,
+    },
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants}
 };
 use std::ops::Range;
 

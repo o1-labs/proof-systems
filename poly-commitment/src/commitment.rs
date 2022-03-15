@@ -920,7 +920,7 @@ mod tests {
     use ark_poly::Polynomial;
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
-    use oracle::poseidon::PlonkSpongeConstantsKimchi as SC;
+    use oracle::constants::PlonkSpongeConstantsKimchi as SC;
     use oracle::{pasta::fq_kimchi::params as spongeFqParams, sponge::DefaultFqSponge};
     use rand::{rngs::StdRng, SeedableRng};
 

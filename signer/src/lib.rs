@@ -20,9 +20,9 @@ pub use signature::Signature;
 use oracle::{
     pasta,
     poseidon::{
-        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsLegacy, Sponge,
-        SpongeConstants,
+        ArithmeticSponge, ArithmeticSpongeParams, Sponge
     },
+    constants::{PlonkSpongeConstantsLegacy, SpongeConstants}
 };
 
 use ark_ec::AffineCurve;
