@@ -200,11 +200,7 @@ As such, the transformation of a circuit into these two indexes can be seen as a
 
 ### Common Index
 
-<<<<<<< HEAD
 In this section we describe data that both the prover and the verifier index share.
-=======
-* the (non-hiding) commitments of all the required polynomials that describe the circuit (gate selectors, sigmas (permutations), etc.)
->>>>>>> master
 
 **`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
 It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
@@ -245,13 +241,18 @@ The compilation steps to create the common index are as follow:
 
 {sections.constraint_system}
 
-### Prover & Verifier Index
+### Prover Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
+These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
-We shy away from specifying exactly what these pre-computations can be in this specification.
+{sections.prover_index}
 
-TODO: should we though?
+## Verifier Index
+
+Same as the prover index, we have a number of pre-computations as part of the verifier index.
+
+{sections.verifier_index}
 
 ## Proof
 
