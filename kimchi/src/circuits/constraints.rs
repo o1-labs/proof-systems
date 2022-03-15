@@ -571,7 +571,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 0 => GateType::CairoInstruction,
                 1 => GateType::CairoTransition,
                 2 => GateType::CairoClaim,
-                3 => GateType::CairoStack,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(
@@ -590,7 +589,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 0 => GateType::CairoInstruction,
                 1 => GateType::CairoTransition,
                 2 => GateType::CairoClaim,
-                3 => GateType::CairoStack,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(

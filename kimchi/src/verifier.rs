@@ -558,7 +558,6 @@ where
                                     CairoInstruction => panic!("TODO"), // TODO: querolita
                                     CairoTransition => panic!("TODO"),  // TODO: querolita
                                     CairoClaim => panic!("TODO"),       // TODO: querolita
-                                    CairoStack => panic!("TODO"),       // TODO: querolita
                                 };
                                 scalars.push(scalar);
                                 commitments.push(c);
