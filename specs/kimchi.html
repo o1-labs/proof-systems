@@ -182,11 +182,10 @@
 <li><a href="#setup">Setup</a>
 <ul>
 <li><a href="#common-index">Common Index</a></li>
+<li><a href="#prover-index">Prover Index</a></li>
 </ul>
 </li>
-<li><a href="#-headin-this-section-we-describe-data-that-both-the-prover-and-the-verifier-index-share">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEADIn this section we describe data that both the prover and the verifier index share.</a>
-<ul>
-<li><a href="#prover--verifier-index">Prover &amp; Verifier Index</a></li>
+<li><a href="#verifier-index">Verifier Index</a></li>
 <li><a href="#proof">Proof</a>
 <ul>
 <li><a href="#proof-creation">Proof Creation</a></li>
@@ -195,8 +194,6 @@
 </li>
 <li><a href="#optimizations">Optimizations</a></li>
 <li><a href="#security-considerations">Security Considerations</a></li>
-</ul>
-</li>
 </ul>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <p>There are three main algorithms to kimchi:</p>
@@ -519,12 +516,7 @@ Each of the associated 15 registers is associated to a constraint, calculated as
 </div>
 <p>As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).</p>
 <h3 id="common-index"><a class="header" href="#common-index">Common Index</a></h3>
-<h1>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
-In this section we describe data that both the prover and the verifier index share.</h1>
-<ul>
-<li>the (non-hiding) commitments of all the required polynomials that describe the circuit (gate selectors, sigmas (permutations), etc.)
-&gt;&gt;&gt;&gt;&gt;&gt;&gt; master</li>
-</ul>
+<p>In this section we describe data that both the prover and the verifier index share.</p>
 <p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
 It is used for polynomial commitments, so refer to the <a href="./poly-commitment.html">poly-commitment specification</a> for more details.</p>
 <div class="admonition note">
@@ -567,10 +559,115 @@ has order greater or equal to <code>n + ZK_ROWS</code> elements.</li>
 <li>Pad the circuit: add zero gates to reach the domain size.</li>
 <li>sample the <code>PERMUTS</code> shifts.</li>
 </ol>
-<h3 id="prover--verifier-index"><a class="header" href="#prover--verifier-index">Prover &amp; Verifier Index</a></h3>
-<p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.</p>
-<p>We shy away from specifying exactly what these pre-computations can be in this specification.</p>
-<p>TODO: should we though?</p>
+<h3 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h3>
+<p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
+These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
+<pre><code class="language-rs">pub struct ProverIndex&lt;G: CommitmentCurve&gt; {
+    /// constraints system polynomials
+    #[serde(bound = &quot;ConstraintSystem&lt;Fr&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
+    pub cs: ConstraintSystem&lt;Fr&lt;G&gt;&gt;,
+
+    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
+    #[serde(skip)]
+    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;Fr&lt;G&gt;&gt;&gt;&gt;,
+
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas&lt;Fr&lt;G&gt;&gt;,
+
+    /// polynomial commitment keys
+    #[serde(skip)]
+    pub srs: Arc&lt;SRS&lt;G&gt;&gt;,
+
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+
+    /// random oracle argument parameters
+    #[serde(skip)]
+    pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
+}
+</code></pre>
+<h2 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h2>
+<p>Same as the prover index, we have a number of pre-computations as part of the verifier index.</p>
+<pre><code class="language-rs">pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
+    /// evaluation domain
+    #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
+    pub domain: D&lt;Fr&lt;G&gt;&gt;,
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+    /// polynomial commitment keys
+    #[serde(skip)]
+    pub srs: Arc&lt;SRS&lt;G&gt;&gt;,
+
+    // index polynomial commitments
+    /// permutation commitment array
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub sigma_comm: [PolyComm&lt;G&gt;; PERMUTS],
+    /// coefficient commitment array
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub coefficients_comm: [PolyComm&lt;G&gt;; COLUMNS],
+    /// coefficient commitment array
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub generic_comm: PolyComm&lt;G&gt;,
+
+    // poseidon polynomial commitments
+    /// poseidon constraint selector polynomial commitment
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub psm_comm: PolyComm&lt;G&gt;,
+
+    // ECC arithmetic polynomial commitments
+    /// EC addition selector polynomial commitment
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub complete_add_comm: PolyComm&lt;G&gt;,
+    /// EC variable base scalar multiplication selector polynomial commitment
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub mul_comm: PolyComm&lt;G&gt;,
+    /// endoscalar multiplication selector polynomial commitment
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub emul_comm: PolyComm&lt;G&gt;,
+    /// endoscalar multiplication scalar computation selector polynomial commitment
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub endomul_scalar_comm: PolyComm&lt;G&gt;,
+
+    /// Chacha polynomial commitments
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub chacha_comm: Option&lt;[PolyComm&lt;G&gt;; 4]&gt;,
+
+    /// wire coordinate shifts
+    #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
+    pub shift: [Fr&lt;G&gt;; PERMUTS],
+    /// zero-knowledge polynomial
+    #[serde(skip)]
+    pub zkpm: DensePolynomial&lt;Fr&lt;G&gt;&gt;,
+    // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
+    /// domain offset for zero-knowledge
+    #[serde(skip)]
+    pub w: Fr&lt;G&gt;,
+    /// endoscalar coefficient
+    #[serde(skip)]
+    pub endo: Fr&lt;G&gt;,
+
+    #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
+    pub lookup_index: Option&lt;LookupVerifierIndex&lt;G&gt;&gt;,
+
+    #[serde(skip)]
+    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;Fr&lt;G&gt;&gt;&gt;&gt;,
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas&lt;Fr&lt;G&gt;&gt;,
+
+    // random oracle argument parameters
+    #[serde(skip)]
+    pub fr_sponge_params: ArithmeticSpongeParams&lt;Fr&lt;G&gt;&gt;,
+    #[serde(skip)]
+    pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
+}
+</code></pre>
 <h2 id="proof"><a class="header" href="#proof">Proof</a></h2>
 <p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
 For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:</p>
