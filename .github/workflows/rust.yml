@@ -31,8 +31,8 @@ jobs:
       - name: Setup OCaml (because of ocaml-gen)
         run: |
           # install via opam
-          apt update
-          apt-get install opam
+          sudo apt update
+          sudo apt-get install opam
           
           # environment setup
           opam init
