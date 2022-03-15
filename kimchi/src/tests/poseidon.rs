@@ -5,8 +5,6 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use colored::Colorize;
-use rand::{rngs::StdRng, SeedableRng};
-
 use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
@@ -17,12 +15,13 @@ use oracle::{
     poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use rand::{rngs::StdRng, SeedableRng};
 
-use crate::circuits::polynomials;
-use crate::circuits::polynomials::poseidon::ROUNDS_PER_ROW;
 use crate::{
     circuits::{
         gate::CircuitGate,
+        polynomials,
+        polynomials::poseidon::ROUNDS_PER_ROW,
         wires::{Wire, COLUMNS},
     },
     prover_index::testing::new_index_for_test,

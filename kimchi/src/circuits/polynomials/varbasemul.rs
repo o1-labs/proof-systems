@@ -13,16 +13,13 @@
 use std::marker::PhantomData;
 
 use ark_ff::{FftField, One};
-
 use CurrOrNext::*;
 
-use crate::circuits::gate::CircuitGate;
-use crate::circuits::wires::GateWires;
 use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache, Column, Variable},
-    gate::{CurrOrNext, GateType},
-    wires::COLUMNS,
+    gate::{CircuitGate, CurrOrNext, GateType},
+    wires::{GateWires, COLUMNS},
 };
 
 type CurveVar = (Variable, Variable);
@@ -250,7 +247,7 @@ where
     }
 }
 
-/// This module implements short Weierstrass curve variable base scalar multiplication custom Plonk constraints.
+/// Implementation of short Weierstrass curve variable base scalar multiplication custom Plonk constraints.
 ///
 /// ```ignore
 /// Acc := [2]T

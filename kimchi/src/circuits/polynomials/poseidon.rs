@@ -29,9 +29,9 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use ark_ff::{FftField, Field};
-
 use oracle::poseidon::{
-    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, SpongeConstants,
+    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, Sponge,
+    SpongeConstants,
 };
 use CurrOrNext::*;
 
@@ -41,8 +41,6 @@ use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
 use crate::circuits::polynomial::COLUMNS;
 use crate::circuits::wires::{GateWires, Wire};
-
-use oracle::poseidon::Sponge;
 
 /// An equation of the form `(curr | next)[i] = round(curr[j])`
 struct RoundEquation {
@@ -195,6 +193,10 @@ where
         res
     }
 }
+
+//
+// Constants
+//
 
 /// Width of the sponge
 pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
