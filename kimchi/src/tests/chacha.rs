@@ -83,8 +83,7 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();

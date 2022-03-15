@@ -98,7 +98,7 @@ impl BenchmarkCtx {
         };
 
         // add the proof to the batch
-        ProverProof::create::<BaseSponge, ScalarSponge>(
+        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &self.group_map,
             witness,
             &self.index,
