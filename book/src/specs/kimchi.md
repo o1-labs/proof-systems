@@ -140,6 +140,16 @@ It returns the sum of all the constraints, where each constraint has been multip
 In other words it returns:
 $$ \sum_i \alpha^i \cdot \text{constraint}_i $$
 
+The different ranges of alpha are described as follows:
+
+<!-- generated using `cargo test -p kimchi --lib -- alphas::tests::get_alphas_for_spec --nocapture` -->
+* **gates**. Offset starts at 0 and 21 powers of $\alpha$ are used
+* **Permutation**. Offset starts at 21 and 3 powers of $\alpha$ are used
+
+```admonish
+As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates. 
+```
+
 TODO: linearization
 
 ### Permutation
