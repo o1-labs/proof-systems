@@ -2,6 +2,7 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::polynomials::cairo::Instruction;
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
@@ -28,9 +29,9 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
     let mut powers_of_alpha = Alphas::<F>::default();
 
     // gates
-    let highest_constraints = VarbaseMul::<F>::CONSTRAINTS;
+    let highest_constraints = Instruction::<F>::CONSTRAINTS;
     powers_of_alpha.register(
-        ArgumentType::Gate(GateType::VarBaseMul),
+        ArgumentType::Gate(GateType::CairoInstruction),
         highest_constraints,
     );
 

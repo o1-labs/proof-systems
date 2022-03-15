@@ -419,6 +419,9 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
+            index_evals.insert(CairoInstruction, &index.cs.cairo8[0]);
+            index_evals.insert(CairoTransition, &index.cs.cairo8[1]);
+            index_evals.insert(CairoClaim, &index.cs.cairo8[2]);
 
             Environment {
                 constants: Constants {
@@ -604,7 +607,7 @@ where
 
             // cairo
             let cairoinstr = Instruction::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &cairoinstr;
+            t4 += &cairoinstr;
             if cfg!(test) {
                 let (_, res) = cairoinstr
                     .clone()
@@ -628,7 +631,7 @@ where
             drop(cairotrans);
 
             let cairoclaim = Claim::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &cairoclaim;
+            t4 += &cairoclaim;
             if cfg!(test) {
                 let (_, res) = cairoclaim
                     .clone()
