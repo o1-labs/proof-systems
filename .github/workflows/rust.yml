@@ -30,8 +30,21 @@ jobs:
 
       - name: Setup OCaml (because of ocaml-gen)
         run: |
-          sudo apt update
-          sudo apt install -y ocaml
+          # install via opam
+          apt update
+          apt-get install opam
+          
+          # environment setup
+          opam init
+          eval $(opam env)
+
+          # install mina's version of OCaml
+          opam switch create 4.11.2
+          eval $(opam env)
+
+          # check you got what you want
+          which ocaml
+          ocaml -version
 
       # `cargo check` compiles the packages without performing the final step of code generation,
       # which is faster than running `cargo build`.
