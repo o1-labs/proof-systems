@@ -6,7 +6,7 @@ use crate::{
         polynomials::endosclmul,
         wires::*,
     },
-    index::testing::new_index_for_test,
+    prover_index::testing::new_index_for_test,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
@@ -133,8 +133,7 @@ fn endomul_test() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let batch: Vec<_> = vec![(&verifier_index, &proof)];

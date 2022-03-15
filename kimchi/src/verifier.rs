@@ -12,9 +12,9 @@ use crate::{
         wires::*,
     },
     error::{ProofError, Result},
-    index::{LookupVerifierIndex, VerifierIndex},
     plonk_sponge::FrSponge,
     prover::ProverProof,
+    verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -641,7 +641,7 @@ where
 pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
-) -> Result<bool>
+) -> Result<()>
 where
     G: CommitmentCurve,
     G::BaseField: PrimeField,
@@ -650,7 +650,7 @@ where
 {
     // if there's no proof to verify, return early
     if proofs.is_empty() {
-        return Ok(true);
+        return Ok(());
     }
 
     // TODO: Account for the different SRS lengths
@@ -669,6 +669,6 @@ where
     // final check to verify the evaluation proofs
     match srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
         false => Err(ProofError::OpenProof),
-        true => Ok(true),
+        true => Ok(()),
     }
 }

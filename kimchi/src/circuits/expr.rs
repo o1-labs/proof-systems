@@ -1955,7 +1955,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            Literal(x) => format!("\\mathbb{{F}}(\"0x{}\")", x.into_repr()),
+            Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
                 x => format!("{}^{n}", x.ocaml()),
@@ -2050,7 +2050,7 @@ where
             Square(x) => format!("({})^2", x.latex(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
-                id.var_name()
+                id.latex_name()
             }
         }
     }

@@ -1,7 +1,7 @@
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::index::testing::new_index_for_test;
 use crate::prover::ProverProof;
+use crate::prover_index::testing::new_index_for_test;
 use crate::verifier::batch_verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -75,8 +75,13 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
     // add the proof to the batch
     let mut batch = Vec::new();
     batch.push(
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![prev])
-            .unwrap(),
+        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
+            &group_map,
+            witness,
+            &index,
+            vec![prev],
+        )
+        .unwrap(),
     );
 
     // verify the proof

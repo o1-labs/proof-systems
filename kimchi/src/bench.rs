@@ -4,9 +4,10 @@ use crate::{
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    index::{testing::new_index_for_test, Index, VerifierIndex},
     prover::ProverProof,
+    prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::batch_verify,
+    verifier_index::VerifierIndex,
 };
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -25,12 +26,13 @@ type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// the circuit size. This influences the size of the SRS
-pub const CIRCUIT_SIZE: usize = (1 << 14) + 1; // SRS will be 2^15
+/// The circuit size. This influences the size of the SRS.
+/// At the time of this writing our verifier circuits have 27164 & 18054 gates.
+pub const CIRCUIT_SIZE: usize = 27164;
 
 pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
-    index: Index<Affine>,
+    index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
 }
 
@@ -38,7 +40,7 @@ impl BenchmarkCtx {
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
     /// Note that the size of the circuit is still of [CIRCUIT_SIZE].
     /// So the prover's work is based on num_gates,
-    /// but the verifier work is based on [CICUIT_SIZE].
+    /// but the verifier work is based on [CIRCUIT_SIZE].
     pub fn new(num_gates: usize) -> Self {
         // create the circuit
         let mut gates = vec![];
@@ -96,7 +98,7 @@ impl BenchmarkCtx {
         };
 
         // add the proof to the batch
-        ProverProof::create::<BaseSponge, ScalarSponge>(
+        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &self.group_map,
             witness,
             &self.index,
@@ -126,7 +128,7 @@ mod tests {
         // context created in 21.2235 ms
         let start = Instant::now();
         let ctx = BenchmarkCtx::new(1 << 4);
-        println!("context created in {}", start.elapsed().as_millis());
+        println!("context created in {}", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms
         let start = Instant::now();
