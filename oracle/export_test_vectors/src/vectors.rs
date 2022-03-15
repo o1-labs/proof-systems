@@ -64,11 +64,11 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
         // generate input & hash
         let input = rand_fields(&mut rng, length);
         let output = match param_type {
-            ParamType::Basic => {
-                poseidon::<poseidon::PlonkSpongeConstantsBasic>(&input, pasta::fp::params())
+            ParamType::Legacy => {
+                poseidon::<poseidon::PlonkSpongeConstantsLegacy>(&input, pasta::fp_legacy::params())
             }
-            ParamType::P15w => {
-                poseidon::<poseidon::PlonkSpongeConstants15W>(&input, pasta::fp::params())
+            ParamType::Kimchi => {
+                poseidon::<poseidon::PlonkSpongeConstantsKimchi>(&input, pasta::fp_kimchi::params())
             }
         };
 
@@ -100,8 +100,8 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
     }
 
     let name = match param_type {
-        ParamType::Basic => "basic",
-        ParamType::P15w => "15w",
+        ParamType::Legacy => "legacy",
+        ParamType::Kimchi => "kimchi",
     }
     .into();
 

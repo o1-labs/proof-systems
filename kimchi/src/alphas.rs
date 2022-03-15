@@ -16,22 +16,16 @@
 //! - when creating a proof or verifying a proof, at this point we know alpha
 //!   so we can use the mapping we created during the creation of the index.
 //!
-//! For this to work, we use two types:
+//! For this to work, we use the type [Alphas] to register ranges of powers of alpha,
+//! for the various [ArgumentType]s.
 //!
-//! - [Builder], which allows us to map constraints to powers
-//! - [Alphas], which you can derive from [Builder] and an `alpha`
-//!
-//! Both constructions will enforce that you use all the powers of
-//! alphas that you register for constraint. This allows us to
-//! make sure that we compute the correct amounts, without reusing
-//! powers of alphas between constraints.
 
 use crate::circuits::{argument::ArgumentType, gate::GateType};
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    iter::{Cloned, Take},
+    iter::{Cloned, Skip, Take},
     ops::Range,
     slice::Iter,
     thread,
@@ -40,16 +34,16 @@ use std::{
 // ------------------------------------------
 
 /// This type can be used to create a mapping between powers of alpha and constraint types.
-/// See [Alphas::default] to create one,
-/// and [Builder::register] to register a new mapping.
+/// See [Self::default] to create one,
+/// and [Self::register] to register a new mapping.
 /// Once you know the alpha value, you can convert this type to a [Alphas].
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Alphas<F> {
     /// The next power of alpha to use
     /// the end result will be [1, alpha^{next_power - 1}]
-    next_power: usize,
+    next_power: u32,
     /// The mapping between constraint types and powers of alpha
-    mapping: HashMap<ArgumentType, Range<usize>>,
+    mapping: HashMap<ArgumentType, (u32, u32)>,
     /// The powers of alpha: 1, alpha, alpha^2, etc.
     /// If set to [Some], you can't register new constraints.
     alphas: Option<Vec<F>>,
@@ -59,12 +53,10 @@ impl<F: Field> Alphas<F> {
     /// Registers a new [ArgumentType],
     /// associating it with a number `powers` of powers of alpha.
     /// This function will panic if you register the same type twice.
-    pub fn register(&mut self, ty: ArgumentType, powers: usize) {
+    pub fn register(&mut self, ty: ArgumentType, powers: u32) {
         if self.alphas.is_some() {
             panic!("you cannot register new constraints once initialized with a field element");
         }
-        let new_power = self.next_power + powers;
-        let range = self.next_power..new_power;
 
         // gates are a special case, as we reuse the same power of alpha
         // across all of them (they're mutually exclusive)
@@ -75,10 +67,14 @@ impl<F: Field> Alphas<F> {
             ty
         };
 
-        if self.mapping.insert(ty, range).is_some() {
+        if self.mapping.insert(ty, (self.next_power, powers)).is_some() {
             panic!("cannot re-register {:?}", ty);
         }
-        self.next_power = new_power;
+
+        self.next_power = self
+            .next_power
+            .checked_add(powers)
+            .expect("too many powers of alphas were registered");
     }
 
     /// Returns a range of exponents, for a given [ArgumentType], upperbounded by `num`.
@@ -86,8 +82,8 @@ impl<F: Field> Alphas<F> {
     pub fn get_exponents(
         &self,
         ty: ArgumentType,
-        num: usize,
-    ) -> MustConsumeIterator<Take<Range<usize>>, usize> {
+        num: u32,
+    ) -> MustConsumeIterator<Range<u32>, u32> {
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
             ArgumentType::Gate(GateType::Zero)
         } else {
@@ -97,20 +93,29 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty))
-            .clone();
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
+
+        if num > range.1 {
+            panic!(
+                "you asked for {num} exponents, but only registered {} for {:?}",
+                range.1, ty
+            );
+        }
+
+        let start = range.0;
+        let end = start + num;
 
         MustConsumeIterator {
-            inner: range.take(num),
+            inner: start..end,
             debug_info: ty,
         }
     }
 
     /// Instantiates the ranges with an actual field element `alpha`.
-    /// Once you call this function, you cannot register new constraints via [register].
+    /// Once you call this function, you cannot register new constraints via [Self::register].
     pub fn instantiate(&mut self, alpha: F) {
         let mut last_power = F::one();
-        let mut alphas = Vec::with_capacity(self.next_power);
+        let mut alphas = Vec::with_capacity(self.next_power as usize);
         alphas.push(F::one());
         for _ in 1..self.next_power {
             last_power *= alpha;
@@ -123,8 +128,8 @@ impl<F: Field> Alphas<F> {
     pub fn get_alphas(
         &self,
         ty: ArgumentType,
-        num: usize,
-    ) -> MustConsumeIterator<Cloned<Take<Iter<F>>>, F> {
+        num: u32,
+    ) -> MustConsumeIterator<Cloned<Take<Skip<Iter<F>>>>, F> {
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
             ArgumentType::Gate(GateType::Zero)
         } else {
@@ -134,13 +139,23 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty))
-            .clone();
+            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
+
+        if num > range.1 {
+            panic!(
+                "you asked for {num} alphas, but only {} are available for {:?}",
+                range.1, ty
+            );
+        }
 
         match &self.alphas {
             None => panic!("you must call instantiate with an actual field element first"),
             Some(alphas) => {
-                let alphas_range = alphas[range].iter().take(num).cloned();
+                let alphas_range = alphas
+                    .iter()
+                    .skip(range.0 as usize)
+                    .take(num as usize)
+                    .cloned();
                 MustConsumeIterator {
                     inner: alphas_range,
                     debug_info: ty,

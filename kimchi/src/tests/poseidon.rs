@@ -1,35 +1,34 @@
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::CircuitGate,
-    gates::poseidon::{round_to_cols, ROUNDS_PER_ROW, SPONGE_WIDTH},
-    wires::{Wire, COLUMNS},
+use crate::{
+    circuits::{
+        gate::CircuitGate,
+        gates::poseidon::{self, ROUNDS_PER_ROW},
+        wires::{Wire, COLUMNS},
+    },
+    prover_index::testing::new_index_for_test,
+    verifier::batch_verify,
 };
-use crate::{index::Index, prover::ProverProof};
+use crate::{prover::ProverProof, prover_index::ProverIndex};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
-    srs::{endos, SRS},
-};
+use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::{ArithmeticSponge, PlonkSpongeConstants15W, Sponge, SpongeConstants},
+    poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
+use std::time::Instant;
 use std::{io, io::Write};
-use std::{sync::Arc, time::Instant};
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
@@ -37,14 +36,13 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 // const M: usize = PERIOD * (NUM_POS-1);
 // const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC: usize = 0;
-
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
-const ROUNDS_PER_HASH: usize = SpongeParams::ROUNDS_FULL;
+const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
 const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
 const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain size
 
 #[test]
-fn poseidon_vesta_15_wires() {
+fn test_poseidon() {
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);
     println!("max_size = {}", max_size);
     println!("rounds per hash = {}", ROUNDS_PER_HASH);
@@ -52,7 +50,7 @@ fn poseidon_vesta_15_wires() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    let round_constants = oracle::pasta::fp::params().round_constants;
+    let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
     let mut abs_row = 0;
@@ -76,28 +74,18 @@ fn poseidon_vesta_15_wires() {
     }
 
     // create the index
-    let fp_sponge_params = oracle::pasta::fp::params();
-    let mut srs = SRS::<Affine>::create(max_size);
-    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
-    srs.add_lagrange_basis(cs.domain.d1);
-    let fq_sponge_params = oracle::pasta::fq::params();
-    let (endo_q, _endo_r) = endos::<Other>();
-    let srs = Arc::new(srs);
-
-    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let index = new_index_for_test(gates, PUBLIC);
 
     positive(&index);
 }
 
 /// creates a proof and verifies it
-fn positive(index: &Index<Affine>) {
+fn positive(index: &ProverIndex<Affine>) {
     // constant
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);
 
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
-    let params = oracle::pasta::fp::params();
-    let mut sponge = ArithmeticSponge::<Fp, SpongeParams>::new(params);
     let group_map = <Affine as CommitmentCurve>::Map::setup();
     let mut batch = Vec::new();
 
@@ -112,9 +100,9 @@ fn positive(index: &Index<Affine>) {
     println!(
         "{}{:?}",
         "Full rounds: ".yellow(),
-        SpongeParams::ROUNDS_FULL
+        SpongeParams::PERM_ROUNDS_FULL
     );
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::SPONGE_BOX);
+    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::PERM_SBOX);
     println!("{}", "Base curve: vesta\n".green());
     println!("{}", "Prover zk-proof computation".green());
 
@@ -124,55 +112,24 @@ fn positive(index: &Index<Affine>) {
         let mut witness_cols: [Vec<Fp>; COLUMNS] =
             array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
 
-        // creates a random initial state
-        let init = vec![Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
+        // creates a random input
+        let input = [Fp::rand(rng), Fp::rand(rng), Fp::rand(rng)];
 
         // number of poseidon instances in the circuit
         for h in 0..NUM_POS {
             // index
             let first_row = h * (POS_ROWS_PER_HASH + 1);
 
-            // initialize the sponge in the circuit with our random state
-            let first_state_cols = &mut witness_cols[round_to_cols(0)];
-            for state_idx in 0..SPONGE_WIDTH {
-                first_state_cols[state_idx][first_row] = init[state_idx];
-            }
-
-            // set the sponge state
-            sponge.state = init.clone();
-
-            // for the poseidon rows
-            for row_idx in 0..POS_ROWS_PER_HASH {
-                let row = row_idx + first_row;
-                for round in 0..ROUNDS_PER_ROW {
-                    // the last round makes use of the next row
-                    let maybe_next_row = if round == ROUNDS_PER_ROW - 1 {
-                        row + 1
-                    } else {
-                        row
-                    };
-
-                    //
-                    let abs_round = round + row_idx * ROUNDS_PER_ROW;
-
-                    // apply the sponge and record the result in the witness
-                    // (this won't work if the circuit has an INITIAL_ARK)
-                    assert!(!PlonkSpongeConstants15W::INITIAL_ARK);
-                    sponge.full_round(abs_round);
-
-                    // apply the sponge and record the result in the witness
-                    let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
-                    witness_cols[cols_to_update]
-                        .iter_mut()
-                        .zip(sponge.state.iter())
-                        // update the state (last update is on the next row)
-                        .for_each(|(w, s)| w[maybe_next_row] = *s);
-                }
-            }
+            poseidon::generate_witness(
+                first_row,
+                oracle::pasta::fp_kimchi::params(),
+                &mut witness_cols,
+                input,
+            );
         }
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness_cols).unwrap();
+        index.cs.verify(&witness_cols, &[]).unwrap();
 
         //
         let prev = {
@@ -192,7 +149,7 @@ fn positive(index: &Index<Affine>) {
         // add the proof to the batch
         // TODO: create and verify should not take group_map, that should be during an init phase
         batch.push(
-            ProverProof::create::<BaseSponge, ScalarSponge>(
+            ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
                 &group_map,
                 witness_cols,
                 index,
@@ -211,16 +168,12 @@ fn positive(index: &Index<Affine>) {
     // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
     let verifier_index = index.verifier_index();
 
-    let lgr_comms = vec![];
-    let batch: Vec<_> = batch
-        .iter()
-        .map(|proof| (&verifier_index, &lgr_comms, proof))
-        .collect();
+    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());

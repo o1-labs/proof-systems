@@ -1,34 +1,30 @@
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
         gate::CircuitGate,
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
-    index::Index,
     prover::ProverProof,
+    prover_index::testing::new_index_for_test,
+    verifier::batch_verify,
 };
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::{
-    commitment::{ceil_log2, CommitmentCurve},
-    srs::{endos, SRS},
-};
+use commitment_dlog::commitment::{ceil_log2, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
-    pallas::Affine as Other,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
@@ -70,15 +66,7 @@ fn chacha_prover() {
         .collect();
 
     // create the index
-    let fp_sponge_params = oracle::pasta::fp::params();
-    let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, PUBLIC).unwrap();
-    let fq_sponge_params = oracle::pasta::fq::params();
-    let (endo_q, _endo_r) = endos::<Other>();
-    let mut srs = SRS::create(max_size);
-    srs.add_lagrange_basis(cs.domain.d1);
-    let srs = Arc::new(srs);
-
-    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let index = new_index_for_test(gates, PUBLIC);
 
     let mut rows = vec![];
     for _ in 0..num_chachas {
@@ -95,18 +83,16 @@ fn chacha_prover() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
     let verifier_index = index.verifier_index();
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
-    let lgr_comms = vec![];
-    let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
+    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());

@@ -1,14 +1,18 @@
-//! This implements a complete EC addition gate.
-//! The layout is
-//!
-//! 0   1   2   3   4   5   6   7      8   9      10      11   12   13   14
-//! x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv
-//!
-//! where
-//! - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
-//! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
-//! The rest of the values are inaccessible from the permutation argument, but
-//! - `same_x` is a boolean that is true iff `x1 == x2`.
+//! This module implements a complete EC addition gate.
+
+//~ The layout is
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6  |    7   | 8 |   9   |    10   |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:---:|:------:|:-:|:-----:|:-------:|
+//~ | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
+//~
+//~ where
+//~ - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
+//~ - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+//~
+//~ The rest of the values are inaccessible from the permutation argument, but
+//~ - `same_x` is a boolean that is true iff `x1 == x2`.
+//~
 use std::marker::PhantomData;
 
 use crate::circuits::{
@@ -29,6 +33,43 @@ use ark_ff::{FftField, Field, One};
 fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
     vec![z_inv * z.clone() - (E::one() - r.clone()), r * z]
 }
+
+//~ The following constraints are generated:
+//~
+//~ constraint 1:
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
+//~
+//~ constraint 2:
+//~
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $w_{7} \cdot x_{0}$
+//~
+//~ constraint 3:
+//~
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{2} = w_{0} \cdot w_{0}$
+//~ * $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) + (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$
+//~
+//~ constraint 4:
+//~
+//~ * $w_{0} + w_{2} + w_{4} - w_{8} \cdot w_{8}$
+//~
+//~ constraint 5:
+//~
+//~ * $w_{8} \cdot (w_{0} - w_{4}) - w_{1} - w_{5}$
+//~
+//~ constraint 6:
+//~
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{1} \cdot (w_{7} - w_{6})$
+//~
+//~ constraint 7:
+//~
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{1} \cdot w_{9} - w_{6}$
+//~
 
 /// Implementation of the CompleteAdd gate
 /// It uses the constraints
@@ -54,7 +95,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
-    const CONSTRAINTS: usize = 7;
+    const CONSTRAINTS: u32 = 7;
 
     fn constraints() -> Vec<E<F>> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints

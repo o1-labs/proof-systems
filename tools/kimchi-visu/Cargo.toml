@@ -1,0 +1,23 @@
+[package]
+name = "kimchi-visu"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+array-init = "2.0.0"
+ark-ec = "0.3.0"
+ark-ff = "0.3.0"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.79"
+serde_with = "1.10.0"
+tinytemplate = "1.1"
+
+mina-curves = { path = "../../curves" }
+kimchi = { path = "../../kimchi" }
+o1-utils = { path = "../../utils" }
+oracle = { path = "../../oracle" }
+commitment_dlog = { path = "../../poly-commitment" }

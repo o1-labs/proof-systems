@@ -8,7 +8,9 @@ members = [
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
+    "oracle/export_test_vectors",
     "poly-commitment",
+    "tools/kimchi-visu",
     "utils",
 ]
 

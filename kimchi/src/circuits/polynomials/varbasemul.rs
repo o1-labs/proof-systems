@@ -1,11 +1,14 @@
 //! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
+//! ```ignore
 //! Acc := [2]T
 //! for i = n-1 ... 0:
 //!   Q := (r_i == 1) ? T : -T
 //!   Acc := Acc + (Q + Acc)
+//! ```
 //!
-//! See https://github.com/zcash/zcash/issues/3924 and 3.1 of https://arxiv.org/pdf/math/0208038.pdf for details.
+//! See <https://github.com/zcash/zcash/issues/3924>
+//! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
 use std::marker::PhantomData;
 
@@ -206,7 +209,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
-    const CONSTRAINTS: usize = 21;
+    const CONSTRAINTS: u32 = 21;
 
     fn constraints() -> Vec<E<F>> {
         let Layout {

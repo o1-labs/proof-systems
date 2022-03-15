@@ -1,14 +1,16 @@
-//! This module implements Posedon constraint gate Plonk primitive.
-//! Constraint vector format: `[rc; SPONGE_WIDTH]: round constants`
+//! This module implements the Poseidon gate.
 
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     wires::{GateWires, Wire, COLUMNS},
 };
-use ark_ff::FftField;
+use ark_ff::{FftField, Field};
 use array_init::array_init;
-use oracle::poseidon::{sbox, PlonkSpongeConstants15W, SpongeConstants};
+use oracle::poseidon::{
+    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, Sponge,
+    SpongeConstants,
+};
 use std::ops::Range;
 
 //
@@ -16,13 +18,13 @@ use std::ops::Range;
 //
 
 /// Width of the sponge
-pub const SPONGE_WIDTH: usize = PlonkSpongeConstants15W::SPONGE_WIDTH;
+pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
 /// Number of rows
 pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
 
 /// Number of rounds
-pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstants15W::ROUNDS_FULL;
+pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL;
 
 /// Number of PLONK rows required to implement Poseidon
 pub const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
@@ -140,7 +142,7 @@ impl<F: FftField> CircuitGate<F> {
                 let state = &states[round];
                 let mut new_state = rc[round][i];
                 for (&s, mds) in state.iter().zip(mds_row.iter()) {
-                    let sboxed = sbox::<F, PlonkSpongeConstants15W>(s);
+                    let sboxed = sbox::<F, PlonkSpongeConstantsKimchi>(s);
                     new_state += sboxed * mds;
                 }
 
@@ -179,5 +181,54 @@ impl<F: FftField> CircuitGate<F> {
                 }
             })
         })
+    }
+}
+
+/// `generate_witness(row, params, witness_cols, input)` uses a sponge initialized with
+/// `params` to generate a witness for starting at row `row` in `witness_cols`,
+/// and with input `input`.
+pub fn generate_witness<F: Field>(
+    row: usize,
+    params: ArithmeticSpongeParams<F>,
+    witness_cols: &mut [Vec<F>; COLUMNS],
+    input: [F; SPONGE_WIDTH],
+) {
+    // add the input into the witness
+    witness_cols[0][row] = input[0];
+    witness_cols[1][row] = input[1];
+    witness_cols[2][row] = input[2];
+
+    // set the sponge state
+    let mut sponge = ArithmeticSponge::<F, PlonkSpongeConstantsKimchi>::new(params);
+    sponge.state = input.into();
+
+    // for the poseidon rows
+    for row_idx in 0..POS_ROWS_PER_HASH {
+        let row = row + row_idx;
+        for round in 0..ROUNDS_PER_ROW {
+            // the last round makes use of the next row
+            let maybe_next_row = if round == ROUNDS_PER_ROW - 1 {
+                row + 1
+            } else {
+                row
+            };
+
+            //
+            let abs_round = round + row_idx * ROUNDS_PER_ROW;
+
+            // apply the sponge and record the result in the witness
+            if PlonkSpongeConstantsKimchi::PERM_INITIAL_ARK {
+                panic!("this won't work if the circuit has an INITIAL_ARK")
+            }
+            sponge.full_round(abs_round);
+
+            // apply the sponge and record the result in the witness
+            let cols_to_update = round_to_cols((round + 1) % ROUNDS_PER_ROW);
+            witness_cols[cols_to_update]
+                .iter_mut()
+                .zip(sponge.state.iter())
+                // update the state (last update is on the next row)
+                .for_each(|(w, s)| w[maybe_next_row] = *s);
+        }
     }
 }
