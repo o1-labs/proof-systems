@@ -4067,7 +4067,7 @@
             <span class="ident">JointCombiner</span> =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">EndoCoefficient</span> =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">Mds</span> { <span class="ident">row</span>, <span class="ident">col</span> } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}(\&quot;0x{}\&quot;)&quot;</span>, <span class="ident">x</span>.<span class="ident">into_repr</span>()),
+            <span class="ident">Literal</span>(<span class="ident">x</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, <span class="ident">x</span>.<span class="ident">into_repr</span>().<span class="ident">into</span>()),
             <span class="ident">Pow</span>(<span class="ident">x</span>, <span class="ident">n</span>) =&gt; <span class="kw">match</span> <span class="ident">x</span>.<span class="ident">as_ref</span>() {
                 <span class="ident">Alpha</span> =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
                 <span class="ident">x</span> =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, <span class="ident">x</span>.<span class="ident">ocaml</span>()),
@@ -4218,5 +4218,5 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">coeff</span>, <span class="ident">index</span>, <span class="ident">witness</span>, <span class="ident">witness_curr</span>, <span class="ident">witness_next</span>, <span class="ident">E</span>};
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (e95b10ba4 2022-03-13)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (285fa7ecd 2022-03-14)" ></div>
 </body></html>
