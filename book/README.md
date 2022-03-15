@@ -8,7 +8,9 @@ It is built with [mdbook](https://rust-lang.github.io/mdBook/), which you can us
 $ # setup
 $ cargo install mdbook
 $ cargo install mdbook-katex
-$ cargo install mdbook-linkcheck
+$ cargo install mdbook-admonish
+$ cargo install mdbook-mermaid
+$ cargo install mdbook-toc
 $ # serve the page locally
 $ mdbook serve
 ```
