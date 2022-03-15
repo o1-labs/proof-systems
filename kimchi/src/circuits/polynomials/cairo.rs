@@ -116,12 +116,20 @@ fn two<F: Field>() -> E<F> {
 }
 
 /// Combines the constraints for the Cairo gates
+pub fn gate_combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
+    Instruction::combined_constraints(alphas)
+        + Transition::combined_constraints(alphas)
+        + Claim::combined_constraints(alphas)
+        + E::literal(F::zero())
+}
+
+/// Combines the constraints for the Cairo gates depending on its type
 pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::CairoInstruction => Instruction::combined_constraints(alphas),
         GateType::CairoTransition => Transition::combined_constraints(alphas),
         GateType::CairoClaim => Claim::combined_constraints(alphas),
-        GateType::Zero => Claim::combined_constraints(alphas),
+        GateType::Zero => E::literal(F::zero()),
         _ => panic!("invalid gate type"),
     }
 }
@@ -353,6 +361,40 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoClaim);
+    const CONSTRAINTS: u32 = 5;
+
+    /// Generates the constraints for the Cairo claim
+    ///     Accesses Curr row only
+    fn constraints() -> Vec<E<F>> {
+        let pc0 = witness_curr(0);
+        let ap0 = witness_curr(1);
+        let fp0 = witness_curr(2);
+        let pc_t = witness_curr(3);
+        let ap_t = witness_curr(4);
+        let pc_ini = witness_curr(5);
+        let ap_ini = witness_curr(6);
+        let pc_fin = witness_curr(7);
+        let ap_fin = witness_curr(8);
+
+        // LIST OF CONSTRAINTS
+        // * Check initial and final ap, fp, pc
+        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
+        constraints.push(fp0 - ap_ini); // fp0 = ini_ap
+        constraints.push(ap_t - ap_fin); // apT = fin_ap
+        constraints.push(pc0 - pc_ini); // pc0 = ini_pc
+        constraints.push(pc_t - pc_fin); // pcT = fin_pc
+
+        constraints
+    }
+}
+
+pub struct Stack<F>(PhantomData<F>);
+
+impl<F> Argument<F> for Stack<F>
+where
+    F: FftField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoStack);
     const CONSTRAINTS: u32 = 5;
 
     /// Generates the constraints for the Cairo claim

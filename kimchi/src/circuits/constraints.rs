@@ -571,6 +571,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 0 => GateType::CairoInstruction,
                 1 => GateType::CairoTransition,
                 2 => GateType::CairoClaim,
+                3 => GateType::CairoStack,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(
@@ -583,12 +584,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .interpolate()
         });
 
-        // Forieign field multiplication constraint polynomials
+        // Cairo constraint polynomials
         let cairo8: [E<F, D<F>>; cairo::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
                 0 => GateType::CairoInstruction,
                 1 => GateType::CairoTransition,
                 2 => GateType::CairoClaim,
+                3 => GateType::CairoStack,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(

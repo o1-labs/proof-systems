@@ -14,6 +14,7 @@ use crate::circuits::{
     constraints::{zk_polynomial, zk_w3, ConstraintSystem, LookupConstraintSystem},
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::{GateType, LookupsUsed},
+    gates::cairo,
     wires::*,
 };
 use ark_ec::AffineCurve;
@@ -130,6 +131,10 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    // Pasta pallas foreign field multiplication polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub cairo_comm: [PolyComm<G>; cairo::CIRCUIT_GATE_COUNT],
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [Fr<G>; PERMUTS],
@@ -187,6 +192,8 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += ChaCha2::combined_constraints(&powers_of_alpha);
         expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
     }
+
+    expr += crate::circuits::polynomials::cairo::gate_combined_constraints(&powers_of_alpha);
 
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
@@ -311,6 +318,11 @@ where
 
             chacha_comm: self.cs.chacha8.as_ref().map(|c| {
                 array_init(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
+            }),
+
+            cairo_comm: array_init(|i| {
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.cs.cairo8[i], None)
             }),
 
             shift: self.cs.shift,

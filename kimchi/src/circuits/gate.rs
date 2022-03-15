@@ -155,6 +155,7 @@ pub enum GateType {
     CairoInstruction = 11,
     CairoTransition = 12,
     CairoClaim = 13,
+    CairoStack = 14,
 }
 
 /// Describes the desired lookup configuration.
@@ -508,7 +509,7 @@ impl<F: FftField> CircuitGate<F> {
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
-            CairoInstruction | CairoTransition | CairoClaim => {
+            CairoInstruction | CairoTransition | CairoClaim | CairoStack => {
                 self.verify_cairo_gate(row, witness, cs)
             }
         }
