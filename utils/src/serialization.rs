@@ -17,7 +17,7 @@ pub mod ser {
     use serde_with::{DeserializeAs, SerializeAs};
 
     /// You can use this to serialize an arkworks type with serde and the "serialize_with" attribute.
-    /// See https://serde.rs/field-attrs.html
+    /// See <https://serde.rs/field-attrs.html>
     pub fn serialize<S>(val: impl CanonicalSerialize, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -30,7 +30,7 @@ pub mod ser {
     }
 
     /// You can use this to deserialize an arkworks type with serde and the "deserialize_with" attribute.
-    /// See https://serde.rs/field-attrs.html
+    /// See <https://serde.rs/field-attrs.html>
     pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: CanonicalDeserialize,
@@ -48,7 +48,7 @@ pub mod ser {
 /// You can use [SerdeAs] with [serde_with] in order to serialize and deserialize types that implement [CanonicalSerialize] and [CanonicalDeserialize],
 /// or containers of types that implement these traits (Vec, arrays, etc.)
 /// Simply add annotations like `#[serde_as(as = "o1_utils::serialization::SerdeAs")]`
-/// See https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as
+/// See <https://docs.rs/serde_with/1.10.0/serde_with/guide/serde_as/index.html#switching-from-serdes-with-to-serde_as>
 pub struct SerdeAs;
 
 impl<T> serde_with::SerializeAs<T> for SerdeAs

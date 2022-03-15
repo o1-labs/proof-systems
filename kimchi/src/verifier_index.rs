@@ -1,5 +1,5 @@
 //! This module implements the verifier index as [VerifierIndex].
-//! You can derive this struct from the [Index] struct.
+//! You can derive this struct from the [ProverIndex] struct.
 
 use crate::alphas::Alphas;
 use crate::circuits::{
@@ -8,7 +8,7 @@ use crate::circuits::{
     gate::LookupsUsed,
     wires::*,
 };
-use crate::prover_index::Index;
+use crate::prover_index::ProverIndex;
 use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
@@ -43,6 +43,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
+//~spec:startcode
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -118,12 +119,13 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
+//~spec:endcode
 
-impl<'a, G: CommitmentCurve> Index<G>
+impl<'a, G: CommitmentCurve> ProverIndex<G>
 where
     G::BaseField: PrimeField,
 {
-    /// Produces the [VerifierIndex] from the prover's [Index].
+    /// Produces the [VerifierIndex] from the prover's [ProverIndex].
     pub fn verifier_index(&self) -> VerifierIndex<G> {
         let domain = self.cs.domain.d1;
         let lookup_index = {

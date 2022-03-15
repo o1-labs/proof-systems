@@ -1,17 +1,11 @@
-#[cfg(feature = "test_vectors")]
 mod vectors;
-#[cfg(feature = "test_vectors")]
 use inner::*;
 
 /// "Usage: cargo run --all-features --bin export_test_vectors -- [hex|b10] [legacy|kimchi] <OUTPUT_FILE>",
 fn main() {
-    #[cfg(feature = "test_vectors")]
     inner::main();
-    #[cfg(not(feature = "test_vectors"))]
-    println!("Error: this tool should be compiled with feature 'test_vectors'");
 }
 
-#[cfg(feature = "test_vectors")]
 mod inner {
     use super::vectors;
     use std::env;
@@ -84,7 +78,7 @@ mod inner {
             }
             _ => {
                 println!(
-                "usage: cargo run --all-features --bin export_test_vectors -- [{:?}|{:?}] [legacy|kimchi] <OUTPUT_FILE>",
+                "usage: cargo run -p export_test_vectors -- [{:?}|{:?}] [legacy|kimchi] <OUTPUT_FILE>",
                 Mode::Hex,
                 Mode::B10,
             );

@@ -56,7 +56,7 @@ pub const GENERIC_REGISTERS: usize = 3;
 pub const GENERIC_COEFFS: usize = GENERIC_REGISTERS + 1 /* mul */ + 1 /* cst */;
 
 /// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [create_generic_gadget] function.
+/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
 pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
@@ -81,7 +81,7 @@ pub enum GenericGateSpec<F> {
 }
 
 impl<F: FftField> CircuitGate<F> {
-    /// This allows you to create two generic gates that will fit in one row, check [create_generic_gadget] for a better to way to create these gates.
+    /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
             typ: GateType::Generic,
@@ -230,10 +230,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// produces
+    ///
+    /// ```ignore
     /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[0](zeta),
     /// alpha * generic(zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[2](zeta)
+    /// ```
     pub fn gnrc_scalars(
         mut alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],

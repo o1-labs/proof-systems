@@ -16,15 +16,9 @@
 //! - when creating a proof or verifying a proof, at this point we know alpha
 //!   so we can use the mapping we created during the creation of the index.
 //!
-//! For this to work, we use two types:
+//! For this to work, we use the type [Alphas] to register ranges of powers of alpha,
+//! for the various [ArgumentType]s.
 //!
-//! - [Builder], which allows us to map constraints to powers
-//! - [Alphas], which you can derive from [Builder] and an `alpha`
-//!
-//! Both constructions will enforce that you use all the powers of
-//! alphas that you register for constraint. This allows us to
-//! make sure that we compute the correct amounts, without reusing
-//! powers of alphas between constraints.
 
 use crate::circuits::{argument::ArgumentType, gate::GateType};
 use ark_ff::Field;
@@ -41,8 +35,8 @@ use std::{
 // ------------------------------------------
 
 /// This type can be used to create a mapping between powers of alpha and constraint types.
-/// See [Alphas::default] to create one,
-/// and [Builder::register] to register a new mapping.
+/// See [Self::default] to create one,
+/// and [Self::register] to register a new mapping.
 /// Once you know the alpha value, you can convert this type to a [Alphas].
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Alphas<F> {
@@ -119,7 +113,7 @@ impl<F: Field> Alphas<F> {
     }
 
     /// Instantiates the ranges with an actual field element `alpha`.
-    /// Once you call this function, you cannot register new constraints via [register].
+    /// Once you call this function, you cannot register new constraints via [Self::register].
     pub fn instantiate(&mut self, alpha: F) {
         let mut last_power = F::one();
         let mut alphas = Vec::with_capacity(self.next_power as usize);

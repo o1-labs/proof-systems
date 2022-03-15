@@ -1,4 +1,4 @@
-//! This module implements the prover index as [Prover].
+//! This module implements the prover index as [ProverIndex].
 
 use crate::alphas::Alphas;
 use crate::circuits::{
@@ -18,15 +18,11 @@ use std::sync::Arc;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-//~
-//~ ### The prover Index
-//~
-
 /// The index used by the prover
-// TODO: rename as ProverIndex
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Index<G: CommitmentCurve> {
+//~spec:startcode
+pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<Fr<G>>,
@@ -53,8 +49,9 @@ pub struct Index<G: CommitmentCurve> {
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
+//~spec:endcode
 
-impl<'a, G: CommitmentCurve> Index<G>
+impl<'a, G: CommitmentCurve> ProverIndex<G>
 where
     G::BaseField: PrimeField,
 {
@@ -74,20 +71,20 @@ where
         }
         cs.endo = endo_q;
 
-        //~ 1. compute the linearization
+        // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
             &cs.lookup_constraint_system,
         );
 
-        //~ 2. set `max_quot_size` to the degree of the quotient polynomial,
-        //~    which is obtained by looking at the highest monomial in the sum
-        //~     $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
-        //~    where the $w_i(x)$ are of degree the size of the domain.
+        // set `max_quot_size` to the degree of the quotient polynomial,
+        // which is obtained by looking at the highest monomial in the sum
+        // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
+        // where the $w_i(x)$ are of degree the size of the domain.
         let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
 
-        Index {
+        ProverIndex {
             cs,
             linearization,
             powers_of_alpha,
@@ -105,7 +102,7 @@ pub mod testing {
     use commitment_dlog::srs::endos;
     use mina_curves::pasta::{pallas::Affine as Other, vesta::Affine, Fp};
 
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> Index<Affine> {
+    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Affine> {
         let fp_sponge_params = oracle::pasta::fp_kimchi::params();
         let cs = ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, public).unwrap();
 
@@ -115,6 +112,6 @@ pub mod testing {
 
         let fq_sponge_params = oracle::pasta::fq_kimchi::params();
         let (endo_q, _endo_r) = endos::<Other>();
-        Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
+        ProverIndex::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
     }
 }

@@ -179,14 +179,16 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
 }
 
+// TODO: move Shifts, and permutation-related functions to the permutation module
+
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {
-    /// The coefficients k that create a coset when multiplied with the generator of our domain.
+    /// The coefficients `k` (in the Plonk paper) that create a coset when multiplied with the generator of our domain.
     shifts: [F; PERMUTS],
-    /// A matrix that maps all cells coordinates {col, row} to their shifted field element.
-    /// For example the cell {col:2, row:1} will map to omega * k2,
-    /// which lives in map[2][1]
+    /// A matrix that maps all cells coordinates `{col, row}` to their shifted field element.
+    /// For example the cell `{col:2, row:1}` will map to `omega * k2`,
+    /// which lives in `map[2][1]`
     map: [Vec<F>; PERMUTS],
 }
 
@@ -388,15 +390,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
     ) -> Option<Self> {
+        //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        //~ 1. +3 on gates.len() here to ensure that we have room for the zero-knowledge entries of the permutation polynomial
-        //~    see https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk
+        //~ 2. Create a domain for the circuit. That is,
+        //~    compute the smallest subgroup of the field that
+        //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
         assert!(domain.d1.size > ZK_ROWS);
 
-        //~ 2. pad the rows: add zero gates to reach the domain size
+        //~ 3. Pad the circuit: add zero gates to reach the domain size.
         let d1_size = domain.d1.size();
         let mut padding = (gates.len()..d1_size)
             .map(|i| {
@@ -408,15 +412,16 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             .collect();
         gates.append(&mut padding);
 
-        //
-        // Permutation
-        //
-
-        // sample the coordinate shifts
+        //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
-        // pre-compute all the elements
-        let sid = shifts.map[0].clone();
+        // Precomputations
+        // ===============
+        // what follows are pre-computations.
+
+        //
+        // Permutation
+        // -----------
 
         // compute permutation polynomials
         let mut sigmal1: [Vec<F>; PERMUTS] =
@@ -449,20 +454,23 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let zkpm = zk_polynomial(domain.d1);
         let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
-        //
         // Gates
+        // -----
         //
+        // Compute each gate's polynomial as
+        // the polynomial that evaluates to 1 at $g^i$
+        // where $i$ is the row where a gate is active.
+        // Note: gates must be mutually exclusive.
 
-        // compute generic constraint polynomials
-
-        // compute poseidon constraint polynomials
+        // poseidon gate
         let psm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.ps()).collect(),
             domain.d1,
         )
         .interpolate();
+        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
-        // compute ECC arithmetic constraint polynomials
+        // ECC gates
         let complete_addm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
@@ -471,16 +479,22 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             domain.d1,
         )
         .interpolate();
+        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
+
         let mulm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.vbmul()).collect(),
             domain.d1,
         )
         .interpolate();
+        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
+
         let emulm = E::<F, D<F>>::from_vec_and_domain(
             gates.iter().map(|gate| gate.endomul()).collect(),
             domain.d1,
         )
         .interpolate();
+        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+
         let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
@@ -489,9 +503,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             domain.d1,
         )
         .interpolate();
+        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
 
-        // generic constraint polynomials
-
+        // double generic gate
         let genericm = E::<F, D<F>>::from_vec_and_domain(
             gates
                 .iter()
@@ -508,6 +522,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         .interpolate();
         let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
 
+        // chacha gate
         let chacha8 = {
             use GateType::*;
             let has_chacha_gate = gates
@@ -538,6 +553,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        //
+        // Coefficient
+        // -----------
+        //
+
+        // coefficient polynomial
         let coefficientsm: [_; COLUMNS] = array_init(|i| {
             let padded = gates
                 .iter()
@@ -549,15 +570,19 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
-        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
+        //
+        // Lookup
+        // ------
 
-        // ECC arithmetic constraint polynomials
-        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
-        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
-        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
-        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
+        let lookup_constraint_system =
+            LookupConstraintSystem::create(&gates, lookup_tables, &domain);
 
-        // constant polynomials
+        //
+        // Constant polynomials
+        // --------------------
+
+        let sid = shifts.map[0].clone();
+
         let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
         // TODO: These are all unnecessary. Remove
@@ -573,19 +598,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let vanishes_on_last_4_rows =
             vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
 
-        // endo
+        // TODO: remove endo as a field
         let endo = F::zero();
-
-        //
-        // Lookup
-        //
-
-        let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, &domain);
-
-        //
-        // return result
-        //
 
         Some(ConstraintSystem {
             chacha8,
