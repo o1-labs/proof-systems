@@ -54,7 +54,7 @@ jobs:
 
       - name: Check that up-to-date specification is checked in
         run: |
-          cargo install cargo-spec --version 0.1.3
+          cargo install cargo-spec --version 0.3.0
           cd book/specifications
           cd kimchi && make build && cd ..
           cd poly-commitment && make build && cd ..

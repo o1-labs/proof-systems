@@ -23,6 +23,8 @@ varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 
 # setup
 constraint_system = "../../../kimchi/src/circuits/constraints.rs"
+prover_index = "../../../kimchi/src/prover_index.rs"
+verifier_index = "../../../kimchi/src/verifier_index.rs"
 
 # proof
 prover = "../../../kimchi/src/prover.rs"
