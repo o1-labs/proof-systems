@@ -580,7 +580,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 ```
 
 
-## Verifier Index
+### Verifier Index
 
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
@@ -838,6 +838,64 @@ The prover then follows the following steps to create the proof:
 
 ### Proof Verification
 
+We define two helper algorithms below, used in the batch verification of proofs. 
+
+
+#### Fiat-Shamir argument
+
+We run the following algorithm:
+
+10. Sample $\alpha'$ with the Fq-Sponge.
+11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+12. Enforce that the length of the t commitment is of size `PERMUTS`.
+13. absorb the polycommitments into the argument and sample zeta.
+14. Sample $\zeta'$ with the Fq-Sponge.
+15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+16. Setup the Fr-Sponge.
+17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+    - the public polynomial
+    - z
+    - generic selector
+    - poseidon selector
+    - the 15 register/witness
+    - 6 sigmas evaluations (the last one is not evaluated)
+20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+21. Sample $v'$ with the Fr-Sponge.
+22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+23. Sample $u'$ with the Fr-Sponge.
+24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+25. Create a list of all polynomials that have an evaluation proof.
+26. Compute the evaluation of $ft(\zeta)$.
+
+#### Partial verification
+
+For every proof we want to verify, we deffer the proof opening to the very end.
+This allows us to potentially batch verify a number of partially verified proofs.
+Essentially, this steps verify that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
+
+1. Commit to the negated public input polynomial.
+2. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
+3. combine the chunked polynomials' evaluations
+   (TODO: most likely only the quotient polynomial is chunked)
+   with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
+4. Compute the commitment to the linearized polynomial $f$.
+5. Compute the (chuncked) commitment of $ft$
+   (see [Maller's optimization](../crypto/plonk/maller_15.html).
+6. List the polynomial commitments, and their associated evaluations,
+   That are associated to the aggregated evaluation proof in the  proof.
+#### Batch verification of proofs
+
+Below, we define the steps to follow a number of proofs
+(each associated to a [verifier index](#verifier-index)).
+You can, of course, use it to verify a single proof.
+
+1. If there's no proof to verify, the proof validates trivially.
+2. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
+3. Validate each proof separately following the [partial verification](#partial-verification) steps.
+4. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
 
 
 ## Optimizations

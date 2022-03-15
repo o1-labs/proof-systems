@@ -516,6 +516,7 @@ where
 }
 
 /// Contains the batch evaluation
+// TODO: I think we should really change this name to something more correct
 pub struct BatchEvaluationProof<'a, G, EFqSponge>
 where
     G: AffineCurve,

@@ -126,7 +126,7 @@ use crate::{
         gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
         wires::COLUMNS,
     },
-    error::{ProofError, Result},
+    error::ProofError,
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
@@ -399,7 +399,7 @@ pub fn sorted<
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     params: E::Params,
-) -> Result<Vec<Vec<E>>> {
+) -> Result<Vec<Vec<E>>, ProofError> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
 
@@ -507,7 +507,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
-) -> Result<Evaluations<F, D<F>>> {
+) -> Result<Evaluations<F, D<F>>, ProofError> {
     let n = d1.size as usize;
     let lookup_rows = n - ZK_ROWS - 1;
     let beta1 = F::one() + beta;

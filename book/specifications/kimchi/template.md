@@ -258,7 +258,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
 {sections.prover_index}
 
-## Verifier Index
+### Verifier Index
 
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
@@ -340,6 +340,8 @@ The prover then follows the following steps to create the proof:
 {sections.prover}
 
 ### Proof Verification
+
+We define two helper algorithms below, used in the batch verification of proofs. 
 
 {sections.verifier}
 
