@@ -496,11 +496,12 @@ impl<F: FftField> CircuitGate<F> {
         row: usize,
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
+        public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
-            Generic => self.verify_generic(row, witness),
+            Generic => self.verify_generic(row, witness, public),
             Poseidon => self.verify_poseidon(row, witness, cs),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),

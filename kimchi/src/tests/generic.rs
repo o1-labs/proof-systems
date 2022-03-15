@@ -1,7 +1,8 @@
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
-use crate::index::testing::new_index_for_test;
 use crate::prover::ProverProof;
+use crate::prover_index::testing::new_index_for_test;
+use crate::verifier::batch_verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -12,39 +13,52 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_generic_gate() {
-    let gates = create_circuit(0);
+    let gates = create_circuit(0, 0);
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
-    fill_in_witness(0, &mut witness);
+    fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
-    verify_proof(gates, witness, 0);
+    verify_proof(gates, witness, &[]);
 }
 
-fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public: usize) {
+#[test]
+fn test_generic_gate_pub() {
+    let public = vec![Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+
+    // create witness
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    fill_in_witness(0, &mut witness, &public);
+
+    // create and verify proof based on the witness
+    verify_proof(gates, witness, &public);
+}
+
+fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public: &[Fp]) {
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
     // create the index
-    let index = new_index_for_test(gates, public);
+    let index = new_index_for_test(gates, public.len());
 
     // verify the circuit satisfiability by the computed witness
-    index.cs.verify(&witness).unwrap();
+    index.cs.verify(&witness, public).unwrap();
 
     // previous opening for recursion
     let prev = {
@@ -67,10 +81,6 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // verify the proof
     let verifier_index = index.verifier_index();
-    let lgr_comms = vec![]; // why empty?
-    let batch: Vec<_> = batch
-        .iter()
-        .map(|proof| (&verifier_index, &lgr_comms, proof))
-        .collect();
-    ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
+    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
+    batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch).unwrap();
 }

@@ -56,7 +56,7 @@ pub const GENERIC_REGISTERS: usize = 3;
 pub const GENERIC_COEFFS: usize = GENERIC_REGISTERS + 1 /* mul */ + 1 /* cst */;
 
 /// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [create_generic_gadget] function.
+/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
 pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
@@ -81,7 +81,7 @@ pub enum GenericGateSpec<F> {
 }
 
 impl<F: FftField> CircuitGate<F> {
-    /// This allows you to create two generic gates that will fit in one row, check [create_generic_gadget] for a better to way to create these gates.
+    /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
             typ: GateType::Generic,
@@ -230,10 +230,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// produces
+    ///
+    /// ```ignore
     /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[0](zeta),
     /// alpha * generic(zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[2](zeta)
+    /// ```
     pub fn gnrc_scalars(
         mut alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
@@ -313,6 +316,7 @@ pub mod testing {
             &self,
             row: usize,
             witness: &[Vec<F>; COLUMNS],
+            public: &[F],
         ) -> Result<(), String> {
             // assignments
             let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
@@ -330,9 +334,14 @@ pub mod testing {
                 let mul = self.coeffs[coeffs_offset + 3]
                     * this[register_offset]
                     * this[register_offset + 1];
+                let public = if coeffs_offset == 0 {
+                    public.get(row).cloned().unwrap_or_else(F::zero)
+                } else {
+                    F::zero()
+                };
                 ensure_eq!(
                     zero,
-                    sum + mul + self.coeffs[coeffs_offset + 4],
+                    sum + mul + self.coeffs[coeffs_offset + 4] - public,
                     "generic: incorrect gate"
                 );
                 Ok(())
@@ -387,12 +396,22 @@ pub mod testing {
     }
 
     /// function to create a generic circuit
-    pub fn create_circuit<F: FftField>(start_row: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<F: FftField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
         // create generic gates
         let mut gates_row = iterate(start_row, |&i| i + 1);
+
+        // public input
+        for _ in 0..public {
+            let r = gates_row.next().unwrap();
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                GenericGateSpec::Pub,
+                None,
+            ));
+        }
 
         // add and mul
         for _ in 0..10 {
@@ -429,9 +448,19 @@ pub mod testing {
     }
 
     // function to fill in a witness created via [create_circuit]
-    pub fn fill_in_witness<F: FftField>(start_row: usize, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn fill_in_witness<F: FftField>(
+        start_row: usize,
+        witness: &mut [Vec<F>; COLUMNS],
+        public: &[F],
+    ) {
         // fill witness
         let mut witness_row = iterate(start_row, |&i| i + 1);
+
+        // public
+        for p in public {
+            let r = witness_row.next().unwrap();
+            witness[0][r] = *p;
+        }
 
         // add and mul
         for _ in 0..10 {
@@ -470,7 +499,7 @@ mod tests {
     #[test]
     fn test_generic_polynomial() {
         // create circuit
-        let gates = testing::create_circuit::<Fp>(0);
+        let gates = testing::create_circuit::<Fp>(0, 0);
 
         // create constraint system
         let cs = ConstraintSystem::fp_for_testing(gates);
@@ -478,10 +507,10 @@ mod tests {
         // create witness
         let n = cs.domain.d1.size();
         let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
-        testing::fill_in_witness(0, &mut witness);
+        testing::fill_in_witness(0, &mut witness, &[]);
 
         // make sure we're done filling the witness correctly
-        cs.verify(&witness).unwrap();
+        cs.verify(&witness, &[]).unwrap();
 
         // generate witness polynomials
         let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =

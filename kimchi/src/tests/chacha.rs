@@ -4,8 +4,9 @@ use crate::{
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
-    index::testing::new_index_for_test,
     prover::ProverProof,
+    prover_index::testing::new_index_for_test,
+    verifier::batch_verify,
 };
 use array_init::array_init;
 use colored::Colorize;
@@ -16,14 +17,14 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
@@ -90,10 +91,9 @@ fn chacha_prover() {
     let verifier_index = index.verifier_index();
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
-    let lgr_comms = vec![];
-    let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
+    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());

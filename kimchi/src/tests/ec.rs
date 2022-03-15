@@ -3,8 +3,9 @@ use crate::{
         gate::{CircuitGate, GateType},
         wires::*,
     },
-    index::testing::new_index_for_test,
     prover::ProverProof,
+    prover_index::testing::new_index_for_test,
+    verifier::batch_verify,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
@@ -18,7 +19,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    poseidon::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -26,7 +27,7 @@ use std::time::Instant;
 
 const PUBLIC: usize = 0;
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
@@ -54,7 +55,6 @@ fn ec_test() {
     let verifier_index = index.verifier_index();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let lgr_comms = vec![];
     let rng = &mut StdRng::from_seed([0; 32]);
 
     let ps = {
@@ -166,7 +166,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    index.cs.verify(&witness).unwrap();
+    index.cs.verify(&witness, &[]).unwrap();
 
     let start = Instant::now();
     let proof =
@@ -174,9 +174,9 @@ fn ec_test() {
             .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
+    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());

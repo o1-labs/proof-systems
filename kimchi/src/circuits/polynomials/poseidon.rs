@@ -30,7 +30,7 @@ use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CurrOrNext, GateType};
 use crate::circuits::gates::poseidon::*;
 use ark_ff::{FftField, Field};
-use oracle::poseidon::{PlonkSpongeConstants15W, SpongeConstants};
+use oracle::poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use std::marker::PhantomData;
 use CurrOrNext::*;
 
@@ -67,6 +67,8 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// Implementation of the Poseidon gate
 /// Poseidon quotient poly contribution computation `f^7 + c(x) - f(wx)`
 /// Conjunction of:
+///
+/// ```ignore
 /// curr[round_range(1)] = round(curr[round_range(0)])
 /// curr[round_range(2)] = round(curr[round_range(1)])
 /// curr[round_range(3)] = round(curr[round_range(2)])
@@ -85,6 +87,8 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///    + mds[1][2] * sbox(curr[round_range(0)][2])
 ///    + rcm[round_range(1)][1]
 /// ...
+/// ```
+///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
 #[derive(Default)]
@@ -123,7 +127,7 @@ where
             //~ We define the S-box operation as $w^S$ for $S$ the `SPONGE_BOX` constant.
             let sboxed: Vec<_> = round_to_cols(source)
                 .map(|i| {
-                    cache.cache(witness_curr(i).pow(PlonkSpongeConstants15W::SPONGE_BOX as u64))
+                    cache.cache(witness_curr(i).pow(PlonkSpongeConstantsKimchi::PERM_SBOX as u64))
                 })
                 .collect();
 
@@ -145,30 +149,31 @@ where
                 //~ Each of the associated 15 registers is associated to a constraint, calculated as:
                 //~
                 //~ first round:
-                //~ * $w_6 - r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)$
-                //~ * $w_7 - r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)$
-                //~ * $w_8 - r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)$
+                //~ * $w_6 - [r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)]$
+                //~ * $w_7 - [r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)]$
+                //~ * $w_8 - [r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)]$
                 //~
                 //~ second round:
-                //~ * $w_9 - r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)$
-                //~ * $w_{10} - r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)$
-                //~ * $w_{11} - r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)$
+                //~ * $w_9 - [r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)]$
+                //~ * $w_{10} - [r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)]$
+                //~ * $w_{11} - [r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)]$
                 //~
                 //~ third round:
-                //~ * $w_{12} - r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)$
-                //~ * $w_{13} - r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)$
-                //~ * $w_{14} - r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)$
+                //~ * $w_{12} - [r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)]$
+                //~ * $w_{13} - [r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)]$
+                //~ * $w_{14} - [r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)]$
                 //~
                 //~ fourth round:
-                //~ * $w_3 - r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)$
-                //~ * $w_4 - r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)$
-                //~ * $w_5 - r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)$
+                //~ * $w_3 - [r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)]$
+                //~ * $w_4 - [r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)]$
+                //~ * $w_5 - [r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)]$
                 //~
                 //~ fifth round:
-                //~ * $w_{0, next} - r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)$
-                //~ * $w_{1, next} - r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)$
-                //~ * $w_{2, next} - r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)$
+                //~ * $w_{0, next} - [r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)]$
+                //~ * $w_{1, next} - [r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)]$
+                //~ * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
                 //~
+                //~ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
                 let constraint = witness(col, target_row)
                     - sboxed
                         .iter()

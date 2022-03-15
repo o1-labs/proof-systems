@@ -4,9 +4,10 @@ use crate::{
         gates::poseidon::{self, ROUNDS_PER_ROW},
         wires::{Wire, COLUMNS},
     },
-    index::testing::new_index_for_test,
+    prover_index::testing::new_index_for_test,
+    verifier::batch_verify,
 };
-use crate::{index::Index, prover::ProverProof};
+use crate::{prover::ProverProof, prover_index::ProverIndex};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
@@ -18,7 +19,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::{PlonkSpongeConstants15W, SpongeConstants},
+    poseidon::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -27,7 +28,7 @@ use std::{io, io::Write};
 
 // aliases
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
@@ -36,7 +37,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 // const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC: usize = 0;
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
-const ROUNDS_PER_HASH: usize = SpongeParams::ROUNDS_FULL;
+const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
 const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
 const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain size
 
@@ -49,7 +50,7 @@ fn test_poseidon() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    let round_constants = oracle::pasta::fp::params().round_constants;
+    let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
     let mut abs_row = 0;
@@ -79,7 +80,7 @@ fn test_poseidon() {
 }
 
 /// creates a proof and verifies it
-fn positive(index: &Index<Affine>) {
+fn positive(index: &ProverIndex<Affine>) {
     // constant
     let max_size = 1 << ceil_log2(N_LOWER_BOUND);
 
@@ -99,9 +100,9 @@ fn positive(index: &Index<Affine>) {
     println!(
         "{}{:?}",
         "Full rounds: ".yellow(),
-        SpongeParams::ROUNDS_FULL
+        SpongeParams::PERM_ROUNDS_FULL
     );
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::SPONGE_BOX);
+    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::PERM_SBOX);
     println!("{}", "Base curve: vesta\n".green());
     println!("{}", "Prover zk-proof computation".green());
 
@@ -121,14 +122,14 @@ fn positive(index: &Index<Affine>) {
 
             poseidon::generate_witness(
                 first_row,
-                oracle::pasta::fp::params(),
+                oracle::pasta::fp_kimchi::params(),
                 &mut witness_cols,
                 input,
             );
         }
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify(&witness_cols).unwrap();
+        index.cs.verify(&witness_cols, &[]).unwrap();
 
         //
         let prev = {
@@ -167,16 +168,12 @@ fn positive(index: &Index<Affine>) {
     // TODO: shouldn't verifier_index be part of ProverProof, not being passed in verify?
     let verifier_index = index.verifier_index();
 
-    let lgr_comms = vec![];
-    let batch: Vec<_> = batch
-        .iter()
-        .map(|proof| (&verifier_index, &lgr_comms, proof))
-        .collect();
+    let batch: Vec<_> = batch.iter().map(|proof| (&verifier_index, proof)).collect();
 
     // verify the proofs in batch
     println!("{}", "Verifier zk-proofs verification".green());
     start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Execution time: ".yellow(), start.elapsed());

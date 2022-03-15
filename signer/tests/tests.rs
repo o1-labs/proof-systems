@@ -262,8 +262,8 @@ fn custom_signer_test() {
     use oracle::{pasta, poseidon};
 
     let kp = Keypair::rand(&mut rand::rngs::OsRng);
-    let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstants15W>(
-        pasta::fp::params(),
+    let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstantsKimchi>(
+        pasta::fp_kimchi::params(),
         NetworkId::MAINNET,
     );
     let tx = Transaction::new_payment(kp.public, kp.public, 2049, 1, 0);

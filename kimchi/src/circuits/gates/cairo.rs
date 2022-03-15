@@ -594,7 +594,7 @@ impl<F: FftField> CircuitGate<F> {
 mod tests {
     use super::*;
     use ark_ec::AffineCurve;
-    use cairo::{helper::*, memory::CairoMemory, runner::CairoProgram};
+    use cairo::{helper::*, memory::CairoMemory};
     use mina_curves::pasta::fp::Fp as F;
     use mina_curves::pasta::pallas;
 
@@ -603,7 +603,7 @@ mod tests {
     // creates a constraint system for a number of Cairo instructions
     fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasField> {
         let gates = CircuitGate::<PallasField>::create_cairo_gadget(inirow, ninstr);
-        ConstraintSystem::create(gates, vec![], oracle::pasta::fp::params(), 0).unwrap()
+        ConstraintSystem::create(gates, vec![], oracle::pasta::fp_kimchi::params(), 0).unwrap()
     }
 
     #[test]

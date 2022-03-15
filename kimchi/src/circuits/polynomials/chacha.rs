@@ -127,10 +127,12 @@
 //!
 //! On each of them we'll do the plookups
 //!
+//! ```ignore
 //! ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
 //! ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
 //! ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
 //! ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
+//! ```
 //!
 //! which checks that ((y^x')_i - lo((y^x')_i)) is a nybble,
 //! which guarantees that the low bit is computed correctly.
@@ -626,7 +628,7 @@ mod tests {
                 let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
                 let x2 = PolishToken::evaluate(e2, d, pt, &evals, &constants).unwrap();
                 if x1 != x2 {
-                    println!("e1: {}", e1);
+                    println!("e1: {}", e1.ocaml_str());
                     println!("e2: {}", Polish(e2.clone()));
                     println!("Polish evaluation differed for {:?}: {} != {}", c1, x1, x2);
                 } else {
