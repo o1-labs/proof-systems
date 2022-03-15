@@ -9,8 +9,8 @@ use mina_curves::pasta::Fp;
 use oracle::{
     pasta,
     poseidon::{
-        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstants15W,
-        PlonkSpongeConstantsBasic, Sponge, SpongeConstants, SpongeState,
+        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi,
+        PlonkSpongeConstantsLegacy, Sponge, SpongeConstants, SpongeState,
     },
 };
 
@@ -45,11 +45,13 @@ impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
 }
 
 pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> impl Hasher<H> {
-    Poseidon::<PlonkSpongeConstantsBasic, H>::new(domain_param, pasta::fp::params())
+    Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::params())
 }
 
-pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> Poseidon<PlonkSpongeConstants15W, H> {
-    Poseidon::<PlonkSpongeConstants15W, H>::new(domain_param, pasta::fp::params())
+pub(crate) fn new_kimchi<H: Hashable>(
+    domain_param: H::D,
+) -> Poseidon<PlonkSpongeConstantsKimchi, H> {
+    Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::params())
 }
 
 impl<SC: SpongeConstants, H: Hashable> Hasher<H> for Poseidon<SC, H>
