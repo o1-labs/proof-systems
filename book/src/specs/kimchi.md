@@ -487,11 +487,7 @@ As such, the transformation of a circuit into these two indexes can be seen as a
 
 ### Common Index
 
-<<<<<<< HEAD
 In this section we describe data that both the prover and the verifier index share.
-=======
-* the (non-hiding) commitments of all the required polynomials that describe the circuit (gate selectors, sigmas (permutations), etc.)
->>>>>>> master
 
 **`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier. 
 It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
@@ -538,13 +534,124 @@ The compilation steps to create the common index are as follow:
 4. sample the `PERMUTS` shifts.
 
 
-### Prover & Verifier Index
+### Prover Index
 
 Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
+These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
-We shy away from specifying exactly what these pre-computations can be in this specification.
+```rs
+pub struct ProverIndex<G: CommitmentCurve> {
+    /// constraints system polynomials
+    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<Fr<G>>,
 
-TODO: should we though?
+    /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
+    #[serde(skip)]
+    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas<Fr<G>>,
+
+    /// polynomial commitment keys
+    #[serde(skip)]
+    pub srs: Arc<SRS<G>>,
+
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+
+    /// random oracle argument parameters
+    #[serde(skip)]
+    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+}
+```
+
+
+## Verifier Index
+
+Same as the prover index, we have a number of pre-computations as part of the verifier index.
+
+```rs
+pub struct VerifierIndex<G: CommitmentCurve> {
+    /// evaluation domain
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub domain: D<Fr<G>>,
+    /// maximal size of polynomial section
+    pub max_poly_size: usize,
+    /// maximal size of the quotient polynomial according to the supported constraints
+    pub max_quot_size: usize,
+    /// polynomial commitment keys
+    #[serde(skip)]
+    pub srs: Arc<SRS<G>>,
+
+    // index polynomial commitments
+    /// permutation commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub sigma_comm: [PolyComm<G>; PERMUTS],
+    /// coefficient commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    /// coefficient commitment array
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub generic_comm: PolyComm<G>,
+
+    // poseidon polynomial commitments
+    /// poseidon constraint selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub psm_comm: PolyComm<G>,
+
+    // ECC arithmetic polynomial commitments
+    /// EC addition selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub complete_add_comm: PolyComm<G>,
+    /// EC variable base scalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub mul_comm: PolyComm<G>,
+    /// endoscalar multiplication selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub emul_comm: PolyComm<G>,
+    /// endoscalar multiplication scalar computation selector polynomial commitment
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub endomul_scalar_comm: PolyComm<G>,
+
+    /// Chacha polynomial commitments
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub chacha_comm: Option<[PolyComm<G>; 4]>,
+
+    /// wire coordinate shifts
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub shift: [Fr<G>; PERMUTS],
+    /// zero-knowledge polynomial
+    #[serde(skip)]
+    pub zkpm: DensePolynomial<Fr<G>>,
+    // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
+    /// domain offset for zero-knowledge
+    #[serde(skip)]
+    pub w: Fr<G>,
+    /// endoscalar coefficient
+    #[serde(skip)]
+    pub endo: Fr<G>,
+
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub lookup_index: Option<LookupVerifierIndex<G>>,
+
+    #[serde(skip)]
+    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    /// The mapping between powers of alpha and constraints
+    #[serde(skip)]
+    pub powers_of_alpha: Alphas<Fr<G>>,
+
+    // random oracle argument parameters
+    #[serde(skip)]
+    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    #[serde(skip)]
+    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+}
+```
+
 
 ## Proof
 
