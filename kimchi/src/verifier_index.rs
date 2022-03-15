@@ -91,7 +91,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Pasta pallas foreign field multiplication polynomial commitment
+    // Cairo polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub cairo_comm: [PolyComm<G>; cairo::CIRCUIT_GATE_COUNT],
 

@@ -569,9 +569,9 @@ where
                                 ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                                 ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                                 ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                                CairoInstruction => panic!("TODO"), // TODO: querolita
-                                CairoTransition => panic!("TODO"),  // TODO: querolita
-                                CairoClaim => panic!("TODO"),       // TODO: querolita
+                                CairoInstruction => &index.cairo_comm[0],
+                                CairoTransition => &index.cairo_comm[1],
+                                CairoClaim => &index.cairo_comm[2],
                             };
                             scalars.push(scalar);
                             commitments.push(c);
