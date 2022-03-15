@@ -85,10 +85,7 @@ impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    /// This function constructs prover's non-recursive zk-proof from the witness & the ProverIndex against SRS instance
-    ///     witness: computation witness
-    ///     index: ProverIndex
-    ///     RETURN: prover's zk-proof
+    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         groupmap: &G::Map,
         witness: [Vec<Fr<G>>; COLUMNS],
@@ -97,10 +94,7 @@ where
         Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
     }
 
-    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
-    ///     witness: computation witness
-    ///     index: ProverIndex
-    ///     RETURN: prover's zk-proof
+    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
         EFrSponge: FrSponge<Fr<G>>,
