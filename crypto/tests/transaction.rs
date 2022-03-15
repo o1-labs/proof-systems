@@ -1,6 +1,6 @@
 use mina_crypto::{
-    hasher::ROInput,
-    signer::{CompressedPubKey, Hashable, Keypair, NetworkId, PubKey},
+    hasher::{Hashable, ROInput},
+    signer::{CompressedPubKey, Keypair, NetworkId, PubKey},
 };
 
 const MEMO_BYTES: usize = 34;
@@ -26,7 +26,9 @@ pub struct Transaction {
     pub token_locked: bool,
 }
 
-impl Hashable<NetworkId> for Transaction {
+impl Hashable for Transaction {
+    type D = NetworkId;
+
     fn to_roinput(self) -> ROInput {
         let mut roi = ROInput::new();
 
@@ -36,25 +38,25 @@ impl Hashable<NetworkId> for Transaction {
 
         roi.append_u64(self.fee);
         roi.append_u64(self.fee_token);
-        roi.append_bit(self.fee_payer_pk.is_odd);
+        roi.append_bool(self.fee_payer_pk.is_odd);
         roi.append_u32(self.nonce);
         roi.append_u32(self.valid_until);
         roi.append_bytes(&self.memo);
 
         for tag_bit in self.tag {
-            roi.append_bit(tag_bit);
+            roi.append_bool(tag_bit);
         }
 
-        roi.append_bit(self.source_pk.is_odd);
-        roi.append_bit(self.receiver_pk.is_odd);
+        roi.append_bool(self.source_pk.is_odd);
+        roi.append_bool(self.receiver_pk.is_odd);
         roi.append_u64(self.token_id);
         roi.append_u64(self.amount);
-        roi.append_bit(self.token_locked);
+        roi.append_bool(self.token_locked);
 
         roi
     }
 
-    fn domain_string(self, network_id: &NetworkId) -> String {
+    fn domain_string(_: Option<Self>, network_id: &NetworkId) -> String {
         // Domain strings must have length <= 20
         match network_id {
             NetworkId::MAINNET => "MinaSignatureMainnet",
@@ -127,15 +129,12 @@ impl Transaction {
 
 #[test]
 fn transaction_domain() {
-    let kp = Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")
-        .expect("failed to create keypair");
-
     assert_eq!(
-        Transaction::new_payment(kp.public, kp.public, 0, 0, 0).domain_string(&NetworkId::MAINNET),
+        Transaction::domain_string(None, &NetworkId::MAINNET),
         "MinaSignatureMainnet"
     );
     assert_eq!(
-        Transaction::new_payment(kp.public, kp.public, 0, 0, 0).domain_string(&NetworkId::TESTNET),
+        Transaction::domain_string(None, &NetworkId::TESTNET),
         "CodaSignature"
     );
 }

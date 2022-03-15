@@ -13,13 +13,19 @@ use o1_utils::FieldHelpers;
 ///
 /// The random oracle input encapsulates the serialization format and methods using during hashing.
 ///
-/// When implementing the [crate::Hashable] trait to enable hashing for a type, you must implement
-/// its `to_roinput()` serialization method using the [ROInput] functions below.
+/// When implementing the [`crate::hasher::Hashable`] trait to enable hashing for a type, you must implement
+/// its `to_roinput()` serialization method using the [`ROInput`] functions below.
 ///
-/// For example,
+/// The random oracle input structure is used (by generic code) to serialize the object into
+/// both a vector of `pasta::Fp` field elements and into a vector of bytes, depending on the situation.
+///
+/// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.
 ///
 /// ```rust
-/// use mina_crypto::{hasher::ROInput, signer::{CompressedPubKey, Hashable, NetworkId}};
+/// use mina_crypto::{
+///     hasher::{Hashable, ROInput},
+///     signer::{CompressedPubKey, NetworkId},
+/// };
 ///
 /// #[derive(Clone)]
 /// pub struct MyExample {
@@ -29,19 +35,21 @@ use o1_utils::FieldHelpers;
 ///     pub nonce: u32,
 /// }
 ///
-/// impl Hashable<NetworkId> for MyExample {
+/// impl Hashable for MyExample {
+///     type D = NetworkId;
+///
 ///     fn to_roinput(self) -> ROInput {
 ///         let mut roi = ROInput::new();
 ///
 ///         roi.append_field(self.account.x);
-///         roi.append_bit(self.account.is_odd);
+///         roi.append_bool(self.account.is_odd);
 ///         roi.append_u64(self.amount);
 ///         roi.append_u32(self.nonce);
 ///
 ///         roi
 ///     }
 ///
-///     fn domain_string(self, network_id: &NetworkId) -> String {
+///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> String {
 ///         match network_id {
 ///           NetworkId::MAINNET => "MyExampleMainnet",
 ///           NetworkId::TESTNET => "MyExampleTestnet",
@@ -49,12 +57,12 @@ use o1_utils::FieldHelpers;
 ///     }
 /// }
 /// ```
-/// **Details:** For technical reasons related to our proof system and performance, fields are
-/// serialized for signing differently than other types. Additionally, during signing all members
-/// of the random oracle input get serialized together in two different ways: both as *bytes* and
-/// as a vector of *field elements*.  The random oracle input encapsulates and automates this
-/// complexity.
-#[derive(Default)]
+/// **Details:** For technical reasons related to our proof system and performance,
+/// non-field-element members are serialized for signing differently than other types.
+/// Additionally, during signing all members of the random oracle input get serialized
+/// together in two different ways: both as *bytes* and as a vector of *field elements*.
+/// The random oracle input automates and encapsulates this complexity.
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct ROInput {
     fields: Vec<Fp>,
     bits: BitVec<u8>,
@@ -67,6 +75,12 @@ impl ROInput {
             fields: vec![],
             bits: BitVec::new(),
         }
+    }
+
+    /// Append another random oracle input
+    pub fn append_roinput(&mut self, roi: ROInput) {
+        self.fields = [self.fields.clone(), roi.fields].concat();
+        self.bits.extend(roi.bits);
     }
 
     /// Append a base field element
@@ -83,7 +97,7 @@ impl ROInput {
     }
 
     /// Append a single bit
-    pub fn append_bit(&mut self, b: bool) {
+    pub fn append_bool(&mut self, b: bool) {
         self.bits.push(b);
     }
 
@@ -160,12 +174,14 @@ impl ROInput {
 
 #[cfg(test)]
 mod tests {
+    use crate::hasher::Hashable;
+
     use super::*;
 
     #[test]
-    fn append_bit() {
+    fn append_bool() {
         let mut roi: ROInput = ROInput::new();
-        roi.append_bit(true);
+        roi.append_bool(true);
         assert!(roi.bits.len() == 1);
         assert!(roi.bits.as_raw_slice() == [0x01]);
     }
@@ -173,8 +189,8 @@ mod tests {
     #[test]
     fn append_two_bits() {
         let mut roi: ROInput = ROInput::new();
-        roi.append_bit(false);
-        roi.append_bit(true);
+        roi.append_bool(false);
+        roi.append_bool(true);
         assert!(roi.bits.len() == 2);
         assert!(roi.bits.as_raw_slice() == [0x02]);
     }
@@ -182,11 +198,11 @@ mod tests {
     #[test]
     fn append_five_bits() {
         let mut roi: ROInput = ROInput::new();
-        roi.append_bit(false);
-        roi.append_bit(true);
-        roi.append_bit(false);
-        roi.append_bit(false);
-        roi.append_bit(true);
+        roi.append_bool(false);
+        roi.append_bool(true);
+        roi.append_bool(false);
+        roi.append_bool(false);
+        roi.append_bool(true);
         assert!(roi.bits.len() == 5);
         assert!(roi.bits.as_raw_slice() == [0x12]);
     }
@@ -321,7 +337,7 @@ mod tests {
     fn append_two_u32_and_bit() {
         let mut roi: ROInput = ROInput::new();
         roi.append_u32(1729u32);
-        roi.append_bit(false);
+        roi.append_bool(false);
         roi.append_u32(u32::MAX);
         assert!(roi.bits.len() == 65);
         assert!(roi.bits.as_raw_slice() == [0xc1, 0x06, 0x00, 0x00, 0xfe, 0xff, 0xff, 0xff, 0x01]);
@@ -338,9 +354,9 @@ mod tests {
     #[test]
     fn append_two_u64_and_bits() {
         let mut roi: ROInput = ROInput::new();
-        roi.append_bit(true);
+        roi.append_bool(true);
         roi.append_u64(u64::MAX / 6174u64);
-        roi.append_bit(false);
+        roi.append_bool(false);
         roi.append_u64(u64::MAX / 1111u64);
         assert!(roi.bits.len() == 130);
         assert!(
@@ -355,7 +371,7 @@ mod tests {
     #[test]
     fn all_1() {
         let mut roi: ROInput = ROInput::new();
-        roi.append_bit(true);
+        roi.append_bool(true);
         roi.append_scalar(
             Fq::from_hex("01d1755db21c8cd2a9cf5a3436178da3d70f484cd4b4c8834b799921e7d7a102")
                 .expect("failed to create scalar"),
@@ -366,9 +382,9 @@ mod tests {
             Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
                 .expect("failed to create scalar"),
         );
-        roi.append_bit(false);
+        roi.append_bool(false);
         roi.append_u32(2147483647);
-        roi.append_bit(true);
+        roi.append_bool(true);
 
         assert!(roi.bits.len() == 641);
         assert!(
@@ -390,18 +406,18 @@ mod tests {
         let mut roi = ROInput::new();
         roi.append_u64(1000000); // fee
         roi.append_u64(1); // fee token
-        roi.append_bit(true); // fee payer pk odd
+        roi.append_bool(true); // fee payer pk odd
         roi.append_u32(0); // nonce
         roi.append_u32(u32::MAX); // valid_until
         roi.append_bytes(&vec![0; 34]); // memo
-        roi.append_bit(false); // tags[0]
-        roi.append_bit(false); // tags[1]
-        roi.append_bit(false); // tags[2]
-        roi.append_bit(true); // sender pk odd
-        roi.append_bit(false); // receiver pk odd
+        roi.append_bool(false); // tags[0]
+        roi.append_bool(false); // tags[1]
+        roi.append_bool(false); // tags[2]
+        roi.append_bool(true); // sender pk odd
+        roi.append_bool(false); // receiver pk odd
         roi.append_u64(1); // token_id
         roi.append_u64(10000000000); // amount
-        roi.append_bit(false); // token_locked
+        roi.append_bool(false); // token_locked
         roi.append_scalar(
             Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
                 .expect("failed to create scalar"),
@@ -526,7 +542,7 @@ mod tests {
             Fp::from_hex("d897c7a8b811d8acd3eeaa4adf42292802eed80031c2ad7c8989aea1fe94322c")
                 .expect("failed to create field"),
         );
-        roi.append_bit(false);
+        roi.append_bool(false);
         roi.append_scalar(
             Fq::from_hex("79586cc6b8b53c8991b2abe0ca76508f056ca50f06836ce4d818c2ff73d42b28")
                 .expect("failed to create scalar"),
@@ -555,7 +571,7 @@ mod tests {
             Fp::from_hex("8af0bc770d49a5b9fcabfcdd033bab470b2a211ef80b710efe71315cfa818c0a")
                 .expect("failed to create field"),
         );
-        roi.append_bit(false);
+        roi.append_bool(false);
         roi.append_u32(314u32);
         roi.append_scalar(
             Fq::from_hex("c23c43a23ddc1516578b0f0d81b93cdbbc97744acc697cfc8c5dfd01cc448323")
@@ -612,8 +628,8 @@ mod tests {
             Fq::from_hex("e8a9961c8c417b0d0e3d7366f6b0e6ef90a6dad123070f715e8a9eaa02e47330")
                 .expect("failed to create scalar"),
         );
-        roi.append_bit(false);
-        roi.append_bit(true);
+        roi.append_bool(false);
+        roi.append_bool(true);
 
         assert_eq!(
             roi.to_bytes(),
@@ -674,8 +690,8 @@ mod tests {
     #[test]
     fn to_fields_2_bits_scalar_u32() {
         let mut roi = ROInput::new();
-        roi.append_bit(true);
-        roi.append_bit(false);
+        roi.append_bool(true);
+        roi.append_bool(false);
         roi.append_scalar(
             Fq::from_hex("689634de233b06251a80ac7df64483922727757eea1adc6f0c8f184441cfe10d")
                 .expect("failed to create scalar"),
@@ -705,8 +721,8 @@ mod tests {
     #[test]
     fn to_fields_2_bits_field_scalar() {
         let mut roi = ROInput::new();
-        roi.append_bit(false);
-        roi.append_bit(true);
+        roi.append_bool(false);
+        roi.append_bool(true);
         roi.append_field(
             Fp::from_hex("90926b620ad09ed616d5df158504faed42928719c58ae619d9eccc062f920411")
                 .expect("failed to create field"),
@@ -757,18 +773,18 @@ mod tests {
         ); // receiver
         roi.append_u64(1000000); // fee
         roi.append_u64(1); // fee token
-        roi.append_bit(true); // fee payer pk odd
+        roi.append_bool(true); // fee payer pk odd
         roi.append_u32(0); // nonce
         roi.append_u32(u32::MAX); // valid_until
         roi.append_bytes(&vec![0; 34]); // memo
-        roi.append_bit(false); // tags[0]
-        roi.append_bit(false); // tags[1]
-        roi.append_bit(false); // tags[2]
-        roi.append_bit(true); // sender pk odd
-        roi.append_bit(false); // receiver pk odd
+        roi.append_bool(false); // tags[0]
+        roi.append_bool(false); // tags[1]
+        roi.append_bool(false); // tags[2]
+        roi.append_bool(true); // sender pk odd
+        roi.append_bool(false); // receiver pk odd
         roi.append_u64(1); // token_id
         roi.append_u64(10000000000); // amount
-        roi.append_bit(false); // token_locked
+        roi.append_bool(false); // token_locked
         assert_eq!(roi.bits.len() + roi.fields.len() * 255, 1364);
         assert_eq!(
             roi.to_bytes(),
@@ -806,5 +822,114 @@ mod tests {
                     .expect("failed to create field"),
             ]
         );
+    }
+
+    #[test]
+    fn nested_roinput_test() {
+        #[derive(Clone, Copy, Debug)]
+        struct A {
+            x: u32,
+            y: bool,
+            z: u32,
+        }
+
+        impl Hashable for A {
+            type D = ();
+
+            fn to_roinput(self) -> ROInput {
+                let mut roi = ROInput::new();
+                roi.append_u32(self.x);
+                roi.append_bool(self.y);
+                roi.append_u32(self.z);
+
+                roi
+            }
+
+            fn domain_string(_: Option<Self>, _: &()) -> String {
+                "A".to_string()
+            }
+        }
+
+        #[derive(Clone, Copy, Debug)]
+        struct B1 {
+            a: A,
+            b: u64,
+            c: bool,
+        }
+
+        impl Hashable for B1 {
+            type D = ();
+
+            fn to_roinput(self) -> ROInput {
+                let mut roi = self.a.to_roinput();
+                roi.append_u64(self.b);
+                roi.append_bool(self.c);
+
+                roi
+            }
+
+            fn domain_string(_: Option<Self>, _: &()) -> String {
+                "B".to_string()
+            }
+        }
+
+        #[derive(Clone, Copy, Debug)]
+        struct B2 {
+            a: A,
+            b: u64,
+            c: bool,
+        }
+
+        impl Hashable for B2 {
+            type D = ();
+
+            fn to_roinput(self) -> ROInput {
+                let mut roi = self.a.to_roinput();
+
+                let mut roi2 = ROInput::new();
+                roi2.append_u64(self.b);
+                roi2.append_bool(self.c);
+
+                roi.append_roinput(roi2);
+
+                roi
+            }
+
+            fn domain_string(_: Option<Self>, _: &()) -> String {
+                "B".to_string()
+            }
+        }
+
+        let a = A {
+            x: 16830533,
+            y: false,
+            z: 39827791,
+        };
+        let b1 = B1 {
+            a,
+            b: 124819,
+            c: true,
+        };
+        let b2 = B2 {
+            a: b1.a,
+            b: b1.b,
+            c: b1.c,
+        };
+
+        assert_eq!(b1.to_roinput(), b2.to_roinput());
+
+        let b2 = B2 {
+            a: b1.a,
+            b: b1.b,
+            c: false,
+        };
+        assert_ne!(b1.to_roinput(), b2.to_roinput());
+
+        let b2 = B2 {
+            a: b1.a,
+            b: b1.b + 1,
+            c: b1.c,
+        };
+        assert_ne!(b1.to_roinput(), b2.to_roinput());
     }
 }

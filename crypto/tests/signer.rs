@@ -2,7 +2,6 @@ pub mod transaction;
 
 use ark_ff::Zero;
 use mina_crypto::signer::{self, BaseField, Keypair, NetworkId, PubKey, ScalarField, Signer};
-use rand;
 pub use transaction::Transaction;
 
 enum TransactionType {
@@ -256,17 +255,4 @@ fn sign_delegation_test_4() {
         /* testnet signature */ "26ca6b95dee29d956b813afa642a6a62cd89b1929320ed6b099fd191a217b08d2c9a54ba1c95e5000b44b93cfbd3b625e20e95636f1929311473c10858a27f09",
         /* mainnet signature */ "093f9ef0e4e051279da0a3ded85553847590ab739ee1bfd59e5bb30f98ed8a001a7a60d8506e2572164b7a525617a09f17e1756ac37555b72e01b90f37271595"
     );
-}
-
-#[test]
-fn custom_signer_test() {
-    use oracle::{pasta, poseidon};
-
-    let kp = Keypair::rand(&mut rand::rngs::OsRng);
-    let mut ctx = signer::create_custom::<poseidon::PlonkSpongeConstants15W, NetworkId>(
-        pasta::fp::params(),
-        NetworkId::MAINNET,
-    );
-    let tx = Transaction::new_payment(kp.public, kp.public, 2049, 1, 0);
-    ctx.sign(kp, tx);
 }

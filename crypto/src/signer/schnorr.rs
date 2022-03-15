@@ -4,7 +4,7 @@
 //!
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
-use crate::hasher::ROInput;
+use crate::hasher::{self, DomainParameter, Hasher, ROInput};
 use ark_ec::{
     AffineCurve,     // for prime_subgroup_generator()
     ProjectiveCurve, // for into_affine()
@@ -19,24 +19,50 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use oracle::poseidon::{ArithmeticSponge, Sponge, SpongeConstants};
 use std::ops::Neg;
 
 use crate::signer::{
-    domain_prefix_to_field, BaseField, CurvePoint, DomainParameter, Hashable, Keypair, PubKey,
-    ScalarField, Signature, Signer,
+    BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer,
 };
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
-/// For details about the signature algorithm please see [crate::schnorr]
-pub struct Schnorr<SC: SpongeConstants, D: DomainParameter> {
-    sponge: ArithmeticSponge<BaseField, SC>,
-    domain_param: D,
+/// For details about the signature algorithm please see [crate::signer::schnorr]
+pub struct Schnorr<H: Hashable> {
+    hasher: Box<dyn Hasher<Message<H>>>,
+    domain_param: H::D,
 }
 
-impl<SC: SpongeConstants, D: DomainParameter> Signer<D> for Schnorr<SC, D> {
-    fn sign<H: Hashable<D>>(&mut self, kp: Keypair, input: H) -> Signature {
+#[derive(Clone)]
+struct Message<H: Hashable> {
+    input: H,
+    pub_key_x: BaseField,
+    pub_key_y: BaseField,
+    rx: BaseField,
+}
+
+impl<H: Hashable> Hashable for Message<H> {
+    type D = H::D;
+
+    fn to_roinput(self) -> ROInput {
+        let mut roi = self.input.to_roinput();
+        roi.append_field(self.pub_key_x);
+        roi.append_field(self.pub_key_y);
+        roi.append_field(self.rx);
+
+        roi
+    }
+
+    fn domain_string(this: Option<Self>, domain_param: &Self::D) -> String {
+        match this {
+            None => H::domain_string(None, domain_param),
+            Some(x) => H::domain_string(Some(x.input), domain_param),
+        }
+    }
+}
+
+impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
+    fn sign(&mut self, kp: Keypair, input: H) -> Signature {
         let k: ScalarField = self.derive_nonce(&kp, input.clone());
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
@@ -47,7 +73,7 @@ impl<SC: SpongeConstants, D: DomainParameter> Signer<D> for Schnorr<SC, D> {
         Signature::new(r.x, s)
     }
 
-    fn verify<H: Hashable<D>>(&mut self, sig: Signature, public: PubKey, input: H) -> bool {
+    fn verify(&mut self, sig: Signature, public: PubKey, input: H) -> bool {
         let ev: ScalarField = self.message_hash(&public, sig.rx, input);
 
         let sv: CurvePoint = CurvePoint::prime_subgroup_generator()
@@ -64,23 +90,26 @@ impl<SC: SpongeConstants, D: DomainParameter> Signer<D> for Schnorr<SC, D> {
     }
 }
 
-impl<SC: SpongeConstants, D: DomainParameter> Schnorr<SC, D> {
-    /// Create a new Schnorr signer context for network instance `network_id` using arithmetic sponge defined by `sponge`.
-    pub fn new(sponge: ArithmeticSponge<BaseField, SC>, domain_param: D) -> Schnorr<SC, D> {
-        Schnorr::<SC, D> {
-            sponge,
-            domain_param,
-        }
+pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
+    Schnorr::<H> {
+        hasher: Box::new(hasher::create_legacy::<Message<H>>(domain_param.clone())),
+        domain_param,
     }
+}
 
+pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
+    Schnorr::<H> {
+        hasher: Box::new(hasher::create_kimchi::<Message<H>>(domain_param.clone())),
+        domain_param,
+    }
+}
+
+impl<H: 'static + Hashable> Schnorr<H> {
     /// This function uses a cryptographic hash function to create a uniformly and
     /// randomly distributed nonce.  It is crucial for security that no two different
     /// messages share the same nonce.
-    fn derive_nonce<H>(&self, kp: &Keypair, input: H) -> ScalarField
-    where
-        H: Hashable<D>,
-    {
-        let mut hasher = Blake2bVar::new(32).unwrap();
+    fn derive_nonce(&self, kp: &Keypair, input: H) -> ScalarField {
+        let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
         let mut roi: ROInput = input.to_roinput();
         roi.append_field(kp.public.into_point().x);
@@ -88,10 +117,10 @@ impl<SC: SpongeConstants, D: DomainParameter> Schnorr<SC, D> {
         roi.append_scalar(kp.secret.into_scalar());
         roi.append_bytes(&self.domain_param.clone().into_bytes());
 
-        hasher.update(&roi.to_bytes());
+        blake_hasher.update(&roi.to_bytes());
 
         let mut bytes = [0; 32];
-        hasher
+        blake_hasher
             .finalize_variable(&mut bytes)
             .expect("incorrect output size");
         // Drop the top two bits to convert into a scalar field element
@@ -108,31 +137,18 @@ impl<SC: SpongeConstants, D: DomainParameter> Schnorr<SC, D> {
     /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
     /// SNARK-friendly cryptographic hash function.
     /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
-    fn message_hash<H: Hashable<D>>(
-        &mut self,
-        pub_key: &PubKey,
-        rx: BaseField,
-        input: H,
-    ) -> ScalarField {
-        let mut roi: ROInput = input.clone().to_roinput();
-        roi.append_field(pub_key.into_point().x);
-        roi.append_field(pub_key.into_point().y);
-        roi.append_field(rx);
-
-        // Set sponge initial state (explicitly init state so signer context can be reused)
-        // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
-        self.sponge.reset();
-        self.sponge.absorb(&[domain_prefix_to_field::<BaseField>(
-            input.domain_string(&self.domain_param),
-        )]);
-        self.sponge.squeeze();
-
-        // Absorb random oracle input
-        self.sponge.absorb(&roi.to_fields());
+    fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: H) -> ScalarField {
+        let schnorr_input = Message::<H> {
+            input,
+            pub_key_x: pub_key.into_point().x,
+            pub_key_y: pub_key.into_point().y,
+            rx,
+        };
 
         // Squeeze and convert from base field element to scalar field element
         // Since the difference in modulus between the two fields is < 2^125, w.h.p., a
         // random value from one field will fit in the other field.
-        ScalarField::from_repr(self.sponge.squeeze().into_repr()).expect("failed to create scalar")
+        ScalarField::from_repr(self.hasher.hash(schnorr_input).into_repr())
+            .expect("failed to create scalar")
     }
 }
