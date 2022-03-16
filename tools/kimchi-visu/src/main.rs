@@ -1,7 +1,8 @@
 use kimchi::{
     circuits::{
-        gate::CircuitGate, gates::poseidon::generate_witness,
-        polynomials::generic::GenericGateSpec, wires::Wire,
+        gate::CircuitGate,
+        polynomials::{generic::GenericGateSpec, poseidon::generate_witness},
+        wires::Wire,
     },
     prover_index::testing::new_index_for_test,
 };

@@ -22,12 +22,12 @@ mina-curves = { path = "../curves" }
 # for ocaml
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
-syn = { version = "1.0.76", optional = true }
 
-serde_json = { version = "1.0" }
-hex = { version = "0.4" }
-ark-serialize = { version = "0.3.0" }
+[dev-dependencies]
+serde_json = "1.0"
+hex = "0.4"
+ark-serialize = "0.3.0"
 
 [features]
 default = []
-ocaml_types = [ "ocaml", "ocaml-gen", "syn" ]
+ocaml_types = [ "ocaml", "ocaml-gen", ]
