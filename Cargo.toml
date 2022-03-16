@@ -3,6 +3,7 @@ members = [
     "cairo",
     "curves",
     "groupmap",
+    "hasher",
     "kimchi",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
