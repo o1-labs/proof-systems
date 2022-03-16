@@ -23,7 +23,7 @@ Then, you can create an URS for your circuit in the following way:
 use kimchi::circuits::constraints;
 use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};

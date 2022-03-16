@@ -25,20 +25,17 @@
 //~ ```
 //~
 
-use std::marker::PhantomData;
-use std::ops::Range;
-
-use ark_ff::{FftField, Field};
-use oracle::poseidon::{
-    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, Sponge,
-    SpongeConstants,
-};
-use CurrOrNext::*;
-
 use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
+use ark_ff::{FftField, Field};
+use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
+use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
+use std::marker::PhantomData;
+use std::ops::Range;
+use CurrOrNext::*;
+
+use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::polynomial::COLUMNS;
 use crate::circuits::wires::{GateWires, Wire};
 
