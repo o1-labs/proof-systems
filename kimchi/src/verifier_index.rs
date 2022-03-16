@@ -36,13 +36,14 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
     pub lookup_used: LookupsUsed,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub lookup_tables: Vec<Vec<PolyComm<G>>>,
+    pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_selectors: Vec<PolyComm<G>>,
 }
 
 #[serde_as]
 #[derive(Serialize, Deserialize)]
+//~spec:startcode
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -118,6 +119,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
     #[serde(skip)]
     pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
 }
+//~spec:endcode
 
 impl<'a, G: CommitmentCurve> ProverIndex<G>
 where
@@ -137,14 +139,10 @@ where
                         .iter()
                         .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                         .collect(),
-                    lookup_tables: cs
-                        .lookup_tables8
+                    lookup_table: cs
+                        .lookup_table8
                         .iter()
-                        .map(|v| {
-                            v.iter()
-                                .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
-                                .collect()
-                        })
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
                         .collect(),
                 })
         };

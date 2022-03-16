@@ -37,7 +37,7 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 // const MAX_SIZE: usize = N; // max size of poly chunks
 const PUBLIC: usize = 0;
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
-const ROUNDS_PER_HASH: usize = SpongeParams::ROUNDS_FULL;
+const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
 const POS_ROWS_PER_HASH: usize = ROUNDS_PER_HASH / ROUNDS_PER_ROW;
 const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain size
 
@@ -100,9 +100,9 @@ fn positive(index: &ProverIndex<Affine>) {
     println!(
         "{}{:?}",
         "Full rounds: ".yellow(),
-        SpongeParams::ROUNDS_FULL
+        SpongeParams::PERM_ROUNDS_FULL
     );
-    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::SPONGE_BOX);
+    println!("{}{:?}", "Sbox alpha: ".yellow(), SpongeParams::PERM_SBOX);
     println!("{}", "Base curve: vesta\n".green());
     println!("{}", "Prover zk-proof computation".green());
 
@@ -149,7 +149,7 @@ fn positive(index: &ProverIndex<Affine>) {
         // add the proof to the batch
         // TODO: create and verify should not take group_map, that should be during an init phase
         batch.push(
-            ProverProof::create::<BaseSponge, ScalarSponge>(
+            ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
                 &group_map,
                 witness_cols,
                 index,
