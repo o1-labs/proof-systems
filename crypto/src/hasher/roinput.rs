@@ -9,6 +9,8 @@ use ark_ff::PrimeField;
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 
+use super::Hashable;
+
 /// Random oracle input structure
 ///
 /// The random oracle input encapsulates the serialization format and methods using during hashing.
@@ -49,11 +51,13 @@ use o1_utils::FieldHelpers;
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> String {
+///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> Option<String> {
 ///         match network_id {
 ///           NetworkId::MAINNET => "MyExampleMainnet",
 ///           NetworkId::TESTNET => "MyExampleTestnet",
-///         }.to_string()
+///         }
+///         .to_string()
+///         .into()
 ///     }
 /// }
 /// ```
@@ -75,6 +79,11 @@ impl ROInput {
             fields: vec![],
             bits: BitVec::new(),
         }
+    }
+
+    /// Append a `Hashable` input
+    pub fn append_hashable(&mut self, input: impl Hashable) {
+        self.append_roinput(input.to_roinput());
     }
 
     /// Append another random oracle input
@@ -845,8 +854,8 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> String {
-                "A".to_string()
+            fn domain_string(_: Option<Self>, _: &()) -> Option<String>{
+                format!("A").into()
             }
         }
 
@@ -868,8 +877,8 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> String {
-                "B".to_string()
+            fn domain_string(_: Option<Self>, _: &()) -> Option<String> {
+                format!("B").into()
             }
         }
 
@@ -895,8 +904,8 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> String {
-                "B".to_string()
+            fn domain_string(_: Option<Self>, _: &()) -> Option<String> {
+                format!("B").into()
             }
         }
 

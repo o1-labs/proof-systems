@@ -48,9 +48,7 @@ pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> impl Hasher<H> {
     Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::params())
 }
 
-pub(crate) fn new_kimchi<H: Hashable>(
-    domain_param: H::D,
-) -> Poseidon<PlonkSpongeConstantsKimchi, H> {
+pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> impl Hasher<H> {
     Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::params())
 }
 
@@ -70,12 +68,12 @@ where
         // Set sponge initial state (explicitly init state so hasher context can be reused)
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
         self.sponge.reset();
-        self.sponge
-            .absorb(&[domain_prefix_to_field::<Fp>(H::domain_string(
-                None,
-                &domain_param,
-            ))]);
-        self.sponge.squeeze();
+
+        if let Some(domain_string) = H::domain_string(None, &domain_param) {
+            self.sponge
+                .absorb(&[domain_prefix_to_field::<Fp>(domain_string)]);
+            self.sponge.squeeze();
+        }
 
         // Save initial state for efficient reset
         self.sponge_state = self.sponge.sponge_state.clone();

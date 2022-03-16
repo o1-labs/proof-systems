@@ -22,8 +22,8 @@
 //!         roi
 //!     }
 //!
-//!     fn domain_string(_: Option<Self>, _: &Self::D) -> String {
-//!         format!("Example")
+//!     fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+//!         format!("Example").into()
 //!     }
 //! }
 //!
@@ -93,11 +93,13 @@ impl DomainParameter for u64 {
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> String {
+///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> Option<String> {
 ///        match network_id {
 ///            NetworkId::MAINNET => "ExampleMainnet",
 ///            NetworkId::TESTNET => "ExampleTestnet",
-///        }.to_string()
+///        }
+///        .to_string()
+///        .into()
 ///    }
 /// }
 /// ```
@@ -111,9 +113,15 @@ pub trait Hashable: Clone {
     fn to_roinput(self) -> ROInput;
 
     /// Generate unique domain string of length `<= 20`.
-    ///   The domain string may be parameterized by the contents of `this`
-    ///   and/or the generic `domain_param` argument.
-    fn domain_string(this: Option<Self>, domain_param: &Self::D) -> String;
+    ///
+    /// The length bound is guarded by an assertion, but the uniqueness bound must
+    /// be enforced by the developer implementing the traits (see [`Hashable`] for
+    ///  more details). The domain string may be parameterized by the contents of
+    /// `this` and/or the generic `domain_param` argument.
+    ///
+    /// **Note:** You should always return `Some(String)`. A `None` return value
+    /// is only used for testing.
+    fn domain_string(this: Option<Self>, domain_param: &Self::D) -> Option<String>;
 }
 
 /// Interface for hashing [`Hashable`] inputs
@@ -141,8 +149,8 @@ pub trait Hashable: Clone {
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, id: &Self::D) -> String {
-///         format!("Something {}", id)
+///     fn domain_string(_: Option<Self>, id: &Self::D) -> Option<String> {
+///         format!("Something {}", id).into()
 ///     }
 /// }
 ///
@@ -234,8 +242,8 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, id: &u64) -> String {
-                format!("Foo {}", id)
+            fn domain_string(_: Option<Self>, id: &u64) -> Option<String> {
+                format!("Foo {}", id).into()
             }
         }
 

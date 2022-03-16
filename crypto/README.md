@@ -33,8 +33,8 @@ impl Hashable for Example {
         roi
     }
 
-    fn domain_string(_: Option<Self>, seed: &u32) -> String {
-        format!("Example {}", seed)
+    fn domain_string(_: Option<Self>, seed: &u32) -> Option<String> {
+        format!("Example {}", seed).into()
     }
 }
 
@@ -98,7 +98,7 @@ assert!(ctx.verify(sig, keypair.public,tx));
 
 Note that these examples use the test [`Transaction`](https://github.com/o1-labs/proof-systems/tree/master/crypto/tests/transaction.rs) structure found in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/crypto/tests) directory.  This is a complete reference implementation of the Mina payment and delegation transaction structures found on mainnet and testnet.
 
-## Framework
+## The `Hashable` trait
 
 In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the [`Hashable`](crate::hasher::Hashable) trait.
 
@@ -128,11 +128,13 @@ impl Hashable for Foo {
         roi
     }
 
-    fn domain_string(this: Option<Self>, network_id: &NetworkId) -> String {
+    fn domain_string(this: Option<Self>, network_id: &NetworkId) -> Option<String> {
        match network_id {
            NetworkId::MAINNET => "FooSigMainnet",
            NetworkId::TESTNET => "FooSigTestnet",
-       }.to_string()
+       }
+       .to_string()
+       .into()
     }
 }
 ```
@@ -167,10 +169,10 @@ impl Hashable for ExampleMerkleNode {
         roi
     }
 
-    fn domain_string(this: Option<Self>, _: &Self::D) -> String {
+    fn domain_string(this: Option<Self>, _: &Self::D) -> Option<String> {
         match this {
             None => panic!("missing this argument (should never happen)"),
-            Some(x) => format!("ExampleMerkleNode{:03}", x.height),
+            Some(x) => format!("ExampleMerkleNode{:03}", x.height).into(),
         }
     }
 }
@@ -211,8 +213,8 @@ impl Hashable for ExampleMerkleNode {
         roi
     }
 
-    fn domain_string(_: Option<Self>, height: &Self::D) -> String {
-        format!("MerkleTree{:03}", height)
+    fn domain_string(_: Option<Self>, height: &Self::D) -> Option<String> {
+        format!("MerkleTree{:03}", height).into()
     }
 }
 
@@ -253,8 +255,8 @@ impl Hashable for A {
         roi
     }
 
-    fn domain_string(_: Option<Self>, _: &Self::D) -> String {
-        format!("A")
+    fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+        format!("A").into()
     }
 }
 
@@ -270,14 +272,16 @@ impl Hashable for B {
 
     fn to_roinput(self) -> ROInput {
         let mut roi = ROInput::new();
-        roi.append_roinput(self.a1.to_roinput());
+        // Way 1: Append Hashable input
+        roi.append_hashable(self.a1);
+        // Way 2: Append ROInput
         roi.append_roinput(self.a2.to_roinput());
         roi.append_u32(self.z);
         roi
     }
 
-    fn domain_string(_: Option<Self>, _: &Self::D) -> String {
-        format!("B")
+    fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+        format!("B").into()
     }
 }
 ```

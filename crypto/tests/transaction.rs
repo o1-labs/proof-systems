@@ -56,13 +56,14 @@ impl Hashable for Transaction {
         roi
     }
 
-    fn domain_string(_: Option<Self>, network_id: &NetworkId) -> String {
+    fn domain_string(_: Option<Self>, network_id: &NetworkId) -> Option<String> {
         // Domain strings must have length <= 20
         match network_id {
             NetworkId::MAINNET => "MinaSignatureMainnet",
             NetworkId::TESTNET => "CodaSignature",
         }
         .to_string()
+        .into()
     }
 }
 
@@ -130,11 +131,11 @@ impl Transaction {
 #[test]
 fn transaction_domain() {
     assert_eq!(
-        Transaction::domain_string(None, &NetworkId::MAINNET),
+        Transaction::domain_string(None, &NetworkId::MAINNET).expect("missing domain string"),
         "MinaSignatureMainnet"
     );
     assert_eq!(
-        Transaction::domain_string(None, &NetworkId::TESTNET),
+        Transaction::domain_string(None, &NetworkId::TESTNET).expect("missing domain string"),
         "CodaSignature"
     );
 }
