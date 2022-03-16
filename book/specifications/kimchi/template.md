@@ -245,7 +245,7 @@ def sample(domain, i):
     return shift, i
 ```
 
-**`Public`**. This variable simply contains the number of public inputs.
+**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
 
 The compilation steps to create the common index are as follow:
 

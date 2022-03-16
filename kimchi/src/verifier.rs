@@ -178,12 +178,12 @@ where
         //~ 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(&index.srs.endo_r);
 
-        //~ 12. Enforce that the length of the t commitment is of size `PERMUTS`.
+        //~ 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
         if self.commitments.t_comm.unshifted.len() != PERMUTS {
             return Err(VerifyError::IncorrectCommitmentLength("t"));
         }
 
-        //~ 13. absorb the polycommitments into the argument and sample zeta.
+        //~ 13. absorb the commitment to the quotient polynomial $t$ into the argument and sample zeta.
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
 
         //~ 14. Sample $\zeta'$ with the Fq-Sponge.
@@ -567,7 +567,7 @@ where
     };
 
     //~ 5. Compute the (chuncked) commitment of $ft$
-    //~    (see [Maller's optimization](../crypto/plonk/maller_15.html).
+    //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
@@ -576,38 +576,38 @@ where
     };
 
     //~ 6. List the polynomial commitments, and their associated evaluations,
-    //~    That are associated to the aggregated evaluation proof in the  proof.
+    //~    That are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
-    // recursion
+    //~     - recursion
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
         degree_bound: None,
     }));
 
-    // public input commitment
+    //~     - public input commitment
     evaluations.push(Evaluation {
         commitment: p_comm,
         evaluations: p_eval,
         degree_bound: None,
     });
 
-    // ft commitment (chunks of it)
+    //~     - ft commitment (chunks of it)
     evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
         degree_bound: None,
     });
 
-    // permutation commitment
+    //~     - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
         evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
         degree_bound: None,
     });
 
-    // index commitments that use the coefficients
+    //~     - index commitments that use the coefficients
     evaluations.push(Evaluation {
         commitment: index.generic_comm.clone(),
         evaluations: proof
@@ -627,7 +627,7 @@ where
         degree_bound: None,
     });
 
-    // witness commitments
+    //~     - witness commitments
     evaluations.extend(
         proof
             .commitments
@@ -651,7 +651,7 @@ where
             }),
     );
 
-    // sigma commitments
+    //~     - sigma commitments
     evaluations.extend(
         index
             .sigma_comm

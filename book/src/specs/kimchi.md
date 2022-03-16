@@ -532,7 +532,7 @@ def sample(domain, i):
     return shift, i
 ```
 
-**`Public`**. This variable simply contains the number of public inputs.
+**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
 
 The compilation steps to create the common index are as follow:
 
@@ -847,8 +847,8 @@ We run the following algorithm:
 
 10. Sample $\alpha'$ with the Fq-Sponge.
 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-12. Enforce that the length of the t commitment is of size `PERMUTS`.
-13. absorb the polycommitments into the argument and sample zeta.
+12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+13. absorb the commitment to the quotient polynomial $t$ into the argument and sample zeta.
 14. Sample $\zeta'$ with the Fq-Sponge.
 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
 16. Setup the Fr-Sponge.
@@ -883,9 +883,16 @@ Essentially, this steps verify that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
 4. Compute the commitment to the linearized polynomial $f$.
 5. Compute the (chuncked) commitment of $ft$
-   (see [Maller's optimization](../crypto/plonk/maller_15.html).
+   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
 6. List the polynomial commitments, and their associated evaluations,
-   That are associated to the aggregated evaluation proof in the  proof.
+   That are associated to the aggregated evaluation proof in the proof:
+    - recursion
+    - public input commitment
+    - ft commitment (chunks of it)
+    - permutation commitment
+    - index commitments that use the coefficients
+    - witness commitments
+    - sigma commitments
 #### Batch verification of proofs
 
 Below, we define the steps to follow a number of proofs
