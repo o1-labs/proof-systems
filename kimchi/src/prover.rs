@@ -87,10 +87,19 @@ where
     G::BaseField: PrimeField,
 {
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
-    ///     witness: computation witness
-    ///     index: ProverIndex
-    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
+        groupmap: &G::Map,
+        witness: [Vec<Fr<G>>; COLUMNS],
+        index: &ProverIndex<G>,
+    ) -> Result<Self> {
+        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
+    }
+
+    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
+    pub fn create_recursive<
+        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        EFrSponge: FrSponge<Fr<G>>,
+    >(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
@@ -249,7 +258,7 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_values[0].iter()),
+                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_value.iter()),
             };
             CombinedEntry(x)
         };
@@ -260,7 +269,7 @@ where
                 Some(lcs) => {
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
-                            let row = lcs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
+                            let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
                     };
@@ -321,7 +330,7 @@ where
                 (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
                 (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let row = lcs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        let row = lcs.lookup_table8.iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
 
@@ -377,7 +386,7 @@ where
 
         //~ 21. TODO: lookup
         let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
-            let joint_table = &lcs.lookup_tables8[0];
+            let joint_table = &lcs.lookup_table8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
@@ -664,8 +673,7 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints =
-                    lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+                let constraints = lookup::constraints(&lcs.dummy_lookup_value, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -742,7 +750,8 @@ where
                         .iter()
                         .map(|c| c.eval(e, index.max_poly_size))
                         .collect(),
-                    table: lcs.lookup_tables[0]
+                    table: lcs
+                        .lookup_table
                         .iter()
                         .map(|p| p.eval(e, index.max_poly_size))
                         .rev()
@@ -840,7 +849,6 @@ where
 
         //~ 31. Compute the ft polynomial.
         //~     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-        //~     (See in particular the [section on evaluating L](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l).)
         let ft: DensePolynomial<Fr<G>> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
