@@ -500,6 +500,8 @@ pub struct CairoProgram<'a, F> {
     fin: CairoState<F>,
     /// execution trace as a vector of [CairoInstruction]
     trace: Vec<CairoInstruction<F>>,
+    /// list of memory addresses accessed and values
+    list: Vec<(F, F)>,
 }
 
 impl<'a, F: Field> CairoProgram<'a, F> {
@@ -511,6 +513,7 @@ impl<'a, F: Field> CairoProgram<'a, F> {
             ini: CairoState::new(F::from(pc), F::from(ap), F::from(ap)),
             fin: CairoState::new(F::zero(), F::zero(), F::zero()),
             trace: Vec::new(),
+            list: Vec::new(),
         };
         prog.execute();
         prog
@@ -531,9 +534,14 @@ impl<'a, F: Field> CairoProgram<'a, F> {
         self.fin
     }
 
-    /// Returns a pointer to the set of instructions
+    /// Returns a reference to the set of instructions
     pub fn trace(&self) -> &Vec<CairoInstruction<F>> {
         &self.trace
+    }
+
+    /// Returns a reference to the list of accesses
+    pub fn list(&self) -> &Vec<(F, F)> {
+        &self.list
     }
 
     /// This function simulates an execution of the Cairo program received as input.
@@ -554,6 +562,10 @@ impl<'a, F: Field> CairoProgram<'a, F> {
             curr = step.curr;
             // execute current step and increase time counter
             let instr = step.execute();
+            self.list.push((instr.pc(), instr.instr())); // include (pc, instr) pair
+            self.list.push((instr.adr_dst(), instr.dst())); // include (adr_dst, dst) pair
+            self.list.push((instr.adr_op0(), instr.op0())); // include (adr_op0, op0) pair
+            self.list.push((instr.adr_op1(), instr.op1())); // include (adr_op1, op1) pair
             self.trace.push(instr);
             n += 1;
             match step.next {

@@ -81,21 +81,43 @@
 //! The Kimchi 15 columns could be:
 //! GateType  CairoInstruction Zero  (...)              CairoTransition   (...)              Zero   CairoClaim     CairoMem?
 //!    row   ->   0         1          2          ...   2n                     2n+1  ......  3n -1       3n
-//!     0    ·    pc        fPC_ABS    (next) pc        pc\[i\]           (c)  pc\[i+2\] ... pc\[2n-2\]  pc\[0\] (c)
-//!     1    ·    ap        fPC_REL    (next) ap  ...   ap\[i\]           (c)  ap\[i+2\] ... ap\[2n-2\]  ap\[0\] (c)
-//!  c  2    ·    fp        fPC_JNZ    (next) fp        fp\[i\]           (c)  fp\[i+2\] ... fp\[2n-2\]  fp\[0\] (c)
-//!  o  3    ·    size      fAP_ADD        .            size\[i\]         (c)    .              .        pc\[2n-2\] (c)
-//!  l  4    ·    res       fAP_ONE        .            res\[i\]          (c)    .              .        ap\[2n-2\] (c)
-//!  |  5    ·    dst       fOPC_CALL      .            dst\[i\]          (c)    .              .        pc_ini
-//!  v  6    ·    op1       fOPC_RET                    op1\[i\]          (c)    .              .        ap_ini
-//!     7         op0       fOPC_AEQ                    fPC_ABS\[i+1\]    (c)                            pc_fin
-//!     8         off_dst   fDST_FP                     fPC_REL\[i+1\]    (c)                            ap_fin
-//!     9         off_op1   fOP0_FP                     fPC_JNZ\[i+1\]    (c)                         
-//!     10        off_op0   fOP1_VAL                    fAP_ADD\[i+1\]    (c)                         
-//!     11        adr_dst   fOP1_FP                     fAP_ONE\[i+1\]    (c)                         
-//!     12        adr_op1   fOP1_AP                     fOPC_CALL\[i+1\]  (c)
-//!     13        adr_op0   fRES_ADD                    fOPC_RET\[i+1\]   (c)
-//!     14        instr     fRES_MUL                    
+//!     0    ·    pc       (next) pc        pc\[i\]           (c)  pc\[i+2\] ... pc\[2n-2\]  pc\[0\] (c)
+//!     1    ·    ap       (next) ap  ...   ap\[i\]           (c)  ap\[i+2\] ... ap\[2n-2\]  ap\[0\] (c)
+//!  c  2    ·    fp       (next) fp        fp\[i\]           (c)  fp\[i+2\] ... fp\[2n-2\]  fp\[0\] (c)
+//!  o  3    ·    size              .       size\[i\]         (c)    .              .        pc\[2n-2\] (c)
+//!  l  4    ·    res               .      res\[i\]          (c)    .              .        ap\[2n-2\] (c)
+//!  |  5    ·    dst             .            dst\[i\]          (c)    .              .        pc_ini
+//!  v  6    ·    op1                           op1\[i\]          (c)    .              .        ap_ini
+//!     7         op0                           fPC_ABS\[i+1\]    (c)                            pc_fin
+//!     8         off_dst                        fPC_REL\[i+1\]    (c)                            ap_fin
+//!     9         off_op1                        fPC_JNZ\[i+1\]    (c)                         
+//!     10        off_op0                       fAP_ADD\[i+1\]    (c)                         
+//!     11        adr_dst                        fAP_ONE\[i+1\]    (c)                         
+//!     12        adr_op1                        fOPC_CALL\[i+1\]  (c)
+//!     13        adr_op0                       fOPC_RET\[i+1\]   (c)
+//!     14        instr            
+//!     15        f15           
+//!     16        fOPC_AEQ            
+//!     17        fOPC_RET            
+//!     18        fOPC_CALL
+//!     19        fAP_ONE            
+//!     20        fAP_ADD            
+//!     21        fPC_JNZ            
+//!     22        fPC_REL            
+//!     23        fPC_ABS            
+//!     24        fRES_MUL            
+//!     25        fRES_ADD            
+//!     26        fOP1_AP            
+//!     27        fOP1_FP            
+//!     28        fOP1_VAL            
+//!     29        fOP0_FP            
+//!     30        fDST_FP            
+//!     31                    
+//!     32                    
+//!     33           
+//!     34           
+//!     35               
+//!     36           
 
 //use std::fmt::{Display, Formatter};
 
