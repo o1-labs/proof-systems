@@ -18,10 +18,6 @@ use std::sync::Arc;
 type Fr<G> = <G as AffineCurve>::ScalarField;
 type Fq<G> = <G as AffineCurve>::BaseField;
 
-//~
-//~ ### The prover Index
-//~
-
 /// The index used by the prover
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
@@ -75,17 +71,17 @@ where
         }
         cs.endo = endo_q;
 
-        //~ 1. compute the linearization
+        // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
             cs.domain.d1,
             cs.chacha8.is_some(),
             &cs.lookup_constraint_system,
         );
 
-        //~ 2. set `max_quot_size` to the degree of the quotient polynomial,
-        //~    which is obtained by looking at the highest monomial in the sum
-        //~     $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
-        //~    where the $w_i(x)$ are of degree the size of the domain.
+        // set `max_quot_size` to the degree of the quotient polynomial,
+        // which is obtained by looking at the highest monomial in the sum
+        // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
+        // where the $w_i(x)$ are of degree the size of the domain.
         let max_quot_size = PERMUTS * cs.domain.d1.size as usize;
 
         ProverIndex {

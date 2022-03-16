@@ -100,7 +100,7 @@ fn setup_lookup_proof(use_values_from_table: bool) {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index)
             .unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 

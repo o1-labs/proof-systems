@@ -86,10 +86,19 @@ where
     G::BaseField: PrimeField,
 {
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
-    ///     witness: computation witness
-    ///     index: ProverIndex
-    ///     RETURN: prover's zk-proof
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
+        groupmap: &G::Map,
+        witness: [Vec<Fr<G>>; COLUMNS],
+        index: &ProverIndex<G>,
+    ) -> Result<Self> {
+        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
+    }
+
+    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
+    pub fn create_recursive<
+        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        EFrSponge: FrSponge<Fr<G>>,
+    >(
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
@@ -150,7 +159,7 @@ where
         )
         .interpolate();
 
-        //~ 5. Commit (non-hidding) to the negated public input polynomial. **TODO: seems unecessary**
+        //~ 5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
 
         //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
@@ -175,7 +184,7 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
         //~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    TODO: why not do this first, and the commit? Why commit from evaluation directly?
+        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
         let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
@@ -828,7 +837,6 @@ where
 
         //~ 31. Compute the ft polynomial.
         //~     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-        //~     (See in particular the [section on evaluating L](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l).)
         let ft: DensePolynomial<Fr<G>> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
@@ -907,7 +915,7 @@ where
         //~     - generic selector
         //~     - poseidon selector
         //~     - the 15 register/witness
-        //~     - the 6 sigmas evaluations
+        //~     - 6 sigmas evaluations (the last one is not evaluated)
         for i in 0..2 {
             fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
         }
@@ -957,7 +965,7 @@ where
         //~     - the generic selector
         //~     - the poseidon selector
         //~     - the 15 registers/witness columns
-        //~     - the 6 s
+        //~     - the 6 sigmas
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.1)]);
