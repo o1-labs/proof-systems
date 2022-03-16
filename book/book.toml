@@ -22,3 +22,8 @@ command = "mdbook-admonish"
 # for protocol diagrams
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
+
+# for table of content
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]

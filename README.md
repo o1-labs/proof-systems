@@ -1,3 +1,6 @@
+[![CI](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml/badge.svg)](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml)
+[![dependency status](https://deps.rs/repo/github/o1-labs/proof-systems/status.svg?style=flat-square)](https://deps.rs/repo/github/o1-labs/proof-systems)
+
 # Kimchi
 
 This repository contains **kimchi**, a general-purpose zero-knowledge proof system for proving the correct execution of programs.
@@ -75,7 +78,7 @@ The project is organized in the following way:
 * [book/](https://github.com/o1-labs/proof-systems/tree/master/book). The mina book, RFCs, and specifications.
 * [cairo/](https://github.com/o1-labs/proof-systems/tree/master/cairo). A Cairo runner written in rust.
 * [curves/](https://github.com/o1-labs/proof-systems/tree/master/curves). The elliptic curves we use (for now just the pasta curves).
-* [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). TODO: description
+* [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). Used to convert elliptic curve elements to field elements.
 * [kimchi/](https://github.com/o1-labs/proof-systems/tree/master/kimchi). Our proof system.
 * [ocaml/](https://github.com/o1-labs/proof-systems/tree/master/ocaml). Ocaml bindings generator tool.
 * [oracle/](https://github.com/o1-labs/proof-systems/tree/master/oracle). Implementation of the poseidon hash function.

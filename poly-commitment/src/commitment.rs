@@ -401,7 +401,7 @@ pub fn combined_inner_product<G: CommitmentCurve>(
     xi: &Fr<G>,
     r: &Fr<G>,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<&Vec<Fr<G>>>, Option<usize>)],
+    polys: &[(Vec<Vec<Fr<G>>>, Option<usize>)],
     srs_length: usize,
 ) -> Fr<G> {
     let mut res = Fr::<G>::zero();
@@ -498,6 +498,39 @@ impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
 
         res
     }
+}
+
+/// Contains the evaluation of a polynomial commitment at a set of points.
+pub struct Evaluation<G>
+where
+    G: AffineCurve,
+{
+    /// The commitment of the polynomial being evaluated
+    pub commitment: PolyComm<G>,
+
+    /// Contains an evaluation table
+    pub evaluations: Vec<Vec<Fr<G>>>,
+
+    /// optional degree bound
+    pub degree_bound: Option<usize>,
+}
+
+/// Contains the batch evaluation
+pub struct BatchEvaluationProof<'a, G, EFqSponge>
+where
+    G: AffineCurve,
+    EFqSponge: FqSponge<Fq<G>, G, Fr<G>>,
+{
+    pub sponge: EFqSponge,
+    pub evaluations: Vec<Evaluation<G>>,
+    /// vector of evaluation points
+    pub evaluation_points: Vec<Fr<G>>,
+    /// scaling factor for evaluation point powers
+    pub xi: Fr<G>,
+    /// scaling factor for polynomials
+    pub r: Fr<G>,
+    /// batched opening proof
+    pub opening: &'a OpeningProof<G>,
 }
 
 impl<G: CommitmentCurve> SRS<G> {
@@ -656,18 +689,7 @@ impl<G: CommitmentCurve> SRS<G> {
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
-        batch: &mut Vec<(
-            EFqSponge,
-            Vec<Fr<G>>, // vector of evaluation points
-            Fr<G>,      // scaling factor for polynomials
-            Fr<G>,      // scaling factor for evaluation point powers
-            Vec<(
-                &PolyComm<G>,     // polycommitment
-                Vec<&Vec<Fr<G>>>, // vector of evaluations
-                Option<usize>,    // optional degree bound
-            )>,
-            &OpeningProof<G>, // batched opening proof
-        )>,
+        batch: &mut Vec<BatchEvaluationProof<G, EFqSponge>>,
         rng: &mut RNG,
     ) -> bool
     where
@@ -717,23 +739,37 @@ impl<G: CommitmentCurve> SRS<G> {
         let mut rand_base_i = Fr::<G>::one();
         let mut sg_rand_base_i = Fr::<G>::one();
 
-        for (sponge, evaluation_points, xi, r, polys, opening) in batch.iter_mut() {
+        for BatchEvaluationProof {
+            sponge,
+            evaluation_points,
+            xi,
+            r,
+            evaluations,
+            opening,
+        } in batch.iter_mut()
+        {
             // TODO: This computation is repeated in ProverProof::oracles
             let combined_inner_product0 = {
-                let es: Vec<_> = polys
+                let es: Vec<_> = evaluations
                     .iter()
-                    .map(|(comm, evals, bound)| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*bound)?;
-                            let x = comm.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evals.clone(), bound)
-                    })
+                    .map(
+                        |Evaluation {
+                             commitment,
+                             evaluations,
+                             degree_bound,
+                         }| {
+                            let bound: Option<usize> = (|| {
+                                let b = (*degree_bound)?;
+                                let x = commitment.shifted?;
+                                if x.is_zero() {
+                                    None
+                                } else {
+                                    Some(b)
+                                }
+                            })();
+                            (evaluations.clone(), bound)
+                        },
+                    )
                     .collect();
                 combined_inner_product::<G>(evaluation_points, xi, r, &es, self.g.len())
             };
@@ -818,18 +854,24 @@ impl<G: CommitmentCurve> SRS<G> {
             {
                 let mut xi_i = Fr::<G>::one();
 
-                for (comm, _evals_tr, shifted) in polys.iter().filter(|x| !x.0.unshifted.is_empty())
+                for Evaluation {
+                    commitment,
+                    degree_bound,
+                    ..
+                } in evaluations
+                    .iter()
+                    .filter(|x| !x.commitment.unshifted.is_empty())
                 {
                     // iterating over the polynomial segments
-                    for comm_ch in comm.unshifted.iter() {
+                    for comm_ch in commitment.unshifted.iter() {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
 
                         xi_i *= *xi;
                     }
 
-                    if let Some(_m) = shifted {
-                        if let Some(comm_ch) = comm.shifted {
+                    if let Some(_m) = degree_bound {
+                        if let Some(comm_ch) = commitment.shifted {
                             if !comm_ch.is_zero() {
                                 // xi^i sum_j r^j elm_j^{N - m} f(elm_j)
                                 scalars.push(rand_base_i_c_i * xi_i);
@@ -979,21 +1021,25 @@ mod tests {
         assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
 
         // verify the proof
-        let mut batch = vec![(
+        let mut batch = vec![BatchEvaluationProof {
             sponge,
-            elm.clone(),
-            v,
-            u,
-            vec![
-                (&commitment.0, poly1_chunked_evals.iter().collect(), None),
-                (
-                    &bounded_commitment.0,
-                    poly2_chunked_evals.iter().collect(),
-                    Some(upperbound),
-                ),
+            evaluation_points: elm.clone(),
+            xi: v,
+            r: u,
+            evaluations: vec![
+                Evaluation {
+                    commitment: commitment.0,
+                    evaluations: poly1_chunked_evals,
+                    degree_bound: None,
+                },
+                Evaluation {
+                    commitment: bounded_commitment.0,
+                    evaluations: poly2_chunked_evals,
+                    degree_bound: Some(upperbound),
+                },
             ],
-            &opening_proof,
-        )];
+            opening: &opening_proof,
+        }];
 
         assert!(srs.verify(&group_map, &mut batch, rng));
     }

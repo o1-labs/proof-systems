@@ -149,7 +149,7 @@ fn positive(index: &ProverIndex<Affine>) {
         // add the proof to the batch
         // TODO: create and verify should not take group_map, that should be during an init phase
         batch.push(
-            ProverProof::create::<BaseSponge, ScalarSponge>(
+            ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
                 &group_map,
                 witness_cols,
                 index,
