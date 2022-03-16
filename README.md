@@ -1,3 +1,6 @@
+[![CI](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml/badge.svg)](https://github.com/o1-labs/proof-systems/actions/workflows/rust.yml)
+[![dependency status](https://deps.rs/repo/github/o1-labs/proof-systems/status.svg?style=flat-square)](https://deps.rs/repo/github/o1-labs/proof-systems)
+
 # Kimchi
 
 This repository contains **kimchi**, a general-purpose zero-knowledge proof system for proving the correct execution of programs.
