@@ -7,11 +7,9 @@ use std::marker::PhantomData;
 use crate::DomainParameter;
 use mina_curves::pasta::Fp;
 use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, PlonkSpongeConstantsLegacy, SpongeConstants},
     pasta,
-    poseidon::{
-        ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi,
-        PlonkSpongeConstantsLegacy, Sponge, SpongeConstants, SpongeState,
-    },
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge, SpongeState},
 };
 
 use super::{domain_prefix_to_field, Hashable, Hasher};
