@@ -6,7 +6,7 @@ use num_bigint::BigUint;
 use oracle::{
     constants::{self, SpongeConstants},
     pasta,
-    poseidon::{self, ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
+    poseidon::{ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
 };
 use rand::{prelude::*, Rng};
 use serde::Serialize;
