@@ -105,8 +105,7 @@ use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
 use crate::circuits::gate::GateType;
-//use crate::circuits::wires::COLUMNS;
-use ark_ff::{FftField, Field, One}; //, PrimeField};
+use ark_ff::{FftField, Field, One};
 
 const NUM_FLAGS: usize = 16;
 

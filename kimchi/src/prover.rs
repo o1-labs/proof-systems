@@ -607,7 +607,13 @@ where
 
             // cairo
             let cairoinstr = Instruction::combined_constraints(&all_alphas).evaluations(&env);
-            t4 += &cairoinstr;
+            if cairoinstr.domain().size == t4.domain().size {
+                t4 += &cairoinstr;
+            } else if cairoinstr.domain().size == t8.domain().size {
+                t8 += &cairoinstr;
+            } else {
+                panic!("Bad evaluation")
+            }
             if cfg!(test) {
                 let (_, res) = cairoinstr
                     .clone()
@@ -619,7 +625,13 @@ where
             drop(cairoinstr);
 
             let cairotrans = Transition::combined_constraints(&all_alphas).evaluations(&env);
-            t8 += &cairotrans;
+            if cairotrans.domain().size == t4.domain().size {
+                t4 += &cairotrans;
+            } else if cairotrans.domain().size == t8.domain().size {
+                t8 += &cairotrans;
+            } else {
+                panic!("Bad evaluation")
+            }
             if cfg!(test) {
                 let (_, res) = cairotrans
                     .clone()
@@ -631,7 +643,13 @@ where
             drop(cairotrans);
 
             let cairoclaim = Claim::combined_constraints(&all_alphas).evaluations(&env);
-            t4 += &cairoclaim;
+            if cairoclaim.domain().size == t4.domain().size {
+                t4 += &cairoclaim;
+            } else if cairoclaim.domain().size == t8.domain().size {
+                t8 += &cairoclaim;
+            } else {
+                panic!("Bad evaluation")
+            }
             if cfg!(test) {
                 let (_, res) = cairoclaim
                     .clone()
