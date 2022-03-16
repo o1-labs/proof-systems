@@ -1,9 +1,9 @@
-name: Basic rust CI stuff
+name: CI
 
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
 
 env:
@@ -38,6 +38,10 @@ jobs:
       # Use release build to speed up tests
       - name: Run cargo check
         run: cargo check --release
+
+      # https://github.com/o1-labs/proof-systems/issues/398
+      - name: Compile tests
+        run: cargo test --release --no-run
 
       - name: Run cargo check with all features (including ocaml_types)
         run: cargo check --release --all-features
