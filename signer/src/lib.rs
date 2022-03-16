@@ -1,31 +1,5 @@
-//! Mina signer module
-//!
-//! An abstract signing interface and associated traits
-//!
-//! **Example**
-//!
-//! ```rust
-//! #[path = "../../tests/transaction.rs"]
-//! mod transaction;
-//!
-//! use rand;
-//! use mina_crypto::signer::{NetworkId, Keypair, PubKey, Signer};
-//! use transaction::Transaction;
-//!
-//! let keypair = Keypair::rand(&mut rand::rngs::OsRng);
-//!
-//! let tx = Transaction::new_payment(
-//!                 keypair.public,
-//!                 PubKey::from_address("B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt").expect("invalid receiver address"),
-//!                 1729000000000,
-//!                 2000000000,
-//!                 271828,
-//!             );
-//!
-//! let mut ctx = mina_crypto::signer::create_legacy::<Transaction>(NetworkId::TESTNET);
-//! let sig = ctx.sign(keypair, tx);
-//! assert!(ctx.verify(sig, keypair.public,tx));
-//! ```
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
 
 pub mod keypair;
 pub mod pubkey;
@@ -33,7 +7,7 @@ pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
-use crate::hasher::{DomainParameter, Hashable};
+use mina_hasher::{DomainParameter, Hashable};
 
 pub use keypair::Keypair;
 pub use pubkey::{CompressedPubKey, PubKey};

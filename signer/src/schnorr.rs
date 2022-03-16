@@ -4,7 +4,6 @@
 //!
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
-use crate::hasher::{self, DomainParameter, Hasher, ROInput};
 use ark_ec::{
     AffineCurve,     // for prime_subgroup_generator()
     ProjectiveCurve, // for into_affine()
@@ -19,11 +18,10 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
+use mina_hasher::{self, DomainParameter, Hasher, ROInput};
 use std::ops::Neg;
 
-use crate::signer::{
-    BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer,
-};
+use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
@@ -92,14 +90,18 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
 
 pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::<H> {
-        hasher: Box::new(hasher::create_legacy::<Message<H>>(domain_param.clone())),
+        hasher: Box::new(mina_hasher::create_legacy::<Message<H>>(
+            domain_param.clone(),
+        )),
         domain_param,
     }
 }
 
 pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::<H> {
-        hasher: Box::new(hasher::create_kimchi::<Message<H>>(domain_param.clone())),
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<H>>(
+            domain_param.clone(),
+        )),
         domain_param,
     }
 }

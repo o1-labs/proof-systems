@@ -15,7 +15,7 @@ use super::Hashable;
 ///
 /// The random oracle input encapsulates the serialization format and methods using during hashing.
 ///
-/// When implementing the [`crate::hasher::Hashable`] trait to enable hashing for a type, you must implement
+/// When implementing the [`Hashable`] trait to enable hashing for a type, you must implement
 /// its `to_roinput()` serialization method using the [`ROInput`] functions below.
 ///
 /// The random oracle input structure is used (by generic code) to serialize the object into
@@ -24,40 +24,31 @@ use super::Hashable;
 /// Here is an example of how `ROInput` is used during the definition of the `Hashable` trait.
 ///
 /// ```rust
-/// use mina_crypto::{
-///     hasher::{Hashable, ROInput},
-///     signer::{CompressedPubKey, NetworkId},
-/// };
+/// use mina_hasher::{Hashable, ROInput};
+/// use mina_curves::pasta::Fp;
 ///
 /// #[derive(Clone)]
 /// pub struct MyExample {
-///     pub network_id: NetworkId,
-///     pub account: CompressedPubKey,
-///     pub amount: u64,
-///     pub nonce: u32,
+///     pub x: Fp,
+///     pub y: Fp,
+///     pub nonce: u64,
 /// }
 ///
 /// impl Hashable for MyExample {
-///     type D = NetworkId;
+///     type D = ();
 ///
 ///     fn to_roinput(self) -> ROInput {
 ///         let mut roi = ROInput::new();
 ///
-///         roi.append_field(self.account.x);
-///         roi.append_bool(self.account.is_odd);
-///         roi.append_u64(self.amount);
-///         roi.append_u32(self.nonce);
+///         roi.append_field(self.x);
+///         roi.append_field(self.y);
+///         roi.append_u64(self.nonce);
 ///
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> Option<String> {
-///         match network_id {
-///           NetworkId::MAINNET => "MyExampleMainnet",
-///           NetworkId::TESTNET => "MyExampleTestnet",
-///         }
-///         .to_string()
-///         .into()
+///     fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+///         format!("MyExampleMainnet").into()
 ///     }
 /// }
 /// ```
@@ -183,7 +174,7 @@ impl ROInput {
 
 #[cfg(test)]
 mod tests {
-    use crate::hasher::Hashable;
+    use crate::Hashable;
 
     use super::*;
 
@@ -854,7 +845,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> Option<String>{
+            fn domain_string(_: Option<Self>, _: &()) -> Option<String> {
                 format!("A").into()
             }
         }

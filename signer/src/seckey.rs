@@ -1,6 +1,6 @@
 //! Secret key structures and helpers
 
-use crate::signer::ScalarField;
+use crate::ScalarField;
 use ark_ff::UniformRand;
 use rand::{self, CryptoRng, RngCore};
 

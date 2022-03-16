@@ -1,35 +1,5 @@
-//! Mina hasher module
-//!
-//! An abstract hashing interface and associated traits
-//!
-//! **Example**
-//! ```rust
-//! use mina_crypto::hasher::{create_legacy, Hashable, Hasher, ROInput};
-//!
-//! #[derive(Clone)]
-//! struct Example {
-//!     a: u32,
-//!     b: u64,
-//! }
-//!
-//! impl Hashable for Example {
-//!     type D = ();
-//!
-//!     fn to_roinput(self) -> ROInput {
-//!         let mut roi = ROInput::new();
-//!         roi.append_u32(self.a);
-//!         roi.append_u64(self.b);
-//!         roi
-//!     }
-//!
-//!     fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
-//!         format!("Example").into()
-//!     }
-//! }
-//!
-//! // Usage example
-//! let mut hasher = create_legacy::<Example>(());
-//! let out = hasher.hash(Example {a: 1, b: 2});
+#![deny(missing_docs)]
+#![doc = include_str!("../README.md")]
 
 pub mod poseidon;
 pub mod roinput;
@@ -75,16 +45,13 @@ impl DomainParameter for u64 {
 /// Here is an example of how to implement the `Hashable` trait for am `Example` type.
 ///
 /// ```rust
-/// use mina_crypto::{
-///     hasher::{Hashable, ROInput},
-///     signer::NetworkId,
-/// };
+/// use mina_hasher::{Hashable, ROInput};
 ///
 /// #[derive(Clone)]
 /// struct Example;
 ///
 /// impl Hashable for Example {
-///     type D = NetworkId;
+///     type D = ();
 ///
 ///     fn to_roinput(self) -> ROInput {
 ///         let roi = ROInput::new();
@@ -93,13 +60,8 @@ impl DomainParameter for u64 {
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, network_id: &NetworkId) -> Option<String> {
-///        match network_id {
-///            NetworkId::MAINNET => "ExampleMainnet",
-///            NetworkId::TESTNET => "ExampleTestnet",
-///        }
-///        .to_string()
-///        .into()
+///     fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+///        format!("Example").into()
 ///    }
 /// }
 /// ```
@@ -133,8 +95,7 @@ pub trait Hashable: Clone {
 /// Example usage
 ///
 /// ```rust
-/// use mina_crypto::hasher::{create_legacy, Hashable, Hasher, ROInput};
-///
+/// use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
 /// use mina_curves::pasta::Fp;
 ///
 /// #[derive(Clone)]
@@ -221,7 +182,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::hasher::{create_legacy, Hashable, Hasher, ROInput};
+    use crate::{create_legacy, Hashable, Hasher, ROInput};
 
     #[test]
     fn interfaces() {

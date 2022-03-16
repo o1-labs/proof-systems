@@ -1,6 +1,5 @@
-use ark_ff::{BigInteger256, PrimeField};
-use ark_serialize::CanonicalDeserialize as _;
 use mina_curves::pasta::Fp;
+use o1_utils::FieldHelpers;
 use oracle::poseidon::Sponge as _;
 use serde::Deserialize;
 use std::fs::File;
@@ -28,13 +27,6 @@ struct TestVector {
     output: String,
 }
 
-fn hex_to_field(hexstring: &str) -> Fp {
-    let bytearray = hex::decode(hexstring).expect("couldn't deserialize hex encoded test vector");
-    let bignum = BigInteger256::deserialize(&mut &bytearray[..])
-        .expect("couldn't deserialize bignum representation");
-    Fp::from_repr(bignum).unwrap()
-}
-
 fn test_vectors<F>(test_vector_file: &str, hash: F)
 where
     F: Fn(&[Fp]) -> Fp,
@@ -53,13 +45,12 @@ where
         let input: Vec<Fp> = test_vector
             .input
             .into_iter()
-            .map(|hexstring| hex_to_field(&hexstring))
+            .map(|hexstring| Fp::from_hex(&hexstring).expect("failed to deserialize field element"))
             .collect();
-        let expected_output = hex_to_field(&test_vector.output);
+        let expected_output = Fp::from_hex(&test_vector.output).expect("failed to deserialize field element");
 
         // hash & check against expect output
-        let output = hash(&input);
-        assert_eq!(output, expected_output);
+        assert_eq!(hash(&input), expected_output);
     }
 }
 

@@ -1,15 +1,16 @@
 [workspace]
 members = [
     "cairo",
-    "crypto",
     "curves",
     "groupmap",
+    "hasher",
     "kimchi",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
     "oracle/export_test_vectors",
     "poly-commitment",
+    "signer",
     "tools/kimchi-visu",
     "utils",
 ]

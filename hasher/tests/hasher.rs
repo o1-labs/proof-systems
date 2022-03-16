@@ -1,11 +1,9 @@
-use mina_crypto::hasher::Hashable;
-use mina_crypto::hasher::Hasher;
-use mina_crypto::hasher::ROInput;
 use mina_curves::pasta::Fp;
+use mina_hasher::{Hashable, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::fs::File;
-use std::path::PathBuf; // needed for ::new() sponge
+use std::path::PathBuf;
 
 //
 // Helpers for test vectors
@@ -44,7 +42,7 @@ fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("../oracle/tests/test_vectors");
     path.push(&test_vector_file);
-    println!("path = {:?}", path);
+
     let file = File::open(&path).expect("couldn't open test vector file");
     let test_vectors: TestVectors =
         serde_json::from_reader(file).expect("couldn't deserialize test vector file");
@@ -66,12 +64,12 @@ fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
 
 #[test]
 fn hasher_test_vectors_legacy() {
-    let mut hasher = mina_crypto::hasher::create_legacy::<TestVector>(());
+    let mut hasher = mina_hasher::create_legacy::<TestVector>(());
     test_vectors("legacy.json", &mut hasher);
 }
 
 #[test]
 fn hasher_test_vectors_kimchi() {
-    let mut hasher = mina_crypto::hasher::create_kimchi::<TestVector>(());
+    let mut hasher = mina_hasher::create_kimchi::<TestVector>(());
     test_vectors("kimchi.json", &mut hasher);
 }

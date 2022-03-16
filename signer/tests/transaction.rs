@@ -1,7 +1,5 @@
-use mina_crypto::{
-    hasher::{Hashable, ROInput},
-    signer::{CompressedPubKey, Keypair, NetworkId, PubKey},
-};
+use mina_hasher::{Hashable, ROInput};
+use mina_signer::{CompressedPubKey, Keypair, NetworkId, PubKey};
 
 const MEMO_BYTES: usize = 34;
 const TAG_BITS: usize = 3;

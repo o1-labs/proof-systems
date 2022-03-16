@@ -1,5 +1,5 @@
 [package]
-name = "mina-crypto"
+name = "mina-signer"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
@@ -8,6 +8,7 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
+mina-hasher = { path = "../hasher" }
 oracle = { path = "../oracle" }
 mina-curves = { path = "../curves" }
 o1-utils = { path = "../utils" }
@@ -23,8 +24,6 @@ bitvec = "1.0.0"
 sha2 = "0.10.0"
 bs58 = "0.4.0"
 thiserror = "1.0.30"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0" }
 
 [dev-dependencies]
 array-init = "2.0.0"

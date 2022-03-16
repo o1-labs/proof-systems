@@ -9,7 +9,7 @@ use sha2::{Digest, Sha256};
 use std::ops::Neg;
 use thiserror::Error;
 
-use crate::signer::{BaseField, CurvePoint};
+use crate::{BaseField, CurvePoint};
 use o1_utils::FieldHelpers;
 
 /// Public key errors

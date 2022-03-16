@@ -1,21 +1,18 @@
-# Mina crypto
+# Mina hasher
 
-This crate provides an API and framework for Mina hashing and signing.
-
-* The [hasher](crate::hasher) is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md)
-* The [signer](crate::signer) follows the algorithm outlined in the [Mina Signature Specification](https://github.com/MinaProtocol/mina/blob/master/docs/specs/signatures/description.md)
+This crate provides an API and framework for Mina hashing.  It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md) that converts it from a sponge into a hash interface.
 
 ## Hasher interface
 
-The `hasher` module currently supports creating both legacy and an experimental kimchi hashers.
+The `mina_hasher` crate currently supports creating both the legacy hasher and an experimental kimchi hasher.
 
-* [`hasher::create_legacy`] create a legacy hasher
-* [`hasher::create_kimchi`] create an experimental kimchi hasher
+* [`create_legacy`] create a legacy hasher
+* [`create_kimchi`] create an experimental kimchi hasher
 
 Here is an example of how to use the hasher interface.
 
 ```rust
-use mina_crypto::hasher::{create_legacy, Hashable, Hasher, ROInput};
+use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct Example {
@@ -63,52 +60,14 @@ let out = hasher.hash(Example { x: 3, y: 1 });
 let out = hasher.init_and_hash(1, Example { x: 82, y: 834 });
 ```
 
-
-## Signer interface
-
-The `signer` module currently supports creating both legacy and an experimental kimchi signers.
-
-* [`signer::create_legacy`] create a legacy signer compatible with mainnet and testnet transaction signatures
-* [`signer::create_kimchi`] create an experimental kimchi signer
-
-Here is an example of how to use the signer interface to sign and verify Mina transactions.
-
-```rust
-#[path = "../tests/transaction.rs"]
-mod transaction;
-
-use rand;
-use mina_crypto::signer::{NetworkId, Keypair, PubKey, Signer};
-use transaction::Transaction;
-
-let keypair = Keypair::rand(&mut rand::rngs::OsRng);
-
-let tx = Transaction::new_payment(
-                keypair.public,
-                PubKey::from_address("B62qicipYxyEHu7QjUqS7QvBipTs5CzgkYZZZkPoKVYBu6tnDUcE9Zt").expect("invalid receiver address"),
-                1729000000000,
-                2000000000,
-                271828,
-            );
-
-let mut ctx = mina_crypto::signer::create_legacy::<Transaction>(NetworkId::TESTNET);
-let sig = ctx.sign(keypair, tx);
-assert!(ctx.verify(sig, keypair.public,tx));
-```
-
-Note that these examples use the test [`Transaction`](https://github.com/o1-labs/proof-systems/tree/master/crypto/tests/transaction.rs) structure found in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/crypto/tests) directory.  This is a complete reference implementation of the Mina payment and delegation transaction structures found on mainnet and testnet.
-
 ## The `Hashable` trait
 
-In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the [`Hashable`](crate::hasher::Hashable) trait.
+In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the [`Hashable`] trait.
 
 For example, if you wanted to create Mina signatures for a `Foo` structure you would do the following.
 
 ```rust
-use mina_crypto::{
-    hasher::{Hashable, ROInput},
-    signer::NetworkId,
-};
+use mina_hasher::{Hashable, ROInput};
 
 #[derive(Clone)]
 struct Foo {
@@ -117,7 +76,7 @@ struct Foo {
 }
 
 impl Hashable for Foo {
-    type D = NetworkId;
+    type D = ();
 
     fn to_roinput(self) -> ROInput {
         let mut roi = ROInput::new();
@@ -128,13 +87,8 @@ impl Hashable for Foo {
         roi
     }
 
-    fn domain_string(this: Option<Self>, network_id: &NetworkId) -> Option<String> {
-       match network_id {
-           NetworkId::MAINNET => "FooSigMainnet",
-           NetworkId::TESTNET => "FooSigTestnet",
-       }
-       .to_string()
-       .into()
+    fn domain_string(_this_: Option<Self>, _: &Self::D) -> Option<String> {
+        format!("Foo").into()
     }
 }
 ```
@@ -145,16 +99,15 @@ Suppose you wanted to hash a non-leaf Merkle tree node, where the
 domain string depends on the height of the node.  This can be implemented like this.
 
 ```rust
-use mina_crypto::{
-    hasher::{Hashable, ROInput},
-    signer::{NetworkId, ScalarField},
-};
+use ark_ff::Zero;
+use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
+use mina_curves::pasta::Fp;
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
     height: u64,
-    left: ScalarField,
-    right: ScalarField,
+    left: Fp,
+    right: Fp,
 }
 
 impl Hashable for ExampleMerkleNode {
@@ -163,25 +116,30 @@ impl Hashable for ExampleMerkleNode {
     fn to_roinput(self) -> ROInput {
         let mut roi = ROInput::new();
 
-        roi.append_scalar(self.left);
-        roi.append_scalar(self.right);
+        roi.append_field(self.left);
+        roi.append_field(self.right);
 
         roi
     }
 
     fn domain_string(this: Option<Self>, _: &Self::D) -> Option<String> {
         match this {
-            None => panic!("missing this argument (should never happen)"),
+            None => format!("Unused").into(),
             Some(x) => format!("ExampleMerkleNode{:03}", x.height).into(),
         }
     }
 }
 
-// // Called like this...
-// let mut hasher = create_legacy::<ExampleMerkleNode>(0);
-// let out = hasher.hash(node_21);
-// // Or this..
-// let out = hasher.update(node_15).digest();
+// Used like this
+let mut hasher = create_legacy::<ExampleMerkleNode>(());
+let node = ExampleMerkleNode {
+    height: 3,
+    left: Fp::zero(),
+    right: Fp::zero(),
+};
+let out = hasher.hash(node.clone());
+// Or like this..
+let out = hasher.update(node).digest();
 ```
 
 **Example: `domain_string` parameterized by `domain_param`**
@@ -190,9 +148,8 @@ If the height is not part of the structure, but instead a parameter
 passed when hashing, then it can be implemented like this.
 
 ```rust
-use mina_crypto::{
-    hasher::{Hashable, ROInput},
-};
+use ark_ff::Zero;
+use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
 use mina_curves::pasta::Fp;
 
 #[derive(Clone)]
@@ -218,13 +175,21 @@ impl Hashable for ExampleMerkleNode {
     }
 }
 
-// // Called like this...
-// let mut hasher = create_legacy::<ExampleMerkleNode>(0);
-// let out = hasher.init_and_hash(7 /* height */, node_21);
-// let out = hasher.init_and_hash(3 /* height */, node_15);
-// // Or this..
-// let out = hasher.init(7).update(node_21).digest();
-// let out = hasher.init(3).update(node_15).digest();
+// Used like this
+let mut hasher = create_legacy::<ExampleMerkleNode>(0);
+let node1 = ExampleMerkleNode {
+    left: Fp::zero(),
+    right: Fp::zero(),
+};
+let node2 = ExampleMerkleNode {
+    left: Fp::zero(),
+    right: Fp::zero(),
+};
+let out = hasher.init_and_hash(3 /* height */, node1.clone());
+let out = hasher.init_and_hash(7 /* height */, node2.clone());
+// Or like this..
+let out = hasher.init(3).update(node1).digest();
+let out = hasher.init(7).update(node2).digest();
 ```
 
 **Combining `ROInput`s**
@@ -235,9 +200,7 @@ structures, the `to_roinput()` implementation needs to combine `ROInput`s.
 Here is an example showing how this is done.
 
 ```rust
-use mina_crypto::{
-    hasher::{Hashable, ROInput},
-};
+use mina_hasher::{Hashable, ROInput};
 
 #[derive(Clone)]
 struct A {
@@ -286,12 +249,12 @@ impl Hashable for B {
 }
 ```
 
-For more details please see the rustdoc mina-crypto documentation.
+For more details please see the rustdoc mina-hasher documentation.
 
 # Tests
 
-There is a standard set of [signature tests](https://github.com/o1-labs/proof-systems/tree/master/crypto/tests/signer.rs) in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/crypto/tests) directory.
+There is a standard set of [hasher tests](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests/hasher.rs) in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/hasher/tests) directory.
 
 These can be run with
 
-`cargo test --package mina-crypto`
+`cargo test --package mina-hasher`

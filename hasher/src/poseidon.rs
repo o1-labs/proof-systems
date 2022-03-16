@@ -4,7 +4,7 @@
 //!
 use std::marker::PhantomData;
 
-use crate::hasher::DomainParameter;
+use crate::DomainParameter;
 use mina_curves::pasta::Fp;
 use oracle::{
     pasta,
