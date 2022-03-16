@@ -424,7 +424,7 @@ impl<F: FftField> CircuitGate<F> {
             Generic => self.verify_generic(row, witness),
             Poseidon => self.verify_poseidon(row, witness, cs),
             CompleteAdd => self.verify_complete_add(row, witness),
-            VarBaseMul => self.verify_vbmul(row, witness),
+            VarBaseMul => self.verify_vbmul(row, witness, cs),
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),

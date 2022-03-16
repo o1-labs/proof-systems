@@ -14,16 +14,14 @@ use crate::circuits::{
     wires::{COLUMNS, PERMUTS},
 };
 use crate::plonk_sponge::FrSponge;
-use ark_ec::AffineCurve;
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::UniformRand;
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{
-    b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{rndoracle::ProofError, sponge::ScalarChallenge, FqSponge};
@@ -109,24 +107,34 @@ where
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &Index<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        blinders: [Option<PolyComm<Fr<G>>>; COLUMNS],
     ) -> Result<Self, ProofError> {
+        let start = std::time::Instant::now();
+        let mut prev = start;
+        let mut time = |l: u32| {
+            let now = std::time::Instant::now();
+            println!("{}: {:?}", l, prev.elapsed());
+            prev = now;
+        };
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
         // double-check the witness
-        if cfg!(test) {
+        /*
+        if true /* cfg!(test) */ {
             index.cs.verify(&witness).expect("incorrect witness");
-        }
+        } */
 
         // ensure we have room for the zero-knowledge rows
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProofError::NoRoomForZkInWitness)?;
+        /*
         if length_padding < ZK_ROWS as usize {
             return Err(ProofError::NoRoomForZkInWitness);
-        }
+        } */
 
         // pad and add zero-knowledge rows to the witness columns
         for w in &mut witness {
@@ -137,11 +145,13 @@ where
             // padding
             w.extend(std::iter::repeat(Fr::<G>::zero()).take(length_padding));
 
+            /*
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
                 *row = Fr::<G>::rand(rng);
-            }
+            } */
         }
+        time(line!());
 
         // the transcript of the random oracle non-interactive argument
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
@@ -153,6 +163,7 @@ where
             index.cs.domain.d1,
         )
         .interpolate();
+        time(line!());
 
         // commit to the wire values
         let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
@@ -160,10 +171,33 @@ where
                 witness[i].clone(),
                 index.cs.domain.d1,
             );
-            index
-                .srs
-                .commit_evaluations(index.cs.domain.d1, &e, None, rng)
+
+            match &blinders[i] {
+                None => index
+                    .srs
+                    .commit_evaluations(index.cs.domain.d1, &e, None, rng),
+                Some(b) => {
+                    let c = index
+                        .srs
+                        .commit_evaluations_non_hiding(index.cs.domain.d1, &e, None);
+                    (
+                        c.zip(b).unwrap().map(|(g, b)| {
+                            if g.is_zero() {
+                                // TODO: This leaks information when g is the identity!
+                                // We should change this so that we still mask in this case
+                                g
+                            } else {
+                                let mut g_masked = index.srs.h.mul(b);
+                                g_masked.add_assign_mixed(&g);
+                                g_masked.into_affine()
+                            }
+                        }),
+                        b.clone(),
+                    )
+                }
+            }
         });
+        time(line!());
 
         // compute witness polynomials
         let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
@@ -173,12 +207,14 @@ where
             )
             .interpolate()
         });
+        time(line!());
 
         // absorb the wire polycommitments into the argument
         fq_sponge.absorb_g(&index.srs.commit_non_hiding(&public_poly, None).unshifted);
         w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
+        time(line!());
 
         let lookup_info = LookupInfo::<Fr<G>>::create();
         let lookup_used = lookup_info.lookup_used(&index.cs.gates);
@@ -300,6 +336,7 @@ where
                 }
             };
 
+        time(line!());
         // sample beta, gamma oracles
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();
@@ -343,11 +380,13 @@ where
                 },
             };
 
+        time(line!());
         // compute permutation aggregation polynomial
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
         // commit to z
         let z_comm = index.srs.commit(&z_poly, None, rng);
 
+        time(line!());
         // absorb the z commitment into the argument and query alpha
         fq_sponge.absorb_g(&z_comm.0.unshifted);
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -356,6 +395,7 @@ where
 
         // evaluate polynomials over domains
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
+        time(line!());
 
         let lookup_table_combined = lookup_used.as_ref().map(|_| {
             let joint_table = &index.cs.lookup_tables8[0];
@@ -418,6 +458,7 @@ where
             }
         };
 
+        time(line!());
         let t4 = {
             // generic
             let mut t4 = index.cs.gnrc_quot(&lagrange.d4.this.w);
@@ -430,28 +471,34 @@ where
             t4
         };
 
+        time(line!());
         // permutation
         let (perm, bnd) =
             index
                 .cs
                 .perm_quot(&lagrange, beta, gamma, &z_poly, &alphas[range::PERM])?;
+        time(line!());
         let mut t8 = perm;
         // scalar multiplication
         let mul8 = varbasemul::constraint(range::MUL.start).evaluations(&env);
         t8 += &mul8;
         drop(mul8);
+        time(line!());
         // endoscaling
         let emul8 = endosclmul::constraint(2 + range::ENDML.start).evaluations(&env);
         t8 += &emul8;
         drop(emul8);
+        time(line!());
         // endoscaling scalar computation
         let emulscalar8 = endomul_scalar::constraint(range::ENDOMUL_SCALAR.start).evaluations(&env);
         t8 += &emulscalar8;
         drop(emulscalar8);
+        time(line!());
         // poseidon
         let pos8 = poseidon::constraint().evaluations(&env);
         t8 += &pos8;
         drop(pos8);
+        time(line!());
 
         let t4 = match index.cs.chacha8.as_ref() {
             None => t4,
@@ -479,18 +526,34 @@ where
         };
 
         // divide contributions with vanishing polynomial
-        let (mut t, res) = (&(&t4.interpolate() + &t8.interpolate()) + &public_poly)
+        time(line!());
+        let constraint_poly = &(&t4.interpolate() + &t8.interpolate()) + &public_poly;
+        time(line!());
+
+        use ark_poly::EvaluationDomain;
+        for (i, x) in index.cs.domain.d1.elements().enumerate() {
+            let y = constraint_poly.evaluate(&x);
+            if !y.is_zero() {
+                println!("c_poly[{}] = {}", i, y);
+            }
+        }
+
+        let (mut t, res) = constraint_poly
             .divide_by_vanishing_poly(index.cs.domain.d1)
             .map_or(Err(ProofError::PolyDivision), Ok)?;
+        time(line!());
         if !res.is_zero() {
             return Err(ProofError::PolyDivision);
         }
+        println!("here {}", line!());
 
         t += &bnd;
+        time(line!());
 
         // commit to t
         let t_comm = {
             let (mut t_comm, mut omega_t) = index.srs.commit(&t, None, rng);
+            time(line!());
 
             let expected_t_size = PERMUTS;
             let dummies = expected_t_size - t_comm.unshifted.len();
@@ -699,6 +762,7 @@ where
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
+        println!("pre opening: {:?}", start.elapsed());
 
         Ok(Self {
             commitments: ProverCommitments {

@@ -125,6 +125,7 @@ impl BenchmarkCtx {
             witness,
             &self.index,
             vec![prev],
+            array_init(|_| None),
         )
         .unwrap()
     }

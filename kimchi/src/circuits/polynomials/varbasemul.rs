@@ -76,7 +76,7 @@ fn single_bit<F: FftField>(
     output: CurveVar,
 ) -> Vec<E<F>> {
     let v = E::Cell;
-    let double = |x: E<_>| x.clone() + x;
+    let double = |x: E<_>| x.double();
 
     let b_sign = double(v(b)) - E::one();
 
@@ -117,7 +117,7 @@ fn single_bit<F: FftField>(
     ]
 }
 
-struct Layout {
+pub struct Layout {
     accs: [(Variable, Variable); 6],
     bits: [Variable; 5],
     ss: [Variable; 5],
@@ -201,6 +201,11 @@ pub fn witness<F: FftField + std::fmt::Display>(
 }
 
 pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
+    E::cell(Column::Index(GateType::VarBaseMul), CurrOrNext::Curr)
+        * E::combine_constraints(alpha0, constraints())
+}
+
+pub fn constraints<F: FftField>() -> Vec<E<F>> {
     let Layout {
         base,
         accs,
@@ -230,6 +235,5 @@ pub fn constraint<F: FftField>(alpha0: usize) -> E<F> {
     for i in 0..5 {
         res.append(&mut constraint(i));
     }
-    E::cell(Column::Index(GateType::VarBaseMul), CurrOrNext::Curr)
-        * E::combine_constraints(alpha0, res)
+    res
 }

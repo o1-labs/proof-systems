@@ -97,9 +97,12 @@ The constraints above are derived from the following EC Affine arithmetic equati
 
 *****************************************************************************************************************/
 
+use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::scalars::ProofEvaluations;
 use crate::circuits::wires::{GateWires, COLUMNS};
 use ark_ff::FftField;
+use array_init::array_init;
 
 impl<F: FftField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
@@ -117,8 +120,50 @@ impl<F: FftField> CircuitGate<F> {
         ]
     }
 
-    pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
-        unimplemented!();
+    pub fn verify_vbmul(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+
+        let pt = F::from(123456u64);
+
+        let constants = crate::circuits::expr::Constants {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: F::zero(),
+            mds: vec![],
+            endo_coefficient: cs.endo,
+        };
+
+        let evals: [ProofEvaluations<F>; 2] = [
+            ProofEvaluations::dummy_with_witness_evaluations(this),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
+        ];
+
+        let constraints = crate::circuits::polynomials::varbasemul::constraints::<F>();
+        for (i, c) in constraints.iter().enumerate() {
+            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
+                Ok(x) => {
+                    if x != F::zero() {
+                        this.into_iter()
+                            .enumerate()
+                            .for_each(|(i, x)| println!("this[{}] = {}", i, x));
+                        next.into_iter()
+                            .enumerate()
+                            .for_each(|(i, x)| println!("next[{}] = {}", i, x));
+                        return Err(format!("Bad vbmul equation {}: {:?}", i, c));
+                    }
+                }
+                Err(e) => return Err(format!("evaluation failed: {}", e)),
+            }
+        }
+
+        Ok(())
     }
 
     pub fn vbmul(&self) -> F {

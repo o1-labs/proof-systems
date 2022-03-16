@@ -7,6 +7,7 @@ pub trait GroupMap<F> {
     fn batch_to_group_x(&self, ts: Vec<F>) -> Vec<[F; 3]>;
 }
 
+#[derive(Clone, Copy)]
 pub struct BWParameters<G: SWModelParameters> {
     u: G::BaseField,
     fu: G::BaseField,
