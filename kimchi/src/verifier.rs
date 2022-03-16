@@ -480,8 +480,8 @@ where
                         Some(lindex) => {
                             let mut j = Fr::<G>::one();
                             scalars.push(scalar);
-                            commitments.push(&lindex.lookup_tables[0][0]);
-                            for t in lindex.lookup_tables[0].iter().skip(1) {
+                            commitments.push(&lindex.lookup_table[0]);
+                            for t in lindex.lookup_table.iter().skip(1) {
                                 j *= constants.joint_combiner;
                                 scalars.push(scalar * j);
                                 commitments.push(t);

@@ -257,7 +257,7 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_values[0].iter()),
+                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_value.iter()),
             };
             CombinedEntry(x)
         };
@@ -268,7 +268,7 @@ where
                 Some(lcs) => {
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
-                            let row = lcs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
+                            let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
                     };
@@ -329,7 +329,7 @@ where
                 (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
                 (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let row = lcs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        let row = lcs.lookup_table8.iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
 
@@ -385,7 +385,7 @@ where
 
         //~ 21. TODO: lookup
         let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
-            let joint_table = &lcs.lookup_tables8[0];
+            let joint_table = &lcs.lookup_table8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
@@ -614,8 +614,7 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints =
-                    lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+                let constraints = lookup::constraints(&lcs.dummy_lookup_value, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -692,7 +691,8 @@ where
                         .iter()
                         .map(|c| c.eval(e, index.max_poly_size))
                         .collect(),
-                    table: lcs.lookup_tables[0]
+                    table: lcs
+                        .lookup_table
                         .iter()
                         .map(|p| p.eval(e, index.max_poly_size))
                         .rev()
