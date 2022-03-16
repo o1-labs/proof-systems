@@ -12,19 +12,8 @@ oracle = { path = "../oracle" }
 mina-curves = { path = "../curves" }
 o1-utils = { path = "../utils" }
 
-ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
-ark-serialize = "0.3.0"
 
-rand = "0.8.0"
-blake2 = "0.10.0"
-hex = "0.4"
 bitvec = "1.0.0"
-sha2 = "0.10.0"
-bs58 = "0.4.0"
-thiserror = "1.0.30"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-
-[dev-dependencies]
-array-init = "2.0.0"
