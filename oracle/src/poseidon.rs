@@ -3,6 +3,7 @@
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use crate::permutations::{full_round, half_rounds};
 
 pub trait SpongeConstants {
     const ROUNDS_FULL: usize;
@@ -89,83 +90,6 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub state: Vec<F>,
     params: ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
-}
-
-fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &[F],
-) -> Vec<F> {
-    if SC::FULL_MDS {
-        params
-            .mds
-            .iter()
-            .map(|m| {
-                state
-                    .iter()
-                    .zip(m.iter())
-                    .fold(F::zero(), |x, (s, &m)| m * s + x)
-            })
-            .collect()
-    } else {
-        vec![
-            state[0] + state[2],
-            state[0] + state[1],
-            state[1] + state[2],
-        ]
-    }
-}
-
-pub fn full_round<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
-    r: usize,
-) {
-    for state_i in state.iter_mut() {
-        *state_i = sbox::<F, SC>(*state_i);
-    }
-    *state = apply_mds_matrix::<F, SC>(params, state);
-    for (i, x) in params.round_constants[r].iter().enumerate() {
-        state[i].add_assign(x);
-    }
-}
-
-fn half_rounds<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
-) {
-    for r in 0..SC::HALF_ROUNDS_FULL {
-        for (i, x) in params.round_constants[r].iter().enumerate() {
-            state[i].add_assign(x);
-        }
-        for state_i in state.iter_mut() {
-            *state_i = sbox::<F, SC>(*state_i);
-        }
-        apply_mds_matrix::<F, SC>(params, state);
-    }
-
-    for r in 0..SC::ROUNDS_PARTIAL {
-        for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + r]
-            .iter()
-            .enumerate()
-        {
-            state[i].add_assign(x);
-        }
-        state[0] = sbox::<F, SC>(state[0]);
-        apply_mds_matrix::<F, SC>(params, state);
-    }
-
-    for r in 0..SC::HALF_ROUNDS_FULL {
-        for (i, x) in params.round_constants[SC::HALF_ROUNDS_FULL + SC::ROUNDS_PARTIAL + r]
-            .iter()
-            .enumerate()
-        {
-            state[i].add_assign(x);
-        }
-        for state_i in state.iter_mut() {
-            *state_i = sbox::<F, SC>(*state_i);
-        }
-        apply_mds_matrix::<F, SC>(params, state);
-    }
 }
 
 pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(

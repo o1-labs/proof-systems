@@ -1,6 +1,7 @@
 pub mod pasta;
 pub mod poseidon;
 pub mod sponge;
+pub mod permutations;
 
 use ark_ff::Field;
 
