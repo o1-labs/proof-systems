@@ -91,7 +91,7 @@ fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
         prog.trace()[first].ap(),
         prog.trace()[first].fp(),
         prog.trace()[last].pc(),
-        prog.trace()[last].ap(), // perhaps this is the pre-last
+        prog.trace()[last].ap(),
         prog.ini().pc(),
         prog.ini().ap(),
         prog.fin().pc(),
@@ -219,13 +219,16 @@ impl<F: FftField> CircuitGate<F> {
                     .cloned(),
             );
         }
+        // n-1 CairoTransition gates
         for i in 0..num - 1 {
             gates.push(CircuitGate::create_cairo_transition(Wire::new(
                 row + 2 * num + i,
             )));
         }
+        // the final one is considered a Zero gate
         gates.push(CircuitGate::zero(Wire::new(row + 3 * num - 1)));
         gates.push(CircuitGate::create_cairo_claim(Wire::new(row + 3 * num)));
+
         gates
     }
 

@@ -294,7 +294,7 @@ where
     const CONSTRAINTS: u32 = 4;
 
     /// Generates the constraints for the Cairo transition
-    ///     Accesses Curr and Next rows
+    ///     Accesses Curr and Next rows (Next only first 3 entries)
     fn constraints() -> Vec<E<F>> {
         let pc = witness_curr(0);
         let ap = witness_curr(1);
