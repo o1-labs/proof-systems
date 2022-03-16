@@ -40,7 +40,7 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     }
 }
 
-fn half_rounds<F: Field, SC: SpongeConstants>(
+pub fn half_rounds<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut Vec<F>,
 ) {
