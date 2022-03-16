@@ -78,7 +78,7 @@ mod inner {
             }
             _ => {
                 println!(
-                "usage: cargo run --all-features --bin export_test_vectors -- [{:?}|{:?}] [legacy|kimchi] <OUTPUT_FILE>",
+                "usage: cargo run -p export_test_vectors -- [{:?}|{:?}] [legacy|kimchi] <OUTPUT_FILE>",
                 Mode::Hex,
                 Mode::B10,
             );
