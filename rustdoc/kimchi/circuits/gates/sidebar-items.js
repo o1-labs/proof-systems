@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["endosclmul","This module implements group endomorphism optimised variable base scalar multiplication custom Plonk constraints."],["poseidon","This module implements the Poseidon gate."],["varbasemul","This module implements short Weierstrass curve variable base scalar multiplication custom Plonk constraints."]]});
