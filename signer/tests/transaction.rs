@@ -27,7 +27,7 @@ pub struct Transaction {
 impl Hashable for Transaction {
     type D = NetworkId;
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
 
         roi.append_field(self.fee_payer_pk.x);
@@ -54,7 +54,7 @@ impl Hashable for Transaction {
         roi
     }
 
-    fn domain_string(_: Option<Self>, network_id: &NetworkId) -> Option<String> {
+    fn domain_string(_: Option<&Self>, network_id: NetworkId) -> Option<String> {
         // Domain strings must have length <= 20
         match network_id {
             NetworkId::MAINNET => "MinaSignatureMainnet",
@@ -129,11 +129,11 @@ impl Transaction {
 #[test]
 fn transaction_domain() {
     assert_eq!(
-        Transaction::domain_string(None, &NetworkId::MAINNET).expect("missing domain string"),
+        Transaction::domain_string(None, NetworkId::MAINNET).expect("missing domain string"),
         "MinaSignatureMainnet"
     );
     assert_eq!(
-        Transaction::domain_string(None, &NetworkId::TESTNET).expect("missing domain string"),
+        Transaction::domain_string(None, NetworkId::TESTNET).expect("missing domain string"),
         "CodaSignature"
     );
 }

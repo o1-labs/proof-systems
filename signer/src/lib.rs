@@ -52,11 +52,11 @@ impl DomainParameter for NetworkId {
 /// Signer interface for signing [`Hashable`] inputs and verifying [`Signatures`](Signature) using [`Keypairs`](Keypair) and [`PubKeys`](PubKey)
 pub trait Signer<H: Hashable> {
     /// Sign `input` (see [`Hashable`]) using keypair `kp` and return the corresponding signature.
-    fn sign(&mut self, kp: Keypair, input: H) -> Signature;
+    fn sign(&mut self, kp: &Keypair, input: &H) -> Signature;
 
     /// Verify that the signature `sig` on `input` (see [`Hashable`]) is signed with the secret key corresponding to `pub_key`.
     /// Return `true` if the signature is valid and `false` otherwise.
-    fn verify(&mut self, sig: Signature, pub_key: PubKey, input: H) -> bool;
+    fn verify(&mut self, sig: &Signature, pub_key: &PubKey, input: &H) -> bool;
 }
 
 /// Create a legacy signer context with domain parameters initialized with `domain_param`

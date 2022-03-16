@@ -37,7 +37,7 @@ use super::Hashable;
 /// impl Hashable for MyExample {
 ///     type D = ();
 ///
-///     fn to_roinput(self) -> ROInput {
+///     fn to_roinput(&self) -> ROInput {
 ///         let mut roi = ROInput::new();
 ///
 ///         roi.append_field(self.x);
@@ -47,7 +47,7 @@ use super::Hashable;
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+///     fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
 ///         format!("MyExampleMainnet").into()
 ///     }
 /// }
@@ -836,7 +836,7 @@ mod tests {
         impl Hashable for A {
             type D = ();
 
-            fn to_roinput(self) -> ROInput {
+            fn to_roinput(&self) -> ROInput {
                 let mut roi = ROInput::new();
                 roi.append_u32(self.x);
                 roi.append_bool(self.y);
@@ -845,7 +845,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> Option<String> {
+            fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
                 format!("A").into()
             }
         }
@@ -860,7 +860,7 @@ mod tests {
         impl Hashable for B1 {
             type D = ();
 
-            fn to_roinput(self) -> ROInput {
+            fn to_roinput(&self) -> ROInput {
                 let mut roi = self.a.to_roinput();
                 roi.append_u64(self.b);
                 roi.append_bool(self.c);
@@ -868,7 +868,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> Option<String> {
+            fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
                 format!("B").into()
             }
         }
@@ -883,7 +883,7 @@ mod tests {
         impl Hashable for B2 {
             type D = ();
 
-            fn to_roinput(self) -> ROInput {
+            fn to_roinput(&self) -> ROInput {
                 let mut roi = self.a.to_roinput();
 
                 let mut roi2 = ROInput::new();
@@ -895,7 +895,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, _: &()) -> Option<String> {
+            fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
                 format!("B").into()
             }
         }

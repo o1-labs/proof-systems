@@ -23,41 +23,41 @@ struct Example {
 impl Hashable for Example {
     type D = u32;
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
         roi.append_u32(self.x);
         roi.append_u64(self.y);
         roi
     }
 
-    fn domain_string(_: Option<Self>, seed: &u32) -> Option<String> {
+    fn domain_string(_: Option<&Self>, seed: u32) -> Option<String> {
         format!("Example {}", seed).into()
     }
 }
 
 // Usage 1: incremental interface
 let mut hasher = create_legacy::<Example>(0);
-hasher.update(Example { x: 82, y: 834 });
-hasher.update(Example { x: 1235, y: 93 });
+hasher.update(&Example { x: 82, y: 834 });
+hasher.update(&Example { x: 1235, y: 93 });
 let out = hasher.digest();
 hasher.init(1);
-hasher.update(Example { x: 82, y: 834 });
+hasher.update(&Example { x: 82, y: 834 });
 let out = hasher.digest();
 
 // Usage 2: builder interface with one-shot pattern
 let mut hasher = create_legacy::<Example>(0);
-let out = hasher.update(Example { x: 3, y: 1 }).digest();
-let out = hasher.update(Example { x: 31, y: 21 }).digest();
+let out = hasher.update(&Example { x: 3, y: 1 }).digest();
+let out = hasher.update(&Example { x: 31, y: 21 }).digest();
 
 // Usage 3: builder interface with one-shot pattern also setting init state
 let mut hasher = create_legacy::<Example>(0);
-let out = hasher.init(0).update(Example { x: 3, y: 1 }).digest();
-let out = hasher.init(1).update(Example { x: 82, y: 834 }).digest();
+let out = hasher.init(0).update(&Example { x: 3, y: 1 }).digest();
+let out = hasher.init(1).update(&Example { x: 82, y: 834 }).digest();
 
 // Usage 4: one-shot interfaces
 let mut hasher = create_legacy::<Example>(0);
-let out = hasher.hash(Example { x: 3, y: 1 });
-let out = hasher.init_and_hash(1, Example { x: 82, y: 834 });
+let out = hasher.hash(&Example { x: 3, y: 1 });
+let out = hasher.init_and_hash(1, &Example { x: 82, y: 834 });
 ```
 
 ## The `Hashable` trait
@@ -78,7 +78,7 @@ struct Foo {
 impl Hashable for Foo {
     type D = ();
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
 
         roi.append_u32(self.foo);
@@ -87,7 +87,7 @@ impl Hashable for Foo {
         roi
     }
 
-    fn domain_string(_this_: Option<Self>, _: &Self::D) -> Option<String> {
+    fn domain_string(_this_: Option<&Self>, _: Self::D) -> Option<String> {
         format!("Foo").into()
     }
 }
@@ -113,7 +113,7 @@ struct ExampleMerkleNode {
 impl Hashable for ExampleMerkleNode {
     type D = ();
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
 
         roi.append_field(self.left);
@@ -122,7 +122,7 @@ impl Hashable for ExampleMerkleNode {
         roi
     }
 
-    fn domain_string(this: Option<Self>, _: &Self::D) -> Option<String> {
+    fn domain_string(this: Option<&Self>, _: Self::D) -> Option<String> {
         match this {
             None => format!("Unused").into(),
             Some(x) => format!("ExampleMerkleNode{:03}", x.height).into(),
@@ -137,9 +137,9 @@ let node = ExampleMerkleNode {
     left: Fp::zero(),
     right: Fp::zero(),
 };
-let out = hasher.hash(node.clone());
+let out = hasher.hash(&node);
 // Or like this..
-let out = hasher.update(node).digest();
+let out = hasher.update(&node).digest();
 ```
 
 **Example: `domain_string` parameterized by `domain_param`**
@@ -161,7 +161,7 @@ struct ExampleMerkleNode {
 impl Hashable for ExampleMerkleNode {
     type D = u64;
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
 
         roi.append_field(self.left);
@@ -170,7 +170,7 @@ impl Hashable for ExampleMerkleNode {
         roi
     }
 
-    fn domain_string(_: Option<Self>, height: &Self::D) -> Option<String> {
+    fn domain_string(_: Option<&Self>, height: Self::D) -> Option<String> {
         format!("MerkleTree{:03}", height).into()
     }
 }
@@ -185,11 +185,11 @@ let node2 = ExampleMerkleNode {
     left: Fp::zero(),
     right: Fp::zero(),
 };
-let out = hasher.init_and_hash(3 /* height */, node1.clone());
-let out = hasher.init_and_hash(7 /* height */, node2.clone());
+let out = hasher.init_and_hash(3 /* height */, &node1);
+let out = hasher.init_and_hash(7 /* height */, &node2);
 // Or like this..
-let out = hasher.init(3).update(node1).digest();
-let out = hasher.init(7).update(node2).digest();
+let out = hasher.init(3).update(&node1).digest();
+let out = hasher.init(7).update(&node2).digest();
 ```
 
 **Combining `ROInput`s**
@@ -202,7 +202,7 @@ Here is an example showing how this is done.
 ```rust
 use mina_hasher::{Hashable, ROInput};
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 struct A {
     x: u32,
     y: u32,
@@ -211,19 +211,19 @@ struct A {
 impl Hashable for A {
     type D = ();
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
         roi.append_u32(self.x);
         roi.append_u32(self.y);
         roi
     }
 
-    fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+    fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
         format!("A").into()
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 struct B {
     a1: A,
     a2: A,
@@ -233,7 +233,7 @@ struct B {
 impl Hashable for B {
     type D = ();
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
         // Way 1: Append Hashable input
         roi.append_hashable(self.a1);
@@ -243,7 +243,7 @@ impl Hashable for B {
         roi
     }
 
-    fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+    fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
         format!("B").into()
     }
 }

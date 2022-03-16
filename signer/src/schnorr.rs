@@ -42,7 +42,7 @@ struct Message<H: Hashable> {
 impl<H: Hashable> Hashable for Message<H> {
     type D = H::D;
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = self.input.to_roinput();
         roi.append_field(self.pub_key_x);
         roi.append_field(self.pub_key_y);
@@ -51,17 +51,17 @@ impl<H: Hashable> Hashable for Message<H> {
         roi
     }
 
-    fn domain_string(this: Option<Self>, domain_param: &Self::D) -> Option<String> {
+    fn domain_string(this: Option<&Self>, domain_param: Self::D) -> Option<String> {
         match this {
             None => H::domain_string(None, domain_param),
-            Some(x) => H::domain_string(Some(x.input), domain_param),
+            Some(x) => H::domain_string(Some(&x.input), domain_param),
         }
     }
 }
 
 impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
-    fn sign(&mut self, kp: Keypair, input: H) -> Signature {
-        let k: ScalarField = self.derive_nonce(&kp, input.clone());
+    fn sign(&mut self, kp: &Keypair, input: &H) -> Signature {
+        let k: ScalarField = self.derive_nonce(kp, input);
         let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
         let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
 
@@ -71,8 +71,8 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
         Signature::new(r.x, s)
     }
 
-    fn verify(&mut self, sig: Signature, public: PubKey, input: H) -> bool {
-        let ev: ScalarField = self.message_hash(&public, sig.rx, input);
+    fn verify(&mut self, sig: &Signature, public: &PubKey, input: &H) -> bool {
+        let ev: ScalarField = self.message_hash(public, sig.rx, input);
 
         let sv: CurvePoint = CurvePoint::prime_subgroup_generator()
             .mul(sig.s)
@@ -90,18 +90,14 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
 
 pub(crate) fn create_legacy<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::<H> {
-        hasher: Box::new(mina_hasher::create_legacy::<Message<H>>(
-            domain_param.clone(),
-        )),
+        hasher: Box::new(mina_hasher::create_legacy::<Message<H>>(domain_param)),
         domain_param,
     }
 }
 
 pub(crate) fn create_kimchi<H: 'static + Hashable>(domain_param: H::D) -> impl Signer<H> {
     Schnorr::<H> {
-        hasher: Box::new(mina_hasher::create_kimchi::<Message<H>>(
-            domain_param.clone(),
-        )),
+        hasher: Box::new(mina_hasher::create_kimchi::<Message<H>>(domain_param)),
         domain_param,
     }
 }
@@ -110,14 +106,14 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// This function uses a cryptographic hash function to create a uniformly and
     /// randomly distributed nonce.  It is crucial for security that no two different
     /// messages share the same nonce.
-    fn derive_nonce(&self, kp: &Keypair, input: H) -> ScalarField {
+    fn derive_nonce(&self, kp: &Keypair, input: &H) -> ScalarField {
         let mut blake_hasher = Blake2bVar::new(32).unwrap();
 
         let mut roi: ROInput = input.to_roinput();
         roi.append_field(kp.public.into_point().x);
         roi.append_field(kp.public.into_point().y);
         roi.append_scalar(kp.secret.into_scalar());
-        roi.append_bytes(&self.domain_param.clone().into_bytes());
+        roi.append_bytes(&self.domain_param.into_bytes());
 
         blake_hasher.update(&roi.to_bytes());
 
@@ -139,9 +135,9 @@ impl<H: 'static + Hashable> Schnorr<H> {
     /// randomly distributed scalar field element.  It uses Mina's variant of the Poseidon
     /// SNARK-friendly cryptographic hash function.
     /// Details: <https://github.com/o1-labs/cryptography-rfcs/blob/httpsnapps-notary-signatures/mina/001-poseidon-sponge.md>
-    fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: H) -> ScalarField {
+    fn message_hash(&mut self, pub_key: &PubKey, rx: BaseField, input: &H) -> ScalarField {
         let schnorr_input = Message::<H> {
-            input,
+            input: input.clone(),
             pub_key_x: pub_key.into_point().x,
             pub_key_y: pub_key.into_point().y,
             rx,
@@ -150,7 +146,7 @@ impl<H: 'static + Hashable> Schnorr<H> {
         // Squeeze and convert from base field element to scalar field element
         // Since the difference in modulus between the two fields is < 2^125, w.h.p., a
         // random value from one field will fit in the other field.
-        ScalarField::from_repr(self.hasher.hash(schnorr_input).into_repr())
+        ScalarField::from_repr(self.hasher.hash(&schnorr_input).into_repr())
             .expect("failed to create scalar")
     }
 }

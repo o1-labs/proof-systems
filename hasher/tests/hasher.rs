@@ -23,16 +23,16 @@ struct TestVector {
 impl Hashable for TestVector {
     type D = ();
 
-    fn to_roinput(self) -> ROInput {
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
         // For hashing we only care about the input part
-        for input in self.input {
-            roi.append_field(Fp::from_hex(&input).expect("failed to deserialize field element"))
+        for input in &self.input {
+            roi.append_field(Fp::from_hex(input).expect("failed to deserialize field element"))
         }
         roi
     }
 
-    fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+    fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
         None
     }
 }
@@ -53,7 +53,7 @@ fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
             Fp::from_hex(&test_vector.output).expect("failed to deserialize field element");
 
         // hash & check against expect output
-        let output = hasher.hash(test_vector);
+        let output = hasher.hash(&test_vector);
         assert_eq!(output, expected_output);
     }
 }

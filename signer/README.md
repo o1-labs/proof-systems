@@ -30,8 +30,8 @@ let tx = Transaction::new_payment(
             );
 
 let mut ctx = mina_signer::create_legacy::<Transaction>(NetworkId::TESTNET);
-let sig = ctx.sign(keypair, tx);
-assert!(ctx.verify(sig, keypair.public,tx));
+let sig = ctx.sign(&keypair, &tx);
+assert!(ctx.verify(&sig, &keypair.public, &tx));
 ```
 
 These examples use the test [`Transaction`](https://github.com/o1-labs/proof-systems/tree/master/signer/tests/transaction.rs) structure found in the [`./tests`](https://github.com/o1-labs/proof-systems/tree/master/signer/tests) directory.  This is a complete reference implementation of the Mina payment and delegation transaction structures found on mainnet and testnet.

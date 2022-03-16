@@ -11,7 +11,7 @@ pub use roinput::ROInput;
 
 /// The domain parameter trait is used during hashing to convey extra
 /// arguments to domain string generation.  It is also used by generic signing code.
-pub trait DomainParameter: Clone {
+pub trait DomainParameter: Clone + Copy {
     /// Conversion into vector of bytes
     fn into_bytes(self) -> Vec<u8>;
 }
@@ -53,14 +53,14 @@ impl DomainParameter for u64 {
 /// impl Hashable for Example {
 ///     type D = ();
 ///
-///     fn to_roinput(self) -> ROInput {
+///     fn to_roinput(&self) -> ROInput {
 ///         let roi = ROInput::new();
 ///         // Serialize example members
 ///         // ...
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, _: &Self::D) -> Option<String> {
+///     fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
 ///        format!("Example").into()
 ///    }
 /// }
@@ -72,7 +72,7 @@ pub trait Hashable: Clone {
     type D: DomainParameter;
 
     /// Serialization to random oracle input
-    fn to_roinput(self) -> ROInput;
+    fn to_roinput(&self) -> ROInput;
 
     /// Generate unique domain string of length `<= 20`.
     ///
@@ -83,7 +83,7 @@ pub trait Hashable: Clone {
     ///
     /// **Note:** You should always return `Some(String)`. A `None` return value
     /// is only used for testing.
-    fn domain_string(this: Option<Self>, domain_param: &Self::D) -> Option<String>;
+    fn domain_string(this: Option<&Self>, domain_param: Self::D) -> Option<String>;
 }
 
 /// Interface for hashing [`Hashable`] inputs
@@ -104,19 +104,19 @@ pub trait Hashable: Clone {
 /// impl Hashable for Something {
 ///     type D = u32;
 ///
-///     fn to_roinput(self) -> ROInput {
+///     fn to_roinput(&self) -> ROInput {
 ///         let mut roi = ROInput::new();
 ///         // ... serialize contents of self
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<Self>, id: &Self::D) -> Option<String> {
+///     fn domain_string(_: Option<&Self>, id: Self::D) -> Option<String> {
 ///         format!("Something {}", id).into()
 ///     }
 /// }
 ///
 /// let mut hasher = create_legacy::<Something>(123);
-/// let output: Fp = hasher.hash(Something { });
+/// let output: Fp = hasher.hash(&Something { });
 /// ```
 ///
 pub trait Hasher<H: Hashable> {
@@ -128,13 +128,13 @@ pub trait Hasher<H: Hashable> {
     fn reset(&mut self) -> &mut dyn Hasher<H>;
 
     /// Consume hash `input`
-    fn update(&mut self, input: H) -> &mut dyn Hasher<H>;
+    fn update(&mut self, input: &H) -> &mut dyn Hasher<H>;
 
     /// Obtain has result output
     fn digest(&mut self) -> Fp;
 
     /// Hash input and obtain result output
-    fn hash(&mut self, input: H) -> Fp {
+    fn hash(&mut self, input: &H) -> Fp {
         self.reset();
         self.update(input);
         let output = self.digest();
@@ -143,7 +143,7 @@ pub trait Hasher<H: Hashable> {
     }
 
     /// Initialize state, hash input and obtain result output
-    fn init_and_hash(&mut self, domain_param: H::D, input: H) -> Fp {
+    fn init_and_hash(&mut self, domain_param: H::D, input: &H) -> Fp {
         self.init(domain_param);
         self.update(input);
         let output = self.digest();
@@ -195,7 +195,7 @@ mod tests {
         impl Hashable for Foo {
             type D = u64;
 
-            fn to_roinput(self) -> ROInput {
+            fn to_roinput(&self) -> ROInput {
                 let mut roi = ROInput::new();
                 roi.append_u32(self.x);
                 roi.append_u64(self.y);
@@ -203,36 +203,36 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<Self>, id: &u64) -> Option<String> {
+            fn domain_string(_: Option<&Self>, id: u64) -> Option<String> {
                 format!("Foo {}", id).into()
             }
         }
 
         // Usage 1: incremental interface
         let mut hasher = create_legacy::<Foo>(0);
-        hasher.update(Foo { x: 3, y: 1 });
+        hasher.update(&Foo { x: 3, y: 1 });
         let x1 = hasher.digest(); // Resets to previous init state (0)
-        hasher.update(Foo { x: 82, y: 834 });
-        hasher.update(Foo { x: 1235, y: 93 });
+        hasher.update(&Foo { x: 82, y: 834 });
+        hasher.update(&Foo { x: 1235, y: 93 });
         hasher.digest(); // Resets to previous init state (0)
         hasher.init(1);
-        hasher.update(Foo { x: 82, y: 834 });
+        hasher.update(&Foo { x: 82, y: 834 });
         let x2 = hasher.digest(); // Resets to previous init state (1)
 
         // Usage 2: builder interface with one-shot pattern
         let mut hasher = create_legacy::<Foo>(0);
-        let y1 = hasher.update(Foo { x: 3, y: 1 }).digest(); // Resets to previous init state (0)
-        hasher.update(Foo { x: 31, y: 21 }).digest();
+        let y1 = hasher.update(&Foo { x: 3, y: 1 }).digest(); // Resets to previous init state (0)
+        hasher.update(&Foo { x: 31, y: 21 }).digest();
 
         // Usage 3: builder interface with one-shot pattern also setting init state
         let mut hasher = create_legacy::<Foo>(0);
-        let y2 = hasher.init(0).update(Foo { x: 3, y: 1 }).digest(); // Resets to previous init state (1)
-        let y3 = hasher.init(1).update(Foo { x: 82, y: 834 }).digest(); // Resets to previous init state (2)
+        let y2 = hasher.init(0).update(&Foo { x: 3, y: 1 }).digest(); // Resets to previous init state (1)
+        let y3 = hasher.init(1).update(&Foo { x: 82, y: 834 }).digest(); // Resets to previous init state (2)
 
         // Usage 4: one-shot interfaces
         let mut hasher = create_legacy::<Foo>(0);
-        let y4 = hasher.hash(Foo { x: 3, y: 1 });
-        let y5 = hasher.init_and_hash(1, Foo { x: 82, y: 834 });
+        let y4 = hasher.hash(&Foo { x: 3, y: 1 });
+        let y5 = hasher.init_and_hash(1, &Foo { x: 82, y: 834 });
 
         assert_eq!(x1, y1);
         assert_eq!(x1, y2);

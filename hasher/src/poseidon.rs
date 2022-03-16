@@ -69,7 +69,7 @@ where
         // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
         self.sponge.reset();
 
-        if let Some(domain_string) = H::domain_string(None, &domain_param) {
+        if let Some(domain_string) = H::domain_string(None, domain_param) {
             self.sponge
                 .absorb(&[domain_prefix_to_field::<Fp>(domain_string)]);
             self.sponge.squeeze();
@@ -82,7 +82,7 @@ where
         self
     }
 
-    fn update(&mut self, input: H) -> &mut dyn Hasher<H> {
+    fn update(&mut self, input: &H) -> &mut dyn Hasher<H> {
         self.sponge.absorb(&input.to_roinput().to_fields());
 
         self
