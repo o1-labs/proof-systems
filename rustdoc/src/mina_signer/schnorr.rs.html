@@ -142,6 +142,9 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Mina Schnorr signature scheme</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An implementation of the singer interface for the Mina signature algorithm</span>
@@ -162,7 +165,10 @@
     <span class="ident">digest</span>::{<span class="ident">Update</span>, <span class="ident">VariableOutput</span>},
     <span class="ident">Blake2bVar</span>,
 };
-<span class="kw">use</span> <span class="ident">oracle::poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">Sponge</span>, <span class="ident">SpongeConstants</span>};
+<span class="kw">use</span> <span class="ident">oracle</span>::{
+    <span class="ident">constants::SpongeConstants</span>,
+    <span class="ident">poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">Sponge</span>},
+};
 <span class="kw">use</span> <span class="ident">std::ops::Neg</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{

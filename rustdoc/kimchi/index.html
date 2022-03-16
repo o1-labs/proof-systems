@@ -22,7 +22,7 @@
 <div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">use</span> <span class="ident">kimchi::circuits::constraints</span>;
 <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta</span>::{<span class="ident">Affine</span>, <span class="ident">VestaParameters</span>}, <span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>};
 <span class="kw">use</span> <span class="ident">oracle</span>::{
-    <span class="ident">poseidon::PlonkSpongeConstantsKimchi</span>,
+    <span class="ident">constants::PlonkSpongeConstantsKimchi</span>,
     <span class="ident">sponge</span>::{<span class="ident">DefaultFqSponge</span>, <span class="ident">DefaultFrSponge</span>},
 };
 <span class="kw">use</span> <span class="ident">commitment_dlog::commitment</span>::{<span class="ident">b_poly_coefficients</span>, <span class="ident">ceil_log2</span>, <span class="ident">CommitmentCurve</span>};

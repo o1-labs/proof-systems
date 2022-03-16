@@ -112,16 +112,16 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Mode</span>, <span class="ident">ParamType</span>};
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">fields::PrimeField</span> <span class="kw">as</span> <span class="kw">_</span>, <span class="ident">UniformRand</span> <span class="kw">as</span> <span class="kw">_</span>};
 <span class="kw">use</span> <span class="ident">ark_serialize::CanonicalSerialize</span> <span class="kw">as</span> <span class="kw">_</span>;
 <span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
 <span class="kw">use</span> <span class="ident">num_bigint::BigUint</span>;
 <span class="kw">use</span> <span class="ident">oracle</span>::{
+    <span class="ident">constants</span>::{<span class="self">self</span>, <span class="ident">SpongeConstants</span>},
     <span class="ident">pasta</span>,
-    <span class="ident">poseidon</span>::{
-        <span class="self">self</span>, <span class="ident">ArithmeticSponge</span> <span class="kw">as</span> <span class="ident">Poseidon</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span> <span class="kw">as</span> <span class="kw">_</span>, <span class="ident">SpongeConstants</span>,
-    },
+    <span class="ident">poseidon</span>::{<span class="ident">ArithmeticSponge</span> <span class="kw">as</span> <span class="ident">Poseidon</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span> <span class="kw">as</span> <span class="kw">_</span>},
 };
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">prelude</span>::<span class="kw-2">*</span>, <span class="ident">Rng</span>};
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
@@ -178,12 +178,14 @@
         <span class="comment">// generate input &amp; hash</span>
         <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">rand_fields</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>, <span class="ident">length</span>);
         <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">param_type</span> {
-            <span class="ident">ParamType::Legacy</span> =&gt; {
-                <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">poseidon::PlonkSpongeConstantsLegacy</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>, <span class="ident">pasta::fp_legacy::params</span>())
-            }
-            <span class="ident">ParamType::Kimchi</span> =&gt; {
-                <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">poseidon::PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>, <span class="ident">pasta::fp_kimchi::params</span>())
-            }
+            <span class="ident">ParamType::Legacy</span> =&gt; <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">constants::PlonkSpongeConstantsLegacy</span><span class="op">&gt;</span>(
+                <span class="kw-2">&amp;</span><span class="ident">input</span>,
+                <span class="ident">pasta::fp_legacy::params</span>(),
+            ),
+            <span class="ident">ParamType::Kimchi</span> =&gt; <span class="ident">poseidon</span>::<span class="op">&lt;</span><span class="ident">constants::PlonkSpongeConstantsKimchi</span><span class="op">&gt;</span>(
+                <span class="kw-2">&amp;</span><span class="ident">input</span>,
+                <span class="ident">pasta::fp_kimchi::params</span>(),
+            ),
         };
 
         <span class="comment">// serialize input &amp; output</span>
