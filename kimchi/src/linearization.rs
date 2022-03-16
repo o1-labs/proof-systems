@@ -2,7 +2,6 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::polynomials::cairo::Instruction;
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
@@ -10,6 +9,7 @@ use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::lookup;
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
+use crate::circuits::polynomials::turshi::Instruction;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
     constraints::LookupConstraintSystem,
@@ -48,7 +48,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
     }
 
-    expr += crate::circuits::polynomials::cairo::gate_combined_constraints(&powers_of_alpha);
+    expr += crate::circuits::polynomials::turshi::gate_combined_constraints(&powers_of_alpha);
 
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);

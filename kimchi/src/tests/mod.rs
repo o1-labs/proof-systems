@@ -4,4 +4,5 @@ mod endomul;
 mod endomul_scalar;
 mod generic;
 mod poseidon;
+mod turshi;
 mod varbasemul;

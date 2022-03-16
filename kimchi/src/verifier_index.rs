@@ -6,7 +6,7 @@ use crate::circuits::{
     constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
     gate::LookupsUsed,
-    gates::cairo,
+    polynomials::turshi,
     wires::*,
 };
 use crate::prover_index::ProverIndex;
@@ -93,7 +93,7 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     // Cairo polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub cairo_comm: [PolyComm<G>; cairo::CIRCUIT_GATE_COUNT],
+    pub cairo_comm: [PolyComm<G>; turshi::CIRCUIT_GATE_COUNT],
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
