@@ -47,7 +47,8 @@ where
             .into_iter()
             .map(|hexstring| Fp::from_hex(&hexstring).expect("failed to deserialize field element"))
             .collect();
-        let expected_output = Fp::from_hex(&test_vector.output).expect("failed to deserialize field element");
+        let expected_output =
+            Fp::from_hex(&test_vector.output).expect("failed to deserialize field element");
 
         // hash & check against expect output
         assert_eq!(hash(&input), expected_output);

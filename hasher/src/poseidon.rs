@@ -16,7 +16,7 @@ use oracle::{
 
 use super::{domain_prefix_to_field, Hashable, Hasher};
 
-/// There poseidon hasher structure
+/// Poseidon hasher context
 //
 //  The arithmetic sponge parameters are large and costly to initialize,
 //  so we only want to do this once and then re-use the Poseidon context

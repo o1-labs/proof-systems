@@ -25,7 +25,7 @@ use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signa
 
 /// Schnorr signer context for the Mina signature algorithm
 ///
-/// For details about the signature algorithm please see [crate::signer::schnorr]
+/// For details about the signature algorithm please see the [`schnorr`](crate::schnorr) documentation
 pub struct Schnorr<H: Hashable> {
     hasher: Box<dyn Hasher<Message<H>>>,
     domain_param: H::D,
