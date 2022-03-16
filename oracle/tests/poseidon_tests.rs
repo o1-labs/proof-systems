@@ -7,10 +7,10 @@ use std::path::PathBuf; // needed for ::new() sponge
 
 use oracle::poseidon::ArithmeticSponge as Poseidon;
 
+use oracle::constants::PlonkSpongeConstantsKimchi;
+use oracle::constants::PlonkSpongeConstantsLegacy;
 use oracle::pasta::fp_kimchi as SpongeParametersKimchi;
 use oracle::pasta::fp_legacy as SpongeParametersLegacy;
-use oracle::poseidon::PlonkSpongeConstantsKimchi;
-use oracle::poseidon::PlonkSpongeConstantsLegacy;
 
 //
 // Helpers for test vectors

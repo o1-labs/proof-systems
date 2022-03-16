@@ -33,12 +33,12 @@ pub const ZK_ROWS: u64 = 3;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub dummy_lookup_values: Vec<Vec<F>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub lookup_tables: Vec<Vec<DP<F>>>,
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub lookup_tables8: Vec<Vec<E<F, D<F>>>>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub dummy_lookup_value: Vec<F>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub lookup_table: Vec<DP<F>>,
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub lookup_table8: Vec<E<F, D<F>>>,
 
     /// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that's
@@ -336,43 +336,41 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
-                // get the last entry in each column of each table
-                let dummy_lookup_values: Vec<Vec<F>> = gate_lookup_tables
-                    .iter()
-                    .chain(lookup_tables.iter())
-                    .map(|table| table.iter().map(|col| col[col.len() - 1]).collect())
-                    .collect();
-
-                // pre-compute polynomial and evaluation form for the look up tables
-                let mut lookup_tables_polys: Vec<Vec<DP<F>>> = vec![];
-                let mut lookup_tables8: Vec<Vec<E<F, D<F>>>> = vec![];
-
-                for (table, dummies) in gate_lookup_tables
+                let lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
                     .chain(lookup_tables.into_iter())
-                    .zip(&dummy_lookup_values)
-                {
-                    let mut table_poly = vec![];
-                    let mut table_eval = vec![];
-                    for (mut col, dummy) in table.into_iter().zip(dummies) {
-                        // pad each column to the size of the domain
-                        let padding = (0..(d1_size - col.len())).map(|_| dummy);
-                        col.extend(padding);
-                        let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
-                        let eval = poly.evaluate_over_domain_by_ref(domain.d8);
-                        table_poly.push(poly);
-                        table_eval.push(eval);
-                    }
-                    lookup_tables_polys.push(table_poly);
-                    lookup_tables8.push(table_eval);
+                    .collect();
+
+                if lookup_tables.len() > 1 {
+                    panic!("Multiple lookup tables are currently not supported");
+                }
+
+                let lookup_table = lookup_tables.into_iter().next().unwrap();
+
+                // get the last entry in each column of each table
+                let dummy_lookup_value: Vec<F> =
+                    lookup_table.iter().map(|col| col[col.len() - 1]).collect();
+
+                // pre-compute polynomial and evaluation form for the look up tables
+                let mut lookup_table_polys: Vec<DP<F>> = vec![];
+                let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
+
+                for (mut col, dummy) in lookup_table.into_iter().zip(&dummy_lookup_value) {
+                    // pad each column to the size of the domain
+                    let padding = (0..(d1_size - col.len())).map(|_| dummy);
+                    col.extend(padding);
+                    let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
+                    let eval = poly.evaluate_over_domain_by_ref(domain.d8);
+                    lookup_table_polys.push(poly);
+                    lookup_table8.push(eval);
                 }
 
                 // generate the look up selector polynomials
                 Some(Self {
                     lookup_selectors,
-                    dummy_lookup_values,
-                    lookup_tables8,
-                    lookup_tables: lookup_tables_polys,
+                    dummy_lookup_value,
+                    lookup_table8,
+                    lookup_table: lookup_table_polys,
                     lookup_used,
                     max_lookups_per_row: lookup_info.max_per_row as usize,
                     max_joint_size: lookup_info.max_joint_size,
