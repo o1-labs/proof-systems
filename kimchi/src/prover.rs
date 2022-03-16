@@ -7,7 +7,7 @@ use crate::{
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
         polynomials::{
-            cairo::{Claim, Instruction, Transition},
+            turshi::{Claim, Instruction, Transition},
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,

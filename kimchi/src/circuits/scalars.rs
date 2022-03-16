@@ -1,13 +1,12 @@
 //! This module implements Plonk prover polynomial evaluations primitive.
 
+use super::polynomials::turshi;
 use crate::circuits::wires::*;
 use ark_ff::{FftField, Field, Zero};
 use ark_poly::univariate::DensePolynomial;
 use array_init::array_init;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::sponge::ScalarChallenge;
-
-use super::gates::cairo;
 
 #[derive(Clone)]
 pub struct LookupEvaluations<Field> {
@@ -37,7 +36,7 @@ pub struct ProofEvaluations<Field> {
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Field,
     /// evaluation of the cairo selector polynomial
-    pub cairo_selector: [Field; cairo::CIRCUIT_GATE_COUNT],
+    pub cairo_selector: [Field; turshi::CIRCUIT_GATE_COUNT],
 }
 
 impl<F: Zero> ProofEvaluations<F> {

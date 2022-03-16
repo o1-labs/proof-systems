@@ -1,4 +1,3 @@
-pub mod cairo;
 pub mod chacha;
 pub mod complete_add;
 pub mod endomul_scalar;
@@ -7,4 +6,5 @@ pub mod generic;
 pub mod lookup;
 pub mod permutation;
 pub mod poseidon;
+pub mod turshi;
 pub mod varbasemul;

@@ -3,8 +3,8 @@
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
-    gates::cairo,
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    polynomials::turshi,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -140,11 +140,11 @@ pub struct ConstraintSystem<F: FftField> {
     pub endomul_scalar8: E<F, D<F>>,
 
     /// Cairo constraint selector polynomials
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; cairo::CIRCUIT_GATE_COUNT]")]
-    pub cairo: [DP<F>; cairo::CIRCUIT_GATE_COUNT],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]")]
+    pub cairo: [DP<F>; turshi::CIRCUIT_GATE_COUNT],
     /// Cairo selector evaluations over domain.d8
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; cairo::CIRCUIT_GATE_COUNT]")]
-    pub cairo8: [E<F, D<F>>; cairo::CIRCUIT_GATE_COUNT],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; turshi::CIRCUIT_GATE_COUNT]")]
+    pub cairo8: [E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT],
 
     // Constant polynomials
     // --------------------
@@ -577,7 +577,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let coefficients8 = array_init(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
         // Cairo constraint selector polynomials
-        let cairo: [DP<F>; cairo::CIRCUIT_GATE_COUNT] = array_init(|i| {
+        let cairo: [DP<F>; turshi::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
                 0 => GateType::CairoInstruction,
                 1 => GateType::CairoTransition,
@@ -595,7 +595,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         });
 
         // Cairo constraint polynomials
-        let cairo8: [E<F, D<F>>; cairo::CIRCUIT_GATE_COUNT] = array_init(|i| {
+        let cairo8: [E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
                 0 => GateType::CairoInstruction,
                 1 => GateType::CairoTransition,
