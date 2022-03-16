@@ -18,11 +18,9 @@ pub use seckey::SecKey;
 pub use signature::Signature;
 
 use oracle::{
+    constants::{PlonkSpongeConstantsLegacy, SpongeConstants},
     pasta,
-    poseidon::{
-        ArithmeticSponge, ArithmeticSpongeParams, Sponge
-    },
-    constants::{PlonkSpongeConstantsLegacy, SpongeConstants}
+    poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
 use ark_ec::AffineCurve;
@@ -139,9 +137,9 @@ pub fn create(network_id: NetworkId) -> impl Signer {
 ///
 /// ```
 /// use mina_signer::NetworkId;
-/// use oracle::{pasta, poseidon};
+/// use oracle::{pasta, poseidon, constants};
 ///
-/// let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstantsKimchi>(
+/// let mut ctx = mina_signer::custom::<constants::PlonkSpongeConstantsKimchi>(
 ///     pasta::fp_legacy::params(),
 ///     NetworkId::TESTNET,
 /// );

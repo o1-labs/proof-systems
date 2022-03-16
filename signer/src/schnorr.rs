@@ -18,9 +18,9 @@ use blake2::{
     digest::{Update, VariableOutput},
     Blake2bVar,
 };
-use oracle:: {
+use oracle::{
+    constants::SpongeConstants,
     poseidon::{ArithmeticSponge, Sponge},
-    constants::{SpongeConstants}
 };
 use std::ops::Neg;
 

@@ -8,10 +8,8 @@ use crate::circuits::{
 use ark_ff::{FftField, Field};
 use array_init::array_init;
 use oracle::{
-    poseidon::{
-    sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge,
-    },
-    constants::{PlonkSpongeConstantsKimchi, SpongeConstants}
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 use std::ops::Range;
 

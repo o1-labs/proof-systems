@@ -39,7 +39,7 @@ The [custom] function allows specification of an alternative cryptographic spong
 mod transaction;
 
 use rand;
-use oracle::{pasta, poseidon};
+use oracle::{pasta, poseidon, constants};
 use mina_signer::{NetworkId, Keypair, PubKey, Signer};
 use transaction::Transaction;
 
@@ -53,7 +53,7 @@ let tx = Transaction::new_payment(
                 271828,
             );
 
-let mut ctx = mina_signer::custom::<poseidon::PlonkSpongeConstantsKimchi>(
+let mut ctx = mina_signer::custom::<constants::PlonkSpongeConstantsKimchi>(
     pasta::fp_kimchi::params(),
     NetworkId::TESTNET,
 );

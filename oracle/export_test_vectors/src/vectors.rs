@@ -4,11 +4,9 @@ use ark_serialize::CanonicalSerialize as _;
 use mina_curves::pasta::Fp;
 use num_bigint::BigUint;
 use oracle::{
+    constants::{self, SpongeConstants},
     pasta,
-    poseidon::{
-        self, ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _
-    },
-    constants::{SpongeConstants, self}
+    poseidon::{self, ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
 };
 use rand::{prelude::*, Rng};
 use serde::Serialize;
@@ -65,12 +63,14 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
         // generate input & hash
         let input = rand_fields(&mut rng, length);
         let output = match param_type {
-            ParamType::Legacy => {
-                poseidon::<constants::PlonkSpongeConstantsLegacy>(&input, pasta::fp_legacy::params())
-            }
-            ParamType::Kimchi => {
-                poseidon::<constants::PlonkSpongeConstantsKimchi>(&input, pasta::fp_kimchi::params())
-            }
+            ParamType::Legacy => poseidon::<constants::PlonkSpongeConstantsLegacy>(
+                &input,
+                pasta::fp_legacy::params(),
+            ),
+            ParamType::Kimchi => poseidon::<constants::PlonkSpongeConstantsKimchi>(
+                &input,
+                pasta::fp_kimchi::params(),
+            ),
         };
 
         // serialize input & output

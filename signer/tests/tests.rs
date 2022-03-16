@@ -259,7 +259,7 @@ fn sign_delegation_test_4() {
 
 #[test]
 fn custom_signer_test() {
-    use oracle::{pasta, constants};
+    use oracle::{constants, pasta};
 
     let kp = Keypair::rand(&mut rand::rngs::OsRng);
     let mut ctx = mina_signer::custom::<constants::PlonkSpongeConstantsKimchi>(
