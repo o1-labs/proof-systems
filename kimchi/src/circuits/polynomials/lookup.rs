@@ -236,6 +236,10 @@ pub struct LookupConfiguration<F: FftField> {
     pub max_joint_size: u32,
 
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    /// A placeholder value that is known to appear in the lookup table.
+    /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
+    /// particular row, so that we can treat each row uniformly as having the same number of
+    /// lookups.
     pub dummy_lookup_value: Vec<F>,
 }
 
