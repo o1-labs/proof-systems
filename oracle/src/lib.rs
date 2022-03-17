@@ -1,3 +1,4 @@
+pub mod constants;
 pub mod pasta;
 pub mod poseidon;
 pub mod sponge;
