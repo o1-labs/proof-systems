@@ -11,7 +11,9 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup, permutation,
+            generic, lookup,
+            lookup::LookupConfiguration,
+            permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
@@ -207,11 +209,19 @@ where
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
                 | Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Single,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Single,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(Fr::<G>::zero()),
                 Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Joint,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Joint,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
@@ -265,7 +275,9 @@ where
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_value.iter()),
+                Some(lcs) => {
+                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_value.iter())
+                }
             };
             CombinedEntry(x)
         };
@@ -622,7 +634,7 @@ where
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
                     all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints = lookup::constraints(&lcs.dummy_lookup_value, index.cs.domain.d1);
+                let constraints = lookup::constraints(&lcs.configuration, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
