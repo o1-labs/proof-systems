@@ -123,7 +123,10 @@
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
-        gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
+        gate::{
+            CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, LookupsUsed,
+            SingleLookup,
+        },
         wires::COLUMNS,
     },
     error::ProofError,
@@ -131,6 +134,8 @@ use crate::{
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
 use CurrOrNext::*;
 
@@ -215,6 +220,27 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
     e.extend((0..ZK_ROWS).map(|_| F::rand(rng)));
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
+}
+
+/// Configuration for the lookup constraint.
+/// These values are independent of the choice of lookup values.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct LookupConfiguration<F: FftField> {
+    /// The kind of lookups used
+    pub lookup_used: LookupsUsed,
+
+    /// The maximum number of lookups per row
+    pub max_lookups_per_row: usize,
+    /// The maximum number of elements in a vector lookup
+    pub max_joint_size: u32,
+
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    /// A placeholder value that is known to appear in the lookup table.
+    /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
+    /// particular row, so that we can treat each row uniformly as having the same number of
+    /// lookups.
+    pub dummy_lookup_value: Vec<F>,
 }
 
 /// Checks that all the lookup constraints are satisfied.
@@ -392,7 +418,6 @@ pub fn sorted<
     I: Iterator<Item = E>,
     G: Fn() -> I,
 >(
-    // TODO: Multiple tables
     dummy_lookup_value: E,
     lookup_table: G,
     d1: D<F>,
@@ -586,7 +611,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
 }
 
 /// Specifies the lookup constraints as expressions.
-pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -614,7 +639,8 @@ pub fn constraints<F: FftField>(dummy_lookup: &[F], d1: D<F>) -> Vec<E<F>> {
     let one: E<F> = E::one();
     let non_lookup_indcator = one - lookup_indicator;
 
-    let dummy_lookup: ConstantExpr<F> = dummy_lookup
+    let dummy_lookup: ConstantExpr<F> = configuration
+        .dummy_lookup_value
         .iter()
         .rev()
         .fold(ConstantExpr::zero(), |acc, x| {
