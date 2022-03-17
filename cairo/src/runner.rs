@@ -2,9 +2,13 @@
 //! execution steps, each of which define the execution logic of Cairo instructions
 
 use crate::flags::*;
+use crate::helper::CairoFieldHelpers;
 use crate::memory::CairoMemory;
 use crate::word::{CairoWord, FlagBits, FlagSets, Offsets};
 use ark_ff::Field;
+
+/// Number of memory accesses per instruction
+pub const ACC_PER_INS: usize = 4;
 
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]
@@ -500,7 +504,7 @@ pub struct CairoProgram<'a, F> {
     fin: CairoState<F>,
     /// execution trace as a vector of [CairoInstruction]
     trace: Vec<CairoInstruction<F>>,
-    /// list of memory addresses accessed and values
+    /// list of ordered memory addresses accessed and values
     list: Vec<(F, F)>,
 }
 
@@ -544,6 +548,34 @@ impl<'a, F: Field> CairoProgram<'a, F> {
         &self.list
     }
 
+    /// Returns an array with the `ACC_PER_INS` i-th addresses of the accesses
+    /// `i`: the instruction number
+    pub fn addresses(&self, i: usize) -> [F; ACC_PER_INS] {
+        if i >= self.trace().len() {
+            panic!("Instruction number must be smaller than the trace length");
+        }
+        [
+            self.list[4 * i].0,
+            self.list[4 * i + 1].0,
+            self.list[4 * i + 2].0,
+            self.list[4 * i + 3].0,
+        ]
+    }
+
+    /// Returns an array with the `ACC_PER_INS` i-th values of the accesses
+    /// `i`: the instruction number
+    pub fn values(&self, i: usize) -> [F; ACC_PER_INS] {
+        if i >= self.trace().len() {
+            panic!("Instruction number must be smaller than the trace length");
+        }
+        [
+            self.list[4 * i].1,
+            self.list[4 * i + 1].1,
+            self.list[4 * i + 2].1,
+            self.list[4 * i + 3].1,
+        ]
+    }
+
     /// This function simulates an execution of the Cairo program received as input.
     /// It generates the full memory stack and the execution trace
     fn execute(&mut self) {
@@ -584,6 +616,9 @@ impl<'a, F: Field> CairoProgram<'a, F> {
         }
         self.steps = F::from(n);
         self.fin = CairoState::new(curr.pc, curr.ap, curr.fp);
+        // sort the list of accesses by smallest address
+        self.list
+            .sort_by(|(a, _), (b, _)| (a.to_u64()).cmp(&(b.to_u64())));
     }
 }
 
@@ -618,6 +653,15 @@ mod tests {
         println!("{}", step.mem);
     }
 
+    fn string_list(list: &Vec<(F, F)>) -> String {
+        let mut view: String = "".to_string();
+        for &tuple in list {
+            let entry = format!("adr={} : val={:?}", tuple.0.to_u64(), tuple.1.to_u64());
+            view = [view, entry].join("\n");
+        }
+        view
+    }
+
     #[test]
     fn test_cairo_program() {
         let instrs = vec![
@@ -632,6 +676,8 @@ mod tests {
         mem.write(F::from(5u32), F::from(7u32)); //end of output
         let prog = CairoProgram::new(&mut mem, 1, 6);
         println!("{}", prog.mem);
+        println!("{}", string_list(prog.list()));
+        assert_eq!(prog.list().len(), 4 * prog.trace().len());
     }
 
     #[test]
@@ -708,5 +754,8 @@ mod tests {
         assert_eq!(prog.mem.read(F::from(41u32)).unwrap(), F::from(10u32));
         assert_eq!(prog.mem.read(F::from(42u32)).unwrap(), F::from(20u32));
         assert_eq!(prog.mem.read(F::from(43u32)).unwrap(), F::from(410u32));
+
+        println!("{}", string_list(prog.list()));
+        assert_eq!(prog.list().len(), 4 * prog.trace().len());
     }
 }

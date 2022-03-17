@@ -1,6 +1,6 @@
 //! This module implements Plonk prover polynomials primitive.
 
-pub use super::wires::COLUMNS;
+pub use super::wires::NEW_COLS;
 use ark_ff::FftField;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 
@@ -10,7 +10,7 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 #[derive(Clone)]
 pub struct WitnessEvals<F: FftField> {
     /// wire evaluations
-    pub w: [Evaluations<F, D<F>>; COLUMNS],
+    pub w: [Evaluations<F, D<F>>; NEW_COLS],
     /// permutation evaluations
     pub z: Evaluations<F, D<F>>,
 }

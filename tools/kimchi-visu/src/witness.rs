@@ -1,11 +1,11 @@
 use ark_ff::Field;
 use array_init::array_init;
-use kimchi::circuits::polynomial::COLUMNS;
+use kimchi::circuits::wires::NEW_COLS;
 use serde::Serialize;
 use serde_with::serde_as;
 
 /// The type that represents the execution trace.
-/// It represents a table of [COLUMNS] columns, with `n` rows.
+/// It represents a table of [NEW_COLS] columns, with `n` rows.
 /// `n` being the maximum size of the circuit, and the size of the domain.
 #[serde_as]
 #[derive(Debug, Serialize)]
@@ -13,8 +13,8 @@ pub struct Witness<F>
 where
     F: Field,
 {
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    inner: [Vec<F>; COLUMNS],
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; NEW_COLS]")]
+    inner: [Vec<F>; NEW_COLS],
 }
 
 impl<F> Witness<F>
@@ -31,16 +31,16 @@ where
 
     /// Returns the inner witness.
     // TODO: deprecate this
-    pub fn inner(self) -> [Vec<F>; COLUMNS] {
+    pub fn inner(self) -> [Vec<F>; NEW_COLS] {
         self.inner
     }
 }
 
-impl<F> From<[Vec<F>; COLUMNS]> for Witness<F>
+impl<F> From<[Vec<F>; NEW_COLS]> for Witness<F>
 where
     F: Field,
 {
-    fn from(inner: [Vec<F>; COLUMNS]) -> Self {
+    fn from(inner: [Vec<F>; NEW_COLS]) -> Self {
         Witness { inner }
     }
 }

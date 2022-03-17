@@ -19,7 +19,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
-    wires::COLUMNS,
+    wires::NEW_COLS,
 };
 use ark_ff::{FftField, Field, One};
 
@@ -225,7 +225,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_complete_add(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
     ) -> Result<(), String> {
         let x1 = witness[0][row];
         let y1 = witness[1][row];

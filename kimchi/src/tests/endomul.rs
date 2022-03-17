@@ -67,7 +67,7 @@ fn endomul_test() {
     let (endo_q, endo_r) = endos::<Other>();
     let index = new_index_for_test(gates, PUBLIC);
 
-    let mut witness: [Vec<F>; COLUMNS] =
+    let mut witness: [Vec<F>; NEW_COLS] =
         array_init(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
 
     let verifier_index = index.verifier_index();

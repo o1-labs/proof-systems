@@ -238,7 +238,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation aggregation polynomial computation
     pub fn perm_aggreg(
         &self,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),

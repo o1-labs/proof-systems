@@ -39,8 +39,7 @@ use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::circuits::polynomial::COLUMNS;
-use crate::circuits::wires::{GateWires, Wire};
+use crate::circuits::wires::{GateWires, Wire, COLUMNS, NEW_COLS};
 
 //
 // Constants
@@ -139,7 +138,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(
@@ -219,7 +218,7 @@ impl<F: FftField> CircuitGate<F> {
 pub fn generate_witness<F: Field>(
     row: usize,
     params: ArithmeticSpongeParams<F>,
-    witness_cols: &mut [Vec<F>; COLUMNS],
+    witness_cols: &mut [Vec<F>; NEW_COLS],
     input: [F; SPONGE_WIDTH],
 ) {
     // add the input into the witness

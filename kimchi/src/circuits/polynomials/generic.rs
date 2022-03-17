@@ -36,8 +36,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
-    polynomial::COLUMNS,
-    wires::GateWires,
+    wires::{GateWires, NEW_COLS},
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
@@ -168,7 +167,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_quot(
         &self,
         mut alphas: impl Iterator<Item = F>,
-        witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
+        witness_cols_d4: &[Evaluations<F, D<F>>; NEW_COLS],
     ) -> Evaluations<F, D<F>> {
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
@@ -239,7 +238,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// ```
     pub fn gnrc_scalars(
         mut alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
+        w_zeta: &[F; NEW_COLS],
         generic_zeta: F,
     ) -> Vec<F> {
         // setup
@@ -277,7 +276,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     pub fn gnrc_lnrz(
         &self,
         alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
+        w_zeta: &[F; NEW_COLS],
         generic_zeta: F,
     ) -> Evaluations<F, D<F>> {
         let d1 = self.domain.d1;
@@ -315,11 +314,11 @@ pub mod testing {
         pub fn verify_generic(
             &self,
             row: usize,
-            witness: &[Vec<F>; COLUMNS],
+            witness: &[Vec<F>; NEW_COLS],
             public: &[F],
         ) -> Result<(), String> {
             // assignments
-            let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+            let this: [F; NEW_COLS] = array_init(|i| witness[i][row]);
 
             // constants
             let zero = F::zero();
@@ -356,10 +355,10 @@ pub mod testing {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
-            witness: &[DensePolynomial<F>; COLUMNS],
+            witness: &[DensePolynomial<F>; NEW_COLS],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; COLUMNS] =
+            let coefficientsm: [_; NEW_COLS] =
                 array_init(|i| self.coefficients8[i].clone().interpolate());
 
             let generic_gate = |coeff_offset, register_offset| {
@@ -450,7 +449,7 @@ pub mod testing {
     // function to fill in a witness created via [create_circuit]
     pub fn fill_in_witness<F: FftField>(
         start_row: usize,
-        witness: &mut [Vec<F>; COLUMNS],
+        witness: &mut [Vec<F>; NEW_COLS],
         public: &[F],
     ) {
         // fill witness
@@ -489,7 +488,7 @@ pub mod testing {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::circuits::wires::COLUMNS;
+    use crate::circuits::wires::NEW_COLS;
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Polynomial};
     use array_init::array_init;
@@ -506,18 +505,18 @@ mod tests {
 
         // create witness
         let n = cs.domain.d1.size();
-        let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
+        let mut witness: [Vec<Fp>; NEW_COLS] = array_init(|_| vec![Fp::zero(); n]);
         testing::fill_in_witness(0, &mut witness, &[]);
 
         // make sure we're done filling the witness correctly
         cs.verify(&witness, &[]).unwrap();
 
         // generate witness polynomials
-        let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =
+        let witness_evals: [Evaluations<Fp, D<Fp>>; NEW_COLS] =
             array_init(|col| Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1));
-        let witness: [DensePolynomial<Fp>; COLUMNS] =
+        let witness: [DensePolynomial<Fp>; NEW_COLS] =
             array_init(|col| witness_evals[col].interpolate_by_ref());
-        let witness_d4: [Evaluations<Fp, D<Fp>>; COLUMNS] =
+        let witness_d4: [Evaluations<Fp, D<Fp>>; NEW_COLS] =
             array_init(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
 
         // make sure we've done that correctly
@@ -539,7 +538,7 @@ mod tests {
         let t_zeta = t.evaluate(&zeta);
 
         // compute linearization f(z)
-        let w_zeta: [Fp; COLUMNS] = array_init(|col| witness[col].evaluate(&zeta));
+        let w_zeta: [Fp; NEW_COLS] = array_init(|col| witness[col].evaluate(&zeta));
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
         let f = cs

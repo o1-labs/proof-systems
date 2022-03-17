@@ -7,17 +7,17 @@ use crate::{
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
         polynomials::{
-            turshi::{Claim, Instruction, Transition},
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             generic, lookup, permutation,
             poseidon::Poseidon,
+            turshi::{Claim, Instruction},
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
-        wires::{COLUMNS, PERMUTS},
+        wires::{NEW_COLS, PERMUTS},
     },
     error::{ProofError, Result},
     plonk_sponge::FrSponge,
@@ -51,7 +51,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; COLUMNS],
+    pub w_comm: [PolyComm<G>; NEW_COLS],
     /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
@@ -89,7 +89,7 @@ where
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         groupmap: &G::Map,
-        witness: [Vec<Fr<G>>; COLUMNS],
+        witness: [Vec<Fr<G>>; NEW_COLS],
         index: &ProverIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
@@ -101,7 +101,7 @@ where
         EFrSponge: FrSponge<Fr<G>>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<Fr<G>>; COLUMNS],
+        mut witness: [Vec<Fr<G>>; NEW_COLS],
         index: &ProverIndex<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
@@ -166,10 +166,10 @@ where
         //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
         fq_sponge.absorb_g(&public_comm.unshifted);
 
-        //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~ 7. Commit to the witness columns by creating `NEW_COLS` hidding commitments.
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
+        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); NEW_COLS] = array_init(|i| {
             let e = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -184,9 +184,9 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
-        //~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
+        //~ 9. Compute the witness polynomials by interpolating each `NEW_COLS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<Fr<G>>; NEW_COLS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -632,24 +632,6 @@ where
                 assert!(res.is_zero());
             }
             drop(cairoinstr);
-
-            let cairotrans = Transition::combined_constraints(&all_alphas).evaluations(&env);
-            if cairotrans.domain().size == t4.domain().size {
-                t4 += &cairotrans;
-            } else if cairotrans.domain().size == t8.domain().size {
-                t8 += &cairotrans;
-            } else {
-                panic!("Bad evaluation")
-            }
-            if cfg!(test) {
-                let (_, res) = cairotrans
-                    .clone()
-                    .interpolate()
-                    .divide_by_vanishing_poly(index.cs.domain.d1)
-                    .unwrap();
-                assert!(res.is_zero());
-            }
-            drop(cairotrans);
 
             let cairoclaim = Claim::combined_constraints(&all_alphas).evaluations(&env);
             if cairoclaim.domain().size == t4.domain().size {

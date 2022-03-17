@@ -494,7 +494,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
         cs: &ConstraintSystem<F>,
         public: &[F],
     ) -> Result<(), String> {

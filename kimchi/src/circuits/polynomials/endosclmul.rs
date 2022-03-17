@@ -42,7 +42,7 @@ use crate::circuits::{
     expr,
     expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
     gate::GateType,
-    wires::COLUMNS,
+    wires::NEW_COLS,
 };
 
 /// Implementation of group endomorphism optimised
@@ -82,13 +82,13 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
-        let next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
+        let this: [F; NEW_COLS] = array_init::array_init(|i| witness[i][row]);
+        let next: [F; NEW_COLS] = array_init::array_init(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 
@@ -223,7 +223,7 @@ pub struct EndoMulResult<F> {
 
 /// Generates the witness_curr values for a series of endoscaling constraints.
 pub fn gen_witness<F: Field + std::fmt::Display>(
-    w: &mut [Vec<F>; COLUMNS],
+    w: &mut [Vec<F>; NEW_COLS],
     row0: usize,
     endo: F,
     base: (F, F),

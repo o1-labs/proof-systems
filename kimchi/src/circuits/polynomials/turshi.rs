@@ -1,101 +1,4 @@
 //!This implements the constraints of the Cairo gates
-//!
-//! Cairo programs can have the following assembly-like instructions:
-//! - Memory access: \[x\]
-//! - Assert equal: <left_hand_op> = <right_hand_op>
-//! · val
-//! · \[reg1 + off_op1\]
-//! · \[reg0 + off_op0\] +|* \[reg1 + off_op1\]
-//! · \[reg0 + off_op0\] +|* val
-//! · \[\[reg0 + off_op0\] + off_op1\]
-//! - Jumps
-//! · jmp abs <address>     // unconditional absolute jump
-//! · jmp rel <offset>      // unconditional relative jump
-//! · jmp rel <offset> if <op> != 0    // conditional jump
-//! - Functions
-//! · call abs <address>    // calls a function (absolute location)
-//! · call rel <offset>     // calls a function (relative location)
-//! · ret                   // returns to execution after the call
-//! - Increments
-//! · ap += <op>
-//! · ap++
-//!
-//! A Cairo program runs accross a number of state transitions.
-//! Each state transition has the following structure:
-//!
-//! * Has access to a read-only memory
-//! * Input: 3 types of registers
-//!  - pc (= program counter):  address of current instruction
-//!  - ap (= allocation pointer): first free memory address
-//!  - fp (= frame pointer): beginning of stack (for function arguments)
-//! * Output:
-//!  - next_pc: address of next instruction
-//!  - next_ap: address of next free memory slot
-//!  - next_fp: pointer to stack (can remain the same as fp)
-//!
-//!Cairo words are field elements of characteristic > 2^64
-//!Cairo instructions are stored as words (63 or 64 bits - actual instruction or immediate value)
-//!Instructions with immediate values are stored in 2 words
-//!- The first word stores instruction
-//!- The second word stores the value
-//!Words of instructions consist of
-//!* 3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased representation
-//! - off_dst (= offset from destination address): used to compute address of assignment
-//! - off_op0 (= offset from first operand): used to compute address of first operand in instruction
-//! - off_op1 (= offset from second operand): used to compute address of second operand in instruction
-//!* 15 bits of flags divided into 7 groups
-//!  When multiple bits, at most one can be 1 and the rest must be 0
-//! - dst_reg \[0\] = fDST_REG : indicates what pointer off_dst refers to ( 0 => ap , 1 => fp )
-//! - op0_reg \[1\] = fOP0_REG : indicates what pointer off_op0 refers to ( 0 => ap , 1 => fp )
-//! - op1_src \[2..4\] : encodes the type of second operand
-//!  · 0: indicates off_op1 is b in the double indexing \[\[ point + a \] + b \]
-//!  · 1: indicates off_op1 is an immediate value = fOP1_VAL = 1
-//!  · 2: indicates offset off_op1 relative to fp = fOP1_FP = 1
-//!  · 4: indicates offset off_op1 relative to ap = fOP1_AP = 1
-//! - res_logic \[5..6\]: defines (if any) arithmetic operation in right part
-//!  · 0: right part is single operand
-//!  · 1: right part is addition = fRES_ADD = 1
-//!  · 2: right part is multiplication = fRES_MUL = 1
-//! - pc_update \[7..9\]: defines the type of update for the pc
-//!  · 0 = regular increase by size of current instruction
-//!  · 1 = absolute jump to res address = fPC_ABS_JMP = 1
-//!  · 2 = relative jump of step res = fPC_REL_JMP = 1
-//!  · 4 = conditional jump (jnz) with step in op1 = fPC_JNZ = 1
-//! - ap_update \[10..11\]: defines the type of update for the ap
-//!  · 0: means the new ap is the same, same free position
-//!  · 1: means there is an ap+=<op> instruction = fAP_INC = 1
-//!  · 2: means there is an ap++ instruction = fAP_ADD1 = 1
-//! - opcode \[12..14\]: encodes type of assembly instruction
-//!  · 0: jumps or increments instruction
-//!  · 1: call instruction = fOPC_CALL = 1
-//!  · 2: return instruction = fOPC_RET = 1
-//!  · 4: assert equal instruction (assignment to value or check equality) = fOPC_ASSEQ = 1
-//!* in little-endian form = leftmost least significant bit
-//!
-//!The transition function uses 4 auxiliary values:
-//!- dst: left part of instruction, destination
-//!- op0: content of first operand of right part
-//!- op1: content of second operand of right part
-//!- res: result of the operation in the right part
-//!
-//! The Kimchi 15 columns could be:
-//! GateType  CairoInstruction Zero  (...)              CairoTransition   (...)              Zero   CairoClaim     CairoMem?
-//!    row   ->   0         1          2          ...   2n                     2n+1  ......  3n -1       3n
-//!     0    ·    pc        fPC_ABS    (next) pc        pc\[i\]           (c)  pc\[i+2\] ... pc\[2n-2\]  pc\[0\] (c)
-//!     1    ·    ap        fPC_REL    (next) ap  ...   ap\[i\]           (c)  ap\[i+2\] ... ap\[2n-2\]  ap\[0\] (c)
-//!  c  2    ·    fp        fPC_JNZ    (next) fp        fp\[i\]           (c)  fp\[i+2\] ... fp\[2n-2\]  fp\[0\] (c)
-//!  o  3    ·    size      fAP_ADD        .            size\[i\]         (c)    .              .        pc\[2n-2\] (c)
-//!  l  4    ·    res       fAP_ONE        .            res\[i\]          (c)    .              .        ap\[2n-2\] (c)
-//!  |  5    ·    dst       fOPC_CALL      .            dst\[i\]          (c)    .              .        pc_ini
-//!  v  6    ·    op1       fOPC_RET                    op1\[i\]          (c)    .              .        ap_ini
-//!     7         op0       fOPC_AEQ                    fPC_ABS\[i+1\]    (c)                            pc_fin
-//!     8         off_dst   fDST_FP                     fPC_REL\[i+1\]    (c)                            ap_fin
-//!     9         off_op1   fOP0_FP                     fPC_JNZ\[i+1\]    (c)                         
-//!     10        off_op0   fOP1_VAL                    fAP_ADD\[i+1\]    (c)                         
-//!     11        adr_dst   fOP1_FP                     fAP_ONE\[i+1\]    (c)                         
-//!     12        adr_op1   fOP1_AP                     fOPC_CALL\[i+1\]  (c)
-//!     13        adr_op0   fRES_ADD                    fOPC_RET\[i+1\]   (c)
-//!     14        instr     fRES_MUL                    
 
 //use std::fmt::{Display, Formatter};
 
@@ -108,11 +11,11 @@ use crate::circuits::expr::{self, Column};
 use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::scalars::ProofEvaluations;
-use crate::circuits::wires::{GateWires, Wire, COLUMNS};
+use crate::circuits::wires::{GateWires, Wire, NEW_COLS};
 use ark_ff::{FftField, Field, One};
 use array_init::array_init;
 use cairo::{
-    runner::{CairoInstruction, CairoProgram, Pointers},
+    runner::{CairoInstruction, CairoProgram, Pointers, ACC_PER_INS},
     word::{FlagBits, Offsets},
 };
 use rand::prelude::StdRng;
@@ -120,6 +23,42 @@ use rand::SeedableRng;
 
 const NUM_FLAGS: usize = 16;
 pub const CIRCUIT_GATE_COUNT: usize = 3;
+
+// Constants for column indexing of CairoInstruction gate
+const COL_PC: usize = 0;
+const COL_AP: usize = 1;
+const COL_FP: usize = 2;
+const COL_INSTR: usize = 3;
+const COL_PERM: usize = 4;
+const COL_SIZE: usize = 5;
+const COL_RES: usize = 6;
+const COL_DST: usize = 7;
+const COL_OP0: usize = 8;
+const COL_OP1: usize = 9;
+const COL_OFF_DST: usize = 10;
+const COL_OFF_OP0: usize = 11;
+const COL_OFF_OP1: usize = 12;
+const COL_ADR_DST: usize = 13;
+const COL_ADR_OP0: usize = 14;
+const COL_ADR_OP1: usize = 15;
+const COL_F_DST_FP: usize = 16;
+const COL_F_OP0_FP: usize = 17;
+const COL_F_OP1_VAL: usize = 18;
+const COL_F_OP1_FP: usize = 19;
+const COL_F_OP1_AP: usize = 20;
+const COL_F_RES_ADD: usize = 21;
+const COL_F_RES_MUL: usize = 22;
+const COL_F_PC_ABS: usize = 23;
+const COL_F_PC_REL: usize = 24;
+const COL_F_PC_JNZ: usize = 25;
+const COL_F_AP_ADD: usize = 26;
+const COL_F_AP_ONE: usize = 27;
+const COL_F_OPC_CALL: usize = 28;
+const COL_F_OPC_RET: usize = 29;
+const COL_F_OPC_AEQ: usize = 30;
+const COL_F_15: usize = 31;
+const COL_MEM: [usize; ACC_PER_INS] = [32, 33, 34, 35];
+const COL_VAL: [usize; ACC_PER_INS] = [36, 37, 38, 39];
 
 // GATE-RELATED
 
@@ -133,7 +72,7 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
 }
 
 /*
-pub fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
+pub fn view_witness<F: Field>(witness: &[Vec<F>; NEW_COLS]) {
     let rows = witness[0].len();
     for i in 0..rows {
         print!("row {}: [", i);
@@ -144,11 +83,11 @@ pub fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
     }
 }
 
-fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
+fn view_table<F: Field>(table: &Vec<[F; NEW_COLS]>) {
     let rows = table.len();
     for i in 0..rows {
         print!("row {}: [", i);
-        for j in 0..COLUMNS {
+        for j in 0..NEW_COLS {
             print!("{} , ", table[i][j].to_u64());
         }
         println!("]");
@@ -157,26 +96,22 @@ fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
 */
 
 /// Returns the witness of an execution of a Cairo program in CircuitGate format
-pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
+pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; NEW_COLS] {
     // 2 row per instruction for CairoInstruction gate
     // 1 row per instruction for CairoTransition gate
     // final row for CairoClaim gate
     let n = prog.trace().len();
-    let rows = 3 * n + 1;
-    let mut table: Vec<[F; COLUMNS]> = Vec::new();
-    table.resize(rows, [F::zero(); COLUMNS]);
+    let rows = n + 1;
+    let mut table: Vec<[F; NEW_COLS]> = Vec::new();
+    table.resize(rows, [F::zero(); NEW_COLS]);
     for (i, inst) in prog.trace().iter().enumerate() {
-        let gate = instruction_witness(inst);
-        let state = gate[0];
-        let flags = gate[1];
-        table[2 * i] = state;
-        table[2 * i + 1] = flags;
-        table[2 * n + i] = transition_witness(inst);
+        table[i] = instruction_witness(inst, prog.addresses(i), prog.values(i));
     }
-    table[rows - 1] = claim_witness(prog);
+    let perm = table[rows - 2][COL_PERM];
+    table[rows - 1] = claim_witness(prog, perm);
 
-    let mut witness: [Vec<F>; COLUMNS] = Default::default();
-    for col in 0..COLUMNS {
+    let mut witness: [Vec<F>; NEW_COLS] = array_init(|_| Default::default());
+    for col in 0..NEW_COLS {
         // initialize column with zeroes
         witness[col].resize(table.len(), F::zero());
         for (row, wit) in table.iter().enumerate() {
@@ -186,85 +121,67 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     witness
 }
 
-fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
+fn instruction_witness<F: Field>(
+    inst: &CairoInstruction<F>,  // current instruction
+    addresses: [F; ACC_PER_INS], // sorted addresses for this instruction
+    values: [F; ACC_PER_INS],    // sorted values for this instruction
+) -> [F; NEW_COLS] {
+    let mut row: [F; NEW_COLS] = array_init(|_| F::zero());
+    row[COL_PC] = inst.pc();
+    row[COL_AP] = inst.ap();
+    row[COL_FP] = inst.fp();
+    row[COL_INSTR] = inst.instr();
+    row[COL_SIZE] = inst.size();
+    row[COL_RES] = inst.res();
+    row[COL_DST] = inst.dst();
+    row[COL_OP0] = inst.op0();
+    row[COL_OP1] = inst.op1();
+    row[COL_OFF_DST] = inst.off_dst();
+    row[COL_OFF_OP0] = inst.off_op0();
+    row[COL_OFF_OP1] = inst.off_op1();
+    row[COL_ADR_DST] = inst.adr_dst();
+    row[COL_ADR_OP0] = inst.adr_op0();
+    row[COL_ADR_OP1] = inst.adr_op1();
+    row[COL_F_15] = inst.f15();
+    row[COL_F_OPC_AEQ] = inst.f_opc_aeq();
+    row[COL_F_OPC_RET] = inst.f_opc_ret();
+    row[COL_F_OPC_CALL] = inst.f_opc_call();
+    row[COL_F_AP_ONE] = inst.f_ap_one();
+    row[COL_F_AP_ADD] = inst.f_ap_add();
+    row[COL_F_PC_JNZ] = inst.f_pc_jnz();
+    row[COL_F_PC_REL] = inst.f_pc_rel();
+    row[COL_F_PC_ABS] = inst.f_pc_abs();
+    row[COL_F_RES_MUL] = inst.f_res_mul();
+    row[COL_F_RES_ADD] = inst.f_res_add();
+    row[COL_F_RES_ADD] = inst.f_op1_ap();
+    row[COL_F_OP1_FP] = inst.f_op1_fp();
+    row[COL_F_OP1_VAL] = inst.f_op1_val();
+    row[COL_F_OP0_FP] = inst.f_op0_fp();
+    row[COL_F_DST_FP] = inst.f_dst_fp();
+    for i in 0..ACC_PER_INS {
+        row[COL_MEM[i]] = addresses[i];
+        row[COL_VAL[i]] = values[i];
+    }
+    // TODO: compute partial permutation
+    row
+}
+
+fn claim_witness<F: Field>(prog: &CairoProgram<F>, perm: F) -> [F; NEW_COLS] {
     let first = 0;
     let last = prog.trace().len() - 1;
-    [
-        prog.trace()[first].pc(),
-        prog.trace()[first].ap(),
-        prog.trace()[first].fp(),
-        prog.trace()[last].pc(),
-        prog.trace()[last].ap(),
-        prog.ini().pc(),
-        prog.ini().ap(),
-        prog.fin().pc(),
-        prog.fin().ap(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-    ]
-}
+    let mut row: [F; NEW_COLS] = array_init(|_| F::zero());
 
-fn transition_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
-    [
-        inst.pc(),
-        inst.ap(),
-        inst.fp(),
-        inst.size(),
-        inst.res(),
-        inst.dst(),
-        inst.op1(),
-        inst.f_pc_abs(),
-        inst.f_pc_rel(),
-        inst.f_pc_jnz(),
-        inst.f_ap_add(),
-        inst.f_ap_one(),
-        inst.f_opc_call(),
-        inst.f_opc_ret(),
-        F::zero(),
-    ]
-}
-
-fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [[F; COLUMNS]; 2] {
-    [
-        [
-            inst.pc(),
-            inst.ap(),
-            inst.fp(),
-            inst.size(),
-            inst.res(),
-            inst.dst(),
-            inst.op1(),
-            inst.op0(),
-            inst.off_dst(),
-            inst.off_op1(),
-            inst.off_op0(),
-            inst.adr_dst(),
-            inst.adr_op1(),
-            inst.adr_op0(),
-            inst.instr(),
-        ],
-        [
-            inst.f_pc_abs(),
-            inst.f_pc_rel(),
-            inst.f_pc_jnz(),
-            inst.f_ap_add(),
-            inst.f_ap_one(),
-            inst.f_opc_call(),
-            inst.f_opc_ret(),
-            inst.f_opc_aeq(),
-            inst.f_dst_fp(),
-            inst.f_op0_fp(),
-            inst.f_op1_val(),
-            inst.f_op1_fp(),
-            inst.f_op1_ap(),
-            inst.f_res_add(),
-            inst.f_res_mul(),
-        ],
-    ]
+    row[0] = perm;
+    row[0] = prog.trace()[first].pc();
+    row[1] = prog.trace()[first].ap();
+    row[2] = prog.trace()[first].fp();
+    row[3] = prog.trace()[last].pc();
+    row[4] = prog.trace()[last].ap();
+    row[5] = prog.ini().pc();
+    row[6] = prog.ini().ap();
+    row[7] = prog.fin().pc();
+    row[8] = prog.fin().ap();
+    row
 }
 
 impl<F: FftField> CircuitGate<F> {
@@ -339,12 +256,12 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_cairo_gate(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
-        let mut next: [F; COLUMNS] = array_init(|_| F::zero());
+        let curr: [F; NEW_COLS] = array_init(|i| witness[i][row]);
+        let mut next: [F; NEW_COLS] = array_init(|_| F::zero());
         if self.typ != GateType::CairoClaim {
             next = array_init(|i| witness[i][row + 1]);
         }
@@ -352,12 +269,11 @@ impl<F: FftField> CircuitGate<F> {
         // column polynomials
         let polys = {
             let mut h = std::collections::HashSet::new();
-            for i in 0..COLUMNS {
+            for i in 0..NEW_COLS {
                 h.insert(Column::Witness(i)); // column witness polynomials
             }
             // gate selector polynomials
             h.insert(Column::Index(GateType::CairoInstruction));
-            h.insert(Column::Index(GateType::CairoTransition));
             h.insert(Column::Index(GateType::CairoClaim));
             h.insert(Column::Index(GateType::Zero));
             h
@@ -421,21 +337,17 @@ impl<F: FftField> CircuitGate<F> {
     pub fn ensure_cairo_gate(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; NEW_COLS],
         //_cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let this: [F; NEW_COLS] = array_init(|i| witness[i][row]);
 
         match self.typ {
             GateType::Zero => Ok(()),
             GateType::CairoInstruction => {
-                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; NEW_COLS] = array_init(|i| witness[i][row + 1]);
                 CircuitGate::ensure_instruction(&this, &next)
-            }
-            GateType::CairoTransition => {
-                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
-                CircuitGate::ensure_transition(&this, &next)
             }
             GateType::CairoClaim => CircuitGate::ensure_claim(&this),
             // TODO(querolita): memory related checks
@@ -446,68 +358,80 @@ impl<F: FftField> CircuitGate<F> {
         }
     }
 
-    fn ensure_instruction(vars: &[F], flags: &[F]) -> Result<(), String> {
-        let pc = vars[0];
-        let ap = vars[1];
-        let fp = vars[2];
-        let size = vars[3];
-        let res = vars[4];
-        let dst = vars[5];
-        let op1 = vars[6];
-        let op0 = vars[7];
-        let off_dst = vars[8];
-        let off_op1 = vars[9];
-        let off_op0 = vars[10];
-        let adr_dst = vars[11];
-        let adr_op1 = vars[12];
-        let adr_op0 = vars[13];
-        let instr = vars[14];
-        let f_pc_abs = flags[0];
-        let f_pc_rel = flags[1];
-        let f_pc_jnz = flags[2];
-        let f_ap_inc = flags[3];
-        let f_ap_one = flags[4];
-        let f_opc_call = flags[5];
-        let f_opc_ret = flags[6];
-        let f_opc_aeq = flags[7];
-        let f_dst_fp = flags[8];
-        let f_op0_fp = flags[9];
-        let f_op1_val = flags[10];
-        let f_op1_fp = flags[11];
-        let f_op1_ap = flags[12];
-        let f_res_add = flags[13];
-        let f_res_mul = flags[14];
+    fn ensure_instruction(curr: &[F], next: &[F]) -> Result<(), String> {
+        let pc = curr[COL_PC];
+        let ap = curr[COL_AP];
+        let fp = curr[COL_FP];
+        let instr = curr[COL_INSTR];
+        //let perm = curr[COL_PERM];
+        let size = curr[COL_SIZE];
+        let res = curr[COL_RES];
+        let dst = curr[COL_DST];
+        let op0 = curr[COL_OP0];
+        let op1 = curr[COL_OP1];
+        let off_dst = curr[COL_OFF_DST];
+        let off_op0 = curr[COL_OFF_OP0];
+        let off_op1 = curr[COL_OFF_OP1];
+        let adr_dst = curr[COL_ADR_DST];
+        let adr_op0 = curr[COL_ADR_OP0];
+        let adr_op1 = curr[COL_ADR_OP1];
+
+        let f15 = curr[COL_F_15];
+        let f_opc_aeq = curr[COL_F_OPC_AEQ];
+        let f_opc_ret = curr[COL_F_OPC_RET];
+        let f_opc_call = curr[COL_F_OPC_CALL];
+        let f_ap_one = curr[COL_F_AP_ONE];
+        let f_ap_add = curr[COL_F_AP_ADD];
+        let f_pc_jnz = curr[COL_F_PC_JNZ];
+        let f_pc_rel = curr[COL_F_PC_REL];
+        let f_pc_abs = curr[COL_F_PC_ABS];
+        let f_res_mul = curr[COL_F_RES_MUL];
+        let f_res_add = curr[COL_F_RES_ADD];
+        let f_op1_ap = curr[COL_F_OP1_AP];
+        let f_op1_fp = curr[COL_F_OP1_FP];
+        let f_op1_val = curr[COL_F_OP1_VAL];
+        let f_op0_fp = curr[COL_F_OP0_FP];
+        let f_dst_fp = curr[COL_F_DST_FP];
+
+        let mem: Vec<F> = (0..ACC_PER_INS).map(|i| curr[COL_MEM[i]]).collect();
+        let val: Vec<F> = (0..ACC_PER_INS).map(|i| curr[COL_VAL[i]]).collect();
+        //let perm = curr[COL_PERM];
+
+        let next_pc = next[COL_PC];
+        let next_ap = next[COL_AP];
+        let next_fp = next[COL_FP];
+        //let next_perm = next[COL_PERM];
+        let next_mem = next[COL_MEM[0]];
+        let next_val = next[COL_VAL[1]];
 
         let zero = F::zero();
         let one = F::one();
+        let two = F::from(2u16);
 
         // FLAGS RELATED
 
         // check last flag is a zero
         // f15 == 0
-        //ensure_eq!(zero, f15, "last flag is nonzero");
+        ensure_eq!(zero, f15, "last flag is nonzero");
 
         // check booleanity of flags
         // fi * (1-fi) == 0 for i=[0..15)
-        for &flag in flags.iter().take(NUM_FLAGS - 1) {
+        let flags: Vec<F> = (COL_F_DST_FP..COL_F_15).map(|i| curr[i]).collect();
+        for &flag in &flags {
             ensure_eq!(zero, flag * (one - flag), "non-boolean flags");
         }
 
         // well formness of instruction
-        // rotate flags to its natural ordering
-        let mut flags: Vec<F> = (0..NUM_FLAGS - 1).map(|i| flags[i]).collect();
-        flags.rotate_right(7);
-
         let shape = {
             let shift = F::from(2u32.pow(15)); // 2^15;
             let pow16 = shift.double(); // 2^16
             let dst_sft = off_dst + shift;
             let op0_sft = off_op0 + shift;
             let op1_sft = off_op1 + shift;
-            // recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
-            let mut aux = flags[14];
-            for i in (0..14).rev() {
-                aux = aux * F::from(2u32) + flags[i];
+            // recompose instruction as: flags[15..0] | op1_sft | op0_sft | dst_sft
+            let mut aux = flags[NUM_FLAGS - 1];
+            for i in (0..NUM_FLAGS - 1).rev() {
+                aux = aux * two + flags[i];
             }
             // complete with "flags" * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
             ((aux * pow16 + op1_sft) * pow16 + op0_sft) * pow16 + dst_sft
@@ -522,14 +446,13 @@ impl<F: FftField> CircuitGate<F> {
         let op1_set = f_op1_ap + f_op1_fp + f_op1_val;
         let res_set = f_res_mul + f_res_add;
         let pc_set = f_pc_jnz + f_pc_rel + f_pc_abs;
-        let ap_set = f_ap_one + f_ap_inc;
+        let ap_set = f_ap_one + f_ap_add;
         let opcode_set = f_opc_aeq + f_opc_ret + f_opc_call;
         ensure_eq!(
             zero,
             op1_set * (one - op1_set),
             "invalid format of `op1_src`"
         );
-
         ensure_eq!(
             zero,
             res_set * (one - res_set),
@@ -602,31 +525,8 @@ impl<F: FftField> CircuitGate<F> {
         // * Check destination = result after assert-equal
         ensure_eq!(zero, f_opc_aeq * (dst - res), "false assert equal"); // if opcode = 4 : dst = res
 
-        Ok(())
-    }
-
-    fn ensure_transition(curr: &[F], next: &[F]) -> Result<(), String> {
-        let pc = curr[0];
-        let ap = curr[1];
-        let fp = curr[2];
-        let size = curr[3];
-        let res = curr[4];
-        let dst = curr[5];
-        let op1 = curr[6];
-        let f_pc_abs = curr[7];
-        let f_pc_rel = curr[8];
-        let f_pc_jnz = curr[9];
-        let f_ap_inc = curr[10];
-        let f_ap_one = curr[11];
-        let f_opc_call = curr[12];
-        let f_opc_ret = curr[13];
-        let next_pc = next[0];
-        let next_ap = next[1];
-        let next_fp = next[2];
-
-        let zero = F::zero();
-        let one = F::one();
-        let two = F::from(2u16);
+        // TRANSITION RELATED
+        // ------------------
 
         // REGISTERS RELATED
 
@@ -634,7 +534,7 @@ impl<F: FftField> CircuitGate<F> {
         ensure_eq!(
             next_ap, //               next_ap =
             ap                   //             ap +
-            + f_ap_inc * res      //  if ap_up == 1 : res
+            + f_ap_add * res      //  if ap_up == 1 : res
             + f_ap_one           //  if ap_up == 2 : 1
             + f_opc_call.double(), // if opcode == 1 : 2
             "wrong next allocation pointer"
@@ -667,6 +567,32 @@ impl<F: FftField> CircuitGate<F> {
             "wrong next program counter"
         );
 
+        // MEMORY RELATED
+        // Singularity and continuity of the memory
+        for i in 0..ACC_PER_INS {
+            let (nextmem, nextval) = {
+                if i != ACC_PER_INS - 1 {
+                    (mem[i + 1], val[i + 1])
+                } else {
+                    (next_mem, next_val)
+                }
+            };
+            // Continuity
+            // (a'_i+1 - a'_i)(a'_i+1 - a'_i - 1)
+            ensure_eq!(
+                zero,
+                (nextmem - mem[i]) * (nextmem - mem[i] - one),
+                "Memory has holes"
+            );
+            // Singularity
+            // (v'_i+1 - v'_i)(a'_i+1 - a'_i - 1)
+            ensure_eq!(
+                zero,
+                (nextval - val[i]) * (nextmem - mem[i] - one),
+                "Values have changed"
+            );
+        }
+
         Ok(())
     }
 
@@ -693,8 +619,6 @@ impl<F: FftField> CircuitGate<F> {
     }
 }
 
-// CONSTRAINTS-RELATED
-
 /// Returns the expression corresponding to the literal "2"
 fn two<F: Field>() -> E<F> {
     Expr::Constant(ConstantExpr::Literal(2u16.into())) // 2
@@ -703,7 +627,6 @@ fn two<F: Field>() -> E<F> {
 /// Combines the constraints for the Cairo gates
 pub fn gate_combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
     Instruction::combined_constraints(alphas)
-        + Transition::combined_constraints(alphas)
         + Claim::combined_constraints(alphas)
         + E::literal(F::zero())
 }
@@ -712,12 +635,137 @@ pub fn gate_combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
 pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::CairoInstruction => Instruction::combined_constraints(alphas),
-        GateType::CairoTransition => Transition::combined_constraints(alphas),
         GateType::CairoClaim => Claim::combined_constraints(alphas),
         GateType::Zero => E::literal(F::zero()),
         _ => panic!("invalid gate type"),
     }
 }
+
+// -------------------
+// CONSTRAINTS SECTION
+// -------------------
+
+//~ Cairo programs can have the following assembly-like instructions:
+//~ - Memory access: \[x\]
+//~ - Assert equal: <left_hand_op> = <right_hand_op>
+//~ · val
+//~ · \[reg1 + off_op1\]
+//~ · \[reg0 + off_op0\] +|* \[reg1 + off_op1\]
+//~ · \[reg0 + off_op0\] +|* val
+//~ · \[\[reg0 + off_op0\] + off_op1\]
+//~ - Jumps
+//~ · jmp abs <address>     // unconditional absolute jump
+//~ · jmp rel <offset>      // unconditional relative jump
+//~ · jmp rel <offset> if <op> != 0    // conditional jump
+//~ - Functions
+//~ · call abs <address>    // calls a function (absolute location)
+//~ · call rel <offset>     // calls a function (relative location)
+//~ · ret                   // returns to execution after the call
+//~ - Increments
+//~ · ap += <op>
+//~ · ap++
+//~
+//~ A Cairo program runs accross a number of state transitions.
+//~ Each state transition has the following structure:
+//~
+//~ * Has access to a read-only memory
+//~ * Input: 3 types of registers
+//~  - pc (= program counter):  address of current instruction
+//~  - ap (= allocation pointer): first free memory address
+//~  - fp (= frame pointer): beginning of stack (for function arguments)
+//~ * Output:
+//~  - next_pc: address of next instruction
+//~  - next_ap: address of next free memory slot
+//~  - next_fp: pointer to stack (can remain the same as fp)
+//~
+//~Cairo words are field elements of characteristic > 2^64
+//~Cairo instructions are stored as words (63 or 64 bits - actual instruction or immediate value)
+//~Instructions with immediate values are stored in 2 words
+//~- The first word stores instruction
+//~- The second word stores the value
+//~Words of instructions consist of
+//~* 3 signed offsets of 16 bits each, in the range [-2^15,2^15) biased representation
+//~ - off_dst (= offset from destination address): used to compute address of assignment
+//~ - off_op0 (= offset from first operand): used to compute address of first operand in instruction
+//~ - off_op1 (= offset from second operand): used to compute address of second operand in instruction
+//~* 15 bits of flags divided into 7 groups
+//~  When multiple bits, at most one can be 1 and the rest must be 0
+//~ - dst_reg \[0\] = fDST_REG : indicates what pointer off_dst refers to ( 0 => ap , 1 => fp )
+//~ - op0_reg \[1\] = fOP0_REG : indicates what pointer off_op0 refers to ( 0 => ap , 1 => fp )
+//~ - op1_src \[2..4\] : encodes the type of second operand
+//~  · 0: indicates off_op1 is b in the double indexing \[\[ point + a \] + b \]
+//~  · 1: indicates off_op1 is an immediate value = fOP1_VAL = 1
+//~  · 2: indicates offset off_op1 relative to fp = fOP1_FP = 1
+//~  · 4: indicates offset off_op1 relative to ap = fOP1_AP = 1
+//~ - res_logic \[5..6\]: defines (if any) arithmetic operation in right part
+//~  · 0: right part is single operand
+//~  · 1: right part is addition = fRES_ADD = 1
+//~  · 2: right part is multiplication = fRES_MUL = 1
+//~ - pc_update \[7..9\]: defines the type of update for the pc
+//~  · 0 = regular increase by size of current instruction
+//~  · 1 = absolute jump to res address = fPC_ABS_JMP = 1
+//~  · 2 = relative jump of step res = fPC_REL_JMP = 1
+//~  · 4 = conditional jump (jnz) with step in op1 = fPC_JNZ = 1
+//~ - ap_update \[10..11\]: defines the type of update for the ap
+//~  · 0: means the new ap is the same, same free position
+//~  · 1: means there is an ap+=<op> instruction = fAP_INC = 1
+//~  · 2: means there is an ap++ instruction = fAP_ADD1 = 1
+//~ - opcode \[12..14\]: encodes type of assembly instruction
+//~  · 0: jumps or increments instruction
+//~  · 1: call instruction = fOPC_CALL = 1
+//~  · 2: return instruction = fOPC_RET = 1
+//~  · 4: assert equal instruction (assignment to value or check equality) = fOPC_ASSEQ = 1
+//~* in little-endian form = leftmost least significant bit
+//~
+//~The transition function uses 4 auxiliary values:
+//~- dst: left part of instruction, destination
+//~- op0: content of first operand of right part
+//~- op1: content of second operand of right part
+//~- res: result of the operation in the right part
+//~
+//~ The Kimchi 15 columns could be:
+//~ GateType  CairoInstruction  (...)     Zero        CairoClaim
+//~    row   ->   0         1             n-1         n
+//~  c  0©        pc        (next) pc     pc\[n-1\]   perm\[n-1\] (c)
+//~  o  1©        ap        (next) ap     ap\[n-1\]   pc\[0\] (c)
+//~  l  2©        fp        (next) fp     fp\[n-1\]   ap\[0\] (c)
+//~  |  3©  pub   instr                               fp\[0\] (c)
+//~  v  4©        perm                                pc\[n-1\] (c)
+//~     5©        size                 .              ap\[n-1\] (c)
+//~     6         res                  .              pc_ini  (pub)
+//~     7         dst                  .              ap_ini  (pub)
+//~     8         op0                                 pc_fin  (pub)
+//~     9         op1                                 ap_fin  (pub)
+//~     10        off_dst
+//~     11        off_op0
+//~     12        off_op1
+//~     13        adr_dst
+//~     14        adr_op0
+//~     15        adr_op1
+//~     16        f15
+//~     17        fOPC_AEQ
+//~     18        fOPC_RET
+//~     19        fOPC_CALL
+//~     20        fAP_ONE
+//~     21        fAP_ADD
+//~     22        fPC_JNZ
+//~     23        fPC_REL
+//~     24        fPC_ABS
+//~     25        fRES_MUL
+//~     26        fRES_ADD
+//~     27        fOP1_AP
+//~     28        fOP1_FP
+//~     29        fOP1_VAL
+//~     30        fOP0_FP
+//~     31        fDST_FP
+//~     32        mem0
+//~     33        mem1
+//~     34        mem2
+//~     35        mem3
+//~     36        val0
+//~     37        val1
+//~     38        val2
+//~     39        val3
 
 pub struct Instruction<F>(PhantomData<F>);
 
@@ -726,60 +774,72 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoInstruction);
-    const CONSTRAINTS: u32 = 28;
+    const CONSTRAINTS: u32 = 41;
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
     fn constraints() -> Vec<E<F>> {
         // load all variables of the witness corresponding to Cairoinstruction gates
-        let pc = witness_curr(0);
-        let ap = witness_curr(1);
-        let fp = witness_curr(2);
-        let size = witness_curr(3);
-        let res = witness_curr(4);
-        let dst = witness_curr(5);
-        let op1 = witness_curr(6);
-        let op0 = witness_curr(7);
-        let off_dst = witness_curr(8);
-        let off_op1 = witness_curr(9);
-        let off_op0 = witness_curr(10);
-        let adr_dst = witness_curr(11);
-        let adr_op1 = witness_curr(12);
-        let adr_op0 = witness_curr(13);
-        let instr = witness_curr(14);
-        // This unnatural ordering of the flags is meant to allow copies (first 7 columns)
-        let f_pc_abs = witness_next(0);
-        let f_pc_rel = witness_next(1);
-        let f_pc_jnz = witness_next(2);
-        let f_ap_inc = witness_next(3);
-        let f_ap_one = witness_next(4);
-        let f_opc_call = witness_next(5);
-        let f_opc_ret = witness_next(6);
-        let f_opc_aeq = witness_next(7);
-        let f_dst_fp = witness_next(8);
-        let f_op0_fp = witness_next(9);
-        let f_op1_val = witness_next(10);
-        let f_op1_fp = witness_next(11);
-        let f_op1_ap = witness_next(12);
-        let f_res_add = witness_next(13);
-        let f_res_mul = witness_next(14);
-        // rotate flags to its natural ordering
-        let mut flags: Vec<Expr<ConstantExpr<F>>> =
-            (0..NUM_FLAGS - 1).map(|i| witness_next(i)).collect();
-        flags.rotate_right(7);
+        let pc = witness_curr(COL_PC);
+        let ap = witness_curr(COL_AP);
+        let fp = witness_curr(COL_FP);
+        let instr = witness_curr(COL_INSTR);
+        //let perm = witness_curr(COL_PERM);
+        let size = witness_curr(COL_SIZE);
+        let res = witness_curr(COL_RES);
+        let dst = witness_curr(COL_DST);
+        let op0 = witness_curr(COL_OP0);
+        let op1 = witness_curr(COL_OP1);
+        let off_dst = witness_curr(COL_OFF_DST);
+        let off_op0 = witness_curr(COL_OFF_OP0);
+        let off_op1 = witness_curr(COL_OFF_OP1);
+        let adr_dst = witness_curr(COL_ADR_DST);
+        let adr_op0 = witness_curr(COL_ADR_OP0);
+        let adr_op1 = witness_curr(COL_ADR_OP1);
+
+        let f15 = witness_curr(COL_F_15);
+        let f_opc_aeq = witness_curr(COL_F_OPC_AEQ);
+        let f_opc_ret = witness_curr(COL_F_OPC_RET);
+        let f_opc_call = witness_curr(COL_F_OPC_CALL);
+        let f_ap_one = witness_curr(COL_F_AP_ONE);
+        let f_ap_add = witness_curr(COL_F_AP_ADD);
+        let f_pc_jnz = witness_curr(COL_F_PC_JNZ);
+        let f_pc_rel = witness_curr(COL_F_PC_REL);
+        let f_pc_abs = witness_curr(COL_F_PC_ABS);
+        let f_res_mul = witness_curr(COL_F_RES_MUL);
+        let f_res_add = witness_curr(COL_F_RES_ADD);
+        let f_op1_ap = witness_curr(COL_F_OP1_AP);
+        let f_op1_fp = witness_curr(COL_F_OP1_FP);
+        let f_op1_val = witness_curr(COL_F_OP1_VAL);
+        let f_op0_fp = witness_curr(COL_F_OP0_FP);
+        let f_dst_fp = witness_curr(COL_F_DST_FP);
+
+        let mem: Vec<Expr<ConstantExpr<F>>> =
+            (0..ACC_PER_INS).map(|i| witness_curr(COL_MEM[i])).collect();
+        let val: Vec<Expr<ConstantExpr<F>>> =
+            (0..ACC_PER_INS).map(|i| witness_curr(COL_VAL[i])).collect();
+
+        let next_pc = witness_next(0);
+        let next_ap = witness_next(1);
+        let next_fp = witness_next(2);
+        let next_mem = witness_next(COL_MEM[0]);
+        let next_val = witness_next(COL_VAL[0]);
+        //let next_perm = witness_next(COL_PERM);
+
+        // store flags in array
+        let flags: Vec<Expr<ConstantExpr<F>>> =
+            (COL_F_DST_FP..=COL_F_15).map(|i| witness_curr(i)).collect();
 
         // LIST OF CONSTRAINTS
         // -------------------
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![];
-        let mut cache = Cache::default();
 
         // INSTRUCTIONS RELATED
 
-        // Redundant if we perform the instruction well formness check
+        // Perhaps Redundant if we perform the instruction well formness check
         // * Check last flag is always zero
         // f15 == 0
-        // let f15 = wit(<idx>);
-        // constraints = vec![f15];
+        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![f15];
+        let mut cache = Cache::default();
 
         // * Check booleanity of all flags
         // fi * (1-fi) == 0 for i=[0..15)
@@ -791,9 +851,9 @@ where
         // TODO(querolita): perhaps these are redundant considering all of the logics below
         let op1_src = cache.cache(f_op1_ap.clone() + f_op1_fp.clone() + f_op1_val.clone());
         let res_log = cache.cache(f_res_mul.clone() + f_res_add.clone());
-        let pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel + f_pc_abs);
-        let ap_up = cache.cache(f_ap_one + f_ap_inc);
-        let opcode = cache.cache(f_opc_aeq.clone() + f_opc_ret + f_opc_call.clone());
+        let pc_up = cache.cache(f_pc_jnz.clone() + f_pc_rel.clone() + f_pc_abs.clone());
+        let ap_up = cache.cache(f_ap_one.clone() + f_ap_add.clone());
+        let opcode = cache.cache(f_opc_aeq.clone() + f_opc_ret.clone() + f_opc_call.clone());
         constraints.push(op1_src.clone() * (E::one() - op1_src));
         constraints.push(res_log.clone() * (E::one() - res_log));
         constraints.push(pc_up.clone() * (E::one() - pc_up));
@@ -807,9 +867,9 @@ where
             let dst_sft = off_dst.clone() + shift.clone();
             let op0_sft = off_op0.clone() + shift.clone();
             let op1_sft = off_op1.clone() + shift;
-            // recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
-            let mut aux: Expr<ConstantExpr<F>> = flags[14].clone();
-            for i in (0..14).rev() {
+            // recompose instruction as: flags[15..0] | op1_sft | op0_sft | dst_sft
+            let mut aux: Expr<ConstantExpr<F>> = flags[NUM_FLAGS - 1].clone();
+            for i in (0..NUM_FLAGS - 1).rev() {
                 aux = aux * two() + flags[i].clone();
             }
             // complete with "flags" * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
@@ -837,7 +897,7 @@ where
         // * Second operand address
         constraints.push(
             adr_op1                                                                                  //         op1_dir = ..
-          - (f_op1_ap.clone() * ap                                                     // if op1_src == 4 : ap
+          - (f_op1_ap.clone() * ap.clone()                                                     // if op1_src == 4 : ap
           + f_op1_fp.clone() * fp.clone()                                                      // if op1_src == 2 : fp
           + f_op1_val.clone() * pc.clone()                                                     // if op1_src == 1 : pc
           + (E::one() - f_op1_fp - f_op1_ap - f_op1_val) * op0.clone() // if op1_src == 0 : op0
@@ -848,71 +908,36 @@ where
 
         // * Check value of result
         constraints.push(
-            (E::one() - f_pc_jnz) * res.clone()                              // if pc_up != 4 : res = ..        // no res in conditional jumps
+            (E::one() - f_pc_jnz.clone()) * res.clone()                              // if pc_up != 4 : res = ..        // no res in conditional jumps
           - (f_res_mul.clone() * op0.clone() * op1.clone()                     //      if res_log = 2 : op0 * op1
           + f_res_add.clone() * (op0.clone() + op1.clone())                    //      if res_log = 1 : op0 + op1
-          + (E::one() - f_res_add - f_res_mul) * op1), //      if res_log = 0 : op1
+          + (E::one() - f_res_add - f_res_mul) * op1.clone()), //      if res_log = 0 : op1
         );
 
         // * Check storage of current fp for a call instruction
         // <=> assert_eq!(dst, fp);
-        constraints.push(f_opc_call.clone() * (dst.clone() - fp)); // if opcode = 1 : dst = fp
+        constraints.push(f_opc_call.clone() * (dst.clone() - fp.clone())); // if opcode = 1 : dst = fp
 
         // * Check storage of next instruction after a call instruction
         // <=> assert_eq!(op0, pc + size); // checks [ap+1] contains instruction after call
-        constraints.push(f_opc_call * (op0 - (pc + size))); // if opcode = 1 : op0 = pc + size
+        constraints.push(f_opc_call.clone() * (op0 - (pc.clone() + size.clone()))); // if opcode = 1 : op0 = pc + size
 
         // * Check destination = result after assert-equal
         // <=> assert_eq!(res, dst);
-        constraints.push(f_opc_aeq * (dst - res)); // if opcode = 4 : dst = res
+        constraints.push(f_opc_aeq * (dst.clone() - res.clone())); // if opcode = 4 : dst = res
 
-        constraints
-    }
-}
-
-pub struct Transition<F>(PhantomData<F>);
-
-impl<F> Argument<F> for Transition<F>
-where
-    F: FftField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoTransition);
-    const CONSTRAINTS: u32 = 4;
-
-    /// Generates the constraints for the Cairo transition
-    ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraints() -> Vec<E<F>> {
-        let pc = witness_curr(0);
-        let ap = witness_curr(1);
-        let fp = witness_curr(2);
-        let size = witness_curr(3);
-        let res = witness_curr(4);
-        let dst = witness_curr(5);
-        let op1 = witness_curr(6);
-        let f_pc_abs = witness_curr(7);
-        let f_pc_rel = witness_curr(8);
-        let f_pc_jnz = witness_curr(9);
-        let f_ap_inc = witness_curr(10);
-        let f_ap_one = witness_curr(11);
-        let f_opc_call = witness_curr(12);
-        let f_opc_ret = witness_curr(13);
-        let next_pc = witness_next(0);
-        let next_ap = witness_next(1);
-        let next_fp = witness_next(2);
-
-        // LIST OF CONSTRAINTS
-        // -------------------
-        // REGISTERS-RELATED
+        // -----------------
+        // TRANSITION-RELATED
         // * Check next allocation pointer
         //  next_ap =
         //             ap +
         //  if ap_up == 1  : res
         //  if ap_up == 2  : 1
         // if opcode == 1  : 2
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![
+        constraints.push(
             next_ap
-                - (ap.clone() + f_ap_inc * res.clone() + f_ap_one + f_opc_call.clone().double()),
-        ];
+                - (ap.clone() + f_ap_add * res.clone() + f_ap_one + f_opc_call.clone().double()),
+        );
 
         // * Check next frame pointer
         constraints.push(
@@ -935,6 +960,31 @@ where
                         - f_pc_abs * res.clone()                                                                    // <=> pc_up = 1              : next_pc = res       // absolute jump
                         - f_pc_rel * (pc + res), //                                                    <=> pc_up = 2              : next_pc = pc + res  // relative jump
         );
+
+        // -----------------
+        // MEMORY-RELATED
+        // Singularity and continuity of the memory
+        for i in 0..ACC_PER_INS {
+            let (nextmem, nextval) = {
+                if i != ACC_PER_INS - 1 {
+                    (mem[i + 1].clone(), val[i + 1].clone())
+                } else {
+                    (next_mem.clone(), next_val.clone())
+                }
+            };
+            // Continuity
+            // (a'_i+1 - a'_i)(a'_i+1 - a'_i - 1)
+            constraints.push(
+                (nextmem.clone() - mem[i].clone()) * (nextmem.clone() - mem[i].clone() - E::one()),
+            );
+            // Singularity
+            // (v'_i+1 - v'_i)(a'_i+1 - a'_i - 1)
+            constraints.push(
+                (nextval.clone() - val[i].clone()) * (nextmem.clone() - mem[i].clone() - E::one()),
+            );
+        }
+        // Permutation of the sorted list (mem, val) vs (pc,instr)&(dst_adr,dst)&(op0_adr,op0)&(op1_adr,op1)
+        // perm_i * (z - (mem_i+1 + a val_i+1)) = perm_i+1 * (z - (mem'_i+1 + a val'_i+1))
         constraints
     }
 }
@@ -951,19 +1001,21 @@ where
     /// Generates the constraints for the Cairo claim
     ///     Accesses Curr row only
     fn constraints() -> Vec<E<F>> {
-        let pc0 = witness_curr(0);
-        let ap0 = witness_curr(1);
-        let fp0 = witness_curr(2);
-        let pc_t = witness_curr(3);
-        let ap_t = witness_curr(4);
-        let pc_ini = witness_curr(5);
-        let ap_ini = witness_curr(6);
-        let pc_fin = witness_curr(7);
-        let ap_fin = witness_curr(8);
+        let perm_fin = witness_curr(0);
+        let pc0 = witness_curr(1);
+        let ap0 = witness_curr(2);
+        let fp0 = witness_curr(3);
+        let pc_t = witness_curr(4);
+        let ap_t = witness_curr(5);
+        let pc_ini = witness_curr(6);
+        let ap_ini = witness_curr(7);
+        let pc_fin = witness_curr(8);
+        let ap_fin = witness_curr(9);
 
         // LIST OF CONSTRAINTS
+        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![perm_fin - E::one()];
         // * Check initial and final ap, fp, pc
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
+        constraints.push(ap0 - ap_ini.clone()); // ap0 = ini_ap
         constraints.push(fp0 - ap_ini); // fp0 = ini_ap
         constraints.push(ap_t - ap_fin); // apT = fin_ap
         constraints.push(pc0 - pc_ini); // pc0 = ini_pc

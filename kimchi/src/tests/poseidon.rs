@@ -22,7 +22,7 @@ use crate::{
         gate::CircuitGate,
         polynomials,
         polynomials::poseidon::ROUNDS_PER_ROW,
-        wires::{Wire, COLUMNS},
+        wires::{Wire, NEW_COLS},
     },
     prover_index::testing::new_index_for_test,
     verifier::batch_verify,
@@ -112,7 +112,7 @@ fn positive(index: &ProverIndex<Affine>) {
     let mut start = Instant::now();
     for test in 0..1 {
         // witness for Poseidon permutation custom constraints
-        let mut witness_cols: [Vec<Fp>; COLUMNS] =
+        let mut witness_cols: [Vec<Fp>; NEW_COLS] =
             array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
 
         // creates a random input
