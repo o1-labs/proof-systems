@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["LookupCommitments",""],["ProverCommitments",""],["ProverProof",""]]});
+initSidebarItems({"struct":[["LookupCommitments",""],["ProverCommitments","All the commitments that the prover creates as part of the proof."],["ProverProof","The proof that the prover creates from a [ProverIndex] and a `witness`."]],"type":[["Result","The result of a proof creation or verification."]]});

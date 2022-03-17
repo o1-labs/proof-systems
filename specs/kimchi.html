@@ -183,13 +183,19 @@
 <ul>
 <li><a href="#common-index">Common Index</a></li>
 <li><a href="#prover-index">Prover Index</a></li>
+<li><a href="#verifier-index">Verifier Index</a></li>
 </ul>
 </li>
-<li><a href="#verifier-index">Verifier Index</a></li>
 <li><a href="#proof">Proof</a>
 <ul>
 <li><a href="#proof-creation">Proof Creation</a></li>
-<li><a href="#proof-verification">Proof Verification</a></li>
+<li><a href="#proof-verification">Proof Verification</a>
+<ul>
+<li><a href="#fiat-shamir-argument">Fiat-Shamir argument</a></li>
+<li><a href="#partial-verification">Partial verification</a></li>
+<li><a href="#batch-verification-of-proofs">Batch verification of proofs</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#optimizations">Optimizations</a></li>
@@ -563,7 +569,7 @@ def sample(domain, i):
         shift = Field(Blake2b512(to_be_bytes(i)))
     return shift, i
 </code></pre>
-<p><strong><code>Public</code></strong>. This variable simply contains the number of public inputs.</p>
+<p><strong><code>Public</code></strong>. This variable simply contains the number of public inputs. (TODO: actually, it’s not contained in the verifier index)</p>
 <p>The compilation steps to create the common index are as follow:</p>
 <ol>
 <li>If the circuit is less than 2 gates, abort.</li>
@@ -604,7 +610,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
     pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
 }
 </code></pre>
-<h2 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h2>
+<h3 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h3>
 <p>Same as the prover index, we have a number of pre-computations as part of the verifier index.</p>
 <pre><code class="language-rs">pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     /// evaluation domain
@@ -952,6 +958,83 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 </li>
 </ol>
 <h3 id="proof-verification"><a class="header" href="#proof-verification">Proof Verification</a></h3>
+<p>We define two helper algorithms below, used in the batch verification of proofs. </p>
+<h4 id="fiat-shamir-argument"><a class="header" href="#fiat-shamir-argument">Fiat-Shamir argument</a></h4>
+<p>We run the following algorithm:</p>
+<ol>
+<li>Setup the Fq-Sponge.</li>
+<li>Absorb the commitment of the public input polynomial with the Fq-Sponge.</li>
+<li>Absorb the commitments to the registers / witness columns with the Fq-Sponge.</li>
+<li>TODO: lookup (joint combiner challenge)</li>
+<li>TODO: lookup (absorb)</li>
+<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05278em;">β</span></span></span></span> with the Fq-Sponge.</li>
+<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.05556em;">γ</span></span></span></span> with the Fq-Sponge.</li>
+<li>TODO: lookup</li>
+<li>Absorb the commitment to the permutation trace with the Fq-Sponge.</li>
+<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fq-Sponge.</li>
+<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.0037em;">α</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0037em;">α</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: details).</li>
+<li>Enforce that the length of the <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathnormal">t</span></span></span></span> commitment is of size <code>PERMUTS</code>.</li>
+<li>Absorb the commitment to the quotient polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.61508em;vertical-align:0em;"></span><span class="mord mathnormal">t</span></span></span></span> into the argument.</li>
+<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fq-Sponge.</li>
+<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</li>
+<li>Setup the Fr-Sponge.</li>
+<li>Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</li>
+<li>Evaluate the negated public polynomial (if present) at <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>.
+NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.</li>
+<li>Absorb all the polynomial evaluations in <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span></span></span></span>:
+<ul>
+<li>the public polynomial</li>
+<li>z</li>
+<li>generic selector</li>
+<li>poseidon selector</li>
+<li>the 15 register/witness</li>
+<li>6 sigmas evaluations (the last one is not evaluated)</li>
+</ul>
+</li>
+<li>Absorb the unique evaluation of ft: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span><span class="mclose">)</span></span></span></span>.</li>
+<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fr-Sponge.</li>
+<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">v</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</li>
+<li>Sample <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> with the Fr-Sponge.</li>
+<li>Derive <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.43056em;vertical-align:0em;"></span><span class="mord mathnormal">u</span></span></span></span> from <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.751892em;vertical-align:0em;"></span><span class="mord"><span class="mord mathnormal">u</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span></span></span></span> using the endomorphism (TODO: specify).</li>
+<li>Create a list of all polynomials that have an evaluation proof.</li>
+<li>Compute the evaluation of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mclose">)</span></span></span></span>.</li>
+</ol>
+<h4 id="partial-verification"><a class="header" href="#partial-verification">Partial verification</a></h4>
+<p>For every proof we want to verify, we defer the proof opening to the very end.
+This allows us to potentially batch verify a number of partially verified proofs.
+Essentially, this steps verifies that <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">t</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07153em;">Z</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.32833099999999993em;"><span style="top:-2.5500000000000003em;margin-left:-0.07153em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.08125em;">H</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mclose">)</span></span></span></span>.</p>
+<ol>
+<li>Commit to the negated public input polynomial.</li>
+<li>Run the <a href="#fiat-shamir-argument">Fiat-Shamir argument</a>.</li>
+<li>Combine the chunked polynomials’ evaluations
+(TODO: most likely only the quotient polynomial is chunked)
+with the right powers of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.664392em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07378em;">ζ</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">ω</span><span class="mclose"><span class="mclose">)</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.664392em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span></span></span></span></span></span></span></span>.</li>
+<li>Compute the commitment to the linearized polynomial <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span></span></span></span>.</li>
+<li>Compute the (chuncked) commitment of <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em;"></span><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="mord mathnormal">t</span></span></span></span>
+(see <a href="../crypto/plonk/maller_15.html">Maller’s optimization</a>).</li>
+<li>List the polynomial commitments, and their associated evaluations,
+that are associated to the aggregated evaluation proof in the proof:
+<ul>
+<li>recursion</li>
+<li>public input commitment</li>
+<li>ft commitment (chunks of it)</li>
+<li>permutation commitment</li>
+<li>index commitments that use the coefficients</li>
+<li>witness commitments</li>
+<li>sigma commitments</li>
+</ul>
+</li>
+</ol>
+<h4 id="batch-verification-of-proofs"><a class="header" href="#batch-verification-of-proofs">Batch verification of proofs</a></h4>
+<p>Below, we define the steps to verify a number of proofs
+(each associated to a <a href="#verifier-index">verifier index</a>).
+You can, of course, use it to verify a single proof.</p>
+<ol>
+<li>If there’s no proof to verify, the proof validates trivially.</li>
+<li>Ensure that all the proof’s verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)</li>
+<li>Validate each proof separately following the <a href="#partial-verification">partial verification</a> steps.</li>
+<li>Use the <a href="#polynomial-commitments"><code>PolyCom.verify</code></a> to verify the partially evaluated proofs.</li>
+</ol>
 <h2 id="optimizations"><a class="header" href="#optimizations">Optimizations</a></h2>
 <ul>
 <li><code>commit_evaluation</code>: TODO</li>
