@@ -2,8 +2,9 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
+    gate::{CircuitGate, GateType, LookupInfo},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    polynomials::lookup::LookupConfiguration,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -34,8 +35,6 @@ pub const ZK_ROWS: u64 = 3;
 pub struct LookupConstraintSystem<F: FftField> {
     /// Lookup tables
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub dummy_lookup_value: Vec<F>,
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table: Vec<DP<F>>,
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_table8: Vec<E<F, D<F>>>,
@@ -54,13 +53,9 @@ pub struct LookupConstraintSystem<F: FftField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub lookup_selectors: Vec<E<F, D<F>>>,
 
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
+    /// Configuration for the lookup constraint.
+    #[serde(bound = "LookupConfiguration<F>: Serialize + DeserializeOwned")]
+    pub configuration: LookupConfiguration<F>,
 }
 
 #[serde_as]
@@ -375,14 +370,16 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 // generate the look up selector polynomials
                 Some(Self {
                     lookup_selectors,
-                    dummy_lookup_value,
                     lookup_table8,
                     lookup_table: lookup_table_polys,
                     table_ids: None,
                     table_ids8: None,
-                    lookup_used,
-                    max_lookups_per_row: lookup_info.max_per_row as usize,
-                    max_joint_size: lookup_info.max_joint_size,
+                    configuration: LookupConfiguration {
+                        lookup_used,
+                        max_lookups_per_row: lookup_info.max_per_row as usize,
+                        max_joint_size: lookup_info.max_joint_size,
+                        dummy_lookup_value,
+                    },
                 })
             }
         }

@@ -236,9 +236,8 @@ impl<F: FftField> LookupInfo<F> {
         let max_per_row = max_lookups_per_row(&kinds);
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
-                v.iter().fold(acc0, |acc, j| {
-                    std::cmp::max(acc, j.entry.len().try_into().unwrap())
-                })
+                v.iter()
+                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len() as u32))
             }),
 
             kinds_map,

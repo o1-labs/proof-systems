@@ -6,12 +6,11 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::lookup;
+use crate::circuits::polynomials::lookup::{self, LookupConfiguration};
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::{
-    constraints::LookupConstraintSystem,
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
     wires::*,
@@ -22,7 +21,7 @@ use ark_poly::Radix2EvaluationDomain as D;
 pub fn constraints_expr<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
-    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+    lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -55,7 +54,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
         powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
         let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
 
-        let constraints = lookup::constraints(&lcs.dummy_lookup_value, domain, lcs.max_joint_size);
+        let constraints = lookup::constraints(lcs, domain);
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
     }
@@ -65,7 +64,7 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 }
 
 pub fn linearization_columns<F: FftField + SquareRootField>(
-    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+    lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
     use Column::*;
@@ -91,7 +90,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: FftField + SquareRootField>(
     domain: D<F>,
     chacha: bool,
-    lookup_constraint_system: &Option<LookupConstraintSystem<F>>,
+    lookup_constraint_system: Option<&LookupConfiguration<F>>,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
