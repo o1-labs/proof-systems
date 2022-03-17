@@ -123,19 +123,19 @@ where
         //~
         let n = index.domain.size;
 
-        // 1. Setup the Fq-Sponge.
+        //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // 2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
+        //~ 2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&p_comm.unshifted);
 
-        // 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
+        //~ 3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         self.commitments
             .w_comm
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
-        // 4. TODO: lookup (joint combiner challenge)
+        //~ 4. TODO: lookup (joint combiner challenge)
         let joint_combiner = {
             let s = match index.lookup_index {
                 None
@@ -151,25 +151,25 @@ where
             (s, s.to_field(&index.srs.endo_r))
         };
 
-        // 5. TODO: lookup (absorb)
+        //~ 5. TODO: lookup (absorb)
         self.commitments.lookup.iter().for_each(|l| {
             l.sorted
                 .iter()
                 .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
         });
 
-        // 6. Sample $\beta$ with the Fq-Sponge.
+        //~ 6. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
 
-        // 7. Sample $\gamma$ with the Fq-Sponge.
+        //~ 7. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        // 8. TODO: lookup
+        //~ 8. TODO: lookup
         self.commitments.lookup.iter().for_each(|l| {
             fq_sponge.absorb_g(&l.aggreg.unshifted);
         });
 
-        // 9. Absorb the commitment to the permutation trace with the Fq-Sponge.
+        //~ 9. Absorb the commitment to the permutation trace with the Fq-Sponge.
         fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
 
         //~ 10. Sample $\alpha'$ with the Fq-Sponge.
@@ -183,7 +183,7 @@ where
             return Err(VerifyError::IncorrectCommitmentLength("t"));
         }
 
-        //~ 13. absorb the commitment to the quotient polynomial $t$ into the argument and sample zeta.
+        //~ 13. Absorb the commitment to the quotient polynomial $t$ into the argument.
         fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
 
         //~ 14. Sample $\zeta'$ with the Fq-Sponge.
@@ -402,9 +402,9 @@ where
     //~
     //~ #### Partial verification
     //~
-    //~ For every proof we want to verify, we deffer the proof opening to the very end.
+    //~ For every proof we want to verify, we defer the proof opening to the very end.
     //~ This allows us to potentially batch verify a number of partially verified proofs.
-    //~ Essentially, this steps verify that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
+    //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
     //~ 1. Commit to the negated public input polynomial.
@@ -438,7 +438,7 @@ where
         ..
     } = proof.oracles::<EFqSponge, EFrSponge>(index, &p_comm)?;
 
-    //~ 3. combine the chunked polynomials' evaluations
+    //~ 3. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     let evals = vec![
@@ -576,7 +576,7 @@ where
     };
 
     //~ 6. List the polynomial commitments, and their associated evaluations,
-    //~    That are associated to the aggregated evaluation proof in the proof:
+    //~    that are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
     //~     - recursion
@@ -718,7 +718,7 @@ where
 {
     //~ #### Batch verification of proofs
     //~
-    //~ Below, we define the steps to follow a number of proofs
+    //~ Below, we define the steps to verify a number of proofs
     //~ (each associated to a [verifier index](#verifier-index)).
     //~ You can, of course, use it to verify a single proof.
     //~

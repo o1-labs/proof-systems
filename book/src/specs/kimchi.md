@@ -845,10 +845,19 @@ We define two helper algorithms below, used in the batch verification of proofs.
 
 We run the following algorithm:
 
+1. Setup the Fq-Sponge.
+2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
+3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
+4. TODO: lookup (joint combiner challenge)
+5. TODO: lookup (absorb)
+6. Sample $\beta$ with the Fq-Sponge.
+7. Sample $\gamma$ with the Fq-Sponge.
+8. TODO: lookup
+9. Absorb the commitment to the permutation trace with the Fq-Sponge.
 10. Sample $\alpha'$ with the Fq-Sponge.
 11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
 12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-13. absorb the commitment to the quotient polynomial $t$ into the argument and sample zeta.
+13. Absorb the commitment to the quotient polynomial $t$ into the argument.
 14. Sample $\zeta'$ with the Fq-Sponge.
 15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
 16. Setup the Fr-Sponge.
@@ -872,20 +881,20 @@ We run the following algorithm:
 
 #### Partial verification
 
-For every proof we want to verify, we deffer the proof opening to the very end.
+For every proof we want to verify, we defer the proof opening to the very end.
 This allows us to potentially batch verify a number of partially verified proofs.
-Essentially, this steps verify that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
+Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 
 1. Commit to the negated public input polynomial.
 2. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
-3. combine the chunked polynomials' evaluations
+3. Combine the chunked polynomials' evaluations
    (TODO: most likely only the quotient polynomial is chunked)
    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
 4. Compute the commitment to the linearized polynomial $f$.
 5. Compute the (chuncked) commitment of $ft$
    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
 6. List the polynomial commitments, and their associated evaluations,
-   That are associated to the aggregated evaluation proof in the proof:
+   that are associated to the aggregated evaluation proof in the proof:
     - recursion
     - public input commitment
     - ft commitment (chunks of it)
@@ -895,7 +904,7 @@ Essentially, this steps verify that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     - sigma commitments
 #### Batch verification of proofs
 
-Below, we define the steps to follow a number of proofs
+Below, we define the steps to verify a number of proofs
 (each associated to a [verifier index](#verifier-index)).
 You can, of course, use it to verify a single proof.
 
