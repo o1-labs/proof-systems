@@ -755,6 +755,32 @@
 <span id="750">750</span>
 <span id="751">751</span>
 <span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This source file implements the arithmetization of plookup constraints</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Because of our ZK-rows, we can&#39;t do the trick in the plookup paper of</span>
@@ -880,7 +906,10 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">circuits</span>::{
         <span class="ident">expr</span>::{<span class="ident">prologue</span>::<span class="kw-2">*</span>, <span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">Variable</span>},
-        <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">JointLookup</span>, <span class="ident">LocalPosition</span>, <span class="ident">LookupInfo</span>, <span class="ident">SingleLookup</span>},
+        <span class="ident">gate</span>::{
+            <span class="ident">CircuitGate</span>, <span class="ident">CurrOrNext</span>, <span class="ident">JointLookup</span>, <span class="ident">LocalPosition</span>, <span class="ident">LookupInfo</span>, <span class="ident">LookupsUsed</span>,
+            <span class="ident">SingleLookup</span>,
+        },
         <span class="ident">wires::COLUMNS</span>,
     },
     <span class="ident">error::ProofError</span>,
@@ -888,6 +917,8 @@
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident">rand::Rng</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
 
@@ -972,6 +1003,27 @@
     <span class="ident">e</span>.<span class="ident">extend</span>((<span class="number">0</span>..((<span class="ident">n</span> <span class="op">-</span> <span class="ident">ZK_ROWS</span>) <span class="op">-</span> <span class="ident">k</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::zero</span>()));
     <span class="ident">e</span>.<span class="ident">extend</span>((<span class="number">0</span>..<span class="ident">ZK_ROWS</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">F::rand</span>(<span class="ident">rng</span>)));
     <span class="ident">Evaluations</span>::<span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="ident">::from_vec_and_domain</span>(<span class="ident">e</span>, <span class="ident">d</span>)
+}
+
+<span class="doccomment">/// Configuration for the lookup constraint.</span>
+<span class="doccomment">/// These values are independent of the choice of lookup values.</span>
+<span class="attribute">#[<span class="ident">serde_as</span>]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// The kind of lookups used</span>
+    <span class="kw">pub</span> <span class="ident">lookup_used</span>: <span class="ident">LookupsUsed</span>,
+
+    <span class="doccomment">/// The maximum number of lookups per row</span>
+    <span class="kw">pub</span> <span class="ident">max_lookups_per_row</span>: <span class="ident">usize</span>,
+    <span class="doccomment">/// The maximum number of elements in a vector lookup</span>
+    <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
+
+    <span class="attribute">#[<span class="ident">serde_as</span>(<span class="kw">as</span> <span class="op">=</span> <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]</span>
+    <span class="doccomment">/// A placeholder value that is known to appear in the lookup table.</span>
+    <span class="doccomment">/// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a</span>
+    <span class="doccomment">/// particular row, so that we can treat each row uniformly as having the same number of</span>
+    <span class="doccomment">/// lookups.</span>
+    <span class="kw">pub</span> <span class="ident">dummy_lookup_value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// Checks that all the lookup constraints are satisfied.</span>
@@ -1149,7 +1201,6 @@
     <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">E</span><span class="op">&gt;</span>,
     <span class="ident">G</span>: <span class="ident">Fn</span>() -&gt; <span class="ident">I</span>,
 <span class="op">&gt;</span>(
-    <span class="comment">// TODO: Multiple tables</span>
     <span class="ident">dummy_lookup_value</span>: <span class="ident">E</span>,
     <span class="ident">lookup_table</span>: <span class="ident">G</span>,
     <span class="ident">d1</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
@@ -1343,7 +1394,7 @@
 }
 
 <span class="doccomment">/// Specifies the lookup constraints as expressions.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraints</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">dummy_lookup</span>: <span class="kw-2">&amp;</span>[<span class="ident">F</span>], <span class="ident">d1</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraints</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span>(<span class="ident">configuration</span>: <span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">d1</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="comment">// Something important to keep in mind is that the last 2 rows of</span>
     <span class="comment">// all columns will have random values in them to maintain zero-knowledge.</span>
     <span class="comment">//</span>
@@ -1371,7 +1422,8 @@
     <span class="kw">let</span> <span class="ident">one</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">E::one</span>();
     <span class="kw">let</span> <span class="ident">non_lookup_indcator</span> <span class="op">=</span> <span class="ident">one</span> <span class="op">-</span> <span class="ident">lookup_indicator</span>;
 
-    <span class="kw">let</span> <span class="ident">dummy_lookup</span>: <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">dummy_lookup</span>
+    <span class="kw">let</span> <span class="ident">dummy_lookup</span>: <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">configuration</span>
+        .<span class="ident">dummy_lookup_value</span>
         .<span class="ident">iter</span>()
         .<span class="ident">rev</span>()
         .<span class="ident">fold</span>(<span class="ident">ConstantExpr::zero</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> {

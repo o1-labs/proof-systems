@@ -108,7 +108,6 @@
 <span id="103">103</span>
 <span id="104">104</span>
 <span id="105">105</span>
-<span id="106">106</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
@@ -117,12 +116,11 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::complete_add::CompleteAdd</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::endomul_scalar::EndomulScalar</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::endosclmul::EndosclMul</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::lookup</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::lookup</span>::{<span class="self">self</span>, <span class="ident">LookupConfiguration</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::varbasemul::VarbaseMul</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">constraints::LookupConstraintSystem</span>,
     <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">ConstantExpr</span>, <span class="ident">Expr</span>, <span class="ident">Linearization</span>, <span class="ident">PolishToken</span>},
     <span class="ident">gate::GateType</span>,
     <span class="ident">wires</span>::<span class="kw-2">*</span>,
@@ -133,7 +131,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">constraints_expr</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
     <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">chacha</span>: <span class="ident">bool</span>,
-    <span class="ident">lookup_constraint_system</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) -&gt; (<span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
     <span class="comment">// register powers of alpha so that we don&#39;t reuse them across mutually inclusive constraints</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">powers_of_alpha</span> <span class="op">=</span> <span class="ident">Alphas</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::default</span>();
@@ -166,7 +164,7 @@
         <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">lookup::CONSTRAINTS</span>);
         <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">powers_of_alpha</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">lookup::CONSTRAINTS</span>);
 
-        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">lookup::constraints</span>(<span class="kw-2">&amp;</span><span class="ident">lcs</span>.<span class="ident">dummy_lookup_value</span>, <span class="ident">domain</span>);
+        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">lookup::constraints</span>(<span class="ident">lcs</span>, <span class="ident">domain</span>);
         <span class="kw">let</span> <span class="ident">combined</span> <span class="op">=</span> <span class="ident">Expr::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>);
         <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">combined</span>;
     }
@@ -176,7 +174,7 @@
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">linearization_columns</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
-    <span class="ident">lookup_constraint_system</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) -&gt; <span class="ident">std::collections::HashSet</span><span class="op">&lt;</span><span class="ident">Column</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">h</span> <span class="op">=</span> <span class="ident">std::collections::HashSet::new</span>();
     <span class="kw">use</span> <span class="ident">Column</span>::<span class="kw-2">*</span>;
@@ -202,7 +200,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">expr_linearization</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span> <span class="op">+</span> <span class="ident">SquareRootField</span><span class="op">&gt;</span>(
     <span class="ident">domain</span>: <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
     <span class="ident">chacha</span>: <span class="ident">bool</span>,
-    <span class="ident">lookup_constraint_system</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LookupConstraintSystem</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">lookup_constraint_system</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LookupConfiguration</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 ) -&gt; (<span class="ident">Linearization</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PolishToken</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Alphas</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>) {
     <span class="kw">let</span> <span class="ident">evaluated_cols</span> <span class="op">=</span> <span class="ident">linearization_columns</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">lookup_constraint_system</span>);
 

@@ -840,7 +840,7 @@
     <span class="doccomment">/// The maximum length of an element of `kinds`. This can be computed from `kinds`.</span>
     <span class="kw">pub</span> <span class="ident">max_per_row</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.</span>
-    <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">max_joint_size</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// An empty vector.</span>
     <span class="ident">empty</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookup</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
@@ -883,7 +883,7 @@
         <span class="ident">LookupInfo</span> {
             <span class="ident">max_joint_size</span>: <span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc0</span>, <span class="ident">v</span><span class="op">|</span> {
                 <span class="ident">v</span>.<span class="ident">iter</span>()
-                    .<span class="ident">fold</span>(<span class="ident">acc0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">j</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">acc</span>, <span class="ident">j</span>.<span class="ident">entry</span>.<span class="ident">len</span>()))
+                    .<span class="ident">fold</span>(<span class="ident">acc0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">j</span><span class="op">|</span> <span class="ident">std::cmp::max</span>(<span class="ident">acc</span>, <span class="ident">j</span>.<span class="ident">entry</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>))
             }),
 
             <span class="ident">kinds_map</span>,

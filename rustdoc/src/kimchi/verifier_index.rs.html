@@ -391,7 +391,7 @@
                 .<span class="ident">lookup_constraint_system</span>
                 .<span class="ident">as_ref</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="ident">LookupVerifierIndex</span> {
-                    <span class="ident">lookup_used</span>: <span class="ident">cs</span>.<span class="ident">lookup_used</span>,
+                    <span class="ident">lookup_used</span>: <span class="ident">cs</span>.<span class="ident">configuration</span>.<span class="ident">lookup_used</span>,
                     <span class="ident">lookup_selectors</span>: <span class="ident">cs</span>
                         .<span class="ident">lookup_selectors</span>
                         .<span class="ident">iter</span>()
