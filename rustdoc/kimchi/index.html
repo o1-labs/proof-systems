@@ -51,7 +51,7 @@
 
 <span class="comment">// create a proof</span>
 <span class="kw">let</span> <span class="ident">group_map</span> <span class="op">=</span> <span class="op">&lt;</span><span class="ident">Affine</span> <span class="kw">as</span> <span class="ident">CommitmentCurve</span><span class="op">&gt;</span><span class="ident">::Map::setup</span>();
-<span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span> { 
+<span class="kw">let</span> <span class="ident">proof</span> <span class="op">=</span> {
     <span class="comment">// for recursion</span>
     <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="ident">index</span>.<span class="ident">srs</span>.<span class="ident">g</span>.<span class="ident">len</span>());
     <span class="kw">let</span> <span class="ident">chals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">k</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Fp::rand</span>(<span class="ident">rng</span>)).<span class="ident">collect</span>();
@@ -74,11 +74,12 @@
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/cairo">cairo/</a>. A Cairo runner written in rust.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/curves">curves/</a>. The elliptic curves we use (for now just the pasta curves).</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/groupmap">groupmap/</a>. Used to convert elliptic curve elements to field elements.</li>
+<li><a href="https://github.com/o1-labs/proof-systems/tree/master/hasher">hasher/</a>. Interfaces for mina hashing.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/kimchi">kimchi/</a>. Our proof system.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/ocaml">ocaml/</a>. Ocaml bindings generator tool.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/oracle">oracle/</a>. Implementation of the poseidon hash function.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/poly-commitment">poly-commitment/</a>. Polynomial commitment code.</li>
-<li><a href="https://github.com/o1-labs/proof-systems/tree/master/signer">signer/</a>. Implementation of schnorr signature scheme.</li>
+<li><a href="https://github.com/o1-labs/proof-systems/tree/master/signer">signer/</a>. Interfaces for mina signature schemes.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/tools">tools/</a>. Various tooling to help us work on kimchi.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/utils">utils/</a>. Collection of useful functions and traits.</li>
 </ul>
