@@ -124,7 +124,7 @@ use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
         gate::{
-            CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, LookupsUsed,
+            CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed,
             SingleLookup,
         },
         wires::COLUMNS,
@@ -157,7 +157,7 @@ fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
         .fold(E::zero(), |acc, e| acc + e)
 }
 
-fn joint_lookup<F: FftField>(j: &JointLookup<F>) -> E<F> {
+fn joint_lookup<F: FftField>(j: &JointLookupSpec<F>) -> E<F> {
     j.entry
         .iter()
         .enumerate()
@@ -324,7 +324,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
+            let joint_lookup_evaluation = joint_lookup.reduce(&eval).evaluate(joint_combiner);
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
@@ -356,7 +356,7 @@ pub trait Entry {
 
     fn evaluate(
         p: &Self::Params,
-        j: &JointLookup<Self::Field>,
+        j: &JointLookupSpec<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
     ) -> Self;
@@ -370,7 +370,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
 
     fn evaluate(
         joint_combiner: &F,
-        j: &JointLookup<F>,
+        j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> CombinedEntry<F> {
@@ -382,7 +382,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, &eval))
+        CombinedEntry(j.reduce(&eval).evaluate(*joint_combiner))
     }
 }
 
@@ -395,7 +395,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 
     fn evaluate(
         _: &(),
-        j: &JointLookup<F>,
+        j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> UncombinedEntry<F> {
@@ -593,7 +593,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, &eval))
+                    acc * (gamma + j.reduce(&eval).evaluate(joint_combiner))
                 })
             };
 

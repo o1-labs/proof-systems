@@ -3,6 +3,7 @@
 use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
+use ark_ff::{One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
@@ -10,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
+use std::ops::{AddAssign, Mul, MulAssign};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -75,31 +77,45 @@ pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item = &'a F>>(
     v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
 }
 
-impl<F: Field> SingleLookup<F> {
+impl<F: Copy> SingleLookup<F> {
     /// Evaluate the linear combination specifying the lookup value to a field element.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, eval: G) -> F {
+    pub fn evaluate<K: Zero + Mul<F, Output = K>, G: Fn(LocalPosition) -> K>(&self, eval: G) -> K {
         self.value
             .iter()
-            .fold(F::zero(), |acc, (c, p)| acc + *c * eval(*p))
+            .fold(K::zero(), |acc, (c, p)| acc + eval(*p) * *c)
     }
 }
 
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
-pub struct JointLookup<F> {
-    pub table_id: usize,
-    pub entry: Vec<SingleLookup<F>>,
+pub struct JointLookup<SingleLookup> {
+    pub table_id: i32,
+    pub entry: Vec<SingleLookup>,
 }
 
-impl<F: Field> JointLookup<F> {
+pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>>;
+
+impl<F: Copy> JointLookup<SingleLookup<F>> {
+    pub fn reduce<K: Zero + Mul<F, Output = K>, G: Fn(LocalPosition) -> K>(
+        &self,
+        eval: &G,
+    ) -> JointLookup<K> {
+        JointLookup {
+            table_id: self.table_id,
+            entry: self.entry.iter().map(|s| s.evaluate(eval)).collect(),
+        }
+    }
+}
+
+impl<F: Zero + One + AddAssign + MulAssign + Clone> JointLookup<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, joint_combiner: F, eval: &G) -> F {
+    pub fn evaluate(&self, joint_combiner: F) -> F {
         let mut res = F::zero();
         let mut c = F::one();
         for s in self.entry.iter() {
-            res += c * s.evaluate(eval);
-            c *= joint_combiner;
+            res += c.clone() * s.clone();
+            c *= joint_combiner.clone();
         }
         res
     }
@@ -158,7 +174,7 @@ pub enum GateType {
 pub struct LookupInfo<F> {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub kinds: Vec<Vec<JointLookup<F>>>,
+    pub kinds: Vec<Vec<JointLookupSpec<F>>>,
     /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
     /// constraint (given as an index into `kinds`) that should be applied there, if any.
     pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
@@ -170,10 +186,10 @@ pub struct LookupInfo<F> {
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
     /// An empty vector.
-    empty: Vec<JointLookup<F>>,
+    empty: Vec<JointLookupSpec<F>>,
 }
 
-fn max_lookups_per_row<F>(kinds: &[Vec<JointLookup<F>>]) -> usize {
+fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
 }
 
@@ -286,7 +302,7 @@ impl<F: FftField> LookupInfo<F> {
     }
 
     /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<'a>(&'a self, gates: &[CircuitGate<F>]) -> Vec<&'a Vec<JointLookup<F>>> {
+    pub fn by_row<'a>(&'a self, gates: &[CircuitGate<F>]) -> Vec<&'a Vec<JointLookupSpec<F>>> {
         let mut kinds = vec![&self.empty; gates.len() + 1];
         for i in 0..gates.len() {
             let typ = gates[i].typ;
@@ -327,7 +343,7 @@ impl GateType {
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
-    pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookup<F>>>, Vec<GatesLookupSpec>) {
+    pub fn lookup_kinds<F: Field>() -> (Vec<Vec<JointLookupSpec<F>>>, Vec<GatesLookupSpec>) {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
             column,
