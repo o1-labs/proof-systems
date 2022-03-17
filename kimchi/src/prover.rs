@@ -18,7 +18,7 @@ use crate::{
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
-    error::{ProofError, Result},
+    error::ProofError,
     plonk_sponge::FrSponge,
     prover_index::ProverIndex,
 };
@@ -38,8 +38,14 @@ use o1_utils::ExtendedDensePolynomial;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
+/// Alias to refer to the scalar field of a curve.
 type Fr<G> = <G as AffineCurve>::ScalarField;
+
+/// Alias to refer to the base field of a curve.
 type Fq<G> = <G as AffineCurve>::BaseField;
+
+/// The result of a proof creation or verification.
+pub type Result<T> = std::result::Result<T, ProofError>;
 
 #[derive(Clone)]
 pub struct LookupCommitments<G: AffineCurve> {
@@ -47,6 +53,7 @@ pub struct LookupCommitments<G: AffineCurve> {
     pub aggreg: PolyComm<G>,
 }
 
+/// All the commitments that the prover creates as part of the proof.
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
@@ -59,6 +66,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof

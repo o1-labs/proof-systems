@@ -1,5 +1,5 @@
 use crate::prover::ProverProof;
-use crate::verifier::batch_verify;
+use crate::verifier::{batch_verify, verify};
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
@@ -111,9 +111,8 @@ fn varbase_mul_test() {
         ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
