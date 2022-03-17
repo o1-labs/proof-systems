@@ -4,7 +4,7 @@ use crate::constants::SpongeConstants;
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use crate::permutations::{full_round, half_rounds};
+use crate::permutation::{full_round, half_rounds, poseidon_block_cipher};
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
 /// data into one or more field elements
@@ -49,28 +49,6 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub state: Vec<F>,
     params: ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
-}
-
-pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
-    params: &ArithmeticSpongeParams<F>,
-    state: &mut Vec<F>,
-) {
-    if SC::PERM_HALF_ROUNDS_FULL == 0 {
-        if SC::PERM_INITIAL_ARK {
-            for (i, x) in params.round_constants[0].iter().enumerate() {
-                state[i].add_assign(x);
-            }
-            for r in 0..SC::PERM_ROUNDS_FULL {
-                full_round::<F, SC>(params, state, r + 1);
-            }
-        } else {
-            for r in 0..SC::PERM_ROUNDS_FULL {
-                full_round::<F, SC>(params, state, r);
-            }
-        }
-    } else {
-        half_rounds::<F, SC>(params, state);
-    }
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {

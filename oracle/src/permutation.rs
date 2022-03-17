@@ -1,3 +1,4 @@
+//! The permutation module contains the function implementing the permutation used in Poseidon
 
 use ark_ff::Field;
 use crate::poseidon::{sbox,ArithmeticSpongeParams};
@@ -78,5 +79,27 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
             *state_i = sbox::<F, SC>(*state_i);
         }
         apply_mds_matrix::<F, SC>(params, state);
+    }
+}
+
+pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
+    params: &ArithmeticSpongeParams<F>,
+    state: &mut Vec<F>,
+) {
+    if SC::PERM_HALF_ROUNDS_FULL == 0 {
+        if SC::PERM_INITIAL_ARK {
+            for (i, x) in params.round_constants[0].iter().enumerate() {
+                state[i].add_assign(x);
+            }
+            for r in 0..SC::PERM_ROUNDS_FULL {
+                full_round::<F, SC>(params, state, r + 1);
+            }
+        } else {
+            for r in 0..SC::PERM_ROUNDS_FULL {
+                full_round::<F, SC>(params, state, r);
+            }
+        }
+    } else {
+        half_rounds::<F, SC>(params, state);
     }
 }

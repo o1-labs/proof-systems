@@ -2,7 +2,7 @@ pub mod constants;
 pub mod pasta;
 pub mod poseidon;
 pub mod sponge;
-pub mod permutations;
+pub mod permutation;
 
 use ark_ff::Field;
 
