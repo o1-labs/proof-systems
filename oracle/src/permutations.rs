@@ -1,6 +1,7 @@
 
 use ark_ff::Field;
-use crate::poseidon::{sbox,ArithmeticSpongeParams,SpongeConstants};
+use crate::poseidon::{sbox,ArithmeticSpongeParams};
+use crate::constants::SpongeConstants;
 
 fn apply_mds_matrix<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
