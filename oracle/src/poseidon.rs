@@ -1,10 +1,10 @@
 //! This module implements Poseidon Hash Function primitive
 
 use crate::constants::SpongeConstants;
+use crate::permutation::{full_round, half_rounds, poseidon_block_cipher};
 use ark_ff::Field;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use crate::permutation::{full_round, half_rounds, poseidon_block_cipher};
 
 /// Cryptographic sponge interface - for hashing an arbitrary amount of
 /// data into one or more field elements
