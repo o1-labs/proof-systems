@@ -2,8 +2,7 @@
 
 use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
 use ark_ff::bytes::ToBytes;
-use ark_ff::{FftField, Field};
-use ark_ff::{One, Zero};
+use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
@@ -11,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
-use std::ops::{AddAssign, Mul, MulAssign};
+use std::ops::{AddAssign, Mul};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -107,15 +106,16 @@ impl<F: Copy> JointLookup<SingleLookup<F>> {
     }
 }
 
-impl<F: Zero + One + AddAssign + MulAssign + Clone> JointLookup<F> {
+impl<F: Zero + One + AddAssign + Clone> JointLookup<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
     pub fn evaluate(&self, joint_combiner: F) -> F {
         let mut res = F::zero();
-        let mut c = F::one();
-        for s in self.entry.iter() {
-            res += c.clone() * s.clone();
-            c *= joint_combiner.clone();
+        for s in self.entry.iter().rev() {
+            if !res.is_zero() {
+                res = res * joint_combiner.clone()
+            }
+            res += s.clone();
         }
         res
     }
