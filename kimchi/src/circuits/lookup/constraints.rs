@@ -1,19 +1,24 @@
+use std::collections::HashMap;
 
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr},
-        gate::{CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
+        gate::{CircuitGate, CurrOrNext},
         wires::COLUMNS,
     },
     error::ProofError,
 };
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::{FftField, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::HashMap;
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
+
+use super::{
+    lookups::{JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
+    tables::Entry,
+};
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;

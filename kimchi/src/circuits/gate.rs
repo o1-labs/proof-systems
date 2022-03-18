@@ -1,18 +1,14 @@
 //! This module implements Plonk constraint gate primitive.
 
-use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
+use crate::circuits::{constraints::ConstraintSystem, wires::*};
 use ark_ff::bytes::ToBytes;
-use ark_ff::{FftField, Field, One, Zero};
+use ark_ff::FftField;
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
-use std::ops::Mul;
-
-type Evaluations<Field> = E<Field, D<Field>>;
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.

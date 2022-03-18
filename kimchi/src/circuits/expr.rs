@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
