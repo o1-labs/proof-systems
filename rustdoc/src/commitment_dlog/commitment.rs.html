@@ -1141,23 +1141,6 @@
 <span id="1136">1136</span>
 <span id="1137">1137</span>
 <span id="1138">1138</span>
-<span id="1139">1139</span>
-<span id="1140">1140</span>
-<span id="1141">1141</span>
-<span id="1142">1142</span>
-<span id="1143">1143</span>
-<span id="1144">1144</span>
-<span id="1145">1145</span>
-<span id="1146">1146</span>
-<span id="1147">1147</span>
-<span id="1148">1148</span>
-<span id="1149">1149</span>
-<span id="1150">1150</span>
-<span id="1151">1151</span>
-<span id="1152">1152</span>
-<span id="1153">1153</span>
-<span id="1154">1154</span>
-<span id="1155">1155</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.</span>
 <span class="doccomment">//! The folowing functionality is implemented</span>
 <span class="doccomment">//!</span>
@@ -2069,23 +2052,6 @@
     <span class="kw">use</span> <span class="ident">oracle::constants::PlonkSpongeConstantsKimchi</span> <span class="kw">as</span> <span class="ident">SC</span>;
     <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">pasta::fq_kimchi::params</span> <span class="kw">as</span> <span class="ident">spongeFqParams</span>, <span class="ident">sponge::DefaultFqSponge</span>};
     <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::StdRng</span>, <span class="ident">SeedableRng</span>};
-
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_log2</span>() {
-        <span class="kw">let</span> <span class="ident">tests</span> <span class="op">=</span> [
-            (<span class="number">1</span>, <span class="number">0</span>),
-            (<span class="number">2</span>, <span class="number">1</span>),
-            (<span class="number">3</span>, <span class="number">2</span>),
-            (<span class="number">9</span>, <span class="number">4</span>),
-            (<span class="number">15</span>, <span class="number">4</span>),
-            (<span class="number">15430</span>, <span class="number">14</span>),
-            (<span class="ident">usize::MAX</span>, <span class="number">64</span>),
-        ];
-        <span class="kw">for</span> (<span class="ident">d</span>, <span class="ident">expected_res</span>) <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">math::ceil_log2</span>(<span class="kw-2">*</span><span class="ident">d</span>);
-            <span class="macro">println!</span>(<span class="string">&quot;ceil(log2({})) = {}, expected = {}&quot;</span>, <span class="ident">d</span>, <span class="ident">res</span>, <span class="ident">expected_res</span>);
-        }
-    }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_lagrange_commitments</span>() {
