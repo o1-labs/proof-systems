@@ -2110,6 +2110,14 @@
 <span id="2105">2105</span>
 <span id="2106">2106</span>
 <span id="2107">2107</span>
+<span id="2108">2108</span>
+<span id="2109">2109</span>
+<span id="2110">2110</span>
+<span id="2111">2111</span>
+<span id="2112">2112</span>
+<span id="2113">2113</span>
+<span id="2114">2114</span>
+<span id="2115">2115</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
     <span class="ident">domains::EvaluationDomains</span>,
@@ -4033,6 +4041,14 @@
     }
 }
 
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span> <span class="ident">Mul</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">type</span> <span class="ident">Output</span> <span class="op">=</span> <span class="ident">Expr</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
+    <span class="kw">fn</span> <span class="ident">mul</span>(<span class="self">self</span>, <span class="ident">y</span>: <span class="ident">F</span>) -&gt; <span class="ident"><span class="self">Self</span>::Output</span> {
+        <span class="ident">Expr::Constant</span>(<span class="ident">ConstantExpr::Literal</span>(<span class="ident">y</span>)) <span class="op">*</span> <span class="self">self</span>
+    }
+}
+
 <span class="comment">//</span>
 <span class="comment">// Display</span>
 <span class="comment">//</span>
@@ -4218,5 +4234,5 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">coeff</span>, <span class="ident">index</span>, <span class="ident">witness</span>, <span class="ident">witness_curr</span>, <span class="ident">witness_next</span>, <span class="ident">E</span>};
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (461e80780 2022-03-16)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (58f11791a 2022-03-17)" ></div>
 </body></html>
