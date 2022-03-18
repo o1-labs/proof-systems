@@ -1925,7 +1925,7 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
     type Output = Expr<ConstantExpr<F>>;
 
     fn mul(self, y: F) -> Self::Output {
-        Expr::Constant(ConstantExpr::Literal(F::from(y))) * self
+        Expr::Constant(ConstantExpr::Literal(y)) * self
     }
 }
 
