@@ -41,133 +41,6 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
-/// Configuration for the lookup constraint.
-/// These values are independent of the choice of lookup values.
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct LookupConfiguration<F: FftField> {
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
-    /// The maximum number of lookups per row
-    pub max_lookups_per_row: usize,
-    /// The maximum number of elements in a vector lookup
-    pub max_joint_size: u32,
-
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    /// A placeholder value that is known to appear in the lookup table.
-    /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
-    /// particular row, so that we can treat each row uniformly as having the same number of
-    /// lookups.
-    pub dummy_lookup_value: Vec<F>,
-}
-
-/// Checks that all the lookup constraints are satisfied.
-#[allow(clippy::too_many_arguments)]
-pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
-    dummy_lookup_value: F,
-    lookup_table: G,
-    lookup_table_entries: usize,
-    d1: D<F>,
-    gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
-    sorted: &[Evaluations<F, D<F>>],
-) {
-    sorted
-        .iter()
-        .for_each(|s| assert_eq!(d1.size, s.domain().size));
-    let n = d1.size as usize;
-    let lookup_rows = n - ZK_ROWS - 1;
-
-    // Check that the (desnakified) sorted table is
-    // 1. Sorted
-    // 2. Adjacent pairs agree on the final overlap point
-    // 3. Multiset-equal to the set lookups||table
-
-    // Check agreement on overlaps
-    for i in 0..sorted.len() - 1 {
-        let pos = if i % 2 == 0 { lookup_rows } else { 0 };
-        assert_eq!(sorted[i][pos], sorted[i + 1][pos]);
-    }
-
-    // Check sorting
-    let mut sorted_joined: Vec<F> = Vec::with_capacity((lookup_rows + 1) * sorted.len());
-    for (i, s) in sorted.iter().enumerate() {
-        let es = s.evals.iter().take(lookup_rows + 1);
-        if i % 2 == 0 {
-            sorted_joined.extend(es)
-        } else {
-            sorted_joined.extend(es.rev())
-        }
-    }
-
-    let mut s_index = 0;
-    for t in lookup_table().take(lookup_table_entries) {
-        while s_index < sorted_joined.len() && sorted_joined[s_index] == t {
-            s_index += 1;
-        }
-    }
-    assert_eq!(s_index, sorted_joined.len());
-
-    let lookup_info = LookupInfo::<F>::create();
-    let by_row = lookup_info.by_row(gates);
-
-    // Compute lookups||table and check multiset equality
-    let sorted_counts: HashMap<F, usize> = {
-        let mut counts = HashMap::new();
-        for (i, s) in sorted.iter().enumerate() {
-            if i % 2 == 0 {
-                for x in s.evals.iter().take(lookup_rows) {
-                    *counts.entry(*x).or_insert(0) += 1
-                }
-            } else {
-                for x in s.evals.iter().skip(1).take(lookup_rows) {
-                    *counts.entry(*x).or_insert(0) += 1
-                }
-            }
-        }
-        counts
-    };
-
-    let mut all_lookups: HashMap<F, usize> = HashMap::new();
-    lookup_table()
-        .take(lookup_rows)
-        .for_each(|t| *all_lookups.entry(t).or_insert(0) += 1);
-    for (i, spec) in by_row.iter().take(lookup_rows).enumerate() {
-        let eval = |pos: LocalPosition| -> F {
-            let row = match pos.row {
-                Curr => i,
-                Next => i + 1,
-            };
-            witness[pos.column][row]
-        };
-        for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
-            *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
-        }
-
-        *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
-    }
-
-    assert_eq!(
-        all_lookups.iter().fold(0, |acc, (_, v)| acc + v),
-        sorted_counts.iter().fold(0, |acc, (_, v)| acc + v)
-    );
-
-    for (k, v) in all_lookups.iter() {
-        let s = sorted_counts.get(k).unwrap_or(&0);
-        if v != s {
-            panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
-        }
-    }
-    for (k, s) in sorted_counts.iter() {
-        let v = all_lookups.get(k).unwrap_or(&0);
-        if v != s {
-            panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
-        }
-    }
-}
 //~
 //~ Because of our ZK-rows, we can't do the trick in the plookup paper of
 //~ wrapping around to enforce consistency between the sorted lookup columns.
@@ -527,6 +400,27 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     Ok(zk_patch(lookup_aggreg, d1, rng))
 }
 
+/// Configuration for the lookup constraint.
+/// These values are independent of the choice of lookup values.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct LookupConfiguration<F: FftField> {
+    /// The kind of lookups used
+    pub lookup_used: LookupsUsed,
+
+    /// The maximum number of lookups per row
+    pub max_lookups_per_row: usize,
+    /// The maximum number of elements in a vector lookup
+    pub max_joint_size: u32,
+
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    /// A placeholder value that is known to appear in the lookup table.
+    /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
+    /// particular row, so that we can treat each row uniformly as having the same number of
+    /// lookups.
+    pub dummy_lookup_value: Vec<F>,
+}
+
 /// Specifies the lookup constraints as expressions.
 pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
@@ -697,4 +591,111 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
     ];
     res.extend(compatibility_checks);
     res
+}
+
+/// Checks that all the lookup constraints are satisfied.
+#[allow(clippy::too_many_arguments)]
+pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
+    dummy_lookup_value: F,
+    lookup_table: G,
+    lookup_table_entries: usize,
+    d1: D<F>,
+    gates: &[CircuitGate<F>],
+    witness: &[Vec<F>; COLUMNS],
+    joint_combiner: F,
+    sorted: &[Evaluations<F, D<F>>],
+) {
+    sorted
+        .iter()
+        .for_each(|s| assert_eq!(d1.size, s.domain().size));
+    let n = d1.size as usize;
+    let lookup_rows = n - ZK_ROWS - 1;
+
+    // Check that the (desnakified) sorted table is
+    // 1. Sorted
+    // 2. Adjacent pairs agree on the final overlap point
+    // 3. Multiset-equal to the set lookups||table
+
+    // Check agreement on overlaps
+    for i in 0..sorted.len() - 1 {
+        let pos = if i % 2 == 0 { lookup_rows } else { 0 };
+        assert_eq!(sorted[i][pos], sorted[i + 1][pos]);
+    }
+
+    // Check sorting
+    let mut sorted_joined: Vec<F> = Vec::with_capacity((lookup_rows + 1) * sorted.len());
+    for (i, s) in sorted.iter().enumerate() {
+        let es = s.evals.iter().take(lookup_rows + 1);
+        if i % 2 == 0 {
+            sorted_joined.extend(es)
+        } else {
+            sorted_joined.extend(es.rev())
+        }
+    }
+
+    let mut s_index = 0;
+    for t in lookup_table().take(lookup_table_entries) {
+        while s_index < sorted_joined.len() && sorted_joined[s_index] == t {
+            s_index += 1;
+        }
+    }
+    assert_eq!(s_index, sorted_joined.len());
+
+    let lookup_info = LookupInfo::<F>::create();
+    let by_row = lookup_info.by_row(gates);
+
+    // Compute lookups||table and check multiset equality
+    let sorted_counts: HashMap<F, usize> = {
+        let mut counts = HashMap::new();
+        for (i, s) in sorted.iter().enumerate() {
+            if i % 2 == 0 {
+                for x in s.evals.iter().take(lookup_rows) {
+                    *counts.entry(*x).or_insert(0) += 1
+                }
+            } else {
+                for x in s.evals.iter().skip(1).take(lookup_rows) {
+                    *counts.entry(*x).or_insert(0) += 1
+                }
+            }
+        }
+        counts
+    };
+
+    let mut all_lookups: HashMap<F, usize> = HashMap::new();
+    lookup_table()
+        .take(lookup_rows)
+        .for_each(|t| *all_lookups.entry(t).or_insert(0) += 1);
+    for (i, spec) in by_row.iter().take(lookup_rows).enumerate() {
+        let eval = |pos: LocalPosition| -> F {
+            let row = match pos.row {
+                Curr => i,
+                Next => i + 1,
+            };
+            witness[pos.column][row]
+        };
+        for joint_lookup in spec.iter() {
+            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
+            *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
+        }
+
+        *all_lookups.entry(dummy_lookup_value).or_insert(0) += lookup_info.max_per_row - spec.len()
+    }
+
+    assert_eq!(
+        all_lookups.iter().fold(0, |acc, (_, v)| acc + v),
+        sorted_counts.iter().fold(0, |acc, (_, v)| acc + v)
+    );
+
+    for (k, v) in all_lookups.iter() {
+        let s = sorted_counts.get(k).unwrap_or(&0);
+        if v != s {
+            panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
+        }
+    }
+    for (k, s) in sorted_counts.iter() {
+        let v = all_lookups.get(k).unwrap_or(&0);
+        if v != s {
+            panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
+        }
+    }
 }
