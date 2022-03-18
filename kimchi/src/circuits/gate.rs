@@ -85,18 +85,6 @@ pub enum GateType {
     ChaChaFinal = 10,
 }
 
-
-fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
-    kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
-}
-
-/// Specifies whether a constraint system uses joint lookups. Used to make sure we
-/// squeeze the challenge `joint_combiner` when needed, and not when not needed.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum LookupsUsed {
-    Single,
-    Joint,
-}
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A single gate in a circuit.
