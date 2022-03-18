@@ -3,7 +3,6 @@
 use crate::circuits::{constraints::ConstraintSystem, wires::*};
 use ark_ff::bytes::ToBytes;
 use ark_ff::FftField;
-use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};

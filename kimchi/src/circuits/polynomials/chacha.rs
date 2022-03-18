@@ -515,7 +515,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            gate::LookupInfo,
+            lookup::lookups::LookupInfo,
             scalars::{LookupEvaluations, ProofEvaluations},
             wires::*,
         },
