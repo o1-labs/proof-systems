@@ -122,7 +122,7 @@
 
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr, Variable},
+        expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
         wires::COLUMNS,
     },
@@ -635,12 +635,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             .collect()
     };
 
-    let eval = |pos: LocalPosition| {
-        E::Cell(Variable {
-            col: Column::Witness(pos.column),
-            row: pos.row,
-        })
-    };
+    let eval = |pos: LocalPosition| witness(pos.column, pos.row);
 
     // This is set up so that on rows that have lookups, chunk will be equal
     // to the product over all lookups `f` in that row of `gamma + f`
