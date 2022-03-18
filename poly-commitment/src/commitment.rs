@@ -911,23 +911,6 @@ mod tests {
     use rand::{rngs::StdRng, SeedableRng};
 
     #[test]
-    fn test_log2() {
-        let tests = [
-            (1, 0),
-            (2, 1),
-            (3, 2),
-            (9, 4),
-            (15, 4),
-            (15430, 14),
-            (usize::MAX, 64),
-        ];
-        for (d, expected_res) in tests.iter() {
-            let res = math::ceil_log2(*d);
-            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
-        }
-    }
-
-    #[test]
     fn test_lagrange_commitments() {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();

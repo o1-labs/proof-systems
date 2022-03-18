@@ -16,3 +16,25 @@ pub fn ceil_log2(d: usize) -> usize {
     }
     ceil_log2
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log2() {
+        let tests = [
+            (1, 0),
+            (2, 1),
+            (3, 2),
+            (9, 4),
+            (15, 4),
+            (15430, 14),
+            (usize::MAX, 64),
+        ];
+        for (d, expected_res) in tests.iter() {
+            let res = ceil_log2(*d);
+            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
+        }
+    }
+}
