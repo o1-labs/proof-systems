@@ -11,6 +11,7 @@ pub mod linearization;
 pub mod plonk_sponge;
 pub mod prover;
 pub mod prover_index;
+pub mod recursion;
 pub mod verifier;
 pub mod verifier_index;
 

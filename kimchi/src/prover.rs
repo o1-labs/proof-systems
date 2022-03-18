@@ -17,12 +17,13 @@ use crate::{
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
-        scalars::{LookupEvaluations, ProofEvaluations},
+        scalars::{LookupEvaluations, ProofChunkedEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
     error::ProofError,
     plonk_sponge::FrSponge,
     prover_index::ProverIndex,
+    recursion::Recursion,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
@@ -38,6 +39,8 @@ use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{sponge::ScalarChallenge, FqSponge};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde_with::serde_as;
 use std::collections::HashMap;
 
 /// Alias to refer to the scalar field of a curve.
@@ -49,46 +52,64 @@ type Fq<G> = <G as AffineCurve>::BaseField;
 /// The result of a proof creation or verification.
 pub type Result<T> = std::result::Result<T, ProofError>;
 
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct LookupCommitments<G: AffineCurve> {
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sorted: Vec<PolyComm<G>>,
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub aggreg: PolyComm<G>,
 }
 
 /// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
+    #[serde(bound = "LookupCommitments<G>: Serialize + DeserializeOwned")]
     pub lookup: Option<LookupCommitments<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
+pub struct ProverProof<G>
+where
+    G: AffineCurve,
+{
     /// All the polynomial commitments required in the proof
+    #[serde(bound = "ProverCommitments<G>: Serialize + DeserializeOwned")]
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
+    #[serde(bound = "OpeningProof<G>: Serialize + DeserializeOwned")]
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
+    #[serde(bound = "ProofChunkedEvaluations<Fr<G>>: Serialize + DeserializeOwned")]
+    pub evals: [ProofChunkedEvaluations<Fr<G>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: Fr<G>,
 
     /// The public input
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub public: Vec<Fr<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+    #[serde(bound = "Recursion<G>: Serialize + DeserializeOwned")]
+    pub prev_challenges: Vec<Recursion<G>>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -101,7 +122,7 @@ where
         witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
     ) -> Result<Self> {
-        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
+        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, vec![])
     }
 
     /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
@@ -112,7 +133,7 @@ where
         group_map: &G::Map,
         mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        prev_challenges: Vec<Recursion<G>>,
     ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
@@ -909,20 +930,17 @@ where
             shifted: None,
         };
 
-        let polys = prev_challenges
-            .iter()
-            .map(|(chals, comm)| {
-                (
-                    DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
-                )
-            })
-            .collect::<Vec<_>>();
+        let mut polynomials: Vec<(&DensePolynomial<_>, Option<usize>, PolyComm<_>)> = vec![];
 
-        let mut polynomials = polys
-            .iter()
-            .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
-            .collect::<Vec<_>>();
+        for Recursion {
+            challenges,
+            commitment,
+        } in prev_challenges
+        {
+            let p = DensePolynomial::from_coefficients_vec(b_poly_coefficients(&challenges));
+            let d1_size = non_hiding(commitment.unshifted.len());
+            polynomials.push((&p, None, d1_size));
+        }
 
         //~ 44. Then, include:
         //~     - the negated public polynomial (TODO: why?)
