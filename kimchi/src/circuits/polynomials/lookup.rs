@@ -123,9 +123,7 @@
 use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
-        gate::{
-            CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed,
-        },
+        gate::{CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
         wires::COLUMNS,
     },
     error::ProofError,
