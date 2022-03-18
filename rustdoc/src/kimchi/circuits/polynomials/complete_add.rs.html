@@ -295,7 +295,6 @@
 <span id="290">290</span>
 <span id="291">291</span>
 <span id="292">292</span>
-<span id="293">293</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.</span>
 
 <span class="comment">//~ The layout is</span>
@@ -385,7 +384,6 @@
 <span class="doccomment">/// for doubling.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">PhantomData</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="ident">Argument</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CompleteAdd</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>
