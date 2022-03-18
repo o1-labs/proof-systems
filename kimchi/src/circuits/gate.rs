@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
-use std::ops::{Add, Mul};
+use std::ops::Mul;
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -69,24 +69,23 @@ pub struct SingleLookup<F> {
 /// analogously using `joint_combiner`.
 ///
 /// This function computes that combined value.
-pub fn combine_table_entry<
-    'a,
-    F: 'a + Zero + One + Add + Mul + Clone,
+pub fn combine_table_entry<'a, F, I>(joint_combiner: F, v: I) -> F
+where
+    F: 'a, // Any references in `F` must have a lifetime longer than `'a`.
+    F: Zero + One + Clone,
     I: DoubleEndedIterator<Item = &'a F>,
->(
-    joint_combiner: F,
-    v: I,
-) -> F {
+{
     v.rev()
         .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
 }
 
 impl<F: Copy> SingleLookup<F> {
     /// Evaluate the linear combination specifying the lookup value to a field element.
-    pub fn evaluate<K: Zero + Add + Mul<F, Output = K>, G: Fn(LocalPosition) -> K>(
-        &self,
-        eval: G,
-    ) -> K {
+    pub fn evaluate<K, G: Fn(LocalPosition) -> K>(&self, eval: G) -> K
+    where
+        K: Zero,
+        K: Mul<F, Output = K>,
+    {
         self.value
             .iter()
             .fold(K::zero(), |acc, (c, p)| acc + eval(*p) * *c)
@@ -102,7 +101,7 @@ pub struct JointLookup<SingleLookup> {
 
 pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>>;
 
-impl<F: Zero + One + Add + Mul + Clone> JointLookup<F> {
+impl<F: Zero + One + Clone> JointLookup<F> {
     // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
     pub fn evaluate(&self, joint_combiner: F) -> F {
@@ -111,24 +110,22 @@ impl<F: Zero + One + Add + Mul + Clone> JointLookup<F> {
 }
 
 impl<F: Copy> JointLookup<SingleLookup<F>> {
-    pub fn reduce<K: Zero + Mul<F, Output = K>, G: Fn(LocalPosition) -> K>(
-        &self,
-        eval: &G,
-    ) -> JointLookup<K> {
+    pub fn reduce<K, G: Fn(LocalPosition) -> K>(&self, eval: &G) -> JointLookup<K>
+    where
+        K: Zero,
+        K: Mul<F, Output = K>,
+    {
         JointLookup {
             table_id: self.table_id,
             entry: self.entry.iter().map(|s| s.evaluate(eval)).collect(),
         }
     }
 
-    pub fn evaluate<
-        K: Zero + One + Add + Mul + Mul<F, Output = K> + Clone,
-        G: Fn(LocalPosition) -> K,
-    >(
-        &self,
-        joint_combiner: K,
-        eval: &G,
-    ) -> K {
+    pub fn evaluate<K, G: Fn(LocalPosition) -> K>(&self, joint_combiner: K, eval: &G) -> K
+    where
+        K: Zero + One + Clone,
+        K: Mul<F, Output = K>,
+    {
         self.reduce(eval).evaluate(joint_combiner)
     }
 }
