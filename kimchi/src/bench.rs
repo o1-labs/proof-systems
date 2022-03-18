@@ -12,7 +12,7 @@ use crate::{
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
 use mina_curves::pasta::{fp::Fp, vesta::Affine};
@@ -21,6 +21,8 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
+
+use o1_utils::math;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -87,7 +89,7 @@ impl BenchmarkCtx {
 
         // previous opening for recursion
         let prev = {
-            let k = ceil_log2(self.index.srs.g.len());
+            let k = math::ceil_log2(self.index.srs.g.len());
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let coeffs = b_poly_coefficients(&chals);

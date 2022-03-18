@@ -6,7 +6,7 @@ use crate::verifier::{batch_verify, verify};
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -17,6 +17,8 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
+
+use o1_utils::math;
 
 // aliases
 
@@ -62,7 +64,7 @@ fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public
 
     // previous opening for recursion
     let prev = {
-        let k = ceil_log2(index.srs.g.len());
+        let k = math::ceil_log2(index.srs.g.len());
         let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
