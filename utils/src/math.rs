@@ -1,5 +1,6 @@
 /// Returns ceil(log2(d)) but panics if d = 0.
 
+// NOTE: should this really be usize, since usize is depended on the underlying system architecture?
 pub fn ceil_log2(d: usize) -> usize {
     assert!(d != 0);
     let mut pow2 = 1;
