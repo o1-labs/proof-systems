@@ -6,7 +6,7 @@ use crate::{
     },
     prover::ProverProof,
     prover_index::testing::new_index_for_test,
-    verifier::{batch_verify, verify},
+    verifier::verify,
 };
 use array_init::array_init;
 use colored::Colorize;
