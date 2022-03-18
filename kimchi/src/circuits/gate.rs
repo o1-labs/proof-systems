@@ -52,29 +52,6 @@ pub struct SingleLookup<F> {
     pub value: Vec<(F, LocalPosition)>,
 }
 
-/// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
-/// am using `[F; n]` to model a vector of length `n`).
-///
-/// For `i < n`, define `T_i := T.map(|t| t[i]).collect()`. In other words, the table
-/// obtained by taking the `ith` entry of each element of `T`.
-///
-/// In the lookup argument, we perform lookups in `T` by sampling a random challenge
-/// `joint_combiner`, and computing a "combined" lookup table `sum_{i < n} joint_combiner^i T_i`.
-///
-/// To check a vector's membership in this lookup table, we combine the values in that vector
-/// analogously using `joint_combiner`.
-///
-/// This function computes that combined value.
-pub fn combine_table_entry<'a, F, I>(joint_combiner: F, v: I) -> F
-where
-    F: 'a, // Any references in `F` must have a lifetime longer than `'a`.
-    F: Zero + One + Clone,
-    I: DoubleEndedIterator<Item = &'a F>,
-{
-    v.rev()
-        .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
-}
-
 impl<F: Copy> SingleLookup<F> {
     /// Evaluate the linear combination specifying the lookup value to a field element.
     pub fn evaluate<K, G: Fn(LocalPosition) -> K>(&self, eval: G) -> K
@@ -210,14 +187,6 @@ fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
 pub enum LookupsUsed {
     Single,
     Joint,
-}
-
-pub type LookupTable<F> = Vec<Vec<F>>;
-
-pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
-    match table_name {
-        GateLookupTable::Xor => crate::circuits::polynomials::chacha::xor_table(),
-    }
 }
 
 impl<F: FftField> LookupInfo<F> {
