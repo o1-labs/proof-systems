@@ -157,25 +157,6 @@ pub enum GateType {
     ChaChaFinal = 10,
 }
 
-/// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct LookupInfo<F> {
-    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
-    /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub kinds: Vec<Vec<JointLookupSpec<F>>>,
-    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
-    /// constraint (given as an index into `kinds`) that should be applied there, if any.
-    pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
-    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
-    /// table that is used by the gate, if any.
-    pub kinds_tables: HashMap<(GateType, CurrOrNext), GateLookupTable>,
-    /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
-    pub max_per_row: usize,
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
-    /// An empty vector.
-    empty: Vec<JointLookupSpec<F>>,
-}
 
 fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
     kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
@@ -187,109 +168,6 @@ fn max_lookups_per_row<F>(kinds: &[Vec<JointLookupSpec<F>>]) -> usize {
 pub enum LookupsUsed {
     Single,
     Joint,
-}
-
-impl<F: FftField> LookupInfo<F> {
-    /// Create the default lookup configuration.
-    pub fn create() -> Self {
-        let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
-        let GatesLookupMaps {
-            gate_selector_map: kinds_map,
-            gate_table_map: kinds_tables,
-        } = GateType::lookup_kinds_map::<F>(locations_with_tables);
-        let max_per_row = max_lookups_per_row(&kinds);
-        LookupInfo {
-            max_joint_size: kinds.iter().fold(0, |acc0, v| {
-                v.iter()
-                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len() as u32))
-            }),
-
-            kinds_map,
-            kinds_tables,
-            kinds,
-            max_per_row,
-            empty: vec![],
-        }
-    }
-
-    /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn lookup_used(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
-        let mut lookups_used = None;
-        for g in gates.iter() {
-            let typ = g.typ;
-
-            for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(v) = self.kinds_map.get(&(typ, *r)) {
-                    if !self.kinds[*v].is_empty() {
-                        return Some(LookupsUsed::Joint);
-                    } else {
-                        lookups_used = Some(LookupsUsed::Single);
-                    }
-                }
-            }
-        }
-        lookups_used
-    }
-
-    /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
-    /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables(
-        &self,
-        domain: &EvaluationDomains<F>,
-        gates: &[CircuitGate<F>],
-    ) -> (Vec<Evaluations<F>>, Vec<LookupTable<F>>) {
-        let n = domain.d1.size as usize;
-        let mut selector_values: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
-        let mut gate_tables = HashSet::new();
-
-        // TODO: is take(n) useful here? I don't see why we need this
-        for (i, gate) in gates.iter().enumerate().take(n) {
-            let typ = gate.typ;
-
-            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                selector_values[*selector_index][i] = F::one();
-            }
-            if let Some(selector_index) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                selector_values[*selector_index][i + 1] = F::one();
-            }
-
-            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Curr)) {
-                gate_tables.insert(*table_kind);
-            }
-            if let Some(table_kind) = self.kinds_tables.get(&(typ, CurrOrNext::Next)) {
-                gate_tables.insert(*table_kind);
-            }
-        }
-
-        // Actually, don't need to evaluate over domain 8 here.
-        // TODO: so why do it :D?
-        let selector_values8: Vec<_> = selector_values
-            .into_iter()
-            .map(|v| {
-                E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-            })
-            .collect();
-        let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
-        (selector_values8, res_tables)
-    }
-
-    /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<'a>(&'a self, gates: &[CircuitGate<F>]) -> Vec<&'a Vec<JointLookupSpec<F>>> {
-        let mut kinds = vec![&self.empty; gates.len() + 1];
-        for i in 0..gates.len() {
-            let typ = gates[i].typ;
-
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                kinds[i] = &self.kinds[*v];
-            }
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                kinds[i + 1] = &self.kinds[*v];
-            }
-        }
-        kinds
-    }
 }
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
