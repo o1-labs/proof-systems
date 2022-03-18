@@ -298,7 +298,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
             witness[pos.column][row]
         };
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = joint_lookup.reduce(&eval).evaluate(joint_combiner);
+            let joint_lookup_evaluation = joint_lookup.evaluate(joint_combiner, &eval);
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
@@ -356,7 +356,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.reduce(&eval).evaluate(*joint_combiner))
+        CombinedEntry(j.evaluate(*joint_combiner, &eval))
     }
 }
 
@@ -567,7 +567,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.reduce(&eval).evaluate(joint_combiner))
+                    acc * (gamma + j.evaluate(joint_combiner, &eval))
                 })
             };
 
@@ -653,8 +653,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         spec.iter()
             .map(|j| {
                 E::Constant(ConstantExpr::Gamma)
-                    + j.reduce(&eval)
-                        .evaluate(E::constant(ConstantExpr::JointCombiner))
+                    + j.evaluate(E::constant(ConstantExpr::JointCombiner), &eval)
             })
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
