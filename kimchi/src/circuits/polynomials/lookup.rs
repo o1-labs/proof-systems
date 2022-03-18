@@ -122,11 +122,8 @@
 
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr, Variable},
-        gate::{
-            CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, LookupsUsed,
-            SingleLookup,
-        },
+        expr::{prologue::*, Column, ConstantExpr},
+        gate::{CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
         wires::COLUMNS,
     },
     error::ProofError,
@@ -141,29 +138,6 @@ use CurrOrNext::*;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
-
-// TODO: Update for multiple tables
-fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
-    // Combine the linear combination.
-    s.value
-        .iter()
-        .map(|(c, pos)| {
-            E::literal(*c)
-                * E::Cell(Variable {
-                    col: Column::Witness(pos.column),
-                    row: pos.row,
-                })
-        })
-        .fold(E::zero(), |acc, e| acc + e)
-}
-
-fn joint_lookup<F: FftField>(j: &JointLookup<F>) -> E<F> {
-    j.entry
-        .iter()
-        .enumerate()
-        .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i as u64)) * single_lookup(s))
-        .fold(E::zero(), |acc, x| acc + x)
-}
 
 struct AdjacentPairs<A, I: Iterator<Item = A>> {
     prev_second_component: Option<A>,
@@ -356,7 +330,7 @@ pub trait Entry {
 
     fn evaluate(
         p: &Self::Params,
-        j: &JointLookup<Self::Field>,
+        j: &JointLookupSpec<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
     ) -> Self;
@@ -370,7 +344,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
 
     fn evaluate(
         joint_combiner: &F,
-        j: &JointLookup<F>,
+        j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> CombinedEntry<F> {
@@ -395,7 +369,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 
     fn evaluate(
         _: &(),
-        j: &JointLookup<F>,
+        j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> UncombinedEntry<F> {
@@ -661,16 +635,21 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             .collect()
     };
 
+    let eval = |pos: LocalPosition| witness(pos.column, pos.row);
+
     // This is set up so that on rows that have lookups, chunk will be equal
     // to the product over all lookups `f` in that row of `gamma + f`
     // and
     // on non-lookup rows, will be equal to 1.
-    let f_term = |spec: &Vec<_>| {
+    let f_term = |spec: &Vec<JointLookupSpec<_>>| {
         assert!(spec.len() <= lookup_info.max_per_row);
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
         spec.iter()
-            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
+            .map(|j| {
+                E::Constant(ConstantExpr::Gamma)
+                    + j.evaluate(E::constant(ConstantExpr::JointCombiner), &eval)
+            })
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
     let f_chunk = lookup_info
