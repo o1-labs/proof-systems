@@ -125,7 +125,6 @@ use crate::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
         gate::{
             CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed,
-            SingleLookup,
         },
         wires::COLUMNS,
     },
@@ -141,29 +140,6 @@ use CurrOrNext::*;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
-
-// TODO: Update for multiple tables
-fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
-    // Combine the linear combination.
-    s.value
-        .iter()
-        .map(|(c, pos)| {
-            E::literal(*c)
-                * E::Cell(Variable {
-                    col: Column::Witness(pos.column),
-                    row: pos.row,
-                })
-        })
-        .fold(E::zero(), |acc, e| acc + e)
-}
-
-fn joint_lookup<F: FftField>(j: &JointLookupSpec<F>) -> E<F> {
-    j.entry
-        .iter()
-        .enumerate()
-        .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i as u64)) * single_lookup(s))
-        .fold(E::zero(), |acc, x| acc + x)
-}
 
 struct AdjacentPairs<A, I: Iterator<Item = A>> {
     prev_second_component: Option<A>,
@@ -661,16 +637,27 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             .collect()
     };
 
+    let eval = |pos: LocalPosition| {
+        E::Cell(Variable {
+            col: Column::Witness(pos.column),
+            row: pos.row,
+        })
+    };
+
     // This is set up so that on rows that have lookups, chunk will be equal
     // to the product over all lookups `f` in that row of `gamma + f`
     // and
     // on non-lookup rows, will be equal to 1.
-    let f_term = |spec: &Vec<_>| {
+    let f_term = |spec: &Vec<JointLookupSpec<_>>| {
         assert!(spec.len() <= lookup_info.max_per_row);
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
 
         spec.iter()
-            .map(|j| E::Constant(ConstantExpr::Gamma) + joint_lookup(j))
+            .map(|j| {
+                E::Constant(ConstantExpr::Gamma)
+                    + j.reduce(&eval)
+                        .evaluate(E::constant(ConstantExpr::JointCombiner))
+            })
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
     let f_chunk = lookup_info

@@ -1921,6 +1921,14 @@ impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
     }
 }
 
+impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
+    type Output = Expr<ConstantExpr<F>>;
+
+    fn mul(self, y: F) -> Self::Output {
+        Expr::Constant(ConstantExpr::Literal(F::from(y))) * self
+    }
+}
+
 //
 // Display
 //
