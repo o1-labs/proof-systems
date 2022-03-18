@@ -1158,21 +1158,6 @@
 <span id="1153">1153</span>
 <span id="1154">1154</span>
 <span id="1155">1155</span>
-<span id="1156">1156</span>
-<span id="1157">1157</span>
-<span id="1158">1158</span>
-<span id="1159">1159</span>
-<span id="1160">1160</span>
-<span id="1161">1161</span>
-<span id="1162">1162</span>
-<span id="1163">1163</span>
-<span id="1164">1164</span>
-<span id="1165">1165</span>
-<span id="1166">1166</span>
-<span id="1167">1167</span>
-<span id="1168">1168</span>
-<span id="1169">1169</span>
-<span id="1170">1170</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.</span>
 <span class="doccomment">//! The folowing functionality is implemented</span>
 <span class="doccomment">//!</span>
@@ -1196,6 +1181,7 @@
 <span class="kw">use</span> <span class="ident">ark_serialize</span>::{<span class="ident">CanonicalDeserialize</span>, <span class="ident">CanonicalSerialize</span>};
 <span class="kw">use</span> <span class="ident">core::ops</span>::{<span class="ident">Add</span>, <span class="ident">Sub</span>};
 <span class="kw">use</span> <span class="ident">groupmap</span>::{<span class="ident">BWParameters</span>, <span class="ident">GroupMap</span>};
+<span class="kw">use</span> <span class="ident">o1_utils::math</span>;
 <span class="kw">use</span> <span class="ident">o1_utils::ExtendedDensePolynomial</span> <span class="kw">as</span> <span class="kw">_</span>;
 <span class="kw">use</span> <span class="ident">oracle</span>::{<span class="ident">sponge::ScalarChallenge</span>, <span class="ident">FqSponge</span>};
 <span class="kw">use</span> <span class="ident">rand_core</span>::{<span class="ident">CryptoRng</span>, <span class="ident">RngCore</span>};
@@ -1437,22 +1423,6 @@
         <span class="ident">s</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">s</span>[<span class="ident">i</span> <span class="op">-</span> (<span class="ident">pow</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="number">1</span>)] <span class="op">*</span> <span class="ident">chals</span>[<span class="ident">rounds</span> <span class="op">-</span> <span class="number">1</span> <span class="op">-</span> (<span class="ident">k</span> <span class="op">-</span> <span class="number">1</span>)];
     }
     <span class="ident">s</span>
-}
-
-<span class="comment">// TODO: move to utils</span>
-<span class="doccomment">/// Returns ceil(log2(d)) but panics if d = 0.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ceil_log2</span>(<span class="ident">d</span>: <span class="ident">usize</span>) -&gt; <span class="ident">usize</span> {
-    <span class="macro">assert!</span>(<span class="ident">d</span> <span class="op">!</span><span class="op">=</span> <span class="number">0</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pow2</span> <span class="op">=</span> <span class="number">1</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ceil_log2</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">while</span> <span class="ident">d</span> <span class="op">&gt;</span> <span class="ident">pow2</span> {
-        <span class="ident">ceil_log2</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="ident">pow2</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pow2</span>.<span class="ident">checked_mul</span>(<span class="number">2</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="ident">x</span>,
-            <span class="prelude-val">None</span> =&gt; <span class="kw">break</span>,
-        }
-    }
-    <span class="ident">ceil_log2</span>
 }
 
 <span class="doccomment">/// `pows(d, x)` returns a vector containing the first `d` powers of the field element `x` (from `1` to `x^(d-1)`).</span>
@@ -1895,7 +1865,7 @@
 
         <span class="kw">let</span> <span class="ident">nonzero_length</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">g</span>.<span class="ident">len</span>();
 
-        <span class="kw">let</span> <span class="ident">max_rounds</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="ident">nonzero_length</span>);
+        <span class="kw">let</span> <span class="ident">max_rounds</span> <span class="op">=</span> <span class="ident">math::ceil_log2</span>(<span class="ident">nonzero_length</span>);
 
         <span class="kw">let</span> <span class="ident">padded_length</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">max_rounds</span>;
 
@@ -2112,7 +2082,7 @@
             (<span class="ident">usize::MAX</span>, <span class="number">64</span>),
         ];
         <span class="kw">for</span> (<span class="ident">d</span>, <span class="ident">expected_res</span>) <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="kw-2">*</span><span class="ident">d</span>);
+            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">math::ceil_log2</span>(<span class="kw-2">*</span><span class="ident">d</span>);
             <span class="macro">println!</span>(<span class="string">&quot;ceil(log2({})) = {}, expected = {}&quot;</span>, <span class="ident">d</span>, <span class="ident">res</span>, <span class="ident">expected_res</span>);
         }
     }
