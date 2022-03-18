@@ -9,6 +9,30 @@ use CurrOrNext::{Curr, Next};
 
 use super::lookups::{JointLookupSpec, LocalPosition};
 
+/// Enumerates the different 'fixed' lookup tables used by individual gates
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum GateLookupTable {
+    Xor,
+}
+
+/// Specifies the relative position of gates and the fixed lookup table (if applicable) that a
+/// given lookup configuration should apply to.
+pub struct GatesLookupSpec {
+    /// The set of positions relative to an active gate where a lookup configuration applies.
+    pub gate_positions: HashSet<(GateType, CurrOrNext)>,
+    /// The fixed lookup table that should be used for these lookups, if applicable.
+    pub gate_lookup_table: Option<GateLookupTable>,
+}
+
+/// Specifies mapping from positions defined relative to gates into lookup data.
+pub struct GatesLookupMaps {
+    /// Enumerates the selector that should be active for a particular gate-relative position.
+    pub gate_selector_map: HashMap<(GateType, CurrOrNext), usize>,
+    /// Enumerates the fixed tables that should be used for lookups in a particular gate-relative
+    /// position.
+    pub gate_table_map: HashMap<(GateType, CurrOrNext), GateLookupTable>,
+}
+
 pub trait Entry {
     type Field: Field;
     type Params;
