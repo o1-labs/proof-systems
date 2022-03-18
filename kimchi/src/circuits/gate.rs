@@ -99,6 +99,8 @@ pub struct JointLookup<SingleLookup> {
     pub entry: Vec<SingleLookup>,
 }
 
+/// A spec for checking that the given vector belongs to a vector-valued lookup table, where the
+/// components of the vector are computed from a linear combination of locally-accessible cells.
 pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>>;
 
 impl<F: Zero + One + Clone> JointLookup<F> {
@@ -110,6 +112,8 @@ impl<F: Zero + One + Clone> JointLookup<F> {
 }
 
 impl<F: Copy> JointLookup<SingleLookup<F>> {
+    /// Reduce linear combinations in the lookup entries to a single value, resolving local
+    /// positions using the given function.
     pub fn reduce<K, G: Fn(LocalPosition) -> K>(&self, eval: &G) -> JointLookup<K>
     where
         K: Zero,
@@ -121,6 +125,8 @@ impl<F: Copy> JointLookup<SingleLookup<F>> {
         }
     }
 
+    /// Evaluate the combined value of a joint-lookup, resolving local positions using the given
+    /// function.
     pub fn evaluate<K, G: Fn(LocalPosition) -> K>(&self, joint_combiner: K, eval: &G) -> K
     where
         K: Zero + One + Clone,
