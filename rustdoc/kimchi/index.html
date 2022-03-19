@@ -83,6 +83,13 @@
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/tools">tools/</a>. Various tooling to help us work on kimchi.</li>
 <li><a href="https://github.com/o1-labs/proof-systems/tree/master/utils">utils/</a>. Collection of useful functions and traits.</li>
 </ul>
+<h3 id="windows-development"><a href="#windows-development">Windows Development</a></h3>
+<p>Windows development can be done using <a href="https://docs.microsoft.com/en-us/windows/wsl/install">Windows Subsystem for Linux (WSL)</a>.</p>
+<ul>
+<li>Install and open WSL</li>
+<li>Within WSL, install OCaml using your distro’s package manager. For example: <code>apt install opam</code></li>
+<li>Within WSL, navigate to the project directory and run <code>cargo test</code>. If there are no failures then everything is set up correctly.</li>
+</ul>
 </div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="alphas/index.html" title="kimchi::alphas mod">alphas</a></div><div class="item-right docblock-short"><p>This module implements an abstraction to keep track of the powers of alphas.
 As a recap, alpha is a challenge sent by the verifier in PLONK,

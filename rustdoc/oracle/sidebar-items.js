@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["constants",""],["pasta",""],["poseidon","This module implements Poseidon Hash Function primitive"],["sponge",""]],"trait":[["FqSponge",""]]});
+initSidebarItems({"mod":[["constants",""],["pasta",""],["permutation","The permutation module contains the function implementing the permutation used in Poseidon"],["poseidon","This module implements Poseidon Hash Function primitive"],["sponge",""]],"trait":[["FqSponge",""]]});
