@@ -75,9 +75,6 @@ pub struct ConstraintSystem<F: FftField> {
     /// permutation polynomial array
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmam: [DP<F>; PERMUTS],
-    /// zero-knowledge polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpm: DP<F>,
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
@@ -157,8 +154,6 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zero8: E<F, D<F>>,
     /// zero-knowledge polynomial over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpl: E<F, D<F>>,
     /// the polynomial that vanishes on the last four rows
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub vanishes_on_last_4_rows: E<F, D<F>>,
@@ -253,23 +248,6 @@ where
     }
 }
 
-///
-
-/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
-pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
-}
-
-///TODO: currently unused?
-/// Evaluates the polynomial
-/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3)
-}
-
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
@@ -290,25 +268,6 @@ pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DP<F> {
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
     &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
-}
-
-/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
-/// Currently, we use k = 3 for 2 blinding factors,
-/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
-pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DP<F> {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-
-    // (x-w3)(x-w2)(x-w1) =
-    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-    let w1w2 = w1 * w2;
-    DP::from_coefficients_slice(&[
-        -w1w2 * w3,                   // 1
-        w1w2 + (w1 * w3) + (w3 * w2), // x
-        -w1 - w2 - w3,                // x^2
-        F::one(),                     // x^3
-    ])
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -448,10 +407,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let sigmam: [DP<F>; PERMUTS] = array_init(|i| sigmal1[i].clone().interpolate());
 
         let sigmal8 = array_init(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-        let zkpm = zk_polynomial(domain.d1);
-        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
         // Gates
         // -----
@@ -622,8 +577,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             l08,
             zero4,
             zero8,
-            zkpl,
-            zkpm,
             vanishes_on_last_4_rows,
             gates,
             shift: shifts.shifts,

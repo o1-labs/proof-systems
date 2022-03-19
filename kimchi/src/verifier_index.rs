@@ -3,10 +3,10 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::{
-    constraints::{zk_polynomial, zk_w3},
     expr::{Linearization, PolishToken},
     gate::LookupsUsed,
     wires::*,
+    zk_polynomial::{zk_polynomial, zk_w3, ZkPolynomial},
 };
 use crate::prover_index::ProverIndex;
 use ark_ec::AffineCurve;
@@ -147,6 +147,8 @@ where
                 })
         };
 
+        let zkp = ZkPolynomial::create(self.cs.domain.clone()).unwrap();
+
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
@@ -187,7 +189,7 @@ where
             }),
 
             shift: self.cs.shift,
-            zkpm: self.cs.zkpm.clone(),
+            zkpm: zkp.zkpm.clone(),
             w: zk_w3(self.cs.domain.d1),
             endo: self.cs.endo,
             lookup_index,

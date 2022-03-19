@@ -68,6 +68,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
+        zkpl: &ZkPolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>)> {
         let alpha0 = alphas.next().expect("missing power of alpha");
@@ -128,7 +129,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.zkpl
+            &(&shifts - &sigmas).scale(alpha0) * &zkpl.zkpl
         };
 
         //~ and `bnd`:

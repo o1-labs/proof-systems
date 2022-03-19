@@ -16,7 +16,8 @@ use crate::{
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
-        wires::{COLUMNS, PERMUTS}, zk_polynomial::ZkPolynomial,
+        wires::{COLUMNS, PERMUTS},
+        zk_polynomial::ZkPolynomial,
     },
     error::{ProofError, Result},
     plonk_sponge::FrSponge,
@@ -491,9 +492,11 @@ where
 
             // permutation
             let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+            let domain = &index.cs.domain;
+            let zkp = ZkPolynomial::create(domain.clone()).unwrap();
             let (perm, bnd) = index
                 .cs
-                .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
+                .perm_quot(&lagrange, beta, gamma, &z_poly, &zkp, alphas)?;
             let mut t8 = perm;
 
             if cfg!(test) {
