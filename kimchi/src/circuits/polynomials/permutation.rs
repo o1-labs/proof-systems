@@ -43,7 +43,7 @@
 use crate::{
     circuits::{
         constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*,
+        wires::*, zk_polynomial::ZkPolynomial,
     },
     error::{ProofError, Result},
 };
@@ -182,6 +182,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         zeta: F,
         beta: F,
         gamma: F,
+        zkpl: &ZkPolynomial<F>,
         alphas: impl Iterator<Item = F>,
     ) -> DensePolynomial<F> {
         //~
@@ -189,7 +190,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        let zkpm_zeta = self.zkpm.evaluate(&zeta);
+        let zkpm_zeta = zkpl.zkpm.evaluate(&zeta);
         let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         self.sigmam[PERMUTS - 1].scale(scalar)
     }

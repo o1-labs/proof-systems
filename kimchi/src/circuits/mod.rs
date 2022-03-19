@@ -11,3 +11,4 @@ pub mod polynomial;
 pub mod polynomials;
 pub mod scalars;
 pub mod wires;
+pub mod zk_polynomial;

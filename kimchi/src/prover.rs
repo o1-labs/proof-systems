@@ -16,7 +16,7 @@ use crate::{
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
-        wires::{COLUMNS, PERMUTS},
+        wires::{COLUMNS, PERMUTS}, zk_polynomial::ZkPolynomial,
     },
     error::{ProofError, Result},
     plonk_sponge::FrSponge,
@@ -800,7 +800,9 @@ where
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                let domain = &index.cs.domain;
+                let zkp = ZkPolynomial::create(domain.clone()).unwrap();
+                f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, &zkp, alphas);
 
                 // the circuit polynomial
                 let f = {
