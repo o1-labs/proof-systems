@@ -42,8 +42,9 @@
 
 use crate::{
     circuits::{
-        constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*, zk_polynomial::ZkPolynomial, constant_polynomial::ConstantPolynomial,
+        constant_polynomial::ConstantPolynomial, constraints::ConstraintSystem,
+        polynomial::WitnessOverDomains, scalars::ProofEvaluations, wires::*,
+        zk_polynomial::ZkPolynomial,
     },
     error::{ProofError, Result},
 };
