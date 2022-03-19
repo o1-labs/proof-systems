@@ -9,6 +9,7 @@ use serde_with::serde_as;
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstantPolynomial<F: FftField> {
+    /// 1-st Lagrange evaluated over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub l1: E<F, D<F>>,
     /// 0-th Lagrange evaluated over domain.d4

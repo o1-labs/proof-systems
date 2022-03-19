@@ -43,7 +43,7 @@
 use crate::{
     circuits::{
         constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*, zk_polynomial::ZkPolynomial,
+        wires::*, zk_polynomial::ZkPolynomial, constant_polynomial::ConstantPolynomial,
     },
     error::{ProofError, Result},
 };
@@ -74,9 +74,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
+        let const_poly = ConstantPolynomial::create(self.domain.clone()).unwrap();
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.l08.scale(gamma);
+        let gamma = &const_poly.l08.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -114,7 +115,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
             for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-                let term = &(witness + gamma) + &self.l1.scale(beta * shift);
+                let beta_shift = const_poly.l1.scale(beta * shift).clone();
+                let term = &(witness + gamma) + &beta_shift;
                 shifts = &shifts * &term;
             }
 

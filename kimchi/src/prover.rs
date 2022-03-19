@@ -3,6 +3,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
+        constant_polynomial::ConstantPolynomial,
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
@@ -395,6 +396,9 @@ where
             res
         });
 
+        // setup constant polynomials
+        let const_poly = ConstantPolynomial::create(index.cs.domain.clone()).unwrap();
+
         let lookup_env = lookup_table_combined
             .as_ref()
             .zip(lookup_sorted8.as_ref())
@@ -440,7 +444,7 @@ where
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.vanishes_on_last_4_rows,
+                vanishes_on_last_4_rows: &const_poly.vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,

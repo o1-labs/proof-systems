@@ -135,29 +135,6 @@ pub struct ConstraintSystem<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar8: E<F, D<F>>,
 
-    // Constant polynomials
-    // --------------------
-    /// 1-st Lagrange evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub l1: E<F, D<F>>,
-    /// 0-th Lagrange evaluated over domain.d4
-    // TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub l04: E<F, D<F>>,
-    /// 0-th Lagrange evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub l08: E<F, D<F>>,
-    /// zero evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zero4: E<F, D<F>>,
-    /// zero evaluated over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zero8: E<F, D<F>>,
-    /// zero-knowledge polynomial over domain.d8
-    /// the polynomial that vanishes on the last four rows
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub vanishes_on_last_4_rows: E<F, D<F>>,
-
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -531,27 +508,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let lookup_constraint_system =
             LookupConstraintSystem::create(&gates, lookup_tables, &domain);
 
-        //
-        // Constant polynomials
-        // --------------------
-
         let sid = shifts.map[0].clone();
-
-        let l1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
-            .evaluate_over_domain_by_ref(domain.d8);
-        // TODO: These are all unnecessary. Remove
-        let l04 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d4.size as usize], domain.d4);
-        let l08 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size as usize], domain.d8);
-        let zero4 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d4.size as usize], domain.d4);
-        let zero8 =
-            E::<F, D<F>>::from_vec_and_domain(vec![F::zero(); domain.d8.size as usize], domain.d8);
-
-        let vanishes_on_last_4_rows =
-            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
-
         // TODO: remove endo as a field
         let endo = F::zero();
 
@@ -572,12 +529,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             complete_addl4,
             mull8,
             emull,
-            l1,
-            l04,
-            l08,
-            zero4,
-            zero8,
-            vanishes_on_last_4_rows,
             gates,
             shift: shifts.shifts,
             endo,
