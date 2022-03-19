@@ -395,7 +395,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-        let alpha = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha: ScalarField<G> = alpha_chal.to_field(&index.srs.endo_r);
 
         //~ 19. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
