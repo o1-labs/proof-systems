@@ -2,9 +2,8 @@
 
 use crate::circuits::{
     domains::EvaluationDomains,
-    gate::{CircuitGate, GateType, LookupInfo},
+    gate::{CircuitGate, GateType},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    polynomials::lookup::LookupConfiguration,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -19,6 +18,8 @@ use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+use super::lookup::{constraints::LookupConfiguration, lookups::LookupInfo};
 
 //
 // Constants

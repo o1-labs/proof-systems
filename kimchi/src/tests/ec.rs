@@ -5,7 +5,7 @@ use crate::{
     },
     prover::ProverProof,
     prover_index::testing::new_index_for_test,
-    verifier::{batch_verify, verify},
+    verifier::verify,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};

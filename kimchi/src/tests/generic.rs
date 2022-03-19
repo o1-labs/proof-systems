@@ -3,11 +3,11 @@ use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::prover::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
 use crate::recursion::testing::new_recursion_for_testing;
-use crate::verifier::{batch_verify, verify};
+use crate::verifier::verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -18,6 +18,8 @@ use oracle::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
+
+use o1_utils::math;
 
 // aliases
 

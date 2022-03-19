@@ -3,6 +3,7 @@ use crate::srs::SRS;
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
+use o1_utils::math;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
@@ -40,7 +41,7 @@ impl<G: CommitmentCurve> SRS<G> {
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
-        let rounds = ceil_log2(self.g.len());
+        let rounds = math::ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
         // TODO: Trim this to the degree of the largest polynomial
@@ -107,7 +108,7 @@ impl<G: CommitmentCurve> SRS<G> {
             (plnm.to_dense_polynomial(), omega)
         };
 
-        let rounds = ceil_log2(self.g.len());
+        let rounds = math::ceil_log2(self.g.len());
 
         // b_j = sum_i r^i elm_i^j
         let b_init = {

@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
 
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F> {
@@ -1918,6 +1918,14 @@ impl<F: Field> From<u64> for Expr<F> {
 impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
     fn from(x: u64) -> Self {
         Expr::Constant(ConstantExpr::Literal(F::from(x)))
+    }
+}
+
+impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
+    type Output = Expr<ConstantExpr<F>>;
+
+    fn mul(self, y: F) -> Self::Output {
+        Expr::Constant(ConstantExpr::Literal(y)) * self
     }
 }
 

@@ -5,15 +5,19 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
-        gate::{combine_table_entry, GateType, LookupsUsed},
+        gate::GateType,
+        lookup::{
+            self,
+            constraints::LookupConfiguration,
+            lookups::LookupsUsed,
+            tables::{combine_table_entry, CombinedEntry},
+        },
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup,
-            lookup::LookupConfiguration,
-            permutation,
+            generic, permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
@@ -36,7 +40,6 @@ use commitment_dlog::{
     evaluation_proof::OpeningProof,
 };
 use itertools::Itertools;
-use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -317,20 +320,21 @@ where
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
-                    let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
-                        dummy_lookup_value,
-                        iter_lookup_table,
-                        index.cs.domain.d1,
-                        &index.cs.gates,
-                        &witness,
-                        joint_combiner,
-                    )?;
+                    let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> =
+                        lookup::constraints::sorted(
+                            dummy_lookup_value,
+                            iter_lookup_table,
+                            index.cs.domain.d1,
+                            &index.cs.gates,
+                            &witness,
+                            joint_combiner,
+                        )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
                         .into_iter()
                         .map(|chunk| {
                             let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                            lookup::zk_patch(v, index.cs.domain.d1, rng)
+                            lookup::constraints::zk_patch(v, index.cs.domain.d1, rng)
                         })
                         .collect();
 
@@ -375,7 +379,7 @@ where
                     });
 
                     let aggreg =
-                        lookup::aggregation::<_, Fr<G>, _>(
+                        lookup::constraints::aggregation::<_, Fr<G>, _>(
                             dummy_lookup_value.0,
                             iter_lookup_table(),
                             index.cs.domain.d1,
@@ -654,8 +658,9 @@ where
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
-                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints = lookup::constraints(&lcs.configuration, index.cs.domain.d1);
+                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
+                let constraints =
+                    lookup::constraints::constraints(&lcs.configuration, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);

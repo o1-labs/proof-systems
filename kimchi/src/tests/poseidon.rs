@@ -13,7 +13,7 @@ use crate::{prover::ProverProof, prover_index::ProverIndex};
 use ark_ff::{UniformRand, Zero};
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::commitment::{ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
@@ -26,6 +26,8 @@ use oracle::{
 use rand::{rngs::StdRng, SeedableRng};
 use std::time::Instant;
 use std::{io, io::Write};
+
+use o1_utils::math;
 
 // aliases
 
@@ -44,7 +46,7 @@ const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain 
 
 #[test]
 fn test_poseidon() {
-    let max_size = 1 << ceil_log2(N_LOWER_BOUND);
+    let max_size = 1 << math::ceil_log2(N_LOWER_BOUND);
     println!("max_size = {}", max_size);
     println!("rounds per hash = {}", ROUNDS_PER_HASH);
     println!("rounds per row = {}", ROUNDS_PER_ROW);
@@ -83,7 +85,7 @@ fn test_poseidon() {
 /// creates a proof and verifies it
 fn positive(index: &ProverIndex<Affine>) {
     // constant
-    let max_size = 1 << ceil_log2(N_LOWER_BOUND);
+    let max_size = 1 << math::ceil_log2(N_LOWER_BOUND);
 
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
