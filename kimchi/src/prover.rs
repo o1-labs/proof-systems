@@ -397,7 +397,7 @@ where
         });
 
         // setup constant polynomials
-        let const_poly = ConstantPolynomial::create(index.cs.domain.clone()).unwrap();
+        let const_poly = ConstantPolynomial::create(index.cs.domain).unwrap();
 
         let lookup_env = lookup_table_combined
             .as_ref()
@@ -496,8 +496,8 @@ where
 
             // permutation
             let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-            let domain = &index.cs.domain;
-            let zkp = ZkPolynomial::create(domain.clone()).unwrap();
+            let domain = index.cs.domain;
+            let zkp = ZkPolynomial::create(domain).unwrap();
             let (perm, bnd) = index
                 .cs
                 .perm_quot(&lagrange, beta, gamma, &z_poly, &zkp, alphas)?;
@@ -807,8 +807,8 @@ where
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let domain = &index.cs.domain;
-                let zkp = ZkPolynomial::create(domain.clone()).unwrap();
+                let domain = index.cs.domain;
+                let zkp = ZkPolynomial::create(domain).unwrap();
                 f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, &zkp, alphas);
 
                 // the circuit polynomial

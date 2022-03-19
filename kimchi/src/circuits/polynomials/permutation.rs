@@ -75,7 +75,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
-        let const_poly = ConstantPolynomial::create(self.domain.clone()).unwrap();
+        let const_poly = ConstantPolynomial::create(self.domain).unwrap();
 
         // constant gamma in evaluation form (in domain d8)
         let gamma = &const_poly.l08.scale(gamma);

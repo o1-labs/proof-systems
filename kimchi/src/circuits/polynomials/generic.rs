@@ -171,7 +171,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         mut alphas: impl Iterator<Item = F>,
         witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
-        let constant_poly = ConstantPolynomial::create(self.domain.clone()).unwrap();
+        let constant_poly = ConstantPolynomial::create(self.domain).unwrap();
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
                 vec![F::zero(); self.domain.d4.size as usize],

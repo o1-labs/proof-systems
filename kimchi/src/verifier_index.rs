@@ -147,7 +147,7 @@ where
                 })
         };
 
-        let zkp = ZkPolynomial::create(self.cs.domain.clone()).unwrap();
+        let zkp = ZkPolynomial::create(self.cs.domain).unwrap();
 
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
@@ -189,7 +189,7 @@ where
             }),
 
             shift: self.cs.shift,
-            zkpm: zkp.zkpm.clone(),
+            zkpm: zkp.zkpm,
             w: zk_w3(self.cs.domain.d1),
             endo: self.cs.endo,
             lookup_index,
