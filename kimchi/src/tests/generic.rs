@@ -2,7 +2,7 @@ use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_wit
 use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::prover::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
-use crate::verifier::{batch_verify, verify};
+use crate::verifier::verify;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;

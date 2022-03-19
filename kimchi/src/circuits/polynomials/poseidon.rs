@@ -33,7 +33,7 @@ use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use std::marker::PhantomData;
 use std::ops::Range;
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
 
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::polynomial::COLUMNS;

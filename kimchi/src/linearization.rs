@@ -2,11 +2,12 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::lookup;
+use crate::circuits::lookup::constraints::LookupConfiguration;
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::lookup::{self, LookupConfiguration};
 use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
@@ -51,10 +52,11 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = lookup_constraint_system.as_ref() {
-        powers_of_alpha.register(ArgumentType::Lookup, lookup::CONSTRAINTS);
-        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::CONSTRAINTS);
+        powers_of_alpha.register(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
+        let alphas =
+            powers_of_alpha.get_exponents(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
 
-        let constraints = lookup::constraints(lcs, domain);
+        let constraints = lookup::constraints::constraints(lcs, domain);
         let combined = Expr::combine_constraints(alphas, constraints);
         expr += combined;
     }

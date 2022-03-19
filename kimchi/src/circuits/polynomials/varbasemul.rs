@@ -13,7 +13,7 @@
 use std::marker::PhantomData;
 
 use ark_ff::{FftField, One};
-use CurrOrNext::*;
+use CurrOrNext::{Curr, Next};
 
 use crate::circuits::{
     argument::{Argument, ArgumentType},

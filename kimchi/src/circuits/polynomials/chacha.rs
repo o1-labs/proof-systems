@@ -195,7 +195,7 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
 fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
     (0..8)
         .map(|i| {
-            use CurrOrNext::*;
+            use CurrOrNext::{Curr, Next};
             let r = if i < 4 { Curr } else { Next };
             witness(col_offset + (i % 4), r)
         })
@@ -508,7 +508,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            gate::LookupInfo,
+            lookup::lookups::LookupInfo,
             scalars::{LookupEvaluations, ProofEvaluations},
             wires::*,
         },
