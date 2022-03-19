@@ -837,7 +837,7 @@
 <span class="kw">fn</span> <span class="ident">chunks_over_2_rows</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">col_offset</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     (<span class="number">0</span>..<span class="number">8</span>)
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-            <span class="kw">use</span> <span class="ident">CurrOrNext</span>::<span class="kw-2">*</span>;
+            <span class="kw">use</span> <span class="ident">CurrOrNext</span>::{<span class="ident">Curr</span>, <span class="ident">Next</span>};
             <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">&lt;</span> <span class="number">4</span> { <span class="ident">Curr</span> } <span class="kw">else</span> { <span class="ident">Next</span> };
             <span class="ident">witness</span>(<span class="ident">col_offset</span> <span class="op">+</span> (<span class="ident">i</span> <span class="op">%</span> <span class="number">4</span>), <span class="ident">r</span>)
         })
@@ -1150,7 +1150,7 @@
         <span class="ident">alphas::Alphas</span>,
         <span class="ident">circuits</span>::{
             <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">PolishToken</span>},
-            <span class="ident">gate::LookupInfo</span>,
+            <span class="ident">lookup::lookups::LookupInfo</span>,
             <span class="ident">scalars</span>::{<span class="ident">LookupEvaluations</span>, <span class="ident">ProofEvaluations</span>},
             <span class="ident">wires</span>::<span class="kw-2">*</span>,
         },
@@ -1278,5 +1278,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (58f11791a 2022-03-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1bfe40d11 2022-03-18)" ></div>
 </body></html>

@@ -108,15 +108,18 @@
 <span id="103">103</span>
 <span id="104">104</span>
 <span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::alphas::Alphas</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::argument</span>::{<span class="ident">Argument</span>, <span class="ident">ArgumentType</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::lookup::constraints::LookupConfiguration</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::chacha</span>::{<span class="ident">ChaCha0</span>, <span class="ident">ChaCha1</span>, <span class="ident">ChaCha2</span>, <span class="ident">ChaChaFinal</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::complete_add::CompleteAdd</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::endomul_scalar::EndomulScalar</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::endosclmul::EndosclMul</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::lookup</span>::{<span class="self">self</span>, <span class="ident">LookupConfiguration</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::permutation</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::polynomials::varbasemul::VarbaseMul</span>;
@@ -161,10 +164,11 @@
 
     <span class="comment">// lookup</span>
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lcs</span>) <span class="op">=</span> <span class="ident">lookup_constraint_system</span>.<span class="ident">as_ref</span>() {
-        <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">lookup::CONSTRAINTS</span>);
-        <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span> <span class="ident">powers_of_alpha</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">lookup::CONSTRAINTS</span>);
+        <span class="ident">powers_of_alpha</span>.<span class="ident">register</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">lookup::constraints::CONSTRAINTS</span>);
+        <span class="kw">let</span> <span class="ident">alphas</span> <span class="op">=</span>
+            <span class="ident">powers_of_alpha</span>.<span class="ident">get_exponents</span>(<span class="ident">ArgumentType::Lookup</span>, <span class="ident">lookup::constraints::CONSTRAINTS</span>);
 
-        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">lookup::constraints</span>(<span class="ident">lcs</span>, <span class="ident">domain</span>);
+        <span class="kw">let</span> <span class="ident">constraints</span> <span class="op">=</span> <span class="ident">lookup::constraints::constraints</span>(<span class="ident">lcs</span>, <span class="ident">domain</span>);
         <span class="kw">let</span> <span class="ident">combined</span> <span class="op">=</span> <span class="ident">Expr::combine_constraints</span>(<span class="ident">alphas</span>, <span class="ident">constraints</span>);
         <span class="ident">expr</span> <span class="op">+</span><span class="op">=</span> <span class="ident">combined</span>;
     }
@@ -214,5 +218,5 @@
     (<span class="ident">linearization</span>, <span class="ident">powers_of_alpha</span>)
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (58f11791a 2022-03-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1bfe40d11 2022-03-18)" ></div>
 </body></html>

@@ -752,6 +752,7 @@
 <span id="747">747</span>
 <span id="748">748</span>
 <span id="749">749</span>
+<span id="750">750</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -760,7 +761,8 @@
         <span class="ident">argument::ArgumentType</span>,
         <span class="ident">constraints::ConstraintSystem</span>,
         <span class="ident">expr</span>::{<span class="ident">Column</span>, <span class="ident">Constants</span>, <span class="ident">PolishToken</span>},
-        <span class="ident">gate</span>::{<span class="ident">GateType</span>, <span class="ident">LookupsUsed</span>},
+        <span class="ident">gate::GateType</span>,
+        <span class="ident">lookup::lookups::LookupsUsed</span>,
         <span class="ident">polynomials</span>::{<span class="ident">generic</span>, <span class="ident">permutation</span>},
         <span class="ident">scalars::RandomOracles</span>,
         <span class="ident">wires</span>::<span class="kw-2">*</span>,
@@ -1502,5 +1504,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (58f11791a 2022-03-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1bfe40d11 2022-03-18)" ></div>
 </body></html>

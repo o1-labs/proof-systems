@@ -751,13 +751,13 @@
 <span id="746">746</span>
 <span id="747">747</span>
 <span id="748">748</span>
+<span id="749">749</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
     <span class="ident">domains::EvaluationDomains</span>,
-    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>, <span class="ident">LookupInfo</span>},
+    <span class="ident">gate</span>::{<span class="ident">CircuitGate</span>, <span class="ident">GateType</span>},
     <span class="ident">polynomial</span>::{<span class="ident">WitnessEvals</span>, <span class="ident">WitnessOverDomains</span>, <span class="ident">WitnessShifts</span>},
-    <span class="ident">polynomials::lookup::LookupConfiguration</span>,
     <span class="ident">wires</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
@@ -772,6 +772,8 @@
 <span class="kw">use</span> <span class="ident">oracle::poseidon::ArithmeticSpongeParams</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">de::DeserializeOwned</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
+
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::lookup</span>::{<span class="ident">constraints::LookupConfiguration</span>, <span class="ident">lookups::LookupInfo</span>};
 
 <span class="comment">//</span>
 <span class="comment">// Constants</span>
@@ -1500,5 +1502,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (58f11791a 2022-03-17)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1bfe40d11 2022-03-18)" ></div>
 </body></html>

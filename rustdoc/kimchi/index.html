@@ -19,7 +19,7 @@
 </ul>
 <p>Then, you can create an URS for your circuit in the following way:</p>
 
-<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">use</span> <span class="ident">kimchi::circuits::constraints</span>;
+<div class='information'><div class='tooltip ignore'>ⓘ</div></div><div class="example-wrap"><pre class="rust rust-example-rendered ignore"><code><span class="kw">use</span> <span class="ident">kimchi</span>::{<span class="ident">circuits::constraints</span>, <span class="ident">verifier::verify</span>};
 <span class="kw">use</span> <span class="ident">mina_curves::pasta</span>::{<span class="ident">fp::Fp</span>, <span class="ident">vesta</span>::{<span class="ident">Affine</span>, <span class="ident">VestaParameters</span>}, <span class="ident">pallas::Affine</span> <span class="kw">as</span> <span class="ident">Other</span>};
 <span class="kw">use</span> <span class="ident">oracle</span>::{
     <span class="ident">constants::PlonkSpongeConstantsKimchi</span>,
@@ -65,7 +65,7 @@
 };
 
 <span class="comment">// verify a proof</span>
-<span class="ident">batch_verify</span>::<span class="op">&lt;</span><span class="ident">Affine</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="kw-2">&amp;</span>[(<span class="ident">verifier_index</span>, <span class="ident">proof</span>)]).<span class="ident">unwrap</span>();</code></pre></div>
+<span class="ident">verify</span>::<span class="op">&lt;</span><span class="ident">Affine</span>, <span class="ident">BaseSponge</span>, <span class="ident">ScalarSponge</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">group_map</span>, <span class="ident">verifier_index</span>, <span class="ident">proof</span>).<span class="ident">unwrap</span>();</code></pre></div>
 <p>Note that kimchi is specifically designed for use in a recursion proof system, like <a href="https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250">pickles</a>, but can also be used a stand alone for normal proofs.</p>
 <h3 id="organization"><a href="#organization">Organization</a></h3>
 <p>The project is organized in the following way:</p>
@@ -98,5 +98,5 @@ As such, we want two properties from this:</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="verifier/index.html" title="kimchi::verifier mod">verifier</a></div><div class="item-right docblock-short"><p>This module implements zk-proof batch verifier functionality.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="verifier_index/index.html" title="kimchi::verifier_index mod">verifier_index</a></div><div class="item-right docblock-short"><p>This module implements the verifier index as <a href="verifier_index/struct.VerifierIndex.html" title="VerifierIndex">VerifierIndex</a>.
 You can derive this struct from the <a href="prover_index/struct.ProverIndex.html" title="ProverIndex">ProverIndex</a> struct.</p>
-</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (58f11791a 2022-03-17)" ></div>
+</div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (1bfe40d11 2022-03-18)" ></div>
 </body></html>
