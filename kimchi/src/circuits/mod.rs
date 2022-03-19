@@ -2,6 +2,7 @@
 pub mod macros;
 
 pub mod argument;
+pub mod constant_polynomial;
 pub mod constraints;
 pub mod domains;
 pub mod expr;
