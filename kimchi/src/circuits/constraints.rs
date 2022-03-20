@@ -4,6 +4,7 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, GateType, LookupInfo, LookupsUsed},
     polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+    prover_precomputations::ProverPrecomputations,
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -17,8 +18,6 @@ use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-
-use super::prover_precomputations::ProverPrecomputations;
 
 //
 // Constants
@@ -153,7 +152,7 @@ pub struct ConstraintSystem<F: FftField> {
 
     /// precomputes
     #[serde(bound = "ProverPrecomputations<F>: Serialize + DeserializeOwned")]
-    pub prover_precomputations: ProverPrecomputations<F>,
+    pub precomputations: ProverPrecomputations<F>,
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -495,7 +494,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let prover_precomputations = ProverPrecomputations::create(domain).unwrap();
+        let precomputations = ProverPrecomputations::create(domain).unwrap();
 
         Some(ConstraintSystem {
             chacha8,
@@ -519,7 +518,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
-            prover_precomputations,
+            precomputations,
         })
     }
 

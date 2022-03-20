@@ -207,7 +207,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
             // alpha
             let alpha_pow = {
-                let mut res = self.prover_precomputations.constant_1_d4.clone();
+                let mut res = self.precomputations.constant_1_d4.clone();
                 res.evals.par_iter_mut().for_each(|x| *x *= &alpha_pow);
                 res
             };
