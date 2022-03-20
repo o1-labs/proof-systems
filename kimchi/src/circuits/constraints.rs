@@ -7,7 +7,6 @@ use crate::circuits::{
     wires::*,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
-use ark_poly::UVPolynomial;
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
@@ -18,6 +17,8 @@ use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
+
+use super::prover_precomputations::ProverPrecomputations;
 
 //
 // Constants
@@ -149,6 +150,10 @@ pub struct ConstraintSystem<F: FftField> {
     /// lookup constraint system
     #[serde(bound = "LookupConstraintSystem<F>: Serialize + DeserializeOwned")]
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
+
+    /// precomputes
+    #[serde(bound = "ProverPrecomputations<F>: Serialize + DeserializeOwned")]
+    pub prover_precomputations: ProverPrecomputations<F>,
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -223,28 +228,6 @@ where
     fn cell_to_field(&self, &Wire { row, col }: &Wire) -> F {
         self.map[col][row]
     }
-}
-
-/// Evaluates the polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3) * (x - w4)
-}
-
-/// The polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DP<F> {
-    let x = DP::from_coefficients_slice(&[F::zero(), F::one()]);
-    let c = |a: F| DP::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -512,6 +495,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
+        let prover_precomputations = ProverPrecomputations::create(domain).unwrap();
+
         Some(ConstraintSystem {
             chacha8,
             endomul_scalar8,
@@ -534,6 +519,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
+            prover_precomputations,
         })
     }
 

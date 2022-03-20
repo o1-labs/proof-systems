@@ -42,8 +42,10 @@
 
 use crate::{
     circuits::{
-        constant_polynomial::ConstantPolynomial, constraints::ConstraintSystem,
-        polynomial::WitnessOverDomains, scalars::ProofEvaluations, wires::*,
+        constraints::{ConstraintSystem, ZK_ROWS},
+        polynomial::WitnessOverDomains,
+        scalars::ProofEvaluations,
+        wires::*,
         zk_polynomial::ZkPolynomial,
     },
     error::{ProofError, Result},
@@ -60,6 +62,28 @@ use rand::{CryptoRng, RngCore};
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
 
+/// Evaluates the polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
+    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    (x - w1) * (x - w2) * (x - w3) * (x - w4)
+}
+
+/// The polynomial
+/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
+pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
+    let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
+    let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
+    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w3 = domain.group_gen * w4;
+    let w2 = domain.group_gen * w3;
+    let w1 = domain.group_gen * w2;
+    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
+}
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// permutation quotient poly contribution computation
     #[allow(clippy::type_complexity)]
@@ -69,16 +93,14 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
-        zkpl: &ZkPolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
     ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>)> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
-        let const_poly = ConstantPolynomial::create(self.domain).unwrap();
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &const_poly.l08.scale(gamma);
+        let gamma = &self.prover_precomputations.constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -116,8 +138,12 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
             for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-                let beta_shift = const_poly.l1.scale(beta * shift).clone();
-                let term = &(witness + gamma) + &beta_shift;
+                let beta_shift = &self
+                    .prover_precomputations
+                    .poly_x_d1
+                    .scale(beta * shift)
+                    .clone();
+                let term = &(witness + gamma) + beta_shift;
                 shifts = &shifts * &term;
             }
 
@@ -132,7 +158,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &zkpl.zkpl
+            &(&shifts - &sigmas).scale(alpha0) * &self.prover_precomputations.zkpl
         };
 
         //~ and `bnd`:

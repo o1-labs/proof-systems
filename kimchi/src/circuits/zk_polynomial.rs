@@ -2,7 +2,7 @@ use crate::circuits::constraints::ZK_ROWS;
 use crate::circuits::domains::EvaluationDomains;
 use ark_ff::FftField;
 use ark_poly::UVPolynomial;
-use ark_poly::{univariate::DensePolynomial as DP, Evaluations as E, Radix2EvaluationDomain as D};
+use ark_poly::{univariate::DensePolynomial as DP, Radix2EvaluationDomain as D};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -12,9 +12,6 @@ pub struct ZkPolynomial<F: FftField> {
     /// zero-knowledge polynomial
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpm: DP<F>,
-    /// zero-knowledge polynomial over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpl: E<F, D<F>>,
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
@@ -56,8 +53,7 @@ impl<F: FftField> ZkPolynomial<F> {
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
         let zkpm = zk_polynomial(domain.d1);
-        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
-        Some(ZkPolynomial { zkpm, zkpl })
+        Some(ZkPolynomial { zkpm })
     }
 }

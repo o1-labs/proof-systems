@@ -34,7 +34,6 @@
 //~
 
 use crate::circuits::{
-    constant_polynomial::ConstantPolynomial,
     constraints::ConstraintSystem,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
@@ -171,7 +170,6 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         mut alphas: impl Iterator<Item = F>,
         witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
     ) -> Evaluations<F, D<F>> {
-        let constant_poly = ConstantPolynomial::create(self.domain).unwrap();
         let generic_gate = |alpha_pow, coeff_offset, register_offset| {
             let mut res = Evaluations::from_vec_and_domain(
                 vec![F::zero(); self.domain.d4.size as usize],
@@ -209,7 +207,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
 
             // alpha
             let alpha_pow = {
-                let mut res = constant_poly.l04.clone();
+                let mut res = self.prover_precomputations.constant_1_d4.clone();
                 res.evals.par_iter_mut().for_each(|x| *x *= &alpha_pow);
                 res
             };

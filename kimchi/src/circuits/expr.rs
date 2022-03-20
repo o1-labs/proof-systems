@@ -1,5 +1,5 @@
+use crate::circuits::polynomials::permutation::eval_vanishes_on_last_4_rows;
 use crate::circuits::{
-    constraints::eval_vanishes_on_last_4_rows,
     domains::EvaluationDomains,
     gate::{CurrOrNext, GateType},
     scalars::ProofEvaluations,

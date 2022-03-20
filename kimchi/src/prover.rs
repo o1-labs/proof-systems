@@ -3,7 +3,6 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        constant_polynomial::ConstantPolynomial,
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
@@ -396,9 +395,6 @@ where
             res
         });
 
-        // setup constant polynomials
-        let const_poly = ConstantPolynomial::create(index.cs.domain).unwrap();
-
         let lookup_env = lookup_table_combined
             .as_ref()
             .zip(lookup_sorted8.as_ref())
@@ -444,7 +440,7 @@ where
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
-                vanishes_on_last_4_rows: &const_poly.vanishes_on_last_4_rows,
+                vanishes_on_last_4_rows: &index.cs.prover_precomputations.vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
@@ -496,11 +492,9 @@ where
 
             // permutation
             let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-            let domain = index.cs.domain;
-            let zkp = ZkPolynomial::create(domain).unwrap();
             let (perm, bnd) = index
                 .cs
-                .perm_quot(&lagrange, beta, gamma, &z_poly, &zkp, alphas)?;
+                .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
             let mut t8 = perm;
 
             if cfg!(test) {
