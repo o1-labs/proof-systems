@@ -1,0 +1,252 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Custom constraints - Mina book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="../highlight.css">
+        <link rel="stylesheet" href="../tomorrow-night.css">
+        <link rel="stylesheet" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href=".././assets/css/mdbook-admonish.css">
+
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "../";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded affix "><li class="part-title">Foundations</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_foundations.html"><strong aria-hidden="true">2.</strong> Terminology</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_groups.html"><strong aria-hidden="true">3.</strong> Groups</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_rings.html"><strong aria-hidden="true">4.</strong> Rings</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook.html"><strong aria-hidden="true">5.</strong> Fields</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_polynomials.html"><strong aria-hidden="true">6.</strong> Polynomials</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../fundamentals/zkbook_fft.html"><strong aria-hidden="true">6.1.</strong> Polynomial multiplications with FFT</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Cryptographic tools</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_commitment.html"><strong aria-hidden="true">7.</strong> Commitments</a></li><li class="chapter-item expanded "><a href="../plonk/commitments.html"><strong aria-hidden="true">8.</strong> Commitments</a></li><li class="chapter-item expanded "><a href="../plonk/polynomial_commitments.html"><strong aria-hidden="true">9.</strong> Polynomial commitments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../plonk/inner_product.html"><strong aria-hidden="true">9.1.</strong> Inner product argument</a></li><li class="chapter-item expanded "><a href="../plonk/inner_product_api.html"><strong aria-hidden="true">9.2.</strong> Different functionnalities</a></li></ol></li><li class="chapter-item expanded "><li class="part-title">Proof systems</li><li class="chapter-item expanded "><a href="../fundamentals/proof_systems.html"><strong aria-hidden="true">10.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_plonk.html"><strong aria-hidden="true">11.</strong> zk-SNARKs</a></li><li class="chapter-item expanded "><a href="../fundamentals/custom_constraints.html" class="active"><strong aria-hidden="true">12.</strong> Custom constraints</a></li><li class="chapter-item expanded affix "><li class="part-title">Background on PLONK</li><li class="chapter-item expanded "><a href="../plonk/overview.html"><strong aria-hidden="true">13.</strong> Overview</a></li><li class="chapter-item expanded "><a href="../plonk/glossary.html"><strong aria-hidden="true">14.</strong> Glossary</a></li><li class="chapter-item expanded "><a href="../plonk/domain.html"><strong aria-hidden="true">15.</strong> Domain</a></li><li class="chapter-item expanded "><a href="../plonk/lagrange.html"><strong aria-hidden="true">16.</strong> Lagrange basis in multiplicative subgroups</a></li><li class="chapter-item expanded "><a href="../plonk/fiat_shamir.html"><strong aria-hidden="true">17.</strong> Non-interaction with fiat-shamir</a></li><li class="chapter-item expanded "><a href="../plonk/plookup.html"><strong aria-hidden="true">18.</strong> Plookup</a></li><li class="chapter-item expanded "><a href="../plonk/maller.html"><strong aria-hidden="true">19.</strong> Maller's optimization</a></li><li class="chapter-item expanded affix "><li class="part-title">Kimchi</li><li class="chapter-item expanded "><a href="../kimchi/overview.html"><strong aria-hidden="true">20.</strong> Overview</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/arguments.html"><strong aria-hidden="true">20.1.</strong> Arguments</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../kimchi/gates.html"><strong aria-hidden="true">20.1.1.</strong> Custom gates</a></li><li class="chapter-item expanded "><a href="../kimchi/permut.html"><strong aria-hidden="true">20.1.2.</strong> Permutation</a></li><li class="chapter-item expanded "><a href="../kimchi/lookup.html"><strong aria-hidden="true">20.1.3.</strong> Lookup</a></li></ol></li></ol></li><li class="chapter-item expanded "><li class="part-title">Pickles & Inductive proof systems</li><li class="chapter-item expanded "><a href="../fundamentals/zkbook_ips.html"><strong aria-hidden="true">21.</strong> Overview</a></li><li class="chapter-item expanded affix "><li class="part-title">RFCs</li><li class="chapter-item expanded "><a href="../plonk/zkpm.html"><strong aria-hidden="true">22.</strong> RFC 0: Alternative zero-knowledge</a></li><li class="chapter-item expanded "><a href="../plonk/final_check.html"><strong aria-hidden="true">23.</strong> RFC 1: Final check</a></li><li class="chapter-item expanded "><a href="../plonk/maller_15.html"><strong aria-hidden="true">24.</strong> RFC 2: Maller's optimization for kimchi</a></li><li class="chapter-item expanded affix "><li class="part-title">Specifications</li><li class="chapter-item expanded "><a href="../specs/poseidon.html"><strong aria-hidden="true">25.</strong> Poseidon hash</a></li><li class="chapter-item expanded "><a href="../specs/poly-commitment.html"><strong aria-hidden="true">26.</strong> Polynomial commitment</a></li><li class="chapter-item expanded "><a href="../specs/pasta.html"><strong aria-hidden="true">27.</strong> Pasta curves</a></li><li class="chapter-item expanded "><a href="../specs/kimchi.html"><strong aria-hidden="true">28.</strong> Kimchi</a></li><li class="chapter-item expanded "><a href="../specs/pickles.html"><strong aria-hidden="true">29.</strong> Pickles</a></li><li class="chapter-item expanded "><a href="../specs/consensus.html"><strong aria-hidden="true">30.</strong> Consensus</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Mina book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://www.github.com/o1-labs/proof-systems" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<p>This section explains how to design and add a custom constraint to our <code>proof-systems</code> library.</p>
+<p>PLONK is an AIOP. That is, it is a protocol in which the prover sends polynomials as messages and the verifier sends random challenges, and then evaluates the prover’s polynomials and performs some final checks on the outputs.</p>
+<p>PLONK is very flexible. It can be customized with constraints specific to computations of interest. For example, in Mina, we use a PLONK configuration called kimchi that has custom constraints for poseidon hashing, doing elliptic curve operations, and more.</p>
+<p>A “PLONK configuration” specifies</p>
+<ul>
+<li>The set of types of constraints that you would like to be able to enforce. We will describe below how these types of constraints are specified.</li>
+<li>A number of “eq-able” columns <code>W</code></li>
+<li>A number of “advice” columns <code>A</code></li>
+</ul>
+<p>Under such configuration, a circuit is specified by</p>
+<ul>
+<li>A number of rows <code>n</code></li>
+<li>A vector <code>cs of constraint-types of length </code>n`. I.e., a vector that specifies, for each row, which types of constraints should be enforced on that row.</li>
+<li>A vector <code>eqs : Vec&lt;(Position, Position)&gt;</code> of equalities to enforce, where <code>struct Position { row: usize, column: usize }</code>. E.g., if the pair <code>(Position { row: 0, col: 8 }, Position { row: 10, col: 2 })</code> is in <code>eqs</code>, then the circuit is saying the entries in those two positions should be equal, or in other words that they refer to the same value. This is where the distinction between “eq-able” and “advice” columns comes in. The <code>column</code> field of a position in the <code>eqs</code> array can only refer to one of the first <code>W</code> columns. Equalities cannot be enforced on entries in the <code>A</code> columns after that.</li>
+</ul>
+<p>Then, given such a circuit, PLONK lets you produce proofs for the statement</p>
+<blockquote>
+<p>I know <code>W + A</code> “column vectors” of field elements <code>vs: [Vec&lt;F&gt;; W + A]</code> such that for each row index <code>i &lt; n</code>, the constraint of type <code>cs[i]</code> holds on the values <code>[vs[0][i], ..., vs[W+A - 1][i], vs[0][i+1], ..., vs[W+A - 1][i+1]</code> and all the equalities in <code>eqs</code> hold. I.e., for <code>(p1, p2)</code> in <code>eqs</code> we have <code>vs[p1.col][p1.row] == vs[p2.col][p2.row]</code>. So, a constraint can check the values in two adjacent rows.</p>
+</blockquote>
+<h2 id="specifying-a-constraint"><a class="header" href="#specifying-a-constraint">Specifying a constraint</a></h2>
+<p>Mathematically speaking, a constraint is a multivariate polynomial over the variables <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.716668em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathnormal">c</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight" style="margin-right:0.01389em;">Curr</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight" style="margin-right:0.01389em;">Curr</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">W</span><span class="mbin mtight">+</span><span class="mord mathnormal mtight">A</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mtight">0</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="minner">…</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">W</span><span class="mbin mtight">+</span><span class="mord mathnormal mtight">A</span><span class="mbin mtight">−</span><span class="mord mtight">1</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span>. In other words, there is one variable corresponding to the value of each column in the “current row” and one variable correspond to the value of each column in the “next row”.</p>
+<p>In Rust, <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.716668em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.311664em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">r</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">i</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span> is written <code>E::cell(Column::Witness(i), r)</code>. So, for example, the variable <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.716668em;vertical-align:-0.286108em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361079999999999em;"><span style="top:-2.5500000000000003em;margin-left:-0.03588em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathsf mtight">Next</span></span><span class="mpunct mtight">,</span><span class="mord mtight">3</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em;"><span></span></span></span></span></span></span></span></span></span> is written
+<code>E::cell(Column::Witness(3), CurrOrNext::Next)</code>.</p>
+<pre><code>let w = |i| v(Column::Witness(i));
+</code></pre>
+<p>Let’s </p>
+<h2 id="defining-a-plonk-configuration"><a class="header" href="#defining-a-plonk-configuration">Defining a PLONK configuration</a></h2>
+<p>The art in proof systems comes from knowing how to design a PLONK configuration to ensure maximal efficiency for the sorts of computations you are trying to prove. That is, how to choose the numbers of columns <code>W</code> and <code>A</code>, and how to define the set of constraint types.</p>
+<p>Let’s describe the trade-offs involved here.</p>
+<p>The majority of the proving time for the PLONK prover is in</p>
+<ul>
+<li>committing to the <code>W + A</code> column polynomials, which have length equal to the number of rows <code>n</code></li>
+<li>committing to the “permutation accumulator polynomial, which has length <code>n</code>.</li>
+<li>committing to the quotient polynomial, which reduces to computing <code>max(k, W)</code> MSMs of size <code>n</code>, where <code>k</code> is the max degree of a constraint.</li>
+<li>performing the commitment opening proof, which is mostly dependent on the number of rows <code>n</code>.</li>
+</ul>
+<p>So all in all, the proving time is approximately equal to the time to perform <code>W + A + 1 + max(k - 1, W)</code> MSMs of size <code>n</code>, plus the cost of an opening proof for polynomials of degree <code>n - 1</code>.</p>
+<p>and maybe</p>
+<ul>
+<li>
+<p>computing the combined constraint polynomial, which has degree <code>k * n</code> where <code>k</code> is the maximum degree of a constraint</p>
+</li>
+<li>
+<p>Increasing <code>W</code> and <code>A</code> increase proof size, and they potentially impact the prover-time as the prover must compute polynomial commitments to each column, and computing a polynomial commitment corresponds to doing one MSM (multi-scalar multiplication, also called a multi-exponentiation.)</p>
+<p>However, often increasing the number of columns allows you to decrease the number of rows required for a given computation. For example, if you can perform one Poseidon hash in 36 rows with 5 total columns, then you can also perform it in 12 (= 36 / 3) rows with 15 (= 5 * 3) total columns.</p>
+<p><strong>Decreasing the number of rows (even while keeping the total number of table entries the same) is desirable because it reduces the cost of the polynomial commitment opening proof, which is dominated by a factor linear in the number of rows, and barely depends on the the number of columns.</strong></p>
+<p>Increasing the number of columns also increases verifier time, as the verifier must perform one scalar-multiplication and one hash per column. Proof length is also affected by a larger number of columns, as more polynomials need to be committed and sent along to the verifier.</p>
+</li>
+</ul>
+<p>There is typically some interplay between these </p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../fundamentals/zkbook_plonk.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="../plonk/overview.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../fundamentals/zkbook_plonk.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="../plonk/overview.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../searcher.js" type="text/javascript" charset="utf-8"></script>
+
+        <script src="../clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="../book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        <script type="text/javascript" src="../mermaid.min.js"></script>
+        <script type="text/javascript" src="../mermaid-init.js"></script>
+
+
+    </body>
+</html>
