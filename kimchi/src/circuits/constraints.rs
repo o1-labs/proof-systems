@@ -523,13 +523,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         })
     }
 
-
     pub fn get_precomputation(&self) -> &ProverPrecomputations<F> {
-        let precomputation = self.precompute_cell.get_or_init(|| {
-            ProverPrecomputations::create(self.domain).unwrap()
-        });
-
-        precomputation
+        self.precompute_cell
+            .get_or_init(|| ProverPrecomputations::create(self.domain).unwrap())
     }
 
     /// This function verifies the consistency of the wire
