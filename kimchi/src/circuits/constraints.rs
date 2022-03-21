@@ -15,6 +15,7 @@ use ark_poly::{
 use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use o1_utils::ExtendedEvaluations;
+use once_cell::unsync::OnceCell;
 use oracle::poseidon::ArithmeticSpongeParams;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -151,8 +152,8 @@ pub struct ConstraintSystem<F: FftField> {
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
 
     /// precomputes
-    #[serde(bound = "ProverPrecomputations<F>: Serialize + DeserializeOwned")]
-    pub precomputations: ProverPrecomputations<F>,
+    #[serde(skip)]
+    pub precompute_cell: OnceCell<ProverPrecomputations<F>>,
 }
 
 // TODO: move Shifts, and permutation-related functions to the permutation module
@@ -494,7 +495,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        let precomputations = ProverPrecomputations::create(domain).unwrap();
+        let precompute_cell = OnceCell::new();
 
         Some(ConstraintSystem {
             chacha8,
@@ -518,8 +519,17 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             endo,
             fr_sponge_params,
             lookup_constraint_system,
-            precomputations,
+            precompute_cell,
         })
+    }
+
+
+    pub fn get_precomputation(&self) -> &ProverPrecomputations<F> {
+        let precomputation = self.precompute_cell.get_or_init(|| {
+            ProverPrecomputations::create(self.domain).unwrap()
+        });
+
+        precomputation
     }
 
     /// This function verifies the consistency of the wire

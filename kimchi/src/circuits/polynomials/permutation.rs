@@ -100,7 +100,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         let alpha2 = alphas.next().expect("missing power of alpha");
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.precomputations.constant_1_d8.scale(gamma);
+        let precomputation = self.get_precomputation();
+        let gamma = &precomputation.constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -138,11 +139,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
             for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
-                let beta_shift = &self
-                    .precomputations
-                    .poly_x_d1
-                    .scale(beta * shift)
-                    .clone();
+                let precomputation = self.get_precomputation();
+                let beta_shift = &precomputation.poly_x_d1.scale(beta * shift).clone();
                 let term = &(witness + gamma) + beta_shift;
                 shifts = &shifts * &term;
             }
@@ -158,7 +156,8 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.precomputations.zkpl
+            let precomputation = self.get_precomputation();
+            &(&shifts - &sigmas).scale(alpha0) * &precomputation.zkpl
         };
 
         //~ and `bnd`:
