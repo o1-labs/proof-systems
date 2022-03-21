@@ -3,14 +3,14 @@ use crate::srs::SRS;
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
-use o1_utils::math;
+use o1_utils::{
+    math,
+    types::{BaseField, ScalarField},
+};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::iter::Iterator;
-
-type Fr<G> = <G as AffineCurve>::ScalarField;
-type Fq<G> = <G as AffineCurve>::BaseField;
 
 impl<G: CommitmentCurve> SRS<G> {
     /// This function opens polynomial commitments in batch
@@ -27,15 +27,19 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
-        plnms: &[(&DensePolynomial<Fr<G>>, Option<usize>, PolyComm<Fr<G>>)], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[Fr<G>],         // vector of evaluation points
-        polyscale: Fr<G>,      // scaling factor for polynoms
-        evalscale: Fr<G>,      // scaling factor for evaluation point powers
-        mut sponge: EFqSponge, // sponge
+        plnms: &[(
+            &DensePolynomial<ScalarField<G>>,
+            Option<usize>,
+            PolyComm<ScalarField<G>>,
+        )], // vector of polynomial with optional degree bound and commitment randomness
+        elm: &[ScalarField<G>],    // vector of evaluation points
+        polyscale: ScalarField<G>, // scaling factor for polynoms
+        evalscale: ScalarField<G>, // scaling factor for evaluation point powers
+        mut sponge: EFqSponge,     // sponge
         rng: &mut RNG,
     ) -> OpeningProof<G>
     where
-        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
+        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
@@ -48,11 +52,11 @@ impl<G: CommitmentCurve> SRS<G> {
         g.extend(vec![G::zero(); padding]);
 
         let (p, blinding_factor) = {
-            let mut plnm = ChunkedPolynomial::<Fr<G>, &[Fr<G>]>::default();
-            // let mut plnm_chunks: Vec<(Fr<G>, OptShiftedPolynomial<_>)> = vec![];
+            let mut plnm = ChunkedPolynomial::<ScalarField<G>, &[ScalarField<G>]>::default();
+            // let mut plnm_chunks: Vec<(ScalarField<G>, OptShiftedPolynomial<_>)> = vec![];
 
-            let mut omega = Fr::<G>::zero();
-            let mut scale = Fr::<G>::one();
+            let mut omega = ScalarField::<G>::zero();
+            let mut scale = ScalarField::<G>::one();
 
             // iterating over polynomials in the batch
             for (p_i, degree_bound, omegas) in plnms.iter().filter(|p| !p.0.is_zero()) {
@@ -111,8 +115,10 @@ impl<G: CommitmentCurve> SRS<G> {
         // b_j = sum_i r^i elm_i^j
         let b_init = {
             // randomise/scale the eval powers
-            let mut scale = Fr::<G>::one();
-            let mut res: Vec<Fr<G>> = (0..padded_length).map(|_| Fr::<G>::zero()).collect();
+            let mut scale = ScalarField::<G>::one();
+            let mut res: Vec<ScalarField<G>> = (0..padded_length)
+                .map(|_| ScalarField::<G>::zero())
+                .collect();
             for e in elm {
                 for (i, t) in pows(padded_length, *e).iter().enumerate() {
                     res[i] += &(scale * t);
@@ -127,7 +133,7 @@ impl<G: CommitmentCurve> SRS<G> {
             .iter()
             .zip(b_init.iter())
             .map(|(a, b)| *a * b)
-            .fold(Fr::<G>::zero(), |acc, x| acc + x);
+            .fold(ScalarField::<G>::zero(), |acc, x| acc + x);
 
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
@@ -136,7 +142,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let mut a = p.coeffs;
         assert!(padded_length >= a.len());
-        a.extend(vec![Fr::<G>::zero(); padded_length - a.len()]);
+        a.extend(vec![ScalarField::<G>::zero(); padded_length - a.len()]);
 
         let mut b = b_init;
 
@@ -153,8 +159,8 @@ impl<G: CommitmentCurve> SRS<G> {
             let (a_lo, a_hi) = (&a[0..n], &a[n..]);
             let (b_lo, b_hi) = (&b[0..n], &b[n..]);
 
-            let rand_l = Fr::<G>::rand(rng);
-            let rand_r = Fr::<G>::rand(rng);
+            let rand_l = ScalarField::<G>::rand(rng);
+            let rand_r = ScalarField::<G>::rand(rng);
 
             let l = VariableBaseMSM::multi_scalar_mul(
                 &[&g[0..n], &[self.h, u]].concat(),
@@ -227,8 +233,8 @@ impl<G: CommitmentCurve> SRS<G> {
             .map(|((l, r), (u, u_inv))| ((*l) * u_inv) + (*r * u))
             .fold(blinding_factor, |acc, x| acc + x);
 
-        let d = Fr::<G>::rand(rng);
-        let r_delta = Fr::<G>::rand(rng);
+        let d = ScalarField::<G>::rand(rng);
+        let r_delta = ScalarField::<G>::rand(rng);
 
         let delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
             + self.h.mul(r_delta))
@@ -266,10 +272,10 @@ pub struct Challenges<F> {
 }
 
 impl<G: AffineCurve> OpeningProof<G> {
-    pub fn prechallenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn prechallenges<EFqSponge: FqSponge<BaseField<G>, G, ScalarField<G>>>(
         &self,
         sponge: &mut EFqSponge,
-    ) -> Vec<ScalarChallenge<Fr<G>>> {
+    ) -> Vec<ScalarChallenge<ScalarField<G>>> {
         let _t = sponge.challenge_fq();
         self.lr
             .iter()
@@ -281,11 +287,11 @@ impl<G: AffineCurve> OpeningProof<G> {
             .collect()
     }
 
-    pub fn challenges<EFqSponge: FqSponge<Fq<G>, G, Fr<G>>>(
+    pub fn challenges<EFqSponge: FqSponge<BaseField<G>, G, ScalarField<G>>>(
         &self,
-        endo_r: &Fr<G>,
+        endo_r: &ScalarField<G>,
         sponge: &mut EFqSponge,
-    ) -> Challenges<Fr<G>> {
+    ) -> Challenges<ScalarField<G>> {
         let chal: Vec<_> = self
             .lr
             .iter()

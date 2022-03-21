@@ -4,6 +4,7 @@ pub mod field_helpers;
 pub mod hasher;
 pub mod math;
 pub mod serialization;
+pub mod types;
 
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;

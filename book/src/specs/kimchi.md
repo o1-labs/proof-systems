@@ -552,16 +552,16 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 ```rs
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<Fr<G>>,
+    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<ScalarField<G>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -575,7 +575,7 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 ```
 
@@ -588,7 +588,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<Fr<G>>,
+    pub domain: D<ScalarField<G>>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -633,32 +633,32 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [Fr<G>; PERMUTS],
+    pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<Fr<G>>,
+    pub zkpm: DensePolynomial<ScalarField<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: Fr<G>,
+    pub w: ScalarField<G>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: Fr<G>,
+    pub endo: ScalarField<G>,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 ```
 
