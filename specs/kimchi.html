@@ -584,16 +584,16 @@ has order greater or equal to <code>n + ZK_ROWS</code> elements.</li>
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
 <pre><code class="language-rs">pub struct ProverIndex&lt;G: CommitmentCurve&gt; {
     /// constraints system polynomials
-    #[serde(bound = &quot;ConstraintSystem&lt;Fr&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
-    pub cs: ConstraintSystem&lt;Fr&lt;G&gt;&gt;,
+    #[serde(bound = &quot;ConstraintSystem&lt;ScalarField&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
+    pub cs: ConstraintSystem&lt;ScalarField&lt;G&gt;&gt;,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;Fr&lt;G&gt;&gt;&gt;&gt;,
+    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;ScalarField&lt;G&gt;&gt;&gt;&gt;,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas&lt;Fr&lt;G&gt;&gt;,
+    pub powers_of_alpha: Alphas&lt;ScalarField&lt;G&gt;&gt;,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -607,7 +607,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
+    pub fq_sponge_params: ArithmeticSpongeParams&lt;BaseField&lt;G&gt;&gt;,
 }
 </code></pre>
 <h3 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h3>
@@ -615,7 +615,7 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 <pre><code class="language-rs">pub struct VerifierIndex&lt;G: CommitmentCurve&gt; {
     /// evaluation domain
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
-    pub domain: D&lt;Fr&lt;G&gt;&gt;,
+    pub domain: D&lt;ScalarField&lt;G&gt;&gt;,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -660,32 +660,32 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
-    pub shift: [Fr&lt;G&gt;; PERMUTS],
+    pub shift: [ScalarField&lt;G&gt;; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial&lt;Fr&lt;G&gt;&gt;,
+    pub zkpm: DensePolynomial&lt;ScalarField&lt;G&gt;&gt;,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: Fr&lt;G&gt;,
+    pub w: ScalarField&lt;G&gt;,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: Fr&lt;G&gt;,
+    pub endo: ScalarField&lt;G&gt;,
 
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub lookup_index: Option&lt;LookupVerifierIndex&lt;G&gt;&gt;,
 
     #[serde(skip)]
-    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;Fr&lt;G&gt;&gt;&gt;&gt;,
+    pub linearization: Linearization&lt;Vec&lt;PolishToken&lt;ScalarField&lt;G&gt;&gt;&gt;&gt;,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas&lt;Fr&lt;G&gt;&gt;,
+    pub powers_of_alpha: Alphas&lt;ScalarField&lt;G&gt;&gt;,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams&lt;Fr&lt;G&gt;&gt;,
+    pub fr_sponge_params: ArithmeticSpongeParams&lt;ScalarField&lt;G&gt;&gt;,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams&lt;Fq&lt;G&gt;&gt;,
+    pub fq_sponge_params: ArithmeticSpongeParams&lt;BaseField&lt;G&gt;&gt;,
 }
 </code></pre>
 <h2 id="proof"><a class="header" href="#proof">Proof</a></h2>
