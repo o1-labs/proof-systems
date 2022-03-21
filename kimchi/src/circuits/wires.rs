@@ -5,11 +5,11 @@ use array_init::array_init;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Result as IoResult, Write};
 
-/// Number of registers
-pub const COLUMNS: usize = 15;
+// Number of registers
+//pub const COLUMNS: usize = 15;
 
 /// New number of registers
-pub const NEW_COLS: usize = 40;
+pub const COLUMNS: usize = 40;
 
 /// Number of registers that can be wired (participating in the permutation)
 pub const PERMUTS: usize = 7;

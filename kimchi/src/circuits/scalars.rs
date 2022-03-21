@@ -23,7 +23,7 @@ pub struct LookupEvaluations<Field> {
 #[derive(Clone)]
 pub struct ProofEvaluations<Field> {
     /// witness polynomials
-    pub w: [Field; NEW_COLS],
+    pub w: [Field; COLUMNS],
     /// permutation polynomial
     pub z: Field,
     /// permutation polynomials
@@ -40,7 +40,7 @@ pub struct ProofEvaluations<Field> {
 }
 
 impl<F: Zero> ProofEvaluations<F> {
-    pub fn dummy_with_witness_evaluations(w: [F; NEW_COLS]) -> ProofEvaluations<F> {
+    pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
         ProofEvaluations {
             w,
             z: F::zero(),

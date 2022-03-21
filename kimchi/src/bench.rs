@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         gate::CircuitGate,
         polynomials::generic::GenericGateSpec,
-        wires::{Wire, NEW_COLS},
+        wires::{Wire, COLUMNS},
     },
     prover::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
@@ -83,7 +83,7 @@ impl BenchmarkCtx {
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
         // create witness
-        let witness: [Vec<Fp>; NEW_COLS] = array_init(|_| vec![1u32.into(); CIRCUIT_SIZE]);
+        let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); CIRCUIT_SIZE]);
 
         // previous opening for recursion
         let prev = {

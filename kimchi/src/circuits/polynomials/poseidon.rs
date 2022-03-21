@@ -39,11 +39,12 @@ use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::circuits::wires::{GateWires, Wire, COLUMNS, NEW_COLS};
+use crate::circuits::wires::{GateWires, Wire};
 
 //
 // Constants
 //
+const COLUMNS: usize = 15;
 
 /// Width of the sponge
 pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
@@ -138,7 +139,7 @@ impl<F: FftField> CircuitGate<F> {
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<F>; NEW_COLS],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(
@@ -218,7 +219,7 @@ impl<F: FftField> CircuitGate<F> {
 pub fn generate_witness<F: Field>(
     row: usize,
     params: ArithmeticSpongeParams<F>,
-    witness_cols: &mut [Vec<F>; NEW_COLS],
+    witness_cols: &mut [Vec<F>; COLUMNS],
     input: [F; SPONGE_WIDTH],
 ) {
     // add the input into the witness

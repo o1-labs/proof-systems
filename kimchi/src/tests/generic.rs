@@ -1,5 +1,5 @@
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::{gate::CircuitGate, wires::NEW_COLS};
+use crate::circuits::{gate::CircuitGate, wires::COLUMNS};
 use crate::prover::ProverProof;
 use crate::prover_index::testing::new_index_for_test;
 use crate::verifier::batch_verify;
@@ -29,7 +29,7 @@ fn test_generic_gate() {
     let gates = create_circuit(0, 0);
 
     // create witness
-    let mut witness: [Vec<Fp>; NEW_COLS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
@@ -42,14 +42,14 @@ fn test_generic_gate_pub() {
     let gates = create_circuit(0, public.len());
 
     // create witness
-    let mut witness: [Vec<Fp>; NEW_COLS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
     verify_proof(gates, witness, &public);
 }
 
-fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; NEW_COLS], public: &[Fp]) {
+fn verify_proof(gates: Vec<CircuitGate<Fp>>, witness: [Vec<Fp>; COLUMNS], public: &[Fp]) {
     // set up
     let rng = &mut StdRng::from_seed([0u8; 32]);
     let group_map = <Affine as CommitmentCurve>::Map::setup();

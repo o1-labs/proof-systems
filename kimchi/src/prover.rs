@@ -17,7 +17,7 @@ use crate::{
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
-        wires::{NEW_COLS, PERMUTS},
+        wires::{COLUMNS, PERMUTS},
     },
     error::{ProofError, Result},
     plonk_sponge::FrSponge,
@@ -51,7 +51,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; NEW_COLS],
+    pub w_comm: [PolyComm<G>; COLUMNS],
     /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
@@ -89,7 +89,7 @@ where
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
         groupmap: &G::Map,
-        witness: [Vec<Fr<G>>; NEW_COLS],
+        witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
@@ -101,7 +101,7 @@ where
         EFrSponge: FrSponge<Fr<G>>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<Fr<G>>; NEW_COLS],
+        mut witness: [Vec<Fr<G>>; COLUMNS],
         index: &ProverIndex<G>,
         prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
@@ -166,10 +166,10 @@ where
         //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
         fq_sponge.absorb_g(&public_comm.unshifted);
 
-        //~ 7. Commit to the witness columns by creating `NEW_COLS` hidding commitments.
+        //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); NEW_COLS] = array_init(|i| {
+        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
             let e = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -184,9 +184,9 @@ where
             .iter()
             .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
 
-        //~ 9. Compute the witness polynomials by interpolating each `NEW_COLS` of the witness.
+        //~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<Fr<G>>; NEW_COLS] = array_init(|i| {
+        let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
             Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,

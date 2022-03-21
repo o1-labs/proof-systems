@@ -3,7 +3,7 @@ use crate::circuits::{
     domains::EvaluationDomains,
     gate::{CurrOrNext, GateType},
     scalars::ProofEvaluations,
-    wires::NEW_COLS,
+    wires::COLUMNS,
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -54,9 +54,9 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// All are evaluations.
 pub struct Environment<'a, F: FftField> {
     /// The witness column polynomials
-    pub witness: &'a [Evaluations<F, D<F>>; NEW_COLS],
+    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; NEW_COLS],
+    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The polynomial which vanishes on the last 4 elements of the domain.
     pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.

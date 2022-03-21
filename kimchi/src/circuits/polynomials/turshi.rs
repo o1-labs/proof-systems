@@ -11,7 +11,7 @@ use crate::circuits::expr::{self, Column};
 use crate::circuits::expr::{witness_curr, witness_next, Cache, ConstantExpr, Expr, E};
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::scalars::ProofEvaluations;
-use crate::circuits::wires::{GateWires, Wire, NEW_COLS};
+use crate::circuits::wires::{GateWires, Wire, COLUMNS};
 use ark_ff::{FftField, Field, One};
 use array_init::array_init;
 use cairo::{
@@ -72,7 +72,7 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
 }
 
 /*
-pub fn view_witness<F: Field>(witness: &[Vec<F>; NEW_COLS]) {
+pub fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
     let rows = witness[0].len();
     for i in 0..rows {
         print!("row {}: [", i);
@@ -83,11 +83,11 @@ pub fn view_witness<F: Field>(witness: &[Vec<F>; NEW_COLS]) {
     }
 }
 
-fn view_table<F: Field>(table: &Vec<[F; NEW_COLS]>) {
+fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
     let rows = table.len();
     for i in 0..rows {
         print!("row {}: [", i);
-        for j in 0..NEW_COLS {
+        for j in 0..COLUMNS {
             print!("{} , ", table[i][j].to_u64());
         }
         println!("]");
@@ -96,22 +96,22 @@ fn view_table<F: Field>(table: &Vec<[F; NEW_COLS]>) {
 */
 
 /// Returns the witness of an execution of a Cairo program in CircuitGate format
-pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; NEW_COLS] {
+pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     // 2 row per instruction for CairoInstruction gate
     // 1 row per instruction for CairoTransition gate
     // final row for CairoClaim gate
     let n = prog.trace().len();
     let rows = n + 1;
-    let mut table: Vec<[F; NEW_COLS]> = Vec::new();
-    table.resize(rows, [F::zero(); NEW_COLS]);
+    let mut table: Vec<[F; COLUMNS]> = Vec::new();
+    table.resize(rows, [F::zero(); COLUMNS]);
     for (i, inst) in prog.trace().iter().enumerate() {
         table[i] = instruction_witness(inst, prog.addresses(i), prog.values(i));
     }
     let perm = table[rows - 2][COL_PERM];
     table[rows - 1] = claim_witness(prog, perm);
 
-    let mut witness: [Vec<F>; NEW_COLS] = array_init(|_| Default::default());
-    for col in 0..NEW_COLS {
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| Default::default());
+    for col in 0..COLUMNS {
         // initialize column with zeroes
         witness[col].resize(table.len(), F::zero());
         for (row, wit) in table.iter().enumerate() {
@@ -125,8 +125,8 @@ fn instruction_witness<F: Field>(
     inst: &CairoInstruction<F>,  // current instruction
     addresses: [F; ACC_PER_INS], // sorted addresses for this instruction
     values: [F; ACC_PER_INS],    // sorted values for this instruction
-) -> [F; NEW_COLS] {
-    let mut row: [F; NEW_COLS] = array_init(|_| F::zero());
+) -> [F; COLUMNS] {
+    let mut row: [F; COLUMNS] = array_init(|_| F::zero());
     row[COL_PC] = inst.pc();
     row[COL_AP] = inst.ap();
     row[COL_FP] = inst.fp();
@@ -166,10 +166,10 @@ fn instruction_witness<F: Field>(
     row
 }
 
-fn claim_witness<F: Field>(prog: &CairoProgram<F>, perm: F) -> [F; NEW_COLS] {
+fn claim_witness<F: Field>(prog: &CairoProgram<F>, perm: F) -> [F; COLUMNS] {
     let first = 0;
     let last = prog.trace().len() - 1;
-    let mut row: [F; NEW_COLS] = array_init(|_| F::zero());
+    let mut row: [F; COLUMNS] = array_init(|_| F::zero());
 
     row[0] = perm;
     row[0] = prog.trace()[first].pc();
@@ -256,12 +256,12 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_cairo_gate(
         &self,
         row: usize,
-        witness: &[Vec<F>; NEW_COLS],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let curr: [F; NEW_COLS] = array_init(|i| witness[i][row]);
-        let mut next: [F; NEW_COLS] = array_init(|_| F::zero());
+        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let mut next: [F; COLUMNS] = array_init(|_| F::zero());
         if self.typ != GateType::CairoClaim {
             next = array_init(|i| witness[i][row + 1]);
         }
@@ -269,7 +269,7 @@ impl<F: FftField> CircuitGate<F> {
         // column polynomials
         let polys = {
             let mut h = std::collections::HashSet::new();
-            for i in 0..NEW_COLS {
+            for i in 0..COLUMNS {
                 h.insert(Column::Witness(i)); // column witness polynomials
             }
             // gate selector polynomials
@@ -337,16 +337,16 @@ impl<F: FftField> CircuitGate<F> {
     pub fn ensure_cairo_gate(
         &self,
         row: usize,
-        witness: &[Vec<F>; NEW_COLS],
+        witness: &[Vec<F>; COLUMNS],
         //_cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let this: [F; NEW_COLS] = array_init(|i| witness[i][row]);
+        let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
         match self.typ {
             GateType::Zero => Ok(()),
             GateType::CairoInstruction => {
-                let next: [F; NEW_COLS] = array_init(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 CircuitGate::ensure_instruction(&this, &next)
             }
             GateType::CairoClaim => CircuitGate::ensure_claim(&this),
@@ -732,7 +732,7 @@ pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Al
 //~  |  3©  pub   instr                               fp\[0\] (c)
 //~  v  4©        perm                                pc\[n-1\] (c)
 //~     5©        size                 .              ap\[n-1\] (c)
-//~     6         res                  .              pc_ini  (pub)
+//~     6©        res                  .              pc_ini  (pub)
 //~     7         dst                  .              ap_ini  (pub)
 //~     8         op0                                 pc_fin  (pub)
 //~     9         op1                                 ap_fin  (pub)
@@ -867,9 +867,9 @@ where
             let dst_sft = off_dst.clone() + shift.clone();
             let op0_sft = off_op0.clone() + shift.clone();
             let op1_sft = off_op1.clone() + shift;
-            // recompose instruction as: flags[15..0] | op1_sft | op0_sft | dst_sft
-            let mut aux: Expr<ConstantExpr<F>> = flags[NUM_FLAGS - 1].clone();
-            for i in (0..NUM_FLAGS - 1).rev() {
+            // recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
+            let mut aux: Expr<ConstantExpr<F>> = flags[NUM_FLAGS - 2].clone();
+            for i in (0..NUM_FLAGS - 2).rev() {
                 aux = aux * two() + flags[i].clone();
             }
             // complete with "flags" * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
@@ -881,8 +881,8 @@ where
         // OPERANDS RELATED
 
         // * Destination address
-        // if dst_fp = 0 : dst_dir = ap + off_dst
-        // if dst_fp = 1 : dst_dir = fp + off_dst
+        // if dst_fp = 0 : dst_adr = ap + off_dst
+        // if dst_fp = 1 : dst_adr = fp + off_dst
         constraints.push(
             f_dst_fp.clone() * fp.clone() + (E::one() - f_dst_fp) * ap.clone() + off_dst - adr_dst,
         );
@@ -951,11 +951,11 @@ where
         constraints.push(
             f_pc_jnz.clone()
                 * (dst.clone() * res.clone() - E::one())
-                * (next_pc.clone() - (pc.clone() - size.clone())),
+                * (next_pc.clone() - (pc.clone() + size.clone())),
         ); // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
         constraints.push(
             f_pc_jnz.clone() * dst * (next_pc.clone() - (pc.clone() + op1))                         // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
-                    + (E::one() - f_pc_jnz.clone()) * next_pc                                                       // <=> pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
+                    + (E::one() - f_pc_jnz.clone()) * next_pc                                       // <=> pc_up = {0,1,2}        : next_pc = ... // not a conditional jump
                         - (E::one() - f_pc_abs.clone() - f_pc_rel.clone() - f_pc_jnz) * (pc.clone() + size) // <=> pc_up = 0              : next_pc = pc + size // common case
                         - f_pc_abs * res.clone()                                                                    // <=> pc_up = 1              : next_pc = res       // absolute jump
                         - f_pc_rel * (pc + res), //                                                    <=> pc_up = 2              : next_pc = pc + res  // relative jump

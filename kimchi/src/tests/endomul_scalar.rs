@@ -56,7 +56,7 @@ fn endomul_scalar_test() {
     let index = new_index_for_test(gates, PUBLIC);
     let (_, endo_scalar_coeff) = endos::<Affine>();
 
-    let mut witness: [Vec<F>; NEW_COLS] = array_init(|_| vec![]);
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
 
     let verifier_index = index.verifier_index();
     let group_map = <Affine as CommitmentCurve>::Map::setup();

@@ -60,7 +60,7 @@ fn varbase_mul_test() {
 
     let index = new_index_for_test(gates, PUBLIC);
 
-    let mut witness: [Vec<F>; NEW_COLS] =
+    let mut witness: [Vec<F>; COLUMNS] =
         array_init(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
 
     let verifier_index = index.verifier_index();

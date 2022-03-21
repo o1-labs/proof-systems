@@ -5,7 +5,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     expr::{prologue::*, Cache},
     gate::{CircuitGate, GateType},
-    wires::NEW_COLS,
+    wires::COLUMNS,
 };
 use ark_ff::{BitIteratorLE, FftField, Field, PrimeField, Zero};
 use array_init::array_init;
@@ -14,7 +14,7 @@ impl<F: FftField> CircuitGate<F> {
     pub fn verify_endomul_scalar(
         &self,
         row: usize,
-        witness: &[Vec<F>; NEW_COLS],
+        witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
@@ -174,7 +174,7 @@ where
 }
 
 pub fn gen_witness<F: PrimeField + std::fmt::Display>(
-    witness_cols: &mut [Vec<F>; NEW_COLS],
+    witness_cols: &mut [Vec<F>; COLUMNS],
     scalar: F,
     endo_scalar: F,
     num_bits: usize,

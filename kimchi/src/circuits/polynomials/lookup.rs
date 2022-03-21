@@ -124,7 +124,7 @@ use crate::{
     circuits::{
         expr::{prologue::*, Column, ConstantExpr, Variable},
         gate::{CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, SingleLookup},
-        wires::NEW_COLS,
+        wires::COLUMNS,
     },
     error::{ProofError, Result},
 };
@@ -225,7 +225,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     lookup_table_entries: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; NEW_COLS],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
@@ -331,7 +331,7 @@ pub trait Entry {
     fn evaluate(
         p: &Self::Params,
         j: &JointLookup<Self::Field>,
-        witness: &[Vec<Self::Field>; NEW_COLS],
+        witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
     ) -> Self;
 }
@@ -345,7 +345,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
     fn evaluate(
         joint_combiner: &F,
         j: &JointLookup<F>,
-        witness: &[Vec<F>; NEW_COLS],
+        witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> CombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
@@ -370,7 +370,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
     fn evaluate(
         _: &(),
         j: &JointLookup<F>,
-        witness: &[Vec<F>; NEW_COLS],
+        witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> UncombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
@@ -397,7 +397,7 @@ pub fn sorted<
     lookup_table: G,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; NEW_COLS],
+    witness: &[Vec<F>; COLUMNS],
     params: E::Params,
 ) -> Result<Vec<Vec<E>>> {
     // We pad the lookups so that it is as if we lookup exactly
@@ -501,7 +501,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     lookup_table: I,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; NEW_COLS],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     beta: F,
     gamma: F,

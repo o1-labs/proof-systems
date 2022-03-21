@@ -19,7 +19,7 @@ use crate::circuits::{
     argument::{Argument, ArgumentType},
     expr::{prologue::*, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
-    wires::{GateWires, NEW_COLS},
+    wires::{GateWires, COLUMNS},
 };
 
 /// Implementation of short Weierstrass curve variable base scalar multiplication custom Plonk constraints.
@@ -132,7 +132,7 @@ impl<F: FftField> CircuitGate<F> {
         ]
     }
 
-    pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; NEW_COLS]) -> Result<(), String> {
+    pub fn verify_vbmul(&self, _row: usize, _witness: &[Vec<F>; COLUMNS]) -> Result<(), String> {
         // TODO: implement
         Ok(())
     }
@@ -148,7 +148,7 @@ impl<F: FftField> CircuitGate<F> {
 
 type CurveVar = (Variable, Variable);
 
-fn set<F>(w: &mut [Vec<F>; NEW_COLS], row0: usize, var: Variable, x: F) {
+fn set<F>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     match var.col {
         Column::Witness(i) => w[i][row0 + var.row.shift()] = x,
         _ => panic!("Can only set witness columns"),
@@ -157,7 +157,7 @@ fn set<F>(w: &mut [Vec<F>; NEW_COLS], row0: usize, var: Variable, x: F) {
 
 #[allow(clippy::too_many_arguments)]
 fn single_bit_witness<F: FftField>(
-    w: &mut [Vec<F>; NEW_COLS],
+    w: &mut [Vec<F>; COLUMNS],
     row: usize,
     b: Variable,
     base: CurveVar,
@@ -287,7 +287,7 @@ pub struct VarbaseMulResult<F> {
 }
 
 pub fn witness<F: FftField + std::fmt::Display>(
-    w: &mut [Vec<F>; NEW_COLS],
+    w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     base: (F, F),
     bits: &[bool],

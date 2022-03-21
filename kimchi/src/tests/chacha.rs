@@ -1,5 +1,5 @@
 use crate::{
-    circuits::{gate::CircuitGate, polynomial::NEW_COLS, polynomials::chacha, wires::Wire},
+    circuits::{gate::CircuitGate, polynomial::COLUMNS, polynomials::chacha, wires::Wire},
     prover::ProverProof,
     prover_index::testing::new_index_for_test,
     verifier::batch_verify,
@@ -68,7 +68,7 @@ fn chacha_prover() {
     for _ in 0..num_chachas {
         rows.extend(chacha::testing::chacha20_rows::<Fp>(s0.clone()))
     }
-    let mut witness: [Vec<Fp>; NEW_COLS] = array_init(|_| vec![]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![]);
     for r in rows.into_iter() {
         for (col, c) in r.into_iter().enumerate() {
             witness[col].push(c);

@@ -83,8 +83,8 @@ pub struct ConstraintSystem<F: FftField> {
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
     /// coefficients polynomials in evaluation form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; NEW_COLS]")]
-    pub coefficients8: [E<F, D<F>>; NEW_COLS],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients8: [E<F, D<F>>; COLUMNS],
 
     // Generic constraint selector polynomials
     // ---------------------------------------
@@ -565,7 +565,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //
 
         // coefficient polynomial
-        let coefficientsm: [_; NEW_COLS] = array_init(|i| {
+        let coefficientsm: [_; COLUMNS] = array_init(|i| {
             let padded = gates
                 .iter()
                 .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
@@ -683,10 +683,10 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// assignements (witness) against the constraints
     ///     witness: wire assignement witness
     ///     RETURN: verification status
-    pub fn verify(&self, witness: &[Vec<F>; NEW_COLS], public: &[F]) -> Result<(), GateError> {
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
         let pad = vec![F::zero(); self.domain.d1.size as usize - witness[0].len()];
-        let witness: [Vec<F>; NEW_COLS] = array_init(|i| {
+        let witness: [Vec<F>; COLUMNS] = array_init(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
             w
@@ -734,13 +734,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// evaluate witness polynomials over domains
-    pub fn evaluate(&self, w: &[DP<F>; NEW_COLS], z: &DP<F>) -> WitnessOverDomains<F> {
+    pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
-        let w8: [E<F, D<F>>; NEW_COLS] =
+        let w8: [E<F, D<F>>; COLUMNS] =
             array_init(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
         let z8 = z.evaluate_over_domain_by_ref(self.domain.d8);
 
-        let w4: [E<F, D<F>>; NEW_COLS] = array_init(|i| {
+        let w4: [E<F, D<F>>; COLUMNS] = array_init(|i| {
             E::<F, D<F>>::from_vec_and_domain(
                 (0..self.domain.d4.size)
                     .map(|j| w8[i].evals[2 * j as usize])
