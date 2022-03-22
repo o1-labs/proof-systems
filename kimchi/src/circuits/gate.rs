@@ -158,7 +158,7 @@ pub enum GateType {
     CairoFlags = 14,
     CairoTransition = 15,
     CairoAuxiliary = 16,
-    CairoFinal = 17,
+    CairoClaim = 17,
 }
 
 /// Describes the desired lookup configuration.
@@ -514,7 +514,7 @@ impl<F: FftField> CircuitGate<F> {
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             CairoInitial | CairoMemory | CairoInstruction | CairoFlags | CairoTransition
-            | CairoAuxiliary | CairoFinal => self.verify_cairo_gate(row, witness, cs),
+            | CairoAuxiliary | CairoClaim => self.verify_cairo_gate(row, witness, cs),
         }
     }
 }

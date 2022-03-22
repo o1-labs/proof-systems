@@ -77,26 +77,6 @@
 //!- op0: content of first operand of right part
 //!- op1: content of second operand of right part
 //!- res: result of the operation in the right part
-//!
-//! The Kimchi 15 columns could be:
-//! GateType     Initial   / Memory   Instruction   Flags      Transition  Next      / Final       
-//!    row   ->  0           5i       5i+1          5i+2       5i+3        5i+4        5n-1           
-//!             ---------------------------------------------------------------------------------
-//!     0    ·   © prev   =  © prev   pc            fPC_ABS    © pc        © next_pc = © pc\[n-1\]       
-//!     1    ·   perm     =  perm     ap            fPC_REL    © ap        © next_ap = © ap\[n-1\]  
-//!  c  2    ·   ® copy   =  ® copy   fp            fPC_JNZ    © fp        © next_fp   ® pc_fin    
-//!  o  3    ·   © m_1    =  © m_1    size          fAP_ADD    © size                  ® ap_fin
-//!  l  4    ·   © v_1    =  © v_1    res           fAP_ONE    © res                   
-//!  |  5    ·   mem3     =  mem3     dst           fOPC_CALL  © dst                   
-//!  v  6    ·   val3     =  val3     op1           fOPC_RET   © op1                  
-//!     7        mem2     =  mem2     op0           fOPC_AEQ   pcup                 
-//!     8        val2     =  val2     off_dst       fDST_FP    apup                 
-//!     9        mem1     =  mem1     off_op1       fOP0_FP    fpup                                 
-//!     10       val1     =  val1     off_op0       fOP1_VAL                                             
-//!     11       mem0     =  mem0     adr_dst       fOP1_FP                                              
-//!     12       val0     =  val0     adr_op1       fOP1_AP                      
-//!     13       ® pc_ini             adr_op0       fRES_ADD                     
-//!     14       ® ap_ini             instr         fRES_MUL                    
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
@@ -108,6 +88,7 @@ use crate::circuits::scalars::ProofEvaluations;
 use crate::circuits::wires::{GateWires, Wire, COLUMNS};
 use ark_ff::{FftField, Field, One};
 use array_init::array_init;
+use cairo::runner::ACC_PER_INS;
 use cairo::{
     runner::{CairoInstruction, CairoProgram, Pointers},
     word::{FlagBits, Offsets},
@@ -177,7 +158,7 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
             F::one(),
             F::zero(),
         ],
-        GateType::CairoFinal => [
+        GateType::CairoClaim => [
             F::zero(),
             F::zero(),
             F::zero(),
@@ -216,21 +197,27 @@ fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
 
 /// Returns the witness of an execution of a Cairo program in CircuitGate format
 pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
-    // 1 row for CairoInitial gate | 1 row per instruction for CairoMemory gate
-    // 1 row per instruction for CairoInstruction gate
-    // 1 row per instruction for CairoFlags gate
-    // 1 row per instruction for CairoTransition gate
-    // 1 row per instruction for CairoAuxiliary gate | 1 row for CairoFinal gate
+    // 0:    1 row for CairoInitial gate
+    // 5i+1: 1 row per instruction for CairoInstruction gate
+    // 5i+2: 1 row per instruction for Flags argument
+    // 5i+3: 1 row per instruction for CairoTransition gate
+    // 5i+4: 1 row per instruction for Cairo Auxiliary gate
+    // 5i:   1 row per instruction for CairoMemory gate
+    // ...
+    // 5n-4: 1 row for last instruction
+    // 5n-3: 1 row for Auxiliary argument (no constraints)
+    // 5n-2: 1 row for final check CairoClaim gate
     let n = prog.trace().len();
     let rows = 5 * n - 1;
     let mut table: Vec<[F; COLUMNS]> = Vec::new();
     table.resize(rows, [F::zero(); COLUMNS]);
+    let perm = F::one();
     for (i, inst) in prog.trace().iter().enumerate() {
         let ini_wit = {
             if i == 0 {
-                initial_witness(inst)
+                initial_witness(i, &prog)
             } else {
-                memory_witness(inst)
+                memory_witness(i, &prog, perm)
             }
         };
         let ins_wit = instruction_witness(inst);
@@ -238,16 +225,17 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
         table[5 * i] = ini_wit;
         table[5 * i + 1] = ins_wit;
         table[5 * i + 2] = flg_wit;
+        perm = ini_wit[1];
         if i == n - 1 {
             // last instruction
-            let fin_wit = claim_witness(&prog); 
+            let fin_wit = claim_witness(&prog, perm);
             table[rows - 1] = fin_wit;
         } else {
-            let tra_wit = transition_witness(inst, &prog.trace()[i+1]);
-            let aux_wit =  auxiliary_witness(&prog.trace()[i+1]);
+            let tra_wit = transition_witness(inst, &prog.trace()[i + 1]);
+            let aux_wit = auxiliary_witness(&prog.trace()[i + 1]);
             table[5 * i + 3] = tra_wit;
             table[5 * i + 4] = aux_wit;
-        }       
+        }
     }
 
     let mut witness: [Vec<F>; COLUMNS] = Default::default();
@@ -261,79 +249,67 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     witness
 }
 
-
-fn initial_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
-    [
-    F::one(), // previous partial permutation ratio
-    prog.trace()[first].ap(),
-    prog.trace()[first].fp(),
-    prog.trace()[last].pc(),
-    prog.trace()[last].ap(),
-    prog.ini().pc(),
-    prog.ini().ap(),
-    prog.fin().pc(),
-    prog.fin().ap(),
-    F::zero(),
-    F::zero(),
-    F::zero(),
-    F::zero(),
-    prog.trace()[0].pc(),
-    prog.trace()[0].ap(),
-]
+fn partial_perm<F: Field>(
+    prev: F,
+    this: &CairoInstruction<F>,
+    adr: &[F; ACC_PER_INS],
+    val: &[F; ACC_PER_INS],
+) -> F {
+    let pc = this.pc();
+    let instr = this.instr();
+    let dst = this.dst();
+    let adr_dst = this.adr_dst();
+    let op0 = this.op0();
+    let adr_op0 = this.adr_op0();
+    let op1 = this.op1();
+    let adr_op1 = this.adr_op1();
+    prev * ((instr + pc) * (dst + adr_dst) * (op0 + adr_op0) * (op1 + adr_op1))
+        / ((adr[0] + val[0]) * (adr[1] + val[1]) * (adr[2] + val[2]) * (adr[3] + val[3]))
 }
-let first = 0;
-let last = prog.trace().len() - 1;
-[
-    prog.trace()[first].pc(),
-    prog.trace()[first].ap(),
-    prog.trace()[first].fp(),
-    prog.trace()[last].pc(),
-    prog.trace()[last].ap(),
-    prog.ini().pc(),
-    prog.ini().ap(),
-    prog.fin().pc(),
-    prog.fin().ap(),
-]
 
-fn memory_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
-    let first = 0;
-    let last = prog.trace().len() - 1;
+fn initial_witness<F: Field>(i: usize, prog: &CairoProgram<F>) -> [F; COLUMNS] {
+    let prev = F::one();
+    let adr = prog.addresses(i);
+    let val = prog.values(i);
+    let perm = partial_perm(F::one(), &prog.trace()[i], &adr, &val);
     [
-        prog.trace()[first].pc(),
-        prog.trace()[first].ap(),
-        prog.trace()[first].fp(),
-        prog.trace()[last].pc(),
-        prog.trace()[last].ap(),
-        prog.ini().pc(),
-        prog.ini().ap(),
-        prog.fin().pc(),
-        prog.fin().ap(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
+        prev,                    // previous partial permutation ratio
+        perm,                    // current partial permutation ratio
+        prog.trace()[i].instr(), // for copy check of instruction with public input
+        prog.trace()[0].pc(),    // initial pc from public input
+        prog.trace()[0].ap(),    // initial ap from public input
+        adr[3],
+        val[3],
+        adr[2],
+        val[2],
+        adr[1],
+        val[1],
+        adr[0],
+        val[0],
         F::zero(),
         F::zero(),
     ]
 }
 
-
-
-fn transition_witness<F: Field>(curr: &CairoInstruction<F>, next: &CairoInstruction<F>) -> [F; COLUMNS] {
+fn memory_witness<F: Field>(i: usize, prog: &CairoProgram<F>, prev: F) -> [F; COLUMNS] {
+    let prev = F::one();
+    let adr = prog.addresses(i);
+    let val = prog.values(i);
+    let perm = partial_perm(F::one(), &prog.trace()[i], &adr, &val);
     [
-        curr.pc(),
-        curr.ap(),
-        curr.fp(),
-        curr.size(),
-        curr.res(),
-        curr.dst(),
-        curr.op1(),
-        next.pc(),
-        next.ap(),
-        next.fp(),
-        F::zero(),
-        F::zero(),
-        F::zero(),
+        prev,                     // previous partial permutation ratio
+        perm,                     // current partial permutation ratio
+        prog.trace()[i].instr(),  // for copy check of instruction with public input
+        prog.addresses(i - 1)[3], // previous sorted last address
+        prog.values(i - 1)[3],    // previous sorted last value
+        adr[3],
+        val[3],
+        adr[2],
+        val[2],
+        adr[1],
+        val[1],
+        adr[0],
+        val[0],
         F::zero(),
         F::zero(),
     ]
@@ -379,108 +355,130 @@ fn flag_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
     ]
 }
 
-fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
+fn transition_witness<F: Field>(
+    curr: &CairoInstruction<F>,
+    next: &CairoInstruction<F>,
+) -> [F; COLUMNS] {
+    [
+        curr.pc(),
+        curr.ap(),
+        curr.fp(),
+        curr.size(),
+        curr.res(),
+        curr.dst(),
+        curr.op1(),
+        next.pc(),
+        next.ap(),
+        next.fp(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+    ]
+}
+
+fn auxiliary_witness<F: Field>(next: &CairoInstruction<F>) -> [F; COLUMNS] {
+    [
+        next.pc(),
+        next.ap(),
+        next.fp(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+        F::zero(),
+    ]
+}
+
+fn claim_witness<F: Field>(prog: &CairoProgram<F>, perm: F) -> [F; COLUMNS] {
     let first = 0;
     let last = prog.trace().len() - 1;
     [
-        prog.trace()[first].pc(),
-        prog.trace()[first].ap(),
-        prog.trace()[first].fp(),
         prog.trace()[last].pc(),
         prog.trace()[last].ap(),
-        prog.ini().pc(),
-        prog.ini().ap(),
         prog.fin().pc(),
         prog.fin().ap(),
+        perm,
         F::zero(),
         F::zero(),
         F::zero(),
         F::zero(),
         F::zero(),
         F::zero(),
-    ]
-}
-
-fn transition_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
-    [
-        inst.pc(),
-        inst.ap(),
-        inst.fp(),
-        inst.size(),
-        inst.res(),
-        inst.dst(),
-        inst.op1(),
-        inst.f_pc_abs(),
-        inst.f_pc_rel(),
-        inst.f_pc_jnz(),
-        inst.f_ap_add(),
-        inst.f_ap_one(),
-        inst.f_opc_call(),
-        inst.f_opc_ret(),
         F::zero(),
-    ]
-}
-
-fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [[F; COLUMNS]; 2] {
-    [
-        [
-            inst.pc(),
-            inst.ap(),
-            inst.fp(),
-            inst.size(),
-            inst.res(),
-            inst.dst(),
-            inst.op1(),
-            inst.op0(),
-            inst.off_dst(),
-            inst.off_op1(),
-            inst.off_op0(),
-            inst.adr_dst(),
-            inst.adr_op1(),
-            inst.adr_op0(),
-            inst.instr(),
-        ],
-        [
-            inst.f_pc_abs(),
-            inst.f_pc_rel(),
-            inst.f_pc_jnz(),
-            inst.f_ap_add(),
-            inst.f_ap_one(),
-            inst.f_opc_call(),
-            inst.f_opc_ret(),
-            inst.f_opc_aeq(),
-            inst.f_dst_fp(),
-            inst.f_op0_fp(),
-            inst.f_op1_val(),
-            inst.f_op1_fp(),
-            inst.f_op1_ap(),
-            inst.f_res_add(),
-            inst.f_res_mul(),
-        ],
+        F::zero(),
+        F::zero(),
+        F::zero(),
     ]
 }
 
 impl<F: FftField> CircuitGate<F> {
-    /// This function creates a 2-row CairoInstruction gate
-    pub fn create_cairo_instruction(wires: &[GateWires; 2]) -> Vec<Self> {
-        vec![
-            CircuitGate {
-                typ: GateType::CairoInstruction,
-                wires: wires[0],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::Zero, // So that it ignores even rows
-                wires: wires[1],
-                coeffs: vec![],
-            },
-        ]
+    /// This function creates a CairoInitial gate
+    pub fn create_cairo_initial(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoInitial,
+            wires,
+            coeffs: vec![],
+        }
+    }
+
+    /// This function creates a CairoMemory gate
+    pub fn create_cairo_memory(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoMemory,
+            wires,
+            coeffs: vec![],
+        }
+    }
+
+    /// This function creates a CairoInstruction gate
+    pub fn create_cairo_instruction(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoInstruction,
+            wires,
+            coeffs: vec![],
+        }
+    }
+
+    /// This function creates a CairoFlags gate
+    pub fn create_cairo_flags(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoFlags,
+            wires,
+            coeffs: vec![],
+        }
     }
 
     /// This function creates a CairoTransition gate
     pub fn create_cairo_transition(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::CairoTransition,
+            wires,
+            coeffs: vec![],
+        }
+    }
+
+    /// This function creates a CairoAuxiliary gate
+    pub fn create_cairo_auxiliary(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoAuxiliary,
+            wires,
+            coeffs: vec![],
+        }
+    }
+
+    /// This function creates a CairoClaim gate
+    pub fn create_cairo_claim(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::CairoClaim,
             wires,
             coeffs: vec![],
         }
@@ -497,24 +495,31 @@ impl<F: FftField> CircuitGate<F> {
         // 1 row per instruction for CairoTransition gate
         // final row for CairoClaim gate
         let mut gates: Vec<CircuitGate<F>> = Vec::new();
-        for i in 0..num {
-            let wire0 = Wire::new(row + 2 * i);
-            let wire1 = Wire::new(row + 2 * i + 1);
-            gates.extend(
-                CircuitGate::create_cairo_instruction(&[wire0, wire1])
-                    .iter()
-                    .cloned(),
-            );
-        }
-        // n-1 CairoTransition gates
         for i in 0..num - 1 {
-            gates.push(CircuitGate::create_cairo_transition(Wire::new(
-                row + 2 * num + i,
-            )));
+            let inimem_gate = Wire::new(row + 5 * i);
+            let ins_gate = Wire::new(row + 5 * i + 1);
+            let flg_gate = Wire::new(row + 5 * i + 2);
+            let tra_gate = Wire::new(row + 5 * i + 3);
+            let aux_gate = Wire::new(row + 5 * i + 4);
+            if i == 0 {
+                gates.push(CircuitGate::create_cairo_initial(inimem_gate));
+            } else {
+                gates.push(CircuitGate::create_cairo_memory(inimem_gate));
+            }
+            gates.push(CircuitGate::create_cairo_instruction(ins_gate));
+            gates.push(CircuitGate::create_cairo_flags(flg_gate));
+            gates.push(CircuitGate::create_cairo_transition(tra_gate));
+            gates.push(CircuitGate::create_cairo_auxiliary(aux_gate));
         }
-        // the final one is considered a Zero gate
-        gates.push(CircuitGate::zero(Wire::new(row + 3 * num - 1)));
-        gates.push(CircuitGate::create_cairo_claim(Wire::new(row + 3 * num)));
+        // the final instruction
+        let mem_gate = Wire::new(row + 5 * (num - 1));
+        let ins_gate = Wire::new(row + 5 * (num - 1) + 1);
+        let aux_gate = Wire::new(row + 5 * (num - 1) + 2);
+        let fin_gate = Wire::new(row + 5 * (num - 1) + 3);
+        gates.push(CircuitGate::create_cairo_memory(mem_gate));
+        gates.push(CircuitGate::create_cairo_instruction(ins_gate));
+        gates.push(CircuitGate::create_cairo_auxiliary(aux_gate));
+        gates.push(CircuitGate::create_cairo_claim(aux_gate));
 
         gates
     }
@@ -529,7 +534,7 @@ impl<F: FftField> CircuitGate<F> {
         // assignments
         let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
         let mut next: [F; COLUMNS] = array_init(|_| F::zero());
-        if self.typ != GateType::CairoAuxiliary && self.typ != GateType::CairoFinal {
+        if self.typ != GateType::CairoAuxiliary && self.typ != GateType::CairoClaim {
             next = array_init(|i| witness[i][row + 1]);
         }
 
@@ -546,7 +551,7 @@ impl<F: FftField> CircuitGate<F> {
             h.insert(Column::Index(GateType::CairoFlags));
             h.insert(Column::Index(GateType::CairoTransition));
             h.insert(Column::Index(GateType::CairoAuxiliary));
-            h.insert(Column::Index(GateType::CairoFinal));
+            h.insert(Column::Index(GateType::CairoClaim));
             h
         };
 
@@ -624,7 +629,6 @@ impl<F: FftField> CircuitGate<F> {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 CircuitGate::ensure_transition(&this, &next)
             }
-            GateType::CairoClaim => CircuitGate::ensure_claim(&this),
             // TODO(querolita): memory related checks
             _ => Err(
                 "Incorrect GateType: expected CairoInstruction, CairoTransition, or CairoClaim"
@@ -878,6 +882,26 @@ impl<F: FftField> CircuitGate<F> {
     }
 }
 
+//~ The Kimchi 15 columns could be:
+//~ GateType     Initial  |  Memory   Instruction   Final   | (Transition  Auxiliary)  Claim
+//~    row   ->  0           5i       5i+1          5i+2       5i+3        5i+4        5n-1
+//~             ---------------------------------------------------------------------------------
+//~     0    ·   © prev   =  © prev   pc            fPC_ABS    © pc        © next_pc   © pc\[n-1\]
+//~     1    ·   perm     =  perm     ap            fPC_REL    © ap        © next_ap   © ap\[n-1\]
+//~  c  2    ·   ® copy   =  ® copy   fp            fPC_JNZ    © fp        © next_fp   ® pc_fin
+//~  o  3    ·   ® pc_ini    © m_1    size          fAP_ADD    © size                  ® ap_fin
+//~  l  4    ·   ® ap_ini    © v_1    res           fAP_ONE    © res                   © perm\[n-1\]
+//~  |  5    ·   mem3     =  mem3     dst           fOPC_CALL  © dst
+//~  v  6    ·   val3     =  val3     op1           fOPC_RET   © op1
+//~     7        mem2     =  mem2     op0           fOPC_AEQ   pcup
+//~     8        val2     =  val2     off_dst       fDST_FP    apup
+//~     9        mem1     =  mem1     off_op1       fOP0_FP    fpup
+//~     10       val1     =  val1     off_op0       fOP1_VAL
+//~     11       mem0     =  mem0     adr_dst       fOP1_FP
+//~     12       val0     =  val0     adr_op1       fOP1_AP
+//~     13                            adr_op0       fRES_ADD
+//~     14                            instr         fRES_MUL
+
 // CONSTRAINTS-RELATED
 
 /// Returns the expression corresponding to the literal "2"
@@ -893,7 +917,7 @@ pub fn gate_combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
         + Flags::combined_constraints(alphas)
         + Transition::combined_constraints(alphas)
         + Auxiliary::combined_constraints(alphas)
-        + Final::combined_constraints(alphas)
+        + Claim::combined_constraints(alphas)
 }
 
 /// Combines the constraints for the Cairo gates depending on its type
@@ -905,7 +929,7 @@ pub fn circuit_gate_combined_constraints<F: FftField>(typ: GateType, alphas: &Al
         GateType::CairoFlags => Flags::combined_constraints(alphas),
         GateType::CairoTransition => Transition::combined_constraints(alphas),
         GateType::CairoAuxiliary => Auxiliary::combined_constraints(alphas),
-        GateType::CairoFinal => Final::combined_constraints(alphas),
+        GateType::CairoClaim => Claim::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
@@ -922,19 +946,58 @@ where
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
     fn constraints() -> Vec<E<F>> {
-        // initial claim
-        let pc_ini = witness_curr(13); // copy from public input
-        let ap_ini = witness_curr(14); // copy from public input
+        let prev = witness_curr(0); // previous partial ratio
+        let perm = witness_curr(1); // current partial ratio
+        let copy = witness_curr(2); // constraint for instruction from public input
+        let pc_ini = witness_curr(3); // copy from public input
+        let ap_ini = witness_curr(4); // copy from public input
+        let pc0 = witness_next(0);
+        let adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
+        let val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
+        adr.rotate_right(1); // mem-1, mem0, mem1, mem2, mem3
+        val.rotate_right(1); // val-1, val0, val1, val2, val3
+
+        // load address / value pairs from next row
+        let pc = witness_next(0);
         let ap0 = witness_next(1);
         let fp0 = witness_next(2);
-        let pc0 = witness_next(0);
+        let dst = witness_next(5);
+        let op1 = witness_next(6);
+        let op0 = witness_next(7);
+        let adr_dst = witness_next(11);
+        let adr_op1 = witness_next(12);
+        let adr_op0 = witness_next(13);
+        let instr = witness_next(14);
 
         // Initial claim
         let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
         constraints.push(fp0 - ap_ini); // fp0 = ini_ap
         constraints.push(pc0 - pc_ini); // pc0 = ini_pc
 
-        constraints.extend(Memory::<F>::constraints());
+        // check correct duplicate of instruction
+        constraints.push(copy - instr.clone());
+
+        for i in 0..4 {
+            // Continuity of memory addresses
+            constraints.push(
+                (adr[i + 1].clone() - adr[i].clone()) * (adr[i + 1].clone() - adr[i].clone() - 1),
+            );
+            // Singularity of memory values
+            constraints.push(
+                (val[i + 1].clone() - val[i].clone()) * (adr[i + 1].clone() - adr[i].clone() - 1),
+            );
+        }
+
+        // TODO (querolita): Fix when alpha and zeta are added
+        constraints.push(
+            prev * (pc + instr) * (adr_dst + dst) * (adr_op0 + op0) * (adr_op1 + op1)
+                - perm
+                    * (adr[1] + val[1])
+                    * (adr[2] + val[2])
+                    * (adr[3] + val[3])
+                    * (adr[4] + val[4]),
+        );
+
         constraints
     }
 }
@@ -1260,14 +1323,14 @@ where
     }
 }
 
-pub struct Final<F>(PhantomData<F>);
+pub struct Claim<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Final<F>
+impl<F> Argument<F> for Claim<F>
 where
     F: FftField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoFinal);
-    const CONSTRAINTS: u32 = 2;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoClaim);
+    const CONSTRAINTS: u32 = 3;
 
     /// Generates the constraints for the Cairo final claim
     ///     Accesses Curr row only
@@ -1276,8 +1339,13 @@ where
         let ap_n = witness_curr(1);
         let pc_fin = witness_curr(3);
         let ap_fin = witness_curr(4);
+        let perm = witness_curr(5);
 
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![ap_n - ap_fin, pc_n - pc_fin];
+        // check final ap
+        // check final pc
+        // check final permutation ratio is 1
+        let mut constraints: Vec<Expr<ConstantExpr<F>>> =
+            vec![ap_n - ap_fin, pc_n - pc_fin, perm - E::literal(F::one())];
 
         constraints
     }
