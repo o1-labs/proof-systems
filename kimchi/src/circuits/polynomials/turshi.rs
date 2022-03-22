@@ -336,6 +336,13 @@ fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
 
 fn flag_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
     [
+        inst.f_dst_fp(),
+        inst.f_op0_fp(),
+        inst.f_op1_val(),
+        inst.f_op1_fp(),
+        inst.f_op1_ap(),
+        inst.f_res_add(),
+        inst.f_res_mul(),
         inst.f_pc_abs(),
         inst.f_pc_rel(),
         inst.f_pc_jnz(),
@@ -344,13 +351,6 @@ fn flag_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
         inst.f_opc_call(),
         inst.f_opc_ret(),
         inst.f_opc_aeq(),
-        inst.f_dst_fp(),
-        inst.f_op0_fp(),
-        inst.f_op1_val(),
-        inst.f_op1_fp(),
-        inst.f_op1_ap(),
-        inst.f_res_add(),
-        inst.f_res_mul(),
     ]
 }
 
