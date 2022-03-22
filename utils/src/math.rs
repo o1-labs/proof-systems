@@ -29,25 +29,38 @@ where
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
+    use mina_curves::pasta::Fp;
 
     #[test]
     fn test_eval() {
         /* [
             ([..coeffs..], (x, expected_y))
         ] */
-        let tests = [
-            (vec![5, 0, 7, 9], (2, 63)),
-            (vec![0, 0, 0, 3], (2, 3)),
-            (vec![16, 91, 23, 111], (32, 618_319)),
-            (vec![8, 0, 2, 0], (16, 32_800)),
-            (vec![3, 4, 1, -5], (3, 115)),
-            (vec![3, 4, 1, -5], (-6, -515)),
+        let test_set = [
+            ([5, 0, 7, 9], (2, 63)),
+            ([0, 0, 0, 3], (2, 3)),
+            ([16, 91, 23, 111], (32, 618_319)),
+            ([8, 0, 2, 0], (16, 32_800)),
+            ([0, 0, 0, 0], (11111, 0)),
         ];
 
-        for (coeffes, (x, expected)) in tests {
+        // runs the test_set as primitive i32 types
+        for (coeffes, (x, expected)) in test_set {
             let actual = evaluate_polynomial(coeffes.into_iter(), 0, x);
             assert!(actual == expected)
+        }
+
+        // transforms test_set into Field types and runs the test
+        for (coeffes, (x, expected)) in test_set {
+            let field_coeffes = coeffes.map(|i| Fp::from(i as u32));
+            let actual = evaluate_polynomial(
+                field_coeffes.into_iter(),
+                Fp::from(0u32),
+                Fp::from(x as u32),
+            );
+            assert!(actual == Fp::from(expected as u32));
         }
     }
 
