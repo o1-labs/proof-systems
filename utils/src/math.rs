@@ -1,5 +1,7 @@
 //! This modules implements some math helper functions.
 
+use std::ops::{Add, Mul};
+
 /// Returns ceil(log2(d)) but panics if d = 0.
 pub fn ceil_log2(d: usize) -> usize {
     // NOTE: should this really be usize, since usize is depended on the underlying system architecture?
@@ -15,6 +17,14 @@ pub fn ceil_log2(d: usize) -> usize {
         }
     }
     ceil_log2
+}
+
+fn evaluate_polynomial<F, I>(coefficients: I, zero: F, x: F) -> F
+where
+    I: Iterator<Item = F>,
+    F: Mul<F, Output = F> + Add<F, Output = F> + Copy,
+{
+    coefficients.fold(zero, |acc, coeff| x * acc + coeff)
 }
 
 #[cfg(test)]
