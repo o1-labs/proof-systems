@@ -35,9 +35,6 @@ mod tests {
 
     #[test]
     fn test_eval() {
-        /* [
-            ([..coeffs..], (x, expected_y))
-        ] */
         let test_set = [
             ([5, 0, 7, 9], (2, 63)),
             ([0, 0, 0, 3], (2, 3)),
