@@ -1,5 +1,7 @@
 //! This modules implements some math helper functions.
 
+use ark_ff::Field;
+
 /// Returns ceil(log2(d)) but panics if d = 0.
 pub fn ceil_log2(d: usize) -> usize {
     // NOTE: should this really be usize, since usize is depended on the underlying system architecture?
@@ -15,6 +17,18 @@ pub fn ceil_log2(d: usize) -> usize {
         }
     }
     ceil_log2
+}
+
+/// Returns `num` powers of `x`, starting with and including 1.
+/// For example, `(x, 4)` gives you `[1, 2, 4, 8]`
+pub fn powers_of<F: Field>(x: F, num: usize) -> Vec<F> {
+    let mut res = Vec::with_capacity(num);
+    let mut last = F::one();
+    for _ in 0..num {
+        res.push(last);
+        last *= x;
+    }
+    res
 }
 
 #[cfg(test)]
