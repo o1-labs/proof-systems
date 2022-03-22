@@ -7,13 +7,13 @@ use crate::{
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::{combine_table_entry, GateType, LookupsUsed},
         polynomials::{
-            turshi::{Claim, Instruction, Transition},
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             generic, lookup, permutation,
             poseidon::Poseidon,
+            turshi::{Auxiliary, Final, Flags, Initial, Instruction, Memory, Transition},
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
@@ -428,9 +428,13 @@ where
                         index_evals.insert(*g, &c[i]);
                     }
                 });
-            index_evals.insert(CairoInstruction, &index.cs.cairo8[0]);
-            index_evals.insert(CairoTransition, &index.cs.cairo8[1]);
-            index_evals.insert(CairoClaim, &index.cs.cairo8[2]);
+            index_evals.insert(CairoInitial, &index.cs.cairo8[0]);
+            index_evals.insert(CairoMemory, &index.cs.cairo8[1]);
+            index_evals.insert(CairoInstruction, &index.cs.cairo8[2]);
+            index_evals.insert(CairoFlags, &index.cs.cairo8[3]);
+            index_evals.insert(CairoTransition, &index.cs.cairo8[4]);
+            index_evals.insert(CairoAuxiliary, &index.cs.cairo8[5]);
+            index_evals.insert(CairoFinal, &index.cs.cairo8[6]);
 
             Environment {
                 constants: Constants {
@@ -615,6 +619,42 @@ where
             }
 
             // cairo
+            let cairoinit = Initial::combined_constraints(&all_alphas).evaluations(&env);
+            if cairoinit.domain().size == t4.domain().size {
+                t4 += &cairoinit;
+            } else if cairoinit.domain().size == t8.domain().size {
+                t8 += &cairoinit;
+            } else {
+                panic!("Bad evaluation")
+            }
+            if cfg!(test) {
+                let (_, res) = cairoinit
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+            drop(cairoinit);
+
+            let cairomem = Memory::combined_constraints(&all_alphas).evaluations(&env);
+            if cairomem.domain().size == t4.domain().size {
+                t4 += &cairomem;
+            } else if cairomem.domain().size == t8.domain().size {
+                t8 += &cairomem;
+            } else {
+                panic!("Bad evaluation")
+            }
+            if cfg!(test) {
+                let (_, res) = cairomem
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+            drop(cairomem);
+
             let cairoinstr = Instruction::combined_constraints(&all_alphas).evaluations(&env);
             if cairoinstr.domain().size == t4.domain().size {
                 t4 += &cairoinstr;
@@ -632,6 +672,24 @@ where
                 assert!(res.is_zero());
             }
             drop(cairoinstr);
+
+            let cairoflags = Flags::combined_constraints(&all_alphas).evaluations(&env);
+            if cairoflags.domain().size == t4.domain().size {
+                t4 += &cairoflags;
+            } else if cairoflags.domain().size == t8.domain().size {
+                t8 += &cairoflags;
+            } else {
+                panic!("Bad evaluation")
+            }
+            if cfg!(test) {
+                let (_, res) = cairoflags
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+            drop(cairoflags);
 
             let cairotrans = Transition::combined_constraints(&all_alphas).evaluations(&env);
             if cairotrans.domain().size == t4.domain().size {
@@ -651,23 +709,41 @@ where
             }
             drop(cairotrans);
 
-            let cairoclaim = Claim::combined_constraints(&all_alphas).evaluations(&env);
-            if cairoclaim.domain().size == t4.domain().size {
-                t4 += &cairoclaim;
-            } else if cairoclaim.domain().size == t8.domain().size {
-                t8 += &cairoclaim;
+            let cairoaux = Auxiliary::combined_constraints(&all_alphas).evaluations(&env);
+            if cairoaux.domain().size == t4.domain().size {
+                t4 += &cairoaux;
+            } else if cairoaux.domain().size == t8.domain().size {
+                t8 += &cairoaux;
             } else {
                 panic!("Bad evaluation")
             }
             if cfg!(test) {
-                let (_, res) = cairoclaim
+                let (_, res) = cairoaux
                     .clone()
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
                 assert!(res.is_zero());
             }
-            drop(cairoclaim);
+            drop(cairoaux);
+
+            let cairofin = Final::combined_constraints(&all_alphas).evaluations(&env);
+            if cairofin.domain().size == t4.domain().size {
+                t4 += &cairofin;
+            } else if cairoaux.domain().size == t8.domain().size {
+                t8 += &cairofin;
+            } else {
+                panic!("Bad evaluation")
+            }
+            if cfg!(test) {
+                let (_, res) = cairofin
+                    .clone()
+                    .interpolate()
+                    .divide_by_vanishing_poly(index.cs.domain.d1)
+                    .unwrap();
+                assert!(res.is_zero());
+            }
+            drop(cairofin);
 
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
