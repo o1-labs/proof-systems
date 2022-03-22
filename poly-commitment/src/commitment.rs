@@ -21,7 +21,8 @@ use ark_poly::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
-use o1_utils::math;
+use itertools::{izip, multizip};
+use o1_utils::math::{self, powers_of};
 use o1_utils::types::fields::*;
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::{sponge::ScalarChallenge, FqSponge};
@@ -419,6 +420,58 @@ pub fn combined_inner_product<G: CommitmentCurve>(
 
             res += &(xi_i * DensePolynomial::<ScalarField<G>>::eval_polynomial(&shifted_evals, *r));
             xi_i *= xi;
+        }
+    }
+    res
+}
+
+/// Combines the evaluations of different polynomials for an evaluation proof.
+/// See [Polynomial commitment double aggregation](https://o1-labs.github.io/proof-systems/plonk/inner_product_api.html#double-aggregation).
+///
+/// The function expects a number of `evaluation_points` (e.g. `x1, x2`),
+/// as well as two random values `poly_combinator` and `eval_combinator`
+/// for combining the different evaluations as well as the different polynomials.
+/// In addition, the function expects a list of evaluations for each polynomial
+/// of the form `([f(x1), f(x2)], None)`
+/// where `None` means that the polynomial's degree is not upperbounded.
+/// You must provide the SRS's length for degree upperbounds to work.
+///
+/// **Warning**: the function will crash if the number of evaluations of
+/// each polynomial doesn't match the given evaluation points or
+/// if the degree upperbound is greater than the SRS length.
+#[allow(clippy::type_complexity)]
+pub fn combined_inner_product2<F: Field>(
+    evaluation_points: &[F],
+    poly_combinator: F,
+    eval_combinator: F,
+    polynomials_evals: &[(Vec<F>, Option<usize>)],
+    srs_length: usize,
+) -> F {
+    // pre-compute powers of the combinators
+    let eval_combinators = powers_of(eval_combinator, evaluation_points.len());
+    let poly_combinators = powers_of(poly_combinator, polynomials_evals.len());
+
+    let mut res = F::zero();
+    for ((polynomial_evals, shifted), poly_combinator) in
+        polynomials_evals.iter().zip(poly_combinators)
+    {
+        // all polynomials must present the same number of evaluations
+        assert_eq!(polynomial_evals.len(), evaluation_points.len());
+
+        for (eval_point, &eval, eval_combinator) in
+            izip!(evaluation_points, polynomial_evals, &eval_combinators)
+        {
+            // handle bounded polynomials
+            let eval = if let Some(degree_bound) = shifted {
+                // the degree bound must be smaller than the SRS length
+                assert!(degree_bound < &srs_length);
+                let shift = (srs_length - *degree_bound) as u64;
+                eval_point.pow(&[shift]) * eval
+            } else {
+                eval
+            };
+
+            res += (eval * eval_combinator) * &poly_combinator;
         }
     }
     res
@@ -902,6 +955,7 @@ mod tests {
 
     use crate::srs::SRS;
     use ark_poly::Polynomial;
+    use ark_poly::{univariate::DensePolynomial, UVPolynomial};
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;
@@ -935,6 +989,48 @@ mod tests {
                 expected_lagrange_commitments[i]
             );
         }
+    }
+
+    #[test]
+    fn test_combined_inner_product() {
+        // f(x) = 1 + x
+        let f = DensePolynomial::<Fp>::from_coefficients_vec(vec![Fp::one(), Fp::one()]);
+
+        // g(x) = x
+        let g = DensePolynomial::<Fp>::from_coefficients_vec(vec![Fp::zero(), Fp::one()]);
+
+        // evaluate at = {0, 1}
+        let eval_points = vec![Fp::zero(), Fp::one()];
+
+        // f(0) and f(1)
+        let f0 = f.evaluate(&eval_points[0]);
+        let f1 = f.evaluate(&eval_points[1]);
+        let g0 = g.evaluate(&eval_points[0]);
+        let g1 = g.evaluate(&eval_points[1]);
+
+        // combinators
+        let poly_combinator = Fp::from(3u32);
+        let eval_combinator = Fp::from(5u32);
+
+        // new API
+        let f_evaluations = vec![f0, f1];
+        let g_evaluations = vec![g0, g1];
+        let polys = [(f_evaluations, None), (g_evaluations, None)];
+        let b = combined_inner_product2(&eval_points, poly_combinator, eval_combinator, &polys, 0);
+
+        // legacy API
+        let f_evaluations = vec![vec![f0], vec![f1]];
+        let g_evaluations = vec![vec![g0], vec![g1]];
+        let polys = [(f_evaluations, None), (g_evaluations, None)];
+        let a = combined_inner_product::<VestaG>(
+            &eval_points,
+            &poly_combinator,
+            &eval_combinator,
+            &polys,
+            0,
+        );
+
+        assert_eq!(a, b);
     }
 
     #[test]
