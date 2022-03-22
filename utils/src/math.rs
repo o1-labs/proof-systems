@@ -19,6 +19,7 @@ pub fn ceil_log2(d: usize) -> usize {
     ceil_log2
 }
 
+/// Evaluates a polynomial's `coefficients` at a given point `x`, using [Horner's scheme](https://en.wikipedia.org/wiki/Horner%27s_method)
 pub fn evaluate_polynomial<F, I>(coefficients: I, zero: F, x: F) -> F
 where
     I: Iterator<Item = F>,
