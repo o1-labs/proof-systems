@@ -13,7 +13,7 @@ use crate::{
             endosclmul::EndosclMul,
             generic, lookup, permutation,
             poseidon::Poseidon,
-            turshi::{Auxiliary, Final, Flags, Initial, Instruction, Memory, Transition},
+            turshi::{Auxiliary, Claim, Flags, Initial, Instruction, Memory, Transition},
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
@@ -434,7 +434,7 @@ where
             index_evals.insert(CairoFlags, &index.cs.cairo8[3]);
             index_evals.insert(CairoTransition, &index.cs.cairo8[4]);
             index_evals.insert(CairoAuxiliary, &index.cs.cairo8[5]);
-            index_evals.insert(CairoFinal, &index.cs.cairo8[6]);
+            index_evals.insert(CairoClaim, &index.cs.cairo8[6]);
 
             Environment {
                 constants: Constants {
@@ -727,10 +727,10 @@ where
             }
             drop(cairoaux);
 
-            let cairofin = Final::combined_constraints(&all_alphas).evaluations(&env);
+            let cairofin = Claim::combined_constraints(&all_alphas).evaluations(&env);
             if cairofin.domain().size == t4.domain().size {
                 t4 += &cairofin;
-            } else if cairoaux.domain().size == t8.domain().size {
+            } else if cairofin.domain().size == t8.domain().size {
                 t8 += &cairofin;
             } else {
                 panic!("Bad evaluation")

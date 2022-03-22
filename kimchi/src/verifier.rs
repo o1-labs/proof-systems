@@ -501,9 +501,13 @@ where
                             ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
                             ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
                             ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                            CairoInstruction => &index.cairo_comm[0],
-                            CairoTransition => &index.cairo_comm[1],
-                            CairoClaim => &index.cairo_comm[2],
+                            CairoInitial => &index.cairo_comm[0],
+                            CairoMemory => &index.cairo_comm[1],
+                            CairoInstruction => &index.cairo_comm[2],
+                            CairoFlags => &index.cairo_comm[3],
+                            CairoTransition => &index.cairo_comm[4],
+                            CairoAuxiliary => &index.cairo_comm[5],
+                            CairoClaim => &index.cairo_comm[6],
                         };
                         scalars.push(scalar);
                         commitments.push(c);

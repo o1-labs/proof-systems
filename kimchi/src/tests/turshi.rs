@@ -59,6 +59,8 @@ fn test_cairo_cs() {
 
     let cs = create_test_consys(inirow, ninstr);
 
+    println!("hola");
+
     // Verify each gate
     let mut row = 0;
     for gate in circuit {

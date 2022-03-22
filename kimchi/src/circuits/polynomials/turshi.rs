@@ -211,7 +211,7 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     let rows = 5 * n - 1;
     let mut table: Vec<[F; COLUMNS]> = Vec::new();
     table.resize(rows, [F::zero(); COLUMNS]);
-    let perm = F::one();
+    let mut perm = F::one();
     for (i, inst) in prog.trace().iter().enumerate() {
         let ini_wit = {
             if i == 0 {
@@ -292,7 +292,6 @@ fn initial_witness<F: Field>(i: usize, prog: &CairoProgram<F>) -> [F; COLUMNS] {
 }
 
 fn memory_witness<F: Field>(i: usize, prog: &CairoProgram<F>, prev: F) -> [F; COLUMNS] {
-    let prev = F::one();
     let adr = prog.addresses(i);
     let val = prog.values(i);
     let perm = partial_perm(F::one(), &prog.trace()[i], &adr, &val);
@@ -399,7 +398,6 @@ fn auxiliary_witness<F: Field>(next: &CairoInstruction<F>) -> [F; COLUMNS] {
 }
 
 fn claim_witness<F: Field>(prog: &CairoProgram<F>, perm: F) -> [F; COLUMNS] {
-    let first = 0;
     let last = prog.trace().len() - 1;
     [
         prog.trace()[last].pc(),
@@ -519,7 +517,7 @@ impl<F: FftField> CircuitGate<F> {
         gates.push(CircuitGate::create_cairo_memory(mem_gate));
         gates.push(CircuitGate::create_cairo_instruction(ins_gate));
         gates.push(CircuitGate::create_cairo_auxiliary(aux_gate));
-        gates.push(CircuitGate::create_cairo_claim(aux_gate));
+        gates.push(CircuitGate::create_cairo_claim(fin_gate));
 
         gates
     }
@@ -883,7 +881,7 @@ impl<F: FftField> CircuitGate<F> {
 }
 
 //~ The Kimchi 15 columns could be:
-//~ GateType     Initial  |  Memory   Instruction   Final   | (Transition  Auxiliary)  Claim
+//~ GateType     Initial  |  Memory   Instruction   Aux | (Flags+Transition+Aux)       Claim
 //~    row   ->  0           5i       5i+1          5i+2       5i+3        5i+4        5n-1
 //~             ---------------------------------------------------------------------------------
 //~     0    ·   © prev   =  © prev   pc            fPC_ABS    © pc        © next_pc   © pc\[n-1\]
@@ -941,7 +939,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoInitial);
-    const CONSTRAINTS: u32 = Memory::<F>::CONSTRAINTS + 3;
+    const CONSTRAINTS: u32 = 7;
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
@@ -952,8 +950,8 @@ where
         let pc_ini = witness_curr(3); // copy from public input
         let ap_ini = witness_curr(4); // copy from public input
         let pc0 = witness_next(0);
-        let adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
-        let val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
+        let mut adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
+        let mut val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
         adr.rotate_right(1); // mem-1, mem0, mem1, mem2, mem3
         val.rotate_right(1); // val-1, val0, val1, val2, val3
 
@@ -969,6 +967,8 @@ where
         let adr_op0 = witness_next(13);
         let instr = witness_next(14);
 
+        let one = E::literal(F::one());
+
         // Initial claim
         let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
         constraints.push(fp0 - ap_ini); // fp0 = ini_ap
@@ -980,11 +980,13 @@ where
         for i in 0..4 {
             // Continuity of memory addresses
             constraints.push(
-                (adr[i + 1].clone() - adr[i].clone()) * (adr[i + 1].clone() - adr[i].clone() - 1),
+                (adr[i + 1].clone() - adr[i].clone())
+                    * (adr[i + 1].clone() - adr[i].clone() - one.clone()),
             );
             // Singularity of memory values
             constraints.push(
-                (val[i + 1].clone() - val[i].clone()) * (adr[i + 1].clone() - adr[i].clone() - 1),
+                (val[i + 1].clone() - val[i].clone())
+                    * (adr[i + 1].clone() - adr[i].clone() - one.clone()),
             );
         }
 
@@ -992,10 +994,10 @@ where
         constraints.push(
             prev * (pc + instr) * (adr_dst + dst) * (adr_op0 + op0) * (adr_op1 + op1)
                 - perm
-                    * (adr[1] + val[1])
-                    * (adr[2] + val[2])
-                    * (adr[3] + val[3])
-                    * (adr[4] + val[4]),
+                    * (adr[1].clone() + val[1].clone())
+                    * (adr[2].clone() + val[2].clone())
+                    * (adr[3].clone() + val[3].clone())
+                    * (adr[4].clone() + val[4].clone()),
         );
 
         constraints
@@ -1017,8 +1019,8 @@ where
         let prev = witness_curr(0); // previous partial ratio
         let perm = witness_curr(1); // current partial ratio
         let copy = witness_curr(2); // constraint for instruction from public input
-        let adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
-        let val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
+        let mut adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
+        let mut val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
         adr.rotate_right(1); // mem-1, mem0, mem1, mem2, mem3
         val.rotate_right(1); // val-1, val0, val1, val2, val3
 
@@ -1032,17 +1034,21 @@ where
         let adr_op0 = witness_next(13);
         let instr = witness_next(14);
 
+        let one = E::literal(F::one());
+
         // Initialize constraints vector
         let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![copy - instr.clone()]; // check correct duplicate of instruction
 
         for i in 0..4 {
             // Continuity of memory addresses
             constraints.push(
-                (adr[i + 1].clone() - adr[i].clone()) * (adr[i + 1].clone() - adr[i].clone() - 1),
+                (adr[i + 1].clone() - adr[i].clone())
+                    * (adr[i + 1].clone() - adr[i].clone() - one.clone()),
             );
             // Singularity of memory values
             constraints.push(
-                (val[i + 1].clone() - val[i].clone()) * (adr[i + 1].clone() - adr[i].clone() - 1),
+                (val[i + 1].clone() - val[i].clone())
+                    * (adr[i + 1].clone() - adr[i].clone() - one.clone()),
             );
         }
 
@@ -1050,10 +1056,10 @@ where
         constraints.push(
             prev * (pc + instr) * (adr_dst + dst) * (adr_op0 + op0) * (adr_op1 + op1)
                 - perm
-                    * (adr[1] + val[1])
-                    * (adr[2] + val[2])
-                    * (adr[3] + val[3])
-                    * (adr[4] + val[4]),
+                    * (adr[1].clone() + val[1].clone())
+                    * (adr[2].clone() + val[2].clone())
+                    * (adr[3].clone() + val[3].clone())
+                    * (adr[4].clone() + val[4].clone()),
         );
 
         constraints
@@ -1105,8 +1111,8 @@ where
         let f_opc_ret = witness_next(13);
         let f_opc_aeq = witness_next(14);
 
-        // rotate flags to its natural ordering
-        let mut flags: Vec<Expr<ConstantExpr<F>>> =
+        // collect flags in its natural ordering
+        let flags: Vec<Expr<ConstantExpr<F>>> =
             (0..NUM_FLAGS - 1).map(|i| witness_next(i)).collect();
 
         // LIST OF CONSTRAINTS
@@ -1298,7 +1304,7 @@ where
 
         // * Check equality (like a copy constraint)
 
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> =
+        let constraints: Vec<Expr<ConstantExpr<F>>> =
             vec![next_pc - pcup, next_ap - apup, next_fp - fpup];
 
         constraints
@@ -1318,7 +1324,7 @@ where
     ///     Accesses Curr row only
     fn constraints() -> Vec<E<F>> {
         // dummy constraint
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![E::literal(F::zero())];
+        let constraints: Vec<Expr<ConstantExpr<F>>> = vec![E::literal(F::zero())];
         constraints
     }
 }
@@ -1344,7 +1350,7 @@ where
         // check final ap
         // check final pc
         // check final permutation ratio is 1
-        let mut constraints: Vec<Expr<ConstantExpr<F>>> =
+        let constraints: Vec<Expr<ConstantExpr<F>>> =
             vec![ap_n - ap_fin, pc_n - pc_fin, perm - E::literal(F::one())];
 
         constraints
