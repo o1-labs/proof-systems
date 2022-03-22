@@ -33,7 +33,7 @@ Notice that naively, computing each evaluation $f(\omega^i)$ using the coefficie
 
 The algorithm $\mathsf{FFT}(k, \omega, f)$ can be defined recursively as follows.
 
-If $k = 0$, then $\omega$ is a primitive $1$th root of unity, and $f$ is a polynomial of degree $0$.
+If $k = 0$, then $\omega$ is a primitive $1$st root of unity, and $f$ is a polynomial of degree $0$.
 That means $\omega = 1$ and also $f$ is a constant $c \in F$.
 So, we can immediately output the array of evaluations $[c] = [f(1)]$.
 
@@ -52,9 +52,9 @@ $$
 \begin{aligned}
 f(x)
 &= \sum_{i < 2^k} c_i x^i \\
-&= \sum_{i < 2^{k-1}} c_{2i} x^{2i} + \sum_{i < 2^{k-1}} c_{2i + 2} x^{2i + 1} \\
-&= \sum_{i < 2^{k-1}} c_{2i} (x^2)^i+ \sum_{i < 2^{k-1}} c_{2i + 2} x \cdot (x^2)^i  \\
-&= \sum_{i < 2^{k-1}} c_{2i} (x^2)^i+ x \sum_{i < 2^{k-1}} c_{2i + 2} (x^2)^i  \\
+&= \sum_{i < 2^{k-1}} c_{2i} x^{2i} + \sum_{i < 2^{k-1}} c_{2i + 1} x^{2i + 1} \\
+&= \sum_{i < 2^{k-1}} c_{2i} (x^2)^i+ \sum_{i < 2^{k-1}} c_{2i + 1} x \cdot (x^2)^i  \\
+&= \sum_{i < 2^{k-1}} c_{2i} (x^2)^i+ x \sum_{i < 2^{k-1}} c_{2i + 1} (x^2)^i  \\
 &= f_0(x^2) + x f_1(x^2)
 \end{aligned}
 $$
@@ -128,7 +128,7 @@ $A_k$ is the set of powers of a $2^k$th root of unity $\omega$. For convenience 
 
 Now we want to go the other way and compute a polynomial given an array of evaluations. I don't really know an intuitive explanation for why this works -- it still looks like a bit of a magic trick to me -- but let's go through it. If you have a good explanation please make a pull request.
 
-So, suppose we have an array $[a_0, \dots, a_{n-1}]$ of field elements (which you can think of as a function $A_k \to F$) and we want to compute the coefficients of a polynomial $f$ with $f(\omega^i) = a_i$. 
+So, suppose we have an array $[a_0, \dots, a_{n-1}]$ of field elements (which you can think of as a function $A_k \to F$) and we want to compute the coefficients of a polynomial $f$ with $f(\omega^i) = a_i$.
 
 To this end, define a polynomial $g$ by $g = \sum_{j < n} a_j x^j$. That is, the polynomial whose coefficients are the evaluations in our array that we're hoping to interpolate.
 
@@ -187,13 +187,13 @@ $$
 So if we define $f = h / n$, then $f(\omega^s) = a_s$ for every $s$ as desired. Thus we have our interpolation algorithm, sometimes called an inverse FFT or IFFT:
 
 > **Algorithm: computing $\mathsf{interp}_{A_k}$**
-> 
+>
 > 0. Input: $[a_0, \dots, a_{n-1}]$ the points we want to interpolate and $\omega$ a $n$th root of unity.
-> 
+>
 > 1. Interpret the input array as the coefficients of a polynomial $g = \sum_{i < n} a_i x^n$.
-> 
+>
 > 2. Let $[e_0, \dots, e_n] = \mathsf{FFT}(k, \omega^{-1}, g)$.
-> 
+>
 > 3. Output the polynomial $\sum_{i < n}(e_i / n) x^i$. I.e., in terms of the dense-coefficients form, output the vector $[e_0 / n, \dots, e_{n - 1}/n]$.
 
 Note that this algorithm also takes time $O(n \log n)$
@@ -205,7 +205,7 @@ Note that this algorithm also takes time $O(n \log n)$
 - If the set $A$ is the set of powers of a root of unity, there are time $O(n \log n)$ algorithms for converting back and forth between those two representations
 
 - In evaluations form, polynomials can be added and multiplied in time $O(n)$
-  
+
   - TODO: caveat about hitting degree
 
 ### Exercises
