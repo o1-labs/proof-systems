@@ -43,6 +43,7 @@
 <span id="38">38</span>
 <span id="39">39</span>
 <span id="40">40</span>
+<span id="41">41</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This modules implements some math helper functions.</span>
 
 <span class="doccomment">/// Returns ceil(log2(d)) but panics if d = 0.</span>
@@ -80,6 +81,7 @@
         <span class="kw">for</span> (<span class="ident">d</span>, <span class="ident">expected_res</span>) <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">ceil_log2</span>(<span class="kw-2">*</span><span class="ident">d</span>);
             <span class="macro">println!</span>(<span class="string">&quot;ceil(log2({})) = {}, expected = {}&quot;</span>, <span class="ident">d</span>, <span class="ident">res</span>, <span class="ident">expected_res</span>);
+            <span class="macro">assert!</span>(<span class="ident">res</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">expected_res</span>)
         }
     }
 }
