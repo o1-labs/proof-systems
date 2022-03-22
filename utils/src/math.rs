@@ -19,7 +19,7 @@ pub fn ceil_log2(d: usize) -> usize {
     ceil_log2
 }
 
-fn evaluate_polynomial<F, I>(coefficients: I, zero: F, x: F) -> F
+pub fn evaluate_polynomial<F, I>(coefficients: I, zero: F, x: F) -> F
 where
     I: Iterator<Item = F>,
     F: Mul<F, Output = F> + Add<F, Output = F> + Copy,
