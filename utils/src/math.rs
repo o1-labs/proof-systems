@@ -46,20 +46,17 @@ mod tests {
             ([0, 0, 0, 0], (11111, 0)),
         ];
 
-        // runs the test_set as primitive i32 types
-        for (coeffes, (x, expected)) in test_set {
-            let actual = evaluate_polynomial(coeffes.into_iter(), 0, x);
+        // runs the test_set with primitive i32 types
+        for (coeffs, (x, expected)) in test_set {
+            let actual = evaluate_polynomial(coeffs.into_iter(), 0, x);
             assert!(actual == expected)
         }
 
-        // transforms test_set into Field types and runs the test
-        for (coeffes, (x, expected)) in test_set {
-            let field_coeffes = coeffes.map(|i| Fp::from(i as u32));
-            let actual = evaluate_polynomial(
-                field_coeffes.into_iter(),
-                Fp::from(0u32),
-                Fp::from(x as u32),
-            );
+        // transforms test_set into Field types and runs the test, making sure generics are set correctly
+        for (coeffs, (x, expected)) in test_set {
+            let field_coeffs = coeffs.map(|i| Fp::from(i as u32));
+            let actual =
+                evaluate_polynomial(field_coeffs.into_iter(), Fp::from(0u32), Fp::from(x as u32));
             assert!(actual == Fp::from(expected as u32));
         }
     }
