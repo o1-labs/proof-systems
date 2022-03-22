@@ -32,6 +32,26 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_eval() {
+        /* [
+            ([..coeffs..], (x, expected_y))
+        ] */
+        let tests = [
+            (vec![5, 0, 7, 9], (2, 63)),
+            (vec![0, 0, 0, 3], (2, 3)),
+            (vec![16, 91, 23, 111], (32, 618_319)),
+            (vec![8, 0, 2, 0], (16, 32_800)),
+            (vec![3, 4, 1, -5], (3, 115)),
+            (vec![3, 4, 1, -5], (-6, -515)),
+        ];
+
+        for (coeffes, (x, expected)) in tests {
+            let actual = evaluate_polynomial(coeffes.into_iter(), 0, x);
+            assert!(actual == expected)
+        }
+    }
+
+    #[test]
     fn test_log2() {
         let tests = [
             (1, 0),
