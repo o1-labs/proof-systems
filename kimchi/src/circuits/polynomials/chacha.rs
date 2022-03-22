@@ -195,7 +195,7 @@ pub fn xor_table<F: Field>() -> Vec<Vec<F>> {
 fn chunks_over_2_rows<F>(col_offset: usize) -> Vec<E<F>> {
     (0..8)
         .map(|i| {
-            use CurrOrNext::*;
+            use CurrOrNext::{Curr, Next};
             let r = if i < 4 { Curr } else { Next };
             witness(col_offset + (i % 4), r)
         })
@@ -248,7 +248,6 @@ fn line<F: Field>(nybble_rotation: usize) -> Vec<E<F>> {
 //
 
 /// Implementation of the ChaCha0 gate
-#[derive(Default)]
 pub struct ChaCha0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha0<F>
@@ -265,8 +264,6 @@ where
 }
 
 /// Implementation of the ChaCha1 gate
-
-#[derive(Default)]
 pub struct ChaCha1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha1<F>
@@ -283,8 +280,6 @@ where
 }
 
 /// Implementation of the ChaCha2 gate
-
-#[derive(Default)]
 pub struct ChaCha2<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha2<F>
@@ -301,8 +296,6 @@ where
 }
 
 /// Implementation of the ChaChaFinal gate
-
-#[derive(Default)]
 pub struct ChaChaFinal<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaChaFinal<F>
@@ -515,7 +508,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            gate::LookupInfo,
+            lookup::lookups::LookupInfo,
             scalars::{LookupEvaluations, ProofEvaluations},
             wires::*,
         },

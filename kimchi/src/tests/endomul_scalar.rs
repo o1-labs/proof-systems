@@ -6,7 +6,7 @@ use crate::{
     },
     prover::ProverProof,
     prover_index::testing::new_index_for_test,
-    verifier::batch_verify,
+    verifier::verify,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use array_init::array_init;
@@ -18,7 +18,7 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use rand::{rngs::StdRng, SeedableRng};
@@ -83,9 +83,8 @@ fn endomul_scalar_test() {
         ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());

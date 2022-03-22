@@ -6,21 +6,23 @@ use crate::{
     },
     prover::ProverProof,
     prover_index::testing::new_index_for_test,
-    verifier::batch_verify,
+    verifier::verify,
 };
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::commitment::{ceil_log2, CommitmentCurve};
+use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp,
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use std::time::Instant;
+
+use o1_utils::math;
 
 // aliases
 
@@ -35,7 +37,7 @@ fn chacha_prover() {
     let num_chachas = 8;
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
-    let max_size = 1 << ceil_log2(n_lower_bound);
+    let max_size = 1 << math::ceil_log2(n_lower_bound);
     println!("{} {}", n_lower_bound, max_size);
 
     let s0: Vec<u32> = vec![
@@ -90,9 +92,8 @@ fn chacha_prover() {
     let verifier_index = index.verifier_index();
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &proof)];
     let start = Instant::now();
-    match batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());

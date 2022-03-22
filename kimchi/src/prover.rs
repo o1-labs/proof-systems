@@ -5,13 +5,19 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
-        gate::{combine_table_entry, GateType, LookupsUsed},
+        gate::GateType,
+        lookup::{
+            self,
+            constraints::LookupConfiguration,
+            lookups::LookupsUsed,
+            tables::{combine_table_entry, CombinedEntry},
+        },
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup, permutation,
+            generic, permutation,
             poseidon::Poseidon,
             turshi::{Auxiliary, Claim, Flags, Initial, Instruction, Memory, Transition},
             varbasemul::VarbaseMul,
@@ -19,7 +25,7 @@ use crate::{
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
-    error::{ProofError, Result},
+    error::ProofError,
     plonk_sponge::FrSponge,
     prover_index::ProverIndex,
 };
@@ -34,13 +40,12 @@ use commitment_dlog::{
     evaluation_proof::OpeningProof,
 };
 use itertools::Itertools;
-use lookup::CombinedEntry;
-use o1_utils::ExtendedDensePolynomial;
+use o1_utils::{types::fields::*, ExtendedDensePolynomial};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
-type Fr<G> = <G as AffineCurve>::ScalarField;
-type Fq<G> = <G as AffineCurve>::BaseField;
+/// The result of a proof creation or verification.
+pub type Result<T> = std::result::Result<T, ProofError>;
 
 #[derive(Clone)]
 pub struct LookupCommitments<G: AffineCurve> {
@@ -48,6 +53,7 @@ pub struct LookupCommitments<G: AffineCurve> {
     pub aggreg: PolyComm<G>,
 }
 
+/// All the commitments that the prover creates as part of the proof.
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
@@ -60,6 +66,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
@@ -70,16 +77,16 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
+    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: Fr<G>,
+    pub ft_eval1: ScalarField<G>,
 
     /// The public input
-    pub public: Vec<Fr<G>>,
+    pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -87,9 +94,12 @@ where
     G::BaseField: PrimeField,
 {
     /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
-    pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
+    pub fn create<
+        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
+        EFrSponge: FrSponge<ScalarField<G>>,
+    >(
         groupmap: &G::Map,
-        witness: [Vec<Fr<G>>; COLUMNS],
+        witness: [Vec<ScalarField<G>>; COLUMNS],
         index: &ProverIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
@@ -97,13 +107,13 @@ where
 
     /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
     pub fn create_recursive<
-        EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>,
-        EFrSponge: FrSponge<Fr<G>>,
+        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
+        EFrSponge: FrSponge<ScalarField<G>>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<Fr<G>>; COLUMNS],
+        mut witness: [Vec<ScalarField<G>>; COLUMNS],
         index: &ProverIndex<G>,
-        prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
@@ -139,11 +149,11 @@ where
             }
 
             // padding
-            w.extend(std::iter::repeat(Fr::<G>::zero()).take(length_padding));
+            w.extend(std::iter::repeat(ScalarField::<G>::zero()).take(length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = Fr::<G>::rand(rng);
+                *row = ScalarField::<G>::rand(rng);
             }
         }
 
@@ -154,7 +164,7 @@ where
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
-        let public_poly = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        let public_poly = -Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
         )
@@ -169,8 +179,8 @@ where
         //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
-            let e = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = array_init(|i| {
+            let e = Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             );
@@ -186,8 +196,8 @@ where
 
         //~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
-        let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
-            Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        let witness_poly: [DensePolynomial<ScalarField<G>>; COLUMNS] = array_init(|i| {
+            Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             )
@@ -200,11 +210,19 @@ where
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
                 | Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Single,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Single,
+                            ..
+                        },
                     ..
-                }) => ScalarChallenge(Fr::<G>::zero()),
+                }) => ScalarChallenge(ScalarField::<G>::zero()),
                 Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Joint,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Joint,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
@@ -212,7 +230,7 @@ where
         };
 
         // TODO: that seems like an unecessary line
-        let joint_combiner: Fr<G> = joint_combiner_.1;
+        let joint_combiner: ScalarField<G> = joint_combiner_.1;
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
@@ -257,8 +275,10 @@ where
 
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
-                None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_value.iter()),
+                None => ScalarField::<G>::zero(),
+                Some(lcs) => {
+                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_value.iter())
+                }
             };
             CombinedEntry(x)
         };
@@ -277,20 +297,21 @@ where
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
-                    let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
-                        dummy_lookup_value,
-                        iter_lookup_table,
-                        index.cs.domain.d1,
-                        &index.cs.gates,
-                        &witness,
-                        joint_combiner,
-                    )?;
+                    let lookup_sorted: Vec<Vec<CombinedEntry<ScalarField<G>>>> =
+                        lookup::constraints::sorted(
+                            dummy_lookup_value,
+                            iter_lookup_table,
+                            index.cs.domain.d1,
+                            &index.cs.gates,
+                            &witness,
+                            joint_combiner,
+                        )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
                         .into_iter()
                         .map(|chunk| {
                             let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                            lookup::zk_patch(v, index.cs.domain.d1, rng)
+                            lookup::constraints::zk_patch(v, index.cs.domain.d1, rng)
                         })
                         .collect();
 
@@ -335,7 +356,7 @@ where
                     });
 
                     let aggreg =
-                        lookup::aggregation::<_, Fr<G>, _>(
+                        lookup::constraints::aggregation::<_, ScalarField<G>, _>(
                             dummy_lookup_value.0,
                             iter_lookup_table(),
                             index.cs.domain.d1,
@@ -346,7 +367,7 @@ where
                             &lookup_sorted,
                             rng)?;
 
-                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != Fr::<G>::one() {
+                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != ScalarField::<G>::one() {
                         panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
                     }
 
@@ -375,7 +396,7 @@ where
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
 
         //~ 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
-        let alpha = alpha_chal.to_field(&index.srs.endo_r);
+        let alpha: ScalarField<G> = alpha_chal.to_field(&index.srs.endo_r);
 
         //~ 19. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -748,8 +769,9 @@ where
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
-                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
-                let constraints = lookup::constraints(&lcs.dummy_lookup_value, index.cs.domain.d1);
+                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
+                let constraints =
+                    lookup::constraints::constraints(&lcs.configuration, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -795,7 +817,7 @@ where
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
-                let w = Fr::<G>::rand(rng);
+                let w = ScalarField::<G>::rand(rng);
                 t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
                 omega_t.unshifted.push(w);
             }
@@ -815,7 +837,7 @@ where
         let zeta_omega = zeta * omega;
 
         //~ 28. TODO: lookup
-        let lookup_evals = |e: Fr<G>| {
+        let lookup_evals = |e: ScalarField<G>| {
             lookup_aggreg_coeffs
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
@@ -831,7 +853,7 @@ where
                         .iter()
                         .map(|p| p.eval(e, index.max_poly_size))
                         .rev()
-                        .fold(vec![Fr::<G>::zero()], |acc, x| {
+                        .fold(vec![ScalarField::<G>::zero()], |acc, x| {
                             acc.into_iter()
                                 .zip(x.iter())
                                 .map(|(acc, x)| acc * joint_combiner + x)
@@ -859,7 +881,7 @@ where
         //~
         //~      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
         let chunked_evals = {
-            let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
+            let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)
                 }),
@@ -870,7 +892,7 @@ where
                 poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
                 cairo_selector: array_init(|i| index.cs.cairo[i].eval(zeta, index.max_poly_size)),
             };
-            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
+            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
                 }),
@@ -901,7 +923,7 @@ where
             &chunked_evals
                 .iter()
                 .zip(power_of_eval_points_for_chunks.iter())
-                .map(|(es, &e1)| ProofEvaluations::<Fr<G>> {
+                .map(|(es, &e1)| ProofEvaluations::<ScalarField<G>> {
                     s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
                     w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
@@ -925,7 +947,7 @@ where
 
         //~ 31. Compute the ft polynomial.
         //~     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-        let ft: DensePolynomial<Fr<G>> = {
+        let ft: DensePolynomial<ScalarField<G>> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
                 // that we can drop the coefficient forms of the index polynomials from
@@ -961,18 +983,20 @@ where
 
             let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
 
-            &f_chunked - &t_chunked.scale(zeta_to_domain_size - Fr::<G>::one())
+            &f_chunked - &t_chunked.scale(zeta_to_domain_size - ScalarField::<G>::one())
         };
 
         //~ 32. construct the blinding part of the ft polynomial commitment
         //~     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
         let blinding_ft = {
             let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
-            let blinding_f = Fr::<G>::zero();
+            let blinding_f = ScalarField::<G>::zero();
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                unshifted: vec![blinding_f - (zeta_to_domain_size - Fr::<G>::one()) * blinding_t],
+                unshifted: vec![
+                    blinding_f - (zeta_to_domain_size - ScalarField::<G>::one()) * blinding_t,
+                ],
                 shifted: None,
             }
         };
@@ -1027,7 +1051,7 @@ where
         //~     (and evaluation proofs) in the protocol.
         //~     First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![Fr::<G>::zero(); d1_size],
+            unshifted: vec![ScalarField::<G>::zero(); d1_size],
             shifted: None,
         };
 

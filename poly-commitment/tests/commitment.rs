@@ -12,7 +12,7 @@ use mina_curves::pasta::{
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::poseidon::PlonkSpongeConstantsKimchi as SC;
+use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
 use rand::Rng;

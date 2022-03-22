@@ -25,20 +25,17 @@
 //~ ```
 //~
 
-use std::marker::PhantomData;
-use std::ops::Range;
-
-use ark_ff::{FftField, Field};
-use oracle::poseidon::{
-    sbox, ArithmeticSponge, ArithmeticSpongeParams, PlonkSpongeConstantsKimchi, Sponge,
-    SpongeConstants,
-};
-use CurrOrNext::*;
-
 use crate::circuits::argument::{Argument, ArgumentType};
-use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr::{prologue::*, Cache, ConstantExpr};
 use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
+use ark_ff::{FftField, Field};
+use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
+use oracle::poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge};
+use std::marker::PhantomData;
+use std::ops::Range;
+use CurrOrNext::{Curr, Next};
+
+use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::polynomial::COLUMNS;
 use crate::circuits::wires::{GateWires, Wire};
 
@@ -319,7 +316,6 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
-#[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
 
 impl<F> Poseidon<F> where F: Field {}

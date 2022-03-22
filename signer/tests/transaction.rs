@@ -1,4 +1,5 @@
-use mina_signer::{CompressedPubKey, Hashable, NetworkId, PubKey, ROInput, Signable};
+use mina_hasher::{Hashable, ROInput};
+use mina_signer::{CompressedPubKey, Keypair, NetworkId, PubKey};
 
 const MEMO_BYTES: usize = 34;
 const TAG_BITS: usize = 3;
@@ -24,7 +25,9 @@ pub struct Transaction {
 }
 
 impl Hashable for Transaction {
-    fn to_roinput(self) -> ROInput {
+    type D = NetworkId;
+
+    fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
 
         roi.append_field(self.fee_payer_pk.x);
@@ -33,32 +36,32 @@ impl Hashable for Transaction {
 
         roi.append_u64(self.fee);
         roi.append_u64(self.fee_token);
-        roi.append_bit(self.fee_payer_pk.is_odd);
+        roi.append_bool(self.fee_payer_pk.is_odd);
         roi.append_u32(self.nonce);
         roi.append_u32(self.valid_until);
         roi.append_bytes(&self.memo);
 
         for tag_bit in self.tag {
-            roi.append_bit(tag_bit);
+            roi.append_bool(tag_bit);
         }
 
-        roi.append_bit(self.source_pk.is_odd);
-        roi.append_bit(self.receiver_pk.is_odd);
+        roi.append_bool(self.source_pk.is_odd);
+        roi.append_bool(self.receiver_pk.is_odd);
         roi.append_u64(self.token_id);
         roi.append_u64(self.amount);
-        roi.append_bit(self.token_locked);
+        roi.append_bool(self.token_locked);
 
         roi
     }
-}
 
-impl Signable for Transaction {
-    fn domain_string(network_id: NetworkId) -> &'static str {
+    fn domain_string(_: Option<&Self>, network_id: NetworkId) -> Option<String> {
         // Domain strings must have length <= 20
         match network_id {
             NetworkId::MAINNET => "MinaSignatureMainnet",
             NetworkId::TESTNET => "CodaSignature",
         }
+        .to_string()
+        .into()
     }
 }
 
@@ -123,16 +126,14 @@ impl Transaction {
     }
 }
 
-use mina_signer::Keypair;
-
 #[test]
 fn transaction_domain() {
     assert_eq!(
-        Transaction::domain_string(NetworkId::MAINNET),
+        Transaction::domain_string(None, NetworkId::MAINNET).expect("missing domain string"),
         "MinaSignatureMainnet"
     );
     assert_eq!(
-        Transaction::domain_string(NetworkId::TESTNET),
+        Transaction::domain_string(None, NetworkId::TESTNET).expect("missing domain string"),
         "CodaSignature"
     );
 }

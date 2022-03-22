@@ -532,7 +532,7 @@ def sample(domain, i):
     return shift, i
 ```
 
-**`Public`**. This variable simply contains the number of public inputs.
+**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
 
 The compilation steps to create the common index are as follow:
 
@@ -552,16 +552,16 @@ These pre-computations are optimizations, in the context of normal proofs, but t
 ```rs
 pub struct ProverIndex<G: CommitmentCurve> {
     /// constraints system polynomials
-    #[serde(bound = "ConstraintSystem<Fr<G>>: Serialize + DeserializeOwned")]
-    pub cs: ConstraintSystem<Fr<G>>,
+    #[serde(bound = "ConstraintSystem<ScalarField<G>>: Serialize + DeserializeOwned")]
+    pub cs: ConstraintSystem<ScalarField<G>>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     /// polynomial commitment keys
     #[serde(skip)]
@@ -575,12 +575,12 @@ pub struct ProverIndex<G: CommitmentCurve> {
 
     /// random oracle argument parameters
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 ```
 
 
-## Verifier Index
+### Verifier Index
 
 Same as the prover index, we have a number of pre-computations as part of the verifier index.
 
@@ -588,7 +588,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 pub struct VerifierIndex<G: CommitmentCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub domain: D<Fr<G>>,
+    pub domain: D<ScalarField<G>>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
     /// maximal size of the quotient polynomial according to the supported constraints
@@ -637,32 +637,32 @@ pub struct VerifierIndex<G: CommitmentCurve> {
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub shift: [Fr<G>; PERMUTS],
+    pub shift: [ScalarField<G>; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: DensePolynomial<Fr<G>>,
+    pub zkpm: DensePolynomial<ScalarField<G>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
-    pub w: Fr<G>,
+    pub w: ScalarField<G>,
     /// endoscalar coefficient
     #[serde(skip)]
-    pub endo: Fr<G>,
+    pub endo: ScalarField<G>,
 
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<Fr<G>>>>,
+    pub linearization: Linearization<Vec<PolishToken<ScalarField<G>>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
-    pub powers_of_alpha: Alphas<Fr<G>>,
+    pub powers_of_alpha: Alphas<ScalarField<G>>,
 
     // random oracle argument parameters
     #[serde(skip)]
-    pub fr_sponge_params: ArithmeticSpongeParams<Fr<G>>,
+    pub fr_sponge_params: ArithmeticSpongeParams<ScalarField<G>>,
     #[serde(skip)]
-    pub fq_sponge_params: ArithmeticSpongeParams<Fq<G>>,
+    pub fq_sponge_params: ArithmeticSpongeParams<BaseField<G>>,
 }
 ```
 
@@ -842,6 +842,80 @@ The prover then follows the following steps to create the proof:
 
 ### Proof Verification
 
+We define two helper algorithms below, used in the batch verification of proofs. 
+
+
+#### Fiat-Shamir argument
+
+We run the following algorithm:
+
+1. Setup the Fq-Sponge.
+2. Absorb the commitment of the public input polynomial with the Fq-Sponge.
+3. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
+4. TODO: lookup (joint combiner challenge)
+5. TODO: lookup (absorb)
+6. Sample $\beta$ with the Fq-Sponge.
+7. Sample $\gamma$ with the Fq-Sponge.
+8. TODO: lookup
+9. Absorb the commitment to the permutation trace with the Fq-Sponge.
+10. Sample $\alpha'$ with the Fq-Sponge.
+11. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
+12. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+13. Absorb the commitment to the quotient polynomial $t$ into the argument.
+14. Sample $\zeta'$ with the Fq-Sponge.
+15. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
+16. Setup the Fr-Sponge.
+17. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+18. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+19. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+    - the public polynomial
+    - z
+    - generic selector
+    - poseidon selector
+    - the 15 register/witness
+    - 6 sigmas evaluations (the last one is not evaluated)
+20. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
+21. Sample $v'$ with the Fr-Sponge.
+22. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
+23. Sample $u'$ with the Fr-Sponge.
+24. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
+25. Create a list of all polynomials that have an evaluation proof.
+26. Compute the evaluation of $ft(\zeta)$.
+
+#### Partial verification
+
+For every proof we want to verify, we defer the proof opening to the very end.
+This allows us to potentially batch verify a number of partially verified proofs.
+Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
+
+1. Commit to the negated public input polynomial.
+2. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
+3. Combine the chunked polynomials' evaluations
+   (TODO: most likely only the quotient polynomial is chunked)
+   with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
+4. Compute the commitment to the linearized polynomial $f$.
+5. Compute the (chuncked) commitment of $ft$
+   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
+6. List the polynomial commitments, and their associated evaluations,
+   that are associated to the aggregated evaluation proof in the proof:
+    - recursion
+    - public input commitment
+    - ft commitment (chunks of it)
+    - permutation commitment
+    - index commitments that use the coefficients
+    - witness commitments
+    - sigma commitments
+#### Batch verification of proofs
+
+Below, we define the steps to verify a number of proofs
+(each associated to a [verifier index](#verifier-index)).
+You can, of course, use it to verify a single proof.
+
+1. If there's no proof to verify, the proof validates trivially.
+2. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
+3. Validate each proof separately following the [partial verification](#partial-verification) steps.
+4. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
 
 
 ## Optimizations

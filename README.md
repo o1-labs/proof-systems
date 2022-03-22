@@ -20,10 +20,10 @@ We assume that you already have:
 Then, you can create an URS for your circuit in the following way:
 
 ```rust,ignore
-use kimchi::circuits::constraints;
+use kimchi::{circuits::constraints, verifier::verify};
 use mina_curves::pasta::{fp::Fp, vesta::{Affine, VestaParameters}, pallas::Affine as Other};
 use oracle::{
-    poseidon::PlonkSpongeConstantsKimchi,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use commitment_dlog::commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve};
@@ -52,7 +52,7 @@ let verifier_index = prover_index.verifier_index();
 
 // create a proof
 let group_map = <Affine as CommitmentCurve>::Map::setup();
-let proof = { 
+let proof = {
     // for recursion
     let k = ceil_log2(index.srs.g.len());
     let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
@@ -66,7 +66,7 @@ let proof = {
 };
 
 // verify a proof
-batch_verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &[(verifier_index, proof)]).unwrap();
+verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();
 ```
 
 Note that kimchi is specifically designed for use in a recursion proof system, like [pickles](https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250), but can also be used a stand alone for normal proofs.
@@ -79,10 +79,17 @@ The project is organized in the following way:
 * [cairo/](https://github.com/o1-labs/proof-systems/tree/master/cairo). A Cairo runner written in rust.
 * [curves/](https://github.com/o1-labs/proof-systems/tree/master/curves). The elliptic curves we use (for now just the pasta curves).
 * [groupmap/](https://github.com/o1-labs/proof-systems/tree/master/groupmap). Used to convert elliptic curve elements to field elements.
+* [hasher/](https://github.com/o1-labs/proof-systems/tree/master/hasher). Interfaces for mina hashing.
 * [kimchi/](https://github.com/o1-labs/proof-systems/tree/master/kimchi). Our proof system.
 * [ocaml/](https://github.com/o1-labs/proof-systems/tree/master/ocaml). Ocaml bindings generator tool.
 * [oracle/](https://github.com/o1-labs/proof-systems/tree/master/oracle). Implementation of the poseidon hash function.
 * [poly-commitment/](https://github.com/o1-labs/proof-systems/tree/master/poly-commitment). Polynomial commitment code.
-* [signer/](https://github.com/o1-labs/proof-systems/tree/master/signer). Implementation of schnorr signature scheme.
+* [signer/](https://github.com/o1-labs/proof-systems/tree/master/signer). Interfaces for mina signature schemes.
 * [tools/](https://github.com/o1-labs/proof-systems/tree/master/tools). Various tooling to help us work on kimchi.
 * [utils/](https://github.com/o1-labs/proof-systems/tree/master/utils). Collection of useful functions and traits.
+
+## Windows Development
+Windows development can be done using [Windows Subsystem for Linux (WSL)](https://docs.microsoft.com/en-us/windows/wsl/install).
+* Install and open WSL
+* Within WSL, install OCaml using your distro's package manager. For example: `apt install opam`
+* Within WSL, navigate to the project directory and run `cargo test`. If there are no failures then everything is set up correctly.
