@@ -1,7 +1,9 @@
 use ark_ff::FftField;
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as Domain};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::ops::{Add, Deref, Mul};
 
 #[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -97,6 +99,73 @@ impl<F: FftField> EvaluationDomains<F> {
     }
 }
 
+/// A wrapper around [Evaluations] that implements [Add].
+/// This allows adding polynomials in evaluation forms,
+/// even though they might have different domains.
+///
+/// **Warning**: this works between the fields d1, d2, d4, and d8,
+/// created by [EvaluationDomains::create] due to a relation between the domains.
+/// This function should not be used for other domains.
+pub struct Evals<F: FftField>(pub Evaluations<F, Domain<F>>);
+
+impl<F> Deref for Evals<F>
+where
+    F: FftField,
+{
+    type Target = Evaluations<F, Domain<F>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<F> From<Evaluations<F, Domain<F>>> for Evals<F>
+where
+    F: FftField,
+{
+    fn from(evals: Evaluations<F, Domain<F>>) -> Self {
+        Self(evals)
+    }
+}
+
+impl<F> Add<Self> for &Evals<F>
+where
+    F: FftField,
+{
+    type Output = Evals<F>;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let lhs_size = self.domain().size();
+        let rhs_size = rhs.domain().size();
+
+        let (bigger, smaller) = if lhs_size > rhs_size {
+            (self, rhs)
+        } else {
+            (rhs, self)
+        };
+
+        let bigger_size = bigger.domain().size();
+        let smaller_size = smaller.domain().size();
+
+        let step = match bigger_size {
+            x if x == smaller_size => 1,
+            x if x == smaller_size * 2 => 2,
+            x if x == smaller_size * 4 => 4,
+            x if x == smaller_size * 8 => 8,
+            _ => panic!("domain not recognized"),
+        };
+
+        let evals: Vec<_> = smaller
+            .evals
+            .par_iter()
+            .zip(bigger.evals.par_iter().step_by(step))
+            .map(|(e1, e2)| *e1 + e2)
+            .collect();
+
+        Evals(Evaluations::from_vec_and_domain(evals, smaller.domain()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,6 +173,7 @@ mod tests {
     use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
     use mina_curves::pasta::fp::Fp;
     use o1_utils::ExtendedEvaluations;
+    use proptest::collection::vec;
     use proptest::prelude::*;
 
     #[test]
@@ -120,18 +190,58 @@ mod tests {
         }
     }
 
+    fn num_to_domain<F>(domains: &EvaluationDomains<F>, n: u8) -> Domain<F>
+    where
+        F: FftField,
+    {
+        match n {
+            0 => domains.d1,
+            1 => domains.d2,
+            2 => domains.d4,
+            3 => domains.d8,
+            _ => panic!("unrecognized domain"),
+        }
+    }
+
     proptest! {
+
+        #[test]
+        fn test_add_evals(f in vec(0..10u32, 10), g in vec(0..10u32, 10), x in 0..10u32, f_domain in 0..4u8, g_domain in 0..4u8) {
+            let f: Vec<_> = f.into_iter().map(Fp::from).collect();
+            let g: Vec<_> = g.into_iter().map(Fp::from).collect();
+            let f = DensePolynomial::from_coefficients_vec(f);
+            let g = DensePolynomial::from_coefficients_vec(g);
+
+            let f_plus_g = &f + &g;
+
+            let domains = &EvaluationDomains::<Fp>::create(1 << 8).unwrap();
+
+            let f_domain = num_to_domain(domains, f_domain);
+            let g_domain = num_to_domain(domains, g_domain);
+
+            let f_evaluations: Evals<_> = f.evaluate_over_domain_by_ref(f_domain).into();
+            let g_evaluations: Evals<_> = g.evaluate_over_domain_by_ref(g_domain).into();
+
+            let f_plus_g_ = &f_evaluations + &g_evaluations;
+
+            if f_evaluations.domain().size() > g_evaluations.domain().size() {
+                assert_eq!(f_plus_g_.domain(), g_evaluations.domain());
+            } else {
+                assert_eq!(f_plus_g_.domain(), f_evaluations.domain());
+            }
+
+            let f_plus_g_ = f_plus_g_.0.interpolate();
+
+            let x = &Fp::from(x);
+
+            assert_eq!(f_plus_g.evaluate(x), f_plus_g_.evaluate(x));
+        }
+
         #[test]
         fn test_change_of_domain(first_domain in 0..4u8, second_domain in 0..4u8) {
-            let domains = EvaluationDomains::<Fp>::create(1 << 8).unwrap();
+            let domains = &EvaluationDomains::<Fp>::create(1 << 8).unwrap();
 
-            let some_domain = match first_domain {
-                0 => domains.d1,
-                1 => domains.d2,
-                2 => domains.d4,
-                3 => domains.d8,
-                _ => panic!("unrecognized domain"),
-            };
+            let some_domain = num_to_domain(domains, first_domain);
 
             // f(x) = 2x + 1 in some domain
             let poly = DensePolynomial::<Fp>::from_coefficients_slice(&[1u32.into(), 2u32.into()]);
