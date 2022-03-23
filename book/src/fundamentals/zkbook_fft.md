@@ -80,7 +80,7 @@ f(\omega^j)
 $$
 
 Now, since $j$ may be larger than $2^{k-1} - 1$, we need to reduce it mod $2^{k-1}$, relying on the fact that
-if $\tau$ is an $n$th power of unity then $\tau^j = \tau^{j \mod n}$ since $\tau^n = 1$. Thus,
+if $\tau$ is an $n$th root of unity then $\tau^j = \tau^{j \mod n}$ since $\tau^n = 1$. Thus,
 $(\omega^2)^j = (\omega^2)^{j \mod 2^{k-1}}$ and so we have
 
 $$
@@ -104,6 +104,21 @@ $$
 There are $n$ such entries, so this takes time $O(n)$.
 
 This concludes the recursive definition of the algorithm $\mathsf{FFT}(k, \omega, f)$.
+
+> **Algorithm: computing $\mathsf{eval}_{A_k}$**
+>  * $\mathsf{Input~} f = [c_0, \ldots, c_{2^k - 1}]$ the coefficients of polynomial $f(x) = \sum_{i < 2^k} c_i x^i$
+>  * $\mathsf{Compute~} W \gets \left[1, \omega, \omega^2, ..., \omega^{2^k - 1}\right]$
+>  * $\mathsf{FFT}(k, \omega, f) \rightarrow \left[f(1), f(\omega), f(\omega^2) \dots, f(\omega^{2^k - 1})\right]$
+>    * $\mathtt{if~} k == 0$
+>      * $\mathtt{return~} f$
+>    * $\mathtt{else}$
+>      * $\mathsf{Compute~} f_0 = [c_0, c_2, ..., c_{2^k - 2}]$ the even coefficients of $f,$ corresponding to $f_0(x) = \sum_{i < 2^{k - 1}} c_{2i} x^i$
+>      * $\mathsf{Compute~} f_1 = [c_1, c_3, ..., c_{2^k - 1}]$ the odd coefficients of $f,$ corresponding to $f_1(x) = \sum_{i < 2^{k - 1}} c_{2i + 1} x^i$
+>      * $e_0 \gets \mathsf{FFT}(k - 1, \omega^2, f_0)$
+>      * $e_1 \gets \mathsf{FFT}(k - 1, \omega^2, f_1)$
+>      * $\mathtt{for~} j \in [0, 2^k - 1]$
+>        * $F_j \gets e_{0, j \mod 2^{k - 1}} + W[j] \cdot e_{1, j \mod 2^{k - 1}}$
+>      * $\mathtt{return~} F$
 
 Now let's analyze the time complexity. Let $T(n)$ be the complexity on an instance of size $n$ (that is, for $n = 2^k$).
 
