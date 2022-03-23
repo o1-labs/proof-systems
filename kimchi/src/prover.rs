@@ -730,6 +730,7 @@ where
             }
             drop(cairotrans);
 
+            /*
             let cairoaux = Auxiliary::combined_constraints(&all_alphas).evaluations(&env);
             if cairoaux.domain().size == t4.domain().size {
                 t4 += &cairoaux;
@@ -747,7 +748,7 @@ where
                 assert!(res.is_zero());
             }
             drop(cairoaux);
-
+            */
             let cairofin = Claim::combined_constraints(&all_alphas).evaluations(&env);
             if cairofin.domain().size == t4.domain().size {
                 t4 += &cairofin;

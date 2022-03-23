@@ -204,9 +204,9 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
     for (i, inst) in prog.trace().iter().enumerate() {
         let ini_wit = {
             if i == 0 {
-                initial_witness(i, &prog)
+                initial_witness(i, prog)
             } else {
-                memory_witness(i, &prog, perm)
+                memory_witness(i, prog, perm)
             }
         };
         let ins_wit = instruction_witness(inst);
@@ -217,7 +217,7 @@ pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
         perm = ini_wit[1];
         if i == n - 1 {
             // last instruction
-            let fin_wit = claim_witness(&prog, perm);
+            let fin_wit = claim_witness(prog, perm);
             table[rows - 1] = fin_wit;
         } else {
             let tra_wit = transition_witness(inst, &prog.trace()[i + 1]);

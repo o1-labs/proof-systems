@@ -1,15 +1,14 @@
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
 use crate::circuits::polynomials::turshi::*;
-use crate::circuits::wires::COLUMNS;
 use ark_ec::AffineCurve;
-use ark_ff::Field;
 use cairo::{helper::*, memory::CairoMemory, runner::CairoProgram};
 use mina_curves::pasta::fp::Fp as F;
 use mina_curves::pasta::pallas;
 
 type PallasField = <pallas::Affine as AffineCurve>::BaseField;
 
+/*
 fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
     let rows = witness[0].len();
     for i in 0..rows {
@@ -21,7 +20,7 @@ fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
     }
 }
 
-pub fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
+fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
     let rows = table.len();
     for i in 0..rows {
         print!("row {}: [", i);
@@ -31,6 +30,7 @@ pub fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
         println!("]");
     }
 }
+*/
 
 // creates a constraint system for a number of Cairo instructions
 fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasField> {
