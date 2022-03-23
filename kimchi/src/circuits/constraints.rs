@@ -577,9 +577,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Cairo constraint selector polynomials
         let cairo: [DP<F>; turshi::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
-                0 => GateType::CairoInstruction,
-                1 => GateType::CairoTransition,
-                2 => GateType::CairoClaim,
+                0 => GateType::CairoInitial,
+                1 => GateType::CairoMemory,
+                2 => GateType::CairoInstruction,
+                3 => GateType::CairoFlags,
+                4 => GateType::CairoTransition,
+                5 => GateType::CairoAuxiliary,
+                6 => GateType::CairoClaim,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(
@@ -595,9 +599,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // Cairo constraint polynomials
         let cairo8: [E<F, D<F>>; turshi::CIRCUIT_GATE_COUNT] = array_init(|i| {
             let g = match i {
-                0 => GateType::CairoInstruction,
-                1 => GateType::CairoTransition,
-                2 => GateType::CairoClaim,
+                0 => GateType::CairoInitial,
+                1 => GateType::CairoMemory,
+                2 => GateType::CairoInstruction,
+                3 => GateType::CairoFlags,
+                4 => GateType::CairoTransition,
+                5 => GateType::CairoAuxiliary,
+                6 => GateType::CairoClaim,
                 _ => panic!("Invalid index"),
             };
             E::<F, D<F>>::from_vec_and_domain(

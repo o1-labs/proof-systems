@@ -1,12 +1,36 @@
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
 use crate::circuits::polynomials::turshi::*;
+use crate::circuits::wires::COLUMNS;
 use ark_ec::AffineCurve;
+use ark_ff::Field;
 use cairo::{helper::*, memory::CairoMemory, runner::CairoProgram};
 use mina_curves::pasta::fp::Fp as F;
 use mina_curves::pasta::pallas;
 
 type PallasField = <pallas::Affine as AffineCurve>::BaseField;
+
+fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
+    let rows = witness[0].len();
+    for i in 0..rows {
+        print!("row {}: [", i);
+        for j in 0..witness.len() {
+            print!("{} , ", witness[j][i].to_u64());
+        }
+        println!("]");
+    }
+}
+
+fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
+    let rows = table.len();
+    for i in 0..rows {
+        print!("row {}: [", i);
+        for j in 0..COLUMNS {
+            print!("{} , ", table[i][j].to_u64());
+        }
+        println!("]");
+    }
+}
 
 // creates a constraint system for a number of Cairo instructions
 fn create_test_consys(inirow: usize, ninstr: usize) -> ConstraintSystem<PallasField> {
@@ -59,11 +83,10 @@ fn test_cairo_cs() {
 
     let cs = create_test_consys(inirow, ninstr);
 
-    println!("hola");
-
     // Verify each gate
     let mut row = 0;
     for gate in circuit {
+        println!("{:?}", gate.typ);
         let res = gate.verify_cairo_gate(row, &witness, &cs);
         if res.is_err() {
             println!("{:?}", res);

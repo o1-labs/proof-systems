@@ -172,17 +172,6 @@ fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] 
 }
 
 /*
-pub fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
-    let rows = witness[0].len();
-    for i in 0..rows {
-        print!("row {}: [", i);
-        for j in 0..witness.len() {
-            print!("{} , ", witness[j][i].to_u64());
-        }
-        println!("]");
-    }
-}
-
 fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
     let rows = table.len();
     for i in 0..rows {
@@ -294,7 +283,7 @@ fn initial_witness<F: Field>(i: usize, prog: &CairoProgram<F>) -> [F; COLUMNS] {
 fn memory_witness<F: Field>(i: usize, prog: &CairoProgram<F>, prev: F) -> [F; COLUMNS] {
     let adr = prog.addresses(i);
     let val = prog.values(i);
-    let perm = partial_perm(F::one(), &prog.trace()[i], &adr, &val);
+    let perm = partial_perm(prev, &prog.trace()[i], &adr, &val);
     [
         prev,                     // previous partial permutation ratio
         perm,                     // current partial permutation ratio
@@ -618,21 +607,133 @@ impl<F: FftField> CircuitGate<F> {
         let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
 
         match self.typ {
-            GateType::Zero => Ok(()),
+            GateType::CairoInitial => {
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                CircuitGate::ensure_initial(&this, &next)
+            }
+            GateType::CairoMemory => {
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                CircuitGate::ensure_memory(&this, &next)
+            }
             GateType::CairoInstruction => {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 CircuitGate::ensure_instruction(&this, &next)
+            }
+            GateType::CairoFlags => {
+                let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+                CircuitGate::ensure_flags(&this, &next)
             }
             GateType::CairoTransition => {
                 let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
                 CircuitGate::ensure_transition(&this, &next)
             }
-            // TODO(querolita): memory related checks
+            GateType::CairoAuxiliary => Ok(()),
+            GateType::CairoClaim => CircuitGate::ensure_claim(&this), // CircuitGate::ensure_transition(&this),
             _ => Err(
                 "Incorrect GateType: expected CairoInstruction, CairoTransition, or CairoClaim"
                     .to_string(),
             ),
         }
+    }
+
+    fn ensure_initial(this: &[F], next: &[F]) -> Result<(), String> {
+        let prev = this[0]; // previous partial ratio
+        let perm = this[1]; // current partial ratio
+        let copy = this[2]; // constraint for instruction from public input
+        let pc_ini = this[3]; // copy from public input
+        let ap_ini = this[4]; // copy from public input
+        let adr: Vec<F> = (0..ACC_PER_INS).map(|i| this[11 - 2 * i]).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5)
+        let val: Vec<F> = (0..ACC_PER_INS).map(|i| this[12 - 2 * i]).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6)
+
+        // load address / value pairs from next row
+        let pc = next[0];
+        let ap0 = next[1];
+        let fp0 = next[2];
+        let dst = next[5];
+        let op1 = next[6];
+        let op0 = next[7];
+        let adr_dst = next[11];
+        let adr_op1 = next[12];
+        let adr_op0 = next[13];
+        let instr = next[14];
+
+        ensure_eq!(F::zero(), ap0 - ap_ini, "Bad initial ap");
+        ensure_eq!(F::zero(), fp0 - ap_ini, "Bad initial fp");
+        ensure_eq!(F::zero(), pc - pc_ini, "Bad initial pc");
+        ensure_eq!(F::zero(), copy - instr, "Bad instruction copy");
+        for i in 0..ACC_PER_INS - 1 {
+            ensure_eq!(
+                F::zero(),
+                (adr[i + 1] - adr[i]) * (adr[i + 1] - adr[i] - F::one()),
+                "Memory is not continue"
+            );
+            ensure_eq!(
+                F::zero(),
+                (val[i + 1] - val[i]) * (adr[i + 1] - adr[i] - F::one()),
+                "Values are not singular"
+            );
+        }
+
+        // TODO (querolita): Fix when alpha and zeta are added
+        ensure_eq!(
+            F::zero(),
+            prev * (pc + instr) * (adr_dst + dst) * (adr_op0 + op0) * (adr_op1 + op1)
+                - perm
+                    * (adr[0] + val[0])
+                    * (adr[1] + val[1])
+                    * (adr[2] + val[2])
+                    * (adr[3] + val[3]),
+            "Failed partial permutation ratio"
+        );
+
+        Ok(())
+    }
+
+    fn ensure_memory(this: &[F], next: &[F]) -> Result<(), String> {
+        let prev = this[0]; // previous partial ratio
+        let perm = this[1]; // current partial ratio
+        let copy = this[2]; // constraint for instruction from public input
+        let mut adr: Vec<F> = (0..ACC_PER_INS + 1).map(|i| this[11 - 2 * i]).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
+        let mut val: Vec<F> = (0..ACC_PER_INS + 1).map(|i| this[12 - 2 * i]).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
+        adr.rotate_right(1);
+        val.rotate_right(1);
+        // load address / value pairs from next row
+        let pc = next[0];
+        let dst = next[5];
+        let op1 = next[6];
+        let op0 = next[7];
+        let adr_dst = next[11];
+        let adr_op1 = next[12];
+        let adr_op0 = next[13];
+        let instr = next[14];
+
+        ensure_eq!(F::zero(), copy - instr, "Bad instruction copy");
+        for i in 0..ACC_PER_INS {
+            ensure_eq!(
+                F::zero(),
+                (adr[i + 1] - adr[i]) * (adr[i + 1] - adr[i] - F::one()),
+                "Memory is not continue"
+            );
+            ensure_eq!(
+                F::zero(),
+                (val[i + 1] - val[i]) * (adr[i + 1] - adr[i] - F::one()),
+                "Values are not singular"
+            );
+        }
+
+        // TODO (querolita): Fix when alpha and zeta are added
+        ensure_eq!(
+            F::zero(),
+            prev * (pc + instr) * (adr_dst + dst) * (adr_op0 + op0) * (adr_op1 + op1)
+                - perm
+                    * (adr[1] + val[1])
+                    * (adr[2] + val[2])
+                    * (adr[3] + val[3])
+                    * (adr[4] + val[4]),
+            "Failed partial permutation ratio"
+        );
+
+        Ok(())
     }
 
     fn ensure_instruction(vars: &[F], flags: &[F]) -> Result<(), String> {
@@ -651,21 +752,22 @@ impl<F: FftField> CircuitGate<F> {
         let adr_op1 = vars[12];
         let adr_op0 = vars[13];
         let instr = vars[14];
-        let f_pc_abs = flags[0];
-        let f_pc_rel = flags[1];
-        let f_pc_jnz = flags[2];
-        let f_ap_inc = flags[3];
-        let f_ap_one = flags[4];
-        let f_opc_call = flags[5];
-        let f_opc_ret = flags[6];
-        let f_opc_aeq = flags[7];
-        let f_dst_fp = flags[8];
-        let f_op0_fp = flags[9];
-        let f_op1_val = flags[10];
-        let f_op1_fp = flags[11];
-        let f_op1_ap = flags[12];
-        let f_res_add = flags[13];
-        let f_res_mul = flags[14];
+
+        let f_dst_fp = flags[0];
+        let f_op0_fp = flags[1];
+        let f_op1_val = flags[2];
+        let f_op1_fp = flags[3];
+        let f_op1_ap = flags[4];
+        let f_res_add = flags[5];
+        let f_res_mul = flags[6];
+        let f_pc_abs = flags[7];
+        let f_pc_rel = flags[8];
+        let f_pc_jnz = flags[9];
+        let f_ap_inc = flags[10];
+        let f_ap_one = flags[11];
+        let f_opc_call = flags[12];
+        let f_opc_ret = flags[13];
+        let f_opc_aeq = flags[14];
 
         let zero = F::zero();
         let one = F::one();
@@ -683,10 +785,6 @@ impl<F: FftField> CircuitGate<F> {
         }
 
         // well formness of instruction
-        // rotate flags to its natural ordering
-        let mut flags: Vec<F> = (0..NUM_FLAGS - 1).map(|i| flags[i]).collect();
-        flags.rotate_right(7);
-
         let shape = {
             let shift = F::from(2u32.pow(15)); // 2^15;
             let pow16 = shift.double(); // 2^16
@@ -794,14 +892,7 @@ impl<F: FftField> CircuitGate<F> {
         Ok(())
     }
 
-    fn ensure_transition(curr: &[F], next: &[F]) -> Result<(), String> {
-        let pc = curr[0];
-        let ap = curr[1];
-        let fp = curr[2];
-        let size = curr[3];
-        let res = curr[4];
-        let dst = curr[5];
-        let op1 = curr[6];
+    fn ensure_flags(curr: &[F], next: &[F]) -> Result<(), String> {
         let f_pc_abs = curr[7];
         let f_pc_rel = curr[8];
         let f_pc_jnz = curr[9];
@@ -809,9 +900,16 @@ impl<F: FftField> CircuitGate<F> {
         let f_ap_one = curr[11];
         let f_opc_call = curr[12];
         let f_opc_ret = curr[13];
-        let next_pc = next[0];
-        let next_ap = next[1];
-        let next_fp = next[2];
+        let pc = next[0];
+        let ap = next[1];
+        let fp = next[2];
+        let size = next[3];
+        let res = next[4];
+        let dst = next[5];
+        let op1 = next[6];
+        let pcup = next[7];
+        let apup = next[8];
+        let fpup = next[9];
 
         let zero = F::zero();
         let one = F::one();
@@ -821,60 +919,75 @@ impl<F: FftField> CircuitGate<F> {
 
         // * Check next allocation pointer
         ensure_eq!(
-            next_ap, //               next_ap =
+            apup, //               next_ap =
             ap                   //             ap +
             + f_ap_inc * res      //  if ap_up == 1 : res
             + f_ap_one           //  if ap_up == 2 : 1
             + f_opc_call.double(), // if opcode == 1 : 2
-            "wrong next allocation pointer"
+            "wrong ap update"
         );
 
         // * Check next frame pointer
         ensure_eq!(
-            next_fp, //                                       next_fp =
+            fpup, //                                       next_fp =
             f_opc_call * (ap + two)      // if opcode == 1      : ap + 2
             + f_opc_ret * dst                    // if opcode == 2      : dst
             + (one - f_opc_call - f_opc_ret) * fp, // if opcode == 4 or 0 : fp
-            "wrong next frame pointer"
+            "wrong fp update"
         );
 
         // * Check next program counter
         ensure_eq!(
             zero,
-            f_pc_jnz * (dst * res - one) * (next_pc - (pc + size)), // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
-            "wrong next program counter"
+            f_pc_jnz * (dst * res - one) * (pcup - (pc + size)), // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
+            "wrong pc update"
         );
         ensure_eq!(
             zero,
-            f_pc_jnz * dst * (next_pc - (pc + op1))                  // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
-            + (one - f_pc_jnz) * next_pc                             // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
+            f_pc_jnz * dst * (pcup - (pc + op1))                  // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
+            + (one - f_pc_jnz) * pcup                             // <=> pc_up = {0,1,2} : next_pc = ... // not a conditional jump
                 - (one - f_pc_abs - f_pc_rel - f_pc_jnz) * (pc + size) // <=> pc_up = 0 : next_pc = pc + size // common case
                 - f_pc_abs * res                                     // <=> pc_up = 1 : next_pc = res       // absolute jump
                 - f_pc_rel * (pc + res), //                             <=> pc_up = 2 : next_pc = pc + res  // relative jump
-            "wrong next program counter"
+            "wrong pc update"
         );
 
         Ok(())
     }
 
-    fn ensure_claim(claim: &[F]) -> Result<(), String> {
-        let pc0 = claim[0];
-        let ap0 = claim[1];
-        let fp0 = claim[2];
-        let pc_t = claim[3];
-        let ap_t = claim[4];
-        let pc_ini = claim[5];
-        let ap_ini = claim[6];
-        let pc_fin = claim[7];
-        let ap_fin = claim[8];
+    fn ensure_transition(curr: &[F], next: &[F]) -> Result<(), String> {
+        let pcup = curr[7];
+        let apup = curr[8];
+        let fpup = curr[9];
+        let next_pc = next[0];
+        let next_ap = next[1];
+        let next_fp = next[2];
 
-        let zero = F::zero();
-        // * Check initial and final ap, fp, pc
-        ensure_eq!(zero, ap0 - ap_ini, "wrong initial ap"); // ap0 = ini_ap
-        ensure_eq!(zero, fp0 - ap_ini, "wrong initial fp"); // fp0 = ini_ap
-        ensure_eq!(zero, ap_t - ap_fin, "wrong final ap"); // apT = fin_ap
-        ensure_eq!(zero, pc0 - pc_ini, "wrong initial pc"); // pc0 = ini_pc
-        ensure_eq!(zero, pc_t - pc_fin, "wrong final pc"); // pcT = fin_pc
+        // REGISTERS RELATED
+
+        // * Check next allocation pointer
+        ensure_eq!(next_ap, apup, "wrong next allocation pointer");
+
+        // * Check next frame pointer
+        ensure_eq!(next_fp, fpup, "wrong next frame pointer");
+
+        // * Check next program counter
+        ensure_eq!(next_pc, pcup, "wrong next program counter");
+
+        Ok(())
+    }
+
+    fn ensure_claim(claim: &[F]) -> Result<(), String> {
+        let pc_n = claim[0];
+        let ap_n = claim[1];
+        let pc_fin = claim[3];
+        let ap_fin = claim[4];
+        let perm = claim[5];
+
+        // * Check final pc, ap, and permutation ratio is 1
+        ensure_eq!(pc_n, pc_fin, "wrong final pc");
+        ensure_eq!(ap_n, ap_fin, "wrong final ap");
+        ensure_eq!(F::one(), perm, "sorted memory is not permutation");
 
         Ok(())
     }
@@ -884,21 +997,21 @@ impl<F: FftField> CircuitGate<F> {
 //~ GateType     Initial  |  Memory   Instruction   Aux | (Flags+Transition+Aux)       Claim
 //~    row   ->  0           5i       5i+1          5i+2       5i+3        5i+4        5n-1
 //~             ---------------------------------------------------------------------------------
-//~     0    ·   © prev   =  © prev   pc            fPC_ABS    © pc        © next_pc   © pc\[n-1\]
-//~     1    ·   perm     =  perm     ap            fPC_REL    © ap        © next_ap   © ap\[n-1\]
-//~  c  2    ·   ® copy   =  ® copy   fp            fPC_JNZ    © fp        © next_fp   ® pc_fin
-//~  o  3    ·   ® pc_ini    © m_1    size          fAP_ADD    © size                  ® ap_fin
-//~  l  4    ·   ® ap_ini    © v_1    res           fAP_ONE    © res                   © perm\[n-1\]
-//~  |  5    ·   mem3     =  mem3     dst           fOPC_CALL  © dst
-//~  v  6    ·   val3     =  val3     op1           fOPC_RET   © op1
-//~     7        mem2     =  mem2     op0           fOPC_AEQ   pcup
-//~     8        val2     =  val2     off_dst       fDST_FP    apup
-//~     9        mem1     =  mem1     off_op1       fOP0_FP    fpup
-//~     10       val1     =  val1     off_op0       fOP1_VAL
-//~     11       mem0     =  mem0     adr_dst       fOP1_FP
-//~     12       val0     =  val0     adr_op1       fOP1_AP
-//~     13                            adr_op0       fRES_ADD
-//~     14                            instr         fRES_MUL
+//~     0    ·   © prev   =  © prev   pc            fDST_FP    © pc        © next_pc   © pc\[n-1\]
+//~     1    ·   perm     =  perm     ap            fOP0_FP    © ap        © next_ap   © ap\[n-1\]
+//~  c  2    ·   ® copy   =  ® copy   fp            fOP1_VAL   © fp        © next_fp   ® pc_fin
+//~  o  3    ·   ® pc_ini    © m_1    size          fOP1_FP    © size                  ® ap_fin
+//~  l  4    ·   ® ap_ini    © v_1    res           fOP1_AP    © res                   © perm\[n-1\]
+//~  |  5    ·   mem3     =  mem3     dst           fRES_ADD   © dst
+//~  v  6    ·   val3     =  val3     op1           fRES_MUL   © op1
+//~     7        mem2     =  mem2     op0           fPC_ABS    pcup
+//~     8        val2     =  val2     off_dst       fPC_REL    apup
+//~     9        mem1     =  mem1     off_op1       fPC_JNZ    fpup
+//~     10       val1     =  val1     off_op0       fAP_ADD
+//~     11       mem0     =  mem0     adr_dst       fAP_ONE
+//~     12       val0     =  val0     adr_op1       fOPC_CALL
+//~     13                            adr_op0       fOPC_RET
+//~     14                            instr         fOPC_AEQ
 
 // CONSTRAINTS-RELATED
 
@@ -939,7 +1052,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CairoInitial);
-    const CONSTRAINTS: u32 = 7;
+    const CONSTRAINTS: u32 = 11;
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
@@ -949,11 +1062,8 @@ where
         let copy = witness_curr(2); // constraint for instruction from public input
         let pc_ini = witness_curr(3); // copy from public input
         let ap_ini = witness_curr(4); // copy from public input
-        let pc0 = witness_next(0);
-        let mut adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
-        let mut val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
-        adr.rotate_right(1); // mem-1, mem0, mem1, mem2, mem3
-        val.rotate_right(1); // val-1, val0, val1, val2, val3
+        let adr: Vec<E<F>> = (0..ACC_PER_INS).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
+        let val: Vec<E<F>> = (0..ACC_PER_INS).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
 
         // load address / value pairs from next row
         let pc = witness_next(0);
@@ -972,12 +1082,12 @@ where
         // Initial claim
         let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![ap0 - ap_ini.clone()]; // ap0 = ini_ap
         constraints.push(fp0 - ap_ini); // fp0 = ini_ap
-        constraints.push(pc0 - pc_ini); // pc0 = ini_pc
+        constraints.push(pc.clone() - pc_ini); // pc0 = ini_pc
 
         // check correct duplicate of instruction
         constraints.push(copy - instr.clone());
 
-        for i in 0..4 {
+        for i in 0..ACC_PER_INS - 1 {
             // Continuity of memory addresses
             constraints.push(
                 (adr[i + 1].clone() - adr[i].clone())
@@ -994,10 +1104,10 @@ where
         constraints.push(
             prev * (pc + instr) * (adr_dst + dst) * (adr_op0 + op0) * (adr_op1 + op1)
                 - perm
+                    * (adr[0].clone() + val[0].clone())
                     * (adr[1].clone() + val[1].clone())
                     * (adr[2].clone() + val[2].clone())
-                    * (adr[3].clone() + val[3].clone())
-                    * (adr[4].clone() + val[4].clone()),
+                    * (adr[3].clone() + val[3].clone()),
         );
 
         constraints
@@ -1019,8 +1129,12 @@ where
         let prev = witness_curr(0); // previous partial ratio
         let perm = witness_curr(1); // current partial ratio
         let copy = witness_curr(2); // constraint for instruction from public input
-        let mut adr: Vec<E<F>> = (0..5).map(|i| witness_curr(11 - 2 * i)).collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
-        let mut val: Vec<E<F>> = (0..5).map(|i| witness_curr(12 - 2 * i)).collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
+        let mut adr: Vec<E<F>> = (0..ACC_PER_INS + 1)
+            .map(|i| witness_curr(11 - 2 * i))
+            .collect(); // adr[0] = curr(11), adr[1] = curr(9), adr[2] = curr(7), adr[3] = curr(5), adr[4] = curr[3]
+        let mut val: Vec<E<F>> = (0..ACC_PER_INS + 1)
+            .map(|i| witness_curr(12 - 2 * i))
+            .collect(); // val[0] = curr(12), val[1] = curr(10), val[2] = curr(8), val[3] = curr(6), val[4] = curr[4]
         adr.rotate_right(1); // mem-1, mem0, mem1, mem2, mem3
         val.rotate_right(1); // val-1, val0, val1, val2, val3
 
@@ -1039,7 +1153,7 @@ where
         // Initialize constraints vector
         let mut constraints: Vec<Expr<ConstantExpr<F>>> = vec![copy - instr.clone()]; // check correct duplicate of instruction
 
-        for i in 0..4 {
+        for i in 0..ACC_PER_INS {
             // Continuity of memory addresses
             constraints.push(
                 (adr[i + 1].clone() - adr[i].clone())
@@ -1258,17 +1372,17 @@ where
 
         // * Check next frame pointer
         constraints.push(
-            fpup                                                                   //             next_fp =
-                        - (f_opc_call.clone() * (ap + two())                          // if opcode == 1      : ap + 2
-                        + f_opc_ret.clone() * dst.clone()                                     // if opcode == 2      : dst
-                        + (E::one() - f_opc_call - f_opc_ret) * fp ), // if opcode == 4 or 0 : fp
+            fpup                                               //             next_fp =
+                - (f_opc_call.clone() * (ap + two())           // if opcode == 1      : ap + 2
+                + f_opc_ret.clone() * dst.clone()              // if opcode == 2      : dst
+                + (E::one() - f_opc_call - f_opc_ret) * fp ), // if opcode == 4 or 0 : fp
         );
 
         // * Check next program counter (pc update)
         constraints.push(
             f_pc_jnz.clone()
                 * (dst.clone() * res.clone() - E::one())
-                * (pcup.clone() - (pc.clone() - size.clone())),
+                * (pcup.clone() - (pc.clone() + size.clone())),
         ); // <=> pc_up = 4 and dst = 0 : next_pc = pc + size // no jump
         constraints.push(
             f_pc_jnz.clone() * dst * (pcup.clone() - (pc.clone() + op1))                         // <=> pc_up = 4 and dst != 0 : next_pc = pc + op1  // condition holds
