@@ -408,9 +408,13 @@ impl Variable {
             LookupTable => l.map(|l| l.table),
             Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
             Index(GateType::Generic) => Ok(evals.generic_selector),
-            Index(GateType::CairoInstruction) => Ok(evals.cairo_selector[0]),
-            Index(GateType::CairoTransition) => Ok(evals.cairo_selector[1]),
-            Index(GateType::CairoClaim) => Ok(evals.cairo_selector[2]),
+            Index(GateType::CairoInitial) => Ok(evals.cairo_selector[0]),
+            Index(GateType::CairoMemory) => Ok(evals.cairo_selector[1]),
+            Index(GateType::CairoInstruction) => Ok(evals.cairo_selector[2]),
+            Index(GateType::CairoFlags) => Ok(evals.cairo_selector[3]),
+            Index(GateType::CairoTransition) => Ok(evals.cairo_selector[4]),
+            Index(GateType::CairoAuxiliary) => Ok(evals.cairo_selector[5]),
+            Index(GateType::CairoClaim) => Ok(evals.cairo_selector[6]),
             Coefficient(_) | LookupKindIndex(_) | Index(_) => {
                 Err("Cannot get index evaluation (should have been linearized away)")
             }

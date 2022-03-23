@@ -21,7 +21,7 @@ fn view_witness<F: Field>(witness: &[Vec<F>; COLUMNS]) {
     }
 }
 
-fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
+pub fn view_table<F: Field>(table: &Vec<[F; COLUMNS]>) {
     let rows = table.len();
     for i in 0..rows {
         print!("row {}: [", i);
@@ -68,7 +68,7 @@ fn test_cairo_cs() {
     ];
 
     let mut mem = CairoMemory::<F>::new(F::vec_to_field(&instrs));
-    // Need to know how to find out
+    // TODO(querolita): Need to know how to find out (hints)
     mem.write(F::from(21u32), F::from(41u32)); // beginning of outputs
     mem.write(F::from(22u32), F::from(44u32)); // end of outputs
     mem.write(F::from(23u32), F::from(44u32)); //end of program
@@ -86,7 +86,6 @@ fn test_cairo_cs() {
     // Verify each gate
     let mut row = 0;
     for gate in circuit {
-        println!("{:?}", gate.typ);
         let res = gate.verify_cairo_gate(row, &witness, &cs);
         if res.is_err() {
             println!("{:?}", res);

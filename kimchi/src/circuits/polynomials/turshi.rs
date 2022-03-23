@@ -980,13 +980,13 @@ impl<F: FftField> CircuitGate<F> {
     fn ensure_claim(claim: &[F]) -> Result<(), String> {
         let pc_n = claim[0];
         let ap_n = claim[1];
-        let pc_fin = claim[3];
-        let ap_fin = claim[4];
-        let perm = claim[5];
+        let pc_fin = claim[2];
+        let ap_fin = claim[3];
+        let perm = claim[4];
 
         // * Check final pc, ap, and permutation ratio is 1
-        ensure_eq!(pc_n, pc_fin, "wrong final pc");
-        ensure_eq!(ap_n, ap_fin, "wrong final ap");
+        ensure_eq!(F::zero(), pc_n - pc_fin, "wrong final pc");
+        ensure_eq!(F::zero(), ap_n - ap_fin, "wrong final ap");
         ensure_eq!(F::one(), perm, "sorted memory is not permutation");
 
         Ok(())
@@ -1457,9 +1457,9 @@ where
     fn constraints() -> Vec<E<F>> {
         let pc_n = witness_curr(0);
         let ap_n = witness_curr(1);
-        let pc_fin = witness_curr(3);
-        let ap_fin = witness_curr(4);
-        let perm = witness_curr(5);
+        let pc_fin = witness_curr(2);
+        let ap_fin = witness_curr(3);
+        let perm = witness_curr(4);
 
         // check final ap
         // check final pc
