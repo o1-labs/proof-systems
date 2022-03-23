@@ -20,7 +20,8 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    b_poly, b_poly_coefficients, BatchEvaluationProof, CommitmentCurve, Evaluation, PolyComm,
+    b_poly, b_poly_coefficients, combined_inner_product, BatchEvaluationProof, CommitmentCurve,
+    Evaluation, PolyComm,
 };
 use o1_utils::types::fields::*;
 use oracle::{sponge::ScalarChallenge, FqSponge};
@@ -54,6 +55,8 @@ where
     pub zeta1: ScalarField<G>,
     /// The evaluation f(zeta) - t(zeta) * Z_H(zeta)
     pub ft_eval0: ScalarField<G>,
+    /// Used by the OCaml side
+    pub combined_inner_product: ScalarField<G>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
@@ -359,6 +362,63 @@ where
             ft_eval0
         };
 
+        let combined_inner_product = {
+            let ft_eval0 = vec![ft_eval0];
+            let ft_eval1 = vec![self.ft_eval1];
+
+            #[allow(clippy::type_complexity)]
+            let mut es: Vec<(Vec<Vec<ScalarField<G>>>, Option<usize>)> =
+                polys.iter().map(|(_, e)| (e.clone(), None)).collect();
+            es.push((p_eval.clone(), None));
+            es.push((vec![ft_eval0, ft_eval1], None));
+            es.push((
+                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| e.generic_selector.clone())
+                    .collect::<Vec<_>>(),
+                None,
+            ));
+            es.push((
+                self.evals
+                    .iter()
+                    .map(|e| e.poseidon_selector.clone())
+                    .collect::<Vec<_>>(),
+                None,
+            ));
+            es.extend(
+                (0..COLUMNS)
+                    .map(|c| {
+                        (
+                            self.evals
+                                .iter()
+                                .map(|e| e.w[c].clone())
+                                .collect::<Vec<_>>(),
+                            None,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            es.extend(
+                (0..PERMUTS - 1)
+                    .map(|c| {
+                        (
+                            self.evals
+                                .iter()
+                                .map(|e| e.s[c].clone())
+                                .collect::<Vec<_>>(),
+                            None,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+
+            combined_inner_product::<G>(&evaluation_points, &v, &u, &es, index.srs.g.len())
+        };
+
         let oracles = RandomOracles {
             beta,
             gamma,
@@ -383,6 +443,7 @@ where
             polys,
             zeta1,
             ft_eval0,
+            combined_inner_product,
         })
     }
 }
