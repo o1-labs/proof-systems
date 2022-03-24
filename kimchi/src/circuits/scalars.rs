@@ -200,7 +200,15 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
-        pub cairo_selector: Vec<CamlF>,
+        pub cairo_selector: (
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+        ),
     }
 
     //
@@ -238,13 +246,50 @@ pub mod caml {
                 pe.s[4].iter().cloned().map(Into::into).collect(),
                 pe.s[5].iter().cloned().map(Into::into).collect(),
             );
+            let cairo_selector = (
+                pe.cairo_selector[0]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.cairo_selector[1]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.cairo_selector[2]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.cairo_selector[3]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.cairo_selector[4]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.cairo_selector[5]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.cairo_selector[6]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+            );
             Self {
                 w,
                 z: pe.z.into_iter().map(Into::into).collect(),
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
-                cairo_selector: pe.cairo_selector.into_iter().map(Into::into).collect(),
+                cairo_selector,
             }
         }
     }
@@ -280,7 +325,43 @@ pub mod caml {
                 cpe.s.4.into_iter().map(Into::into).collect(),
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
-
+            let cairo_selector = [
+                cpe.cairo_selector[0]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                cpe.cairo_selector[1]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                cpe.cairo_selector[2]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                cpe.cairo_selector[3]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                cpe.cairo_selector[4]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                cpe.cairo_selector[5]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                cpe.cairo_selector[6]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+            ];
             Self {
                 w,
                 z: cpe.z.into_iter().map(Into::into).collect(),
@@ -288,7 +369,7 @@ pub mod caml {
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
-                cairo_selector: array_init(|_| F::zero()),
+                cairo_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
             }
         }
     }
