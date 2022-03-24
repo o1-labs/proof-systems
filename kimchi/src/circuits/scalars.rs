@@ -200,6 +200,7 @@ pub mod caml {
         ),
         pub generic_selector: Vec<CamlF>,
         pub poseidon_selector: Vec<CamlF>,
+        pub cairo_selector: Vec<CamlF>,
     }
 
     //
