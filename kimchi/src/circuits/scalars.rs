@@ -244,7 +244,7 @@ pub mod caml {
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
-                cairo_selector: array_init(|_| F::zero()),
+                cairo_selector: pe.cairo_selector.into_iter().map(Into::into).collect(),
             }
         }
     }
