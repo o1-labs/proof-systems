@@ -326,37 +326,44 @@ pub mod caml {
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
             let cairo_selector = [
-                cpe.cairo_selector[0]
+                cpe.cairo_selector
+                    .0
                     .iter()
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                cpe.cairo_selector[1]
+                cpe.cairo_selector
+                    .1
                     .iter()
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                cpe.cairo_selector[2]
+                cpe.cairo_selector
+                    .2
                     .iter()
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                cpe.cairo_selector[3]
+                cpe.cairo_selector
+                    .3
                     .iter()
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                cpe.cairo_selector[4]
+                cpe.cairo_selector
+                    .4
                     .iter()
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                cpe.cairo_selector[5]
+                cpe.cairo_selector
+                    .5
                     .iter()
                     .cloned()
                     .map(Into::into)
                     .collect(),
-                cpe.cairo_selector[6]
+                cpe.cairo_selector
+                    .6
                     .iter()
                     .cloned()
                     .map(Into::into)
@@ -369,7 +376,7 @@ pub mod caml {
                 lookup: None,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
                 poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
-                cairo_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                cairo_selector,
             }
         }
     }
