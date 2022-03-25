@@ -326,48 +326,13 @@ pub mod caml {
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
             let cairo_selector = [
-                cpe.cairo_selector
-                    .0
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .1
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .2
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .3
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .4
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .5
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
-                cpe.cairo_selector
-                    .6
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                cpe.cairo_selector.0.iter().map(Into::into).collect(),
+                cpe.cairo_selector.1.iter().map(Into::into).collect(),
+                cpe.cairo_selector.2.iter().map(Into::into).collect(),
+                cpe.cairo_selector.3.iter().map(Into::into).collect(),
+                cpe.cairo_selector.4.iter().map(Into::into).collect(),
+                cpe.cairo_selector.5.iter().map(Into::into).collect(),
+                cpe.cairo_selector.6.iter().map(Into::into).collect(),
             ];
             Self {
                 w,
