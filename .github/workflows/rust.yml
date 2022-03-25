@@ -56,7 +56,7 @@ jobs:
       - name: Enforce clean clippy output
         run: cargo clippy -- -D warnings
 
-      - name: Set up cargo-spec for specifications specification
+      - name: Set up cargo-spec for specifications
         run: |
           cargo install cargo-spec --version 0.3.0
 
@@ -69,7 +69,7 @@ jobs:
         run: |
           cd book/specifications
           cd poly-commitment && make build 
-          
+
       - name: Check that up-to-date specification is checked in
         run: |
           git diff --exit-code
