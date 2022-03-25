@@ -1,13 +1,13 @@
 # Mina hasher
 
-This crate provides an API and framework for Mina hashing.  It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md) that converts it from a sponge into a hash interface.
+This crate provides an API and framework for Mina hashing. It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md) that converts it from a sponge into a hash interface.
 
 ## Hasher interface
 
 The `mina_hasher` crate currently supports creating both the legacy hasher and an experimental kimchi hasher.
 
-* [`create_legacy`] create a legacy hasher
-* [`create_kimchi`] create an experimental kimchi hasher
+- [`create_legacy`] create a legacy hasher
+- [`create_kimchi`] create an experimental kimchi hasher
 
 Here is an example of how to use the hasher interface.
 
@@ -62,7 +62,7 @@ let out = hasher.init_and_hash(1, &Example { x: 82, y: 834 });
 
 ## The `Hashable` trait
 
-In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the [`Hashable`] trait.
+In order to sign something it must be hashed. This framework allows you to define how types are hashed by implementing the [`Hashable`] trait.
 
 For example, if you wanted to create Mina signatures for a `Foo` structure you would do the following.
 
@@ -96,18 +96,17 @@ impl Hashable for Foo {
 **Example: `domain_string` parameterized by structure contents**
 
 Suppose you wanted to hash a non-leaf Merkle tree node, where the
-domain string depends on the height of the node.  This can be implemented like this.
+domain string depends on the height of the node. This can be implemented like this.
 
 ```rust
 use ark_ff::Zero;
-use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
-use mina_curves::pasta::Fp;
+use mina_hasher::{create_legacy, Hash, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
     height: u64,
-    left: Fp,
-    right: Fp,
+    left: Hash,
+    right: Hash,
 }
 
 impl Hashable for ExampleMerkleNode {
@@ -134,8 +133,8 @@ impl Hashable for ExampleMerkleNode {
 let mut hasher = create_legacy::<ExampleMerkleNode>(());
 let node = ExampleMerkleNode {
     height: 3,
-    left: Fp::zero(),
-    right: Fp::zero(),
+    left: Hash::zero(),
+    right: Hash::zero(),
 };
 let out = hasher.hash(&node);
 // Or like this..
@@ -149,13 +148,12 @@ passed when hashing, then it can be implemented like this.
 
 ```rust
 use ark_ff::Zero;
-use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
-use mina_curves::pasta::Fp;
+use mina_hasher::{create_legacy, Hash, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
-    left: Fp,
-    right: Fp,
+    left: Hash,
+    right: Hash,
 }
 
 impl Hashable for ExampleMerkleNode {
@@ -178,12 +176,12 @@ impl Hashable for ExampleMerkleNode {
 // Used like this
 let mut hasher = create_legacy::<ExampleMerkleNode>(0);
 let node1 = ExampleMerkleNode {
-    left: Fp::zero(),
-    right: Fp::zero(),
+    left: Hash::zero(),
+    right: Hash::zero(),
 };
 let node2 = ExampleMerkleNode {
-    left: Fp::zero(),
-    right: Fp::zero(),
+    left: Hash::zero(),
+    right: Hash::zero(),
 };
 let out = hasher.init_and_hash(3 /* height */, &node1);
 let out = hasher.init_and_hash(7 /* height */, &node2);
