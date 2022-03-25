@@ -294,6 +294,126 @@ in order to add zero-knowledge to the protocol.
 ### Lookup
 
 
+Because of our ZK-rows, we can't do the trick in the plookup paper of
+wrapping around to enforce consistency between the sorted lookup columns.
+
+Instead, we arrange the LookupSorted table into columns in a snake-shape.
+
+Like so,
+_   _
+| | | | |
+| | | | |
+|_| |_| |
+
+or, imagining the full sorted array is [ s0, ..., s8 ], like
+
+s0 s4 s4 s8
+s1 s3 s5 s7
+s2 s2 s6 s6
+
+So the direction ("increasing" or "decreasing" (relative to LookupTable)
+is
+if i % 2 = 0 { Increasing } else { Decreasing }
+
+Then, for each i < max_lookups_per_row, if i % 2 = 0, we enforce that the
+last element of LookupSorted(i) = last element of LookupSorted(i + 1),
+and if i % 2 = 1, we enforce that the
+first element of LookupSorted(i) = first element of LookupSorted(i + 1)
+
+Overview of the protocol
+========================
+* We have our initial table `lookup_table`, with our desired values listed.
+* We have the implicit table `lookups(witness)` representing the values looked up in each row
+  of the witness.
+  - This table is initially variable-width, where some rows have no lookups, and others have
+    several.
+  - We explicitly compute this table, and where the width for a particular row is less than the
+    maximum width, we insert a 'dummy' lookup value as many times as we need to to give every
+    row the same number of lookups.
+  - We'll call this padded table `witness_lookups`.
+* We want to generate a `sorted_table` that contains every entry from the concatenated table
+`lookup_table||witness_lookups`, where values are in the same order as `lookup_table`, with all
+duplicates placed next to each other.
+  - There's an edge case around duplicate values in the `lookup_table` itself: these should
+    appear in `sorted_table` at least once each time they appeared in the `lookup_table`.
+  - This ensures that, for any `beta` and for each `i`, the pair `lookup_table[i] + beta *
+    lookup_table[i+1]` corresponds to some distinct `j` such that `sorted_table[j] + beta *
+    sorted_table[j+1]`.
+  - For all other values of `j`, `sorted_table[j] = sorted_table[j+1]`: since we've dealt with
+    all of the 'different' pairs corresponding from moving from one value in `lookup_table` to
+    the next, the only remaining pairs are those corresponding to the duplicates provided by the
+    lookups in `witness_lookups`.
+  - For example, if `lookup_table` is `[0, 1, 2, 3, 4, 5]` and `witness_lookups` is
+    `[0, 0, 0, 2, 2, 4]`, then `sorted_table` is `[0, 0, 0, 0, 1, 2, 2, 2, 3, 4, 4, 5]`, and
+    the differences are
+    `[(0, 0), (0, 0), (0, 0), (0, 1), (1, 2), (2, 2), (2, 2), (2, 3), (3, 4), (4, 4), (4, 5)]`.
+    The entries where the pairs are different are those that match with the `lookup_table`, and
+    the equal pairs can be paired with the `witness_lookups`. This `sorted_table` is computed
+    by the `sorted` function.
+* in order to check the multiset inclusion, we calculate the product over our sorted table:
+  `gamma * (1 + beta) + sorted_table[i] + beta * sorted_table[i+1]`
+  - again, when the adjacent terms `sorted_table[i]` and `sorted_table[i+1]` are equal, this
+    simplifies to `(gamma + sorted_table[i]) * (1 + beta)`
+  - when they are different, there is some `j` such that it equals `gamma * (1 + beta) +
+    lookup_table[i] + beta * lookup_table[i+1]`
+  - using the example above, this becomes
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 0
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    which we can simplify to
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * (gamma + 4) * (1 + beta)
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+* because we said before that each pair corresponds to either a pair in the `lookup_table` or a
+  duplicate from the `witness_table`, the product over the sorted table should equal the
+  product of `gamma * (1 + beta) + lookup_table[i] + beta * lookup_table[i+1]` multiplied by
+  the product of `(gamma + witness_table[i]) * (1 + beta)`, since each term individually
+  cancels out.
+  - using the example above, the `lookup_table` terms become
+    ```ignore
+        gamma * (1 + beta) + 0 + beta * 1
+      * gamma * (1 + beta) + 1 + beta * 2
+      * gamma * (1 + beta) + 2 + beta * 3
+      * gamma * (1 + beta) + 3 + beta * 4
+      * gamma * (1 + beta) + 4 + beta * 5
+    ```
+    and the `witness_table` terms become
+    ```ignore
+        (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 0) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 2) * (1 + beta)
+      * (gamma + 4) * (1 + beta)
+    ```
+
+There is some nuance around table lengths; for example, notice that `witness_table` need not be
+the same length as `lookup_table` (and indeed is not in our implementation, due to multiple
+lookups per row), and that `sorted_table` will always be longer than `lookup_table`, which is
+where we require 'snakifying' to check consistency. Happily, we don't have to perform
+snakifying on `witness_table`, because its contribution above only uses a single term rather
+than a pair of terms.
+
 
 ### Gates
 
@@ -414,6 +534,145 @@ where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next r
 
 
 #### Chacha 
+
+There are four chacha constraint types, corresponding to the four lines in each quarter round.
+
+```
+a += b; d ^= a; d <<<= 16;
+c += d; b ^= c; b <<<= 12;
+a += b; d ^= a; d <<<= 8;
+c += d; b ^= c; b <<<= 7;
+```
+
+or, written without mutation, (and where `+` is mod $2^32$),
+
+```
+a'  = a + b ; d' = (d ⊕ a') <<< 16;
+c'  = c + d'; b' = (b ⊕ c') <<< 12;
+a'' = a' + b'; d'' = (d' ⊕ a') <<< 8;
+c'' = c' + d''; b'' = (c'' ⊕ b') <<< 7;
+```
+
+We lay each line as two rows.
+
+Each line has the form
+
+```
+x += z; y ^= x; y <<<= k
+```
+
+or without mutation,
+
+```
+x' = x + z; y' = (y ⊕ x') <<< k
+```
+
+which we abbreviate as
+
+L(x, x', y, y', z, k)
+
+In general, such a line will be laid out as the two rows
+
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+| x' | y' | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+
+where A_i indicates the i^th nybble (four-bit chunk) of the value A.
+
+$(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).
+
+So the first line `L(a, a', d, d', b, 8)` for example becomes the two rows
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| a | d | b | (d^a')_0 | (d^a')_1 | (d^a')_2 | (d^a')_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
+| a' | d' | (a+b)_8 | (d^a')_4 | (d^a')_5 | (d^a')_6 | (d^a')_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
+
+along with the equations
+
+* $(a+b)_8^2 = (a+b)_8$ (booleanity check)
+* $a' = \sum_{i = 0}^7 (2^4)^i (a+b)_i$
+* $a + b = 2^{32} (a+b)_8 + a'$
+* $d = \sum_{i = 0}^7 (2^4)^i d_i$
+* $d' = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$
+
+The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.
+
+The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.
+We accomplish this as follows.
+
+Let's say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.
+First we'll rotate left by 4 to get
+
+$$A_7, A_0, A_1, \cdots, A_6$$
+
+Rename these as
+$$B_0, \cdots, B_7$$
+
+We now want to left-rotate each $B_i$ by 3.
+
+Let $b_i$ be the low bit of $B_i$.
+Then, the low 3 bits of $B_i$ are
+$(B_i - b_i) / 2$.
+
+The result will thus be
+
+* $2^3 b_0 + (B_7 - b_7)/2$
+* $2^3 b_1 + (B_0 - b_0)/2$
+* $2^3 b_2 + (B_1 - b_1)/2$
+* $\cdots$
+* $2^3 b_7 + (B_6 - b_6)/2$
+
+or re-writing in terms of our original nybbles $A_i$,
+
+* $2^3 a_7 + (A_6 - a_6)/2$
+* $2^3 a_0 + (A_7 - a_7)/2$
+* $2^3 a_1 + (A_0 - a_0)/2$
+* $2^3 a_2 + (A_1 - a_1)/2$
+* $2^3 a_3 + (A_2 - a_2)/2$
+* $2^3 a_4 + (A_3 - a_3)/2$
+* $2^3 a_5 + (A_4 - a_4)/2$
+* $2^3 a_6 + (A_5 - a_5)/2$
+
+For neatness, letting $(x, y, z) = (c', b', d'')$, the first 2 rows for the final line will be:
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
+| x' | _ | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
+
+but then we also need to perform the bit-rotate by 1.
+
+For this we'll add an additional 2 rows. It's probably possible to do it with just 1,
+but I think we'd have to change our plookup setup somehow, or maybe expand the number of columns,
+or allow access to the previous row.
+
+Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be
+
+| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
+| y' | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | lo((y^x')_0) | lo((y^x')_1) | lo((y^x')_2) | lo((y^x')_3) |
+| _ | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | lo((y^x')_4) | lo((y^x')_5) | lo((y^x')_6) | lo((y^x')_7) |
+
+On each of them we'll do the plookups
+
+```
+((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
+((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
+((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
+((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
+```
+
+which checks that $(y^{x'})_i - lo((y^{x'})_i)$ is a nybble,
+which guarantees that the low bit is computed correctly.
+
+There is no need to check nybbleness of $(y^x')_i$ because those will be constrained to
+be equal to the copies of those values from previous rows, which have already been
+constrained for nybbleness (by the lookup in the XOR table).
+
+And we'll check that y' is the sum of the shifted nybbles.
 
 
 
