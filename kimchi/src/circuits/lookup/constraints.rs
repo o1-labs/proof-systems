@@ -418,7 +418,7 @@ pub struct LookupConfiguration<F: FftField> {
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
     /// particular row, so that we can treat each row uniformly as having the same number of
     /// lookups.
-    pub dummy_lookup_value: Vec<F>,
+    pub dummy_lookup_row: Vec<F>,
 }
 
 /// Specifies the lookup constraints as expressions.
