@@ -326,13 +326,13 @@ pub mod caml {
                 cpe.s.5.into_iter().map(Into::into).collect(),
             ];
             let cairo_selector = [
-                cpe.cairo_selector.0.iter().map(Into::into).collect(),
-                cpe.cairo_selector.1.iter().map(Into::into).collect(),
-                cpe.cairo_selector.2.iter().map(Into::into).collect(),
-                cpe.cairo_selector.3.iter().map(Into::into).collect(),
-                cpe.cairo_selector.4.iter().map(Into::into).collect(),
-                cpe.cairo_selector.5.iter().map(Into::into).collect(),
-                cpe.cairo_selector.6.iter().map(Into::into).collect(),
+                cpe.cairo_selector.0.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.1.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.2.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.3.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.4.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.5.into_iter().map(Into::into).collect(),
+                cpe.cairo_selector.6.into_iter().map(Into::into).collect(),
             ];
             Self {
                 w,
