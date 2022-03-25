@@ -71,7 +71,12 @@ fn hasher_pooling_test_vectors_legacy() {
 fn hasher_pooling_test_vectors_legacy_ensure_pool_size() {
     for _ in 0..128 {
         hasher_pooling_test_vectors_legacy();
+        let n_created = LEGACY_HASHER_POOL.n_created();
         // Use 2 here because `hasher_pooling_test_vectors_legacy` test case may run in parallel
-        assert!(LEGACY_HASHER_POOL.n_created() <= 2);
+        assert!(
+            n_created > 0 && n_created <= 2,
+            "n_created value {} is out of expected range",
+            n_created
+        );
     }
 }
