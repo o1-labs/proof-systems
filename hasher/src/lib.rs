@@ -7,6 +7,10 @@ pub mod roinput;
 use ark_ff::PrimeField;
 use mina_curves::pasta::Fp;
 use o1_utils::FieldHelpers;
+pub use poseidon::{
+    new_kimchi as create_kimchi, new_legacy as create_legacy, PoseidonHasherKimchi,
+    PoseidonHasherLegacy,
+};
 pub use roinput::ROInput;
 
 /// The domain parameter trait is used during hashing to convey extra
@@ -162,22 +166,6 @@ fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
         .to_vec();
     bytes.resize(F::size_in_bytes(), 0);
     F::from_bytes(&bytes).expect("invalid domain bytes")
-}
-
-/// Create a legacy hasher context
-pub fn create_legacy<H: Hashable>(domain_param: H::D) -> impl Hasher<H>
-where
-    H::D: DomainParameter,
-{
-    poseidon::new_legacy::<H>(domain_param)
-}
-
-/// Create an experimental kimchi hasher context
-pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> impl Hasher<H>
-where
-    H::D: DomainParameter,
-{
-    poseidon::new_kimchi::<H>(domain_param)
 }
 
 #[cfg(test)]

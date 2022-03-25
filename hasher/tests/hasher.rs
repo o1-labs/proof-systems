@@ -1,13 +1,52 @@
+use lockfree_object_pool::SpinLockObjectPool;
 use mina_curves::pasta::Fp;
-use mina_hasher::{Hashable, Hasher, ROInput};
+use mina_hasher::{Hashable, Hasher, PoseidonHasherLegacy, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::fs::File;
 use std::path::PathBuf;
+use std::sync::{Arc, RwLock};
+
+lazy_static::lazy_static! {
+    static ref LEGACY_HASHER_POOL: LegacyHasherPool = LegacyHasherPool::new();
+}
 
 //
 // Helpers for test vectors
 //
+
+struct LegacyHasherPool {
+    n_created: Arc<RwLock<usize>>,
+    pool: SpinLockObjectPool<PoseidonHasherLegacy<TestVector>>,
+}
+
+impl LegacyHasherPool {
+    pub fn new() -> Self {
+        let n_created = Arc::new(RwLock::new(0));
+        let n_created_clone = n_created.clone();
+        let pool = SpinLockObjectPool::new(
+            move || {
+                println!("creating hasher");
+                let hasher = mina_hasher::create_legacy::<TestVector>(());
+                let mut locked = n_created_clone.write().unwrap();
+                *locked += 1;
+                hasher
+            },
+            |hasher| {
+                hasher.reset();
+            },
+        );
+        Self { n_created, pool }
+    }
+
+    pub fn n_created(&self) -> usize {
+        *self.n_created.read().unwrap()
+    }
+
+    pub fn pool(&self) -> &SpinLockObjectPool<PoseidonHasherLegacy<TestVector>> {
+        &self.pool
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct TestVectors {
@@ -72,4 +111,19 @@ fn hasher_test_vectors_legacy() {
 fn hasher_test_vectors_kimchi() {
     let mut hasher = mina_hasher::create_kimchi::<TestVector>(());
     test_vectors("kimchi.json", &mut hasher);
+}
+
+#[test]
+fn hasher_pooling_test_vectors_legacy() {
+    let mut hasher = LEGACY_HASHER_POOL.pool().pull();
+    test_vectors("legacy.json", &mut *hasher);
+}
+
+#[test]
+fn hasher_pooling_test_vectors_legacy_ensure_pool_size() {
+    for _ in 0..128 {
+        hasher_pooling_test_vectors_legacy();
+        // Use 2 here because `hasher_pooling_test_vectors_legacy` test case may run in parallel
+        assert!(LEGACY_HASHER_POOL.n_created() <= 2);
+    }
 }
