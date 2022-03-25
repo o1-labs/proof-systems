@@ -25,8 +25,7 @@ impl Hashable for Example {
 
     fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
-        roi.append_u32(self.x);
-        roi.append_u64(self.y);
+        roi.append_u32(self.x).append_u64(self.y);
         roi
     }
 
