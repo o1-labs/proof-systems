@@ -1,13 +1,13 @@
 # Mina hasher
 
-This crate provides an API and framework for Mina hashing. It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md) that converts it from a sponge into a hash interface.
+This crate provides an API and framework for Mina hashing.  It is a safe wrapper around Mina's instances of the [Poseidon arithmetic sponge](https://github.com/o1-labs/cryptography-rfcs/blob/master/mina/001-poseidon-sponge.md) that converts it from a sponge into a hash interface.
 
 ## Hasher interface
 
 The `mina_hasher` crate currently supports creating both the legacy hasher and an experimental kimchi hasher.
 
-- [`create_legacy`] create a legacy hasher
-- [`create_kimchi`] create an experimental kimchi hasher
+* [`create_legacy`] create a legacy hasher
+* [`create_kimchi`] create an experimental kimchi hasher
 
 Here is an example of how to use the hasher interface.
 
@@ -62,7 +62,7 @@ let out = hasher.init_and_hash(1, &Example { x: 82, y: 834 });
 
 ## The `Hashable` trait
 
-In order to sign something it must be hashed. This framework allows you to define how types are hashed by implementing the [`Hashable`] trait.
+In order to sign something it must be hashed.  This framework allows you to define how types are hashed by implementing the [`Hashable`] trait.
 
 For example, if you wanted to create Mina signatures for a `Foo` structure you would do the following.
 
@@ -96,7 +96,7 @@ impl Hashable for Foo {
 **Example: `domain_string` parameterized by structure contents**
 
 Suppose you wanted to hash a non-leaf Merkle tree node, where the
-domain string depends on the height of the node. This can be implemented like this.
+domain string depends on the height of the node.  This can be implemented like this.
 
 ```rust
 use ark_ff::Zero;
