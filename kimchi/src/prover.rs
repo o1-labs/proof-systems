@@ -748,23 +748,71 @@ where
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)
+                    //index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)
+                    index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomials(index.max_poly_size)
+                        .eval(zeta)
                 }),
-                w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
-                z: z_poly.eval(zeta, index.max_poly_size),
+                //w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
+                w: array_init(|i| {
+                    witness_poly[i]
+                        .to_chunked_polynomials(index.max_poly_size)
+                        .eval(zeta)
+                }),
+
+                //z: z_poly.eval(zeta, index.max_poly_size),
+                z: z_poly
+                    .to_chunked_polynomials(index.max_poly_size)
+                    .eval(zeta),
+                //eval(zeta, index.max_poly_size),
                 lookup: lookup_evals(zeta),
-                generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
-                poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
+                //generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
+                generic_selector: index
+                    .cs
+                    .genericm
+                    .to_chunked_polynomials(index.max_poly_size)
+                    .eval(zeta),
+
+                //poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
+                poseidon_selector: index
+                    .cs
+                    .psm
+                    .to_chunked_polynomials(index.max_poly_size)
+                    .eval(zeta),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
+                    //    index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
+                    index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomials(index.max_poly_size)
+                        .eval(zeta_omega)
                 }),
-                w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
-                z: z_poly.eval(zeta_omega, index.max_poly_size),
+                //w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
+                w: array_init(|i| {
+                    witness_poly[i]
+                        .to_chunked_polynomials(index.max_poly_size)
+                        .eval(zeta_omega)
+                }),
+
+                //z: z_poly.eval(zeta_omega, index.max_poly_size),
+                z: z_poly
+                    .to_chunked_polynomials(index.max_poly_size)
+                    .eval(zeta_omega),
+
                 lookup: lookup_evals(zeta_omega),
-                generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
-                poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
+                //generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
+                generic_selector: index
+                    .cs
+                    .genericm
+                    .to_chunked_polynomials(index.max_poly_size)
+                    .eval(zeta_omega),
+
+                //poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
+                poseidon_selector: index
+                    .cs
+                    .psm
+                    .to_chunked_polynomials(index.max_poly_size)
+                    .eval(zeta_omega),
             };
 
             [chunked_evals_zeta, chunked_evals_zeta_omega]
@@ -836,10 +884,15 @@ where
                 drop(lookup_table_combined);
 
                 // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
-                f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
+                //f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
+                f.to_chunked_polynomials(index.max_poly_size)
+                    .compress_polynomial(zeta_to_srs_len)
             };
 
-            let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
+            //let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
+            let t_chunked = quotient_poly
+                .to_chunked_polynomials(index.max_poly_size)
+                .compress_polynomial(zeta_to_srs_len);
 
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - ScalarField::<G>::one())
         };
