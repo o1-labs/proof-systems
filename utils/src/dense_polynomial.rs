@@ -1,7 +1,7 @@
 //! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
 use ark_ff::Field;
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use rayon::prelude::*;
 
 use crate::chunked_polynomial::ChunkedPolynomials;
@@ -20,15 +20,6 @@ pub trait ExtendedDensePolynomial<F: Field> {
 
     /// `eval_polynomial(coeffs, x)` evaluates a polynomial given its coefficients `coeffs` and a point `x`.
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
-
-    /// This function evaluates polynomial in chunks.
-    fn eval(&self, elm: F, size: usize) -> Vec<F>;
-
-    /// Multiplies the chunks of a polynomial with powers of zeta^n to make it of degree n-1.
-    /// For example, if a polynomial can be written `f = f0 + x^n f1 + x^2n f2`
-    /// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated
-    /// `f'(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.
-    fn chunk_polynomial(&self, zeta_n: F, n: usize) -> Self;
 
     fn to_chunked_polynomials(&self, size: usize) -> ChunkedPolynomials<DensePolynomial<F>>;
 }
@@ -59,34 +50,6 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         res
     }
 
-    fn eval(&self, elm: F, size: usize) -> Vec<F> {
-        let mut res = vec![];
-        for chunk in self.coeffs.chunks(size) {
-            let eval = Self::from_coefficients_slice(chunk).evaluate(&elm);
-            res.push(eval);
-        }
-        res
-    }
-
-    fn chunk_polynomial(&self, zeta_n: F, n: usize) -> Self {
-        let mut scale = F::one();
-        let mut coeffs = vec![F::zero(); n];
-
-        for chunk in self.coeffs.chunks(n) {
-            for (coeff, chunk_coeff) in coeffs.iter_mut().zip(chunk) {
-                *coeff += scale * chunk_coeff;
-            }
-
-            scale *= zeta_n;
-        }
-
-        while coeffs.last().map_or(false, |c| c.is_zero()) {
-            coeffs.pop();
-        }
-
-        DensePolynomial { coeffs }
-    }
-
     fn to_chunked_polynomials(&self, size: usize) -> ChunkedPolynomials<DensePolynomial<F>> {
         let mut chunk_polys: Vec<DensePolynomial<F>> = vec![];
         for chunk in self.coeffs.chunks(size) {
@@ -107,24 +70,10 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_ff::{One, Zero};
+    use ark_ff::One;
     use ark_poly::{univariate::DensePolynomial, UVPolynomial};
     use mina_curves::pasta::fp::Fp;
 
-    #[test]
-    fn test_eval() {
-        let zero = Fp::zero();
-        let one = Fp::one();
-
-        //1 + x^2 + x^4 + x^6
-        let coeffs = [one, zero, one, zero, one, zero, one, zero];
-        let f = DensePolynomial::from_coefficients_slice(&coeffs);
-        let evals = f.eval(one, 2);
-
-        for i in 0..4 {
-            assert!(evals[i] == one);
-        }
-    }
 
     #[test]
     fn test_chunk() {
