@@ -74,7 +74,6 @@ mod tests {
     use ark_poly::{univariate::DensePolynomial, UVPolynomial};
     use mina_curves::pasta::fp::Fp;
 
-
     #[test]
     fn test_chunk() {
         let one = Fp::one();
@@ -84,7 +83,7 @@ mod tests {
         // 1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7
         let coeffs = [one, one, one, one, one, one, one, one];
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
-        let evals = f.to_chunked_polynomials(2).eval(two);
+        let evals = f.to_chunked_polynomials(2).linearize(two);
         for i in 0..4 {
             assert!(evals[i] == three);
         }

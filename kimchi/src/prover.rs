@@ -708,15 +708,17 @@ where
                 .zip(lookup_sorted_coeffs.as_ref())
                 .zip(index.cs.lookup_constraint_system.as_ref())
                 .map(|((aggreg, sorted), lcs)| LookupEvaluations {
-                    aggreg: aggreg.eval(e, index.max_poly_size),
+                    aggreg: aggreg
+                        .to_chunked_polynomials(index.max_poly_size)
+                        .linearize(e),
                     sorted: sorted
                         .iter()
-                        .map(|c| c.eval(e, index.max_poly_size))
+                        .map(|c| c.to_chunked_polynomials(index.max_poly_size).linearize(e))
                         .collect(),
                     table: lcs
                         .lookup_table
                         .iter()
-                        .map(|p| p.eval(e, index.max_poly_size))
+                        .map(|p| p.to_chunked_polynomials(index.max_poly_size).linearize(e))
                         .rev()
                         .fold(vec![ScalarField::<G>::zero()], |acc, x| {
                             acc.into_iter()
@@ -750,17 +752,17 @@ where
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomials(index.max_poly_size)
-                        .eval(zeta)
+                        .linearize(zeta)
                 }),
                 w: array_init(|i| {
                     witness_poly[i]
                         .to_chunked_polynomials(index.max_poly_size)
-                        .eval(zeta)
+                        .linearize(zeta)
                 }),
 
                 z: z_poly
                     .to_chunked_polynomials(index.max_poly_size)
-                    .eval(zeta),
+                    .linearize(zeta),
 
                 lookup: lookup_evals(zeta),
 
@@ -768,30 +770,30 @@ where
                     .cs
                     .genericm
                     .to_chunked_polynomials(index.max_poly_size)
-                    .eval(zeta),
+                    .linearize(zeta),
 
                 poseidon_selector: index
                     .cs
                     .psm
                     .to_chunked_polynomials(index.max_poly_size)
-                    .eval(zeta),
+                    .linearize(zeta),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
                         .to_chunked_polynomials(index.max_poly_size)
-                        .eval(zeta_omega)
+                        .linearize(zeta_omega)
                 }),
 
                 w: array_init(|i| {
                     witness_poly[i]
                         .to_chunked_polynomials(index.max_poly_size)
-                        .eval(zeta_omega)
+                        .linearize(zeta_omega)
                 }),
 
                 z: z_poly
                     .to_chunked_polynomials(index.max_poly_size)
-                    .eval(zeta_omega),
+                    .linearize(zeta_omega),
 
                 lookup: lookup_evals(zeta_omega),
 
@@ -799,13 +801,13 @@ where
                     .cs
                     .genericm
                     .to_chunked_polynomials(index.max_poly_size)
-                    .eval(zeta_omega),
+                    .linearize(zeta_omega),
 
                 poseidon_selector: index
                     .cs
                     .psm
                     .to_chunked_polynomials(index.max_poly_size)
-                    .eval(zeta_omega),
+                    .linearize(zeta_omega),
             };
 
             [chunked_evals_zeta, chunked_evals_zeta_omega]

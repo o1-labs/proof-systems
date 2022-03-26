@@ -26,7 +26,7 @@ impl<P> ChunkedPolynomials<P> {
 
 impl<F: Field> ChunkedPolynomials<DensePolynomial<F>> {
     /// This function evaluates polynomial in chunks.
-    pub fn eval(&self, elm: F) -> Vec<F> {
+    pub fn linearize(&self, elm: F) -> Vec<F> {
         let mut res: Vec<F> = vec![];
         for poly in self.polys.iter() {
             let eval = poly.evaluate(&elm);
