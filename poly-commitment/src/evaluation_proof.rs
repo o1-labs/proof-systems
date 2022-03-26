@@ -4,6 +4,7 @@ use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
 use o1_utils::{
+    chunked_polynomial::ScaledChunkedPolynomials,
     math,
     types::{BaseField, ScalarField},
 };
@@ -52,7 +53,7 @@ impl<G: CommitmentCurve> SRS<G> {
         g.extend(vec![G::zero(); padding]);
 
         let (p, blinding_factor) = {
-            let mut plnm = ChunkedPolynomial::<ScalarField<G>, &[ScalarField<G>]>::default();
+            let mut plnm = ScaledChunkedPolynomials::<ScalarField<G>, &[ScalarField<G>]>::default();
             // let mut plnm_chunks: Vec<(ScalarField<G>, OptShiftedPolynomial<_>)> = vec![];
 
             let mut omega = ScalarField::<G>::zero();

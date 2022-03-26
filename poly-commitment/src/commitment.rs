@@ -16,7 +16,6 @@ use ark_ff::{
 };
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-    UVPolynomial,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
@@ -422,65 +421,6 @@ pub fn combined_inner_product<G: CommitmentCurve>(
         }
     }
     res
-}
-
-enum OptShiftedPolynomial<P> {
-    Unshifted(P),
-    Shifted(P, usize),
-}
-
-/// A formal sum of the form
-/// `s_0 * p_0 + ... s_n * p_n`
-/// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
-pub struct ChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
-
-impl<F, P> Default for ChunkedPolynomial<F, P> {
-    fn default() -> ChunkedPolynomial<F, P> {
-        ChunkedPolynomial(vec![])
-    }
-}
-
-impl<F, P> ChunkedPolynomial<F, P> {
-    pub fn add_unshifted(&mut self, scale: F, p: P) {
-        self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
-    }
-
-    pub fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
-        self.0
-            .push((scale, OptShiftedPolynomial::Shifted(p, shift)))
-    }
-}
-
-impl<'a, F: Field> ChunkedPolynomial<F, &'a [F]> {
-    pub fn to_dense_polynomial(&self) -> DensePolynomial<F> {
-        let mut res = DensePolynomial::<F>::zero();
-
-        let scaled: Vec<_> = self
-            .0
-            .par_iter()
-            .map(|(scale, segment)| {
-                let scale = *scale;
-                match segment {
-                    OptShiftedPolynomial::Unshifted(segment) => {
-                        let v = segment.par_iter().map(|x| scale * *x).collect();
-                        DensePolynomial::from_coefficients_vec(v)
-                    }
-                    OptShiftedPolynomial::Shifted(segment, shift) => {
-                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
-                        let mut res = vec![F::zero(); *shift];
-                        res.append(&mut v);
-                        DensePolynomial::from_coefficients_vec(res)
-                    }
-                }
-            })
-            .collect();
-
-        for p in scaled {
-            res += &p;
-        }
-
-        res
-    }
 }
 
 /// Contains the evaluation of a polynomial commitment at a set of points.
@@ -901,7 +841,7 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
-    use ark_poly::Polynomial;
+    use ark_poly::{Polynomial, UVPolynomial};
     use array_init::array_init;
     use mina_curves::pasta::{fp::Fp, vesta::Affine as VestaG};
     use oracle::constants::PlonkSpongeConstantsKimchi as SC;

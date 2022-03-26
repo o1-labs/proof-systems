@@ -4,6 +4,8 @@ use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use rayon::prelude::*;
 
+use crate::chunked_polynomial::ChunkedPolynomials;
+
 //
 // ExtendedDensePolynomial trait
 //
@@ -27,6 +29,8 @@ pub trait ExtendedDensePolynomial<F: Field> {
     /// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated
     /// `f'(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.
     fn chunk_polynomial(&self, zeta_n: F, n: usize) -> Self;
+
+    fn to_chunked_polynomials(&self, size: usize) -> ChunkedPolynomials<DensePolynomial<F>>;
 }
 
 impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
@@ -82,6 +86,18 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
 
         DensePolynomial { coeffs }
     }
+
+    fn to_chunked_polynomials(&self, size: usize) -> ChunkedPolynomials<DensePolynomial<F>> {
+        let mut chunk_polys: Vec<DensePolynomial<F>> = vec![];
+        for chunk in self.coeffs.chunks(size) {
+            chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
+        }
+
+        ChunkedPolynomials::<DensePolynomial<F>> {
+            polys: chunk_polys,
+            degree: size,
+        }
+    }
 }
 
 //
@@ -99,12 +115,29 @@ mod tests {
     fn test_eval() {
         let zero = Fp::zero();
         let one = Fp::one();
-        // 1 + x^2 + x^4 + x^8
+
+        //1 + x^2 + x^4 + x^6
         let coeffs = [one, zero, one, zero, one, zero, one, zero];
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
         let evals = f.eval(one, 2);
+
         for i in 0..4 {
             assert!(evals[i] == one);
+        }
+    }
+
+    #[test]
+    fn test_chunk() {
+        let one = Fp::one();
+        let two = one + one;
+        let three = two + one;
+
+        // 1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7
+        let coeffs = [one, one, one, one, one, one, one, one];
+        let f = DensePolynomial::from_coefficients_slice(&coeffs);
+        let evals = f.to_chunked_polynomials(2).eval(two);
+        for i in 0..4 {
+            assert!(evals[i] == three);
         }
     }
 }
