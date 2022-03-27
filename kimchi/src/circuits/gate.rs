@@ -1,17 +1,12 @@
-/*****************************************************************************************************************
+//! This module implements Plonk constraint gate primitive.
 
-This source file implements Plonk constraint gate primitive.
-
-*****************************************************************************************************************/
-
-use crate::circuits::{constraints::ConstraintSystem, domains::EvaluationDomains, wires::*};
+use crate::circuits::{constraints::ConstraintSystem, wires::*};
 use ark_ff::bytes::ToBytes;
-use ark_ff::{FftField, Field};
-use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
+use ark_ff::FftField;
 use num_traits::cast::ToPrimitive;
+use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::collections::{HashMap, HashSet};
 use std::io::{Result as IoResult, Write};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -41,71 +36,11 @@ impl CurrOrNext {
     }
 }
 
-/// A position in the circuit relative to a given row.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct LocalPosition {
-    pub row: CurrOrNext,
-    pub column: usize,
-}
-
-/// Look up a single value in a lookup table. The value may be computed as a linear
-/// combination of locally-accessible cells.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct SingleLookup<F> {
-    table_id: usize,
-    // Linear combination of local-positions
-    pub value: Vec<(F, LocalPosition)>,
-}
-
-/// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
-/// am using `[F; n]` to model a vector of length `n`).
-///
-/// For `i < n`, define `T_i := T.map(|t| t[i]).collect()`. In other words, the table
-/// obtained by taking the `ith` entry of each element of `T`.
-///
-/// In the lookup argument, we perform lookups in `T` by sampling a random challenge
-/// `joint_combiner`, and computing a "combined" lookup table `sum_{i < n} joint_combiner^i T_i`.
-///
-/// To check a vector's membership in this lookup table, we combine the values in that vector
-/// analogously using `joint_combiner`.
-///
-/// This function computes that combined value.
-pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item = &'a F>>(
-    joint_combiner: F,
-    v: I,
-) -> F {
-    v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
-}
-
-impl<F: Field> SingleLookup<F> {
-    /// Evaluate the linear combination specifying the lookup value to a field element.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, eval: G) -> F {
-        self.value
-            .iter()
-            .fold(F::zero(), |acc, (c, p)| acc + *c * eval(*p))
-    }
-}
-
-/// A spec for checking that the given vector belongs to a vector-valued lookup table.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct JointLookup<F> {
-    pub entry: Vec<SingleLookup<F>>,
-}
-
-impl<F: Field> JointLookup<F> {
-    // TODO: Support multiple tables
-    /// Evaluate the combined value of a joint-lookup.
-    pub fn evaluate<G: Fn(LocalPosition) -> F>(&self, joint_combiner: F, eval: &G) -> F {
-        let mut res = F::zero();
-        let mut c = F::one();
-        for s in self.entry.iter() {
-            res += c * s.evaluate(eval);
-            c *= joint_combiner;
-        }
-        res
-    }
-}
-
+/// The different types of gates the system supports.
+/// Note that all the gates are mutually exclusive:
+/// they cannot be used at the same time on single row.
+/// If we were ever to support this feature, we would have to make sure
+/// not to re-use powers of alpha across constraints.
 #[repr(C)]
 #[derive(
     Clone,
@@ -149,238 +84,17 @@ pub enum GateType {
     ChaChaFinal = 10,
 }
 
-/// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize)]
-pub struct LookupInfo<F> {
-    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
-    /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub kinds: Vec<Vec<JointLookup<F>>>,
-    /// A map from the kind of gate (and whether it is the current row or next row) to the lookup
-    /// constraint (given as an index into `kinds`) that should be applied there, if any.
-    pub kinds_map: HashMap<(GateType, CurrOrNext), usize>,
-    /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
-    pub max_per_row: usize,
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: usize,
-    /// An empty vector.
-    empty: Vec<JointLookup<F>>,
-}
-
-fn lookup_kinds<F: Field>() -> Vec<Vec<JointLookup<F>>> {
-    GateType::lookup_kinds()
-        .into_iter()
-        .map(|(x, _)| x)
-        .collect()
-}
-
-fn max_lookups_per_row<F>(kinds: &[Vec<JointLookup<F>>]) -> usize {
-    kinds.iter().fold(0, |acc, x| std::cmp::max(x.len(), acc))
-}
-
-/// Specifies whether a constraint system uses joint lookups. Used to make sure we
-/// squeeze the challenge `joint_combiner` when needed, and not when not needed.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum LookupsUsed {
-    Single,
-    Joint,
-}
-
-impl<F: FftField> LookupInfo<F> {
-    /// Create the default lookup configuration.
-    pub fn create() -> Self {
-        let kinds = lookup_kinds::<F>();
-        let max_per_row = max_lookups_per_row(&kinds);
-        LookupInfo {
-            max_joint_size: kinds.iter().fold(0, |acc0, v| {
-                v.iter()
-                    .fold(acc0, |acc, j| std::cmp::max(acc, j.entry.len()))
-            }),
-
-            kinds_map: GateType::lookup_kinds_map::<F>(),
-            kinds,
-            max_per_row,
-            empty: vec![],
-        }
-    }
-
-    /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn lookup_used(&self, gates: &[CircuitGate<F>]) -> Option<LookupsUsed> {
-        let mut lookups_used = None;
-        for g in gates.iter() {
-            let typ = g.typ;
-
-            for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(v) = self.kinds_map.get(&(typ, *r)) {
-                    if !self.kinds[*v].is_empty() {
-                        return Some(LookupsUsed::Joint);
-                    } else {
-                        lookups_used = Some(LookupsUsed::Single);
-                    }
-                }
-            }
-        }
-        lookups_used
-    }
-
-    /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
-    /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials(
-        &self,
-        domain: EvaluationDomains<F>,
-        gates: &[CircuitGate<F>],
-    ) -> Vec<E<F, D<F>>> {
-        let n = domain.d1.size as usize;
-        let mut res: Vec<_> = self.kinds.iter().map(|_| vec![F::zero(); n]).collect();
-
-        // TODO: is take(n) useful here? I don't see why we need this
-        for (i, gate) in gates.iter().enumerate().take(n) {
-            let typ = gate.typ;
-
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                res[*v][i] = F::one();
-            }
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                res[*v][i + 1] = F::one();
-            }
-        }
-
-        // Actually, don't need to evaluate over domain 8 here.
-        // TODO: so why do it :D?
-        res.into_iter()
-            .map(|v| {
-                E::<F, D<F>>::from_vec_and_domain(v, domain.d1)
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-            })
-            .collect()
-    }
-
-    /// For each row in the circuit, which lookup-constraints should be enforced at that row.
-    pub fn by_row<'a>(&'a self, gates: &[CircuitGate<F>]) -> Vec<&'a Vec<JointLookup<F>>> {
-        let mut kinds = vec![&self.empty; gates.len() + 1];
-        for i in 0..gates.len() {
-            let typ = gates[i].typ;
-
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Curr)) {
-                kinds[i] = &self.kinds[*v];
-            }
-            if let Some(v) = self.kinds_map.get(&(typ, CurrOrNext::Next)) {
-                kinds[i + 1] = &self.kinds[*v];
-            }
-        }
-        kinds
-    }
-}
-
-impl GateType {
-    /// Which lookup-patterns should be applied on which rows.
-    /// Currently there is only the lookup pattern used in the ChaCha rows, and it
-    /// is applied to each ChaCha row and its successor.
-    ///
-    /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
-    /// how these work.
-    #[allow(clippy::type_complexity)]
-    pub fn lookup_kinds<F: Field>() -> Vec<(Vec<JointLookup<F>>, HashSet<(GateType, CurrOrNext)>)> {
-        let curr_row = |column| LocalPosition {
-            row: CurrOrNext::Curr,
-            column,
-        };
-        let chacha_pattern = (0..4)
-            .map(|i| {
-                // each row represents an XOR operation
-                // where l XOR r = o
-                //
-                // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                // - - - l - - - r - - -  o  -  -  -
-                // - - - - l - - - r - -  -  o  -  -
-                // - - - - - l - - - r -  -  -  o  -
-                // - - - - - - l - - - r  -  -  -  o
-                let left = curr_row(3 + i);
-                let right = curr_row(7 + i);
-                let output = curr_row(11 + i);
-                let l = |loc: LocalPosition| SingleLookup {
-                    table_id: 0,
-                    value: vec![(F::one(), loc)],
-                };
-                JointLookup {
-                    entry: vec![l(left), l(right), l(output)],
-                }
-            })
-            .collect();
-
-        let mut chacha_where = HashSet::new();
-        use CurrOrNext::*;
-        use GateType::*;
-
-        for g in &[ChaCha0, ChaCha1, ChaCha2] {
-            for r in &[Curr, Next] {
-                chacha_where.insert((*g, *r));
-            }
-        }
-
-        let one_half = F::from(2u64).inverse().unwrap();
-        let neg_one_half = -one_half;
-        let chacha_final_pattern = (0..4)
-            .map(|i| {
-                let nybble = curr_row(1 + i);
-                let low_bit = curr_row(5 + i);
-                // Check
-                // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
-                let x = SingleLookup {
-                    table_id: 0,
-                    value: vec![(one_half, nybble), (neg_one_half, low_bit)],
-                };
-                JointLookup {
-                    entry: vec![
-                        x.clone(),
-                        x,
-                        SingleLookup {
-                            table_id: 0,
-                            value: vec![],
-                        },
-                    ],
-                }
-            })
-            .collect();
-
-        let mut chacha_final_where = HashSet::new();
-        for r in &[Curr, Next] {
-            chacha_final_where.insert((ChaChaFinal, *r));
-        }
-
-        vec![
-            (chacha_pattern, chacha_where),
-            (chacha_final_pattern, chacha_final_where),
-        ]
-    }
-
-    pub fn lookup_kinds_map<F: Field>() -> HashMap<(GateType, CurrOrNext), usize> {
-        let mut res = HashMap::new();
-        let lookup_kinds = Self::lookup_kinds::<F>();
-        for (i, (_, locs)) in lookup_kinds.into_iter().enumerate() {
-            for (g, r) in locs {
-                if let std::collections::hash_map::Entry::Vacant(e) = res.entry((g, r)) {
-                    e.insert(i);
-                } else {
-                    panic!("Multiple lookup patterns asserted on same row.")
-                }
-            }
-        }
-        res
-    }
-}
-
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
+/// A single gate in a circuit.
 pub struct CircuitGate<F: FftField> {
     /// type of the gate
     pub typ: GateType,
-    /// gate wires
+    /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
-    /// constraints vector
-    // TODO: rename
+    /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub c: Vec<F>,
+    pub coeffs: Vec<F>,
 }
 
 impl<F: FftField> ToBytes for CircuitGate<F> {
@@ -392,8 +106,8 @@ impl<F: FftField> ToBytes for CircuitGate<F> {
             self.wires[i].write(&mut w)?
         }
 
-        (self.c.len() as u8).write(&mut w)?;
-        for x in self.c.iter() {
+        (self.coeffs.len() as u8).write(&mut w)?;
+        for x in self.coeffs.iter() {
             x.write(&mut w)?;
         }
         Ok(())
@@ -405,8 +119,8 @@ impl<F: FftField> CircuitGate<F> {
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate {
             typ: GateType::Zero,
-            c: Vec::new(),
             wires,
+            coeffs: Vec::new(),
         }
     }
 
@@ -417,19 +131,31 @@ impl<F: FftField> CircuitGate<F> {
         row: usize,
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
+        public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
-            Generic => self.verify_generic(row, witness),
+            Generic => self.verify_generic(row, witness, public),
             Poseidon => self.verify_poseidon(row, witness, cs),
             CompleteAdd => self.verify_complete_add(row, witness),
-            VarBaseMul => self.verify_vbmul(row, witness, cs),
+            VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul(row, witness, cs),
             EndoMulScalar => self.verify_endomul_scalar(row, witness, cs),
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => panic!("todo"),
+            // TODO: implement the verification for chacha
+            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
         }
     }
+}
+
+/// A circuit is specified as a series of [CircuitGate].
+#[derive(Serialize)]
+pub struct Circuit<'a, F: FftField>(
+    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
+);
+
+impl<'a, F: FftField> CryptoDigest for Circuit<'a, F> {
+    const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
 }
 
 #[cfg(feature = "ocaml_types")]
@@ -437,7 +163,6 @@ pub mod caml {
     use super::*;
     use crate::circuits::wires::caml::CamlWire;
     use itertools::Itertools;
-    use std::convert::TryInto;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlCircuitGate<F> {
@@ -451,7 +176,7 @@ pub mod caml {
             CamlWire,
             CamlWire,
         ),
-        pub c: Vec<F>,
+        pub coeffs: Vec<F>,
     }
 
     impl<F, CamlF> From<CircuitGate<F>> for CamlCircuitGate<CamlF>
@@ -463,7 +188,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -477,7 +202,7 @@ pub mod caml {
             Self {
                 typ: cg.typ,
                 wires: array_to_tuple(cg.wires),
-                c: cg.c.clone().into_iter().map(Into::into).collect(),
+                coeffs: cg.coeffs.clone().into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -491,7 +216,7 @@ pub mod caml {
             Self {
                 typ: ccg.typ,
                 wires: tuple_to_array(ccg.wires),
-                c: ccg.c.into_iter().map(Into::into).collect(),
+                coeffs: ccg.coeffs.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -529,7 +254,7 @@ pub mod caml {
 // Tests
 //
 
-#[cfg(any(test, feature = "testing"))]
+#[cfg(test)]
 mod tests {
     use super::*;
     use ark_ff::UniformRand as _;
@@ -557,11 +282,11 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, c in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate {
                 typ,
                 wires,
-                c,
+                coeffs,
             }
         }
     }
@@ -575,7 +300,7 @@ mod tests {
             for i in 0..PERMUTS {
                 prop_assert_eq!(cg.wires[i], decoded.wires[i]);
             }
-            prop_assert_eq!(cg.c, decoded.c);
+            prop_assert_eq!(cg.coeffs, decoded.coeffs);
         }
     }
 }

@@ -1,4 +1,4 @@
-//! This source file implements short Weierstrass curve endomorphism optimised variable base
+//! This module implements short Weierstrass curve endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
 //!
 //! EVBSM gate constraints
@@ -29,91 +29,188 @@
 //!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
 //! </pre>
 
-use crate::circuits::expr::{Cache, Column, ConstantExpr, E};
-use crate::circuits::gate::{CurrOrNext, GateType};
-use crate::circuits::wires::COLUMNS;
-use ark_ff::{Field, One};
-use CurrOrNext::*;
+use std::marker::PhantomData;
 
-/// The constraints for endoscaling.
-pub fn constraints<F: Field>() -> Vec<E<F>> {
-    let v = |c| E::cell(c, Curr);
-    let w = |i| v(Column::Witness(i));
+use ark_ff::{FftField, Field, One};
 
-    let b1 = w(11);
-    let b2 = w(12);
-    let b3 = w(13);
-    let b4 = w(14);
+use crate::circuits::constraints::ConstraintSystem;
+use crate::circuits::gate::CircuitGate;
+use crate::circuits::scalars::ProofEvaluations;
+use crate::circuits::wires::GateWires;
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr,
+    expr::{constraints::boolean, prologue::*, Cache, ConstantExpr},
+    gate::GateType,
+    wires::COLUMNS,
+};
 
-    let xt = w(0);
-    let yt = w(1);
+/// Implementation of group endomorphism optimised
+/// variable base scalar multiplication custom Plonk constraints.
+///
+/// EVBSM gate constraints:
+/// * b1*(b1-1) = 0
+/// * b2*(b2-1) = 0
+/// * b3*(b3-1) = 0
+/// * b4*(b4-1) = 0
+/// * ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp
+/// * (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+/// * (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)
+/// * ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr
+/// * (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+/// * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)
+/// * n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+///
+/// The constraints above are derived from the following EC Affine arithmetic equations:
+///
+/// * (xq1 - xp) * s1 = yq1 - yp
+/// * (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp
+/// * (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+///
+/// * (xq2 - xr) * s3 = yq2 - yr
+/// * (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr
+/// * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
+impl<F: FftField> CircuitGate<F> {
+    pub fn create_endomul(wires: GateWires) -> Self {
+        CircuitGate {
+            typ: GateType::EndoMul,
+            wires,
+            coeffs: vec![],
+        }
+    }
 
-    let xs = E::cell(Column::Witness(4), Next);
-    let ys = E::cell(Column::Witness(5), Next);
+    pub fn verify_endomul(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
+        ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-    let xp = w(4);
-    let yp = w(5);
+        let this: [F; COLUMNS] = array_init::array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init::array_init(|i| witness[i][row + 1]);
 
-    let xr = w(7);
-    let yr = w(8);
+        let pt = F::from(123456u64);
 
-    let mut cache = Cache::default();
+        let constants = expr::Constants {
+            alpha: F::zero(),
+            beta: F::zero(),
+            gamma: F::zero(),
+            joint_combiner: F::zero(),
+            mds: vec![],
+            endo_coefficient: cs.endo,
+        };
 
-    let s1 = w(9);
-    let s3 = w(10);
+        let evals: [ProofEvaluations<F>; 2] = [
+            ProofEvaluations::dummy_with_witness_evaluations(this),
+            ProofEvaluations::dummy_with_witness_evaluations(next),
+        ];
 
-    let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
-    let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
-    let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
+        let constraints = EndosclMul::constraints();
+        for (i, c) in constraints.iter().enumerate() {
+            match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
+                Ok(x) => {
+                    if x != F::zero() {
+                        return Err(format!("Bad endo equation {}", i));
+                    }
+                }
+                Err(e) => return Err(format!("evaluation failed: {}", e)),
+            }
+        }
 
-    let yq1 = (b2.clone().double() - E::one()) * yt.clone();
-    let yq2 = (b4.clone().double() - E::one()) * yt;
+        Ok(())
+    }
 
-    let s1_squared = cache.cache(s1.clone().square());
-    let s3_squared = cache.cache(s3.clone().square());
-
-    // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
-    let n = w(6);
-    let n_constraint = (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone())
-        .double()
-        + b4.clone()
-        - E::cell(Column::Witness(6), Next);
-
-    let xp_xr = cache.cache(xp.clone() - xr.clone());
-    let xr_xs = cache.cache(xr.clone() - xs.clone());
-
-    let ys_yr = cache.cache(ys + yr.clone());
-    let yr_yp = cache.cache(yr.clone() + yp.clone());
-
-    vec![
-        // verify booleanity of the scalar bits
-        b1.clone() - b1.square(),
-        b2.clone() - b2.square(),
-        b3.clone() - b3.square(),
-        b4.clone() - b4.square(),
-        // (xq1 - xp) * s1 = yq1 - yp
-        ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
-        // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
-        (((xp.double() - s1_squared.clone()) + xq1.clone())
-            * ((xp_xr.clone() * s1) + yr_yp.clone()))
-            - (yp.double() * xp_xr.clone()),
-        // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
-        yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
-        // (xq2 - xr) * s3 = yq2 - yr
-        ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
-        // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
-        (((xr.double() - s3_squared.clone()) + xq2.clone())
-            * ((xr_xs.clone() * s3) + ys_yr.clone()))
-            - (yr.double() * xr_xs.clone()),
-        // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
-        ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
-        n_constraint,
-    ]
+    pub fn endomul(&self) -> F {
+        if self.typ == GateType::EndoMul {
+            F::one()
+        } else {
+            F::zero()
+        }
+    }
 }
 
-/// The combined constraint for endoscaling.
-pub fn constraint<F: Field>(alpha0: usize) -> E<F> {
-    E::combine_constraints(alpha0, constraints()) * E::cell(Column::Index(GateType::EndoMul), Curr)
+/// Implementation of the EndosclMul gate.
+pub struct EndosclMul<F>(PhantomData<F>);
+
+impl<F> Argument<F> for EndosclMul<F>
+where
+    F: FftField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
+    const CONSTRAINTS: u32 = 11;
+
+    fn constraints() -> Vec<E<F>> {
+        let b1 = witness_curr(11);
+        let b2 = witness_curr(12);
+        let b3 = witness_curr(13);
+        let b4 = witness_curr(14);
+
+        let xt = witness_curr(0);
+        let yt = witness_curr(1);
+
+        let xs = witness_next(4);
+        let ys = witness_next(5);
+
+        let xp = witness_curr(4);
+        let yp = witness_curr(5);
+
+        let xr = witness_curr(7);
+        let yr = witness_curr(8);
+
+        let mut cache = Cache::default();
+
+        let s1 = witness_curr(9);
+        let s3 = witness_curr(10);
+
+        let endo_minus_1 = E::Constant(ConstantExpr::EndoCoefficient - ConstantExpr::one());
+        let xq1 = cache.cache((E::one() + b1.clone() * endo_minus_1.clone()) * xt.clone());
+        let xq2 = cache.cache((E::one() + b3.clone() * endo_minus_1) * xt);
+
+        let yq1 = (b2.clone().double() - E::one()) * yt.clone();
+        let yq2 = (b4.clone().double() - E::one()) * yt;
+
+        let s1_squared = cache.cache(s1.clone().square());
+        let s3_squared = cache.cache(s3.clone().square());
+
+        // n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4
+        let n = witness_curr(6);
+        let n_constraint =
+            (((n.double() + b1.clone()).double() + b2.clone()).double() + b3.clone()).double()
+                + b4.clone()
+                - witness_next(6);
+
+        let xp_xr = cache.cache(xp.clone() - xr.clone());
+        let xr_xs = cache.cache(xr.clone() - xs.clone());
+
+        let ys_yr = cache.cache(ys + yr.clone());
+        let yr_yp = cache.cache(yr.clone() + yp.clone());
+
+        vec![
+            // verify booleanity of the scalar bits
+            boolean(&b1),
+            boolean(&b2),
+            boolean(&b3),
+            boolean(&b4),
+            // (xq1 - xp) * s1 = yq1 - yp
+            ((xq1.clone() - xp.clone()) * s1.clone()) - (yq1 - yp.clone()),
+            // (2*xp – s1^2 + xq1) * ((xp - xr) * s1 + yr + yp) = (xp - xr) * 2*yp
+            (((xp.double() - s1_squared.clone()) + xq1.clone())
+                * ((xp_xr.clone() * s1) + yr_yp.clone()))
+                - (yp.double() * xp_xr.clone()),
+            // (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)
+            yr_yp.square() - (xp_xr.square() * ((s1_squared - xq1) + xr.clone())),
+            // (xq2 - xr) * s3 = yq2 - yr
+            ((xq2.clone() - xr.clone()) * s3.clone()) - (yq2 - yr.clone()),
+            // (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr - xs) * 2*yr
+            (((xr.double() - s3_squared.clone()) + xq2.clone())
+                * ((xr_xs.clone() * s3) + ys_yr.clone()))
+                - (yr.double() * xr_xs.clone()),
+            // (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)
+            ys_yr.square() - (xr_xs.square() * ((s3_squared - xq2) + xs)),
+            n_constraint,
+        ]
+    }
 }
 
 /// The result of performing an endoscaling: the accumulated curve point
@@ -123,8 +220,8 @@ pub struct EndoMulResult<F> {
     pub n: F,
 }
 
-/// Generates the witness values for a series of endoscaling constraints.
-pub fn witness<F: Field + std::fmt::Display>(
+/// Generates the witness_curr values for a series of endoscaling constraints.
+pub fn gen_witness<F: Field + std::fmt::Display>(
     w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     endo: F,

@@ -2,24 +2,26 @@
 name = "mina-signer"
 version = "0.1.0"
 edition = "2021"
+license = "Apache-2.0"
 
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
-oracle = { path = "../oracle" }
 mina-curves = { path = "../curves" }
+mina-hasher = { path = "../hasher" }
+o1-utils = { path = "../utils" }
 
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
-ark-serialize = "0.3.0"
 
 rand = "0.8.0"
-array-init = "2.0.0"
 blake2 = "0.10.0"
 hex = "0.4"
-bitvec = "0.22.3"
+bitvec = "1.0.0"
 sha2 = "0.10.0"
 bs58 = "0.4.0"
-byteordered =  "0.6.0"
-byteorder =  "1.4.3"
+thiserror = "1.0.30"
+
+[dev-dependencies]
+array-init = "2.0.0"

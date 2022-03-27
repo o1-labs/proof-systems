@@ -2,10 +2,28 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
-use crate::{CurvePoint, FieldHelpers, PubKey, ScalarField, SecKey};
+use crate::{CurvePoint, PubKey, ScalarField, SecKey};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use core::fmt;
+use o1_utils::FieldHelpers;
 use rand::{self, CryptoRng, RngCore};
+use thiserror::Error;
+
+/// Keypair error
+#[derive(Error, Debug, Clone, Copy, PartialEq)]
+pub enum KeypairError {
+    /// Invalid secret key hex
+    #[error("invalid secret key hex")]
+    SecretKeyHex,
+    /// Invalid secret key bytes
+    #[error("Invalid secret key bytes")]
+    SecretKeyBytes,
+    /// point not on curve
+    #[error("point not on curve")]
+    NonCurvePoint,
+}
+/// Keypair result
+pub type Result<T> = std::result::Result<T, KeypairError>;
 
 /// Keypair structure
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -38,17 +56,17 @@ impl Keypair {
     }
 
     /// Deserialize a keypair from secret key hex
-    pub fn from_hex(secret_hex: &str) -> Result<Self, &'static str> {
-        let mut bytes: Vec<u8> = hex::decode(secret_hex).map_err(|_| "Invalid secret key hex")?;
+    pub fn from_hex(secret_hex: &str) -> Result<Self> {
+        let mut bytes: Vec<u8> = hex::decode(secret_hex).map_err(|_| KeypairError::SecretKeyHex)?;
         bytes.reverse(); // mina scalars hex format is in big-endian order
 
-        let secret = ScalarField::from_bytes(&bytes).map_err(|_| "Invalid secret key hex")?;
+        let secret = ScalarField::from_bytes(&bytes).map_err(|_| KeypairError::SecretKeyBytes)?;
         let public: CurvePoint = CurvePoint::prime_subgroup_generator()
             .mul(secret)
             .into_affine();
 
         if !public.is_on_curve() {
-            return Err("Point is not on curve");
+            return Err(KeypairError::NonCurvePoint);
         }
 
         // Safe now because we checked point is on the curve
@@ -81,22 +99,22 @@ mod tests {
 
     #[test]
     fn from_hex() {
-        assert_eq!(Keypair::from_hex(""), Err("Invalid secret key hex"));
+        assert_eq!(Keypair::from_hex(""), Err(KeypairError::SecretKeyBytes));
         assert_eq!(
             Keypair::from_hex("1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07"),
-            Err("Invalid secret key hex")
+            Err(KeypairError::SecretKeyHex)
         );
         assert_eq!(
             Keypair::from_hex("0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8"),
-            Err("Invalid secret key hex")
+            Err(KeypairError::SecretKeyHex)
         );
         assert_eq!(
             Keypair::from_hex("g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8"),
-            Err("Invalid secret key hex")
+            Err(KeypairError::SecretKeyHex)
         );
         assert_eq!(
             Keypair::from_hex("dd4244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718"),
-            Err("Invalid secret key hex")
+            Err(KeypairError::SecretKeyBytes)
         );
 
         Keypair::from_hex("164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718")

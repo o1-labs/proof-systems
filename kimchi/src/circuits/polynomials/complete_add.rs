@@ -1,19 +1,27 @@
-//! This implements a complete EC addition gate.
-//! The layout is
-//!
-//! 0   1   2   3   4   5   6   7      8   9      10      11   12   13   14
-//! x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv
-//!
-//! where
-//! - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
-//! - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
-//! The rest of the values are inaccessible from the permutation argument, but
-//! - `same_x` is a boolean that is true iff `x1 == x2`.
-use crate::circuits::expr::{Cache, Column, E};
-use crate::circuits::gate::{CircuitGate, CurrOrNext, GateType};
-use crate::circuits::wires::COLUMNS;
+//! This module implements a complete EC addition gate.
+
+//~ The layout is
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 |  6  |    7   | 8 |   9   |    10   |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:---:|:------:|:-:|:-----:|:-------:|
+//~ | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
+//~
+//~ where
+//~ - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
+//~ - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+//~
+//~ The rest of the values are inaccessible from the permutation argument, but
+//~ - `same_x` is a boolean that is true iff `x1 == x2`.
+//~
+use std::marker::PhantomData;
+
+use crate::circuits::{
+    argument::{Argument, ArgumentType},
+    expr::{prologue::*, Cache},
+    gate::{CircuitGate, GateType},
+    wires::COLUMNS,
+};
 use ark_ff::{FftField, Field, One};
-use CurrOrNext::*;
 
 /// This enforces that
 ///
@@ -26,7 +34,45 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
     vec![z_inv * z.clone() - (E::one() - r.clone()), r * z]
 }
 
-/// This function uses the constraints
+//~ The following constraints are generated:
+//~
+//~ constraint 1:
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
+//~
+//~ constraint 2:
+//~
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $w_{7} \cdot x_{0}$
+//~
+//~ constraint 3:
+//~
+//~ * $x_{0} = w_{2} - w_{0}$
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{2} = w_{0} \cdot w_{0}$
+//~ * $w_{7} \cdot (2 \cdot w_{8} \cdot w_{1} - 2 \cdot x_{2} - x_{2}) + (\mathbb{F}(1) - w_{7}) \cdot (x_{0} \cdot w_{8} - x_{1})$
+//~
+//~ constraint 4:
+//~
+//~ * $w_{0} + w_{2} + w_{4} - w_{8} \cdot w_{8}$
+//~
+//~ constraint 5:
+//~
+//~ * $w_{8} \cdot (w_{0} - w_{4}) - w_{1} - w_{5}$
+//~
+//~ constraint 6:
+//~
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{1} \cdot (w_{7} - w_{6})$
+//~
+//~ constraint 7:
+//~
+//~ * $x_{1} = w_{3} - w_{1}$
+//~ * $x_{1} \cdot w_{9} - w_{6}$
+//~
+
+/// Implementation of the CompleteAdd gate
+/// It uses the constraints
 ///
 ///   (x2 - x1) * s = y2 - y1
 ///   s^2 = x1 + x2 + x3
@@ -41,131 +87,136 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-pub fn constraint<F: Field>(alpha0: usize) -> (usize, E<F>) {
-    // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
-    let v = |c| E::cell(c, Curr);
-    let w = |i| v(Column::Witness(i));
+pub struct CompleteAdd<F>(PhantomData<F>);
 
-    let x1 = w(0);
-    let y1 = w(1);
-    let x2 = w(2);
-    let y2 = w(3);
-    let x3 = w(4);
-    let y3 = w(5);
+impl<F> Argument<F> for CompleteAdd<F>
+where
+    F: FftField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
+    const CONSTRAINTS: u32 = 7;
 
-    let inf = w(6);
-    // same_x is 1 if x1 == x2, 0 otherwise
-    let same_x = w(7);
+    fn constraints() -> Vec<E<F>> {
+        // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
+        let x1 = witness_curr(0);
+        let y1 = witness_curr(1);
+        let x2 = witness_curr(2);
+        let y2 = witness_curr(3);
+        let x3 = witness_curr(4);
+        let y3 = witness_curr(5);
 
-    let s = w(8);
+        let inf = witness_curr(6);
+        // same_x is 1 if x1 == x2, 0 otherwise
+        let same_x = witness_curr(7);
 
-    // This variable is used to constrain inf
-    let inf_z = w(9);
+        let s = witness_curr(8);
 
-    // This variable is used to constrain same_x
-    let x21_inv = w(10);
+        // This variable is used to constrain inf
+        let inf_z = witness_curr(9);
 
-    let mut cache = Cache::default();
+        // This variable is used to constrain same_x
+        let x21_inv = witness_curr(10);
 
-    let x21 = cache.cache(x2.clone() - x1.clone());
-    let y21 = cache.cache(y2 - y1.clone());
+        let mut cache = Cache::default();
 
-    // same_x is now constrained
-    let mut res = zero_check(x21.clone(), x21_inv, same_x.clone());
+        let x21 = cache.cache(x2.clone() - x1.clone());
+        let y21 = cache.cache(y2 - y1.clone());
 
-    // this constrains s so that
-    // if same_x:
-    //   2 * s * y1 = 3 * x1^2
-    // else:
-    //   (x2 - x1) * s = y2 - y1
-    {
-        let x1_squared = cache.cache(x1.clone() * x1.clone());
-        let dbl_case = s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
-        let add_case = x21 * s.clone() - y21.clone();
+        // same_x is now constrained
+        let mut res = zero_check(x21.clone(), x21_inv, same_x.clone());
 
-        res.push(same_x.clone() * dbl_case + (E::one() - same_x.clone()) * add_case);
+        // this constrains s so that
+        // if same_x:
+        //   2 * s * y1 = 3 * x1^2
+        // else:
+        //   (x2 - x1) * s = y2 - y1
+        {
+            let x1_squared = cache.cache(x1.clone() * x1.clone());
+            let dbl_case =
+                s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
+            let add_case = x21 * s.clone() - y21.clone();
+
+            res.push(same_x.clone() * dbl_case + (E::one() - same_x.clone()) * add_case);
+        }
+
+        // Unconditionally constrain
+        //
+        // s^2 = x1 + x2 + x3
+        //
+        // This constrains x3.
+        res.push(x1.clone() + x2 + x3.clone() - s.clone() * s.clone());
+
+        // Unconditionally constrain
+        // y3 = -y1 + s(x1 - x3)
+        //
+        // This constrains y3.
+        res.push(s * (x1 - x3) - y1 - y3);
+
+        // It only remains to constrain inf
+        //
+        // The result is the point at infinity only if x1 == x2 but y1 != y2. I.e.,
+        //
+        // inf = same_x && !(y1 == y2)
+        //
+        // We can do this using a modified version of the zero_check constraints
+        //
+        // Let Y = (y1 == y2).
+        //
+        // The zero_check constraints for Y (introducing a new z_inv variable) would be
+        //
+        // (y2 - y1) Y = 0
+        // (y2 - y1) z_inv = 1 - Y
+        //
+        // By definition,
+        //
+        // inf = same_x * (1 - Y) = same_x - Y same_x
+        //
+        // rearranging gives
+        //
+        // Y same_x = same_x - inf
+        //
+        // so multiplying the above constraints through by same_x yields constraints on inf.
+        //
+        // (y2 - y1) same_x Y = 0
+        // (y2 - y1) same_x z_inv = inf
+        //
+        // i.e.,
+        //
+        // (y2 - y1) (same_x - inf) = 0
+        // (y2 - y1) same_x z_inv = inf
+        //
+        // Now, since z_inv was an arbitrary variable, unused elsewhere, we'll set
+        // inf_z to take on the value of same_x * z_inv, and thus we have equations
+        //
+        // (y2 - y1) (same_x - inf) = 0
+        // (y2 - y1) inf_z = inf
+        //
+        // Let's check that these equations are correct.
+        //
+        // Case 1: [y1 == y2]
+        //   In this case the expected result is inf = 0, since for the result to be the point at
+        //   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order
+        //   curves).
+        //
+        //   y2 - y1 = 0, so the second equation becomes inf = 0, which is correct.
+        //
+        //   We can set inf_z = 0 in this case.
+        //
+        // Case 2: [y1 != y2]
+        //   In this case, the expected result is 1 if x1 == x2, and 0 if x1 != x2.
+        //   I.e., inf = same_x.
+        //
+        //   y2 - y1 != 0, so the first equation implies same_x - inf = 0.
+        //   I.e., inf = same_x, as desired.
+        //
+        //   In this case, we set
+        //   inf_z = if same_x then 1 / (y2 - y1) else 0
+
+        res.push(y21.clone() * (same_x - inf.clone()));
+        res.push(y21 * inf_z - inf);
+
+        res
     }
-
-    // Unconditionally constrain
-    //
-    // s^2 = x1 + x2 + x3
-    //
-    // This constrains x3.
-    res.push(x1.clone() + x2 + x3.clone() - s.clone() * s.clone());
-
-    // Unconditionally constrain
-    // y3 = -y1 + s(x1 - x3)
-    //
-    // This constrains y3.
-    res.push(s * (x1 - x3) - y1 - y3);
-
-    // It only remains to constrain inf
-    //
-    // The result is the point at infinity only if x1 == x2 but y1 != y2. I.e.,
-    //
-    // inf = same_x && !(y1 == y2)
-    //
-    // We can do this using a modified version of the zero_check constraints
-    //
-    // Let Y = (y1 == y2).
-    //
-    // The zero_check constraints for Y (introducing a new z_inv variable) would be
-    //
-    // (y2 - y1) Y = 0
-    // (y2 - y1) z_inv = 1 - Y
-    //
-    // By definition,
-    //
-    // inf = same_x * (1 - Y) = same_x - Y same_x
-    //
-    // rearranging gives
-    //
-    // Y same_x = same_x - inf
-    //
-    // so multiplying the above constraints through by same_x yields constraints on inf.
-    //
-    // (y2 - y1) same_x Y = 0
-    // (y2 - y1) same_x z_inv = inf
-    //
-    // i.e.,
-    //
-    // (y2 - y1) (same_x - inf) = 0
-    // (y2 - y1) same_x z_inv = inf
-    //
-    // Now, since z_inv was an arbitrary variable, unused elsewhere, we'll set
-    // inf_z to take on the value of same_x * z_inv, and thus we have equations
-    //
-    // (y2 - y1) (same_x - inf) = 0
-    // (y2 - y1) inf_z = inf
-    //
-    // Let's check that these equations are correct.
-    //
-    // Case 1: [y1 == y2]
-    //   In this case the expected result is inf = 0, since for the result to be the point at
-    //   infinity we need y1 = -y2 (note here we assume y1 != 0, which is the case for prime order
-    //   curves).
-    //
-    //   y2 - y1 = 0, so the second equation becomes inf = 0, which is correct.
-    //
-    //   We can set inf_z = 0 in this case.
-    //
-    // Case 2: [y1 != y2]
-    //   In this case, the expected result is 1 if x1 == x2, and 0 if x1 != x2.
-    //   I.e., inf = same_x.
-    //
-    //   y2 - y1 != 0, so the first equation implies same_x - inf = 0.
-    //   I.e., inf = same_x, as desired.
-    //
-    //   In this case, we set
-    //   inf_z = if same_x then 1 / (y2 - y1) else 0
-
-    res.push(y21.clone() * (same_x - inf.clone()));
-    res.push(y21 * inf_z - inf);
-
-    (
-        res.len(),
-        v(Column::Index(GateType::CompleteAdd)) * E::combine_constraints(alpha0, res),
-    )
 }
 
 impl<F: FftField> CircuitGate<F> {

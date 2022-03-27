@@ -1,6 +1,7 @@
+pub mod constants;
 pub mod pasta;
+pub mod permutation;
 pub mod poseidon;
-pub mod rndoracle;
 pub mod sponge;
 
 use ark_ff::Field;

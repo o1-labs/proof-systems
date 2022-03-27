@@ -22,28 +22,12 @@ mina-curves = { path = "../curves" }
 # for ocaml
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { path = "../ocaml/ocaml-gen", optional = true }
-syn = { version = "1.0.76", optional = true }
 
-# for export_test_vectors
-num-bigint = "0.4.0"
+[dev-dependencies]
 serde_json = "1.0"
 hex = "0.4"
 ark-serialize = "0.3.0"
 
-[dev-dependencies]
-hex = "0.4"
-
 [features]
-ocaml_types = [ "ocaml", "ocaml-gen", "syn" ]
-
-# for test vectors
-default = ["3w"]
-3w = [ ]
-5w = [ ]
-3 = [ ]
-
-[[bin]]
-name = "export_test_vectors"
-test = false
-bench = false
-path = "tests/export_test_vectors/export_test_vectors.rs"
+default = []
+ocaml_types = [ "ocaml", "ocaml-gen", ]

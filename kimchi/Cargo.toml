@@ -15,17 +15,16 @@ ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 array-init = "2.0.0"
 blake2 = "0.10.0"
-colored = "2.0.0"
 num-derive = "0.3"
 num-traits = "0.2"
 itertools = "0.10.3"
 rand = "0.8.0"
 rand_core = "0.6.3"
 rayon = "1.5.0"
-rmp-serde = "0.15.5"
+rmp-serde = "1.0.0"
 serde = "1.0.130"
 serde_with = "1.10.0"
-sprs = "0.11.0"
+thiserror = "1.0.30"
 
 commitment_dlog = { path = "../poly-commitment" }
 groupmap = { path = "../groupmap" }
@@ -41,6 +40,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 [dev-dependencies]
 proptest = "1.0.0"
 proptest-derive = "0.3.0"
+colored = "2.0.0"
 
 # benchmarks
 criterion = "0.3"

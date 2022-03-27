@@ -1,8 +1,4 @@
-/*****************************************************************************************************************
-
-This source file implements Plonk prover polynomial evaluations primitive.
-
-*****************************************************************************************************************/
+//! This module implements Plonk prover polynomial evaluations primitive.
 
 use crate::circuits::wires::*;
 use ark_ff::{FftField, Field, Zero};
