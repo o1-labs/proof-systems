@@ -5,6 +5,7 @@ members = [
     "groupmap",
     "hasher",
     "kimchi",
+    "circuit-construction",
     "ocaml/ocaml-gen",
     "ocaml/ocaml-gen/derive",
     "oracle",
