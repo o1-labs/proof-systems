@@ -276,7 +276,7 @@ where
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => ScalarField::<G>::zero(),
                 Some(lcs) => {
-                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_row.iter())
+                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_entry.iter())
                 }
             };
             CombinedEntry(x)

@@ -418,7 +418,7 @@ pub struct LookupConfiguration<F: FftField> {
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
     /// particular row, so that we can treat each row uniformly as having the same number of
     /// lookups.
-    pub dummy_lookup_row: Vec<F>,
+    pub dummy_lookup_entry: Vec<F>,
 }
 
 /// Specifies the lookup constraints as expressions.
@@ -461,7 +461,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
 
         // combine the columns of the dummy lookup row
         let dummy_lookup: ConstantExpr<F> = configuration
-            .dummy_lookup_row
+            .dummy_lookup_entry
             .iter()
             .rev()
             .fold(ConstantExpr::zero(), |acc, x| {

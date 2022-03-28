@@ -344,14 +344,14 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                 let lookup_table = lookup_tables.into_iter().next().unwrap();
 
                 // get the last entry in each column of each table
-                let dummy_lookup_row: Vec<F> =
+                let dummy_lookup_entry: Vec<F> =
                     lookup_table.iter().map(|col| col[col.len() - 1]).collect();
 
                 // pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
 
-                for (mut col, dummy) in lookup_table.into_iter().zip(&dummy_lookup_row) {
+                for (mut col, dummy) in lookup_table.into_iter().zip(&dummy_lookup_entry) {
                     // pad each column to the size of the domain
                     let padding = (0..(d1_size - col.len())).map(|_| dummy);
                     col.extend(padding);
@@ -370,7 +370,7 @@ impl<F: FftField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_used,
                         max_lookups_per_row: lookup_info.max_per_row as usize,
                         max_joint_size: lookup_info.max_joint_size,
-                        dummy_lookup_row,
+                        dummy_lookup_entry,
                     },
                 })
             }
