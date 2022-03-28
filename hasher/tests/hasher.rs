@@ -26,7 +26,7 @@ impl Hashable for TestVector {
         let mut roi = ROInput::new();
         // For hashing we only care about the input part
         for input in &self.input {
-            roi.append_field(Fp::from_hex(input).expect("failed to deserialize field element"))
+            roi.append_field(Fp::from_hex(input).expect("failed to deserialize field element"));
         }
         roi
     }

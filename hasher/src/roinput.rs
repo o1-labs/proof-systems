@@ -73,47 +73,55 @@ impl ROInput {
     }
 
     /// Append a `Hashable` input
-    pub fn append_hashable(&mut self, input: impl Hashable) {
+    pub fn append_hashable(&mut self, input: impl Hashable) -> &mut Self {
         self.append_roinput(input.to_roinput());
+        self
     }
 
     /// Append another random oracle input
-    pub fn append_roinput(&mut self, roi: ROInput) {
+    pub fn append_roinput(&mut self, roi: ROInput) -> &mut Self {
         self.fields = [self.fields.clone(), roi.fields].concat();
         self.bits.extend(roi.bits);
+        self
     }
 
     /// Append a base field element
-    pub fn append_field(&mut self, f: Fp) {
+    pub fn append_field(&mut self, f: Fp) -> &mut Self {
         self.fields.push(f);
+        self
     }
 
     /// Append a scalar field element
-    pub fn append_scalar(&mut self, s: Fq) {
+    pub fn append_scalar(&mut self, s: Fq) -> &mut Self {
         // mina scalars are 255 bytes
         let bytes = s.to_bytes();
         let bits = &bytes.as_bits::<Lsb0>()[..Fq::size_in_bits()];
         self.bits.extend(bits);
+        self
     }
 
     /// Append a single bit
-    pub fn append_bool(&mut self, b: bool) {
+    pub fn append_bool(&mut self, b: bool) -> &mut Self {
         self.bits.push(b);
+        self
     }
 
     /// Append bytes
-    pub fn append_bytes(&mut self, bytes: &[u8]) {
+    pub fn append_bytes(&mut self, bytes: &[u8]) -> &mut Self {
         self.bits.extend_from_bitslice(bytes.as_bits::<Lsb0>());
+        self
     }
 
     /// Append a 32-bit unsigned integer
-    pub fn append_u32(&mut self, x: u32) {
+    pub fn append_u32(&mut self, x: u32) -> &mut Self {
         self.append_bytes(&x.to_le_bytes());
+        self
     }
 
     /// Append a 64-bit unsigned integer
-    pub fn append_u64(&mut self, x: u64) {
+    pub fn append_u64(&mut self, x: u64) -> &mut Self {
         self.append_bytes(&x.to_le_bytes());
+        self
     }
 
     /// Serialize random oracle input to bytes
@@ -198,11 +206,11 @@ mod tests {
     #[test]
     fn append_five_bits() {
         let mut roi: ROInput = ROInput::new();
-        roi.append_bool(false);
-        roi.append_bool(true);
-        roi.append_bool(false);
-        roi.append_bool(false);
-        roi.append_bool(true);
+        roi.append_bool(false)
+            .append_bool(true)
+            .append_bool(false)
+            .append_bool(false)
+            .append_bool(true);
         assert!(roi.bits.len() == 5);
         assert!(roi.bits.as_raw_slice() == [0x12]);
     }
