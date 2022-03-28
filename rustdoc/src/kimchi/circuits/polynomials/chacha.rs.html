@@ -636,155 +636,147 @@
 <span id="631">631</span>
 <span id="632">632</span>
 <span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements the cha-cha constraints, which are rather simple aside form the lookups.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements the ChaCha constraints.</span>
 
-<span class="doccomment">//! There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! a += b; d ^= a; d &lt;&lt;&lt;= 16;</span>
-<span class="doccomment">//! c += d; b ^= c; b &lt;&lt;&lt;= 12;</span>
-<span class="doccomment">//! a += b; d ^= a; d &lt;&lt;&lt;= 8;</span>
-<span class="doccomment">//! c += d; b ^= c; b &lt;&lt;&lt;= 7;</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! or, written without mutation, (and where + is mod 2**32),</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! a&#39;  = a + b ; d&#39; = (d ^ a&#39;) &lt;&lt;&lt; 16;</span>
-<span class="doccomment">//! c&#39;  = c + d&#39;; b&#39; = (b ^ c&#39;) &lt;&lt;&lt; 12;</span>
-<span class="doccomment">//! a&#39;&#39; = a&#39; + b&#39;; d&#39;&#39; = (d&#39; ^ a&#39;) &lt;&lt;&lt; 8;</span>
-<span class="doccomment">//! c&#39;&#39; = c&#39; + d&#39;&#39;; b&#39;&#39; = (c&#39;&#39; ^ b&#39;) &lt;&lt;&lt; 7;</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! We lay each line as two rows.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Each line has the form</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! x += z; y ^= x; y &lt;&lt;&lt;= k</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! or without mutation,</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! x&#39; = x + z; y&#39; = (y ^ x&#39;) &lt;&lt;&lt; k</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! which we abbreviate as</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! L(x, x&#39;, y, y&#39;, z, k).</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! In general, such a line will be laid out as the two rows</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! x  y  z       (y^x&#39;)_0 (y^x&#39;)_1 (y^x&#39;)_2 (y^x&#39;)_3 (x+z)_0 (x+z)_1 (x+z)_2 (x+z)_3 y_0 y_1 y_2 y_3</span>
-<span class="doccomment">//! x&#39; y&#39; (x+z)_8 (y^x&#39;)_4 (y^x&#39;)_5 (y^x&#39;)_6 (y^x&#39;)_7 (x+z)_4 (x+z)_5 (x+z)_6 (x+z)_7 y_4 y_5 y_6 y_7</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! where A_i indicates the i^th nybble (four-bit chunk) of the value A.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! (x+z)_8 is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! So the first line L(a, a&#39;, d, d&#39;, b, 8) for example becomes the two rows</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! a  d  b       (d^a&#39;)_0 (d^a&#39;)_1 (d^a&#39;)_2 (d^a&#39;)_3 (a+b)_0 (a+b)_1 (a+b)_2 (a+b)_3 d_0 d_1 d_2 d_3</span>
-<span class="doccomment">//! a&#39; d&#39; (a+b)_8 (d^a&#39;)_4 (d^a&#39;)_5 (d^a&#39;)_6 (d^a&#39;)_7 (a+b)_4 (a+b)_5 (a+b)_6 (a+b)_7 d_4 d_5 d_6 d_7</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! along with the equations</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! (a+b)_8^2 = (a+b)_8  [booleanity check]</span>
-<span class="doccomment">//! a&#39; = sum_{i = 0}^7 (2^4)^i (a+b)_i;</span>
-<span class="doccomment">//! a + b = 2^32 (a+b)_8 + a&#39;;</span>
-<span class="doccomment">//! d = sum_{i = 0}^7 (2^4)^i d_i</span>
-<span class="doccomment">//! d&#39; = sum_{i = 0}^7 (2^4)^{(i + 4) mod 8} (a+b)_i</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The (i + 4) mod 8 rotates the nybbles left by 4, which means bit-rotating by 4*4 = 16</span>
-<span class="doccomment">//! as desired.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.</span>
-<span class="doccomment">//! We accomplish this as follows.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Let&#39;s say we want to rotate the nybbles A_0, ..., A_7 left by 7.</span>
-<span class="doccomment">//! First we&#39;ll rotate left by 4 to get</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! A_7, A_0, A_1, ..., A_6</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Rename these as</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! B_0, ..., B_7.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! We now want to left-rotate each B_i by 3.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Let b_i be the low bit of B_i.</span>
-<span class="doccomment">//! Then, the low 3 bits of B_i are</span>
-<span class="doccomment">//! (B_i - b_i) / 2.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The result will thus be</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! 2^3 b_0 + (B_7 - b_7)/2,</span>
-<span class="doccomment">//! 2^3 b_1 + (B_0 - b_0)/2,</span>
-<span class="doccomment">//! 2^3 b_2 + (B_1 - b_1)/2,</span>
-<span class="doccomment">//!     ...</span>
-<span class="doccomment">//! 2^3 b_7 + (B_6 - b_6)/2,</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! or re-writing in terms of our original nybbles A_i,</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! 2^3 a_7 + (A_6 - a_6)/2,</span>
-<span class="doccomment">//! 2^3 a_0 + (A_7 - a_7)/2,</span>
-<span class="doccomment">//! 2^3 a_1 + (A_0 - a_0)/2,</span>
-<span class="doccomment">//! 2^3 a_2 + (A_1 - a_1)/2,</span>
-<span class="doccomment">//! 2^3 a_3 + (A_2 - a_2)/2,</span>
-<span class="doccomment">//! 2^3 a_4 + (A_3 - a_3)/2,</span>
-<span class="doccomment">//! 2^3 a_5 + (A_4 - a_4)/2,</span>
-<span class="doccomment">//! 2^3 a_6 + (A_5 - a_5)/2,</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! For neatness, letting (x, y, z) = (c&#39;, b&#39;, d&#39;&#39;), the first 2 rows for the final</span>
-<span class="doccomment">//! line will be,</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//! x  y  z       (y^x&#39;)_0 (y^x&#39;)_1 (y^x&#39;)_2 (y^x&#39;)_3 (x+z)_0 (x+z)_1 (x+z)_2 (x+z)_3 y_0 y_1 y_2 y_3</span>
-<span class="doccomment">//! x&#39; _  (x+z)_8 (y^x&#39;)_4 (y^x&#39;)_5 (y^x&#39;)_6 (y^x&#39;)_7 (x+z)_4 (x+z)_5 (x+z)_6 (x+z)_7 y_4 y_5 y_6 y_7</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! but then we also need to perform the bit-rotate by 1.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! For this we&#39;ll add an additional 2 rows. It&#39;s probably possible to do it with just 1,</span>
-<span class="doccomment">//! but I think we&#39;d have to change our plookup setup somehow, or maybe expand the number of columns,</span>
-<span class="doccomment">//! or allow access to the previous row.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Let lo(n) be the low bit of the nybble n. The 2 rows will be</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! y&#39; (y^x&#39;)_0 (y^x&#39;)_1 (y^x&#39;)_2 (y^x&#39;)_3 lo((y^x&#39;)_0) lo((y^x&#39;)_1) lo((y^x&#39;)_2) lo((y^x&#39;)_3)</span>
-<span class="doccomment">//! _  (y^x&#39;)_4 (y^x&#39;)_5 (y^x&#39;)_6 (y^x&#39;)_7 lo((y^x&#39;)_4) lo((y^x&#39;)_5) lo((y^x&#39;)_6) lo((y^x&#39;)_7)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! On each of them we&#39;ll do the plookups</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```ignore</span>
-<span class="doccomment">//! ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR</span>
-<span class="doccomment">//! ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR</span>
-<span class="doccomment">//! ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR</span>
-<span class="doccomment">//! ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! which checks that ((y^x&#39;)_i - lo((y^x&#39;)_i)) is a nybble,</span>
-<span class="doccomment">//! which guarantees that the low bit is computed correctly.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! There is no need to check nybbleness of (y^x&#39;)_i because those will be constrained to</span>
-<span class="doccomment">//! be equal to the copies of those values from previous rows, which have already been</span>
-<span class="doccomment">//! constrained for nybbleness (by the lookup in the XOR table).</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! And we&#39;ll check that y&#39; is the sum of the shifted nybbles.</span>
-<span class="doccomment">//!</span>
+<span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~ a += b; d ^= a; d &lt;&lt;&lt;= 16;</span>
+<span class="comment">//~ c += d; b ^= c; b &lt;&lt;&lt;= 12;</span>
+<span class="comment">//~ a += b; d ^= a; d &lt;&lt;&lt;= 8;</span>
+<span class="comment">//~ c += d; b ^= c; b &lt;&lt;&lt;= 7;</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
+<span class="comment">//~ or, written without mutation, (and where `+` is mod $2^32$),</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~ a&#39;  = a + b ; d&#39; = (d ⊕ a&#39;) &lt;&lt;&lt; 16;</span>
+<span class="comment">//~ c&#39;  = c + d&#39;; b&#39; = (b ⊕ c&#39;) &lt;&lt;&lt; 12;</span>
+<span class="comment">//~ a&#39;&#39; = a&#39; + b&#39;; d&#39;&#39; = (d&#39; ⊕ a&#39;) &lt;&lt;&lt; 8;</span>
+<span class="comment">//~ c&#39;&#39; = c&#39; + d&#39;&#39;; b&#39;&#39; = (c&#39;&#39; ⊕ b&#39;) &lt;&lt;&lt; 7;</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
+<span class="comment">//~ We lay each line as two rows.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Each line has the form</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~ x += z; y ^= x; y &lt;&lt;&lt;= k</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
+<span class="comment">//~ or without mutation,</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~ x&#39; = x + z; y&#39; = (y ⊕ x&#39;) &lt;&lt;&lt; k</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
+<span class="comment">//~ which we abbreviate as</span>
+<span class="comment">//~</span>
+<span class="comment">//~ L(x, x&#39;, y, y&#39;, z, k)</span>
+<span class="comment">//~</span>
+<span class="comment">//~ In general, such a line will be laid out as the two rows</span>
+<span class="comment">//~</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
+<span class="comment">//~ | x | y | z | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |</span>
+<span class="comment">//~ | x&#39; | y&#39; | (x+z)_8 | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ where A_i indicates the i^th nybble (four-bit chunk) of the value A.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ $(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).</span>
+<span class="comment">//~</span>
+<span class="comment">//~ So the first line `L(a, a&#39;, d, d&#39;, b, 8)` for example becomes the two rows</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
+<span class="comment">//~ | a | d | b | (d^a&#39;)_0 | (d^a&#39;)_1 | (d^a&#39;)_2 | (d^a&#39;)_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |</span>
+<span class="comment">//~ | a&#39; | d&#39; | (a+b)_8 | (d^a&#39;)_4 | (d^a&#39;)_5 | (d^a&#39;)_6 | (d^a&#39;)_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ along with the equations</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * $(a+b)_8^2 = (a+b)_8$ (booleanity check)</span>
+<span class="comment">//~ * $a&#39; = \sum_{i = 0}^7 (2^4)^i (a+b)_i$</span>
+<span class="comment">//~ * $a + b = 2^{32} (a+b)_8 + a&#39;$</span>
+<span class="comment">//~ * $d = \sum_{i = 0}^7 (2^4)^i d_i$</span>
+<span class="comment">//~ * $d&#39; = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.</span>
+<span class="comment">//~ We accomplish this as follows.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Let&#39;s say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.</span>
+<span class="comment">//~ First we&#39;ll rotate left by 4 to get</span>
+<span class="comment">//~</span>
+<span class="comment">//~ $$A_7, A_0, A_1, \cdots, A_6$$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Rename these as</span>
+<span class="comment">//~ $$B_0, \cdots, B_7$$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ We now want to left-rotate each $B_i$ by 3.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Let $b_i$ be the low bit of $B_i$.</span>
+<span class="comment">//~ Then, the low 3 bits of $B_i$ are</span>
+<span class="comment">//~ $(B_i - b_i) / 2$.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The result will thus be</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * $2^3 b_0 + (B_7 - b_7)/2$</span>
+<span class="comment">//~ * $2^3 b_1 + (B_0 - b_0)/2$</span>
+<span class="comment">//~ * $2^3 b_2 + (B_1 - b_1)/2$</span>
+<span class="comment">//~ * $\cdots$</span>
+<span class="comment">//~ * $2^3 b_7 + (B_6 - b_6)/2$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ or re-writing in terms of our original nybbles $A_i$,</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * $2^3 a_7 + (A_6 - a_6)/2$</span>
+<span class="comment">//~ * $2^3 a_0 + (A_7 - a_7)/2$</span>
+<span class="comment">//~ * $2^3 a_1 + (A_0 - a_0)/2$</span>
+<span class="comment">//~ * $2^3 a_2 + (A_1 - a_1)/2$</span>
+<span class="comment">//~ * $2^3 a_3 + (A_2 - a_2)/2$</span>
+<span class="comment">//~ * $2^3 a_4 + (A_3 - a_3)/2$</span>
+<span class="comment">//~ * $2^3 a_5 + (A_4 - a_4)/2$</span>
+<span class="comment">//~ * $2^3 a_6 + (A_5 - a_5)/2$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ For neatness, letting $(x, y, z) = (c&#39;, b&#39;, d&#39;&#39;)$, the first 2 rows for the final line will be:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
+<span class="comment">//~ | x | y | z | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |</span>
+<span class="comment">//~ | x&#39; | _ | (x+z)_8 | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ but then we also need to perform the bit-rotate by 1.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ For this we&#39;ll add an additional 2 rows. It&#39;s probably possible to do it with just 1,</span>
+<span class="comment">//~ but I think we&#39;d have to change our plookup setup somehow, or maybe expand the number of columns,</span>
+<span class="comment">//~ or allow access to the previous row.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be</span>
+<span class="comment">//~</span>
+<span class="comment">//~ | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |</span>
+<span class="comment">//~ |---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|</span>
+<span class="comment">//~ | y&#39; | (y^x&#39;)_0 | (y^x&#39;)_1 | (y^x&#39;)_2 | (y^x&#39;)_3 | lo((y^x&#39;)_0) | lo((y^x&#39;)_1) | lo((y^x&#39;)_2) | lo((y^x&#39;)_3) |</span>
+<span class="comment">//~ | _ | (y^x&#39;)_4 | (y^x&#39;)_5 | (y^x&#39;)_6 | (y^x&#39;)_7 | lo((y^x&#39;)_4) | lo((y^x&#39;)_5) | lo((y^x&#39;)_6) | lo((y^x&#39;)_7) |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ On each of them we&#39;ll do the plookups</span>
+<span class="comment">//~</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~ ((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR</span>
+<span class="comment">//~ ((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR</span>
+<span class="comment">//~ ((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR</span>
+<span class="comment">//~ ((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR</span>
+<span class="comment">//~ ```</span>
+<span class="comment">//~</span>
+<span class="comment">//~ which checks that $(y^{x&#39;})_i - lo((y^{x&#39;})_i)$ is a nybble,</span>
+<span class="comment">//~ which guarantees that the low bit is computed correctly.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ There is no need to check nybbleness of $(y^x&#39;)_i$ because those will be constrained to</span>
+<span class="comment">//~ be equal to the copies of those values from previous rows, which have already been</span>
+<span class="comment">//~ constrained for nybbleness (by the lookup in the XOR table).</span>
+<span class="comment">//~</span>
+<span class="comment">//~ And we&#39;ll check that y&#39; is the sum of the shifted nybbles.</span>
+<span class="comment">//~</span>
 
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
 
