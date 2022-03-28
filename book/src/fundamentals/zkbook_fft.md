@@ -155,77 +155,77 @@ f(x_{n - 1}) &= c_0 + c_1x_{n - 1} + \ldots + c_{n - 1}x_{n - 1}^{n - 1}, \\
 $$
 which can be rewritten as a matrix vector product.
 $$
-     \begin{bmatrix}
-         f(x_0) \\
-         f(x_1) \\
-         \vdots \\
-         f(x_{n - 1})
-     \end{bmatrix}
-     =
-     \begin{bmatrix}
-         1 & x_0 & \cdots & x_0^{n - 1} \\
-         1 & x_1 & \cdots & x_1^{n - 1} \\
-         \vdots & \vdots & \ddots & \vdots\\
-         1 & x_{n - 1} & \cdots & x_{n - 1}^{n - 1} \\
-     \end{bmatrix}
-    \times
-     \begin{bmatrix}
-         c_{0} \\
-         c_{1} \\
-         \vdots \\
-         c_{n - 1}
-     \end{bmatrix}
+\begin{bmatrix}
+    f(x_0) \\
+    f(x_1) \\
+    \vdots \\
+    f(x_{n - 1})
+\end{bmatrix}
+=
+\begin{bmatrix}
+    1 & x_0 & \cdots & x_0^{n - 1} \\
+    1 & x_1 & \cdots & x_1^{n - 1} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    1 & x_{n - 1} & \cdots & x_{n - 1}^{n - 1} \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+    c_{0} \\
+    c_{1} \\
+    \vdots \\
+    c_{n - 1}
+\end{bmatrix}
 $$
 This $n \times n$ matrix is a Vandermonde matrix and it just so happens that square Vandermonde matrices are invertible, iff the $x_i$ are unique.  Since we purposely selected our $x_i$ to be the powers of $\omega$, a primitive $n$-th root of unity, by definition $x_i = \omega^i$ are unique.
 
 Therefore, to compute the polynomial given the corresponding array of evaluations (i.e. interpolation) we can solve for the polynomial's coefficients using the inverse of the matrix.
 $$
-     \begin{bmatrix}
-         c_{0} \\
-         c_{1} \\
-         \vdots \\
-         c_{n - 1}
-     \end{bmatrix}
-     =
-     \begin{bmatrix}
-         1 & 1 & \cdots & 1^{n - 1} \\
-         1 & \omega & \cdots & \omega^{n - 1} \\
-         \vdots & \vdots & \ddots & \vdots\\
-         1 & \omega^{n - 1} & \cdots & \omega^{(n - 1)(n - 1)} \\
-     \end{bmatrix}^{-1}
-    \times
-     \begin{bmatrix}
-         f(1) \\
-         f(\omega) \\
-         \vdots \\
-         f(\omega_{n - 1})
-     \end{bmatrix}
+\begin{bmatrix}
+    c_{0} \\
+    c_{1} \\
+    \vdots \\
+    c_{n - 1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+    1 & 1 & \cdots & 1^{n - 1} \\
+    1 & \omega & \cdots & \omega^{n - 1} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    1 & \omega^{n - 1} & \cdots & \omega^{(n - 1)(n - 1)} \\
+\end{bmatrix}^{-1}
+\times
+\begin{bmatrix}
+    f(1) \\
+    f(\omega) \\
+    \vdots \\
+    f(\omega^{n - 1})
+\end{bmatrix}
 $$
 All we need now is the inverse of this matrix, which is slightly complicated to compute.  I'm going to skip it for now, but if you have the details please make a pull request.
 
 Substituting in the inverse matrix we obtain the equation for interpolation.
 $$
-     \begin{bmatrix}
-         c_{0} \\
-         c_{1} \\
-         \vdots \\
-         c_{n - 1}
-     \end{bmatrix}
-     =
-     \frac{1}{n}
-     \begin{bmatrix}
-         1 & 1 & \cdots & 1^{n - 1} \\
-         1 & \omega^{-1} & \cdots & \omega^{-(n - 1)} \\
-         \vdots & \vdots & \ddots & \vdots\\
-         1 & \omega^{-(n - 1)} & \cdots & \omega^{-(n - 1)(n - 1)} \\
-     \end{bmatrix}
-    \times
-     \begin{bmatrix}
-         f(1) \\
-         f(\omega) \\
-         \vdots \\
-         f(\omega_{n - 1})
-     \end{bmatrix}
+\begin{bmatrix}
+    c_{0} \\
+    c_{1} \\
+    \vdots \\
+    c_{n - 1}
+\end{bmatrix}
+=
+\frac{1}{n}
+\begin{bmatrix}
+    1 & 1 & \cdots & 1^{n - 1} \\
+    1 & \omega^{-1} & \cdots & \omega^{-(n - 1)} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    1 & \omega^{-(n - 1)} & \cdots & \omega^{-(n - 1)(n - 1)} \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+    f(1) \\
+    f(\omega) \\
+    \vdots \\
+    f(\omega^{n - 1})
+\end{bmatrix}
 $$
 Observe that this equation is nearly identical to the original equation for evaluation, execept with the following substitution.
 $$
