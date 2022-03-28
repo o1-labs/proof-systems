@@ -100,13 +100,13 @@ domain string depends on the height of the node.  This can be implemented like t
 
 ```rust
 use ark_ff::Zero;
-use mina_hasher::{create_legacy, Hash, Hashable, Hasher, ROInput};
+use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
     height: u64,
-    left: Hash,
-    right: Hash,
+    left: Fp,
+    right: Fp,
 }
 
 impl Hashable for ExampleMerkleNode {
@@ -133,8 +133,8 @@ impl Hashable for ExampleMerkleNode {
 let mut hasher = create_legacy::<ExampleMerkleNode>(());
 let node = ExampleMerkleNode {
     height: 3,
-    left: Hash::zero(),
-    right: Hash::zero(),
+    left: Fp::zero(),
+    right: Fp::zero(),
 };
 let out = hasher.hash(&node);
 // Or like this..
@@ -148,12 +148,12 @@ passed when hashing, then it can be implemented like this.
 
 ```rust
 use ark_ff::Zero;
-use mina_hasher::{create_legacy, Hash, Hashable, Hasher, ROInput};
+use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
-    left: Hash,
-    right: Hash,
+    left: Fp,
+    right: Fp,
 }
 
 impl Hashable for ExampleMerkleNode {
@@ -176,12 +176,12 @@ impl Hashable for ExampleMerkleNode {
 // Used like this
 let mut hasher = create_legacy::<ExampleMerkleNode>(0);
 let node1 = ExampleMerkleNode {
-    left: Hash::zero(),
-    right: Hash::zero(),
+    left: Fp::zero(),
+    right: Fp::zero(),
 };
 let node2 = ExampleMerkleNode {
-    left: Hash::zero(),
-    right: Hash::zero(),
+    left: Fp::zero(),
+    right: Fp::zero(),
 };
 let out = hasher.init_and_hash(3 /* height */, &node1);
 let out = hasher.init_and_hash(7 /* height */, &node2);

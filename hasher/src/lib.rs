@@ -3,11 +3,11 @@
 
 pub mod poseidon;
 pub mod roinput;
+pub use mina_curves::pasta::Fp;
+pub use roinput::ROInput;
 
 use ark_ff::PrimeField;
-pub use mina_curves::pasta::Fp as Hash;
 use o1_utils::FieldHelpers;
-pub use roinput::ROInput;
 
 /// The domain parameter trait is used during hashing to convey extra
 /// arguments to domain string generation.  It is also used by generic signing code.
@@ -95,7 +95,7 @@ pub trait Hashable: Clone {
 /// Example usage
 ///
 /// ```rust
-/// use mina_hasher::{create_legacy, Hash, Hashable, Hasher, ROInput};
+/// use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 ///
 /// #[derive(Clone)]
 /// struct Something;
@@ -115,7 +115,7 @@ pub trait Hashable: Clone {
 /// }
 ///
 /// let mut hasher = create_legacy::<Something>(123);
-/// let output: Hash = hasher.hash(&Something { });
+/// let output: Fp = hasher.hash(&Something { });
 /// ```
 ///
 pub trait Hasher<H: Hashable> {
@@ -130,10 +130,10 @@ pub trait Hasher<H: Hashable> {
     fn update(&mut self, input: &H) -> &mut dyn Hasher<H>;
 
     /// Obtain has result output
-    fn digest(&mut self) -> Hash;
+    fn digest(&mut self) -> Fp;
 
     /// Hash input and obtain result output
-    fn hash(&mut self, input: &H) -> Hash {
+    fn hash(&mut self, input: &H) -> Fp {
         self.reset();
         self.update(input);
         let output = self.digest();
@@ -142,7 +142,7 @@ pub trait Hasher<H: Hashable> {
     }
 
     /// Initialize state, hash input and obtain result output
-    fn init_and_hash(&mut self, domain_param: H::D, input: &H) -> Hash {
+    fn init_and_hash(&mut self, domain_param: H::D, input: &H) -> Fp {
         self.init(domain_param);
         self.update(input);
         let output = self.digest();

@@ -1,4 +1,4 @@
-use mina_hasher::{Hash, Hashable, Hasher, ROInput};
+use mina_hasher::{Fp, Hashable, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::fs::File;
@@ -26,7 +26,7 @@ impl Hashable for TestVector {
         let mut roi = ROInput::new();
         // For hashing we only care about the input part
         for input in &self.input {
-            roi.append_field(Hash::from_hex(input).expect("failed to deserialize field element"))
+            roi.append_field(Fp::from_hex(input).expect("failed to deserialize field element"))
         }
         roi
     }
@@ -49,7 +49,7 @@ fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
     // execute test vectors
     for test_vector in test_vectors.test_vectors {
         let expected_output =
-            Hash::from_hex(&test_vector.output).expect("failed to deserialize field element");
+            Fp::from_hex(&test_vector.output).expect("failed to deserialize field element");
 
         // hash & check against expect output
         let output = hasher.hash(&test_vector);
