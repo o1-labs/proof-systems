@@ -1,5 +1,4 @@
-use mina_curves::pasta::Fp;
-use mina_hasher::{Hashable, Hasher, ROInput};
+use mina_hasher::{Fp, Hashable, Hasher, ROInput};
 use o1_utils::FieldHelpers;
 use serde::Deserialize;
 use std::fs::File;
