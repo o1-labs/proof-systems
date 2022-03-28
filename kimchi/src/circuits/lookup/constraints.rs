@@ -444,8 +444,8 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
     let gammabeta1 =
         E::<F>::Constant(ConstantExpr::Gamma * (ConstantExpr::Beta + ConstantExpr::one()));
 
-    // the nominator part in the multiset check of plookup
-    let nominator = {
+    // the numerator part in the multiset check of plookup
+    let numerator = {
         // to toggle dummy queries when we do not have any lookups in a row
         // (1 minus the sum of the lookup selectors)
         let non_lookup_indicator = {
@@ -512,7 +512,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
                 .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
         };
 
-        // f part of the nominator
+        // f part of the numerator
         let f_chunk = {
             let dummy_rows = non_lookup_indicator * f_term(&vec![]);
 
@@ -524,12 +524,12 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
                 .fold(dummy_rows, |acc, x| acc + x)
         };
 
-        // t part of the nominator
+        // t part of the numerator
         let t_chunk = gammabeta1.clone()
             + E::cell(Column::LookupTable, Curr)
             + E::beta() * E::cell(Column::LookupTable, Next);
 
-        // return the nominator
+        // return the numerator
         f_chunk * t_chunk
     };
 
@@ -576,9 +576,9 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
-    // L(i) * denominator = L(i-1) * nominator
+    // L(i) * denominator = L(i-1) * numerator
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
-        - E::cell(Column::LookupAggreg, Curr) * nominator;
+        - E::cell(Column::LookupAggreg, Curr) * numerator;
 
     let num_rows = d1.size();
     let num_lookup_rows = num_rows - ZK_ROWS - 1;
