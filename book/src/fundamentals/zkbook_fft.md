@@ -227,7 +227,7 @@ $$
     f(\omega^{n - 1})
 \end{bmatrix}
 $$
-Observe that this equation is nearly identical to the original equation for evaluation, execept with the following substitution.
+Observe that this equation is nearly identical to the original equation for evaluation, except with the following substitution.
 $$
 \omega^i \Rightarrow \frac{1}{n}\omega^{-1i}
 $$
