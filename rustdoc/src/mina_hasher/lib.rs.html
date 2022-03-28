@@ -248,8 +248,6 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
 
@@ -449,9 +447,7 @@
 
             <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
-                <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>);
-                <span class="ident">roi</span>.<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">y</span>);
-
+                <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">x</span>).<span class="ident">append_u64</span>(<span class="self">self</span>.<span class="ident">y</span>);
                 <span class="ident">roi</span>
             }
 
@@ -498,5 +494,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (5f3700105 2022-03-22)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ab0c2e18d 2022-03-27)" ></div>
 </body></html>
