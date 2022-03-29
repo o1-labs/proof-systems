@@ -1001,7 +1001,8 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::circuits::scalars::caml::CamlProofEvaluations;
+    use crate::proof::caml::CamlProofEvaluations;
+    use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
