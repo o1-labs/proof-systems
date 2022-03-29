@@ -169,10 +169,13 @@ where
         )
         .interpolate();
 
-        //~ 5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
+        //~ 5. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
 
-        //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
+        //~ 6. Absorb the commitment to the public polynomial with the Fq-Sponge.
+        //~    Note: unlike the original PLONK protocol,
+        //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
+        //~    This is why we need to absorb the commitment to the public polynomial at this point.
         fq_sponge.absorb_g(&public_comm.unshifted);
 
         //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
@@ -981,7 +984,7 @@ where
             .collect::<Vec<_>>();
 
         //~ 44. Then, include:
-        //~     - the negated public polynomial (TODO: why?)
+        //~     - the negated public polynomial
         //~     - the ft polynomial
         //~     - the permutation aggregation polynomial z polynomial
         //~     - the generic selector
