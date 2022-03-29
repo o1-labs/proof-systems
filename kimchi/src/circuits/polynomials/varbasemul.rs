@@ -31,6 +31,8 @@ use crate::circuits::{
 //~ If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we
 //~ represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.
 //~
+//~ (Notation remark: point $Q$ has nothing to do with the order $q$ of the field)
+//~
 //~ The original algorithm that is being used can be found in the Section 3.1 of <https://arxiv.org/pdf/math/0208038.pdf>,
 //~ which can perform the above operation using 1 multiplication, 2 squarings and 2 divisions (one more squaring)
 //~ if $P=Q$), thanks to the fact that computing the $Y$-coordinate of the intermediate addition is not required.
@@ -80,7 +82,8 @@ use crate::circuits::{
 //~ Let us call `Input` the point with coordinates `(xI, yI)` and
 //~ `Target` is the point being added with coordinates `(xT, yT)`.
 //~ Then `Output` will be the point with coordinates `(xO, yO)` resulting from `O = ( I ± T ) + I`
-//~ Not to be confused with the point at infinity.
+//~
+//~ (Notation remark: do not confuse `(xO, yO)` with the point at infinity)
 //~
 //~ In each step of the algorithm, we consider the following elliptic curves affine arithmetic equations:
 //~

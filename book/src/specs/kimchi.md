@@ -745,8 +745,10 @@ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple
 elliptic curve over $\mathbb{F}_q$ in Weierstrass form is represented by the set of points $(x,y)$ that
 satisfy the following equation with $a,b\in\mathbb{F}_q$:
 $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
-If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve E(\mathbb{F}_q), the algorithm we
+If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we
 represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.
+
+(Remark: point $Q$ has nothing to do with the order $q$ of the field)
 
 The original algorithm that is being used can be found in the Section 3.1 of <https://arxiv.org/pdf/math/0208038.pdf>,
 which can perform the above operation using 1 multiplication, 2 squarings and 2 divisions (one more squaring)
