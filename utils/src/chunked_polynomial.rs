@@ -1,30 +1,16 @@
-use ark_ff::{Field, Zero};
-use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_ff::Field;
+use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial};
 
-use rayon::prelude::*;
+/// This struct contains multiple chunk polynomials with degree `size-1`.
+pub struct ChunkedPolynomial<F: Field> {
+    /// The chunk polynomials.
+    pub polys: Vec<DensePolynomial<F>>,
 
-#[derive(Clone)]
-pub struct ChunkedPolynomial<P> {
-    pub polys: Vec<P>,
-    pub chunk_degree: usize,
+    /// Each chunk polynomial has degree `size-1`.
+    pub size: usize,
 }
 
-impl<P> Default for ChunkedPolynomial<P> {
-    fn default() -> ChunkedPolynomial<P> {
-        ChunkedPolynomial {
-            polys: vec![],
-            chunk_degree: 0,
-        }
-    }
-}
-
-impl<P> ChunkedPolynomial<P> {
-    pub fn add_chunk(&mut self, p: P) {
-        self.polys.push(p)
-    }
-}
-
-impl<F: Field> ChunkedPolynomial<DensePolynomial<F>> {
+impl<F: Field> ChunkedPolynomial<F> {
     /// This function evaluates polynomial in chunks.
     pub fn evaluate_chunks(&self, elm: F) -> Vec<F> {
         let mut res: Vec<F> = vec![];
@@ -41,7 +27,7 @@ impl<F: Field> ChunkedPolynomial<DensePolynomial<F>> {
     /// `f'(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.
     pub fn linearize(&self, zeta_n: F) -> DensePolynomial<F> {
         let mut scale = F::one();
-        let mut coeffs = vec![F::zero(); self.chunk_degree];
+        let mut coeffs = vec![F::zero(); self.size];
 
         for poly in self.polys.iter() {
             for (coeff, poly_coeff) in coeffs.iter_mut().zip(&poly.coeffs) {
@@ -56,76 +42,6 @@ impl<F: Field> ChunkedPolynomial<DensePolynomial<F>> {
         }
 
         DensePolynomial { coeffs }
-    }
-}
-enum OptShiftedPolynomial<P> {
-    Unshifted(P),
-    Shifted(P, usize),
-}
-
-/// A formal sum of the form
-/// `s_0 * p_0 + ... s_n * p_n`
-/// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
-pub struct ScaledChunkedPolynomials<F, P> {
-    scale: Vec<F>,
-    chunked_polynomials: ChunkedPolynomial<OptShiftedPolynomial<P>>,
-}
-
-impl<F, P> Default for ScaledChunkedPolynomials<F, P> {
-    fn default() -> ScaledChunkedPolynomials<F, P> {
-        ScaledChunkedPolynomials {
-            scale: vec![],
-            chunked_polynomials: ChunkedPolynomial::<OptShiftedPolynomial<P>>::default(),
-        }
-    }
-}
-
-impl<F, P> ScaledChunkedPolynomials<F, P> {
-    pub fn add_unshifted(&mut self, scale: F, p: P) {
-        self.scale.push(scale);
-        self.chunked_polynomials
-            .add_chunk(OptShiftedPolynomial::Unshifted(p))
-    }
-
-    pub fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
-        self.scale.push(scale);
-        self.chunked_polynomials
-            .add_chunk(OptShiftedPolynomial::Shifted(p, shift))
-    }
-}
-
-impl<'a, F: Field> ScaledChunkedPolynomials<F, &'a [F]> {
-    //TODO: check length?
-    pub fn to_dense_polynomial(&self) -> DensePolynomial<F> {
-        let mut res = DensePolynomial::<F>::zero();
-        let zipped: Vec<_> = self
-            .scale
-            .iter()
-            .zip(&self.chunked_polynomials.polys)
-            .collect();
-        let scaled: Vec<_> = zipped
-            .par_iter()
-            .map(|(_scale, segment)| {
-                let _scale = **_scale;
-                match segment {
-                    OptShiftedPolynomial::Unshifted(segment) => {
-                        let v = segment.par_iter().map(|x| _scale * *x).collect();
-                        DensePolynomial::from_coefficients_vec(v)
-                    }
-                    OptShiftedPolynomial::Shifted(segment, shift) => {
-                        let mut v: Vec<_> = segment.par_iter().map(|x| _scale * *x).collect();
-                        let mut res = vec![F::zero(); *shift];
-                        res.append(&mut v);
-                        DensePolynomial::from_coefficients_vec(res)
-                    }
-                }
-            })
-            .collect();
-
-        for p in scaled {
-            res += &p;
-        }
-        res
     }
 }
 
@@ -151,10 +67,7 @@ mod tests {
         let coeffs = [one, one, one, one, one, one, one, one];
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
 
-        let eval = f
-            .to_chunked_polynomial(2)
-            .linearize(zeta_n)
-            .evaluate(&zeta);
+        let eval = f.to_chunked_polynomial(2).linearize(zeta_n).evaluate(&zeta);
 
         assert!(eval == res);
     }

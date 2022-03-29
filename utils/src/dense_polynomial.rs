@@ -22,7 +22,7 @@ pub trait ExtendedDensePolynomial<F: Field> {
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
 
     /// Convert a polynomial into chunks.
-    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<DensePolynomial<F>>;
+    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<F>;
 }
 
 impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
@@ -51,15 +51,15 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         res
     }
 
-    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<DensePolynomial<F>> {
+    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<F> {
         let mut chunk_polys: Vec<DensePolynomial<F>> = vec![];
         for chunk in self.coeffs.chunks(size) {
             chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
         }
 
-        ChunkedPolynomial::<DensePolynomial<F>> {
+        ChunkedPolynomial{
             polys: chunk_polys,
-            chunk_degree: size,
+            size: size,
         }
     }
 }
