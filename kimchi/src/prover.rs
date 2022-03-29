@@ -21,72 +21,28 @@ use crate::{
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
-        scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
     error::ProofError,
     plonk_sponge::FrSponge,
+    proof::{
+        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+    },
     prover_index::ProverIndex,
 };
-use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, CommitmentCurve, PolyComm},
-    evaluation_proof::OpeningProof,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm};
 use itertools::Itertools;
-use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use o1_utils::{types::fields::*, ExtendedDensePolynomial as _};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
 pub type Result<T> = std::result::Result<T, ProofError>;
-
-#[derive(Clone)]
-pub struct LookupCommitments<G: AffineCurve> {
-    pub sorted: Vec<PolyComm<G>>,
-    pub aggreg: PolyComm<G>,
-}
-
-/// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
-pub struct ProverCommitments<G: AffineCurve> {
-    /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; COLUMNS],
-    /// The commitment to the permutation polynomial
-    pub z_comm: PolyComm<G>,
-    /// The commitment to the quotient polynomial
-    pub t_comm: PolyComm<G>,
-    /// Commitments related to the lookup argument
-    pub lookup: Option<LookupCommitments<G>>,
-}
-
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
-    /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<G>,
-
-    /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
-
-    /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
-
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: ScalarField<G>,
-
-    /// The public input
-    pub public: Vec<ScalarField<G>>,
-
-    /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
-}
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
