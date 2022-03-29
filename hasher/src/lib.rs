@@ -3,15 +3,15 @@
 
 pub mod poseidon;
 pub mod roinput;
-
-use ark_ff::PrimeField;
-use mina_curves::pasta::Fp;
-use o1_utils::FieldHelpers;
+pub use mina_curves::pasta::Fp;
 pub use poseidon::{
     new_kimchi as create_kimchi, new_legacy as create_legacy, PoseidonHasherKimchi,
     PoseidonHasherLegacy,
 };
 pub use roinput::ROInput;
+
+use ark_ff::PrimeField;
+use o1_utils::FieldHelpers;
 
 /// The domain parameter trait is used during hashing to convey extra
 /// arguments to domain string generation.  It is also used by generic signing code.
@@ -99,8 +99,7 @@ pub trait Hashable: Clone {
 /// Example usage
 ///
 /// ```rust
-/// use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
-/// use mina_curves::pasta::Fp;
+/// use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 ///
 /// #[derive(Clone)]
 /// struct Something;

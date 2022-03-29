@@ -10,7 +10,7 @@ template = "template.md"
 [sections]
 # arguments
 permutation = "../../../kimchi/src/circuits/polynomials/permutation.rs"
-lookup = "../../../kimchi/src/circuits/polynomials/lookup.rs"
+lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 
 # gates
 chacha = "../../../kimchi/src/circuits/polynomials/chacha.rs"

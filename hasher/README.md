@@ -99,8 +99,7 @@ domain string depends on the height of the node.  This can be implemented like t
 
 ```rust
 use ark_ff::Zero;
-use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
-use mina_curves::pasta::Fp;
+use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
@@ -148,8 +147,7 @@ passed when hashing, then it can be implemented like this.
 
 ```rust
 use ark_ff::Zero;
-use mina_hasher::{create_legacy, Hashable, Hasher, ROInput};
-use mina_curves::pasta::Fp;
+use mina_hasher::{create_legacy, Fp, Hashable, Hasher, ROInput};
 
 #[derive(Clone)]
 struct ExampleMerkleNode {
