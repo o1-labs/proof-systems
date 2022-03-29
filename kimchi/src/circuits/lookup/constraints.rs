@@ -559,7 +559,9 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
     // and if i % 2 = 1, we enforce that the
     // first element of LookupSorted(i) = first element of LookupSorted(i + 1)
 
-    let denominator = (0..=lookup_info.max_per_row)
+    let sorted_size = lookup_info.max_per_row + 1 /* for the XOR lookup table */;
+
+    let denominator = (0..sorted_size)
         .map(|i| {
             let (s1, s2) = if i % 2 == 0 {
                 (Curr, Next)
