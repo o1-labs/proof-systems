@@ -739,6 +739,105 @@ constraint 7:
 
 #### Scalar Multiplication 
 
+We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
+
+Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_q$ in Weierstrass form is represented by the set of points $(x,y)$ that
+satisfy the following equation with $a,b\in\mathbb{F}_q$:
+$$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
+If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve E(\mathbb{F}_q), the algorithm we
+represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.
+
+The original algorithm that is being used can be found in the Section 3.1 of <https://arxiv.org/pdf/math/0208038.pdf>,
+which can perform the above operation using 1 multiplication, 2 squarings and 2 divisions (one more squaring)
+if $P=Q$), thanks to the fact that computing the $Y$-coordinate of the intermediate addition is not required.
+This is more efficient to the standard algorithm that requires 1 more multiplication, 3 squarings in total and 2 divisions.
+
+Moreover, this algorithm can be applied not only to the operation $2P+Q$, but any other scalar multiplication $kP$.
+This can be done by expressing the scalar $k$ in biwise form and performing a double-and-add approach.
+Nonetheless, this requires conditionals to differentiate $2P$ from $2P+Q$. For that reason, we will implement
+the following pseudocode from <https://github.com/zcash/zcash/issues/3924> (where instead, they give a variant
+of the above efficient algorithm for Montgomery curves $b\cdot y^2 = x^3 + a \cdot x^2 + x$).
+
+```ignore
+Acc := [2]T
+for i = n-1 ... 0:
+   Q := (r_i == 1) ? T : -T
+   Acc := Acc + (Q + Acc)
+return (d_0 == 0) ? Q - P : Q
+```
+
+
+The layout of the witness requires 2 rows.
+The i-th row will be a `VBSM` gate whereas the next row will be a `ZERO` gate.
+
+|  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 | Type |
+|-------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|------|
+|     i | xT | yT | x0 | y0 |  n | n' |    | x1 | y1 | x2 | y2 | x3 | y3 | x4 | y4 | VBSM |
+|   i+1 | x5 | y5 | b0 | b1 | b2 | b3 | b4 | s0 | s1 | s2 | s3 | s4 |    |    |    | ZERO |
+
+The gate constraints take care of 5 bits of the scalar multiplication.
+Each single bit consists of 4 constraints.
+There is one additional constraint imposed on the final number.
+Thus, the `VarBaseMul` gate argument requires 21 constraints.
+
+For every bit, there will be one constraint meant to differentiate between addition and subtraction
+for the operation $(P±T)+P$:
+
+`S = (P + (b ? T : −T)) + P`
+
+We follow this criteria:
+- If the bit is positive, the sign should be a subtraction
+- If the bit is negative, the sign should be an addition
+
+Then, paraphrasing the above, we will represent this behavior as:
+
+`S = (P - (2 * b - 1) * T ) + P`
+
+Let us call `Input` the point with coordinates `(xI, yI)` and
+`Target` is the point being added with coordinates `(xT, yT)`.
+Then `Output` will be the point with coordinates `(xO, yO)` resulting from `O = ( I ± T ) + I`
+Not to be confused with the point at infinity.
+
+In each step of the algorithm, we consider the following elliptic curves affine arithmetic equations:
+
+* $s_1 := \frac{y_i - (2\cdot b - 1) \cdot y_t}{x_i - x_t}$
+* $s_2 := \frac{2 \cdot y_i}{2 * x_i + x_t - s_1^2} - s_1$
+* $x_o := x_t + s_2^2 - s_1^2$
+* $y_o := s_2 \cdot (x_i - x_o) - y_i$
+
+For readability, we define the following 3 variables
+in such a way that $s_2$ can be expressed as `u / t`:
+
+  * `rx` $:= s_1^2 - x_i - x_t$
+  * `t` $:= x_i - $ `rx` $ \iff 2 \cdot x_i - s_1^2 + x_t$
+  * `u` $:= 2 \cdot y_i - $ `t` $\cdot s_1 \iff 2 \cdot y_i - s_1 \cdot (2\cdot x_i - s^2_1 + x_t)$
+
+Next, for each bit in the algorithm, we create the following 4 constraints that derive from the above:
+
+* Booleanity check on the bit $b$:
+`0 = b * b - b`
+* Constrain $s_1$:
+`(xI - xT) * s1 = yI – (2b - 1) * yT`
+* Constrain `Output` $X$-coordinate $x_o$ and $s_2$:
+`0 = u^2 - t^2 * (xO - xT + s1^2)`
+* Constrain `Output` $Y$-coordinate $y_o$ and $s_2$:
+`0 = (yO + yI) * t - (xI - xO) * u`
+
+When applied to the 5 bits, the value of the `Target` point `(xT, yT)` is maintained,
+whereas the values for the `Input` and `Output` points form the chain:
+
+`[(x0, y0) -> (x1, y1) -> (x2, y2) -> (x3, y3) -> (x4, y4) -> (x5, y5)]`
+
+Similarly, 5 different `s0..s4` are required, just like the 5 bits `b0..b4`.
+
+Finally, the additional constraint makes sure that the scalar is being correctly expressed
+into its binary form (using the double-and-add decomposition) as:
+$$ n' = 2^5 \cdot n + 2^4 \cdot b_0 + 2^3 \cdot b_1 + 2^2 \cdot b_2 + 2^1 \cdot b_3 + b_4$$
+This equation is translated as the constraint:
+* Binary decomposition:
+`0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
+
 
 
 ## Setup
