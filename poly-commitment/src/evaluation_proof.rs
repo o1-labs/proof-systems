@@ -20,7 +20,6 @@ enum OptShiftedPolynomial<P> {
 // A formal sum of the form
 // `s_0 * p_0 + ... s_n * p_n`
 // where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
-
 #[derive(Default)]
 struct ScaledChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
 

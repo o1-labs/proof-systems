@@ -713,12 +713,18 @@ where
                         .evaluate_chunks(e),
                     sorted: sorted
                         .iter()
-                        .map(|c| c.to_chunked_polynomial(index.max_poly_size).evaluate_chunks(e))
+                        .map(|c| {
+                            c.to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(e)
+                        })
                         .collect(),
                     table: lcs
                         .lookup_table
                         .iter()
-                        .map(|p| p.to_chunked_polynomial(index.max_poly_size).evaluate_chunks(e))
+                        .map(|p| {
+                            p.to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(e)
+                        })
                         .rev()
                         .fold(vec![ScalarField::<G>::zero()], |acc, x| {
                             acc.into_iter()

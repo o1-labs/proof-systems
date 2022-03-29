@@ -57,7 +57,7 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
             chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
         }
 
-        ChunkedPolynomial{
+        ChunkedPolynomial {
             polys: chunk_polys,
             size: size,
         }
