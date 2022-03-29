@@ -748,7 +748,9 @@ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
 If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we
 represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.
 
-(Notation remark: point $Q$ has nothing to do with the order $q$ of the field)
+```admonish info
+Point $Q=(x_q, y_q)$ has nothing to do with the order $q$ of the field $\mathbb{F}_q$.
+```
 
 The original algorithm that is being used can be found in the Section 3.1 of <https://arxiv.org/pdf/math/0208038.pdf>,
 which can perform the above operation using 1 multiplication, 2 squarings and 2 divisions (one more squaring)
@@ -800,7 +802,9 @@ Let us call `Input` the point with coordinates `(xI, yI)` and
 `Target` is the point being added with coordinates `(xT, yT)`.
 Then `Output` will be the point with coordinates `(xO, yO)` resulting from `O = ( I ± T ) + I`
 
-(Notation remark: do not confuse `(xO, yO)` with the point at infinity)
+```admonish info
+Do not confuse our `Output` point `(xO, yO)` with the point at infinity that is normally represented as $\mathcal{O}$.
+```
 
 In each step of the algorithm, we consider the following elliptic curves affine arithmetic equations:
 
