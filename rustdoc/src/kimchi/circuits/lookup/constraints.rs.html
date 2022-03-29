@@ -704,6 +704,28 @@
 <span id="699">699</span>
 <span id="700">700</span>
 <span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashMap</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -715,7 +737,7 @@
     <span class="ident">error::ProofError</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">One</span>, <span class="ident">Zero</span>};
-<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
+<span class="kw">use</span> <span class="ident">ark_poly</span>::{<span class="ident">EvaluationDomain</span>, <span class="ident">Evaluations</span>, <span class="ident">Radix2EvaluationDomain</span> <span class="kw">as</span> <span class="ident">D</span>};
 <span class="kw">use</span> <span class="ident">rand::Rng</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">serde_with::serde_as</span>;
@@ -1124,7 +1146,7 @@
     <span class="doccomment">/// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a</span>
     <span class="doccomment">/// particular row, so that we can treat each row uniformly as having the same number of</span>
     <span class="doccomment">/// lookups.</span>
-    <span class="kw">pub</span> <span class="ident">dummy_lookup_value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">dummy_lookup_entry</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// Specifies the lookup constraints as expressions.</span>
@@ -1146,71 +1168,98 @@
 
     <span class="kw">let</span> <span class="ident">column</span> <span class="op">=</span> <span class="op">|</span><span class="ident">col</span>: <span class="ident">Column</span><span class="op">|</span> <span class="ident">E::cell</span>(<span class="ident">col</span>, <span class="ident">Curr</span>);
 
-    <span class="kw">let</span> <span class="ident">lookup_indicator</span> <span class="op">=</span> <span class="ident">lookup_info</span>
-        .<span class="ident">kinds</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">enumerate</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">column</span>(<span class="ident">Column::LookupKindIndex</span>(<span class="ident">i</span>)))
-        .<span class="ident">fold</span>(<span class="ident">E::zero</span>(), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>);
-
-    <span class="kw">let</span> <span class="ident">one</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">E::one</span>();
-    <span class="kw">let</span> <span class="ident">non_lookup_indcator</span> <span class="op">=</span> <span class="ident">one</span> <span class="op">-</span> <span class="ident">lookup_indicator</span>;
-
-    <span class="kw">let</span> <span class="ident">dummy_lookup</span>: <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">configuration</span>
-        .<span class="ident">dummy_lookup_value</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">rev</span>()
-        .<span class="ident">fold</span>(<span class="ident">ConstantExpr::zero</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> {
-            <span class="ident">ConstantExpr::JointCombiner</span> <span class="op">*</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">ConstantExpr::Literal</span>(<span class="kw-2">*</span><span class="ident">x</span>)
-        });
-
-    <span class="kw">let</span> <span class="ident">complements_with_beta_term</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ConstantExpr::one</span>()];
-        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">ConstantExpr::Gamma</span> <span class="op">+</span> <span class="ident">dummy_lookup</span>;
-        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>) {
-            <span class="ident">v</span>.<span class="ident">push</span>(<span class="ident">v</span>[<span class="ident">i</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">x</span>.<span class="ident">clone</span>())
-        }
-
-        <span class="kw">let</span> <span class="ident">beta1_per_row</span>: <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span>
-            (<span class="ident">ConstantExpr::one</span>() <span class="op">+</span> <span class="ident">ConstantExpr::Beta</span>).<span class="ident">pow</span>(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="kw">as</span> <span class="ident">u64</span>);
-        <span class="ident">v</span>.<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">beta1_per_row</span>.<span class="ident">clone</span>())
-            .<span class="ident">collect</span>()
-    };
-
-    <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="op">|</span><span class="ident">pos</span>: <span class="ident">LocalPosition</span><span class="op">|</span> <span class="ident">witness</span>(<span class="ident">pos</span>.<span class="ident">column</span>, <span class="ident">pos</span>.<span class="ident">row</span>);
-
-    <span class="comment">// This is set up so that on rows that have lookups, chunk will be equal</span>
-    <span class="comment">// to the product over all lookups `f` in that row of `gamma + f`</span>
-    <span class="comment">// and</span>
-    <span class="comment">// on non-lookup rows, will be equal to 1.</span>
-    <span class="kw">let</span> <span class="ident">f_term</span> <span class="op">=</span> <span class="op">|</span><span class="ident">spec</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">|</span> {
-        <span class="macro">assert!</span>(<span class="ident">spec</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span>);
-        <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">complements_with_beta_term</span>[<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">-</span> <span class="ident">spec</span>.<span class="ident">len</span>()].<span class="ident">clone</span>();
-
-        <span class="ident">spec</span>.<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> {
-                <span class="ident">E::Constant</span>(<span class="ident">ConstantExpr::Gamma</span>)
-                    <span class="op">+</span> <span class="ident">j</span>.<span class="ident">evaluate</span>(<span class="ident">E::constant</span>(<span class="ident">ConstantExpr::JointCombiner</span>), <span class="kw-2">&amp;</span><span class="ident">eval</span>)
-            })
-            .<span class="ident">fold</span>(<span class="ident">E::Constant</span>(<span class="ident">padding</span>), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">*</span> <span class="ident">x</span>)
-    };
-    <span class="kw">let</span> <span class="ident">f_chunk</span> <span class="op">=</span> <span class="ident">lookup_info</span>
-        .<span class="ident">kinds</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">enumerate</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">spec</span>)<span class="op">|</span> <span class="ident">column</span>(<span class="ident">Column::LookupKindIndex</span>(<span class="ident">i</span>)) <span class="op">*</span> <span class="ident">f_term</span>(<span class="ident">spec</span>))
-        .<span class="ident">fold</span>(<span class="ident">non_lookup_indcator</span> <span class="op">*</span> <span class="ident">f_term</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[]), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>);
+    <span class="comment">// gamma * (beta + 1)</span>
     <span class="kw">let</span> <span class="ident">gammabeta1</span> <span class="op">=</span>
-        <span class="op">|</span><span class="op">|</span> <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::Constant</span>(<span class="ident">ConstantExpr::Gamma</span> <span class="op">*</span> (<span class="ident">ConstantExpr::Beta</span> <span class="op">+</span> <span class="ident">ConstantExpr::one</span>()));
-    <span class="kw">let</span> <span class="ident">ft_chunk</span> <span class="op">=</span> <span class="ident">f_chunk</span>
-        <span class="op">*</span> (<span class="ident">gammabeta1</span>()
+        <span class="ident">E</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="ident">::Constant</span>(<span class="ident">ConstantExpr::Gamma</span> <span class="op">*</span> (<span class="ident">ConstantExpr::Beta</span> <span class="op">+</span> <span class="ident">ConstantExpr::one</span>()));
+
+    <span class="comment">// the numerator part in the multiset check of plookup</span>
+    <span class="kw">let</span> <span class="ident">numerator</span> <span class="op">=</span> {
+        <span class="comment">// to toggle dummy queries when we do not have any lookups in a row</span>
+        <span class="comment">// (1 minus the sum of the lookup selectors)</span>
+        <span class="kw">let</span> <span class="ident">non_lookup_indicator</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">lookup_indicator</span> <span class="op">=</span> <span class="ident">lookup_info</span>
+                .<span class="ident">kinds</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">enumerate</span>()
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">column</span>(<span class="ident">Column::LookupKindIndex</span>(<span class="ident">i</span>)))
+                .<span class="ident">fold</span>(<span class="ident">E::zero</span>(), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>);
+
+            <span class="ident">E::one</span>() <span class="op">-</span> <span class="ident">lookup_indicator</span>
+        };
+
+        <span class="comment">// combine the columns of the dummy lookup row</span>
+        <span class="kw">let</span> <span class="ident">dummy_lookup</span>: <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">configuration</span>
+            .<span class="ident">dummy_lookup_entry</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">rev</span>()
+            .<span class="ident">fold</span>(<span class="ident">ConstantExpr::zero</span>(), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> {
+                <span class="ident">ConstantExpr::JointCombiner</span> <span class="op">*</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">ConstantExpr::Literal</span>(<span class="kw-2">*</span><span class="ident">x</span>)
+            });
+
+        <span class="comment">// pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups</span>
+        <span class="comment">// each value is also multipled with (1 + beta)^max_per_row</span>
+        <span class="comment">// as we need to multiply the denominator with this eventually</span>
+        <span class="kw">let</span> <span class="ident">dummy_padding</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> {
+            <span class="comment">// v contains the `max_per_row` powers of `beta + dummy` starting with 1</span>
+            <span class="comment">// v[i] = (gamma + dummy)^i</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dummies</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ConstantExpr::one</span>()];
+            <span class="kw">let</span> <span class="ident">dummy</span> <span class="op">=</span> <span class="ident">ConstantExpr::Gamma</span> <span class="op">+</span> <span class="ident">dummy_lookup</span>;
+            <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>) {
+                <span class="ident">dummies</span>.<span class="ident">push</span>(<span class="ident">dummies</span>[<span class="ident">i</span> <span class="op">-</span> <span class="number">1</span>].<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">dummy</span>.<span class="ident">clone</span>())
+            }
+
+            <span class="comment">// TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here</span>
+            <span class="comment">// (1 + beta)^max_per_row</span>
+            <span class="kw">let</span> <span class="ident">beta1_per_row</span>: <span class="ident">ConstantExpr</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span>
+                (<span class="ident">ConstantExpr::one</span>() <span class="op">+</span> <span class="ident">ConstantExpr::Beta</span>).<span class="ident">pow</span>(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="kw">as</span> <span class="ident">u64</span>);
+
+            <span class="ident">dummies</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dummies</span><span class="op">|</span> <span class="ident">dummies</span>.<span class="ident">clone</span>() <span class="op">*</span> <span class="ident">beta1_per_row</span>.<span class="ident">clone</span>())
+                .<span class="ident">collect</span>()
+        };
+
+        <span class="comment">// This is set up so that on rows that have lookups, chunk will be equal</span>
+        <span class="comment">// to the product over all lookups `f` in that row of `gamma + f`</span>
+        <span class="comment">// and</span>
+        <span class="comment">// on non-lookup rows, will be equal to 1.</span>
+        <span class="kw">let</span> <span class="ident">f_term</span> <span class="op">=</span> <span class="op">|</span><span class="ident">spec</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">JointLookupSpec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">|</span> {
+            <span class="macro">assert!</span>(<span class="ident">spec</span>.<span class="ident">len</span>() <span class="op">&lt;</span><span class="op">=</span> <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span>);
+
+            <span class="comment">// padding is (1+beta)^max_per_rows * (gamma + dummy)^pad</span>
+            <span class="kw">let</span> <span class="ident">padding_len</span> <span class="op">=</span> <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">-</span> <span class="ident">spec</span>.<span class="ident">len</span>();
+            <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> <span class="ident">dummy_padding</span>[<span class="ident">padding_len</span>].<span class="ident">clone</span>();
+
+            <span class="comment">// padding * \mul (gamma + combined_witnesses)</span>
+            <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="op">|</span><span class="ident">pos</span>: <span class="ident">LocalPosition</span><span class="op">|</span> <span class="ident">witness</span>(<span class="ident">pos</span>.<span class="ident">column</span>, <span class="ident">pos</span>.<span class="ident">row</span>);
+            <span class="ident">spec</span>.<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">j</span><span class="op">|</span> {
+                    <span class="ident">E::Constant</span>(<span class="ident">ConstantExpr::Gamma</span>)
+                        <span class="op">+</span> <span class="ident">j</span>.<span class="ident">evaluate</span>(<span class="ident">E::constant</span>(<span class="ident">ConstantExpr::JointCombiner</span>), <span class="kw-2">&amp;</span><span class="ident">eval</span>)
+                })
+                .<span class="ident">fold</span>(<span class="ident">E::Constant</span>(<span class="ident">padding</span>), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">*</span> <span class="ident">x</span>)
+        };
+
+        <span class="comment">// f part of the numerator</span>
+        <span class="kw">let</span> <span class="ident">f_chunk</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">dummy_rows</span> <span class="op">=</span> <span class="ident">non_lookup_indicator</span> <span class="op">*</span> <span class="ident">f_term</span>(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[]);
+
+            <span class="ident">lookup_info</span>
+                .<span class="ident">kinds</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">enumerate</span>()
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">spec</span>)<span class="op">|</span> <span class="ident">column</span>(<span class="ident">Column::LookupKindIndex</span>(<span class="ident">i</span>)) <span class="op">*</span> <span class="ident">f_term</span>(<span class="ident">spec</span>))
+                .<span class="ident">fold</span>(<span class="ident">dummy_rows</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>)
+        };
+
+        <span class="comment">// t part of the numerator</span>
+        <span class="kw">let</span> <span class="ident">t_chunk</span> <span class="op">=</span> <span class="ident">gammabeta1</span>.<span class="ident">clone</span>()
             <span class="op">+</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupTable</span>, <span class="ident">Curr</span>)
-            <span class="op">+</span> <span class="ident">E::beta</span>() <span class="op">*</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupTable</span>, <span class="ident">Next</span>));
+            <span class="op">+</span> <span class="ident">E::beta</span>() <span class="op">*</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupTable</span>, <span class="ident">Next</span>);
 
-    <span class="kw">let</span> <span class="ident">num_rows</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>;
-
-    <span class="kw">let</span> <span class="ident">num_lookup_rows</span> <span class="op">=</span> <span class="ident">num_rows</span> <span class="op">-</span> <span class="ident">ZK_ROWS</span> <span class="op">-</span> <span class="number">1</span>;
+        <span class="comment">// return the numerator</span>
+        <span class="ident">f_chunk</span> <span class="op">*</span> <span class="ident">t_chunk</span>
+    };
 
     <span class="comment">// Because of our ZK-rows, we can&#39;t do the trick in the plookup paper of</span>
     <span class="comment">// wrapping around to enforce consistency between the sorted lookup columns.</span>
@@ -1238,7 +1287,9 @@
     <span class="comment">// and if i % 2 = 1, we enforce that the</span>
     <span class="comment">// first element of LookupSorted(i) = first element of LookupSorted(i + 1)</span>
 
-    <span class="kw">let</span> <span class="ident">s_chunk</span> <span class="op">=</span> (<span class="number">0</span>..(<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span>))
+    <span class="kw">let</span> <span class="ident">sorted_size</span> <span class="op">=</span> <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="op">+</span> <span class="number">1</span> <span class="comment">/* for the XOR lookup table */</span>;
+
+    <span class="kw">let</span> <span class="ident">denominator</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">sorted_size</span>)
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
             <span class="kw">let</span> (<span class="ident">s1</span>, <span class="ident">s2</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">2</span> <span class="op">==</span> <span class="number">0</span> {
                 (<span class="ident">Curr</span>, <span class="ident">Next</span>)
@@ -1246,12 +1297,34 @@
                 (<span class="ident">Next</span>, <span class="ident">Curr</span>)
             };
 
-            <span class="ident">gammabeta1</span>()
+            <span class="comment">// gamma * (beta + 1) + sorted[i](x) + beta * sorted[i](x w)</span>
+            <span class="comment">// or</span>
+            <span class="comment">// gamma * (beta + 1) + sorted[i](x w) + beta * sorted[i](x)</span>
+            <span class="ident">gammabeta1</span>.<span class="ident">clone</span>()
                 <span class="op">+</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span>), <span class="ident">s1</span>)
                 <span class="op">+</span> <span class="ident">E::beta</span>() <span class="op">*</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span>), <span class="ident">s2</span>)
         })
         .<span class="ident">fold</span>(<span class="ident">E::one</span>(), <span class="op">|</span><span class="ident">acc</span>: <span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">*</span> <span class="ident">x</span>);
 
+    <span class="comment">// L(i) * denominator = L(i-1) * numerator</span>
+    <span class="kw">let</span> <span class="ident">aggreg_equation</span> <span class="op">=</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Next</span>) <span class="op">*</span> <span class="ident">denominator</span>
+        <span class="op">-</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Curr</span>) <span class="op">*</span> <span class="ident">numerator</span>;
+
+    <span class="kw">let</span> <span class="ident">num_rows</span> <span class="op">=</span> <span class="ident">d1</span>.<span class="ident">size</span>();
+    <span class="kw">let</span> <span class="ident">num_lookup_rows</span> <span class="op">=</span> <span class="ident">num_rows</span> <span class="op">-</span> <span class="ident">ZK_ROWS</span> <span class="op">-</span> <span class="number">1</span>;
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[
+        <span class="comment">// the accumulator except for the last 4 rows</span>
+        <span class="comment">// (contains the zk-rows and the last value of the accumulator)</span>
+        <span class="ident">E::VanishesOnLast4Rows</span> <span class="op">*</span> <span class="ident">aggreg_equation</span>,
+        <span class="comment">// the initial value of the accumulator</span>
+        <span class="ident">E::UnnormalizedLagrangeBasis</span>(<span class="number">0</span>) <span class="op">*</span> (<span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Curr</span>) <span class="op">-</span> <span class="ident">E::one</span>()),
+        <span class="comment">// Check that the final value of the accumulator is 1</span>
+        <span class="ident">E::UnnormalizedLagrangeBasis</span>(<span class="ident">num_lookup_rows</span>)
+            <span class="op">*</span> (<span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Curr</span>) <span class="op">-</span> <span class="ident">E::one</span>()),
+    ];
+
+    <span class="comment">// checks that the snake is turning correctly</span>
     <span class="kw">let</span> <span class="ident">compatibility_checks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">lookup_info</span>.<span class="ident">max_per_row</span>)
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">first_or_last</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">i</span> <span class="op">%</span> <span class="number">2</span> <span class="op">==</span> <span class="number">0</span> {
@@ -1265,37 +1338,8 @@
                 <span class="op">*</span> (<span class="ident">column</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span>)) <span class="op">-</span> <span class="ident">column</span>(<span class="ident">Column::LookupSorted</span>(<span class="ident">i</span> <span class="op">+</span> <span class="number">1</span>)))
         })
         .<span class="ident">collect</span>();
-
-    <span class="kw">let</span> <span class="ident">aggreg_equation</span> <span class="op">=</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Next</span>) <span class="op">*</span> <span class="ident">s_chunk</span>
-        <span class="op">-</span> <span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Curr</span>) <span class="op">*</span> <span class="ident">ft_chunk</span>;
-
-    <span class="comment">/*
-        aggreg.next =
-        aggreg.curr
-        * f_chunk
-        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
-        / (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
-
-        rearranging,
-
-        aggreg.next
-        * (\prod_i (gammabeta1 + lookup_sorted_i.curr + beta * lookup_sorted_i.next))
-        =
-        aggreg.curr
-        * f_chunk
-        * (gammabeta1 + index.lookup_tables[0][i] + beta * index.lookup_tables[0][i+1];)
-
-    */</span>
-
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">vec!</span>[
-        <span class="ident">E::VanishesOnLast4Rows</span> <span class="op">*</span> <span class="ident">aggreg_equation</span>,
-        <span class="ident">E::UnnormalizedLagrangeBasis</span>(<span class="number">0</span>) <span class="op">*</span> (<span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Curr</span>) <span class="op">-</span> <span class="ident">E::one</span>()),
-        <span class="comment">// Check that the 3rd to last row (index = num_rows - 3), which</span>
-        <span class="comment">// contains the full product, equals 1</span>
-        <span class="ident">E::UnnormalizedLagrangeBasis</span>(<span class="ident">num_lookup_rows</span>)
-            <span class="op">*</span> (<span class="ident">E::cell</span>(<span class="ident">Column::LookupAggreg</span>, <span class="ident">Curr</span>) <span class="op">-</span> <span class="ident">E::one</span>()),
-    ];
     <span class="ident">res</span>.<span class="ident">extend</span>(<span class="ident">compatibility_checks</span>);
+
     <span class="ident">res</span>
 }
 

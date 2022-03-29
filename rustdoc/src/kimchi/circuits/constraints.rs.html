@@ -1098,14 +1098,14 @@
                 <span class="kw">let</span> <span class="ident">lookup_table</span> <span class="op">=</span> <span class="ident">lookup_tables</span>.<span class="ident">into_iter</span>().<span class="ident">next</span>().<span class="ident">unwrap</span>();
 
                 <span class="comment">// get the last entry in each column of each table</span>
-                <span class="kw">let</span> <span class="ident">dummy_lookup_value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="kw">let</span> <span class="ident">dummy_lookup_entry</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> <span class="op">=</span>
                     <span class="ident">lookup_table</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">col</span><span class="op">|</span> <span class="ident">col</span>[<span class="ident">col</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>]).<span class="ident">collect</span>();
 
                 <span class="comment">// pre-compute polynomial and evaluation form for the look up tables</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookup_table_polys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DP</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">lookup_table8</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">E</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">D</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
-                <span class="kw">for</span> (<span class="kw-2">mut</span> <span class="ident">col</span>, <span class="ident">dummy</span>) <span class="kw">in</span> <span class="ident">lookup_table</span>.<span class="ident">into_iter</span>().<span class="ident">zip</span>(<span class="kw-2">&amp;</span><span class="ident">dummy_lookup_value</span>) {
+                <span class="kw">for</span> (<span class="kw-2">mut</span> <span class="ident">col</span>, <span class="ident">dummy</span>) <span class="kw">in</span> <span class="ident">lookup_table</span>.<span class="ident">into_iter</span>().<span class="ident">zip</span>(<span class="kw-2">&amp;</span><span class="ident">dummy_lookup_entry</span>) {
                     <span class="comment">// pad each column to the size of the domain</span>
                     <span class="kw">let</span> <span class="ident">padding</span> <span class="op">=</span> (<span class="number">0</span>..(<span class="ident">d1_size</span> <span class="op">-</span> <span class="ident">col</span>.<span class="ident">len</span>())).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">dummy</span>);
                     <span class="ident">col</span>.<span class="ident">extend</span>(<span class="ident">padding</span>);
@@ -1124,7 +1124,7 @@
                         <span class="ident">lookup_used</span>,
                         <span class="ident">max_lookups_per_row</span>: <span class="ident">lookup_info</span>.<span class="ident">max_per_row</span> <span class="kw">as</span> <span class="ident">usize</span>,
                         <span class="ident">max_joint_size</span>: <span class="ident">lookup_info</span>.<span class="ident">max_joint_size</span>,
-                        <span class="ident">dummy_lookup_value</span>,
+                        <span class="ident">dummy_lookup_entry</span>,
                     },
                 })
             }

@@ -345,8 +345,6 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::tables</span>::{
     <span class="ident">combine_table_entry</span>, <span class="ident">get_table</span>, <span class="ident">GateLookupTable</span>, <span class="ident">GatesLookupMaps</span>, <span class="ident">GatesLookupSpec</span>, <span class="ident">LookupTable</span>,
 };
@@ -396,11 +394,14 @@
     <span class="doccomment">/// Create the default lookup configuration.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>() -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> (<span class="ident">kinds</span>, <span class="ident">locations_with_tables</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>) <span class="op">=</span> <span class="ident">GateType::lookup_kinds</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>();
+
         <span class="kw">let</span> <span class="ident">GatesLookupMaps</span> {
             <span class="ident">gate_selector_map</span>: <span class="ident">kinds_map</span>,
             <span class="ident">gate_table_map</span>: <span class="ident">kinds_tables</span>,
         } <span class="op">=</span> <span class="ident">GateType::lookup_kinds_map</span>::<span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">locations_with_tables</span>);
+
         <span class="kw">let</span> <span class="ident">max_per_row</span> <span class="op">=</span> <span class="ident">max_lookups_per_row</span>(<span class="kw-2">&amp;</span><span class="ident">kinds</span>);
+
         <span class="ident">LookupInfo</span> {
             <span class="ident">max_joint_size</span>: <span class="ident">kinds</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="number">0</span>, <span class="op">|</span><span class="ident">acc0</span>, <span class="ident">v</span><span class="op">|</span> {
                 <span class="ident">v</span>.<span class="ident">iter</span>()
@@ -662,32 +663,27 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lookup_kinds_map</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">Field</span><span class="op">&gt;</span>(
         <span class="ident">locations_with_tables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GatesLookupSpec</span><span class="op">&gt;</span>,
     ) -&gt; <span class="ident">GatesLookupMaps</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">index_map</span> <span class="op">=</span> <span class="ident">HashMap::with_capacity</span>(<span class="ident">locations_with_tables</span>.<span class="ident">len</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">table_map</span> <span class="op">=</span> <span class="ident">HashMap::with_capacity</span>(<span class="ident">locations_with_tables</span>.<span class="ident">len</span>());
-        <span class="kw">for</span> (
-            <span class="ident">i</span>,
-            <span class="ident">GatesLookupSpec</span> {
-                <span class="ident">gate_positions</span>: <span class="ident">locs</span>,
-                <span class="ident">gate_lookup_table</span>: <span class="ident">table_kind</span>,
-            },
-        ) <span class="kw">in</span> <span class="ident">locations_with_tables</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>()
-        {
-            <span class="kw">for</span> <span class="ident">location</span> <span class="kw">in</span> <span class="ident">locs</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">index_map</span>.<span class="ident">entry</span>(<span class="ident">location</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gate_selector_map</span> <span class="op">=</span> <span class="ident">HashMap::with_capacity</span>(<span class="ident">locations_with_tables</span>.<span class="ident">len</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">gate_table_map</span> <span class="op">=</span> <span class="ident">HashMap::with_capacity</span>(<span class="ident">locations_with_tables</span>.<span class="ident">len</span>());
+
+        <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">gate_lookups</span>) <span class="kw">in</span> <span class="ident">locations_with_tables</span>.<span class="ident">into_iter</span>().<span class="ident">enumerate</span>() {
+            <span class="kw">for</span> <span class="ident">location</span> <span class="kw">in</span> <span class="ident">gate_lookups</span>.<span class="ident">gate_positions</span> {
+                <span class="comment">// each &quot;list of lookups in a row&quot; is associated to a selector</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">gate_selector_map</span>.<span class="ident">entry</span>(<span class="ident">location</span>) {
                     <span class="ident">e</span>.<span class="ident">insert</span>(<span class="ident">i</span>);
                 } <span class="kw">else</span> {
                     <span class="macro">panic!</span>(<span class="string">&quot;Multiple lookup patterns asserted on same row.&quot;</span>)
                 }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="ident">table_kind</span> {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">table_map</span>.<span class="ident">entry</span>(<span class="ident">location</span>) {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">table_kind</span>) <span class="op">=</span> <span class="ident">gate_lookups</span>.<span class="ident">gate_lookup_table</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Entry::Vacant</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">gate_table_map</span>.<span class="ident">entry</span>(<span class="ident">location</span>) {
                         <span class="ident">e</span>.<span class="ident">insert</span>(<span class="ident">table_kind</span>);
                     }
                 }
             }
         }
         <span class="ident">GatesLookupMaps</span> {
-            <span class="ident">gate_selector_map</span>: <span class="ident">index_map</span>,
-            <span class="ident">gate_table_map</span>: <span class="ident">table_map</span>,
+            <span class="ident">gate_selector_map</span>,
+            <span class="ident">gate_table_map</span>,
         }
     }
 }
