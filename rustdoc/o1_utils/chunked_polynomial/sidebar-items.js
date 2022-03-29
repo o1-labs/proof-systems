@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ChunkedPolynomial","This struct contains multiple chunk polynomials with degree `size-1`."]]});
