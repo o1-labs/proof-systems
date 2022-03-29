@@ -27,5 +27,6 @@ prover_index = "../../../kimchi/src/prover_index.rs"
 verifier_index = "../../../kimchi/src/verifier_index.rs"
 
 # proof
+proof = "../../../kimchi/src/proof.rs"
 prover = "../../../kimchi/src/prover.rs"
 verifier = "../../../kimchi/src/verifier.rs"

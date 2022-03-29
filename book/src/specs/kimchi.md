@@ -1077,6 +1077,83 @@ A proof consists of:
 * optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
 * optionally, the previous challenges (in case we are in a recursive prover)
 
+From the code:
+
+```rs
+#[derive(Clone)]
+pub struct LookupEvaluations<Field> {
+    /// sorted lookup table polynomial
+    pub sorted: Vec<Field>,
+    /// lookup aggregation polynomial
+    pub aggreg: Field,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    pub table: Field,
+}
+
+// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+#[derive(Clone)]
+pub struct ProofEvaluations<Field> {
+    /// witness polynomials
+    pub w: [Field; COLUMNS],
+    /// permutation polynomial
+    pub z: Field,
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    pub s: [Field; PERMUTS - 1],
+    /// lookup-related evaluations
+    pub lookup: Option<LookupEvaluations<Field>>,
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Field,
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Field,
+}
+
+/// Commitments linked to the lookup feature
+#[derive(Clone)]
+pub struct LookupCommitments<G: AffineCurve> {
+    pub sorted: Vec<PolyComm<G>>,
+    pub aggreg: PolyComm<G>,
+}
+
+/// All the commitments that the prover creates as part of the proof.
+#[derive(Clone)]
+pub struct ProverCommitments<G: AffineCurve> {
+    /// The commitments to the witness (execution trace)
+    pub w_comm: [PolyComm<G>; COLUMNS],
+    /// The commitment to the permutation polynomial
+    pub z_comm: PolyComm<G>,
+    /// The commitment to the quotient polynomial
+    pub t_comm: PolyComm<G>,
+    /// Commitments related to the lookup argument
+    pub lookup: Option<LookupCommitments<G>>,
+}
+
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
+#[derive(Clone)]
+pub struct ProverProof<G: AffineCurve> {
+    /// All the polynomial commitments required in the proof
+    pub commitments: ProverCommitments<G>,
+
+    /// batched commitment opening proof
+    pub proof: OpeningProof<G>,
+
+    /// Two evaluations over a number of committed polynomials
+    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
+    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
+
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    pub ft_eval1: ScalarField<G>,
+
+    /// The public input
+    pub public: Vec<ScalarField<G>>,
+
+    /// The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
+}
+```
+
+
 The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
 
 ### Proof Creation
@@ -1112,8 +1189,11 @@ The prover then follows the following steps to create the proof:
 4. Compute the negated public input polynomial as
    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
    and $0$ for the rest.
-5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
-6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
+5. Commit (non-hiding) to the negated public input polynomial.
+6. Absorb the commitment to the public polynomial with the Fq-Sponge.
+   Note: unlike the original PLONK protocol,
+   the prover also provides evaluations of the public polynomial to help the verifier circuit.
+   This is why we need to absorb the commitment to the public polynomial at this point.
 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
    Note: since the witness is in evaluation form,
    we can use the `commit_evaluation` optimization.
@@ -1191,7 +1271,7 @@ The prover then follows the following steps to create the proof:
     (and evaluation proofs) in the protocol.
     First, include the previous challenges, in case we are in a recursive prover.
 44. Then, include:
-    - the negated public polynomial (TODO: why?)
+    - the negated public polynomial
     - the ft polynomial
     - the permutation aggregation polynomial z polynomial
     - the generic selector
