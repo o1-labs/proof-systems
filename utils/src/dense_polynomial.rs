@@ -51,15 +51,15 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         res
     }
 
-    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<F> {
+    fn to_chunked_polynomial(&self, chunk_size: usize) -> ChunkedPolynomial<F> {
         let mut chunk_polys: Vec<DensePolynomial<F>> = vec![];
-        for chunk in self.coeffs.chunks(size) {
+        for chunk in self.coeffs.chunks(chunk_size) {
             chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
         }
 
         ChunkedPolynomial {
             polys: chunk_polys,
-            size: size,
+            size: chunk_size,
         }
     }
 }
