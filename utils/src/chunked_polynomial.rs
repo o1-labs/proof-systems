@@ -4,29 +4,29 @@ use ark_poly::polynomial::{univariate::DensePolynomial, Polynomial, UVPolynomial
 use rayon::prelude::*;
 
 #[derive(Clone)]
-pub struct ChunkedPolynomials<P> {
+pub struct ChunkedPolynomial<P> {
     pub polys: Vec<P>,
-    pub degree: usize,
+    pub chunk_degree: usize,
 }
 
-impl<P> Default for ChunkedPolynomials<P> {
-    fn default() -> ChunkedPolynomials<P> {
-        ChunkedPolynomials {
+impl<P> Default for ChunkedPolynomial<P> {
+    fn default() -> ChunkedPolynomial<P> {
+        ChunkedPolynomial {
             polys: vec![],
-            degree: 0,
+            chunk_degree: 0,
         }
     }
 }
 
-impl<P> ChunkedPolynomials<P> {
+impl<P> ChunkedPolynomial<P> {
     pub fn add_chunk(&mut self, p: P) {
         self.polys.push(p)
     }
 }
 
-impl<F: Field> ChunkedPolynomials<DensePolynomial<F>> {
+impl<F: Field> ChunkedPolynomial<DensePolynomial<F>> {
     /// This function evaluates polynomial in chunks.
-    pub fn linearize(&self, elm: F) -> Vec<F> {
+    pub fn evaluate_chunks(&self, elm: F) -> Vec<F> {
         let mut res: Vec<F> = vec![];
         for poly in self.polys.iter() {
             let eval = poly.evaluate(&elm);
@@ -39,9 +39,9 @@ impl<F: Field> ChunkedPolynomials<DensePolynomial<F>> {
     /// For example, if a polynomial can be written `f = f0 + x^n f1 + x^2n f2`
     /// (where f0, f1, f2 are of degree n-1), then this function returns the new semi-evaluated
     /// `f'(x) = f0(x) + zeta^n f1(x) + zeta^2n f2(x)`.
-    pub fn compress_polynomial(&self, zeta_n: F) -> DensePolynomial<F> {
+    pub fn linearize(&self, zeta_n: F) -> DensePolynomial<F> {
         let mut scale = F::one();
-        let mut coeffs = vec![F::zero(); self.degree];
+        let mut coeffs = vec![F::zero(); self.chunk_degree];
 
         for poly in self.polys.iter() {
             for (coeff, poly_coeff) in coeffs.iter_mut().zip(&poly.coeffs) {
@@ -66,19 +66,16 @@ enum OptShiftedPolynomial<P> {
 /// A formal sum of the form
 /// `s_0 * p_0 + ... s_n * p_n`
 /// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
-
-///pub struct ChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
-
 pub struct ScaledChunkedPolynomials<F, P> {
     scale: Vec<F>,
-    chunked_polynomials: ChunkedPolynomials<OptShiftedPolynomial<P>>,
+    chunked_polynomials: ChunkedPolynomial<OptShiftedPolynomial<P>>,
 }
 
 impl<F, P> Default for ScaledChunkedPolynomials<F, P> {
     fn default() -> ScaledChunkedPolynomials<F, P> {
         ScaledChunkedPolynomials {
             scale: vec![],
-            chunked_polynomials: ChunkedPolynomials::<OptShiftedPolynomial<P>>::default(),
+            chunked_polynomials: ChunkedPolynomial::<OptShiftedPolynomial<P>>::default(),
         }
     }
 }
@@ -98,7 +95,7 @@ impl<F, P> ScaledChunkedPolynomials<F, P> {
 }
 
 impl<'a, F: Field> ScaledChunkedPolynomials<F, &'a [F]> {
-    /// check length?
+    //TODO: check length?
     pub fn to_dense_polynomial(&self) -> DensePolynomial<F> {
         let mut res = DensePolynomial::<F>::zero();
         let zipped: Vec<_> = self
@@ -155,8 +152,8 @@ mod tests {
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
 
         let eval = f
-            .to_chunked_polynomials(2)
-            .compress_polynomial(zeta_n)
+            .to_chunked_polynomial(2)
+            .linearize(zeta_n)
             .evaluate(&zeta);
 
         assert!(eval == res);

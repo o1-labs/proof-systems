@@ -4,7 +4,7 @@ use ark_ff::Field;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use rayon::prelude::*;
 
-use crate::chunked_polynomial::ChunkedPolynomials;
+use crate::chunked_polynomial::ChunkedPolynomial;
 
 //
 // ExtendedDensePolynomial trait
@@ -21,7 +21,8 @@ pub trait ExtendedDensePolynomial<F: Field> {
     /// `eval_polynomial(coeffs, x)` evaluates a polynomial given its coefficients `coeffs` and a point `x`.
     fn eval_polynomial(coeffs: &[F], x: F) -> F;
 
-    fn to_chunked_polynomials(&self, size: usize) -> ChunkedPolynomials<DensePolynomial<F>>;
+    /// Convert a polynomial into chunks.
+    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<DensePolynomial<F>>;
 }
 
 impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
@@ -50,15 +51,15 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         res
     }
 
-    fn to_chunked_polynomials(&self, size: usize) -> ChunkedPolynomials<DensePolynomial<F>> {
+    fn to_chunked_polynomial(&self, size: usize) -> ChunkedPolynomial<DensePolynomial<F>> {
         let mut chunk_polys: Vec<DensePolynomial<F>> = vec![];
         for chunk in self.coeffs.chunks(size) {
             chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
         }
 
-        ChunkedPolynomials::<DensePolynomial<F>> {
+        ChunkedPolynomial::<DensePolynomial<F>> {
             polys: chunk_polys,
-            degree: size,
+            chunk_degree: size,
         }
     }
 }
@@ -83,7 +84,7 @@ mod tests {
         // 1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7
         let coeffs = [one, one, one, one, one, one, one, one];
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
-        let evals = f.to_chunked_polynomials(2).linearize(two);
+        let evals = f.to_chunked_polynomial(2).evaluate_chunks(two);
         for i in 0..4 {
             assert!(evals[i] == three);
         }

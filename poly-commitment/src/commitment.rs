@@ -908,8 +908,8 @@ mod tests {
 
         // evaluate the polynomials at these two points
         let poly1_chunked_evals = vec![
-            poly1.to_chunked_polynomials(srs.g.len()).linearize(elm[0]),
-            poly1.to_chunked_polynomials(srs.g.len()).linearize(elm[1]),
+            poly1.to_chunked_polynomial(srs.g.len()).evaluate_chunks(elm[0]),
+            poly1.to_chunked_polynomial(srs.g.len()).evaluate_chunks(elm[1]),
         ];
 
         fn sum(c: &[Fp]) -> Fp {
@@ -920,8 +920,8 @@ mod tests {
         assert_eq!(sum(&poly1_chunked_evals[1]), poly1.evaluate(&elm[1]));
 
         let poly2_chunked_evals = vec![
-            poly2.to_chunked_polynomials(srs.g.len()).linearize(elm[0]),
-            poly2.to_chunked_polynomials(srs.g.len()).linearize(elm[1]),
+            poly2.to_chunked_polynomial(srs.g.len()).evaluate_chunks(elm[0]),
+            poly2.to_chunked_polynomial(srs.g.len()).evaluate_chunks(elm[1]),
         ];
 
         assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));

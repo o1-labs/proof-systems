@@ -148,7 +148,7 @@ where
 
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
-                chunked_evals.push(poly.to_chunked_polynomials(srs.g.len()).linearize(point));
+                chunked_evals.push(poly.to_chunked_polynomial(srs.g.len()).evaluate_chunks(point));
             }
 
             let commit = Commitment {
