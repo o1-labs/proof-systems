@@ -12,9 +12,12 @@ use ark_poly::{
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::MulAssign,
+};
 use CurrOrNext::{Curr, Next};
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -1896,6 +1899,21 @@ impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
             return self;
         }
         Expr::BinOp(Op2::Mul, Box::new(self), Box::new(other))
+    }
+}
+
+impl<F> MulAssign<Expr<F>> for Expr<F>
+where
+    F: Zero + One + PartialEq + Clone,
+{
+    fn mul_assign(&mut self, other: Self) {
+        if self.is_zero() || other.is_zero() {
+            *self = Self::zero();
+        } else if self.is_one() {
+            *self = other;
+        } else if !other.is_one() {
+            *self = Expr::BinOp(Op2::Mul, Box::new(self.clone()), Box::new(other));
+        }
     }
 }
 
