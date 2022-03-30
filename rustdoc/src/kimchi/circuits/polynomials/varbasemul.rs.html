@@ -416,8 +416,8 @@
 <span class="comment">//~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.</span>
 <span class="comment">//~</span>
 <span class="comment">//~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an</span>
-<span class="comment">//~ elliptic curve over $\mathbb{F}_q$ in Weierstrass form is represented by the set of points $(x,y)$ that</span>
-<span class="comment">//~ satisfy the following equation with $a,b\in\mathbb{F}_q$:</span>
+<span class="comment">//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$</span>
+<span class="comment">//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:</span>
 <span class="comment">//~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$</span>
 <span class="comment">//~ If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we</span>
 <span class="comment">//~ represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.</span>

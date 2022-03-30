@@ -318,36 +318,50 @@
 <span id="313">313</span>
 <span id="314">314</span>
 <span id="315">315</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve endomorphism optimised variable base</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve</span>
+<span class="doccomment">//! endomorphism optimised variable base</span>
 <span class="doccomment">//! scalar multiplication custom Plonk polynomials.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! EVBSM gate constraints</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//!     b1*(b1-1) = 0</span>
-<span class="doccomment">//!     b2*(b2-1) = 0</span>
-<span class="doccomment">//!     b3*(b3-1) = 0</span>
-<span class="doccomment">//!     b4*(b4-1) = 0</span>
-<span class="doccomment">//!     ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp</span>
-<span class="doccomment">//!     (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
-<span class="doccomment">//!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)</span>
-<span class="doccomment">//!     ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr</span>
-<span class="doccomment">//!     (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr</span>
-<span class="doccomment">//!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)</span>
-<span class="doccomment">//!     n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The constraints above are derived from the following EC Affine arithmetic equations:</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &lt;pre&gt;</span>
-<span class="doccomment">//!     (xq1 - xp) * s1 = yq1 - yp</span>
-<span class="doccomment">//!     (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
-<span class="doccomment">//!     (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//!     (xq2 - xr) * s3 = yq2 - yr</span>
-<span class="doccomment">//!     (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr</span>
-<span class="doccomment">//!     (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)</span>
-<span class="doccomment">//! &lt;/pre&gt;</span>
 
 <span class="kw">use</span> <span class="ident">std::marker::PhantomData</span>;
 
@@ -365,31 +379,98 @@
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::proof::ProofEvaluations</span>;
 
+<span class="comment">//~ We implement custom gate constraints for short Weierstrass curve</span>
+<span class="comment">//~ endomorphism optimised variable base scalar multiplication.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an</span>
+<span class="comment">//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$</span>
+<span class="comment">//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:</span>
+<span class="comment">//~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$</span>
+<span class="comment">//~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve E(\mathbb{F}_q), the goal of this</span>
+<span class="comment">//~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ `S = (P + (b ? T : −T)) + P`</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The same algorithm can be used to perform other scalar multiplications, meaning it is</span>
+<span class="comment">//~ not restricted to the case $2\cdot P$, but it can be used for any arbitrary $k\cdot P$. This is done</span>
+<span class="comment">//~ by decomposing the scalar $k$ into its binary representation.</span>
+<span class="comment">//~ Moreover, for every step, there will be a one-bit constraint meant to differentiate between addition and subtraction</span>
+<span class="comment">//~ for the operation $(P±T)+P$:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ In particular, the constraints of this gate take care of 4 bits of the scalar withing a single EVBSM row.</span>
+<span class="comment">//~ When the scalar is longer (which will usually be the case), multiple EVBSM rows will be concatenated.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ |  Row  |  0 |  1 |  2 |  3 |  4 |  5 |  6 |   7 |   8 |   9 |  10 |  11 |  12 |  13 |  14 |  Type |</span>
+<span class="comment">//~ |-------|----|----|----|----|----|----|----|-----|-----|-----|-----|-----|-----|-----|-----|-------|</span>
+<span class="comment">//~ |     i | xT | yT |  Ø |  Ø | xP | yP | n  |  xR |  yR |  s1 | s3  | b1  |  b2 |  b3 |  b4 | EVBSM |</span>
+<span class="comment">//~ |   i+1 |  = |  = |    |    | xS | yS | n&#39; | xR&#39; | yR&#39; | s1&#39; | s3&#39; | b1&#39; | b2&#39; | b3&#39; | b4&#39; | EVBSM |</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The layout of this gate (and the next row) allows for this chained behaviour where the output point</span>
+<span class="comment">//~ of the current row $S$ gets accumulated as one of the inputs of the following row, becoming $P$ in</span>
+<span class="comment">//~ the next constraints. Similarly, the scalar is decomposed into binary form and $n$ ($n&#39;$ respectively)</span>
+<span class="comment">//~ will store the current accumulated value and the next one for the check.</span>
+<span class="comment">//~</span>
+<span class="comment">//~ For readability, we define the following variables for the constraints:</span>
+<span class="comment">//~</span>
+<span class="comment">//~   * `endo` $:=$ `EndoCoefficient`</span>
+<span class="comment">//~   * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$</span>
+<span class="comment">//~   * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$</span>
+<span class="comment">//~   * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$</span>
+<span class="comment">//~   * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ These are the 11 constraints that correspond to each EVBSM gate,</span>
+<span class="comment">//~ which take care of 4 bits of the scalar within a single EVBSM row:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * First block:</span>
+<span class="comment">//~   * `(xq1 - xp) * s1 = yq1 - yp`</span>
+<span class="comment">//~   * `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`</span>
+<span class="comment">//~   * `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`</span>
+<span class="comment">//~ * Second block:</span>
+<span class="comment">//~   * `(xq2 - xr) * s3 = yq2 - yr`</span>
+<span class="comment">//~   * `(2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`</span>
+<span class="comment">//~   * `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`</span>
+<span class="comment">//~ * Booleanity checks:</span>
+<span class="comment">//~   * Bit flag $b_1$: `0 = b1 * (b1 - 1)`</span>
+<span class="comment">//~   * Bit flag $b_2$: `0 = b2 * (b2 - 1)`</span>
+<span class="comment">//~   * Bit flag $b_3$: `0 = b3 * (b3 - 1)`</span>
+<span class="comment">//~   * Bit flag $b_4$: `0 = b4 * (b4 - 1)`</span>
+<span class="comment">//~ * Binary decomposition:</span>
+<span class="comment">//~   * Accumulated scalar: `n_next = 16 * n + 8 * b1 + 4 * b2 + 2 * b3 + b4`</span>
+<span class="comment">//~</span>
+<span class="comment">//~ The constraints above are derived from the following EC Affine arithmetic equations:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * (1) =&gt; $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$</span>
+<span class="comment">//~ * (2&amp;3) =&gt; $(x_p – x_r) \cdot s_2 = y_r + y_p$</span>
+<span class="comment">//~ * (2) =&gt; $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$</span>
+<span class="comment">//~     * &lt;=&gt; $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$</span>
+<span class="comment">//~ * (3) =&gt; $s_1^2 - s_2^2 = x_{q_1} - x_r$</span>
+<span class="comment">//~     * &lt;=&gt; $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$</span>
+<span class="comment">//~ *</span>
+<span class="comment">//~ * (4) =&gt; $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$</span>
+<span class="comment">//~ * (5&amp;6) =&gt; $(x_r – x_s) \cdot s_4 = y_s + y_r$</span>
+<span class="comment">//~ * (5) =&gt; $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$</span>
+<span class="comment">//~     * &lt;=&gt; $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$</span>
+<span class="comment">//~ * (6) =&gt; $s_3^2 – s_4^2 = x_{q_2} - x_s$</span>
+<span class="comment">//~     * &lt;=&gt; $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Defining $s_2$ and $s_4$ as</span>
+<span class="comment">//~</span>
+<span class="comment">//~ * $s_2 := \frac{2 \cdot y_P}{2 * x_P + x_T - s_1^2} - s_1$</span>
+<span class="comment">//~ * $s_4 := \frac{2 \cdot y_R}{2 * x_R + x_T - s_3^2} - s_3$</span>
+<span class="comment">//~</span>
+<span class="comment">//~ Gives the following equations when substituting the values of $s_2$ and $s_4$:</span>
+<span class="comment">//~</span>
+<span class="comment">//~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`</span>
+<span class="comment">//~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`</span>
+<span class="comment">//~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`</span>
+<span class="comment">//~ -</span>
+<span class="comment">//~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`</span>
+<span class="comment">//~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`</span>
+<span class="comment">//~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`</span>
+<span class="comment">//~</span>
+
 <span class="doccomment">/// Implementation of group endomorphism optimised</span>
 <span class="doccomment">/// variable base scalar multiplication custom Plonk constraints.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// EVBSM gate constraints:</span>
-<span class="doccomment">/// * b1*(b1-1) = 0</span>
-<span class="doccomment">/// * b2*(b2-1) = 0</span>
-<span class="doccomment">/// * b3*(b3-1) = 0</span>
-<span class="doccomment">/// * b4*(b4-1) = 0</span>
-<span class="doccomment">/// * ((1 + (endo - 1) * b2) * xt - xp) * s1 = (2*b1-1)*yt - yp</span>
-<span class="doccomment">/// * (2*xp – s1^2 + (1 + (endo - 1) * b2) * xt) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
-<span class="doccomment">/// * (yr + yp)^2 = (xp – xr)^2 * (s1^2 – (1 + (endo - 1) * b2) * xt + xr)</span>
-<span class="doccomment">/// * ((1 + (endo - 1) * b2) * xt - xr) * s3 = (2*b3-1)*yt - yr</span>
-<span class="doccomment">/// * (2*xr – s3^2 + (1 + (endo - 1) * b4) * xt) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr</span>
-<span class="doccomment">/// * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – (1 + (endo - 1) * b4) * xt + xs)</span>
-<span class="doccomment">/// * n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The constraints above are derived from the following EC Affine arithmetic equations:</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * (xq1 - xp) * s1 = yq1 - yp</span>
-<span class="doccomment">/// * (2*xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2*yp</span>
-<span class="doccomment">/// * (yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * (xq2 - xr) * s3 = yq2 - yr</span>
-<span class="doccomment">/// * (2*xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2*yr</span>
-<span class="doccomment">/// * (ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">F</span>: <span class="ident">FftField</span><span class="op">&gt;</span> <span class="ident">CircuitGate</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_endomul</span>(<span class="ident">wires</span>: <span class="ident">GateWires</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CircuitGate</span> {
@@ -495,10 +576,11 @@
 
         <span class="comment">// n_next = 16*n + 8*b1 + 4*b2 + 2*b3 + b4</span>
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">witness_curr</span>(<span class="number">6</span>);
+        <span class="kw">let</span> <span class="ident">n_next</span> <span class="op">=</span> <span class="ident">witness_next</span>(<span class="number">6</span>);
         <span class="kw">let</span> <span class="ident">n_constraint</span> <span class="op">=</span>
             (((<span class="ident">n</span>.<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b1</span>.<span class="ident">clone</span>()).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b2</span>.<span class="ident">clone</span>()).<span class="ident">double</span>() <span class="op">+</span> <span class="ident">b3</span>.<span class="ident">clone</span>()).<span class="ident">double</span>()
                 <span class="op">+</span> <span class="ident">b4</span>.<span class="ident">clone</span>()
-                <span class="op">-</span> <span class="ident">witness_next</span>(<span class="number">6</span>);
+                <span class="op">-</span> <span class="ident">n_next</span>;
 
         <span class="kw">let</span> <span class="ident">xp_xr</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">xp</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">xr</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">xr_xs</span> <span class="op">=</span> <span class="ident">cache</span>.<span class="ident">cache</span>(<span class="ident">xr</span>.<span class="ident">clone</span>() <span class="op">-</span> <span class="ident">xs</span>.<span class="ident">clone</span>());
