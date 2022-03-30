@@ -58,8 +58,3 @@ harness = false
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "oracle/ocaml_types" ]
 wasm_types = [ "wasm-bindgen" ]
-
-[profile.bench]
-# https://doc.rust-lang.org/cargo/reference/profiles.html#release
-codegen-units = 1
-lto = true
