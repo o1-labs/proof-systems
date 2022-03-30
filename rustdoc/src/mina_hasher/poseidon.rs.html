@@ -97,6 +97,14 @@
 <span id="92">92</span>
 <span id="93">93</span>
 <span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Mina Poseidon hasher</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An implementation of Mina&#39;s hasher based on the poseidon arithmetic sponge</span>
@@ -141,11 +149,19 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw">impl</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
+<span class="doccomment">/// Poseidon hasher type with legacy plonk sponge constants</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">H</span><span class="op">&gt;</span>;
+
+<span class="doccomment">/// Create a legacy hasher context</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
     <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsLegacy</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_legacy::params</span>())
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw">impl</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
+<span class="doccomment">/// Poseidon hasher type with kimchi plonk sponge constants</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Poseidon</span><span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">H</span><span class="op">&gt;</span>;
+
+<span class="doccomment">/// Create an experimental kimchi hasher context</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
     <span class="ident">Poseidon</span>::<span class="op">&lt;</span><span class="ident">PlonkSpongeConstantsKimchi</span>, <span class="ident">H</span><span class="op">&gt;</span><span class="ident">::new</span>(<span class="ident">domain_param</span>, <span class="ident">pasta::fp_kimchi::params</span>())
 }
 

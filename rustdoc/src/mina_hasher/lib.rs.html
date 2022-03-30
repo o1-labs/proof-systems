@@ -245,14 +245,13 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../README.md&quot;</span>)]</span>
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">poseidon</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">roinput</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mina_curves::pasta::Fp</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">poseidon</span>::{<span class="ident">PoseidonHasherKimchi</span>, <span class="ident">PoseidonHasherLegacy</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">roinput::ROInput</span>;
 
 <span class="kw">use</span> <span class="ident">ark_ff::PrimeField</span>;
@@ -413,15 +412,12 @@
 }
 
 <span class="doccomment">/// Create a legacy hasher context</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw">impl</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">H::D</span>: <span class="ident">DomainParameter</span>,
-{
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_legacy</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherLegacy</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span> {
     <span class="ident">poseidon::new_legacy</span>::<span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>)
 }
 
 <span class="doccomment">/// Create an experimental kimchi hasher context</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw">impl</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_kimchi</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span>(<span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="ident">PoseidonHasherKimchi</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">H::D</span>: <span class="ident">DomainParameter</span>,
 {
