@@ -1,10 +1,13 @@
 //! This module implements Plonk circuit constraint primitive.
 
-use crate::circuits::{
-    domains::EvaluationDomains,
-    gate::{CircuitGate, GateType},
-    polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-    wires::*,
+use crate::{
+    circuits::{
+        domains::EvaluationDomains,
+        gate::{CircuitGate, GateType},
+        polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
+        wires::*,
+    },
+    error::ProverError,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::UVPolynomial;
@@ -385,7 +388,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         lookup_tables: Vec<Vec<Vec<F>>>,
         fr_sponge_params: ArithmeticSpongeParams<F>,
         public: usize,
-    ) -> Option<Self> {
+    ) -> Result<Self, ProverError> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
@@ -393,7 +396,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize).unwrap();
         assert!(domain.d1.size > ZK_ROWS);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
@@ -597,7 +600,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         // TODO: remove endo as a field
         let endo = F::zero();
 
-        Some(ConstraintSystem {
+        Ok(ConstraintSystem {
             chacha8,
             endomul_scalar8,
             domain,
