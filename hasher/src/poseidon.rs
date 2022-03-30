@@ -50,7 +50,7 @@ pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegac
     Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::params())
 }
 
-/// Poseidon hasher type with kimchi plonk sponge constants
+/// Poseidon hasher type with experimental kimchi plonk sponge constants
 pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
 
 /// Create an experimental kimchi hasher context
@@ -71,11 +71,11 @@ where
     }
 
     fn init(&mut self, domain_param: H::D) -> &mut dyn Hasher<H> {
-        // Set sponge initial state (explicitly init state so hasher context can be reused)
-        // N.B. Mina sets the sponge's initial state by hashing the input's domain bytes
+        // Set sponge initial state and save it so the hasher context can be reused efficiently
+        // N.B. Mina sets the sponge's initial state by hashing the input type's domain bytes
         self.sponge.reset();
 
-        if let Some(domain_string) = H::domain_string(None, domain_param) {
+        if let Some(domain_string) = H::domain_string(domain_param) {
             self.sponge
                 .absorb(&[domain_prefix_to_field::<Fp>(domain_string)]);
             self.sponge.squeeze();
