@@ -61,16 +61,17 @@ fn hasher_test_vectors_kimchi() {
     test_vectors("kimchi.json", &mut hasher);
 }
 
+// This is mainly to make sure the pooling code compiles
 #[test]
-fn hasher_pooling_test_vectors_legacy() {
+fn hasher_pooling_compile_test_vectors_legacy() {
     let mut hasher = LEGACY_HASHER_POOL.pool().pull();
     test_vectors("legacy.json", &mut *hasher);
 }
 
 #[test]
-fn hasher_pooling_test_vectors_legacy_ensure_pool_size() {
+fn hasher_pooling_compile_test_vectors_legacy_ensure_pool_size() {
     for _ in 0..128 {
-        hasher_pooling_test_vectors_legacy();
+        hasher_pooling_compile_test_vectors_legacy();
         let n_created = LEGACY_HASHER_POOL.n_created();
         // Use 2 here because `hasher_pooling_test_vectors_legacy` test case may run in parallel
         assert!(

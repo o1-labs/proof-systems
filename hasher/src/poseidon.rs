@@ -46,7 +46,7 @@ impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
 pub type PoseidonHasherLegacy<H> = Poseidon<PlonkSpongeConstantsLegacy, H>;
 
 /// Create a legacy hasher context
-pub fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
+pub(crate) fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
     Poseidon::<PlonkSpongeConstantsLegacy, H>::new(domain_param, pasta::fp_legacy::params())
 }
 
@@ -54,7 +54,7 @@ pub fn new_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
 pub type PoseidonHasherKimchi<H> = Poseidon<PlonkSpongeConstantsKimchi, H>;
 
 /// Create an experimental kimchi hasher context
-pub fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
+pub(crate) fn new_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H> {
     Poseidon::<PlonkSpongeConstantsKimchi, H>::new(domain_param, pasta::fp_kimchi::params())
 }
 
