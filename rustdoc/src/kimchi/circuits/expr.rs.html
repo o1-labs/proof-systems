@@ -2118,12 +2118,16 @@
 <span id="2113">2113</span>
 <span id="2114">2114</span>
 <span id="2115">2115</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits</span>::{
-    <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
-    <span class="ident">domains::EvaluationDomains</span>,
-    <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
-    <span class="ident">scalars::ProofEvaluations</span>,
-    <span class="ident">wires::COLUMNS</span>,
+<span id="2116">2116</span>
+<span id="2117">2117</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">circuits</span>::{
+        <span class="ident">constraints::eval_vanishes_on_last_4_rows</span>,
+        <span class="ident">domains::EvaluationDomains</span>,
+        <span class="ident">gate</span>::{<span class="ident">CurrOrNext</span>, <span class="ident">GateType</span>},
+        <span class="ident">wires::COLUMNS</span>,
+    },
+    <span class="ident">proof::ProofEvaluations</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">Field</span>, <span class="ident">One</span>, <span class="ident">PrimeField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
@@ -4234,5 +4238,5 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">coeff</span>, <span class="ident">index</span>, <span class="ident">witness</span>, <span class="ident">witness_curr</span>, <span class="ident">witness_next</span>, <span class="ident">E</span>};
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ee915c34e 2022-03-28)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

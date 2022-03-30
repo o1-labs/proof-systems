@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["LookupEvaluations",""],["ProofEvaluations",""],["RandomOracles",""]]});
+initSidebarItems({"struct":[["RandomOracles",""]]});

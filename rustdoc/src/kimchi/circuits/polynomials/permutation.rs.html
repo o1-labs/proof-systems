@@ -327,8 +327,6 @@
 <span id="322">322</span>
 <span id="323">323</span>
 <span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.</span>
 
 <span class="comment">//~</span>
@@ -372,11 +370,9 @@
 <span class="comment">//~</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">circuits</span>::{
-        <span class="ident">constraints::ConstraintSystem</span>, <span class="ident">polynomial::WitnessOverDomains</span>, <span class="ident">scalars::ProofEvaluations</span>,
-        <span class="ident">wires</span>::<span class="kw-2">*</span>,
-    },
+    <span class="ident">circuits</span>::{<span class="ident">constraints::ConstraintSystem</span>, <span class="ident">polynomial::WitnessOverDomains</span>, <span class="ident">wires</span>::<span class="kw-2">*</span>},
     <span class="ident">error::ProofError</span>,
+    <span class="ident">proof::ProofEvaluations</span>,
 };
 <span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">FftField</span>, <span class="ident">SquareRootField</span>, <span class="ident">Zero</span>};
 <span class="kw">use</span> <span class="ident">ark_poly</span>::{
@@ -656,5 +652,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ee915c34e 2022-03-28)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>

@@ -3861,6 +3861,79 @@ You can find these operations under the <a href="specs/kimchi.html#proof-creatio
 <li>optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)</li>
 <li>optionally, the previous challenges (in case we are in a recursive prover)</li>
 </ul>
+<p>From the code:</p>
+<pre><code class="language-rs">#[derive(Clone)]
+pub struct LookupEvaluations&lt;Field&gt; {
+    /// sorted lookup table polynomial
+    pub sorted: Vec&lt;Field&gt;,
+    /// lookup aggregation polynomial
+    pub aggreg: Field,
+    // TODO: May be possible to optimize this away?
+    /// lookup table polynomial
+    pub table: Field,
+}
+
+// TODO: this should really be vectors here, perhaps create another type for chuncked evaluations?
+#[derive(Clone)]
+pub struct ProofEvaluations&lt;Field&gt; {
+    /// witness polynomials
+    pub w: [Field; COLUMNS],
+    /// permutation polynomial
+    pub z: Field,
+    /// permutation polynomials
+    /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
+    pub s: [Field; PERMUTS - 1],
+    /// lookup-related evaluations
+    pub lookup: Option&lt;LookupEvaluations&lt;Field&gt;&gt;,
+    /// evaluation of the generic selector polynomial
+    pub generic_selector: Field,
+    /// evaluation of the poseidon selector polynomial
+    pub poseidon_selector: Field,
+}
+
+/// Commitments linked to the lookup feature
+#[derive(Clone)]
+pub struct LookupCommitments&lt;G: AffineCurve&gt; {
+    pub sorted: Vec&lt;PolyComm&lt;G&gt;&gt;,
+    pub aggreg: PolyComm&lt;G&gt;,
+}
+
+/// All the commitments that the prover creates as part of the proof.
+#[derive(Clone)]
+pub struct ProverCommitments&lt;G: AffineCurve&gt; {
+    /// The commitments to the witness (execution trace)
+    pub w_comm: [PolyComm&lt;G&gt;; COLUMNS],
+    /// The commitment to the permutation polynomial
+    pub z_comm: PolyComm&lt;G&gt;,
+    /// The commitment to the quotient polynomial
+    pub t_comm: PolyComm&lt;G&gt;,
+    /// Commitments related to the lookup argument
+    pub lookup: Option&lt;LookupCommitments&lt;G&gt;&gt;,
+}
+
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
+#[derive(Clone)]
+pub struct ProverProof&lt;G: AffineCurve&gt; {
+    /// All the polynomial commitments required in the proof
+    pub commitments: ProverCommitments&lt;G&gt;,
+
+    /// batched commitment opening proof
+    pub proof: OpeningProof&lt;G&gt;,
+
+    /// Two evaluations over a number of committed polynomials
+    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
+    pub evals: [ProofEvaluations&lt;Vec&lt;ScalarField&lt;G&gt;&gt;&gt;; 2],
+
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    pub ft_eval1: ScalarField&lt;G&gt;,
+
+    /// The public input
+    pub public: Vec&lt;ScalarField&lt;G&gt;&gt;,
+
+    /// The challenges underlying the optional polynomials folded into the proof
+    pub prev_challenges: Vec&lt;(Vec&lt;ScalarField&lt;G&gt;&gt;, PolyComm&lt;G&gt;)&gt;,
+}
+</code></pre>
 <p>The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.</p>
 <h3 id="proof-creation"><a class="header" href="#proof-creation">Proof Creation</a></h3>
 <p>To create a proof, the prover expects:</p>
@@ -3907,10 +3980,13 @@ the polynomial that evaluates to <span class="katex"><span class="katex-html" ar
 and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">0</span></span></span></span> for the rest.</p>
 </li>
 <li>
-<p>Commit (non-hiding) to the negated public input polynomial. <strong>TODO: seems unecessary</strong></p>
+<p>Commit (non-hiding) to the negated public input polynomial.</p>
 </li>
 <li>
-<p>Absorb the public polynomial with the Fq-Sponge. <strong>TODO: seems unecessary</strong></p>
+<p>Absorb the commitment to the public polynomial with the Fq-Sponge.
+Note: unlike the original PLONK protocol,
+the prover also provides evaluations of the public polynomial to help the verifier circuit.
+This is why we need to absorb the commitment to the public polynomial at this point.</p>
 </li>
 <li>
 <p>Commit to the witness columns by creating <code>COLUMNS</code> hidding commitments.
@@ -4067,7 +4143,7 @@ First, include the previous challenges, in case we are in a recursive prover.</p
 <li>
 <p>Then, include:</p>
 <ul>
-<li>the negated public polynomial (TODO: why?)</li>
+<li>the negated public polynomial</li>
 <li>the ft polynomial</li>
 <li>the permutation aggregation polynomial z polynomial</li>
 <li>the generic selector</li>

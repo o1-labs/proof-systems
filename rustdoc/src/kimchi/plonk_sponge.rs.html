@@ -80,13 +80,15 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::circuits::scalars::ProofEvaluations</span>;
-<span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">PrimeField</span>};
+<span id="78">78</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">ark_ff</span>::{<span class="ident">Field</span>, <span class="ident">PrimeField</span>};
 <span class="kw">use</span> <span class="ident">oracle::sponge</span>::{<span class="ident">DefaultFrSponge</span>, <span class="ident">ScalarChallenge</span>};
 <span class="kw">use</span> <span class="ident">oracle</span>::{
     <span class="ident">constants::PlonkSpongeConstantsKimchi</span> <span class="kw">as</span> <span class="ident">SC</span>,
     <span class="ident">poseidon</span>::{<span class="ident">ArithmeticSponge</span>, <span class="ident">ArithmeticSpongeParams</span>, <span class="ident">Sponge</span>},
 };
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::proof::ProofEvaluations</span>;
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">FrSponge</span><span class="op">&lt;</span><span class="ident">Fr</span>: <span class="ident">Field</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new Fr-Sponge.</span>
@@ -158,5 +160,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (ee915c34e 2022-03-28)" ></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
 </body></html>
