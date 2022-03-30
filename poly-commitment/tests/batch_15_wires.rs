@@ -81,7 +81,9 @@ where
                 .map(|i| {
                     (
                         srs.commit(&a[i].clone(), bounds[i], rng),
-                        x.iter().map(|xx| a[i].eval(*xx, size)).collect::<Vec<_>>(),
+                        x.iter()
+                            .map(|xx| a[i].to_chunked_polynomial(size).evaluate_chunks(*xx))
+                            .collect::<Vec<_>>(),
                         bounds[i],
                     )
                 })

@@ -2,7 +2,7 @@ use crate::commitment::*;
 use crate::srs::SRS;
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::univariate::DensePolynomial;
+use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use o1_utils::{
     math,
     types::{BaseField, ScalarField},
@@ -11,6 +11,60 @@ use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::iter::Iterator;
+
+enum OptShiftedPolynomial<P> {
+    Unshifted(P),
+    Shifted(P, usize),
+}
+
+// A formal sum of the form
+// `s_0 * p_0 + ... s_n * p_n`
+// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
+#[derive(Default)]
+struct ScaledChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
+
+impl<F, P> ScaledChunkedPolynomial<F, P> {
+    fn add_unshifted(&mut self, scale: F, p: P) {
+        self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
+    }
+
+    fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
+        self.0
+            .push((scale, OptShiftedPolynomial::Shifted(p, shift)))
+    }
+}
+
+impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
+    fn to_dense_polynomial(&self) -> DensePolynomial<F> {
+        let mut res = DensePolynomial::<F>::zero();
+
+        let scaled: Vec<_> = self
+            .0
+            .par_iter()
+            .map(|(scale, segment)| {
+                let scale = *scale;
+                match segment {
+                    OptShiftedPolynomial::Unshifted(segment) => {
+                        let v = segment.par_iter().map(|x| scale * *x).collect();
+                        DensePolynomial::from_coefficients_vec(v)
+                    }
+                    OptShiftedPolynomial::Shifted(segment, shift) => {
+                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
+                        let mut res = vec![F::zero(); *shift];
+                        res.append(&mut v);
+                        DensePolynomial::from_coefficients_vec(res)
+                    }
+                }
+            })
+            .collect();
+
+        for p in scaled {
+            res += &p;
+        }
+
+        res
+    }
+}
 
 impl<G: CommitmentCurve> SRS<G> {
     /// This function opens polynomial commitments in batch
@@ -52,7 +106,7 @@ impl<G: CommitmentCurve> SRS<G> {
         g.extend(vec![G::zero(); padding]);
 
         let (p, blinding_factor) = {
-            let mut plnm = ChunkedPolynomial::<ScalarField<G>, &[ScalarField<G>]>::default();
+            let mut plnm = ScaledChunkedPolynomial::<ScalarField<G>, &[ScalarField<G>]>::default();
             // let mut plnm_chunks: Vec<(ScalarField<G>, OptShiftedPolynomial<_>)> = vec![];
 
             let mut omega = ScalarField::<G>::zero();
