@@ -47,7 +47,7 @@ use super::Hashable;
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
+///     fn domain_string(_: Self::D) -> Option<String> {
 ///         format!("MyExampleMainnet").into()
 ///     }
 /// }
@@ -853,7 +853,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
+            fn domain_string(_: Self::D) -> Option<String> {
                 format!("A").into()
             }
         }
@@ -876,7 +876,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
+            fn domain_string(_: Self::D) -> Option<String> {
                 format!("B").into()
             }
         }
@@ -903,7 +903,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
+            fn domain_string(_: Self::D) -> Option<String> {
                 format!("B").into()
             }
         }

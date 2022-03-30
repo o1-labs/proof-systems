@@ -31,7 +31,7 @@ impl Hashable for TestVector {
         roi
     }
 
-    fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
+    fn domain_string(_: Self::D) -> Option<String> {
         None
     }
 }
