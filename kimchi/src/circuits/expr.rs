@@ -2135,5 +2135,79 @@ pub fn coeff<F>(i: usize) -> E<F> {
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, index, witness, witness_curr, witness_next, E};
+    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, E};
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use crate::circuits::{
+        constraints::ConstraintSystem, gate::CircuitGate, polynomials::generic::GenericGateSpec,
+        wires::Wire,
+    };
+    use array_init::array_init;
+    use mina_curves::pasta::fp::Fp;
+
+    #[test]
+    #[should_panic]
+    fn test_failed_linearize() {
+        // w0 * w1
+        let mut expr: E<Fp> = E::zero();
+        expr += witness_curr(0);
+        expr *= witness_curr(1);
+
+        // since none of w0 or w1 is evaluated this should panic
+        let evaluated = HashSet::new();
+        expr.linearize(evaluated).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_degree_tracking() {
+        // CompleteAdd(x)^7 should go over the d8 domain
+        let mut expr: E<Fp> = E::zero();
+        expr += index(GateType::CompleteAdd);
+        let expr = expr.pow(9);
+
+        // create a dummy env
+        let one = Fp::from(1u32);
+        let mut gates = vec![];
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::new(0),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ));
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::new(1),
+            GenericGateSpec::Const(1u32.into()),
+            None,
+        ));
+        let constraint_system = ConstraintSystem::fp_for_testing(gates);
+
+        let witness_cols: [_; COLUMNS] = array_init(|_| DensePolynomial::zero());
+        let permutation = DensePolynomial::zero();
+        let domain_evals = constraint_system.evaluate(&witness_cols, &permutation);
+
+        let env = Environment {
+            constants: Constants {
+                alpha: one,
+                beta: one,
+                gamma: one,
+                joint_combiner: one,
+                endo_coefficient: one,
+                mds: vec![vec![]],
+            },
+            witness: &domain_evals.d8.this.w,
+            coefficient: &constraint_system.coefficients8,
+            vanishes_on_last_4_rows: &constraint_system.vanishes_on_last_4_rows,
+            z: &domain_evals.d8.this.z,
+            l0_1: l0_1(constraint_system.domain.d1),
+            domain: constraint_system.domain,
+            index: HashMap::new(),
+            lookup: None,
+        };
+
+        // this should panic as we don't have a domain large enough
+        expr.evaluations(&env);
+    }
 }
