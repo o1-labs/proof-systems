@@ -23,7 +23,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
-    error::ProofError,
+    error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
         LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
@@ -42,7 +42,7 @@ use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
-pub type Result<T> = std::result::Result<T, ProofError>;
+pub type Result<T> = std::result::Result<T, ProverError>;
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
@@ -91,16 +91,16 @@ where
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
-            .ok_or(ProofError::NoRoomForZkInWitness)?;
+            .ok_or(ProverError::NoRoomForZkInWitness)?;
         if length_padding < ZK_ROWS as usize {
-            return Err(ProofError::NoRoomForZkInWitness);
+            return Err(ProverError::NoRoomForZkInWitness);
         }
 
         //~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `ZK_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
-                return Err(ProofError::WitnessCsInconsistent);
+                return Err(ProverError::WitnessCsInconsistent);
             }
 
             // padding
@@ -618,9 +618,9 @@ where
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
                 .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProofError::Prover("division by vanishing polynomial"))?;
+                .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
             if !res.is_zero() {
-                return Err(ProofError::Prover(
+                return Err(ProverError::Prover(
                     "rest of division by vanishing polynomial",
                 ));
             }

@@ -42,7 +42,7 @@
 
 use crate::{
     circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
-    error::ProofError,
+    error::ProverError,
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
@@ -67,7 +67,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         gamma: F,
         z: &DensePolynomial<F>,
         mut alphas: impl Iterator<Item = F>,
-    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProofError> {
+    ) -> Result<(Evaluations<F, D<F>>, DensePolynomial<F>), ProverError> {
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
@@ -147,9 +147,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 &z_minus_1.clone().into(),
                 &x_minus_1.into(),
             )
-            .map_or(Err(ProofError::Permutation("first division")), Ok)?;
+            .map_or(Err(ProverError::Permutation("first division")), Ok)?;
             if !res.is_zero() {
-                return Err(ProofError::Permutation("first division rest"));
+                return Err(ProverError::Permutation("first division rest"));
             }
 
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
@@ -161,9 +161,9 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
                 &z_minus_1.into(),
                 &denominator.into(),
             )
-            .map_or(Err(ProofError::Permutation("second division")), Ok)?;
+            .map_or(Err(ProverError::Permutation("second division")), Ok)?;
             if !res.is_zero() {
-                return Err(ProofError::Permutation("second division rest"));
+                return Err(ProverError::Permutation("second division rest"));
             }
 
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
@@ -240,7 +240,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
-    ) -> Result<DensePolynomial<F>, ProofError> {
+    ) -> Result<DensePolynomial<F>, ProverError> {
         let n = self.domain.d1.size as usize;
 
         // only works if first element is 1
@@ -310,7 +310,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ If computed correctly, we should have $z(g^{n-3}) = 1$.
         //~
         if z[n - 3] != F::one() {
-            return Err(ProofError::Permutation("final value"));
+            return Err(ProverError::Permutation("final value"));
         };
 
         //~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,

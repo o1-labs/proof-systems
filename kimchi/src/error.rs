@@ -1,11 +1,11 @@
-//! This module implements the [ProofError] type.
+//! This module implements the [ProverError] type.
 
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
 // TODO(mimoo): move this out of oracle
 #[derive(Error, Debug, Clone, Copy)]
-pub enum ProofError {
+pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
 
