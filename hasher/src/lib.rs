@@ -4,6 +4,7 @@
 pub mod poseidon;
 pub mod roinput;
 pub use mina_curves::pasta::Fp;
+pub use poseidon::{PoseidonHasherKimchi, PoseidonHasherLegacy};
 pub use roinput::ROInput;
 
 use ark_ff::PrimeField;
@@ -164,15 +165,12 @@ fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
 }
 
 /// Create a legacy hasher context
-pub fn create_legacy<H: Hashable>(domain_param: H::D) -> impl Hasher<H>
-where
-    H::D: DomainParameter,
-{
+pub fn create_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
     poseidon::new_legacy::<H>(domain_param)
 }
 
 /// Create an experimental kimchi hasher context
-pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> impl Hasher<H>
+pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H>
 where
     H::D: DomainParameter,
 {
