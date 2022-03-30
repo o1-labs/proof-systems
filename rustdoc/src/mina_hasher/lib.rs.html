@@ -308,7 +308,7 @@
 <span class="doccomment">///         roi</span>
 <span class="doccomment">///     }</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///     fn domain_string(_: Option&lt;&amp;Self&gt;, _: Self::D) -&gt; Option&lt;String&gt; {</span>
+<span class="doccomment">///     fn domain_string(_: Self::D) -&gt; Option&lt;String&gt; {</span>
 <span class="doccomment">///        format!(&quot;Example&quot;).into()</span>
 <span class="doccomment">///    }</span>
 <span class="doccomment">/// }</span>
@@ -324,14 +324,14 @@
 
     <span class="doccomment">/// Generate unique domain string of length `&lt;= 20`.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// The length bound is guarded by an assertion, but the uniqueness bound must</span>
+    <span class="doccomment">/// The length bound is guarded by an assertion, but uniqueness must</span>
     <span class="doccomment">/// be enforced by the developer implementing the traits (see [`Hashable`] for</span>
-    <span class="doccomment">///  more details). The domain string may be parameterized by the contents of</span>
-    <span class="doccomment">/// `this` and/or the generic `domain_param` argument.</span>
+    <span class="doccomment">/// more details). The domain string may be parameterized by the contents of</span>
+    <span class="doccomment">/// the generic `domain_param` argument.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// **Note:** You should always return `Some(String)`. A `None` return value</span>
     <span class="doccomment">/// is only used for testing.</span>
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">this</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">domain_param</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">domain_param</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// Interface for hashing [`Hashable`] inputs</span>
@@ -357,7 +357,7 @@
 <span class="doccomment">///         roi</span>
 <span class="doccomment">///     }</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///     fn domain_string(_: Option&lt;&amp;Self&gt;, id: Self::D) -&gt; Option&lt;String&gt; {</span>
+<span class="doccomment">///     fn domain_string(id: Self::D) -&gt; Option&lt;String&gt; {</span>
 <span class="doccomment">///         format!(&quot;Something {}&quot;, id).into()</span>
 <span class="doccomment">///     }</span>
 <span class="doccomment">/// }</span>
@@ -368,7 +368,7 @@
 <span class="doccomment">///</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span>: <span class="ident">Hashable</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Set the initial state based on domain separation string</span>
-    <span class="doccomment">/// generated from `H::domain_string(None, domain_param)`</span>
+    <span class="doccomment">/// generated from `H::domain_string(domain_param)`</span>
     <span class="kw">fn</span> <span class="ident">init</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">domain_param</span>: <span class="ident">H::D</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="kw">dyn</span> <span class="ident">Hasher</span><span class="op">&lt;</span><span class="ident">H</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Restore the initial state that was set most recently</span>
@@ -445,7 +445,7 @@
                 <span class="ident">roi</span>
             }
 
-            <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="kw">_</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">id</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+            <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">id</span>: <span class="ident">u64</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
                 <span class="macro">format!</span>(<span class="string">&quot;Foo {}&quot;</span>, <span class="ident">id</span>).<span class="ident">into</span>()
             }
         }

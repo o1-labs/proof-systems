@@ -152,9 +152,6 @@
 <span id="147">147</span>
 <span id="148">148</span>
 <span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Mina Schnorr signature scheme</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An implementation of the singer interface for the Mina signature algorithm</span>
@@ -208,11 +205,8 @@
         <span class="ident">roi</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">this</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">domain_param</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">this</span> {
-            <span class="prelude-val">None</span> =&gt; <span class="ident">H::domain_string</span>(<span class="prelude-val">None</span>, <span class="ident">domain_param</span>),
-            <span class="prelude-val">Some</span>(<span class="ident">x</span>) =&gt; <span class="ident">H::domain_string</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="ident">input</span>), <span class="ident">domain_param</span>),
-        }
+    <span class="kw">fn</span> <span class="ident">domain_string</span>(<span class="ident">domain_param</span>: <span class="ident"><span class="self">Self</span>::D</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+        <span class="ident">H::domain_string</span>(<span class="ident">domain_param</span>)
     }
 }
 
