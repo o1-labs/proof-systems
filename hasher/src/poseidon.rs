@@ -34,7 +34,7 @@ impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
             sponge: ArithmeticSponge::<Fp, SC>::new(sponge_params),
             sponge_state: SpongeState::Absorbed(0),
             state: vec![],
-            domain_param: domain_param,
+            domain_param,
             phantom: PhantomData,
         };
 
