@@ -1534,6 +1534,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 
 impl<F: One> Expr<F> {
     /// Exponentiate an expression
+    #[must_use]
     pub fn pow(self, p: u64) -> Self {
         use Expr::*;
         if p == 0 {
