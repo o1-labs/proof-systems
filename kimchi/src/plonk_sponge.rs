@@ -1,10 +1,11 @@
-use crate::circuits::scalars::ProofEvaluations;
 use ark_ff::{Field, PrimeField};
 use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi as SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
+
+use crate::proof::ProofEvaluations;
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.

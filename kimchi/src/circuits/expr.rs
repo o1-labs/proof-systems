@@ -1,9 +1,11 @@
-use crate::circuits::{
-    constraints::eval_vanishes_on_last_4_rows,
-    domains::EvaluationDomains,
-    gate::{CurrOrNext, GateType},
-    scalars::ProofEvaluations,
-    wires::COLUMNS,
+use crate::{
+    circuits::{
+        constraints::eval_vanishes_on_last_4_rows,
+        domains::EvaluationDomains,
+        gate::{CurrOrNext, GateType},
+        wires::COLUMNS,
+    },
+    proof::ProofEvaluations,
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{

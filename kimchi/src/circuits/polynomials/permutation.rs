@@ -41,11 +41,9 @@
 //~
 
 use crate::{
-    circuits::{
-        constraints::ConstraintSystem, polynomial::WitnessOverDomains, scalars::ProofEvaluations,
-        wires::*,
-    },
+    circuits::{constraints::ConstraintSystem, polynomial::WitnessOverDomains, wires::*},
     error::ProofError,
+    proof::ProofEvaluations,
 };
 use ark_ff::{FftField, SquareRootField, Zero};
 use ark_poly::{
