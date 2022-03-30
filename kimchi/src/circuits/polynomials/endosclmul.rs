@@ -35,7 +35,6 @@ use ark_ff::{FftField, Field, One};
 
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::gate::CircuitGate;
-use crate::circuits::scalars::ProofEvaluations;
 use crate::circuits::wires::GateWires;
 use crate::circuits::{
     argument::{Argument, ArgumentType},
@@ -44,6 +43,7 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
+use crate::proof::ProofEvaluations;
 
 /// Implementation of group endomorphism optimised
 /// variable base scalar multiplication custom Plonk constraints.

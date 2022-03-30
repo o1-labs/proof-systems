@@ -174,10 +174,9 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
         .params
         .iter()
         .filter_map(|g| match g {
-            GenericParam::Type(t) => Some(&t.ident),
+            GenericParam::Type(t) => Some(t.ident.to_string().to_case(Case::Snake)),
             _ => None,
         })
-        .map(|ident| ident.to_string())
         .collect();
 
     let body = {
@@ -203,7 +202,7 @@ pub fn derive_ocaml_enum(item: TokenStream) -> TokenStream {
                 Fields::Unnamed(fields) => {
                     for field in &fields.unnamed {
                         if let Some(ty) = is_generic(&generics_str, &field.ty) {
-                            types.push(format!("'{}", ty));
+                            types.push(format!("'{}", ty.to_case(Case::Snake)));
                         } else {
                             types.push("#".to_string());
                             fields_to_call.push(&field.ty);
@@ -425,10 +424,9 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
     let generics_str: Vec<String> = generics
         .iter()
         .filter_map(|g| match g {
-            GenericParam::Type(t) => Some(&t.ident),
+            GenericParam::Type(t) => Some(t.ident.to_string().to_case(Case::Snake)),
             _ => None,
         })
-        .map(|ident| ident.to_string())
         .collect();
 
     let body = match fields {
@@ -440,7 +438,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
                 let name = field.ident.as_ref().expect("a named field has an ident");
                 punctured_generics_name.push(name.to_string());
                 if let Some(ty) = is_generic(&generics_str, &field.ty) {
-                    punctured_generics_type.push(format!("'{}", ty));
+                    punctured_generics_type.push(format!("'{}", ty.to_case(Case::Snake)));
                 } else {
                     punctured_generics_type.push("#".to_string());
                     fields_to_call.push(&field.ty);
@@ -486,7 +484,7 @@ pub fn derive_ocaml_gen(item: TokenStream) -> TokenStream {
             let mut fields_to_call = vec![];
             for field in &fields.unnamed {
                 if let Some(ident) = is_generic(&generics_str, &field.ty) {
-                    punctured_generics.push(format!("'{}", ident));
+                    punctured_generics.push(format!("'{}", ident.to_case(Case::Snake)));
                 } else {
                     punctured_generics.push("#".to_string());
                     fields_to_call.push(&field.ty);

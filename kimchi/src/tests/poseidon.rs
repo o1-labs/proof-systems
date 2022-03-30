@@ -27,7 +27,7 @@ use crate::{
     prover_index::testing::new_index_for_test,
     verifier::batch_verify,
 };
-use crate::{prover::ProverProof, prover_index::ProverIndex};
+use crate::{proof::ProverProof, prover_index::ProverIndex};
 
 use o1_utils::math;
 

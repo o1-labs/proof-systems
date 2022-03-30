@@ -14,7 +14,7 @@ use crate::{
     },
     error::VerifyError,
     plonk_sponge::FrSponge,
-    prover::ProverProof,
+    proof::ProverProof,
     verifier_index::{LookupVerifierIndex, VerifierIndex},
 };
 use ark_ff::{Field, One, PrimeField, Zero};
