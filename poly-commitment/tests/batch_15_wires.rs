@@ -2,14 +2,17 @@
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use ark_ff::{UniformRand, Zero};
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
+use commitment_dlog::{
+    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
+    srs::SRS,
+};
 use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial;
 
-use oracle::poseidon::PlonkSpongeConstants15W as SC;
+use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge;
 
@@ -31,7 +34,7 @@ where
     let srs = SRS::<Affine>::create(size);
 
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq::params());
+    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);
@@ -78,7 +81,9 @@ where
                 .map(|i| {
                     (
                         srs.commit(&a[i].clone(), bounds[i], rng),
-                        x.iter().map(|xx| a[i].eval(*xx, size)).collect::<Vec<_>>(),
+                        x.iter()
+                            .map(|xx| a[i].to_chunked_polynomial(size).evaluate_chunks(*xx))
+                            .collect::<Vec<_>>(),
                         bounds[i],
                     )
                 })
@@ -106,19 +111,21 @@ where
 
     let mut proofs = prfs
         .iter()
-        .map(|proof| {
-            (
-                proof.0.clone(),
-                proof.1.clone(),
-                proof.2,
-                proof.3,
-                proof
-                    .4
-                    .iter()
-                    .map(|poly| (&(poly.0).0, poly.1.iter().collect::<Vec<_>>(), poly.2))
-                    .collect::<Vec<_>>(),
-                &proof.5,
-            )
+        .map(|proof| BatchEvaluationProof {
+            sponge: proof.0.clone(),
+            evaluation_points: proof.1.clone(),
+            xi: proof.2,
+            r: proof.3,
+            evaluations: proof
+                .4
+                .iter()
+                .map(|poly| Evaluation {
+                    commitment: (poly.0).0.clone(),
+                    evaluations: poly.1.clone(),
+                    degree_bound: poly.2,
+                })
+                .collect::<Vec<_>>(),
+            opening: &proof.5,
         })
         .collect::<Vec<_>>();
 

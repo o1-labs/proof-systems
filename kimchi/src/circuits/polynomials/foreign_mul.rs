@@ -92,19 +92,29 @@
 //   Nb. each CircuitGate type corresponds to a unique polynomial and thus
 //        is assigned its own unique powers of alpha
 
+use array_init::array_init;
+use num_bigint::BigUint;
+use o1_utils::FieldHelpers;
+use rand::prelude::StdRng;
+use rand::SeedableRng;
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::constraints::ConstraintSystem;
+use crate::circuits::expr;
+use crate::circuits::gate::CircuitGate;
+use crate::circuits::scalars::ProofEvaluations;
+use crate::circuits::wires::GateWires;
 use crate::circuits::{
     expr::{Cache, Column, ConstantExpr, Expr, PolishToken, E},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
 
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, One, PrimeField, Zero};
 use CurrOrNext::*;
 
 struct Polish<F>(Vec<PolishToken<F>>);
@@ -124,6 +134,347 @@ impl<F: FftField> Display for Polish<F> {
         Ok(())
     }
 }
+
+pub const CIRCUIT_GATE_COUNT: usize = 3;
+
+const MAX_LIMBS: usize = 3;
+const LIMB_SIZE: usize = 88;
+
+fn gate_type_to_selector<F: FftField>(typ: GateType) -> [F; CIRCUIT_GATE_COUNT] {
+    match typ {
+        GateType::ForeignMul0 => [F::one(), F::zero(), F::zero()],
+        GateType::ForeignMul1 => [F::zero(), F::one(), F::zero()],
+        GateType::ForeignMul2 => [F::zero(), F::zero(), F::one()],
+        _ => [F::zero(); CIRCUIT_GATE_COUNT],
+    }
+}
+
+impl<F: FftField> CircuitGate<F> {
+    /// Create foreign multiplication gate
+    pub fn create_foreign_mul(wires: &[GateWires; 8]) -> Vec<Self> {
+        vec![
+            /* Input: a */
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[0],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[1],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul1,
+                wires: wires[2],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul2,
+                wires: wires[3],
+                coeffs: vec![],
+            },
+            /* Input: b */
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[4],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul0,
+                wires: wires[5],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul1,
+                wires: wires[6],
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::ForeignMul2,
+                wires: wires[7],
+                coeffs: vec![],
+            },
+        ]
+    }
+
+    pub fn verify_foreign_mul(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+    ) -> Result<(), String> {
+        // Witness row shorthands
+        let curr: [F; COLUMNS] = array_init(|i| witness[i][row]);
+        let next: [F; COLUMNS] = array_init(|i| witness[i][row + 1]);
+
+        // Columns types that need to be evaluated for this gate to work
+        let evaluated_cols = {
+            let mut h = std::collections::HashSet::new();
+            for i in 0..COLUMNS {
+                h.insert(Column::Witness(i));
+            }
+            h.insert(Column::Index(GateType::ForeignMul0));
+            h.insert(Column::Index(GateType::ForeignMul1));
+            h.insert(Column::Index(GateType::ForeignMul2));
+            h
+        };
+
+        // Setup temporary powers of alpha
+        let mut alphas = Alphas::<F>::default();
+        alphas.register(ArgumentType::Gate(self.typ), ForeignMul1::<F>::CONSTRAINTS);
+
+        // Get constraints for this circuit gate
+        let constraints = circuit_gate_combined_constraints(self.typ, &alphas);
+
+        // Linearize
+        let linearized = constraints.linearize(evaluated_cols).unwrap();
+
+        // Setup proof evaluations
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let mut eval = |witness| ProofEvaluations {
+            w: witness,
+            z: F::rand(rng),
+            s: array_init(|_| F::rand(rng)),
+            generic_selector: F::zero(),
+            poseidon_selector: F::zero(),
+            lookup: None,
+            foreign_mul_selector: gate_type_to_selector::<F>(self.typ),
+        };
+        let evals = vec![eval(curr), eval(next)];
+
+        // Setup circuit constants
+        let constants = expr::Constants {
+            alpha: F::rand(rng),
+            beta: F::rand(rng),
+            gamma: F::rand(rng),
+            joint_combiner: F::rand(rng),
+            endo_coefficient: cs.endo,
+            mds: vec![],
+            foreign_modulus: cs.foreign_modulus.clone(),
+        };
+
+        let pt = F::rand(rng);
+
+        // Evaluate constraints
+        match linearized
+            .constant_term
+            .evaluate_(cs.domain.d1, pt, &evals, &constants)
+        {
+            Ok(x) => {
+                if x == F::zero() {
+                    Ok(())
+                } else {
+                    Err(format!("Invalid {:?} constraint", self.typ))
+                }
+            }
+            Err(_) => Err(format!("Failed to evaluate {:?} constraint", self.typ)),
+        }
+    }
+
+    pub fn foreign_mul(&self, typ: GateType) -> F {
+        if self.typ == typ {
+            F::one()
+        } else {
+            F::zero()
+        }
+    }
+}
+
+//
+// Witness computation (TODO: make dynamic)
+//
+
+enum WitnessCell {
+    Copy(CopyWitnessCell),
+    Limb,
+    Sublimb(SublimbWitnessCell),
+    Zero,
+}
+
+struct CopyWitnessCell {
+    row: usize, // Cell row
+    col: usize, // Cell col
+}
+impl CopyWitnessCell {
+    const fn create(row: usize, col: usize) -> WitnessCell {
+        WitnessCell::Copy(CopyWitnessCell { row, col })
+    }
+}
+
+struct LimbWitnessCell;
+impl LimbWitnessCell {
+    const fn create() -> WitnessCell {
+        WitnessCell::Limb
+    }
+}
+
+struct SublimbWitnessCell {
+    row: usize,   // Cell row
+    col: usize,   // Cell col
+    start: usize, // Starting bit offset
+    end: usize,   // Ending bit offset (exclusive)
+}
+impl SublimbWitnessCell {
+    // Params: source (row, col), starting bit offset and ending bit offset (exclusive)
+    const fn create(row: usize, col: usize, start: usize, end: usize) -> WitnessCell {
+        WitnessCell::Sublimb(SublimbWitnessCell {
+            row,
+            col,
+            start,
+            end,
+        })
+    }
+}
+
+struct ZeroWitnessCell;
+impl ZeroWitnessCell {
+    const fn create() -> WitnessCell {
+        WitnessCell::Zero
+    }
+}
+
+// Generate witness in shape that constraints expect (TODO: static for now, make dynamic)
+const WITNESS_SHAPE: [[WitnessCell; COLUMNS]; 4] = [
+    /* row 1, ForeignMul0 row */
+    [
+        LimbWitnessCell::create(),
+        /* 12-bit plookups */
+        SublimbWitnessCell::create(0, 0, 0, 12),
+        SublimbWitnessCell::create(0, 0, 12, 24),
+        SublimbWitnessCell::create(0, 0, 24, 36),
+        SublimbWitnessCell::create(0, 0, 36, 48),
+        /* 12-bit copies */
+        SublimbWitnessCell::create(0, 0, 48, 60),
+        SublimbWitnessCell::create(0, 0, 60, 72),
+        /* 2-bit crumbs */
+        SublimbWitnessCell::create(0, 0, 72, 74),
+        SublimbWitnessCell::create(0, 0, 74, 76),
+        SublimbWitnessCell::create(0, 0, 76, 78),
+        SublimbWitnessCell::create(0, 0, 78, 80),
+        SublimbWitnessCell::create(0, 0, 80, 82),
+        SublimbWitnessCell::create(0, 0, 82, 84),
+        SublimbWitnessCell::create(0, 0, 84, 86),
+        SublimbWitnessCell::create(0, 0, 86, 88),
+    ],
+    /* row 2, ForeignMul0 row */
+    [
+        LimbWitnessCell::create(),
+        /* 12-bit plookups */
+        SublimbWitnessCell::create(1, 0, 0, 12),
+        SublimbWitnessCell::create(1, 0, 12, 24),
+        SublimbWitnessCell::create(1, 0, 24, 36),
+        SublimbWitnessCell::create(1, 0, 36, 48),
+        /* 12-bit copies */
+        SublimbWitnessCell::create(1, 0, 48, 60),
+        SublimbWitnessCell::create(1, 0, 60, 72),
+        /* 2-bit crumbs */
+        SublimbWitnessCell::create(1, 0, 72, 74),
+        SublimbWitnessCell::create(1, 0, 74, 76),
+        SublimbWitnessCell::create(1, 0, 76, 78),
+        SublimbWitnessCell::create(1, 0, 78, 80),
+        SublimbWitnessCell::create(1, 0, 80, 82),
+        SublimbWitnessCell::create(1, 0, 82, 84),
+        SublimbWitnessCell::create(1, 0, 84, 86),
+        SublimbWitnessCell::create(1, 0, 86, 88),
+    ],
+    /* row 3, ForeignMul1 row */
+    [
+        LimbWitnessCell::create(),
+        /* 12-bit plookups */
+        SublimbWitnessCell::create(2, 0, 0, 12),
+        SublimbWitnessCell::create(2, 0, 12, 24),
+        SublimbWitnessCell::create(2, 0, 24, 36),
+        SublimbWitnessCell::create(2, 0, 36, 48),
+        /* 2-bit crumbs */
+        SublimbWitnessCell::create(2, 0, 48, 50),
+        SublimbWitnessCell::create(2, 0, 50, 52),
+        SublimbWitnessCell::create(2, 0, 52, 54),
+        SublimbWitnessCell::create(2, 0, 54, 56),
+        SublimbWitnessCell::create(2, 0, 56, 58),
+        SublimbWitnessCell::create(2, 0, 58, 60),
+        SublimbWitnessCell::create(2, 0, 60, 62),
+        SublimbWitnessCell::create(2, 0, 62, 64),
+        SublimbWitnessCell::create(2, 0, 64, 66),
+        SublimbWitnessCell::create(2, 0, 66, 68),
+    ],
+    /* row 4, ForeignMul2 row */
+    [
+        ZeroWitnessCell::create(),
+        /* 12-bit plookups */
+        CopyWitnessCell::create(0, 5),
+        CopyWitnessCell::create(0, 6),
+        CopyWitnessCell::create(1, 5),
+        CopyWitnessCell::create(1, 6),
+        /* 2-bit crumbs */
+        SublimbWitnessCell::create(2, 0, 68, 70),
+        SublimbWitnessCell::create(2, 0, 70, 72),
+        SublimbWitnessCell::create(2, 0, 72, 74),
+        SublimbWitnessCell::create(2, 0, 74, 76),
+        SublimbWitnessCell::create(2, 0, 76, 78),
+        SublimbWitnessCell::create(2, 0, 78, 80),
+        SublimbWitnessCell::create(2, 0, 80, 82),
+        SublimbWitnessCell::create(2, 0, 82, 84),
+        SublimbWitnessCell::create(2, 0, 84, 86),
+        SublimbWitnessCell::create(2, 0, 86, 88),
+    ],
+];
+
+fn limb_to_sublimb<F: PrimeField>(fe: F, start: usize, end: usize) -> F {
+    F::from_bits(&fe.to_bits()[start..end]).expect("failed to deserialize field bits")
+}
+
+fn init_foreign_mul_row<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], row: usize, limb: F) {
+    for col in 0..COLUMNS {
+        match &WITNESS_SHAPE[row][col] {
+            WitnessCell::Copy(copy_cell) => {
+                witness[col][row] = witness[copy_cell.col][copy_cell.row];
+            }
+            WitnessCell::Limb => {
+                witness[col][row] = limb;
+            }
+            WitnessCell::Sublimb(sublimb_cell) => {
+                witness[col][row] = limb_to_sublimb(
+                    witness[sublimb_cell.col][sublimb_cell.row], // limb cell (row, col)
+                    sublimb_cell.start,                          // starting bit
+                    sublimb_cell.end,                            // ending bit (exclusive)
+                );
+            }
+            WitnessCell::Zero => {
+                witness[col][row] = F::zero();
+            }
+        }
+    }
+}
+
+pub fn create_witness<F: PrimeField>(a: BigUint) -> [Vec<F>; COLUMNS] {
+    assert!(a.bits() <= (MAX_LIMBS * LIMB_SIZE) as u64);
+    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![F::zero(); 4]);
+    let mut last_row_number = 0;
+
+    for (row, chunk) in a
+        .to_bytes_le() // F::from_bytes() below is little-endian
+        .chunks(LIMB_SIZE / 8 + (LIMB_SIZE % 8 != 0) as usize)
+        .enumerate()
+    {
+        // Convert chunk to field element and store in column 0
+        let mut limb_bytes = chunk.to_vec();
+        limb_bytes.resize(32 /* F::size_in_bytes() */, 0);
+        let limb_fe = F::from_bytes(&limb_bytes).expect("failed to deserialize limb field bytes");
+
+        // Initialize the row based on the limb and public input shape
+        init_foreign_mul_row(&mut witness, row, limb_fe);
+        last_row_number += 1;
+    }
+
+    // Initialize last row
+    init_foreign_mul_row(&mut witness, last_row_number, F::zero());
+    witness
+}
+
+//
+// Constraints
+//
 
 thread_local! {
     static CACHE: std::cell::RefCell<Cache>  = RefCell::new(Cache::default());
@@ -187,7 +538,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul0);
-    const CONSTRAINTS: usize = 13;
+    const CONSTRAINTS: u32 = 13;
 
     // Constraints for ForeignMul0
     //   * Operates on Curr row
@@ -234,11 +585,11 @@ where
                 }
                 1..=7 => {
                     // 12-bit chunk offset
-                    acc + two().pow(12 * (i - 1)) * w(i)
+                    acc + two().pow(12 * (i as u64 - 1)) * w(i)
                 }
                 8..=COLUMNS => {
                     // 2-bit chunk offset
-                    acc + two().pow(2 * (i - 7) + 6 * 12) * w(i)
+                    acc + two().pow(2 * (i as u64 - 7) + 6 * 12) * w(i)
                 }
                 _ => {
                     panic!("Invalid column index {}", i)
@@ -261,7 +612,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul1);
-    const CONSTRAINTS: usize = 25;
+    const CONSTRAINTS: u32 = 25;
 
     // Constraints for ForeignMul1
     //   * Operates on Curr and Next row
@@ -315,18 +666,18 @@ where
 
         // 1st part (Curr row): \sum i \in [1,5] 2^{12*(i - 1)}*w_curr(i) + \sum i \in [6,14] 2^{2*(i - 5) + 4*12}*w_curr(i)
         let combined_sublimbs = (1..COLUMNS).fold(E::zero(), |acc, i| {
-            match i {
+            match i as usize {
                 0 => {
                     // ignore
                     acc
                 }
                 1..=4 => {
                     // 12-bit chunk
-                    acc + two().pow(12 * (i - 1)) * w_curr(i)
+                    acc + two().pow(12 * (i as u64 - 1)) * w_curr(i)
                 }
                 5..=COLUMNS => {
                     // 2-bit chunk
-                    acc + two().pow(2 * (i - 5) + 4 * 12) * w_curr(i)
+                    acc + two().pow(2 * (i as u64 - 5) + 4 * 12) * w_curr(i)
                 }
                 _ => {
                     panic!("Invalid column index {}", i)
@@ -337,7 +688,7 @@ where
         // 2nd part (Next row): \sum i \in [5,14] 2^{2*(i - 5) + 68}*w_next(i)
         let combined_sublimbs = (5..COLUMNS).fold(combined_sublimbs, |acc, i| {
             // 2-bit chunk
-            acc + two().pow(2 * (i - 5) + 68) * w_next(i)
+            acc + two().pow(2 * (i as u64 - 5) + 68) * w_next(i)
         });
 
         // w(0) = combined_sublimbs
@@ -355,7 +706,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignMul2);
-    const CONSTRAINTS: usize = 25;
+    const CONSTRAINTS: u32 = 25;
 
     // Constraints for ForeignMul2
     //   * Operates on Curr row
@@ -374,5 +725,214 @@ where
         // Apply range constraints on sublimbs (create 4 12-bit plookup range constraints)
         // crumbs were constrained by ForeignMul1 circuit gate
         (1..5).map(|i| sublimb_plookup_constraint(&w(i))).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::circuits::{
+        constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS,
+        polynomials::foreign_mul::create_witness, wires::Wire,
+    };
+
+    use ark_ec::AffineCurve;
+    use ark_ff::One;
+    use mina_curves::pasta::{pallas, vesta};
+    use num_bigint::BigUint;
+
+    use array_init::array_init;
+
+    type PallasField = <pallas::Affine as AffineCurve>::BaseField;
+    type VestaField = <vesta::Affine as AffineCurve>::BaseField;
+
+    fn create_test_constraint_system() -> ConstraintSystem<PallasField> {
+        let wires = array_init(|i| Wire::new(i));
+        let gates = CircuitGate::<PallasField>::create_foreign_mul(&wires);
+
+        ConstraintSystem::create(
+            gates,
+            vec![],
+            oracle::pasta::fp_kimchi::params(),
+            o1_utils::packed_modulus::<PallasField>(o1_utils::get_modulus::<VestaField>()),
+            0,
+        )
+        .unwrap()
+    }
+
+    fn biguint_from_hex_le(hex: &str) -> BigUint {
+        let mut bytes = hex::decode(hex).expect("invalid hex");
+        bytes.reverse();
+        BigUint::from_bytes_le(&bytes)
+    }
+
+    #[test]
+    fn verify_foreign_mul0_zero_witness() {
+        let cs = create_test_constraint_system();
+        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(0); 2]);
+
+        // gates[0] is ForeignMul0
+        assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_foreign_mul0_one_witness() {
+        let cs = create_test_constraint_system();
+        let witness: [Vec<PallasField>; COLUMNS] = array_init(|_| vec![PallasField::from(1); 2]);
+
+        // gates[0] is ForeignMul0
+        assert_eq!(
+            cs.gates[0].verify_foreign_mul(0, &witness, &cs),
+            Err("Invalid ForeignMul0 constraint".to_string())
+        );
+    }
+
+    #[test]
+    fn verify_foreign_mul0_valid_witness() {
+        let cs = create_test_constraint_system();
+
+        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "1112223334445556667777888999aaabbbcccdddeeefff111222333444555611",
+        ));
+
+        // gates[0] is ForeignMul0
+        assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
+
+        // gates[1] is ForeignMul0
+        assert_eq!(cs.gates[1].verify_foreign_mul(1, &witness, &cs), Ok(()));
+
+        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "f59abe33f5d808f8df3e63984621b01e375585fea8dd4030f71a0d80ac06d423",
+        ));
+
+        // gates[0] is ForeignMul0
+        assert_eq!(cs.gates[0].verify_foreign_mul(0, &witness, &cs), Ok(()));
+
+        // gates[1] is ForeignMul0
+        assert_eq!(cs.gates[1].verify_foreign_mul(1, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_foreign_mul0_invalid_witness() {
+        let cs = create_test_constraint_system();
+
+        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "bca91cf9df6cfd8bd225fd3f46ba2f3f33809d0ee2e7ad338448b4ece7b4f622",
+        ));
+
+        // Invalidate witness
+        witness[5][0] += PallasField::one();
+
+        // gates[0] is ForeignMul0
+        assert_eq!(
+            cs.gates[0].verify_foreign_mul(0, &witness, &cs),
+            Err(String::from("Invalid ForeignMul0 constraint"))
+        );
+
+        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "301a091e9f74cd459a448c311ae47fe2f4311db61ae1cbd2afee0171e2b5ca22",
+        ));
+
+        // Invalidate witness
+        witness[8][0] = witness[0][0] + PallasField::one();
+
+        // gates[0] is ForeignMul0
+        assert_eq!(
+            cs.gates[0].verify_foreign_mul(0, &witness, &cs),
+            Err(String::from("Invalid ForeignMul0 constraint"))
+        );
+    }
+
+    #[test]
+    fn verify_foreign_mul1_valid_witness() {
+        let cs = create_test_constraint_system();
+
+        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "72de0b593fbd97e172ddfb1d7c1f7488948c622a7ff6bffa0279e35a7c148733",
+        ));
+
+        // gates[2] is ForeignMul1
+        assert_eq!(cs.gates[2].verify_foreign_mul(2, &witness, &cs), Ok(()));
+
+        let witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "58372fb93039e7106c68488dceb6cab3ffb0e7c8594dcc3bc7160321fcf6960d",
+        ));
+
+        // gates[2] is ForeignMul1
+        assert_eq!(cs.gates[2].verify_foreign_mul(2, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_foreign_mul1_invalid_witness() {
+        let cs = create_test_constraint_system();
+
+        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "260efa1879427b08ca608d455d9f39954b5243dd52117e9ed5982f94acd3e22c",
+        ));
+
+        // Corrupt witness
+        witness[0][2] = witness[7][2];
+
+        // gates[2] is ForeignMul1
+        assert_eq!(
+            cs.gates[2].verify_foreign_mul(2, &witness, &cs),
+            Err(String::from("Invalid ForeignMul1 constraint"))
+        );
+
+        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "afd209d02c77546022ea860f9340e4289ecdd783e9c0012fd383dcd2940cd51b",
+        ));
+
+        // Corrupt witness
+        witness[13][2] = witness[1][2];
+
+        // gates[2] is ForeignMul1
+        assert_eq!(
+            cs.gates[2].verify_foreign_mul(2, &witness, &cs),
+            Err(String::from("Invalid ForeignMul1 constraint"))
+        );
+    }
+
+    #[test]
+    fn verify_foreign_mul2_valid_witness() {
+        let _cs = create_test_constraint_system();
+
+        let _witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "1aed1a6bc2ca84ee6edaedea4eb9b623392d24f64dfb0a8134ff16289bfc3c1f",
+        ));
+
+        // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
+        // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
+
+        let _witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "fd944d6dad12b5398bd2901b92439c6af31eca1766a1915bcd611df90830b508",
+        ));
+
+        // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
+        // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
+    }
+
+    #[test]
+    fn verify_foreign_mul2_invalid_witness() {
+        let _cs = create_test_constraint_system();
+
+        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b",
+        ));
+
+        // Corrupt witness
+        witness[12][2] = witness[2][2];
+
+        // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
+        // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
+
+        let mut witness: [Vec<PallasField>; 15] = create_witness(biguint_from_hex_le(
+            "56acede83576c45ec8c11a85ac97e2393a9f88308b4b42d1b1506f2faaafc02b",
+        ));
+
+        // Corrupt witness
+        witness[6][2] = witness[3][2];
+
+        // gates[3] is ForeignMul2 (cannot validate until plookup is implemented)
+        // assert_eq!(cs.gates[3].verify_foreign_mul(3, &witness, &cs), Ok(()));
     }
 }

@@ -1,9 +1,9 @@
-name: Basic rust CI stuff
+name: CI
 
 on:
   push:
     branches:
-      - main
+      - master
   pull_request:
 
 env:
@@ -36,11 +36,40 @@ jobs:
       # `cargo check` compiles the packages without performing the final step of code generation,
       # which is faster than running `cargo build`.
       # Use release build to speed up tests
-      - run: cargo check --release
-      # Run cargo check and test with all features including ocaml_types
-      - run: cargo check --release --all-features
-      - run: cargo test --release --all-features
+      - name: Run cargo check
+        run: cargo check --release
 
-      - run: cargo fmt -- --check
-      # Need clippy for `--features ocaml_types`?
-      - run: cargo clippy -- -D warnings
+      # https://github.com/o1-labs/proof-systems/issues/398
+      - name: Compile tests
+        run: cargo test --release --no-run
+
+      - name: Run cargo check with all features (including ocaml_types)
+        run: cargo check --release --all-features
+
+      - name: Run tests
+        run: cargo test --release --all-features
+
+      - name: Enforce formating
+        run: cargo fmt -- --check
+
+      # TODO: Need clippy for `--features ocaml_types`?
+      - name: Enforce clean clippy output
+        run: cargo clippy -- -D warnings
+
+      - name: Set up cargo-spec for specifications
+        run: |
+          cargo install cargo-spec --version 0.3.0
+
+      - name: Build the kimchi specification
+        run: |          
+          cd book/specifications
+          cd kimchi && make build 
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build 
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          git diff --exit-code

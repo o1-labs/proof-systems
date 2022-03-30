@@ -7,7 +7,7 @@ use array_init::array_init;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::sponge::ScalarChallenge;
 
-use super::gates::foreign_mul;
+use super::polynomials::foreign_mul;
 
 #[derive(Clone)]
 pub struct LookupEvaluations<Field> {

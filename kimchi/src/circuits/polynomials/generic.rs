@@ -1,43 +1,37 @@
-//! This module implements the double generic gate,
-//! which contains two generic gates.
-//!
-//! A generic gate is simply the 2-fan in gate specified in the
-//! vanilla PLONK protocol that allows us to do:
-//!
-//! * addition of two registers (into an output register)
-//! * or multiplication of two registers
-//! * equality of a register with a constant
-//!
-//! In each cases, registers can also be scaled by a constant.
-//!
-//! The layout of the gate is the following:
-//!
-//! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
-//! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
-//! | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |    |
-//!
-//! where l1, r1, and o1 (resp. l2, r2, o2)
-//! are the left, right, and output registers
-//! of the first (resp. second) generic gate.
-//!
-//! For the selector:
-//!
-//! |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 11 | 12 | 13 | 14 |
-//! |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|:--:|
-//! | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2  |    |    |    |    |    |
-//!
-//! with m1 (resp. m2) the mul selector for the first (resp. second) gate,
-//! and c1 (resp. c2) the constant selector for the first (resp. second) gate.
-//!
-//! The polynomial looks like this:
-//!
-//! <pre>
-//! [
-//!   alpha1 * (w0 * coeff0 + w1 * coeff1 + w2 * coeff2 + w0 * w1 * coeff3 + coeff4) +
-//!   alpha2 * (w3 * coeff5 + w4 * coeff6 + w5 * coeff7 + w3 w4 coeff8 + coeff9)
-//! ] * generic_selector
-//! </pre>
-//!
+//! This module implements the double generic gate.
+
+//~ The double generic gate contains two generic gates.
+//~
+//~ A generic gate is simply the 2-fan in gate specified in the
+//~ vanilla PLONK protocol that allows us to do operations like:
+//~
+//~ * addition of two registers (into an output register)
+//~ * or multiplication of two registers
+//~ * equality of a register with a constant
+//~
+//~ More generally, the generic gate controls the coefficients $c_i$ in the equation:
+//~
+//~ $$c_0 \cdot l + c_1 \cdot r + c_2 \cdot o + c_3 \cdot (l \times r) + c_4$$
+//~
+//~ The layout of the gate is the following:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:-:|:-:|:-:|:-:|:--:|:--:|:--:|:--:|:--:|
+//~ | l1 | r1 | o1 | l2 | r2 | o2 |   |   |   |   |    |    |    |    |    |
+//~
+//~ where l1, r1, and o1 (resp. l2, r2, o2)
+//~ are the left, right, and output registers
+//~ of the first (resp. second) generic gate.
+//~
+//~ The selectors are stored in the coefficient table as:
+//~
+//~ |  0 |  1 |  2 |  3 |  4 |  5 | 6  |  7 |  8 |  9 | 10 | 11 | 12 | 13 | 14 |
+//~ |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+//~ | l1 | r1 | o1 | m1 | c1 | l2 | r2 | o2 | m2 | c2 |    |    |    |    |    |
+//~
+//~ with m1 (resp. m2) the mul selector for the first (resp. second) gate,
+//~ and c1 (resp. c2) the constant selector for the first (resp. second) gate.
+//~
 
 use crate::circuits::{
     constraints::ConstraintSystem,
@@ -51,7 +45,7 @@ use array_init::array_init;
 use rayon::prelude::*;
 
 /// Number of constraints produced by the gate.
-pub const CONSTRAINTS: usize = 2;
+pub const CONSTRAINTS: u32 = 2;
 
 /// Number of generic of registers by a single generic gate
 pub const GENERIC_REGISTERS: usize = 3;
@@ -62,7 +56,7 @@ pub const GENERIC_REGISTERS: usize = 3;
 pub const GENERIC_COEFFS: usize = GENERIC_REGISTERS + 1 /* mul */ + 1 /* cst */;
 
 /// The different type of computation that are possible with a generic gate.
-/// This type is useful to create a generic gate via the [create_generic_gadget] function.
+/// This type is useful to create a generic gate via the [CircuitGate::create_generic_gadget] function.
 pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
@@ -87,7 +81,7 @@ pub enum GenericGateSpec<F> {
 }
 
 impl<F: FftField> CircuitGate<F> {
-    /// This allows you to create two generic gates that will fit in one row, check [create_generic_gadget] for a better to way to create these gates.
+    /// This allows you to create two generic gates that will fit in one row, check [Self::create_generic_gadget] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
         CircuitGate {
             typ: GateType::Generic,
@@ -162,6 +156,13 @@ impl<F: FftField> CircuitGate<F> {
 
 // -------------------------------------------------
 
+//~ The constraints:
+//~
+//~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
+//~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
+//~
+//~ where the $c_i$ are the [coefficients]().
+
 impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     /// generic constraint quotient poly contribution computation
     pub fn gnrc_quot(
@@ -229,10 +230,13 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
     }
 
     /// produces
+    ///
+    /// ```ignore
     /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[0](zeta),
     /// alpha * generic(zeta) * w[1](zeta),
     /// alpha * generic(zeta) * w[2](zeta)
+    /// ```
     pub fn gnrc_scalars(
         mut alphas: impl Iterator<Item = F>,
         w_zeta: &[F; COLUMNS],
@@ -312,6 +316,7 @@ pub mod testing {
             &self,
             row: usize,
             witness: &[Vec<F>; COLUMNS],
+            public: &[F],
         ) -> Result<(), String> {
             // assignments
             let this: [F; COLUMNS] = array_init(|i| witness[i][row]);
@@ -329,9 +334,14 @@ pub mod testing {
                 let mul = self.coeffs[coeffs_offset + 3]
                     * this[register_offset]
                     * this[register_offset + 1];
+                let public = if coeffs_offset == 0 {
+                    public.get(row).cloned().unwrap_or_else(F::zero)
+                } else {
+                    F::zero()
+                };
                 ensure_eq!(
                     zero,
-                    sum + mul + self.coeffs[coeffs_offset + 4],
+                    sum + mul + self.coeffs[coeffs_offset + 4] - public,
                     "generic: incorrect gate"
                 );
                 Ok(())
@@ -386,12 +396,22 @@ pub mod testing {
     }
 
     /// function to create a generic circuit
-    pub fn create_circuit<F: FftField>(start_row: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<F: FftField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
         // create generic gates
         let mut gates_row = iterate(start_row, |&i| i + 1);
+
+        // public input
+        for _ in 0..public {
+            let r = gates_row.next().unwrap();
+            gates.push(CircuitGate::create_generic_gadget(
+                Wire::new(r),
+                GenericGateSpec::Pub,
+                None,
+            ));
+        }
 
         // add and mul
         for _ in 0..10 {
@@ -428,9 +448,19 @@ pub mod testing {
     }
 
     // function to fill in a witness created via [create_circuit]
-    pub fn fill_in_witness<F: FftField>(start_row: usize, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn fill_in_witness<F: FftField>(
+        start_row: usize,
+        witness: &mut [Vec<F>; COLUMNS],
+        public: &[F],
+    ) {
         // fill witness
         let mut witness_row = iterate(start_row, |&i| i + 1);
+
+        // public
+        for p in public {
+            let r = witness_row.next().unwrap();
+            witness[0][r] = *p;
+        }
 
         // add and mul
         for _ in 0..10 {
@@ -469,7 +499,7 @@ mod tests {
     #[test]
     fn test_generic_polynomial() {
         // create circuit
-        let gates = testing::create_circuit::<Fp>(0);
+        let gates = testing::create_circuit::<Fp>(0, 0);
 
         // create constraint system
         let cs = ConstraintSystem::fp_for_testing(gates);
@@ -477,10 +507,10 @@ mod tests {
         // create witness
         let n = cs.domain.d1.size();
         let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); n]);
-        testing::fill_in_witness(0, &mut witness);
+        testing::fill_in_witness(0, &mut witness, &[]);
 
         // make sure we're done filling the witness correctly
-        cs.verify(&witness).unwrap();
+        cs.verify(&witness, &[]).unwrap();
 
         // generate witness polynomials
         let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] =

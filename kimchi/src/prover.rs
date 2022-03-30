@@ -5,23 +5,29 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::{LookupConstraintSystem, ZK_ROWS},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
-        gate::{combine_table_entry, GateType, LookupsUsed},
+        gate::GateType,
+        lookup::{
+            self,
+            constraints::LookupConfiguration,
+            lookups::LookupsUsed,
+            tables::{combine_table_entry, CombinedEntry},
+        },
         polynomials::{
             self,
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, lookup, permutation,
+            generic, permutation,
             poseidon::Poseidon,
             varbasemul::VarbaseMul,
         },
         scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
-    error::{ProofError, Result},
-    index::Index,
+    error::ProofError,
     plonk_sponge::FrSponge,
+    prover_index::ProverIndex,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
@@ -29,15 +35,17 @@ use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, OpeningProof, PolyComm};
+use commitment_dlog::{
+    commitment::{b_poly_coefficients, CommitmentCurve, PolyComm},
+    evaluation_proof::OpeningProof,
+};
 use itertools::Itertools;
-use lookup::CombinedEntry;
-use o1_utils::ExtendedDensePolynomial;
+use o1_utils::{types::fields::*, ExtendedDensePolynomial};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
-type Fr<G> = <G as AffineCurve>::ScalarField;
-type Fq<G> = <G as AffineCurve>::BaseField;
+/// The result of a proof creation or verification.
+pub type Result<T> = std::result::Result<T, ProofError>;
 
 #[derive(Clone)]
 pub struct LookupCommitments<G: AffineCurve> {
@@ -45,6 +53,7 @@ pub struct LookupCommitments<G: AffineCurve> {
     pub aggreg: PolyComm<G>,
 }
 
+/// All the commitments that the prover creates as part of the proof.
 #[derive(Clone)]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
@@ -57,6 +66,7 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub lookup: Option<LookupCommitments<G>>,
 }
 
+/// The proof that the prover creates from a [ProverIndex] and a `witness`.
 #[derive(Clone)]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
@@ -67,32 +77,43 @@ pub struct ProverProof<G: AffineCurve> {
 
     /// Two evaluations over a number of committed polynomials
     // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<Fr<G>>>; 2],
+    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
 
-    /// Required evaluation for Maller's optimization
-    /// (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: Fr<G>,
+    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
+    pub ft_eval1: ScalarField<G>,
 
     /// The public input
-    pub public: Vec<Fr<G>>,
+    pub public: Vec<ScalarField<G>>,
 
     /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
 }
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    /// This function constructs prover's zk-proof from the witness & the Index against SRS instance
-    ///     witness: computation witness
-    ///     index: Index
-    ///     RETURN: prover's zk-proof
-    pub fn create<EFqSponge: Clone + FqSponge<Fq<G>, G, Fr<G>>, EFrSponge: FrSponge<Fr<G>>>(
+    /// This function constructs prover's zk-proof from the witness & the ProverIndex against SRS instance
+    pub fn create<
+        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
+        EFrSponge: FrSponge<ScalarField<G>>,
+    >(
+        groupmap: &G::Map,
+        witness: [Vec<ScalarField<G>>; COLUMNS],
+        index: &ProverIndex<G>,
+    ) -> Result<Self> {
+        Self::create_recursive::<EFqSponge, EFrSponge>(groupmap, witness, index, Vec::new())
+    }
+
+    /// This function constructs prover's recursive zk-proof from the witness & the ProverIndex against SRS instance
+    pub fn create_recursive<
+        EFqSponge: Clone + FqSponge<BaseField<G>, G, ScalarField<G>>,
+        EFrSponge: FrSponge<ScalarField<G>>,
+    >(
         group_map: &G::Map,
-        mut witness: [Vec<Fr<G>>; COLUMNS],
-        index: &Index<G>,
-        prev_challenges: Vec<(Vec<Fr<G>>, PolyComm<G>)>,
+        mut witness: [Vec<ScalarField<G>>; COLUMNS],
+        index: &ProverIndex<G>,
+        prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
     ) -> Result<Self> {
         let d1_size = index.cs.domain.d1.size as usize;
         // TODO: rng should be passed as arg
@@ -100,10 +121,18 @@ where
 
         // double-check the witness
         if cfg!(test) {
-            index.cs.verify(&witness).expect("incorrect witness");
+            let public = witness[0][0..index.cs.public].to_vec();
+            index
+                .cs
+                .verify(&witness, &public)
+                .expect("incorrect witness");
         }
 
-        // ensure we have room for the zero-knowledge rows
+        //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
+        //~    We currently expect the witness not to be of the same length as the domain,
+        //~    but instead be of the length of the (smaller) circuit.
+        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+        //~    the size of the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
@@ -112,35 +141,46 @@ where
             return Err(ProofError::NoRoomForZkInWitness);
         }
 
-        // pad and add zero-knowledge rows to the witness columns
+        //~ 2. Pad the witness columns with Zero gates to make them the same length as the domain.
+        //~    Then, randomize the last `ZK_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
                 return Err(ProofError::WitnessCsInconsistent);
             }
 
             // padding
-            w.extend(std::iter::repeat(Fr::<G>::zero()).take(length_padding));
+            w.extend(std::iter::repeat(ScalarField::<G>::zero()).take(length_padding));
 
             // zk-rows
             for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = Fr::<G>::rand(rng);
+                *row = ScalarField::<G>::rand(rng);
             }
         }
 
-        // the transcript of the random oracle non-interactive argument
+        //~ 3. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(index.fq_sponge_params.clone());
 
-        // compute public input polynomial
+        //~ 4. Compute the negated public input polynomial as
+        //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
+        //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
-        let public_poly = -Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        let public_poly = -Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
         )
         .interpolate();
 
-        // commit to the wire values
-        let w_comm: [(PolyComm<G>, PolyComm<Fr<G>>); COLUMNS] = array_init(|i| {
-            let e = Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        //~ 5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
+        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+
+        //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
+        fq_sponge.absorb_g(&public_comm.unshifted);
+
+        //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
+        //~    Note: since the witness is in evaluation form,
+        //~    we can use the `commit_evaluation` optimization.
+        let w_comm: [(PolyComm<G>, PolyComm<ScalarField<G>>); COLUMNS] = array_init(|i| {
+            let e = Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             );
@@ -149,31 +189,40 @@ where
                 .commit_evaluations(index.cs.domain.d1, &e, None, rng)
         });
 
-        // compute witness polynomials
-        let witness_poly: [DensePolynomial<Fr<G>>; COLUMNS] = array_init(|i| {
-            Evaluations::<Fr<G>, D<Fr<G>>>::from_vec_and_domain(
+        //~ 8. Absorb the witness commitments with the Fq-Sponge.
+        w_comm
+            .iter()
+            .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
+
+        //~ 9. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
+        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
+        let witness_poly: [DensePolynomial<ScalarField<G>>; COLUMNS] = array_init(|i| {
+            Evaluations::<ScalarField<G>, D<ScalarField<G>>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
             )
             .interpolate()
         });
 
-        // absorb the wire polycommitments into the argument
-        fq_sponge.absorb_g(&index.srs.commit_non_hiding(&public_poly, None).unshifted);
-        w_comm
-            .iter()
-            .for_each(|c| fq_sponge.absorb_g(&c.0.unshifted));
-
+        //~ 10. TODO: lookup
         let joint_combiner_ = {
             // TODO: how will the verifier circuit handle these kind of things? same with powers of alpha...
             let s = match index.cs.lookup_constraint_system.as_ref() {
                 None
                 | Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Single,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Single,
+                            ..
+                        },
                     ..
-                }) => ScalarChallenge(Fr::<G>::zero()),
+                }) => ScalarChallenge(ScalarField::<G>::zero()),
                 Some(LookupConstraintSystem {
-                    lookup_used: LookupsUsed::Joint,
+                    configuration:
+                        LookupConfiguration {
+                            lookup_used: LookupsUsed::Joint,
+                            ..
+                        },
                     ..
                 }) => ScalarChallenge(fq_sponge.challenge()),
             };
@@ -181,7 +230,7 @@ where
         };
 
         // TODO: that seems like an unecessary line
-        let joint_combiner: Fr<G> = joint_combiner_.1;
+        let joint_combiner: ScalarField<G> = joint_combiner_.1;
 
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
@@ -226,8 +275,10 @@ where
 
         let dummy_lookup_value = {
             let x = match index.cs.lookup_constraint_system.as_ref() {
-                None => Fr::<G>::zero(),
-                Some(lcs) => combine_table_entry(joint_combiner, lcs.dummy_lookup_values[0].iter()),
+                None => ScalarField::<G>::zero(),
+                Some(lcs) => {
+                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_entry.iter())
+                }
             };
             CombinedEntry(x)
         };
@@ -238,7 +289,7 @@ where
                 Some(lcs) => {
                     let iter_lookup_table = || {
                         (0..d1_size).map(|i| {
-                            let row = lcs.lookup_tables8[0].iter().map(|e| &e.evals[8 * i]);
+                            let row = lcs.lookup_table8.iter().map(|e| &e.evals[8 * i]);
                             CombinedEntry(combine_table_entry(joint_combiner, row))
                         })
                     };
@@ -246,20 +297,21 @@ where
                     // TODO: Once we switch to committing using lagrange commitments,
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
-                    let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
-                        dummy_lookup_value,
-                        iter_lookup_table,
-                        index.cs.domain.d1,
-                        &index.cs.gates,
-                        &witness,
-                        joint_combiner,
-                    )?;
+                    let lookup_sorted: Vec<Vec<CombinedEntry<ScalarField<G>>>> =
+                        lookup::constraints::sorted(
+                            dummy_lookup_value,
+                            iter_lookup_table,
+                            index.cs.domain.d1,
+                            &index.cs.gates,
+                            &witness,
+                            joint_combiner,
+                        )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
                         .into_iter()
                         .map(|chunk| {
                             let v: Vec<_> = chunk.into_iter().map(|x| x.0).collect();
-                            lookup::zk_patch(v, index.cs.domain.d1, rng)
+                            lookup::constraints::zk_patch(v, index.cs.domain.d1, rng)
                         })
                         .collect();
 
@@ -286,22 +338,25 @@ where
                 }
             };
 
-        // sample beta, gamma oracles
+        //~ 11. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
+
+        //~ 12. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
+        //~ 13. TODO: lookup
         let (lookup_aggreg_coeffs, lookup_aggreg_comm, lookup_aggreg8) =
             // compute lookup aggregation polynomial
             match (index.cs.lookup_constraint_system.as_ref(), lookup_sorted) {
                 (None, None) | (None, Some(_)) | (Some(_), None) => (None, None, None),
                 (Some(lcs), Some(lookup_sorted)) => {
                     let iter_lookup_table = || (0..d1_size).map(|i| {
-                        let row = lcs.lookup_tables8[0].iter().map(|e| & e.evals[8 * i]);
+                        let row = lcs.lookup_table8.iter().map(|e| & e.evals[8 * i]);
                         combine_table_entry(joint_combiner, row)
                     });
 
                     let aggreg =
-                        lookup::aggregation::<_, Fr<G>, _>(
+                        lookup::constraints::aggregation::<_, ScalarField<G>, _>(
                             dummy_lookup_value.0,
                             iter_lookup_table(),
                             index.cs.domain.d1,
@@ -312,7 +367,7 @@ where
                             &lookup_sorted,
                             rng)?;
 
-                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != Fr::<G>::one() {
+                    if aggreg.evals[d1_size - (ZK_ROWS as usize + 1)] != ScalarField::<G>::one() {
                         panic!("aggregation incorrect: {}", aggreg.evals[d1_size-(ZK_ROWS as usize + 1)]);
                     }
 
@@ -328,23 +383,31 @@ where
                 },
             };
 
-        // compute permutation aggregation polynomial
+        //~ 14. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
-        // commit to z
+
+        //~ 15. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, None, rng);
 
-        // absorb the z commitment into the argument and query alpha
+        //~ 16. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         fq_sponge.absorb_g(&z_comm.0.unshifted);
+
+        //~ 17. Sample $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
-        let alpha = alpha_chal.to_field(&index.srs.endo_r);
+
+        //~ 18. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
+        let alpha: ScalarField<G> = alpha_chal.to_field(&index.srs.endo_r);
+
+        //~ 19. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
-        // evaluate witness and permutation polynomials over domains
+        //~ 20. TODO: this is just an optimization, ignore?
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
+        //~ 21. TODO: lookup
         let lookup_table_combined = index.cs.lookup_constraint_system.as_ref().map(|lcs| {
-            let joint_table = &lcs.lookup_tables8[0];
+            let joint_table = &lcs.lookup_table8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
                 res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
@@ -369,6 +432,7 @@ where
                 },
             );
 
+        //~ 22. TODO: setup the env
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
@@ -410,10 +474,14 @@ where
             }
         };
 
-        //
-        // compute quotient polynomial
-        //
-
+        //~ 23. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+        //~     The quotient polynomial is computed by adding all these polynomials together:
+        //~     - the combined constraints for all the gates
+        //~     - the combined constraints for the permutation
+        //~     - TODO: lookup
+        //~     - the negated public polynomial
+        //~     and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
+        //~     TODO: specify the split of the permutation polynomial into perm and bnd?
         let quotient_poly = {
             // generic
             let alphas =
@@ -421,8 +489,10 @@ where
             let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
             if cfg!(test) {
-                let (_, res) = t4
-                    .clone()
+                let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
+                let gen_minus_pub = &t4 + &p4;
+
+                let (_, res) = gen_minus_pub
                     .interpolate()
                     .divide_by_vanishing_poly(index.cs.domain.d1)
                     .unwrap();
@@ -593,9 +663,9 @@ where
             // lookup
             if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
                 let lookup_alphas =
-                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::CONSTRAINTS);
+                    all_alphas.get_alphas(ArgumentType::Lookup, lookup::constraints::CONSTRAINTS);
                 let constraints =
-                    lookup::constraints(&lcs.dummy_lookup_values[0], index.cs.domain.d1);
+                    lookup::constraints::constraints(&lcs.configuration, index.cs.domain.d1);
 
                 for (constraint, alpha_pow) in constraints.into_iter().zip_eq(lookup_alphas) {
                     let mut eval = constraint.evaluations(&env);
@@ -629,7 +699,8 @@ where
             quotient
         };
 
-        // commit to t
+        //~ 24. commit (hiding) to the quotient polynomial $t$
+        //~     TODO: specify the dummies
         let t_comm = {
             let (mut t_comm, mut omega_t) = index.srs.commit(&quotient_poly, None, rng);
 
@@ -640,37 +711,51 @@ where
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 use ark_ec::ProjectiveCurve;
-                let w = Fr::<G>::rand(rng);
+                let w = ScalarField::<G>::rand(rng);
                 t_comm.unshifted.push(index.srs.h.mul(w).into_affine());
                 omega_t.unshifted.push(w);
             }
             (t_comm, omega_t)
         };
 
-        // absorb the polycommitments into the argument and sample zeta
+        //~ 25. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         fq_sponge.absorb_g(&t_comm.0.unshifted);
 
+        //~ 26. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
+
+        //~ 27. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(&index.srs.endo_r);
+
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
 
-        let lookup_evals = |e: Fr<G>| {
+        //~ 28. TODO: lookup
+        let lookup_evals = |e: ScalarField<G>| {
             lookup_aggreg_coeffs
                 .as_ref()
                 .zip(lookup_sorted_coeffs.as_ref())
                 .zip(index.cs.lookup_constraint_system.as_ref())
                 .map(|((aggreg, sorted), lcs)| LookupEvaluations {
-                    aggreg: aggreg.eval(e, index.max_poly_size),
+                    aggreg: aggreg
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(e),
                     sorted: sorted
                         .iter()
-                        .map(|c| c.eval(e, index.max_poly_size))
+                        .map(|c| {
+                            c.to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(e)
+                        })
                         .collect(),
-                    table: lcs.lookup_tables[0]
+                    table: lcs
+                        .lookup_table
                         .iter()
-                        .map(|p| p.eval(e, index.max_poly_size))
+                        .map(|p| {
+                            p.to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(e)
+                        })
                         .rev()
-                        .fold(vec![Fr::<G>::zero()], |acc, x| {
+                        .fold(vec![ScalarField::<G>::zero()], |acc, x| {
                             acc.into_iter()
                                 .zip(x.iter())
                                 .map(|(acc, x)| acc * joint_combiner + x)
@@ -679,112 +764,210 @@ where
                 })
         };
 
-        // evaluate the polynomials
-        let chunked_evals_zeta = ProofEvaluations::<Vec<Fr<G>>> {
-            s: array_init(|i| index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)),
-            w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
-            z: z_poly.eval(zeta, index.max_poly_size),
-            lookup: lookup_evals(zeta),
-            generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
-            poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
-            foreign_mul_selector: array_init(|i| {
-                index.cs.foreign_mulm[i].eval(zeta, index.max_poly_size)
-            }),
-        };
-        let chunked_evals_zeta_omega = ProofEvaluations::<Vec<Fr<G>>> {
-            s: array_init(|i| {
-                index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
-            }),
-            w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
-            z: z_poly.eval(zeta_omega, index.max_poly_size),
-            lookup: lookup_evals(zeta_omega),
-            generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
-            poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
-            foreign_mul_selector: array_init(|i| {
-                index.cs.foreign_mulm[i].eval(zeta_omega, index.max_poly_size)
-            }),
+        //~ 29. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
+        //~     * $s_i$
+        //~     * $w_i$
+        //~     * $z$
+        //~     * lookup (TODO)
+        //~     * generic selector
+        //~     * poseidon selector
+        //~     * foreign mul selector
+        //~
+        //~     By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
+        //~     This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
+        //~     If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
+        //~     $$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$
+        //~
+        //~     And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:
+        //~
+        //~     $$(f_0(x), f_1(x), f_2(x), \ldots)$$
+        //~
+        //~      TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+        let chunked_evals = {
+            let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
+                s: array_init(|i| {
+                    index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
+                w: array_init(|i| {
+                    witness_poly[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
+
+                z: z_poly
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta),
+
+                lookup: lookup_evals(zeta),
+
+                generic_selector: index
+                    .cs
+                    .genericm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta),
+
+                poseidon_selector: index
+                    .cs
+                    .psm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta),
+
+                foreign_mul_selector: array_init(|i| {
+                    index.cs.foreign_mulm[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
+            };
+            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
+                s: array_init(|i| {
+                    index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
+                }),
+
+                w: array_init(|i| {
+                    witness_poly[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
+                }),
+
+                z: z_poly
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta_omega),
+
+                lookup: lookup_evals(zeta_omega),
+
+                generic_selector: index
+                    .cs
+                    .genericm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta_omega),
+
+                poseidon_selector: index
+                    .cs
+                    .psm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta_omega),
+
+                foreign_mul_selector: array_init(|i| {
+                    index.cs.foreign_mulm[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
+                }),
+            };
+
+            [chunked_evals_zeta, chunked_evals_zeta_omega]
         };
 
         drop(lookup_aggreg_coeffs);
         drop(lookup_sorted_coeffs);
 
-        let chunked_evals = [chunked_evals_zeta, chunked_evals_zeta_omega];
-
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
         let zeta_omega_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
-
         let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
 
-        // normal evaluations
-        let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
-        let evals = &chunked_evals
-            .iter()
-            .zip(power_of_eval_points_for_chunks.iter())
-            .map(|(es, &e1)| ProofEvaluations::<Fr<G>> {
-                s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
-                z: DensePolynomial::eval_polynomial(&es.z, e1),
-                lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
-                    table: DensePolynomial::eval_polynomial(&l.table, e1),
-                    aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),
-                    sorted: l
-                        .sorted
-                        .iter()
-                        .map(|p| DensePolynomial::eval_polynomial(p, e1))
-                        .collect(),
-                }),
-                generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
-                poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                foreign_mul_selector: array_init(|i| {
-                    DensePolynomial::eval_polynomial(&es.foreign_mul_selector[i], e1)
-                }),
-            })
-            .collect::<Vec<_>>();
+        //~ 30. Evaluate the same polynomials without chunking them
+        //~     (so that each polynomial should correspond to a single value this time).
+        let evals = {
+            let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
+            &chunked_evals
+                .iter()
+                .zip(power_of_eval_points_for_chunks.iter())
+                .map(|(es, &e1)| ProofEvaluations::<ScalarField<G>> {
+                    s: array_init(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                    w: array_init(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
+                    z: DensePolynomial::eval_polynomial(&es.z, e1),
+                    lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
+                        table: DensePolynomial::eval_polynomial(&l.table, e1),
+                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),
+                        sorted: l
+                            .sorted
+                            .iter()
+                            .map(|p| DensePolynomial::eval_polynomial(p, e1))
+                            .collect(),
+                    }),
+                    generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
+                    poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
+                    foreign_mul_selector: array_init(|i| {
+                        DensePolynomial::eval_polynomial(&es.foreign_mul_selector[i], e1)
+                    }),
+                })
+                .collect::<Vec<_>>()
+        };
 
-        // compute and evaluate linearization polynomial
-        let f_chunked = {
-            // TODO: compute the linearization polynomial in evaluation form so
-            // that we can drop the coefficient forms of the index polynomials from
-            // the constraint system struct
+        //~ 31. Compute the ft polynomial.
+        //~     This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        let ft: DensePolynomial<ScalarField<G>> = {
+            let f_chunked = {
+                // TODO: compute the linearization polynomial in evaluation form so
+                // that we can drop the coefficient forms of the index polynomials from
+                // the constraint system struct
 
-            // generic
-            let alphas =
-                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-            let mut f = index
-                .cs
-                .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
-                .interpolate();
+                // generic (not part of linearization yet)
+                let alphas = all_alphas
+                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
+                let mut f = index
+                    .cs
+                    .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                    .interpolate();
 
-            // permutation
-            let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-            f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                // permutation (not part of linearization yet)
+                let alphas =
+                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
-            let f = {
-                let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
-                f + lin
+                // the circuit polynomial
+                let f = {
+                    let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
+                    f + lin
+                };
+
+                drop(env);
+                drop(lookup_sorted8);
+                drop(lookup_aggreg8);
+                drop(lookup_table_combined);
+
+                // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
+                f.to_chunked_polynomial(index.max_poly_size)
+                    .linearize(zeta_to_srs_len)
             };
 
-            drop(env);
-            drop(lookup_sorted8);
-            drop(lookup_aggreg8);
-            drop(lookup_table_combined);
+            let t_chunked = quotient_poly
+                .to_chunked_polynomial(index.max_poly_size)
+                .linearize(zeta_to_srs_len);
 
-            f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
+            &f_chunked - &t_chunked.scale(zeta_to_domain_size - ScalarField::<G>::one())
         };
 
-        let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
+        //~ 32. construct the blinding part of the ft polynomial commitment
+        //~     see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
+        let blinding_ft = {
+            let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
+            let blinding_f = ScalarField::<G>::zero();
 
-        let ft: DensePolynomial<Fr<G>> =
-            &f_chunked - &t_chunked.scale(zeta_to_domain_size - Fr::<G>::one());
+            PolyComm {
+                // blinding_f - Z_H(zeta) * blinding_t
+                unshifted: vec![
+                    blinding_f - (zeta_to_domain_size - ScalarField::<G>::one()) * blinding_t,
+                ],
+                shifted: None,
+            }
+        };
+
+        //~ 33. Evaluate the ft polynomial at $\zeta\omega$ only.
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
+        //~ 34. Setup the Fr-Sponge
         let fq_sponge_before_evaluations = fq_sponge.clone();
-        let mut fr_sponge = {
-            let mut s = EFrSponge::new(index.cs.fr_sponge_params.clone());
-            s.absorb(&fq_sponge.digest());
-            s
-        };
-        let p_eval = if public_poly.is_zero() {
+        let mut fr_sponge = EFrSponge::new(index.cs.fr_sponge_params.clone());
+
+        //~ 35. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
+        fr_sponge.absorb(&fq_sponge.digest());
+
+        //~ 36. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+        let public_evals = if public_poly.is_zero() {
             [Vec::new(), Vec::new()]
         } else {
             [
@@ -792,19 +975,41 @@ where
                 vec![public_poly.evaluate(&zeta_omega)],
             ]
         };
+
+        //~ 37. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
+        //~     - the public polynomial
+        //~     - z
+        //~     - generic selector
+        //~     - poseidon selector
+        //~     - the 15 register/witness
+        //~     - 6 sigmas evaluations (the last one is not evaluated)
         for i in 0..2 {
-            fr_sponge.absorb_evaluations(&p_eval[i], &chunked_evals[i])
+            fr_sponge.absorb_evaluations(&public_evals[i], &chunked_evals[i])
         }
+
+        //~ 38. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);
 
-        // query opening scaler challenges
+        //~ 39. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();
+
+        //~ 40. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
         let v = v_chal.to_field(&index.srs.endo_r);
+
+        //~ 41. Sample $u'$ with the Fr-Sponge
         let u_chal = fr_sponge.challenge();
+
+        //~ 42. Derive $u$ from $u'$ using the endomorphism (TODO: specify)
         let u = u_chal.to_field(&index.srs.endo_r);
 
-        // construct the proof
-        // --------------------------------------------------------------------
+        //~ 43. Create a list of all polynomials that will require evaluations
+        //~     (and evaluation proofs) in the protocol.
+        //~     First, include the previous challenges, in case we are in a recursive prover.
+        let non_hiding = |d1_size: usize| PolyComm {
+            unshifted: vec![ScalarField::<G>::zero(); d1_size],
+            shifted: None,
+        };
+
         let polys = prev_challenges
             .iter()
             .map(|(chals, comm)| {
@@ -814,29 +1019,20 @@ where
                 )
             })
             .collect::<Vec<_>>();
-        let non_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![Fr::<G>::zero(); d1_size],
-            shifted: None,
-        };
 
-        // construct the blinding part of the ft polynomial for Maller's optimization
-        // (see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html)
-        let blinding_ft = {
-            let blinding_t = t_comm.1.chunk_blinding(zeta_to_srs_len);
-            let blinding_f = Fr::<G>::zero();
-
-            PolyComm {
-                // blinding_f - Z_H(zeta) * blinding_t
-                unshifted: vec![blinding_f - (zeta_to_domain_size - Fr::<G>::one()) * blinding_t],
-                shifted: None,
-            }
-        };
-
-        // construct evaluation proof
         let mut polynomials = polys
             .iter()
             .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
+
+        //~ 44. Then, include:
+        //~     - the negated public polynomial (TODO: why?)
+        //~     - the ft polynomial
+        //~     - the permutation aggregation polynomial z polynomial
+        //~     - the generic selector
+        //~     - the poseidon selector
+        //~     - the 15 registers/witness columns
+        //~     - the 6 sigmas
         polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.1)]);
@@ -856,6 +1052,17 @@ where
                 .collect::<Vec<_>>(),
         );
 
+        //~ 44. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+        let proof = index.srs.open(
+            group_map,
+            &polynomials,
+            &[zeta, zeta_omega],
+            v,
+            u,
+            fq_sponge_before_evaluations,
+            rng,
+        );
+
         Ok(Self {
             commitments: ProverCommitments {
                 w_comm: array_init(|i| w_comm[i].0.clone()),
@@ -868,15 +1075,7 @@ where
                     }
                 }),
             },
-            proof: index.srs.open(
-                group_map,
-                &polynomials,
-                &[zeta, zeta_omega],
-                v,
-                u,
-                fq_sponge_before_evaluations,
-                rng,
-            ),
+            proof,
             evals: chunked_evals,
             ft_eval1,
             public,

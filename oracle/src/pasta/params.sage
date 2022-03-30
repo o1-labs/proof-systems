@@ -19,10 +19,10 @@
 #
 # Currently used names
 #
-#   Name | Parameters
+#   Name   | Parameters
 #   -----------------
-#   ''   | Reserved for legacy
-#   3    | rounds=54, width=3, rate=2, alpha=7
+#   ''     | Reserved for legacy
+#   kimchi | rounds=55, width=3, rate=2, alpha=7
 
 import hashlib
 import sys

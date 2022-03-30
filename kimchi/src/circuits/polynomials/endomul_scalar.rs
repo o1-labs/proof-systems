@@ -116,7 +116,6 @@ fn polynomial<F: Field>(coeffs: &[F], x: &E<F>) -> E<F> {
 /// = x^4 - 6*x^3 + 11*x^2 - 6*x
 /// = x *(x^3 - 6*x^2 + 11*x - 6)
 /// ```
-#[derive(Default)]
 pub struct EndomulScalar<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndomulScalar<F>
@@ -124,7 +123,7 @@ where
     F: FftField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
-    const CONSTRAINTS: usize = 11;
+    const CONSTRAINTS: u32 = 11;
 
     fn constraints() -> Vec<E<F>> {
         let n0 = witness_curr(0);

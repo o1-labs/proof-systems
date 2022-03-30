@@ -1,18 +1,18 @@
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::{CircuitGate, GateType},
-    polynomials::endosclmul,
-    wires::*,
+use crate::prover::ProverProof;
+use crate::verifier::verify;
+use crate::{
+    circuits::{
+        gate::{CircuitGate, GateType},
+        polynomials::endosclmul,
+        wires::*,
+    },
+    prover_index::testing::new_index_for_test,
 };
-use crate::{index::Index, prover::ProverProof};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use array_init::array_init;
 use colored::Colorize;
-use commitment_dlog::{
-    commitment::CommitmentCurve,
-    srs::{endos, SRS},
-};
+use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use groupmap::GroupMap;
 use mina_curves::pasta::{
     fp::Fp as F,
@@ -20,22 +20,20 @@ use mina_curves::pasta::{
     vesta::{Affine, VestaParameters},
 };
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::{sync::Arc, time::Instant};
+use std::time::Instant;
 
 const PUBLIC: usize = 0;
 
-type SpongeParams = PlonkSpongeConstants15W;
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn endomul_test() {
-    let fp_sponge_params = oracle::pasta::fp::params();
-
     let bits_per_chunk = 4;
     let num_bits = 128;
     let chunks = num_bits / bits_per_chunk;
@@ -66,17 +64,8 @@ fn endomul_test() {
         });
     }
 
-    let cs =
-        ConstraintSystem::<F>::create(gates, vec![], fp_sponge_params, vec![], PUBLIC).unwrap();
-
-    let mut srs = SRS::create(cs.domain.d1.size as usize);
-    srs.add_lagrange_basis(cs.domain.d1);
-
-    let fq_sponge_params = oracle::pasta::fq::params();
     let (endo_q, endo_r) = endos::<Other>();
-    let srs = Arc::new(srs);
-
-    let index = Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs);
+    let index = new_index_for_test(gates, vec![], PUBLIC);
 
     let mut witness: [Vec<F>; COLUMNS] =
         array_init(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
@@ -84,7 +73,6 @@ fn endomul_test() {
     let verifier_index = index.verifier_index();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
 
-    let lgr_comms = vec![];
     let rng = &mut StdRng::from_seed([0; 32]);
 
     // let start = Instant::now();
@@ -145,13 +133,11 @@ fn endomul_test() {
 
     let start = Instant::now();
     let proof =
-        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index, vec![])
-            .unwrap();
+        ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
 
-    let batch: Vec<_> = vec![(&verifier_index, &lgr_comms, &proof)];
     let start = Instant::now();
-    match ProverProof::verify::<BaseSponge, ScalarSponge>(&group_map, &batch) {
+    match verify::<Affine, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());

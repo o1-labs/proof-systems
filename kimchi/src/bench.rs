@@ -1,40 +1,40 @@
 use crate::{
     circuits::{
-        constraints::ConstraintSystem,
         gate::CircuitGate,
         polynomials::generic::GenericGateSpec,
         wires::{Wire, COLUMNS},
     },
-    index::{Index, VerifierIndex},
     prover::ProverProof,
+    prover_index::{testing::new_index_for_test, ProverIndex},
+    verifier::batch_verify,
+    verifier_index::VerifierIndex,
 };
 use ark_ff::UniformRand;
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use array_init::array_init;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, ceil_log2, CommitmentCurve},
-    srs::{endos, SRS},
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve};
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::vesta::VestaParameters;
-use mina_curves::pasta::{fp::Fp, pallas::Affine as Other, vesta::Affine};
+use mina_curves::pasta::{fp::Fp, vesta::Affine};
 use oracle::{
-    poseidon::PlonkSpongeConstants15W,
+    constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, SeedableRng};
-use std::sync::Arc;
 
-type SpongeParams = PlonkSpongeConstants15W;
+use o1_utils::math;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
-/// the circuit size. This influences the size of the SRS
-pub const CIRCUIT_SIZE: usize = (1 << 14) + 1; // SRS will be 2^15
+/// The circuit size. This influences the size of the SRS.
+/// At the time of this writing our verifier circuits have 27164 & 18054 gates.
+pub const CIRCUIT_SIZE: usize = 27164;
 
 pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
-    index: Index<Affine>,
+    index: ProverIndex<Affine>,
     verifier_index: VerifierIndex<Affine>,
 }
 
@@ -42,7 +42,7 @@ impl BenchmarkCtx {
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
     /// Note that the size of the circuit is still of [CIRCUIT_SIZE].
     /// So the prover's work is based on num_gates,
-    /// but the verifier work is based on [CICUIT_SIZE].
+    /// but the verifier work is based on [CIRCUIT_SIZE].
     pub fn new(num_gates: usize) -> Self {
         // create the circuit
         let mut gates = vec![];
@@ -66,19 +66,7 @@ impl BenchmarkCtx {
         let group_map = <Affine as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = {
-            let fp_sponge_params = oracle::pasta::fp::params();
-            let cs =
-                ConstraintSystem::<Fp>::create(gates, vec![], fp_sponge_params, vec![], 0).unwrap();
-            let n = cs.domain.d1.size as usize;
-            let fq_sponge_params = oracle::pasta::fq::params();
-            let (endo_q, _endo_r) = endos::<Other>();
-
-            let mut srs = SRS::create(n);
-            srs.add_lagrange_basis(cs.domain.d1);
-            let srs = Arc::new(srs);
-            Index::<Affine>::create(cs, fq_sponge_params, endo_q, srs)
-        };
+        let index = new_index_for_test(gates, vec![], 0);
 
         // create the verifier index
         let verifier_index = index.verifier_index();
@@ -101,7 +89,7 @@ impl BenchmarkCtx {
 
         // previous opening for recursion
         let prev = {
-            let k = ceil_log2(self.index.srs.g.len());
+            let k = math::ceil_log2(self.index.srs.g.len());
             let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
             let comm = {
                 let coeffs = b_poly_coefficients(&chals);
@@ -112,7 +100,7 @@ impl BenchmarkCtx {
         };
 
         // add the proof to the batch
-        ProverProof::create::<BaseSponge, ScalarSponge>(
+        ProverProof::create_recursive::<BaseSponge, ScalarSponge>(
             &self.group_map,
             witness,
             &self.index,
@@ -123,12 +111,11 @@ impl BenchmarkCtx {
 
     pub fn batch_verification(&self, batch: Vec<ProverProof<Affine>>) {
         // verify the proof
-        let lgr_comms = vec![];
         let batch: Vec<_> = batch
             .iter()
-            .map(|proof| (&self.verifier_index, &lgr_comms, proof))
+            .map(|proof| (&self.verifier_index, proof))
             .collect();
-        ProverProof::verify::<BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<Affine, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
     }
 }
 
@@ -143,7 +130,7 @@ mod tests {
         // context created in 21.2235 ms
         let start = Instant::now();
         let ctx = BenchmarkCtx::new(1 << 4);
-        println!("context created in {}", start.elapsed().as_millis());
+        println!("context created in {}", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms
         let start = Instant::now();

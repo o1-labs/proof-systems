@@ -31,7 +31,7 @@ pub trait Argument<F: FftField> {
     const ARGUMENT_TYPE: ArgumentType;
 
     /// The number of constraints created by the argument.
-    const CONSTRAINTS: usize;
+    const CONSTRAINTS: u32;
 
     /// Returns the set of constraints required to prove this argument.
     // TODO: return a [_; Self::CONSTRAINTS] once generic consts are stable
@@ -40,7 +40,7 @@ pub trait Argument<F: FftField> {
     /// Returns constraints safely combined via the passed combinator.
     fn combined_constraints(alphas: &Alphas<F>) -> E<F> {
         let constraints = Self::constraints();
-        assert!(constraints.len() == Self::CONSTRAINTS);
+        assert_eq!(constraints.len(), Self::CONSTRAINTS as usize);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
         let combined_constraints = E::combine_constraints(alphas, constraints);
 

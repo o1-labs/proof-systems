@@ -2,7 +2,8 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use commitment_dlog::{
-    commitment::{CommitmentCurve, OpeningProof, PolyComm},
+    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation, PolyComm},
+    evaluation_proof::OpeningProof,
     srs::SRS,
 };
 use groupmap::GroupMap;
@@ -11,7 +12,7 @@ use mina_curves::pasta::{
     Fp,
 };
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::poseidon::PlonkSpongeConstantsBasic as SC;
+use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
 use oracle::FqSponge as _;
 use rand::Rng;
@@ -39,24 +40,6 @@ pub struct EvaluatedCommitment {
 
 /// A polynomial commitment evaluated at a point. Since a commitment can be chunked, the evaluations can also be chunked.
 pub type ChunkedCommitmentEvaluation = Vec<Fp>;
-
-mod verifier {
-    use super::*;
-
-    /// A type that describes what the verify() API expects
-    pub type BatchVerify<'a> = (
-        DefaultFqSponge<VestaParameters, SC>,
-        Vec<Fp>, // vector of evaluation points
-        Fp,      // scaling factor for polynoms
-        Fp,      // scaling factor for evaluation point powers
-        Vec<(
-            &'a PolyComm<Affine>, // polycommitment
-            Vec<&'a Vec<Fp>>,     // vector of evaluations
-            Option<usize>,        // optional degree bound
-        )>,
-        &'a OpeningProof<Affine>, // batched opening proof
-    );
-}
 
 mod prover {
     use super::*;
@@ -90,26 +73,27 @@ pub struct AggregatedEvaluationProof {
 
 impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
-    pub fn verify_type(&self) -> verifier::BatchVerify {
+    pub fn verify_type(
+        &self,
+    ) -> BatchEvaluationProof<Affine, DefaultFqSponge<VestaParameters, SC>> {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
-            let evaluations = eval_com.chunked_evals.iter().collect();
-            coms.push((
-                &eval_com.commit.chunked_commitment,
-                evaluations,
-                eval_com.commit.bound,
-            ));
+            coms.push(Evaluation {
+                commitment: eval_com.commit.chunked_commitment.clone(),
+                evaluations: eval_com.chunked_evals.clone(),
+                degree_bound: eval_com.commit.bound,
+            });
         }
 
-        (
-            self.fq_sponge.clone(),
-            self.eval_points.clone(),
-            self.polymask,
-            self.evalmask,
-            coms,
-            &self.proof,
-        )
+        BatchEvaluationProof {
+            sponge: self.fq_sponge.clone(),
+            evaluation_points: self.eval_points.clone(),
+            xi: self.polymask,
+            r: self.evalmask,
+            evaluations: coms,
+            opening: &self.proof,
+        }
     }
 }
 
@@ -123,7 +107,7 @@ where
     // setup
     let mut rng = rand::thread_rng();
     let group_map = <Affine as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq::params());
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Affine>::create(1 << 7);
@@ -164,7 +148,10 @@ where
 
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
-                chunked_evals.push(poly.eval(point, srs.g.len()));
+                chunked_evals.push(
+                    poly.to_chunked_polynomial(srs.g.len())
+                        .evaluate_chunks(point),
+                );
             }
 
             let commit = Commitment {
@@ -231,7 +218,7 @@ where
     let timer = Instant::now();
 
     // batch verify all the proofs
-    let mut batch: Vec<verifier::BatchVerify> = proofs.iter().map(|p| p.verify_type()).collect();
+    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench
