@@ -2104,7 +2104,12 @@ pub mod constraints {
 /// An alias for the intended usage of the expression type in constructing constraints.
 pub type E<F> = Expr<ConstantExpr<F>>;
 
-/// Handy function to quickly create an expression for a witness.
+/// Convenience function to create a constant as [Expr].
+pub fn constant<F>(x: F) -> E<F> {
+    Expr::Constant(ConstantExpr::Literal(x))
+}
+
+/// Helper function to quickly create an expression for a witness.
 pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
     E::<F>::cell(Column::Witness(i), row)
 }
