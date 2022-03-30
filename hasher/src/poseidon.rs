@@ -24,6 +24,7 @@ pub struct Poseidon<SC: SpongeConstants, H: Hashable> {
     sponge: ArithmeticSponge<Fp, SC>,
     sponge_state: SpongeState,
     state: Vec<Fp>,
+    domain_param: H::D,
     phantom: PhantomData<H>,
 }
 
@@ -33,6 +34,7 @@ impl<SC: SpongeConstants, H: Hashable> Poseidon<SC, H> {
             sponge: ArithmeticSponge::<Fp, SC>::new(sponge_params),
             sponge_state: SpongeState::Absorbed(0),
             state: vec![],
+            domain_param: domain_param,
             phantom: PhantomData,
         };
 
@@ -68,8 +70,7 @@ where
         self.sponge.reset();
 
         if let Some(domain_string) = H::domain_string(None, domain_param) {
-            self.sponge
-                .absorb(&[domain_prefix_to_field::<Fp>(domain_string)]);
+            self.sponge.absorb(&[domain_prefix_to_field(domain_string)]);
             self.sponge.squeeze();
         }
 
@@ -81,6 +82,9 @@ where
     }
 
     fn update(&mut self, input: &H) -> &mut dyn Hasher<H> {
+        if let Some(domain_string) = H::domain_string(Some(input), self.domain_param) {
+            self.sponge.absorb(&[domain_prefix_to_field(domain_string)]);
+        }
         self.sponge.absorb(&input.to_roinput().to_fields());
 
         self

@@ -80,9 +80,7 @@ pub trait Hashable: Clone {
     /// be enforced by the developer implementing the traits (see [`Hashable`] for
     ///  more details). The domain string may be parameterized by the contents of
     /// `this` and/or the generic `domain_param` argument.
-    ///
-    /// **Note:** You should always return `Some(String)`. A `None` return value
-    /// is only used for testing.
+    /// `this` is always None on `init`, and is always Some on `update`
     fn domain_string(this: Option<&Self>, domain_param: Self::D) -> Option<String>;
 }
 
