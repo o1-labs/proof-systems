@@ -1280,7 +1280,7 @@ impl<F: FftField> Expr<F> {
         } else if deg <= 8 * d1_size {
             Domain::D8
         } else {
-            panic!("constraint had degree {} > 8", deg);
+            panic!("constraint had degree {deg} > d8 ({})", 8 * d1_size);
         };
 
         let mut cache = HashMap::new();
