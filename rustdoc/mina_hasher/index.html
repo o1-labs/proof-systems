@@ -141,7 +141,7 @@ structures, the <code>to_roinput()</code> implementation needs to combine <code>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">mina_hasher</span>::{<span class="ident">Hashable</span>, <span class="ident">ROInput</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">struct</span> <span class="ident">A</span> {
     <span class="ident">x</span>: <span class="ident">u32</span>,
     <span class="ident">y</span>: <span class="ident">u32</span>,
@@ -162,7 +162,7 @@ structures, the <code>to_roinput()</code> implementation needs to combine <code>
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">struct</span> <span class="ident">B</span> {
     <span class="ident">a1</span>: <span class="ident">A</span>,
     <span class="ident">a2</span>: <span class="ident">A</span>,
@@ -175,7 +175,7 @@ structures, the <code>to_roinput()</code> implementation needs to combine <code>
     <span class="kw">fn</span> <span class="ident">to_roinput</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ROInput</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">roi</span> <span class="op">=</span> <span class="ident">ROInput::new</span>();
         <span class="comment">// Way 1: Append Hashable input</span>
-        <span class="ident">roi</span>.<span class="ident">append_hashable</span>(<span class="self">self</span>.<span class="ident">a1</span>);
+        <span class="ident">roi</span>.<span class="ident">append_hashable</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">a1</span>);
         <span class="comment">// Way 2: Append ROInput</span>
         <span class="ident">roi</span>.<span class="ident">append_roinput</span>(<span class="self">self</span>.<span class="ident">a2</span>.<span class="ident">to_roinput</span>());
         <span class="ident">roi</span>.<span class="ident">append_u32</span>(<span class="self">self</span>.<span class="ident">z</span>);
@@ -204,5 +204,5 @@ arguments to domain string generation.  It is also used by generic signing code.
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.create_kimchi.html" title="mina_hasher::create_kimchi fn">create_kimchi</a></div><div class="item-right docblock-short"><p>Create an experimental kimchi hasher context</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="fn" href="fn.create_legacy.html" title="mina_hasher::create_legacy fn">create_legacy</a></div><div class="item-right docblock-short"><p>Create a legacy hasher context</p>
 </div></div></div><h2 id="types" class="small-section-header"><a href="#types">Type Definitions</a></h2>
-<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.Fp.html" title="mina_hasher::Fp type">Fp</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (9c06e1ba4 2022-03-29)" ></div>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="type" href="type.Fp.html" title="mina_hasher::Fp type">Fp</a></div><div class="item-right docblock-short"></div></div></div></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (c5cf08d37 2022-03-30)" ></div>
 </body></html>
