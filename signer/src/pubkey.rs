@@ -171,6 +171,11 @@ impl CompressedPubKey {
     pub fn into_address(self) -> String {
         into_address(self.x, self.is_odd)
     }
+
+    /// Deserialize Mina address into compressed public key (via an uncompressed PubKey)
+    pub fn from_address(address: &str) -> Result<Self> {
+        Ok(PubKey::from_address(address)?.into_compressed())
+    }
 }
 
 #[cfg(test)]
