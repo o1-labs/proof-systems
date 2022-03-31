@@ -396,10 +396,7 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = match EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize) {
-            Ok(val) => val,
-            Err(e) => return Err(e),
-        };
+        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
 
         assert!(domain.d1.size > ZK_ROWS);
 
