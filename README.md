@@ -52,18 +52,8 @@ let verifier_index = prover_index.verifier_index();
 
 // create a proof
 let group_map = <Affine as CommitmentCurve>::Map::setup();
-let proof = {
-    // for recursion
-    let k = ceil_log2(index.srs.g.len());
-    let chals: Vec<_> = (0..k).map(|_| Fp::rand(rng)).collect();
-    let comm = {
-        let coeffs = b_poly_coefficients(&chals);
-        let b = DensePolynomial::from_coefficients_vec(coeffs);
-        index.srs.commit_non_hiding(&b, None)
-    };
-    (chals, comm)
-    ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &prover_index, vec![prev])
-};
+let proof =  ProverProof::create::<BaseSponge, ScalarSponge>(
+    &group_map, witness, &prover_index);
 
 // verify a proof
 verify::<Affine, BaseSponge, ScalarSponge>(&group_map, verifier_index, proof).unwrap();
