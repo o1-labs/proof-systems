@@ -25,24 +25,24 @@ impl<F: FftField> EvaluationDomains<F> {
     // TODO(mimoo): should we instead panic/return an error if any of these return None?
     pub fn create(n: usize) -> Result<Self, ProverError> {
         let n = Domain::<F>::compute_size_of_domain(n)
-            .ok_or(ProverError::Prover("couldn't compute size of domain"))
+            .ok_or(ProverError::Prover("could not compute size of domain n"))
             .unwrap();
 
         let d1 = Domain::<F>::new(n)
-            .ok_or(ProverError::Prover("could not construct domain"))
+            .ok_or(ProverError::Prover("could not compute size of domain n"))
             .unwrap();
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
         let d2 = Domain::<F>::new(2 * n)
-            .ok_or(ProverError::Prover("could not construct domain"))
+            .ok_or(ProverError::Prover("could not compute size of domain d2"))
             .unwrap();
         let d4 = Domain::<F>::new(4 * n)
-            .ok_or(ProverError::Prover("could not construct domain"))
+            .ok_or(ProverError::Prover("could not compute size of domain d4"))
             .unwrap();
         let d8 = Domain::<F>::new(8 * n)
-            .ok_or(ProverError::Prover("could not construct domain"))
+            .ok_or(ProverError::Prover("could not compute size of domain d8"))
             .unwrap();
 
         // ensure the relationship between the three domains in case the library's behavior changes
