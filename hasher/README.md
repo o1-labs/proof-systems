@@ -153,7 +153,7 @@ Here is an example showing how this is done.
 ```rust
 use mina_hasher::{Hashable, ROInput};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct A {
     x: u32,
     y: u32,
@@ -174,7 +174,7 @@ impl Hashable for A {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct B {
     a1: A,
     a2: A,
@@ -187,7 +187,7 @@ impl Hashable for B {
     fn to_roinput(&self) -> ROInput {
         let mut roi = ROInput::new();
         // Way 1: Append Hashable input
-        roi.append_hashable(self.a1);
+        roi.append_hashable(&self.a1);
         // Way 2: Append ROInput
         roi.append_roinput(self.a2.to_roinput());
         roi.append_u32(self.z);
