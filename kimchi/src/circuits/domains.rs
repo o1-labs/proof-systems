@@ -29,20 +29,28 @@ impl<F: FftField> EvaluationDomains<F> {
             .unwrap();
 
         let d1 = Domain::<F>::new(n)
-            .ok_or(ProverError::Prover("could not compute size of domain n"))
+            .ok_or(ProverError::Prover(
+                "construction of domain d1 did not work as intended",
+            ))
             .unwrap();
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
         let d2 = Domain::<F>::new(2 * n)
-            .ok_or(ProverError::Prover("could not compute size of domain d2"))
+            .ok_or(ProverError::Prover(
+                "construction of domain d2 did not work as intended",
+            ))
             .unwrap();
         let d4 = Domain::<F>::new(4 * n)
-            .ok_or(ProverError::Prover("could not compute size of domain d4"))
+            .ok_or(ProverError::Prover(
+                "construction of domain d4 did not work as intended",
+            ))
             .unwrap();
         let d8 = Domain::<F>::new(8 * n)
-            .ok_or(ProverError::Prover("could not compute size of domain d8"))
+            .ok_or(ProverError::Prover(
+                "construction of domain d8 did not work as intended",
+            ))
             .unwrap();
 
         // ensure the relationship between the three domains in case the library's behavior changes
