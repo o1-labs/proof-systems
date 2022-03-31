@@ -2164,7 +2164,10 @@ pub mod test {
     #[test]
     #[should_panic]
     fn test_degree_tracking() {
-        // CompleteAdd(x)^7 should go over the d8 domain
+        // The selector CompleteAdd has degree n-1 (so can be tracked with n evaluations in the domain d1 of size n).
+        // Raising a polynomial of degree n-1 to the power 8 makes it degree 8*(n-1) (and so it needs `8(n-1) + 1` evaluations).
+        // Since `d8` is of size `8n`, we are still good with that many evaluations to track the new polynomial.
+        // Raising it to the power 9 pushes us out of the domain d8, which will panic.
         let mut expr: E<Fp> = E::zero();
         expr += index(GateType::CompleteAdd);
         let expr = expr.pow(9);
