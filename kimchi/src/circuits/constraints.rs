@@ -19,7 +19,6 @@ use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
-use rand::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
