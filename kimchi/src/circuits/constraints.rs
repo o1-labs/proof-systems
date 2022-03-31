@@ -19,6 +19,7 @@ use array_init::array_init;
 use blake2::{Blake2b512, Digest};
 use o1_utils::ExtendedEvaluations;
 use oracle::poseidon::ArithmeticSpongeParams;
+use rand::Error;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -396,7 +397,11 @@ impl<F: FftField + SquareRootField> ConstraintSystem<F> {
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize).unwrap();
+        let domain = match EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize) {
+            Ok(val) => val,
+            Err(e) => return Err(e),
+        };
+
         assert!(domain.d1.size > ZK_ROWS);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
