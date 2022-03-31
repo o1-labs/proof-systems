@@ -28,7 +28,9 @@ impl<F: FftField> EvaluationDomains<F> {
             .ok_or(ProverError::Prover("couldn't compute size of domain"))
             .unwrap();
 
-        let d1 = Domain::<F>::new(n).ok_or(ProverError::Prover("")).unwrap();
+        let d1 = Domain::<F>::new(n)
+            .ok_or(ProverError::Prover("could not construct domain"))
+            .unwrap();
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
