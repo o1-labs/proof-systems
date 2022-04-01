@@ -25,8 +25,8 @@ use crate::circuits::{
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
 //~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
-//~ elliptic curve over $\mathbb{F}_q$ in Weierstrass form is represented by the set of points $(x,y)$ that
-//~ satisfy the following equation with $a,b\in\mathbb{F}_q$:
+//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
+//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
 //~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
 //~ If $P=(x_p, y_p)$ and $Q=(x_q, y_q)$ are two points in the curve $E(\mathbb{F}_q)$, the algorithm we
 //~ represent here computes the operation $2P+Q$ (point doubling and point addition) as $(P+Q)+Q$.

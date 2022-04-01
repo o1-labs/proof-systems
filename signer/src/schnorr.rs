@@ -51,11 +51,8 @@ impl<H: Hashable> Hashable for Message<H> {
         roi
     }
 
-    fn domain_string(this: Option<&Self>, domain_param: Self::D) -> Option<String> {
-        match this {
-            None => H::domain_string(None, domain_param),
-            Some(x) => H::domain_string(Some(&x.input), domain_param),
-        }
+    fn domain_string(domain_param: Self::D) -> Option<String> {
+        H::domain_string(domain_param)
     }
 }
 

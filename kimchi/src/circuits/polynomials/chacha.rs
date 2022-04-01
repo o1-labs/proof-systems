@@ -506,9 +506,9 @@ mod tests {
             expr::{Column, Constants, PolishToken},
             lookup::lookups::LookupInfo,
             polynomials::foreign_mul,
-            scalars::{LookupEvaluations, ProofEvaluations},
             wires::*,
         },
+        proof::{LookupEvaluations, ProofEvaluations},
     };
     use ark_ff::UniformRand;
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};

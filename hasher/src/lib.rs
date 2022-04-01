@@ -4,6 +4,7 @@
 pub mod poseidon;
 pub mod roinput;
 pub use mina_curves::pasta::Fp;
+pub use poseidon::{PoseidonHasherKimchi, PoseidonHasherLegacy};
 pub use roinput::ROInput;
 
 use ark_ff::PrimeField;
@@ -60,7 +61,7 @@ impl DomainParameter for u64 {
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<&Self>, _: Self::D) -> Option<String> {
+///     fn domain_string(_: Self::D) -> Option<String> {
 ///        format!("Example").into()
 ///    }
 /// }
@@ -76,14 +77,14 @@ pub trait Hashable: Clone {
 
     /// Generate unique domain string of length `<= 20`.
     ///
-    /// The length bound is guarded by an assertion, but the uniqueness bound must
+    /// The length bound is guarded by an assertion, but uniqueness must
     /// be enforced by the developer implementing the traits (see [`Hashable`] for
-    ///  more details). The domain string may be parameterized by the contents of
-    /// `this` and/or the generic `domain_param` argument.
+    /// more details). The domain string may be parameterized by the contents of
+    /// the generic `domain_param` argument.
     ///
     /// **Note:** You should always return `Some(String)`. A `None` return value
     /// is only used for testing.
-    fn domain_string(this: Option<&Self>, domain_param: Self::D) -> Option<String>;
+    fn domain_string(domain_param: Self::D) -> Option<String>;
 }
 
 /// Interface for hashing [`Hashable`] inputs
@@ -109,7 +110,7 @@ pub trait Hashable: Clone {
 ///         roi
 ///     }
 ///
-///     fn domain_string(_: Option<&Self>, id: Self::D) -> Option<String> {
+///     fn domain_string(id: Self::D) -> Option<String> {
 ///         format!("Something {}", id).into()
 ///     }
 /// }
@@ -120,7 +121,7 @@ pub trait Hashable: Clone {
 ///
 pub trait Hasher<H: Hashable> {
     /// Set the initial state based on domain separation string
-    /// generated from `H::domain_string(None, domain_param)`
+    /// generated from `H::domain_string(domain_param)`
     fn init(&mut self, domain_param: H::D) -> &mut dyn Hasher<H>;
 
     /// Restore the initial state that was set most recently
@@ -164,15 +165,12 @@ fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
 }
 
 /// Create a legacy hasher context
-pub fn create_legacy<H: Hashable>(domain_param: H::D) -> impl Hasher<H>
-where
-    H::D: DomainParameter,
-{
+pub fn create_legacy<H: Hashable>(domain_param: H::D) -> PoseidonHasherLegacy<H> {
     poseidon::new_legacy::<H>(domain_param)
 }
 
 /// Create an experimental kimchi hasher context
-pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> impl Hasher<H>
+pub fn create_kimchi<H: Hashable>(domain_param: H::D) -> PoseidonHasherKimchi<H>
 where
     H::D: DomainParameter,
 {
@@ -200,7 +198,7 @@ mod tests {
                 roi
             }
 
-            fn domain_string(_: Option<&Self>, id: u64) -> Option<String> {
+            fn domain_string(id: u64) -> Option<String> {
                 format!("Foo {}", id).into()
             }
         }

@@ -4,7 +4,7 @@ use crate::{
         polynomials::chacha,
         wires::{Wire, COLUMNS},
     },
-    prover::ProverProof,
+    proof::ProverProof,
     prover_index::testing::new_index_for_test,
     verifier::verify,
 };
