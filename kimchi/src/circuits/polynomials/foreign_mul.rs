@@ -106,12 +106,14 @@ use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr;
 use crate::circuits::gate::CircuitGate;
-use crate::circuits::scalars::ProofEvaluations;
 use crate::circuits::wires::GateWires;
-use crate::circuits::{
-    expr::{Cache, Column, ConstantExpr, Expr, PolishToken, E},
-    gate::{CurrOrNext, GateType},
-    polynomial::COLUMNS,
+use crate::{
+    circuits::{
+        expr::{Cache, Column, ConstantExpr, Expr, PolishToken, E},
+        gate::{CurrOrNext, GateType},
+        polynomial::COLUMNS,
+    },
+    proof::ProofEvaluations,
 };
 
 use ark_ff::{FftField, One, PrimeField, Zero};

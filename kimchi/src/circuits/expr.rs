@@ -2216,6 +2216,7 @@ pub mod test {
                 joint_combiner: one,
                 endo_coefficient: one,
                 mds: vec![vec![]],
+                foreign_modulus: vec![],
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,
