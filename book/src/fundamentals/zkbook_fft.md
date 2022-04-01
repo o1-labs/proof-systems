@@ -1,8 +1,18 @@
 ### Multiplying polynomials with the Fast Fourier Transform (FFT)
 
 The algorithm that allows us to multiply polynomials in $O(n \log n)$ is called the **Cooley-Tukey fast Fourier transform**, or **FFT** for short.
+It was discovered by [Gauss](https://en.wikipedia.org/wiki/Carl_Friedrich_Gauss) 160 years earlier, but then separately rediscovered and publicized by Cooley-Tukey.
 
-The way this works is as follows. Say we have $\omega \in F$ such that $\omega^{n} = 1$, and $\omega^r \neq 1$ for any $0 < r < n$.
+The heart of Cooley-Tukey FFT is actually about converting between coefficient and evaluation representations, rather than the multiplication itself.
+Given polynomials $p$ and $q$ in dense coefficient representation, it works like this.
+1.  Convert $p$ and $q$ from coefficient to evaluation form in $O(n\log n)$ using Cooley-Tukey FFT
+2.  Compute $r = p*q$ in evaluation form by multiplying their points pairwise in $O(n)$
+3.  Convert $r$ back to to coefficient form in $O(n\log n)$ using the inverse Cooley-Tukey FFT
+
+The key observation is that we can choose any $n$ distinct evaluation points to represent any degree $n - 1$ polynomial.
+The Cooley-Tukey FFT works by selecting points that yield an efficient FFT algorithm.  These points are fixed and work for any polynomials of a given degree.
+
+Specifically, say we have $\omega \in F$ such that $\omega^{n} = 1$, and $\omega^r \neq 1$ for any $0 < r < n$.
 
 Put another way, all the values $1, \omega, \omega^2, \omega^3, \dots, \omega^{n-1}$ are distinct and $\omega^n = 1$.
 
@@ -80,7 +90,7 @@ f(\omega^j)
 $$
 
 Now, since $j$ may be larger than $2^{k-1} - 1$, we need to reduce it mod $2^{k-1}$, relying on the fact that
-if $\tau$ is an $n$th power of unity then $\tau^j = \tau^{j \mod n}$ since $\tau^n = 1$. Thus,
+if $\tau$ is an $n$th root of unity then $\tau^j = \tau^{j \mod n}$ since $\tau^n = 1$. Thus,
 $(\omega^2)^j = (\omega^2)^{j \mod 2^{k-1}}$ and so we have
 
 $$
@@ -105,6 +115,21 @@ There are $n$ such entries, so this takes time $O(n)$.
 
 This concludes the recursive definition of the algorithm $\mathsf{FFT}(k, \omega, f)$.
 
+> **Algorithm: computing $\mathsf{eval}_{A_k}$**
+>  * $\mathsf{Input~} f = [c_0, \ldots, c_{2^k - 1}]$ the coefficients of polynomial $f(x) = \sum_{i < 2^k} c_i x^i$
+>  * $\mathsf{Compute~} W \gets \left[1, \omega, \omega^2, ..., \omega^{2^k - 1}\right]$
+>  * $\mathsf{FFT}(k, \omega, f) \rightarrow \left[f(1), f(\omega), f(\omega^2) \dots, f(\omega^{2^k - 1})\right]$
+>    * $\mathtt{if~} k == 0$
+>      * $\mathtt{return~} f$
+>    * $\mathtt{else}$
+>      * $\mathsf{Compute~} f_0 = [c_0, c_2, ..., c_{2^k - 2}]$ the even coefficients of $f,$ corresponding to $f_0(x) = \sum_{i < 2^{k - 1}} c_{2i} x^i$
+>      * $\mathsf{Compute~} f_1 = [c_1, c_3, ..., c_{2^k - 1}]$ the odd coefficients of $f,$ corresponding to $f_1(x) = \sum_{i < 2^{k - 1}} c_{2i + 1} x^i$
+>      * $e_0 \gets \mathsf{FFT}(k - 1, \omega^2, f_0)$
+>      * $e_1 \gets \mathsf{FFT}(k - 1, \omega^2, f_1)$
+>      * $\mathtt{for~} j \in [0, 2^k - 1]$
+>        * $F_j \gets e_{0, j \mod 2^{k - 1}} + W[j] \cdot e_{1, j \mod 2^{k - 1}}$
+>      * $\mathtt{return~} F$
+
 Now let's analyze the time complexity. Let $T(n)$ be the complexity on an instance of size $n$ (that is, for $n = 2^k$).
 
 Looking back at what we have done, we have done
@@ -126,7 +151,97 @@ out of scope for this document. Read the code if you are interested.
 So far we have a fast way to compute $\mathsf{eval}_{A_k}(f)$ all at once, where
 $A_k$ is the set of powers of a $2^k$th root of unity $\omega$. For convenience let $n = 2^k$.
 
-Now we want to go the other way and compute a polynomial given an array of evaluations. I don't really know an intuitive explanation for why this works -- it still looks like a bit of a magic trick to me -- but let's go through it. If you have a good explanation please make a pull request.
+Now we want to go the other way and compute a polynomial given an array of evaluations.
+Specifically, $n$ evaluations $\left[f(x_0), f(x_1), ..., f(x_{n - 1})\right]$ uniquely
+define a degree $n - 1$ polynomial.  This can be written as a system of $n$ equations
+
+$$
+\begin{aligned}
+f(x_0) &= c_0 + c_1x_0 + \ldots + c_{n - 1}x_0^{n - 1} \\
+f(x_1) &= c_0 + c_1x_1 + \ldots + c_{n - 1}x_1^{n - 1} \\
+\vdots\\
+f(x_{n - 1}) &= c_0 + c_1x_{n - 1} + \ldots + c_{n - 1}x_{n - 1}^{n - 1}, \\
+\end{aligned}
+$$
+which can be rewritten as a matrix vector product.
+$$
+\begin{bmatrix}
+    f(x_0) \\
+    f(x_1) \\
+    \vdots \\
+    f(x_{n - 1})
+\end{bmatrix}
+=
+\begin{bmatrix}
+    1 & x_0 & \cdots & x_0^{n - 1} \\
+    1 & x_1 & \cdots & x_1^{n - 1} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    1 & x_{n - 1} & \cdots & x_{n - 1}^{n - 1} \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+    c_{0} \\
+    c_{1} \\
+    \vdots \\
+    c_{n - 1}
+\end{bmatrix}
+$$
+This $n \times n$ matrix is a Vandermonde matrix and it just so happens that square Vandermonde matrices are invertible, iff the $x_i$ are unique.  Since we purposely selected our $x_i$ to be the powers of $\omega$, a primitive $n$-th root of unity, by definition $x_i = \omega^i$ are unique.
+
+Therefore, to compute the polynomial given the corresponding array of evaluations (i.e. interpolation) we can solve for the polynomial's coefficients using the inverse of the matrix.
+$$
+\begin{bmatrix}
+    c_{0} \\
+    c_{1} \\
+    \vdots \\
+    c_{n - 1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+    1 & 1 & \cdots & 1^{n - 1} \\
+    1 & \omega & \cdots & \omega^{n - 1} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    1 & \omega^{n - 1} & \cdots & \omega^{(n - 1)(n - 1)} \\
+\end{bmatrix}^{-1}
+\times
+\begin{bmatrix}
+    f(1) \\
+    f(\omega) \\
+    \vdots \\
+    f(\omega^{n - 1})
+\end{bmatrix}
+$$
+All we need now is the inverse of this matrix, which is slightly complicated to compute.  I'm going to skip it for now, but if you have the details please make a pull request.
+
+Substituting in the inverse matrix we obtain the equation for interpolation.
+$$
+\begin{bmatrix}
+    c_{0} \\
+    c_{1} \\
+    \vdots \\
+    c_{n - 1}
+\end{bmatrix}
+=
+\frac{1}{n}
+\begin{bmatrix}
+    1 & 1 & \cdots & 1^{n - 1} \\
+    1 & \omega^{-1} & \cdots & \omega^{-(n - 1)} \\
+    \vdots & \vdots & \ddots & \vdots\\
+    1 & \omega^{-(n - 1)} & \cdots & \omega^{-(n - 1)(n - 1)} \\
+\end{bmatrix}
+\times
+\begin{bmatrix}
+    f(1) \\
+    f(\omega) \\
+    \vdots \\
+    f(\omega^{n - 1})
+\end{bmatrix}
+$$
+Observe that this equation is nearly identical to the original equation for evaluation, except with the following substitution.
+$$
+\omega^i \Rightarrow \frac{1}{n}\omega^{-1i}
+$$
+Consequently and perhaps surprisingly, we can reuse the FFT algorithm $\mathsf{eval}_{A_k}$  in order to compute the inverse-- $\mathsf{interp}_{A_k}$.
 
 So, suppose we have an array $[a_0, \dots, a_{n-1}]$ of field elements (which you can think of as a function $A_k \to F$) and we want to compute the coefficients of a polynomial $f$ with $f(\omega^i) = a_i$.
 
@@ -134,7 +249,7 @@ To this end, define a polynomial $g$ by $g = \sum_{j < n} a_j x^j$. That is, the
 
 Now, let $[e_0, \dots, e_{n-1}] = \mathsf{FFT}(k, \omega^{-1}, g)$.
 
-That is, we're going to feed $g$ into the FFT algorithm defined above with $\omega^{-1}$ as the $2^k$th root of unity. It is not hard to check that if $\omega$ is an nth root of unity, so is $\omega^{-1}$. Remember: the resulting values are the evaluations of $g$ on the powers of $\omega^{-1}$, so $e_i = g(\omega^{-i}) = \sum_{j < n} a_j \omega^{-ij}$.
+That is, we're going to feed $g$ into the FFT algorithm defined above with $\omega^{-1}$ as the $2^k$th root of unity. It is not hard to check that if $\omega$ is an n-th root of unity, so is $\omega^{-1}$. Remember: the resulting values are the evaluations of $g$ on the powers of $\omega^{-1}$, so $e_i = g(\omega^{-i}) = \sum_{j < n} a_j \omega^{-ij}$.
 
 Now, let $h = \sum_{i < n} e_i x^i$. That is, re-interpret the values $e_i$ returned by the FFT as the coefficients of a polynomial. I claim that $h$ is almost the polynomial we are looking for. Let's calculate what values $h$ takes on at the powers of $\omega$.
 

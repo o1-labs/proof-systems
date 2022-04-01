@@ -47,11 +47,14 @@ impl<F: FftField> LookupInfo<F> {
     /// Create the default lookup configuration.
     pub fn create() -> Self {
         let (kinds, locations_with_tables): (Vec<_>, Vec<_>) = GateType::lookup_kinds::<F>();
+
         let GatesLookupMaps {
             gate_selector_map: kinds_map,
             gate_table_map: kinds_tables,
         } = GateType::lookup_kinds_map::<F>(locations_with_tables);
+
         let max_per_row = max_lookups_per_row(&kinds);
+
         LookupInfo {
             max_joint_size: kinds.iter().fold(0, |acc0, v| {
                 v.iter()
@@ -313,32 +316,27 @@ impl GateType {
     pub fn lookup_kinds_map<F: Field>(
         locations_with_tables: Vec<GatesLookupSpec>,
     ) -> GatesLookupMaps {
-        let mut index_map = HashMap::with_capacity(locations_with_tables.len());
-        let mut table_map = HashMap::with_capacity(locations_with_tables.len());
-        for (
-            i,
-            GatesLookupSpec {
-                gate_positions: locs,
-                gate_lookup_table: table_kind,
-            },
-        ) in locations_with_tables.into_iter().enumerate()
-        {
-            for location in locs {
-                if let Entry::Vacant(e) = index_map.entry(location) {
+        let mut gate_selector_map = HashMap::with_capacity(locations_with_tables.len());
+        let mut gate_table_map = HashMap::with_capacity(locations_with_tables.len());
+
+        for (i, gate_lookups) in locations_with_tables.into_iter().enumerate() {
+            for location in gate_lookups.gate_positions {
+                // each "list of lookups in a row" is associated to a selector
+                if let Entry::Vacant(e) = gate_selector_map.entry(location) {
                     e.insert(i);
                 } else {
                     panic!("Multiple lookup patterns asserted on same row.")
                 }
-                if let Some(table_kind) = table_kind {
-                    if let Entry::Vacant(e) = table_map.entry(location) {
+                if let Some(table_kind) = gate_lookups.gate_lookup_table {
+                    if let Entry::Vacant(e) = gate_table_map.entry(location) {
                         e.insert(table_kind);
                     }
                 }
             }
         }
         GatesLookupMaps {
-            gate_selector_map: index_map,
-            gate_table_map: table_map,
+            gate_selector_map,
+            gate_table_map,
         }
     }
 }

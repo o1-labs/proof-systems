@@ -1,4 +1,4 @@
-use crate::prover::ProverProof;
+use crate::proof::ProverProof;
 use crate::verifier::verify;
 use crate::{
     circuits::{

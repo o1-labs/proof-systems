@@ -313,6 +313,10 @@ A proof consists of:
 * optionally, the public input used (the public input could be implied by the surrounding context and not part of the proof itself)
 * optionally, the previous challenges (in case we are in a recursive prover)
 
+From the code:
+
+{sections.proof}
+
 The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
 
 ### Proof Creation

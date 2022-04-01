@@ -22,72 +22,28 @@ use crate::{
             turshi::{Claim, Flags, Initial, Instruction, Memory, Transition},
             varbasemul::VarbaseMul,
         },
-        scalars::{LookupEvaluations, ProofEvaluations},
         wires::{COLUMNS, PERMUTS},
     },
     error::ProofError,
     plonk_sponge::FrSponge,
+    proof::{
+        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+    },
     prover_index::ProverIndex,
 };
-use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, Evaluations, Polynomial, Radix2EvaluationDomain as D, UVPolynomial,
 };
 use array_init::array_init;
-use commitment_dlog::{
-    commitment::{b_poly_coefficients, CommitmentCurve, PolyComm},
-    evaluation_proof::OpeningProof,
-};
+use commitment_dlog::commitment::{b_poly_coefficients, CommitmentCurve, PolyComm};
 use itertools::Itertools;
-use o1_utils::{types::fields::*, ExtendedDensePolynomial};
+use o1_utils::{types::fields::*, ExtendedDensePolynomial as _};
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use std::collections::HashMap;
 
 /// The result of a proof creation or verification.
 pub type Result<T> = std::result::Result<T, ProofError>;
-
-#[derive(Clone)]
-pub struct LookupCommitments<G: AffineCurve> {
-    pub sorted: Vec<PolyComm<G>>,
-    pub aggreg: PolyComm<G>,
-}
-
-/// All the commitments that the prover creates as part of the proof.
-#[derive(Clone)]
-pub struct ProverCommitments<G: AffineCurve> {
-    /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; COLUMNS],
-    /// The commitment to the permutation polynomial
-    pub z_comm: PolyComm<G>,
-    /// The commitment to the quotient polynomial
-    pub t_comm: PolyComm<G>,
-    /// Commitments related to the lookup argument
-    pub lookup: Option<LookupCommitments<G>>,
-}
-
-/// The proof that the prover creates from a [ProverIndex] and a `witness`.
-#[derive(Clone)]
-pub struct ProverProof<G: AffineCurve> {
-    /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<G>,
-
-    /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
-
-    /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<ScalarField<G>>>; 2],
-
-    /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    pub ft_eval1: ScalarField<G>,
-
-    /// The public input
-    pub public: Vec<ScalarField<G>>,
-
-    /// The challenges underlying the optional polynomials folded into the proof
-    pub prev_challenges: Vec<(Vec<ScalarField<G>>, PolyComm<G>)>,
-}
 
 impl<G: CommitmentCurve> ProverProof<G>
 where
@@ -170,10 +126,13 @@ where
         )
         .interpolate();
 
-        //~ 5. Commit (non-hiding) to the negated public input polynomial. **TODO: seems unecessary**
+        //~ 5. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
 
-        //~ 6. Absorb the public polynomial with the Fq-Sponge. **TODO: seems unecessary**
+        //~ 6. Absorb the commitment to the public polynomial with the Fq-Sponge.
+        //~    Note: unlike the original PLONK protocol,
+        //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
+        //~    This is why we need to absorb the commitment to the public polynomial at this point.
         fq_sponge.absorb_g(&public_comm.unshifted);
 
         //~ 7. Commit to the witness columns by creating `COLUMNS` hidding commitments.
@@ -277,7 +236,7 @@ where
             let x = match index.cs.lookup_constraint_system.as_ref() {
                 None => ScalarField::<G>::zero(),
                 Some(lcs) => {
-                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_value.iter())
+                    combine_table_entry(joint_combiner, lcs.configuration.dummy_lookup_entry.iter())
                 }
             };
             CombinedEntry(x)
@@ -745,15 +704,23 @@ where
                 .zip(lookup_sorted_coeffs.as_ref())
                 .zip(index.cs.lookup_constraint_system.as_ref())
                 .map(|((aggreg, sorted), lcs)| LookupEvaluations {
-                    aggreg: aggreg.eval(e, index.max_poly_size),
+                    aggreg: aggreg
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(e),
                     sorted: sorted
                         .iter()
-                        .map(|c| c.eval(e, index.max_poly_size))
+                        .map(|c| {
+                            c.to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(e)
+                        })
                         .collect(),
                     table: lcs
                         .lookup_table
                         .iter()
-                        .map(|p| p.eval(e, index.max_poly_size))
+                        .map(|p| {
+                            p.to_chunked_polynomial(index.max_poly_size)
+                                .evaluate_chunks(e)
+                        })
                         .rev()
                         .fold(vec![ScalarField::<G>::zero()], |acc, x| {
                             acc.into_iter()
@@ -785,26 +752,75 @@ where
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta, index.max_poly_size)
+                    index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
                 }),
-                w: array_init(|i| witness_poly[i].eval(zeta, index.max_poly_size)),
-                z: z_poly.eval(zeta, index.max_poly_size),
+                w: array_init(|i| {
+                    witness_poly[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
+
+                z: z_poly
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta),
+
                 lookup: lookup_evals(zeta),
-                generic_selector: index.cs.genericm.eval(zeta, index.max_poly_size),
-                poseidon_selector: index.cs.psm.eval(zeta, index.max_poly_size),
-                cairo_selector: array_init(|i| index.cs.cairo[i].eval(zeta, index.max_poly_size)),
+
+                generic_selector: index
+                    .cs
+                    .genericm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta),
+
+                poseidon_selector: index
+                    .cs
+                    .psm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta),
+
+                cairo_selector: array_init(|i| {
+                    index.cs.cairo[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<ScalarField<G>>> {
                 s: array_init(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i].eval(zeta_omega, index.max_poly_size)
+                    index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
                 }),
-                w: array_init(|i| witness_poly[i].eval(zeta_omega, index.max_poly_size)),
-                z: z_poly.eval(zeta_omega, index.max_poly_size),
+
+                w: array_init(|i| {
+                    witness_poly[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
+                }),
+
+                z: z_poly
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta_omega),
+
                 lookup: lookup_evals(zeta_omega),
-                generic_selector: index.cs.genericm.eval(zeta_omega, index.max_poly_size),
-                poseidon_selector: index.cs.psm.eval(zeta_omega, index.max_poly_size),
+
+                generic_selector: index
+                    .cs
+                    .genericm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta_omega),
+
+                poseidon_selector: index
+                    .cs
+                    .psm
+                    .to_chunked_polynomial(index.max_poly_size)
+                    .evaluate_chunks(zeta_omega),
+
                 cairo_selector: array_init(|i| {
-                    index.cs.cairo[i].eval(zeta_omega, index.max_poly_size)
+                    index.cs.cairo[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
                 }),
             };
 
@@ -880,10 +896,13 @@ where
                 drop(lookup_table_combined);
 
                 // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
-                f.chunk_polynomial(zeta_to_srs_len, index.max_poly_size)
+                f.to_chunked_polynomial(index.max_poly_size)
+                    .linearize(zeta_to_srs_len)
             };
 
-            let t_chunked = quotient_poly.chunk_polynomial(zeta_to_srs_len, index.max_poly_size);
+            let t_chunked = quotient_poly
+                .to_chunked_polynomial(index.max_poly_size)
+                .linearize(zeta_to_srs_len);
 
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - ScalarField::<G>::one())
         };
@@ -973,7 +992,7 @@ where
             .collect::<Vec<_>>();
 
         //~ 44. Then, include:
-        //~     - the negated public polynomial (TODO: why?)
+        //~     - the negated public polynomial
         //~     - the ft polynomial
         //~     - the permutation aggregation polynomial z polynomial
         //~     - the generic selector
@@ -1034,7 +1053,8 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::circuits::scalars::caml::CamlProofEvaluations;
+    use crate::proof::caml::CamlProofEvaluations;
+    use ark_ec::AffineCurve;
     use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
