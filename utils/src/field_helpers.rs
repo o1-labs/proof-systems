@@ -86,6 +86,14 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 }
 
+pub fn i32_to_field<F: Field>(i: i32) -> F {
+    if i >= 0 {
+        F::from(i as u32)
+    } else {
+        -F::from(-i as u32)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use ark_ec::AffineCurve;

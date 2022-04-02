@@ -5,7 +5,7 @@ use ark_ff::bytes::ToBytes;
 use ark_ff::{FftField, Field};
 use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use num_traits::cast::ToPrimitive;
-use o1_utils::hasher::CryptoDigest;
+use o1_utils::{field_helpers::i32_to_field, hasher::CryptoDigest};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::collections::{hash_map::Entry, HashMap, HashSet};
@@ -53,14 +53,6 @@ pub struct LocalPosition {
 pub struct SingleLookup<F> {
     /// Linear combination of local-positions
     pub value: Vec<(F, LocalPosition)>,
-}
-
-pub fn i32_to_field<F: Field>(i: i32) -> F {
-    if i >= 0 {
-        F::from(i as u32)
-    } else {
-        -F::from(-i as u32)
-    }
 }
 
 /// The domain-separation term calculated from the given `table_id`, used to ensure that a lookup
