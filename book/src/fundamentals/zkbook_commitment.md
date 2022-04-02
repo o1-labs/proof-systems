@@ -74,7 +74,8 @@ In other words, the sum of commitments $A$ and $B$ is equal to the commitment of
 
 ## Pedersen commitments
 
-The homomorphic commitment scheme described above is known as a Pedersen commitment.  As mentioned it relies on the ELDP hardness assumption.
+The homomorphic commitment $\mathsf{commit}(x, r) = xG + rH$ described above is known as a Pedersen commitment. If you remove the $rH$ term you
+get a non-hiding commitment, also called a *Pedersen hash*. Both rely on the ELDP hardness assumption.
 
 This means that, at least theoretically, you might be lucky (or have a quantum computer) and figure out that $H = hG$, which would allow you to find different values $x'$ and $h'$ to open the commitment.
 We say that pedersen commitments are **computationally binding** and not unconditionally binding.  For example, you could express $c = xG + rH$ alternatively as
@@ -96,11 +97,38 @@ Thus, said another way, Pedersen commitments provide perfect hiding and statisti
 
 ## Vector commitments
 
+We can commit to several values $x_1, \cdots, x_n$ by sending separate Pedersen commitments to all of these values as such:
 
+$$
+x_1 G + r_1 H, \\
+\vdots \\
+x_n G + r_n H \\
+$$
+
+But we can instead batch/aggregate all of these commitments together as:
+
+$$
+x_1 G_1 + \cdots + x_n G_n + r H
+$$
+
+with $G_1, \cdots, G_n, H$ independent bases with unknown discrete logarithms.
+
+If you represent $x$s and the $G$s as two vectors $\vec{x} = (x_1, \cdots, x_n)$ and $\vec{G} = (G_1, \cdots, G_n)$, we can quickly write the previous
+statement as an inner product
+
+$$
+\vec{x}\vec{G} + rH
+$$
+
+> Vector commitments (sometimes referred to as multi-commitments) are a powerful construction because an arbitrarily large vector can be committed with
+a single curve point.
+
+The naive approach to constructing an opening proof for a length $n$ vector commitment has size $O(n)$.  It is simply the tuple $(x_1, \ldots, x_n, r)$.  As we will
+see later, opening proofs for vector commitments is an interesting topic and there is a much more efficient algorithm.
 
 ## Polynomial commitments
 
-To construct SNARKs we use use polynomial commitments. A **polynomial commitment scheme**  for a field $F$ (or it could even be a ring) is a way of commiting to a polynomial $f \in F[x]$ to get a commitment $c$, in such a way that for any $\alpha \in F$, you can provide $y = f(\alpha)$, along with an "opening proof" $\pi$ that proves that the polynomial committed to in $c$ equals $y$ when evaluated at $\alpha$.
+To construct SNARKs we use use polynomial commitments. A **polynomial commitment scheme**  for a field $F$ (or it could even be a ring) is a way of committing to a polynomial $f \in F[x]$ to get a commitment $c$, in such a way that for any $\alpha \in F$, you can provide $y = f(\alpha)$, along with an "opening proof" $\pi$ that proves that the polynomial committed to in $c$ equals $y$ when evaluated at $\alpha$.
 
 In other words, it is a type of commitment $C$, a type of randomness $R$, a type of opening proof $P$ along with algorithms
 
