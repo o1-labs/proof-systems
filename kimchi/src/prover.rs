@@ -38,6 +38,9 @@ use itertools::Itertools;
 use lookup::CombinedEntry;
 use o1_utils::ExtendedDensePolynomial;
 use oracle::{sponge::ScalarChallenge, FqSponge};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use std::collections::HashMap;
 
 /// Alias to refer to the scalar field of a curve.
@@ -438,14 +441,17 @@ where
             let joint_table = &lcs.lookup_table8;
             let mut res = joint_table[joint_table.len() - 1].clone();
             for col in joint_table.iter().rev().skip(1) {
-                res.evals.iter_mut().for_each(|e| *e *= joint_combiner);
+                res.evals.par_iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
             }
             let table_id_combiner = joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
             if let Some(table_ids8) = &lcs.table_ids8 {
-                for (x, table_id) in res.evals.iter_mut().zip(table_ids8.evals.iter()) {
-                    *x += table_id_combiner * table_id;
-                }
+                res.evals
+                    .par_iter_mut()
+                    .zip(table_ids8.evals.par_iter())
+                    .for_each(|(x, table_id)| {
+                        *x += table_id_combiner * table_id;
+                    })
             }
             res
         });
