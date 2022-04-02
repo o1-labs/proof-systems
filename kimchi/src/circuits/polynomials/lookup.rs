@@ -122,18 +122,14 @@
 
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr, Variable},
-        gate::{
-            CircuitGate, CurrOrNext, JointLookup, LocalPosition, LookupInfo, LookupsUsed,
-            SingleLookup,
-        },
+        expr::{prologue::*, Column, ConstantExpr},
+        gate::{CircuitGate, CurrOrNext, JointLookupSpec, LocalPosition, LookupInfo, LookupsUsed},
         wires::COLUMNS,
     },
     error::ProofError,
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
-use o1_utils::field_helpers::i32_to_field;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -142,43 +138,6 @@ use CurrOrNext::*;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
-
-// TODO: Update for multiple tables
-fn single_lookup<F: FftField>(s: &SingleLookup<F>) -> E<F> {
-    // Combine the linear combination.
-    s.value
-        .iter()
-        .map(|(c, pos)| {
-            E::literal(*c)
-                * E::Cell(Variable {
-                    col: Column::Witness(pos.column),
-                    row: pos.row,
-                })
-        })
-        .fold(E::zero(), |acc, e| acc + e)
-}
-
-fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: u32) -> E<F> {
-    // The domain-separation term, used to ensure that a lookup against a given table cannot
-    // retrieve a value for some other table.
-    let table_id_contribution = {
-        let table_id: F = i32_to_field(j.table_id);
-        // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
-        // `joint_combiner` in the table value calculation below. This ensures that we can avoid
-        // using higher powers of the `joint_combiner` when we have only one table with a
-        // `table_id` of 0.
-        E::constant(
-            ConstantExpr::JointCombiner.pow(max_joint_size as u64)
-                * ConstantExpr::Literal(table_id),
-        )
-    };
-    j.entry
-        .iter()
-        .enumerate()
-        .map(|(i, s)| E::constant(ConstantExpr::JointCombiner.pow(i as u64)) * single_lookup(s))
-        .fold(E::zero(), |acc, x| acc + x)
-        + table_id_contribution
-}
 
 struct AdjacentPairs<A, I: Iterator<Item = A>> {
     prev_second_component: Option<A>,
@@ -267,8 +226,8 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
-    table_id_combiner: F,
+    joint_combiner: &F,
+    table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
@@ -373,7 +332,7 @@ pub trait Entry {
 
     fn evaluate(
         p: &Self::Params,
-        j: &JointLookup<Self::Field>,
+        j: &JointLookupSpec<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
     ) -> Self;
@@ -387,7 +346,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
 
     fn evaluate(
         (joint_combiner, table_id_combiner): &(F, F),
-        j: &JointLookup<F>,
+        j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> CombinedEntry<F> {
@@ -399,7 +358,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, *table_id_combiner, &eval))
+        CombinedEntry(j.evaluate(joint_combiner, table_id_combiner, &eval))
     }
 }
 
@@ -412,7 +371,7 @@ impl<F: Field> Entry for UncombinedEntry<F> {
 
     fn evaluate(
         _: &(),
-        j: &JointLookup<F>,
+        j: &JointLookupSpec<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
     ) -> UncombinedEntry<F> {
@@ -465,12 +424,7 @@ pub fn sorted<
         let spec = row;
         let padding = max_lookups_per_row - spec.len();
         for joint_lookup in spec.iter() {
-            let joint_lookup_evaluation = E::evaluate(
-                &params,
-                joint_lookup,
-                witness,
-                i,
-            );
+            let joint_lookup_evaluation = E::evaluate(&params, joint_lookup, witness, i);
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
                 Some(count) => *count += 1,
@@ -549,8 +503,8 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
-    joint_combiner: F,
-    table_id_combiner: F,
+    joint_combiner: &F,
+    table_id_combiner: &F,
     beta: F,
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
@@ -684,17 +638,24 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>, d1: D<F>
             .collect()
     };
 
+    let eval = |pos: LocalPosition| witness(pos.column, pos.row);
+
     // This is set up so that on rows that have lookups, chunk will be equal
     // to the product over all lookups `f` in that row of `gamma + f`
     // and
     // on non-lookup rows, will be equal to 1.
-    let f_term = |spec: &Vec<_>| {
+    let f_term = |spec: &Vec<JointLookupSpec<_>>| {
         assert!(spec.len() <= lookup_info.max_per_row);
         let padding = complements_with_beta_term[lookup_info.max_per_row - spec.len()].clone();
+        let joint_combiner = E::constant(ConstantExpr::JointCombiner);
+        let table_id_combiner = joint_combiner
+            .clone()
+            .pow(configuration.max_joint_size.into());
 
         spec.iter()
             .map(|j| {
-                E::Constant(ConstantExpr::Gamma) + joint_lookup(j, configuration.max_joint_size)
+                E::Constant(ConstantExpr::Gamma)
+                    + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
             })
             .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
     };
