@@ -63,8 +63,8 @@ pub fn i32_to_field<F: Field>(i: i32) -> F {
     }
 }
 
-// The domain-separation term calculated from the given `table_id`, used to ensure that a lookup
-// against a given table cannot retrieve a value for some other table.
+/// The domain-separation term calculated from the given `table_id`, used to ensure that a lookup
+/// against a given table cannot retrieve a value for some other table.
 pub fn table_id_contribution<F: Field>(joint_combiner: F, table_id: F, max_joint_size: u32) -> F {
     // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
     // `joint_combiner` in the table value calculation below. This ensures that we can avoid
