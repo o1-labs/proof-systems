@@ -108,6 +108,10 @@ impl<F: Field> SingleLookup<F> {
 /// A spec for checking that the given vector belongs to a vector-valued lookup table.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct JointLookup<F> {
+    /// The ID for the table associated with this lookup.
+    /// Positive IDs are intended to be used for the fixed tables associated with individual gates,
+    /// with negative IDs reserved for gates defined by the particular constraint system to avoid
+    /// accidental collisions.
     pub table_id: i32,
     pub entry: Vec<SingleLookup<F>>,
 }
