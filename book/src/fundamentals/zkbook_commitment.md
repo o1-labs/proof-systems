@@ -70,7 +70,7 @@ In other words, the sum of commitments $A$ and $B$ is equal to the commitment of
 > by the hardness assumption of the elliptic curve discrete logarithm problem (ELDP), noone knows it.
 >
 > Since approximately half of the hash outputs will be valid curve points on $E$, sampling will terminate very quickly.  Indeed, as we will see later,
-> this process can be used to sample many public curve points $H_1, \ldots, H_n$ for which the discrete logarithms are unknown; the so-called *hash to curve* algorithm.
+> this process can be used to sample many public curve points $G_1, \ldots, G_n$ for which the discrete logarithms are unknown; the so-called *hash to curve* algorithm.
 
 ## Pedersen commitments
 
