@@ -15,7 +15,6 @@
 # Cryptographic tools
 
 - [Commitments](./fundamentals/zkbook_commitment.md)
-- [Commitments](./plonk/commitments.md)
 - [Polynomial commitments](./plonk/polynomial_commitments.md)
   - [Inner product argument](./plonk/inner_product.md)
   - [Different functionnalities](./plonk/inner_product_api.md)
