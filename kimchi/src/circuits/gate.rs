@@ -55,16 +55,6 @@ pub struct SingleLookup<F> {
     pub value: Vec<(F, LocalPosition)>,
 }
 
-/// The domain-separation term calculated from the given `table_id`, used to ensure that a lookup
-/// against a given table cannot retrieve a value for some other table.
-pub fn table_id_contribution<F: Field>(joint_combiner: F, table_id: F, max_joint_size: u32) -> F {
-    // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
-    // `joint_combiner` in the table value calculation below. This ensures that we can avoid
-    // using higher powers of the `joint_combiner` when we have only one table with a
-    // `table_id` of 0.
-    joint_combiner.pow([max_joint_size as u64]) * table_id
-}
-
 /// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
 /// am using `[F; n]` to model a vector of length `n`).
 ///
@@ -80,12 +70,12 @@ pub fn table_id_contribution<F: Field>(joint_combiner: F, table_id: F, max_joint
 /// This function computes that combined value.
 pub fn combine_table_entry<'a, F: Field, I: DoubleEndedIterator<Item = &'a F>>(
     joint_combiner: F,
-    table_id: F,
-    max_joint_size: u32,
+    table_id_combiner: F,
     v: I,
+    table_id: F,
 ) -> F {
     v.rev().fold(F::zero(), |acc, x| joint_combiner * acc + x)
-        + table_id_contribution(joint_combiner, table_id, max_joint_size)
+        + table_id_combiner * table_id
 }
 
 impl<F: Field> SingleLookup<F> {
@@ -114,8 +104,8 @@ impl<F: Field> JointLookup<F> {
     pub fn evaluate<G: Fn(LocalPosition) -> F>(
         &self,
         joint_combiner: F,
+        table_id_combiner: F,
         eval: &G,
-        max_joint_size: u32,
     ) -> F {
         let mut res = F::zero();
         let mut c = F::one();
@@ -123,7 +113,7 @@ impl<F: Field> JointLookup<F> {
             res += c * s.evaluate(eval);
             c *= joint_combiner;
         }
-        res + table_id_contribution(joint_combiner, i32_to_field(self.table_id), max_joint_size)
+        res + &(table_id_combiner * &i32_to_field(self.table_id))
     }
 }
 

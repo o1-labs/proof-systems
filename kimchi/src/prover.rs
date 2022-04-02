@@ -234,6 +234,17 @@ where
         // TODO: that seems like an unecessary line
         let joint_combiner: Fr<G> = joint_combiner_.1;
 
+        let table_id_combiner: Fr<G> =
+            if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                if let Some (_) = lcs.table_ids8.as_ref() {
+                    joint_combiner.pow([lcs.configuration.max_joint_size as u64])
+                } else {
+                    Fr::<G>::zero()
+                }
+            } else {
+                Fr::<G>::zero()
+            };
+
         // TODO: Looking-up a tuple (f_0, f_1, ..., f_{m-1}) in a tuple of tables (T_0, ..., T_{m-1}) is
         // reduced to a single lookup
         // sum_i joint_combiner^i f_i
@@ -282,9 +293,9 @@ where
                     let table_id = Fr::<G>::zero();
                     combine_table_entry(
                         joint_combiner,
-                        table_id,
-                        lcs.configuration.max_joint_size,
+                        table_id_combiner,
                         lcs.configuration.dummy_lookup_value.iter(),
+                        table_id,
                     )
                 }
             };
@@ -309,9 +320,9 @@ where
                             };
                             CombinedEntry(combine_table_entry(
                                 joint_combiner,
-                                table_id,
-                                lcs.configuration.max_joint_size,
+                                table_id_combiner,
                                 row,
+                                table_id,
                             ))
                         })
                     };
@@ -320,13 +331,12 @@ where
                     // `witness` will be consumed when we interpolate, so interpolation will
                     // have to moved below this.
                     let lookup_sorted: Vec<Vec<CombinedEntry<Fr<G>>>> = lookup::sorted(
-                        &lcs.configuration,
                         dummy_lookup_value,
                         iter_lookup_table,
                         index.cs.domain.d1,
                         &index.cs.gates,
                         &witness,
-                        joint_combiner,
+                        (joint_combiner, table_id_combiner),
                     )?;
 
                     let lookup_sorted: Vec<_> = lookup_sorted
@@ -382,18 +392,18 @@ where
                                     // table ID is identically 0.
                                     Fr::<G>::zero(),
                             };
-                        combine_table_entry(joint_combiner, table_id, lcs.configuration.max_joint_size, row)
+                        combine_table_entry(joint_combiner, table_id_combiner, row, table_id)
                     });
 
                     let aggreg =
                         lookup::aggregation::<_, Fr<G>, _>(
-                            &lcs.configuration,
                             dummy_lookup_value.0,
                             iter_lookup_table(),
                             index.cs.domain.d1,
                             &index.cs.gates,
                             &witness,
                             joint_combiner,
+                            table_id_combiner,
                             beta, gamma,
                             &lookup_sorted,
                             rng)?;
@@ -445,8 +455,6 @@ where
                 res += col;
             }
             if let Some(table_ids8) = &lcs.table_ids8 {
-                let table_id_combiner =
-                    joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
                 res.evals
                     .par_iter_mut()
                     .zip(table_ids8.evals.par_iter())
@@ -769,12 +777,10 @@ where
                         match lcs.table_ids.as_ref() {
                             None => base_table,
                             Some(table_ids) => {
-                                let table_combiner =
-                                    joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
                                 base_table
                                     .into_iter()
                                     .zip(table_ids.eval(e, index.max_poly_size))
-                                    .map(|(x, table_id)| x + (table_combiner * table_id))
+                                    .map(|(x, table_id)| x + (table_id_combiner * table_id))
                                     .collect()
                             }
                         }

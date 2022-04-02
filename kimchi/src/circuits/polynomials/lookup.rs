@@ -268,7 +268,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
-    max_joint_size: u32,
+    table_id_combiner: F,
     sorted: &[Evaluations<F, D<F>>],
 ) {
     sorted
@@ -341,7 +341,7 @@ pub fn verify<F: FftField, I: Iterator<Item = F>, G: Fn() -> I>(
         };
         for joint_lookup in spec.iter() {
             let joint_lookup_evaluation =
-                joint_lookup.evaluate(joint_combiner, &eval, max_joint_size);
+                joint_lookup.evaluate(joint_combiner, table_id_combiner, &eval);
             *all_lookups.entry(joint_lookup_evaluation).or_insert(0) += 1
         }
 
@@ -376,7 +376,6 @@ pub trait Entry {
         j: &JointLookup<Self::Field>,
         witness: &[Vec<Self::Field>; COLUMNS],
         row: usize,
-        max_joint_size: u32,
     ) -> Self;
 }
 
@@ -384,14 +383,13 @@ pub trait Entry {
 pub struct CombinedEntry<F>(pub F);
 impl<F: Field> Entry for CombinedEntry<F> {
     type Field = F;
-    type Params = F;
+    type Params = (F, F);
 
     fn evaluate(
-        joint_combiner: &F,
+        (joint_combiner, table_id_combiner): &(F, F),
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
-        max_joint_size: u32,
     ) -> CombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
             let row = match pos.row {
@@ -401,7 +399,7 @@ impl<F: Field> Entry for CombinedEntry<F> {
             witness[pos.column][row]
         };
 
-        CombinedEntry(j.evaluate(*joint_combiner, &eval, max_joint_size))
+        CombinedEntry(j.evaluate(*joint_combiner, *table_id_combiner, &eval))
     }
 }
 
@@ -417,7 +415,6 @@ impl<F: Field> Entry for UncombinedEntry<F> {
         j: &JointLookup<F>,
         witness: &[Vec<F>; COLUMNS],
         row: usize,
-        _max_joint_size: u32,
     ) -> UncombinedEntry<F> {
         let eval = |pos: LocalPosition| -> F {
             let row = match pos.row {
@@ -438,7 +435,6 @@ pub fn sorted<
     I: Iterator<Item = E>,
     G: Fn() -> I,
 >(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: E,
     lookup_table: G,
     d1: D<F>,
@@ -474,7 +470,6 @@ pub fn sorted<
                 joint_lookup,
                 witness,
                 i,
-                configuration.max_joint_size,
             );
             match counts.get_mut(&joint_lookup_evaluation) {
                 None => return Err(ProofError::ValueNotInTable),
@@ -549,13 +544,13 @@ pub fn sorted<
 /// because of the random choice of beta and gamma, there is negligible probability that the terms will cancel if s is not a sorting of f and t
 #[allow(clippy::too_many_arguments)]
 pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
-    configuration: &LookupConfiguration<F>,
     dummy_lookup_value: F,
     lookup_table: I,
     d1: D<F>,
     gates: &[CircuitGate<F>],
     witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
+    table_id_combiner: F,
     beta: F,
     gamma: F,
     sorted: &[Evaluations<F, D<F>>],
@@ -621,7 +616,7 @@ pub fn aggregation<R: Rng + ?Sized, F: FftField, I: Iterator<Item = F>>(
                 // `max_lookups_per_row (=4) * n` field elements of
                 // memory.
                 spec.iter().fold(padding, |acc, j| {
-                    acc * (gamma + j.evaluate(joint_combiner, &eval, configuration.max_joint_size))
+                    acc * (gamma + j.evaluate(joint_combiner, table_id_combiner, &eval))
                 })
             };
 
