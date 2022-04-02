@@ -93,7 +93,7 @@ To recap, in cryptography the following distinctions are important
 
 - **Computational.** The algorithm relies on a hardness assumption or computational limitation for soundness.
 
-Thus, said another way, Pedersen commitments provide perfect hiding and statistical computational binding.
+Thus, said another way, Pedersen commitments provide perfect hiding and computational binding.
 
 ## Vector commitments
 
