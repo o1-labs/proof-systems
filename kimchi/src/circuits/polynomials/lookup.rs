@@ -133,6 +133,7 @@ use crate::{
 };
 use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::{Evaluations, Radix2EvaluationDomain as D};
+use o1_utils::field_helpers::i32_to_field;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -161,13 +162,7 @@ fn joint_lookup<F: FftField>(j: &JointLookup<F>, max_joint_size: u32) -> E<F> {
     // The domain-separation term, used to ensure that a lookup against a given table cannot
     // retrieve a value for some other table.
     let table_id_contribution = {
-        let table_id: F = {
-            if j.table_id >= 0 {
-                F::from(j.table_id as u32)
-            } else {
-                -F::from(-j.table_id as u32)
-            }
-        };
+        let table_id: F = i32_to_field(j.table_id);
         // Here, we use `joint_combiner^max_joint_size` rather than incrementing the powers of the
         // `joint_combiner` in the table value calculation below. This ensures that we can avoid
         // using higher powers of the `joint_combiner` when we have only one table with a
