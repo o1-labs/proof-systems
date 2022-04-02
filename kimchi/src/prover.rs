@@ -444,8 +444,9 @@ where
                 res.evals.par_iter_mut().for_each(|e| *e *= joint_combiner);
                 res += col;
             }
-            let table_id_combiner = joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
             if let Some(table_ids8) = &lcs.table_ids8 {
+                let table_id_combiner =
+                    joint_combiner.pow([lcs.configuration.max_joint_size as u64]);
                 res.evals
                     .par_iter_mut()
                     .zip(table_ids8.evals.par_iter())
