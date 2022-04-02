@@ -1,5 +1,6 @@
 pub mod constants;
 pub mod pasta;
+pub mod permutation;
 pub mod poseidon;
 pub mod sponge;
 
