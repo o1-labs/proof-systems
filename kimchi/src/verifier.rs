@@ -541,8 +541,10 @@ where
                             }
                             if let Some(table_ids) = lindex.table_ids.as_ref() {
                                 scalars.push(
-                                    (scalar * constants.joint_combiner)
-                                        .pow([lindex.max_joint_size as u64]),
+                                    scalar
+                                        * constants
+                                            .joint_combiner
+                                            .pow([lindex.max_joint_size as u64]),
                                 );
                                 commitments.push(table_ids);
                             }
